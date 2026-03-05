@@ -1,0 +1,30 @@
+[package]
+name = "source"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+flowcontrol = "0.2"
+futures = "0.3"
+http = "1"
+#htwrap = "0.15"
+ordered-float = { version = "5", default-features = false, features = [
+    "serde",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_json_canonicalizer = "0.3"
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "time",
+    "fs",
+    "net",
+    "process",
+    "macros",
+] }
+urlencoding = "2"
+v8 = "146.1.0"
+zip = "8.1.0"
+
+[lints.clippy]
+all = "allow"
