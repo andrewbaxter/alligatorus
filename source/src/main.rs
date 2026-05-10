@@ -877,6 +877,7 @@ async fn compile(
         struct JsSourceBuilder {
             lines: Vec<String>,
             mapping: HashMap<usize, QExprId>,
+            next_expr_id: usize,
         }
 
         impl JsSourceBuilder {
@@ -885,43 +886,53 @@ async fn compile(
                 self.mapping.insert(js_num, id);
                 self.lines.push(line);
             }
-        }
 
-        fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) {
-            match &code.type_ {
-                JsCodeType::Seq(c) => {
-                    for x in &c.sub {
-                        render_code(lines, x);
-                    }
-                },
-                JsCodeType::Value(c) => {
-                    lines.push(code.loc, serde_json::to_string(&c).unwrap());
-                },
-                JsCodeType::Set(c) => {
-                    lines.push(code.loc, format!("v{} = ", c.id.0));
-                    render_code(lines, &c.value);
-                },
-                JsCodeType::Get(c) => {
-                    lines.push(code.loc, scope_entry_id_js_key(c.id));
-                },
-                JsCodeType::Call(c) => {
-                    lines.push(code.loc, format!("("));
-                    lines.push(code.loc, format!("("));
-                    render_code(lines, &c.func);
-                    lines.push(code.loc, format!(")"));
-                    lines.push(code.loc, format!("("));
-                    for arg in &c.args {
-                        render_code(lines, arg);
-                        lines.push(code.loc, format!(","));
-                    }
-                    lines.push(code.loc, format!(")"));
-                    lines.push(code.loc, format!(")"));
-                },
+            fn next_expr_id(&mut self) -> usize {
+                let id = self.next_expr_id;
+                self.next_expr_id += 1;
+                id
             }
         }
 
+        fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
+            let var = format!("e{}", lines.next_expr_id());
+            lines.push(code.loc, format!("let {};", var));
+            lines.push(code.loc, format!("{{"));
+            match &code.type_ {
+                JsCodeType::Seq(c) => {
+                    let mut last_var = var.clone();
+                    for x in &c.sub {
+                        last_var = render_code(lines, x);
+                    }
+                    lines.push(code.loc, format!("{} = {};", var, last_var));
+                },
+                JsCodeType::Value(c) => {
+                    lines.push(code.loc, format!("{} = {};", var, serde_json::to_string(c).unwrap()));
+                },
+                JsCodeType::Set(c) => {
+                    let val_var = render_code(lines, &c.value);
+                    lines.push(code.loc, format!("v{} = {};", c.id.0, val_var));
+                    lines.push(code.loc, format!("{} = v{};", var, c.id.0));
+                },
+                JsCodeType::Get(c) => {
+                    lines.push(code.loc, format!("{} = {};", var, scope_entry_id_js_key(c.id)));
+                },
+                JsCodeType::Call(c) => {
+                    let func_var = render_code(lines, &c.func);
+                    let mut arg_vars = vec![];
+                    for arg in &c.args {
+                        arg_vars.push(render_code(lines, arg));
+                    }
+                    lines.push(code.loc, format!("{} = ({})({});", var, func_var, arg_vars.join(",")));
+                },
+            }
+            lines.push(code.loc, format!("}}"));
+            return var;
+        }
+
         let mut code1 = JsSourceBuilder::default();
-        render_code(&mut code1, &code);
+        let root_var = render_code(&mut code1, &code);
+        code1.push(root_loc, root_var);
         if let Some(stage2) =
             v8::Script::compile(js_scope, v8::String::new(js_scope, &code1.lines.join("\n")).unwrap(), None)
                 .unwrap()
