@@ -1114,6 +1114,7 @@ dependencies = [
  "futures",
  "http",
  "ordered-float",
+ "paste",
  "serde",
  "serde_json",
  "serde_json_canonicalizer",

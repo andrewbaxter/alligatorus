@@ -1,67 +1,247 @@
+pub mod jscode;
+pub mod langhelp;
+pub mod syntax;
+pub mod builtin;
+
 use {
-    crate::syntax::{
-        Expr,
-        ExprId,
-        ExprType,
-        ImportSpec,
-        ImportSpecAbsolute,
-        ImportSpecRemote,
-        Module,
-        PhraseCall,
-        PhraseGet,
-        PhraseSequence,
-        ScopeId,
-        Value,
+    crate::{
+        builtin::{
+            AspectFunction,
+            AspectNull,
+            AspectString,
+            aspect_consume_js_get,
+            aspect_function_get,
+            aspect_js_stack_value_get,
+            aspect_js_string_get,
+            aspect_js_string_get_maybe,
+            aspect_lift_js_get,
+            aspect_null_aspect_id,
+            aspect_null_get,
+            aspect_serial_get,
+            aspect_string_aspect_id,
+            aspect_string_get,
+        },
+        jscode::{
+            JsCode,
+            JsCodeCall,
+            JsCodeSeq,
+            JsCodeType,
+            ScopeEntryId,
+        },
+        langhelp::{
+            Aspect,
+            Code,
+            CodeValue,
+            CompileContext,
+            CompileId,
+            CompileRes,
+            EvalContext,
+            EvalErr,
+            EvalRes,
+            ExprContext,
+            ExprErr,
+            FullCompileContext,
+            ImportStateId,
+            QExprId,
+            Scope,
+            ScopeEntry,
+            SerialValueSource,
+            SourceId,
+            Type,
+            Unique,
+            Value,
+        },
+        syntax::{
+            ExprId,
+            ScopeKey,
+            SerialExpr,
+            SerialExprCall,
+            SerialExprScopeUse,
+            SerialExprType,
+            SerialModule,
+            SerialValue,
+            SourceSpecAbsolute,
+        },
     },
     flowcontrol::{
         shed,
         ta_return,
     },
-    futures::{
-        FutureExt,
-        future::{
-            BoxFuture,
-            Remote,
-            Shared,
-        },
-    },
-    http::{
-        Method,
-        Uri,
-    },
-    serde::{
-        Deserialize,
-        Serialize,
-        de::DeserializeOwned,
-    },
+    paste::paste,
     std::{
+        any::Any,
         cell::Cell,
-        collections::{
-            HashMap,
-            HashSet,
-            hash_map,
-        },
+        collections::HashMap,
         env::current_dir,
+        mem,
         path::PathBuf,
-        pin::Pin,
         process::exit,
         rc::Rc,
-        sync::{
-            Arc,
-            Mutex,
-        },
+        sync::Arc,
     },
-    tokio::{
-        fs::{
-            File,
-            create_dir_all,
-            read,
-        },
-        spawn,
+    tokio::fs::read,
+    v8::{
+        Platform,
+        tc_scope,
     },
 };
 
-pub mod syntax;
+/// EvalResBuilder
+struct Erb {
+    loc: QExprId,
+    errors: Vec<EvalErr>,
+}
+
+impl Erb {
+    fn new(loc: QExprId) -> Self {
+        return Self {
+            loc: loc,
+            errors: Default::default(),
+        };
+    }
+
+    fn maybe_er(&mut self, r: EvalRes) -> Option<CodeValue> {
+        let Some(cv) = r.cv else {
+            return None;
+        };
+        self.errors.extend(r.errors);
+        return Some(cv);
+    }
+
+    fn one_of_er(&mut self, r: EvalRes) -> Option<CodeValue> {
+        self.errors.extend(r.errors);
+        let Some(cv) = r.cv else {
+            return None;
+        };
+        return Some(cv);
+    }
+
+    fn must_er(&mut self, r: EvalRes) -> Result<CodeValue, EvalRes> {
+        self.errors.extend(r.errors);
+        let Some(cv) = r.cv else {
+            return Err(self.err().err().unwrap());
+        };
+        return Ok(cv);
+    }
+
+    fn maybe_res<T>(&mut self, r: Result<T, String>) -> Option<T> {
+        match r {
+            Ok(r) => {
+                return Some(r);
+            },
+            Err(_) => {
+                return None;
+            },
+        }
+    }
+
+    fn one_of_res<T>(&mut self, r: Result<T, String>) -> Option<T> {
+        match r {
+            Ok(r) => {
+                return Some(r);
+            },
+            Err(e) => {
+                self.err_new(e);
+                return None;
+            },
+        }
+    }
+
+    fn must_res<T>(&mut self, r: Result<T, String>) -> Result<T, EvalRes> {
+        match r {
+            Ok(r) => {
+                return Ok(r);
+            },
+            Err(e) => {
+                self.err_new(e);
+                return Err(self.err().err().unwrap());
+            },
+        }
+    }
+
+    fn err(&mut self) -> Result<EvalRes, EvalRes> {
+        return Ok(EvalRes {
+            cv: None,
+            errors: mem::take(&mut self.errors),
+        });
+    }
+
+    fn err_new(&mut self, message: impl ToString) -> Result<EvalRes, EvalRes> {
+        self.errors.push(EvalErr {
+            expr: self.loc,
+            errors: vec![ExprErr::Opaque(message.to_string())],
+        });
+        return self.err();
+    }
+
+    fn value(&mut self, cv: CodeValue) -> Result<EvalRes, EvalRes> {
+        return Ok(EvalRes {
+            cv: Some(cv),
+            errors: mem::take(&mut self.errors),
+        });
+    }
+}
+
+macro_rules! erb{
+    ($loc: expr, $v: ident $x: tt) => {
+        let mut $v = Erb:: new($loc);
+        match(||-> Result < EvalRes, EvalRes > {
+            $x
+        })() {
+            Ok(er) => return er,
+            Err(er) => return er,
+        }
+    };
+}
+
+macro_rules! erb_async{
+    ($loc: expr, $v: ident $x: tt) => {
+        let mut $v = Erb:: new($loc);
+        match async {
+            ta_return!(EvalRes, EvalRes);
+            $x
+        }
+        .await {
+            Ok(er) => return er,
+            Err(er) => return er,
+        }
+    };
+}
+
+pub struct ExprSequence {
+    pub exprs: Vec<Expr>,
+}
+
+pub struct ExprScopeSet {
+    pub id: ScopeKey,
+    pub value: Box<Expr>,
+}
+
+pub struct ExprScopeUse {
+    pub key: ScopeKey,
+}
+
+pub struct ExprCall {
+    pub func: Box<Expr>,
+    pub arg: Box<Expr>,
+}
+
+pub enum ExprType {
+    Literal(Box<dyn Value>),
+    //.    Sequence(ExprSequence),
+    //.    ScopeSet(ExprScopeSet),
+    ScopeUse(ExprScopeUse),
+    Call(ExprCall),
+}
+
+pub struct Expr {
+    pub loc: QExprId,
+    pub r#type: ExprType,
+}
+
+pub enum Module {
+    V1(Expr),
+}
 
 fn path_to_fs_path(path: &Vec<String>) -> PathBuf {
     let mut at = PathBuf::new();
@@ -71,465 +251,639 @@ fn path_to_fs_path(path: &Vec<String>) -> PathBuf {
     return at;
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct ImportStateId(usize);
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct CompileId(ImportStateId, ImportSpecAbsolute);
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
-pub enum CompileErr {
-    Opaque(String),
+fn cerr<T>(e: String) -> Result<T, ExprErr> {
+    return Err(ExprErr::Opaque(e));
 }
 
-fn cerr<T>(e: String) -> Result<T, CompileErr> {
-    return Err(CompileErr::Opaque(e));
-}
-
-#[derive(Clone)]
-pub struct ModuleResult {
-    pub value: Value,
-    pub errors: HashMap<ExprId, HashSet<CompileErr>>,
-}
-
-pub struct GlobalContext {
-    pub cache_root: Vec<String>,
-    // Remote packages/sources, resolved when downloaded (path is deterministic so not
-    // returned, use a method to get the path)
-    pub remote_source: Mutex<HashMap<ImportSpecRemote, Shared<BoxFuture<'static, Result<(), CompileErr>>>>>,
-    pub module_results: Mutex<HashMap<CompileId, Shared<BoxFuture<'static, Result<ModuleResult, CompileErr>>>>>,
-}
-
-pub struct CompileModuleContext {
-    pub import_spec: ImportSpecAbsolute,
-    pub compile_path: Vec<(CompileId, ExprId)>,
-    pub errors: HashMap<ExprId, HashSet<CompileErr>>,
-}
-
-pub struct Scope {
-    values: HashMap<ScopeId, (BindingId, Value)>,
-    parent: Option<Rc<Scope>>,
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-struct BindingId(usize);
-
-pub struct EvalContext {
-    pub next_binding_id: BindingId,
-}
-
-pub struct PhraseContext {
-    pub import_state: Rc<Cell<ImportStateId>>,
-    pub scope: Rc<Scope>,
-}
-
-struct JsCodeSeq {
-    pub sub: Vec<JsCode>,
-}
-
-struct JsCodeSet {
-    pub id: BindingId,
-    pub value: Box<JsCode>,
-}
-
-struct JsCodeGet {
-    pub id: BindingId,
-}
-
-struct JsCodeCall {
-    pub func: Box<JsCode>,
-    pub args: Vec<JsCode>,
-}
-
-enum JsCode {
-    Seq(JsCodeSeq),
-    Value(serde_json::Value),
-    Set(JsCodeSet),
-    Get(JsCodeGet),
-    Call(JsCodeCall),
-}
-
-pub struct EvalResult<EF> {
-    pub effect: Option<EF>,
-    pub value: Value,
-}
+trait Effect { }
 
 trait Target {
     type Effect;
+
+    /// Value is guaranteed to be of the type described by the aspect's type.
+    ///
+    /// Used before interacting with JS: namely, function call arguments.
+    fn place(&self, xx: &ExprContext, loc: QExprId, v: &dyn Value) -> EvalRes;
 }
 struct MortarTarget;
 
 impl Target for MortarTarget {
     type Effect = JsCode;
+
+    fn place(&self, xx: &ExprContext, loc: QExprId, v: &dyn Value) -> EvalRes {
+        erb!(loc, erb {
+            let v_type = v.type_(xx, loc);
+            if let Some(_) = erb.one_of_res(aspect_null_get(xx, v_type.as_ref())) {
+                return erb.value(CodeValue {
+                    code: Code::None,
+                    value: Box::new(ValueNull)
+                });
+            } else if let Some(aspect) = erb.one_of_res(aspect_string_get(xx, v_type.as_ref())) {
+                return erb.value(CodeValue {
+                    code: Code::None,
+                    value: Box::new(ValueString(aspect.get(v)))
+                });
+            } else {
+                return erb.err();
+            }
+        });
+    }
 }
 
-async fn eval_phrase<
-    T: Target,
->(
-    gx: &Arc<GlobalContext>,
-    cmx: &mut CompileModuleContext,
-    ex: &mut EvalContext,
-    px: PhraseContext,
-    phrase: &Expr,
-    target: &T,
-) -> EvalResult<T::Effect> {
-    match async {
-        ta_return!(EvalResult < T:: Effect >, CompileErr);
+fn eval_expr<T: Target>(xx: &ExprContext, phrase: &Expr, target: &T) -> EvalRes {
+    erb!(phrase.loc, erb {
         match &phrase.r#type {
-            ExprType::Import(p) => {
-                let abs_import_spec = match p {
-                    ImportSpec::Relative(r) => {
-                        fn join_path(path: &mut Vec<String>, rel: &String) -> Result<(), CompileErr> {
-                            if path.pop().is_none() {
-                                return cerr(
-                                    format!(
-                                        "Current package is a single file, cannot do a relative import (no other files in package)"
-                                    ),
-                                );
-                            }
-                            for seg in rel.split("/") {
-                                match seg {
-                                    ".." => {
-                                        if path.pop().is_none() {
-                                            return cerr(
-                                                format!(
-                                                    "Relative import path has too many .., goes out of containing package root",
-                                                ),
-                                            );
-                                        }
-                                    },
-                                    "." => { },
-                                    seg => {
-                                        path.push(seg.to_string());
-                                    },
-                                }
-                            }
-                            return Ok(());
-                        }
-
-                        match &cmx.import_spec {
-                            ImportSpecAbsolute::Virtual(m) => {
-                                return cerr(
-                                    "Virtual modules have no filesystem from which relative imports can be made".to_string(),
-                                );
-                            },
-                            ImportSpecAbsolute::Local(s) => {
-                                let mut path = s.clone();
-                                join_path(&mut path, r)?;
-                                ImportSpecAbsolute::Local(path)
-                            },
-                        //.                            ImportSpecAbsolute::Remote(s) => {
-                        //.                                let mut subpath = s.subpath.clone();
-                        //.                                join_path(&mut subpath, r)?;
-                        //.                                ImportSpecAbsolute::Remote(ImportSpecRemote {
-                        //.                                    hash: s.hash.clone(),
-                        //.                                    path: s.path.clone(),
-                        //.                                    subpath: subpath,
-                        //.                                })
-                        //.                            },
-                        }
-                    },
-                    ImportSpec::Absolute(s) => s.clone(),
-                };
-                let compiled_id = CompileId(px.import_state.get(), abs_import_spec);
-                for (i, p) in cmx.compile_path.iter().enumerate().rev() {
-                    if p.0 == compiled_id {
-                        return cerr(
-                            format!("Import cycle: {}", serde_json::to_string(&cmx.compile_path[i..]).unwrap()),
-                        );
-                    }
-                }
-                let compiled = gx.module_results.lock().unwrap();
-                let res;
-                match compiled.entry(compiled_id) {
-                    hash_map::Entry::Occupied(e) => {
-                        res = e.get().clone().await?.value.clone();
-                    },
-                    hash_map::Entry::Vacant(e) => {
-                        let f = {
-                            let gx = gx.clone();
-                            async move {
-                                ta_return!(ModuleResult, CompileErr);
-                                return Ok(compile_module(&gx, px.import_state.get(), abs_import_spec, {
-                                    let mut compile_path = cmx.compile_path.clone();
-                                    compile_path.push((compiled_id, phrase.id));
-                                    compile_path
-                                }).await?);
-                            }
-                        }.boxed().shared();
-                        spawn(f.clone());
-                        e.insert(f.clone());
-                        res = f.await?.value.clone();
-                    },
-                };
-                return Ok(EvalResult {
-                    effect: None,
-                    value: res,
-                });
-            },
             ExprType::Literal(p) => {
-                return Ok(EvalResult {
-                    effect: None,
-                    value: p.clone(),
-                });
+                let v = erb.must_er(target.place(xx, phrase.loc, p.as_ref()))?;
+                return erb.value(v);
             },
-            ExprType::Set(p) => {
-                let value = eval_phrase(gx, cmx, ex, PhraseContext {
-                    import_state: px.import_state.clone(),
-                    scope: px.scope.clone(),
-                }, &p.value, target).await;
-                let binding_id = ex.binding_ids;
-                px.scope.set(p.id, binding_id);
-                return Ok(EvalResult {
-                    effect: JsCode::Set(JsCodeSet {
-                        id: binding_id,
-                        value: value.effect,
-                    }),
-                    value: value.value,
-                });
-            },
-            ExprType::Get(p) => {
-                let (binding_id, value) = shed!{
+            ExprType::ScopeUse(p) => {
+                let binding = shed!{
                     'found _;
-                    let mut at = &px.scope;
+                    let mut at = &xx.scope;
                     loop {
-                        if let Some(found) = at.values.get(&p.id) {
+                        if let Some(found) = at.values.get(&p.key) {
                             break 'found found;
                         }
                         if let Some(parent) = &at.parent {
                             at = parent;
+                        } else {
+                            break;
                         }
-                        break;
                     }
-                    return cerr(format!("No bound value with id [{}]", p.id.0));
+                    return erb.err_new(format!("No bound value with id [{}]", p.key.0));
                 };
-                let eff = match target.eval_get(binding_id) {
-                    Ok(eff) => eff,
-                    Err(e) => {
-                        return Err(e);
-                    },
-                };
-                return Ok(EvalResult {
-                    effect: eff,
-                    value: value.clone(),
-                });
+                return erb.value(binding.use_());
             },
             ExprType::Call(p) => {
-                let func = eval_phrase(gx, cmx, ex, PhraseContext {
-                    import_state: px.import_state.clone(),
-                    scope: px.scope.clone(),
-                }, &p.func, target).await;
-                let value = eval_phrase(gx, cmx, ex, PhraseContext {
-                    import_state: px.import_state,
-                    scope: px.scope.clone(),
-                }, &p.args, target).await;
-                let Value::Func(func) = func else {
-                    return Err("Call phrase function operand is not a function");
+                let func = erb.one_of_er(eval_expr(xx, p.func.as_ref(), target));
+                let arg = erb.one_of_er(eval_expr(xx, p.arg.as_ref(), target));
+                let (Some(func), Some(arg)) = (func, arg) else {
+                    return erb.err();
                 };
-                return func.call(target, value);
+                let func_type = func.value.type_(xx, phrase.loc);
+                let aspect_func = erb.must_res(aspect_function_get(xx, func_type.as_ref()))?;
+                let v = erb.must_er(aspect_func.call(xx, phrase.loc, func, arg))?;
+                return erb.value(v);
             },
         }
-    }.await {
-        Ok(r) => return Ok(r),
-        Err(e) => {
-            cmx.errors.insert(phrase.id, e);
-            return Ok(EvalResult {
-                effect: None,
-                value: Value::Err,
-            });
-        },
+    });
+}
+struct TypeNull;
+
+impl Value for TypeNull {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        return Rc::new(TypeNull);
     }
 }
 
-async fn compile_module(
-    gx: &Arc<GlobalContext>,
-    import_state: ImportStateId,
-    import_spec: ImportSpecAbsolute,
-    compile_path: Vec<(CompileId, ExprId)>,
-) -> Result<ModuleResult, CompileErr> {
-    let cmx = CompileModuleContext {
-        import_spec: import_spec,
-        compile_path: compile_path,
-        errors: Default::default(),
+impl Type for TypeNull {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
+        if *key == aspect_null_aspect_id() {
+            return Some(Box::new(TypeNull));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        erb!(loc, erb {
+            erb.must_res(aspect_null_get(xx, type_))?;
+            return erb.value(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(ValueNull)
+            });
+        });
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        erb!(loc, erb {
+            let type_ = cv.value.type_(xx, loc);
+            erb.must_res(aspect_null_get(xx, type_.as_ref()))?;
+            return erb.value(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(ValueNull)
+            });
+        });
+    }
+}
+
+impl Aspect for TypeNull { }
+
+impl AspectNull for TypeNull { }
+struct ValueNull;
+
+impl Value for ValueNull {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        return Rc::new(TypeNull);
+    }
+}
+struct TypeString;
+
+impl Value for TypeString {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        unimplemented!();
+    }
+}
+
+impl Type for TypeString {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
+        if *key == aspect_string_aspect_id() {
+            return Some(Box::new(TypeString));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        erb!(loc, erb {
+            let aspect_string = erb.must_res(aspect_string_get(xx, type_))?;
+            return erb.value(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(ValueString(aspect_string.get(cv.value.as_ref())))
+            });
+        });
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        erb!(loc, erb {
+            let type_ = cv.value.type_(xx, loc);
+            let aspect_string = erb.must_res(aspect_string_get(xx, type_.as_ref()))?;
+            return erb.value(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(ValueString(aspect_string.get(cv.value.as_ref())))
+            });
+        });
+    }
+}
+
+impl Aspect for TypeString { }
+
+impl AspectString for TypeString {
+    fn get(&self, value: &dyn Value) -> String {
+        return <dyn Any>::downcast_ref::<ValueString>(value).unwrap().0.clone();
+    }
+}
+
+struct ValueString(pub String);
+
+impl Value for ValueString {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        return Rc::new(TypeString);
+    }
+}
+
+fn serial_value_to_expr_lit(lit: &SerialValue) -> Box<dyn Value> {
+    return match lit {
+        SerialValue::Null => Box::new(ValueNull),
+        SerialValue::String(l) => Box::new(ValueString(l.clone())),
+    //.        SerialValue::Number(l) => Value::Number(*l),
+    //.        SerialValue::Bool(l) => Value::Bool(*l),
+    //.        SerialValue::Array(l) => Value::Array(l.iter().map(serial_value_to_value).collect()),
+    //.        SerialValue::Set(l) => Value::Set(l.iter().map(serial_value_to_value).collect()),
+    //.        SerialValue::Map(l) => Value::Map(
+    //.            l.iter().map(|(k, v)| (serial_value_to_value(k), serial_value_to_value(v))).collect(),
+    //.        ),
     };
-    let module = match &cmx.import_spec {
-            ImportSpecAbsolute::Local(s) => {
-                serde_json::from_slice::<Module>(
-                    &read(path_to_fs_path(&s))
-                        .await
-                        .map_err(|e| CompileErr::Opaque(format!("Error reading module file at {:?}: {}", s, e)))?,
-                ).map_err(|e| CompileErr::Opaque(format!("Error parsing module file at {:?}: {}", s, e)))?
-            },
-        //.        ImportSpecAbsolute::Remote(s) => {
-        //.            let remote = gx.remote_source.lock().unwrap();
-        //.            let mut cache_path = gx.cache_root.clone();
-        //.            cache_path.extend(
-        //.                [
-        //.                    format!("remote_source"),
-        //.                    urlencoding::encode(&serde_json_canonicalizer::to_string(s).unwrap()).to_string(),
-        //.                ].into_iter(),
-        //.            );
-        //.            match remote.entry(s.clone()) {
-        //.                hash_map::Entry::Occupied(e) => {
-        //.                    e.get().clone().await?;
-        //.                    read_json::<Module>(&cache_path).await?
-        //.                },
-        //.                hash_map::Entry::Vacant(e) => {
-        //.                    let fs_cache_path = path_to_fs_path(&cache_path);
-        //.                    let f = {
-        //.                        let fs_cache_path = fs_cache_path.clone();
-        //.                        async move {
-        //.                            ta_return!((), Errx);
-        //.                            if fs_cache_path.exists() {
-        //.                                return Ok(());
-        //.                            }
-        //.                            match s.path {
-        //.                                syntax::RemotePath::Http(p) => {
-        //.                                    let url = Uri::try_from(&p.url)?;
-        //.                                    let l = htreq::Limits::default();
-        //.                                    let mut conn = htreq::connect(l, &url).await?;
-        //.                                    let log = loga::Log::new_root(loga::ERR);
-        //.                                    let (code, headers, tail) =
-        //.                                        htreq::send(
-        //.                                            &log,
-        //.                                            l,
-        //.                                            &mut conn,
-        //.                                            http::Request::builder()
-        //.                                                .method(Method::GET)
-        //.                                                .uri(&url)
-        //.                                                .body(body_empty())
-        //.                                                .unwrap(),
-        //.                                        ).await?;
-        //.                                    if let Some(parent) = fs_cache_path.parent() {
-        //.                                        create_dir_all(parent).await?;
-        //.                                    }
-        //.                                    let mut out = File::create_new(fs_cache_path).await?;
-        //.                                    htreq::receive_stream(tail, &mut out).await?;
-        //.                                },
-        //.                            }
-        //.                            return Ok(());
-        //.                        }
-        //.                    }.boxed().shared();
-        //.                    spawn(f.clone());
-        //.                    e.insert(f.clone());
-        //.                    f.await?;
-        //.                    let f = File::open(&fs_cache_path).await?;
-        //.                    let fa = zip::ZipArchive::new(&f)?;
-        //.                    serde_json::from_slice::<Module>(&fa.by_name(s.subpath.join("/"))?.read())?
-        //.                },
-        //.            };
-        //.        },
+}
+
+fn serial_expr_to_expr(source_id: SourceId, m: &SerialExpr) -> Expr {
+    return Expr {
+        loc: (source_id, m.id),
+        r#type: match &m.r#type {
+            SerialExprType::Literal(lit) => ExprType::Literal(serial_value_to_expr_lit(lit)),
+            //.            SerialExprType::Sequence(expr) => ExprType::Sequence(
+            //.                ExprSequence { exprs: expr.exprs.iter().map(serial_expr_to_expr).collect() },
+            //.            ),
+            //.            SerialExprType::Set(expr) => ExprType::ScopeSet(ExprScopeSet {
+            //.                id: expr.id.clone(),
+            //.                value: Box::new(serial_expr_to_expr(&expr.value)),
+            //.            }),
+            SerialExprType::ScopeUse(expr) => ExprType::ScopeUse(ExprScopeUse { key: expr.key.clone() }),
+            SerialExprType::Call(expr) => ExprType::Call(ExprCall {
+                func: Box::new(serial_expr_to_expr(source_id, &expr.func)),
+                arg: Box::new(serial_expr_to_expr(source_id, &expr.args)),
+            }),
+        },
+    };
+}
+
+fn serial_module_to_module(source_id: SourceId, m: &SerialModule) -> Module {
+    match m {
+        SerialModule::V1(m) => Module::V1(serial_expr_to_expr(source_id, m)),
+    }
+}
+
+pub enum MortarJsValueData {
+    Scope(ScopeEntryId),
+    // Result of effect
+    Expr,
+    Access(Box<MortarJsValue>, String),
+}
+
+pub struct MortarJsValue {
+    pub data: MortarJsValueData,
+    pub type_: Rc<dyn Type>,
+}
+
+impl Value for MortarJsValue {
+    //.     fn drop(&self, xx: &ExprContext, loc: QExprId) -> Code {
+    //.         let mut root = self;
+    //.         loop {
+    //.             match &root.data {
+    //.                 MortarJsValueData::Scope(d) => {
+    //.                     // No load actually happened
+    //.                     return Code::None;
+    //.                 },
+    //.                 MortarJsValueData::Expr(d) => {
+    //.                     if let Some(aspect_drop) = root.type_.aspect(xx, &xx.vx.ix.cx.const_aspect_drop) { }
+    //.                 },
+    //.                 MortarJsValueData::Access(d, _) => {
+    //.                     root = d.as_ref();
+    //.                 },
+    //.             }
+    //.         }
+    //.     }
+    //. 
+    //.     fn consume(&self, ex: &ExprContext, loc: QExprId) -> Code {
+    //.         return Code::None;
+    //.     }
+    fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        return self.type_.clone();
+    }
+}
+
+pub struct MortarScopeEntry {
+    pub js_key: ScopeEntryId,
+    pub type_: Rc<dyn Type>,
+}
+
+impl ScopeEntry for MortarScopeEntry {
+    fn use_(&self) -> CodeValue {
+        return CodeValue {
+            code: Code::None,
+            value: Box::new(MortarJsValue {
+                data: MortarJsValueData::Scope(self.js_key.clone()),
+                type_: self.type_.clone(),
+            }),
         };
+    }
+}
+struct TypeMortarString;
+
+impl Value for TypeMortarString {
+    fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        todo!()
+    }
+}
+
+impl Type for TypeMortarString {
+    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
+        if *key == ex.vx.ix.cx.const_aspect_mortar_str {
+            return Some(Box::new(TypeMortarString));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        erb!(loc, erb {
+            erb.must_res(aspect_js_string_get(xx, type_))?;
+            return erb.value(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    data: MortarJsValueData::Expr,
+                    type_: Rc::new(TypeMortarString),
+                })
+            });
+        });
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        erb!(loc, erb {
+            let type_ = cv.value.type_(xx, loc);
+            let cv2: CodeValue;
+            if let Some(aspect_string) = erb.one_of_res(aspect_string_get(xx, type_.as_ref())) {
+                let mut seq = vec![];
+                if let Some(c) = erb.must_res(cv.code.cast::<JsCode>())? {
+                    seq.push(c.clone());
+                };
+                seq.push(JsCode {
+                    loc: loc,
+                    type_: JsCodeType::Value(serde_json::Value::String(aspect_string.get(cv.value.as_ref())))
+                });
+                cv2 = CodeValue {
+                    code: Code::Dyn(Rc::new(JsCode {
+                        loc: loc,
+                        type_: JsCodeType::Seq(JsCodeSeq { sub: seq })
+                    })),
+                    value: Box::new(MortarJsValue {
+                        data: MortarJsValueData::Expr,
+                        type_: Rc::new(TypeMortarString),
+                    }),
+                };
+            } else if let Some(_) = erb.one_of_res(aspect_js_string_get(xx, type_.as_ref())) {
+                cv2 = CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(MortarJsValue {
+                        data: MortarJsValueData::Expr,
+                        type_: Rc::new(TypeMortarString),
+                    })
+                };
+            } else {
+                return erb.err();
+            }
+            return erb.value(cv2);
+        });
+    }
+}
+
+impl Aspect for TypeMortarString { }
+struct TypeMortarNull;
+
+impl Value for TypeMortarNull {
+    fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        return Rc::new(TypeMortarNull);
+    }
+}
+
+impl Type for TypeMortarNull {
+    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
+        if *key == ex.vx.ix.cx.const_aspect_mortar_str {
+            return Some(Box::new(TypeMortarNull));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        unimplemented!();
+    }
+
+    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        unimplemented!();
+    }
+}
+
+impl Aspect for TypeMortarNull { }
+
+#[derive(Clone)]
+struct MortarTypeFunction {
+    arg: Rc<dyn Type>,
+    ret: Rc<dyn Type>,
+}
+
+impl Value for MortarTypeFunction {
+    fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        todo!()
+    }
+}
+
+impl Type for MortarTypeFunction {
+    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn langhelp::Aspect>> {
+        if *key == ex.vx.ix.cx.const_aspect_mortar_func {
+            return Some(Box::new(self.clone()));
+        }
+        if *key == ex.vx.ix.cx.const_aspect_func {
+            return Some(Box::new(self.clone()));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        unimplemented!();
+    }
+
+    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        unimplemented!();
+    }
+}
+
+fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
+    erb!(loc, erb {
+        let source_type = source.value.type_(xx, loc);
+        let dest;
+        if let Some(dest1) = erb.maybe_er(source_type.cast_to(xx, loc, &source, dest_type)) {
+            dest = dest1;
+        } else if let Some(dest1) = erb.maybe_er(dest_type.cast_from(xx, loc, &source)) {
+            dest = dest1;
+        } else {
+            erb.err_new(format!("TODO incompatible types"));
+            return erb.err();
+        }
+        return erb.value(dest);
+    });
+}
+
+impl Aspect for MortarTypeFunction { }
+
+impl AspectFunction for MortarTypeFunction {
+    fn call(&self, xx: &ExprContext, loc: QExprId, function: CodeValue, argument: CodeValue) -> langhelp::EvalRes {
+        erb!(loc, erb {
+            let func_type = function.value.type_(xx, loc);
+            let func_to_js = erb.maybe_res(aspect_consume_js_get(xx, func_type.as_ref()));
+            let arg_to_js = erb.maybe_res(aspect_consume_js_get(xx, self.arg.as_ref()));
+            let ret_stack = erb.maybe_res(aspect_js_stack_value_get(xx, self.ret.as_ref()));
+            let argument = erb.must_er(typecheck_convert(xx, loc, self.arg.as_ref(), argument))?;
+            let (Some(func_to_js), Some(arg_to_js), Some(ret_stack)) = (func_to_js, arg_to_js, ret_stack) else {
+                return erb.err();
+            };
+            let func = func_to_js.consume(function);
+            let arg = arg_to_js.consume(argument);
+            return erb.value(ret_stack.to_value(JsCode {
+                loc: loc,
+                type_: JsCodeType::Call(JsCodeCall {
+                    func: Box::new(func),
+                    args: vec![arg],
+                })
+            }));
+        });
+    }
+}
+
+fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
+    return format!("a{}", e.0);
+}
+
+async fn compile(
+    fx: &Arc<FullCompileContext>,
+    import_state: ImportStateId,
+    source: Module,
+    compile_path: Vec<(CompileId, ExprId)>,
+) -> CompileRes {
+    let cmx = Rc::new(CompileContext {
+        cx: fx.clone(),
+        compile_path: compile_path,
+        next_unique_id: Default::default(),
+    });
 
     // Prep scope
     let mut s1_scope = HashMap::new();
-    let s2_scope = &mut {
-        let isolate = &mut v8::Isolate::new(Default::default());
-        let handlescope = std::pin::pin!(v8::HandleScope::new(isolate));
-        let handlescope = &mut handlescope.init();
-        let context = v8::Context::new(handlescope, Default::default());
-        v8::ContextScope::new(handlescope, context)
-    };
-    let mut next_binding_id = 0;
-    for (
-        id,
-        s1,
-        s2,
-    ) in [
-        (
-            Value::Func(x),
-            v8::Function::builder(
-                |
-                    scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>,
-                    args: v8::FunctionCallbackArguments<'_>,
-                    ret: v8::ReturnValue<'_>,
-                | {
-                    println!("{}", args.get(0).to_string(scope).unwrap().to_rust_string_lossy(scope));
-                },
-            ).build(s2_scope).unwrap(),
-        ),
-    ] {
-        s1_scope.insert(id, s1);
-        let binding_id = next_binding_id;
-        next_binding_id += 1;
-        s2_scope
+    let mut js_scope_isolate = v8::Isolate::new(Default::default());
+    let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
+    let mut js_scope_handle2 = js_scope_handle.init();
+    let js_scope_context = v8::Context::new(&mut js_scope_handle2, Default::default());
+    let js_scope_context2 = &mut v8::ContextScope::new(&mut js_scope_handle2, js_scope_context);
+    tc_scope!(let js_scope, js_scope_context2);
+    let ex = Rc::new(EvalContext {
+        ix: cmx.clone(),
+        next_scope_entry_id: Default::default(),
+    });
+    for (id, eval_value, js_value) in [(
+        "print",
+        MortarScopeEntry {
+            js_key: ScopeEntryId(ex.next_scope_entry_id.next()),
+            type_: Rc::new(MortarTypeFunction {
+                arg: Rc::new(TypeMortarString),
+                ret: Rc::new(TypeMortarNull),
+            }),
+        },
+        v8::Function::builder(
+            |
+                scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'_>,
+                _ret: v8::ReturnValue<'_>,
+            | {
+                println!("{}", args.get(0).to_string(scope).unwrap().to_rust_string_lossy(scope));
+            },
+        ).build(js_scope).unwrap().cast::<v8::Value>(),
+    )] {
+        js_scope
             .get_current_context()
-            .global(s2_scope)
-            .set(s2_scope, v8::String::new(s2_scope, &format!("v{}", binding_id)).unwrap().cast(), s2);
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
+                js_value,
+            );
+        s1_scope.insert(ScopeKey(id.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
-    let mut ex = EvalContext { next_binding_id: BindingId(next_binding_id) };
-    let stage1 = match module {
+    let root_loc;
+    let root_xx = Rc::new(ExprContext {
+        vx: ex.clone(),
+        import_state: Rc::new(Cell::new(import_state)),
+        scope: Rc::new(Scope {
+            values: s1_scope,
+            parent: None,
+        }),
+    });
+    let stage1 = match source {
         Module::V1(root_expr) => {
-            eval_phrase(
+            root_loc = root_expr.loc;
+            eval_expr(
                 //. .
-                gx,
-                &mut cmx,
-                &mut ex,
-                PhraseContext {
-                    import_state: import_state,
-                    scope: Rc::new(Scope {
-                        values: s1_scope,
-                        parent: (),
-                    }),
-                },
-                // Inject synthetic seq to wrap root to create a RW scope
-                &Expr {
-                    id: root_expr.root.id,
-                    r#type: ExprType::Sequence(PhraseSequence { exprs: vec![root_expr] }),
-                },
+                &root_xx,
+                &root_expr,
                 &MortarTarget,
-            ).await
+            )
         },
     };
-    let value = if let Some(code) = stage1.effect {
-        fn render_code(out: &mut Vec<String>, code: &JsCode) {
-            match code {
-                JsCode::Seq(c) => {
+    if !stage1.errors.is_empty() {
+        return CompileRes::Err(stage1.errors);
+    }
+    let stage1_cv = stage1.cv.unwrap();
+    let value_type = stage1_cv.value.type_(root_xx.as_ref(), root_loc);
+    let value_serial = match aspect_serial_get(&root_xx, value_type.as_ref()) {
+        Ok(v) => v,
+        Err(e) => {
+            return CompileRes::Err(vec![EvalErr {
+                expr: root_loc,
+                errors: vec![ExprErr::Opaque(format!("Returned value type is missing artifact aspect: {}", e))]
+            }]);
+        },
+    };
+    let value_from_js = match aspect_lift_js_get(&root_xx, value_type.as_ref()) {
+        Ok(v) => v,
+        Err(e) => {
+            return CompileRes::Err(vec![EvalErr {
+                expr: root_loc,
+                errors: vec![ExprErr::Opaque(format!("Returned value type is missing from-js aspect: {}", e))]
+            }]);
+        },
+    };
+    let value = if let Code::Dyn(code) = stage1_cv.code {
+        let code = <dyn Any>::downcast_ref::<JsCode>(&code).unwrap();
+
+        #[derive(Default)]
+        struct JsSourceBuilder {
+            lines: Vec<String>,
+            mapping: HashMap<usize, QExprId>,
+        }
+
+        impl JsSourceBuilder {
+            fn push(&mut self, id: QExprId, line: String) {
+                let js_num = self.lines.len() + 1;
+                self.mapping.insert(js_num, id);
+                self.lines.push(line);
+            }
+        }
+
+        fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) {
+            match &code.type_ {
+                JsCodeType::Seq(c) => {
                     for x in &c.sub {
-                        render_code(out, x);
+                        render_code(lines, x);
                     }
                 },
-                JsCode::Value(c) => {
-                    out.push(serde_json::to_string(&c).unwrap());
+                JsCodeType::Value(c) => {
+                    lines.push(code.loc, serde_json::to_string(&c).unwrap());
                 },
-                JsCode::Set(c) => {
-                    out.push(format!("v{} = ", c.id.0));
-                    render_code(out, &c.value);
+                JsCodeType::Set(c) => {
+                    lines.push(code.loc, format!("v{} = ", c.id.0));
+                    render_code(lines, &c.value);
                 },
-                JsCode::Get(c) => {
-                    out.push(format!("v{}", c.id.0));
+                JsCodeType::Get(c) => {
+                    lines.push(code.loc, format!("v{}", c.id.0));
                 },
-                JsCode::Call(c) => {
-                    out.push(format!("("));
-                    out.push(format!("("));
-                    render_code(out, &c.func);
-                    out.push(format!(")"));
-                    out.push(format!("("));
+                JsCodeType::Call(c) => {
+                    lines.push(code.loc, format!("("));
+                    lines.push(code.loc, format!("("));
+                    render_code(lines, &c.func);
+                    lines.push(code.loc, format!(")"));
+                    lines.push(code.loc, format!("("));
                     for arg in &c.args {
-                        render_code(out, arg);
-                        out.push(format!(","));
+                        render_code(lines, arg);
+                        lines.push(code.loc, format!(","));
                     }
-                    out.push(format!(")"));
-                    out.push(format!(")"));
+                    lines.push(code.loc, format!(")"));
+                    lines.push(code.loc, format!(")"));
                 },
             }
         }
 
-        let mut code1 = vec![];
+        let mut code1 = JsSourceBuilder::default();
         render_code(&mut code1, &code);
-        let code = v8::String::new(s2_scope, &code1.join("\n")).unwrap();
-        let script = v8::Script::compile(s2_scope, code, None).unwrap();
-        let stage2 = script.run(s2_scope).unwrap();
-        stage1.value.read_stage2(stage2)?
+        if let Some(stage2) =
+            v8::Script::compile(js_scope, v8::String::new(js_scope, &code1.lines.join("\n")).unwrap(), None)
+                .unwrap()
+                .run(js_scope) {
+            value_from_js.lift(&stage2)
+        } else {
+            let text;
+            match js_scope.exception() {
+                Some(e) => {
+                    text = e.to_rust_string_lossy(&js_scope);
+                },
+                None => {
+                    text = format!("Script failed to return, but no exception captured (compiler bug)");
+                },
+            }
+            match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
+                Some(js_expr) => {
+                    return CompileRes::Err(vec![EvalErr {
+                        expr: *code1.mapping.get(&js_expr).unwrap(),
+                        errors: vec![ExprErr::Opaque(text)]
+                    }]);
+                },
+                None => {
+                    return CompileRes::Err(vec![EvalErr {
+                        expr: root_loc,
+                        errors: vec![ExprErr::Opaque(text)]
+                    }]);
+                },
+            }
+        }
     } else {
-        stage1.value
+        stage1_cv.value
     };
-    return Ok(ModuleResult {
-        value: value,
-        errors: cmx.errors,
-    });
+    let mut artifacts = fx.artifacts.write().unwrap();
+    return CompileRes::Ok(value_serial.to_serial(&mut artifacts, value));
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -537,7 +891,16 @@ async fn main() {
     let platform = v8::new_default_platform(0, false).make_shared();
     v8::V8::initialize_platform(platform);
     v8::V8::initialize();
-    let gx = Arc::new(GlobalContext {
+    let mut builtin_unique = {
+        let mut next = 0;
+        move || {
+            let v = next;
+            next += 1;
+            return Unique(SerialValueSource::Builtin, v);
+        }
+    };
+    let gx = Arc::new(FullCompileContext {
+        artifacts: Default::default(),
         cache_root: {
             let fs_cwd = current_dir().unwrap();
             let fs_cwd = match fs_cwd.to_str() {
@@ -552,8 +915,14 @@ async fn main() {
             }
             out
         },
-        remote_source: Default::default(),
-        module_results: Default::default(),
+        compile_results: Default::default(),
+        const_aspect_mortar_func: builtin_unique(),
+        const_aspect_unique: builtin_unique(),
+        const_aspect_func: builtin_unique(),
+        const_aspect_artifact: builtin_unique(),
+        const_aspect_mortar_from_js: builtin_unique(),
+        const_aspect_mortar_null: builtin_unique(),
+        const_aspect_mortar_str: builtin_unique(),
     });
 
     struct ModuleBuilder {
@@ -567,24 +936,24 @@ async fn main() {
             return ExprId(id);
         }
 
-        fn lit_str(&self, s: &str) -> Expr {
-            return Expr {
+        fn lit_str(&self, s: &str) -> SerialExpr {
+            return SerialExpr {
                 id: self.id(),
-                r#type: ExprType::Literal(Value::String(s.to_string())),
+                r#type: SerialExprType::Literal(SerialValue::String(s.to_string())),
             }
         }
 
-        fn get(&self, id: &str) -> Expr {
-            return Expr {
+        fn scope_use(&self, key: &str) -> SerialExpr {
+            return SerialExpr {
                 id: self.id(),
-                r#type: ExprType::Get(PhraseGet { id: ScopeId(id.to_string()) }),
+                r#type: SerialExprType::ScopeUse(SerialExprScopeUse { key: ScopeKey(key.to_string()) }),
             };
         }
 
-        fn call(&self, func: Expr, args: Expr) -> Expr {
-            return Expr {
+        fn call(&self, func: SerialExpr, args: SerialExpr) -> SerialExpr {
+            return SerialExpr {
                 id: self.id(),
-                r#type: ExprType::Call(PhraseCall {
+                r#type: SerialExprType::Call(SerialExprCall {
                     func: Box::new(func),
                     args: Box::new(args),
                 }),
@@ -593,49 +962,46 @@ async fn main() {
     }
 
     let mb = ModuleBuilder { next_phrase_id: Cell::new(0) };
-    let root_spec =
-        ImportSpecAbsolute::Virtual(
-            Box::new(Module::V1(mb.call(mb.get("print"), mb.lit_str("Hello world (mortar)")))),
+    let source_id = SourceId(0);
+    let module =
+        serial_module_to_module(
+            source_id,
+            &SerialModule::V1(mb.call(mb.scope_use("print"), mb.lit_str("Hello world (mortar)"))),
         );
-    let res = compile_module(&gx, ImportStateId(0), root_spec.clone(), vec![]).await;
+    let mut source_names = HashMap::new();
+    source_names.insert(source_id, "(virtual)".to_string());
+    let res = compile(&gx, ImportStateId(0), module, vec![]).await;
 
-    fn print_errors(i: &ImportSpecAbsolute, r: &ModuleResult) -> bool {
-        for (loc, errs) in &r.errors {
-            for err in errs {
-                eprintln!("Error at {}:{}: {:?}", match i {
-                    ImportSpecAbsolute::Virtual(_) => "(virtual)".to_string(),
-                    ImportSpecAbsolute::Local(path) => format!("{:?}", path),
-                }, loc.0, match err {
-                    CompileErr::Opaque(v) => v,
+    fn assemble_errors(out: &mut HashMap<String, HashMap<String, Vec<String>>>, r: &CompileRes) {
+        let CompileRes::Err(errors) = r else {
+            return;
+        };
+        for eval_err in errors {
+            let out =
+                out
+                    .entry(eval_err.expr.0.0.to_string())
+                    .or_default()
+                    .entry(eval_err.expr.1.0.to_string())
+                    .or_default();
+            for err in &eval_err.errors {
+                out.push(match err {
+                    ExprErr::Opaque(err) => err.clone(),
                 });
             }
         }
-        return !r.errors.is_empty();
     }
 
-    for (i, r) in gx.module_results.lock().unwrap().iter() {
+    let mut errors = HashMap::new();
+    for (_, r) in gx.compile_results.lock().unwrap().iter() {
         let Ok(r) = r.clone().await else {
             // Root module errors are handled by importer
             continue;
         };
-        print_errors(&i.1, &r);
+        assemble_errors(&mut errors, &r);
     }
-    let failed;
-    match res {
-        Ok(r) => {
-            if print_errors(&root_spec, &r) {
-                failed = true;
-            } else {
-                println!("{}", serde_json::to_string(&r.value).unwrap());
-                failed = false;
-            }
-        },
-        Err(e) => {
-            eprintln!("Root error: {:?}", e);
-            failed = true;
-        },
-    };
-    if failed {
+    assemble_errors(&mut errors, &res);
+    if !errors.is_empty() {
+        eprintln!("{}", serde_json::to_string_pretty(&errors).unwrap());
         exit(1);
     }
 }
