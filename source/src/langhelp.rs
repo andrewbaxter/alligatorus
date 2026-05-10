@@ -208,7 +208,7 @@ pub trait Value: Any {
 pub trait Aspect: Any { }
 
 pub trait Type: Value {
-    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>>;
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes;
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes;
 }

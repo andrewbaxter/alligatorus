@@ -6,17 +6,27 @@ pub mod builtin;
 use {
     crate::{
         builtin::{
+            AspectConsumeJs,
             AspectFunction,
+            AspectJsStackValue,
+            AspectLiftJs,
             AspectNull,
+            AspectSerial,
             AspectString,
+            AspectJsString,
+            aspect_consume_js_aspect_id,
             aspect_consume_js_get,
+            aspect_function_aspect_id,
             aspect_function_get,
+            aspect_js_stack_value_aspect_id,
             aspect_js_stack_value_get,
+            aspect_js_string_aspect_id,
             aspect_js_string_get,
-            aspect_js_string_get_maybe,
+            aspect_lift_js_aspect_id,
             aspect_lift_js_get,
             aspect_null_aspect_id,
             aspect_null_get,
+            aspect_serial_aspect_id,
             aspect_serial_get,
             aspect_string_aspect_id,
             aspect_string_get,
@@ -29,6 +39,7 @@ use {
             ScopeEntryId,
         },
         langhelp::{
+            Artifacts,
             Aspect,
             Code,
             CodeValue,
@@ -50,6 +61,7 @@ use {
             Type,
             Unique,
             Value,
+            SerialValue as LangSerialValue,
         },
         syntax::{
             ExprId,
@@ -119,7 +131,7 @@ impl Erb {
     fn must_er(&mut self, r: EvalRes) -> Result<CodeValue, EvalRes> {
         self.errors.extend(r.errors);
         let Some(cv) = r.cv else {
-            return Err(self.err().err().unwrap());
+            return Err(self.err().ok().unwrap());
         };
         return Ok(cv);
     }
@@ -153,8 +165,7 @@ impl Erb {
                 return Ok(r);
             },
             Err(e) => {
-                self.err_new(e);
-                return Err(self.err().err().unwrap());
+                return Err(self.err_new(e).ok().unwrap());
             },
         }
     }
@@ -338,9 +349,9 @@ impl Value for TypeNull {
 }
 
 impl Type for TypeNull {
-    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
         if *key == aspect_null_aspect_id() {
-            return Some(Box::new(TypeNull));
+            return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectNull>));
         }
         return None;
     }
@@ -386,9 +397,9 @@ impl Value for TypeString {
 }
 
 impl Type for TypeString {
-    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
         if *key == aspect_string_aspect_id() {
-            return Some(Box::new(TypeString));
+            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectString>));
         }
         return None;
     }
@@ -536,9 +547,12 @@ impl Value for TypeMortarString {
 }
 
 impl Type for TypeMortarString {
-    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
-        if *key == ex.vx.ix.cx.const_aspect_mortar_str {
-            return Some(Box::new(TypeMortarString));
+    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
+        if *key == aspect_js_string_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsString>));
+        }
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectConsumeJs>));
         }
         return None;
     }
@@ -596,6 +610,17 @@ impl Type for TypeMortarString {
 }
 
 impl Aspect for TypeMortarString { }
+
+impl AspectJsString for TypeMortarString { }
+
+impl AspectConsumeJs for TypeMortarString {
+    fn consume(&self, cv: CodeValue) -> JsCode {
+        match cv.code {
+            Code::Dyn(rc) => (rc.as_ref() as &dyn std::any::Any).downcast_ref::<JsCode>().unwrap().clone(),
+            Code::None => panic!("TypeMortarString consume: expected code"),
+        }
+    }
+}
 struct TypeMortarNull;
 
 impl Value for TypeMortarNull {
@@ -605,9 +630,15 @@ impl Value for TypeMortarNull {
 }
 
 impl Type for TypeMortarNull {
-    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn Aspect>> {
-        if *key == ex.vx.ix.cx.const_aspect_mortar_str {
-            return Some(Box::new(TypeMortarNull));
+    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
+        if *key == aspect_js_stack_value_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectJsStackValue>));
+        }
+        if *key == aspect_serial_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectSerial>));
+        }
+        if *key == aspect_lift_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectLiftJs>));
         }
         return None;
     }
@@ -623,6 +654,30 @@ impl Type for TypeMortarNull {
 
 impl Aspect for TypeMortarNull { }
 
+impl AspectJsStackValue for TypeMortarNull {
+    fn to_value(&self, value: JsCode) -> CodeValue {
+        CodeValue {
+            code: Code::Dyn(Rc::new(value)),
+            value: Box::new(MortarJsValue {
+                data: MortarJsValueData::Expr,
+                type_: Rc::new(TypeMortarNull),
+            }),
+        }
+    }
+}
+
+impl AspectSerial for TypeMortarNull {
+    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Box<dyn Value>) -> LangSerialValue {
+        LangSerialValue::Null
+    }
+}
+
+impl AspectLiftJs for TypeMortarNull {
+    fn lift(&self, _value: &v8::Value) -> Box<dyn Value> {
+        Box::new(ValueNull)
+    }
+}
+
 #[derive(Clone)]
 struct MortarTypeFunction {
     arg: Rc<dyn Type>,
@@ -636,12 +691,12 @@ impl Value for MortarTypeFunction {
 }
 
 impl Type for MortarTypeFunction {
-    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn langhelp::Aspect>> {
-        if *key == ex.vx.ix.cx.const_aspect_mortar_func {
-            return Some(Box::new(self.clone()));
+    fn aspect(&self, ex: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
         }
-        if *key == ex.vx.ix.cx.const_aspect_func {
-            return Some(Box::new(self.clone()));
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
         }
         return None;
     }
@@ -672,6 +727,24 @@ fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, sourc
 }
 
 impl Aspect for MortarTypeFunction { }
+
+impl AspectConsumeJs for MortarTypeFunction {
+    fn consume(&self, cv: CodeValue) -> JsCode {
+        let v = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<MortarJsValue>().unwrap();
+        let dummy_loc = (SourceId(0), ExprId(0));
+        match &v.data {
+            MortarJsValueData::Scope(id) => JsCode {
+                loc: dummy_loc,
+                type_: JsCodeType::Get(jscode::JsCodeGet { id: *id }),
+            },
+            MortarJsValueData::Expr => match cv.code {
+                Code::Dyn(rc) => (rc.as_ref() as &dyn std::any::Any).downcast_ref::<JsCode>().unwrap().clone(),
+                Code::None => panic!("MortarTypeFunction consume Expr: expected code"),
+            },
+            MortarJsValueData::Access(_, _) => todo!(),
+        }
+    }
+}
 
 impl AspectFunction for MortarTypeFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, function: CodeValue, argument: CodeValue) -> langhelp::EvalRes {
@@ -798,7 +871,7 @@ async fn compile(
         },
     };
     let value = if let Code::Dyn(code) = stage1_cv.code {
-        let code = <dyn Any>::downcast_ref::<JsCode>(&code).unwrap();
+        let code = (code.as_ref() as &dyn std::any::Any).downcast_ref::<JsCode>().unwrap();
 
         #[derive(Default)]
         struct JsSourceBuilder {
@@ -829,7 +902,7 @@ async fn compile(
                     render_code(lines, &c.value);
                 },
                 JsCodeType::Get(c) => {
-                    lines.push(code.loc, format!("v{}", c.id.0));
+                    lines.push(code.loc, scope_entry_id_js_key(c.id));
                 },
                 JsCodeType::Call(c) => {
                     lines.push(code.loc, format!("("));

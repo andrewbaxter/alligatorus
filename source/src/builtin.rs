@@ -37,18 +37,18 @@ macro_rules! aspect{
             pub fn[< $name: snake _aspect_id >]() -> Unique {
                 return unique!();
             }
-            pub fn[< $name: snake _get >] <'a >(xx: & ExprContext, v: &'a dyn Type) -> Result <&'a dyn $name,
+            pub fn[< $name: snake _get >](xx: & ExprContext, v: &dyn Type) -> Result <Box<dyn $name>,
             String > {
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
                     return Err(format!("TODO Type is missing aspect"));
                 };
-                return Ok(*< dyn Any >:: downcast_ref::<& dyn $name >(out.as_ref()).unwrap());
+                return Ok(*out.downcast::<Box<dyn $name>>().unwrap());
             }
-            pub fn[< $name: snake _get_maybe >] <'a >(xx: & ExprContext, v: &'a dyn Type) -> Option <&'a dyn $name > {
+            pub fn[< $name: snake _get_maybe >](xx: & ExprContext, v: &dyn Type) -> Option<Box<dyn $name>> {
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
                     return None;
                 };
-                return Some(*< dyn Any >:: downcast_ref::<& dyn $name >(out.as_ref()).unwrap());
+                return Some(*out.downcast::<Box<dyn $name>>().unwrap());
             }
         }
     };
