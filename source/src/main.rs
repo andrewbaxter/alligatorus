@@ -38,6 +38,7 @@ use {
         jscode::{
             JsCode,
             JsCodeBindingSet,
+            JsCodeBind,
             JsCodeBindingUse,
             JsCodeCall,
             JsCodeField,
@@ -392,19 +393,26 @@ impl Target for MortarTarget {
     ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
             let vtype = cv.value.type_(xx, loc);
-            let vcode = erb.must_er(er_one!{
+            let (vcode, vtype) = erb.must_er(er_one!{
                 to_js = aspect_consume_js_get(xx, loc, vtype.as_ref()) => {
-                    to_js.to_js(loc, cv)
+                    to_js.to_js(loc, cv).map(|c| (c, vtype.clone()))
                 },
                 js = TypeMortarString:: cast_from(&TypeMortarString, xx, loc, &cv) => {
-                    js.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+                    js.code.cast::<JsCode>().map(|x| (x.unwrap().clone(), Rc::new(TypeMortarString) as Rc<dyn Type>))
                 },
             })?;
+            let js_key = ScopeEntryId(xx.vx.next_scope_entry_id.next());
             let mut allcode = vec![];
             if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
                 allcode.push(carry.clone());
             }
-            allcode.push(vcode);
+            allcode.push(JsCode {
+                loc: loc,
+                type_: JsCodeType::Bind(JsCodeBind {
+                    base: js_key,
+                    value: Box::new(vcode),
+                }),
+            });
             return Ok((
                 //. .
                 Code {
@@ -415,7 +423,7 @@ impl Target for MortarTarget {
                     }))
                 },
                 Box::new(MortarScopeEntry {
-                    js_key: ScopeEntryId(xx.vx.next_scope_entry_id.next()),
+                    js_key: js_key,
                     type_: vtype,
                 }),
             ));
@@ -526,7 +534,7 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
         ExprType::Bind(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
                 base = eval_expr(xx, e.base.as_ref(), target),
-                value = eval_expr(xx, e.base.as_ref(), target),
+                value = eval_expr(xx, e.value.as_ref(), target),
             });
             let base_constkey = erb.must_res(extract_const_key(xx, expr.loc, base.value.as_ref()))?;
             let binding = erb.must_er(target.bind(xx, expr.loc, base.code, value))?;
@@ -701,9 +709,15 @@ pub struct MortarScopeEntry {
 }
 
 impl ScopeEntry for MortarScopeEntry {
-    fn use_(&self, loc: QExprId, code: Code) -> CodeValue {
+    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         return CodeValue {
-            code: code,
+            code: Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(JsCode {
+                    loc: loc,
+                    type_: JsCodeType::BindingUse(JsCodeBindingUse { id: self.js_key }),
+                })),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Binding(MortarJsValueDataScope {
                     loc: loc,
@@ -973,6 +987,9 @@ impl Type for MortarTypeFunction {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
         }
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
+        }
         return None;
     }
 
@@ -982,6 +999,12 @@ impl Type for MortarTypeFunction {
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         unimplemented!();
+    }
+}
+
+impl AspectConsumeJs for MortarTypeFunction {
+    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        return cv.code.cast::<JsCode>().map(|x| x.unwrap().clone());
     }
 }
 
@@ -1395,7 +1418,7 @@ async fn main() {
             ],
         ),
     );
-    eprintln!("code {:?}", serial_module);
+    eprintln!("code {:#?}", serial_module);
     let module = serial_module_to_module(source_id, &serial_module);
     let mut source_names = HashMap::new();
     source_names.insert(source_id, "(virtual)".to_string());
