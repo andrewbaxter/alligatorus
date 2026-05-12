@@ -589,7 +589,9 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             });
         }),
         ExprType::Stage(e) => { },
-        ExprType::Lower(expr_lower) => { },
+        ExprType::Lower(expr_lower) => 
+        // Just a marker for replacement
+        unreachable!(),
     }
 }
 struct TypeNull;
@@ -1596,6 +1598,18 @@ mod test {
             SerialModule::V1(
                 mb.call(mb.scope_use("print"), mb.stage(mb.lower(mb.lit_str("Hello world (mortar)")))),
             ),
+        );
+    }
+
+    #[test]
+    fn test_hello4() {
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(
+            gx,
+            SourceId(0),
+            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.lit_str("Hello world (mortar)")))),
         );
     }
 }
