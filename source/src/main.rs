@@ -37,8 +37,8 @@ use {
         },
         jscode::{
             JsCode,
-            JsCodeBindingSet,
             JsCodeBind,
+            JsCodeBindingSet,
             JsCodeBindingUse,
             JsCodeCall,
             JsCodeField,
@@ -63,7 +63,7 @@ use {
             ExprContext,
             ExprErr,
             ExprSubErr,
-            FullCompileContext,
+            GlobalContext,
             ImportStateId,
             QExprId,
             Scope,
@@ -80,14 +80,21 @@ use {
             ExprId,
             SerialExpr,
             SerialExprBind,
+            SerialExprBindingUse,
             SerialExprCall,
-            SerialExprScopeUse,
+            SerialExprLower,
             SerialExprSequence,
+            SerialExprStage,
             SerialExprType,
+            SerialLiteral,
             SerialModule,
-            SerialValue,
             SourceSpecAbsolute,
         },
+    },
+    aargvark::{
+        Aargvark,
+        traits_impls::AargvarkJson,
+        vark,
     },
     flowcontrol::{
         shed,
@@ -106,7 +113,10 @@ use {
         path::PathBuf,
         process::exit,
         rc::Rc,
-        sync::Arc,
+        sync::{
+            Arc,
+            OnceLock,
+        },
     },
     tokio::fs::read,
     v8::{
@@ -300,40 +310,58 @@ macro_rules! erb_async{
     };
 }
 
+#[derive(Clone)]
 pub struct ExprSequence {
     pub exprs: Vec<Expr>,
 }
 
+#[derive(Clone)]
 pub struct ExprBind {
-    pub base: Box<Expr>,
-    pub value: Box<Expr>,
+    pub base: Rc<Expr>,
+    pub value: Rc<Expr>,
 }
 
+#[derive(Clone)]
 pub struct ExprSet {
-    pub base: Box<Expr>,
-    pub value: Box<Expr>,
+    pub base: Rc<Expr>,
+    pub value: Rc<Expr>,
 }
 
+#[derive(Clone)]
 pub struct ExprField {
-    pub base: Box<Expr>,
-    pub key: Box<Expr>,
+    pub base: Rc<Expr>,
+    pub key: Rc<Expr>,
 }
 
+#[derive(Clone)]
 pub struct ExprSeq {
     pub seq: Vec<Expr>,
 }
 
+#[derive(Clone)]
 pub struct ExprScopeUse {
-    pub key: Box<Expr>,
+    pub key: Rc<Expr>,
 }
 
+#[derive(Clone)]
 pub struct ExprCall {
-    pub func: Box<Expr>,
-    pub arg: Box<Expr>,
+    pub func: Rc<Expr>,
+    pub arg: Rc<Expr>,
 }
 
-type LitValue = Box<dyn Fn() -> Box<dyn Value>>;
+#[derive(Clone)]
+pub struct ExprStage {
+    pub expr: Rc<Expr>,
+}
 
+#[derive(Clone)]
+pub struct ExprLower {
+    pub expr: Rc<Expr>,
+}
+
+type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
+
+#[derive(Clone)]
 pub enum ExprType {
     Literal(LitValue),
     Bind(ExprBind),
@@ -342,8 +370,11 @@ pub enum ExprType {
     Seq(ExprSeq),
     ScopeUse(ExprScopeUse),
     Call(ExprCall),
+    Stage(ExprStage),
+    Lower(ExprLower),
 }
 
+#[derive(Clone)]
 pub struct Expr {
     pub loc: QExprId,
     pub r#type: ExprType,
@@ -557,6 +588,8 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: last_val.unwrap_or_else(|| Box::new(ValueNull))
             });
         }),
+        ExprType::Stage(e) => { },
+        ExprType::Lower(expr_lower) => { },
     }
 }
 struct TypeNull;
@@ -1054,14 +1087,16 @@ fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     return format!("a{}", e.0);
 }
 
-async fn compile(
-    fx: &Arc<FullCompileContext>,
+fn eval() { }
+
+async fn compile_importid(
+    fx: &Arc<GlobalContext>,
     import_state: ImportStateId,
     source: Module,
     compile_path: Vec<(CompileId, ExprId)>,
 ) -> CompileRes {
     let cmx = Rc::new(CompileContext {
-        cx: fx.clone(),
+        gx: fx.clone(),
         compile_path: compile_path,
         next_unique_id: Default::default(),
     });
@@ -1262,100 +1297,18 @@ async fn compile(
     return CompileRes::Ok(value);
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() {
-    let platform = v8::new_default_platform(0, false).make_shared();
-    v8::V8::initialize_platform(platform);
-    v8::V8::initialize();
-    let mut builtin_unique = {
-        let mut next = 0;
-        move || {
-            let v = next;
-            next += 1;
-            return Unique(SerialValueSource::Builtin, v);
-        }
-    };
-    let gx = Arc::new(FullCompileContext {
-        artifacts: Default::default(),
-        cache_root: {
-            let fs_cwd = current_dir().unwrap();
-            let fs_cwd = match fs_cwd.to_str() {
-                Some(c) => c,
-                None => {
-                    panic!("Non-string current path [{:?}], required for cache path", fs_cwd);
-                },
-            };
-            let mut out = vec![];
-            for c in fs_cwd.split("/") {
-                out.push(c.to_string());
-            }
-            out
-        },
-        compile_results: Default::default(),
-        const_aspect_mortar_func: builtin_unique(),
-        const_aspect_unique: builtin_unique(),
-        const_aspect_func: builtin_unique(),
-        const_aspect_artifact: builtin_unique(),
-        const_aspect_mortar_from_js: builtin_unique(),
-        const_aspect_mortar_null: builtin_unique(),
-        const_aspect_mortar_str: builtin_unique(),
+fn setup_v8() {
+    static V: OnceLock<()> = OnceLock::new();
+    V.get_or_init(|| {
+        let platform = v8::new_default_platform(0, false).make_shared();
+        v8::V8::initialize_platform(platform);
+        v8::V8::initialize();
+        return ();
     });
+}
 
-    struct ModuleBuilder {
-        next_phrase_id: Cell<usize>,
-    }
-
-    impl ModuleBuilder {
-        fn id(&self) -> ExprId {
-            let id = self.next_phrase_id.get();
-            self.next_phrase_id.set(id + 1);
-            return ExprId(id);
-        }
-
-        fn lit_str(&self, s: &str) -> SerialExpr {
-            return SerialExpr {
-                id: self.id(),
-                r#type: SerialExprType::Literal(SerialValue::String(s.to_string())),
-            }
-        }
-
-        fn scope_use(&self, key: &str) -> SerialExpr {
-            return SerialExpr {
-                id: self.id(),
-                r#type: SerialExprType::ScopeUse(SerialExprScopeUse { key: Box::new(SerialExpr {
-                    id: self.id(),
-                    r#type: SerialExprType::Literal(SerialValue::String(key.to_string())),
-                }) }),
-            };
-        }
-
-        fn call(&self, func: SerialExpr, args: SerialExpr) -> SerialExpr {
-            return SerialExpr {
-                id: self.id(),
-                r#type: SerialExprType::Call(SerialExprCall {
-                    func: Box::new(func),
-                    args: Box::new(args),
-                }),
-            };
-        }
-
-        fn seq(&self, exprs: Vec<SerialExpr>) -> SerialExpr {
-            return SerialExpr {
-                id: self.id(),
-                r#type: SerialExprType::Sequence(SerialExprSequence { exprs: exprs }),
-            };
-        }
-
-        fn bind(&self, key: &str, expr: SerialExpr) -> SerialExpr {
-            return SerialExpr {
-                id: self.id(),
-                r#type: SerialExprType::Bind(SerialExprBind {
-                    base: key.to_string(),
-                    value: Box::new(expr),
-                }),
-            };
-        }
-    }
+async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModule) -> Result<(), Vec<ExprErr>> {
+    eprintln!("code {:#?}", source);
 
     fn serial_module_to_module(source_id: SourceId, m: &SerialModule) -> Module {
         fn serial_expr_to_expr(source_id: SourceId, m: &SerialExpr) -> Expr {
@@ -1363,40 +1316,46 @@ async fn main() {
                 loc: (source_id, m.id),
                 r#type: match &m.r#type {
                     SerialExprType::Literal(lit) => ExprType::Literal(match lit {
-                        SerialValue::Null => Box::new(|| Box::new(ValueNull)),
-                        SerialValue::String(l) => {
+                        SerialLiteral::Null => Rc::new(|| Box::new(ValueNull)),
+                        SerialLiteral::String(l) => {
                             let l = l.clone();
-                            Box::new(move || Box::new(ValueString(l.clone())))
+                            Rc::new(move || Box::new(ValueString(l.clone())))
                         },
                     }),
                     SerialExprType::ScopeUse(expr) => ExprType::ScopeUse(
-                        ExprScopeUse { key: Box::new(serial_expr_to_expr(source_id, &expr.key)) },
+                        ExprScopeUse { key: Rc::new(serial_expr_to_expr(source_id, &expr.key)) },
                     ),
                     SerialExprType::Call(expr) => ExprType::Call(ExprCall {
-                        func: Box::new(serial_expr_to_expr(source_id, &expr.func)),
-                        arg: Box::new(serial_expr_to_expr(source_id, &expr.args)),
+                        func: Rc::new(serial_expr_to_expr(source_id, &expr.func)),
+                        arg: Rc::new(serial_expr_to_expr(source_id, &expr.arg)),
                     }),
                     SerialExprType::Set(expr) => ExprType::Set(ExprSet {
-                        base: Box::new(serial_expr_to_expr(source_id, &expr.base)),
-                        value: Box::new(serial_expr_to_expr(source_id, &expr.value)),
+                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
+                        value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),
                     }),
                     SerialExprType::Field(expr) => ExprType::Field(ExprField {
-                        base: Box::new(serial_expr_to_expr(source_id, &expr.base)),
-                        key: Box::new(serial_expr_to_expr(source_id, &expr.key)),
+                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
+                        key: Rc::new(serial_expr_to_expr(source_id, &expr.key)),
                     }),
                     SerialExprType::Sequence(expr) => ExprType::Seq(
                         ExprSeq { seq: expr.exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
                     ),
                     SerialExprType::Bind(expr) => ExprType::Bind(ExprBind {
-                        base: Box::new(Expr {
+                        base: Rc::new(Expr {
                             loc: (source_id, m.id),
                             r#type: ExprType::Literal({
                                 let base = expr.base.clone();
-                                Box::new(move || Box::new(ValueString(base.clone())))
+                                Rc::new(move || Box::new(ValueString(base.clone())))
                             }),
                         }),
-                        value: Box::new(serial_expr_to_expr(source_id, &expr.value)),
+                        value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),
                     }),
+                    SerialExprType::Stage(expr) => ExprType::Stage(
+                        ExprStage { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
+                    ),
+                    SerialExprType::Lower(expr) => ExprType::Lower(
+                        ExprLower { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
+                    ),
                 },
             };
         }
@@ -1406,23 +1365,10 @@ async fn main() {
         }
     }
 
-    let mb = ModuleBuilder { next_phrase_id: Cell::new(0) };
-    let source_id = SourceId(0);
-    let serial_module = SerialModule::V1(
-        //. ex1
-        //. mb.call(mb.scope_use("print"), mb.lit_str("Hello world (mortar)"))
-        mb.seq(
-            vec![
-                mb.bind("hello", mb.lit_str("Hello world (mortar)")),
-                mb.call(mb.scope_use("print"), mb.scope_use("hello"))
-            ],
-        ),
-    );
-    eprintln!("code {:#?}", serial_module);
-    let module = serial_module_to_module(source_id, &serial_module);
+    let module = serial_module_to_module(source_id, &source);
     let mut source_names = HashMap::new();
     source_names.insert(source_id, "(virtual)".to_string());
-    let res = compile(&gx, ImportStateId(0), module, vec![]).await;
+    let res = compile_importid(&gx, ImportStateId(0), module, vec![]).await;
 
     fn assemble_errors(out: &mut HashMap<String, HashMap<String, Vec<String>>>, r: &CompileRes) {
         let CompileRes::Err(errors) = r else {
@@ -1452,8 +1398,204 @@ async fn main() {
         assemble_errors(&mut errors, &r);
     }
     assemble_errors(&mut errors, &res);
-    if !errors.is_empty() {
-        eprintln!("{}", serde_json::to_string_pretty(&errors).unwrap());
-        exit(1);
+    return Ok(());
+}
+
+fn new_gx() -> Arc<GlobalContext> {
+    let mut builtin_unique = {
+        let mut next = 0;
+        move || {
+            let v = next;
+            next += 1;
+            return Unique(SerialValueSource::Builtin, v);
+        }
+    };
+    let gx = Arc::new(GlobalContext {
+        artifacts: Default::default(),
+        cache_root: {
+            let fs_cwd = current_dir().unwrap();
+            let fs_cwd = match fs_cwd.to_str() {
+                Some(c) => c,
+                None => {
+                    panic!("Non-string current path [{:?}], required for cache path", fs_cwd);
+                },
+            };
+            let mut out = vec![];
+            for c in fs_cwd.split("/") {
+                out.push(c.to_string());
+            }
+            out
+        },
+        compile_results: Default::default(),
+        const_aspect_mortar_func: builtin_unique(),
+        const_aspect_unique: builtin_unique(),
+        const_aspect_func: builtin_unique(),
+        const_aspect_artifact: builtin_unique(),
+        const_aspect_mortar_from_js: builtin_unique(),
+        const_aspect_mortar_null: builtin_unique(),
+        const_aspect_mortar_str: builtin_unique(),
+    });
+    return gx;
+}
+
+#[derive(Aargvark)]
+struct Args {
+    // TODO abs spec instead of source itself
+    root: AargvarkJson<SerialModule>,
+}
+
+#[tokio::main(flavor = "multi_thread")]
+async fn main() {
+    let args = vark::<Args>();
+    setup_v8();
+    let gx = new_gx();
+    match compile(gx, SourceId(0), args.root.value).await {
+        Ok(()) => { },
+        Err(e) => {
+            eprintln!("{}", serde_json::to_string_pretty(&e).unwrap());
+            exit(1);
+        },
+    };
+}
+
+#[cfg(test)]
+mod test {
+    use {
+        crate::{
+            compile,
+            langhelp::SourceId,
+            new_gx,
+            setup_v8,
+            syntax::{
+                ExprId,
+                SerialExpr,
+                SerialExprBind,
+                SerialExprBindingUse,
+                SerialExprCall,
+                SerialExprLower,
+                SerialExprSequence,
+                SerialExprStage,
+                SerialExprType,
+                SerialLiteral,
+                SerialModule,
+            },
+        },
+        std::cell::Cell,
+    };
+
+    #[derive(Default)]
+    struct ModuleBuilder {
+        next_phrase_id: Cell<usize>,
+    }
+
+    impl ModuleBuilder {
+        fn id(&self) -> ExprId {
+            let id = self.next_phrase_id.get();
+            self.next_phrase_id.set(id + 1);
+            return ExprId(id);
+        }
+
+        fn lit_str(&self, s: &str) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::Literal(SerialLiteral::String(s.to_string())),
+            }
+        }
+
+        fn scope_use(&self, key: &str) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::ScopeUse(SerialExprBindingUse { key: Box::new(SerialExpr {
+                    id: self.id(),
+                    r#type: SerialExprType::Literal(SerialLiteral::String(key.to_string())),
+                }) }),
+            };
+        }
+
+        fn call(&self, func: SerialExpr, args: SerialExpr) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::Call(SerialExprCall {
+                    func: Box::new(func),
+                    arg: Box::new(args),
+                }),
+            };
+        }
+
+        fn seq(&self, exprs: Vec<SerialExpr>) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::Sequence(SerialExprSequence { exprs: exprs }),
+            };
+        }
+
+        fn bind(&self, key: &str, expr: SerialExpr) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::Bind(SerialExprBind {
+                    base: key.to_string(),
+                    value: Box::new(expr),
+                }),
+            };
+        }
+
+        fn stage(&self, expr: SerialExpr) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::Stage(SerialExprStage { expr: Box::new(expr) }),
+            };
+        }
+
+        fn lower(&self, expr: SerialExpr) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExprType::Lower(SerialExprLower { expr: Box::new(expr) }),
+            };
+        }
+    }
+
+    #[test]
+    fn test_hello1() {
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(
+            gx,
+            SourceId(0),
+            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lit_str("Hello world (mortar)"))),
+        );
+    }
+
+    #[test]
+    fn test_hello2() {
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(
+            gx,
+            SourceId(0),
+            SerialModule::V1(
+                mb.seq(
+                    vec![
+                        mb.bind("hello", mb.lit_str("Hello world (mortar)")),
+                        mb.call(mb.scope_use("print"), mb.scope_use("hello"))
+                    ],
+                ),
+            ),
+        );
+    }
+
+    #[test]
+    fn test_hello3() {
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(
+            gx,
+            SourceId(0),
+            SerialModule::V1(
+                mb.call(mb.scope_use("print"), mb.stage(mb.lower(mb.lit_str("Hello world (mortar)")))),
+            ),
+        );
     }
 }

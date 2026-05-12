@@ -48,9 +48,11 @@ pub enum SourceSpecAbsolute {
     //. Remote(ImportSpecRemote),
 }
 
+/// A value specified in source (literal), rather than as the result of a
+/// calculation.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum SerialValue {
+pub enum SerialLiteral {
     Null,
     String(String),
     //. Number(NotNan<f64>),
@@ -60,6 +62,7 @@ pub enum SerialValue {
     //. Map(BTreeMap<SerialValue, SerialValue>),
 }
 
+/// Bind a value in the closest scope.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprBind {
@@ -67,18 +70,23 @@ pub struct SerialExprBind {
     pub value: Box<SerialExpr>,
 }
 
+/// Run a number of expressions in sequence. This resolves to the value of the last
+/// sequence element - all preceding values are discarded. If the sequence is
+/// empty, evaluates to null.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprSequence {
     pub exprs: Vec<SerialExpr>,
 }
 
+/// Refer to a binding in scope.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct SerialExprScopeUse {
+pub struct SerialExprBindingUse {
     pub key: Box<SerialExpr>,
 }
 
+/// Modify the value of a value field or an existing binding.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprSet {
@@ -86,6 +94,7 @@ pub struct SerialExprSet {
     pub value: Box<SerialExpr>,
 }
 
+/// Refer to a field of a value.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprField {
@@ -93,23 +102,45 @@ pub struct SerialExprField {
     pub key: Box<SerialExpr>,
 }
 
+/// Call a function with the specified argument.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprCall {
     pub func: Box<SerialExpr>,
-    pub args: Box<SerialExpr>,
+    pub arg: Box<SerialExpr>,
+}
+
+/// Turn the expression tree into a value representing the expression tree, rather
+/// than evaluating the expression tree directly. Used for things like providing
+/// function bodies to function builders.
+///
+/// Values can be substituted in using "lower".
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprStage {
+    pub expr: Box<SerialExpr>,
+}
+
+/// Places a value in a staged source tree (or the root source if outside any
+/// source tree).
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprLower {
+    pub expr: Box<SerialExpr>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SerialExprType {
-    Literal(SerialValue),
+    Literal(SerialLiteral),
     Sequence(SerialExprSequence),
-    ScopeUse(SerialExprScopeUse),
+    ScopeUse(SerialExprBindingUse),
     Bind(SerialExprBind),
     Set(SerialExprSet),
     Field(SerialExprField),
     Call(SerialExprCall),
+    Stage(SerialExprStage),
+    Lower(SerialExprLower),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

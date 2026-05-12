@@ -98,7 +98,7 @@ pub(crate) enum CompileRes {
     Err(Vec<ExprErr>),
 }
 
-pub(crate) struct FullCompileContext {
+pub(crate) struct GlobalContext {
     pub(crate) artifacts: RwLock<Artifacts>,
     pub(crate) cache_root: Vec<String>,
     // Remote packages/sources, resolved when downloaded (path is deterministic so not
@@ -115,7 +115,7 @@ pub(crate) struct FullCompileContext {
 
 /// One per module (per import env).
 pub(crate) struct CompileContext {
-    pub(crate) cx: Arc<FullCompileContext>,
+    pub(crate) gx: Arc<GlobalContext>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) next_unique_id: Counter,
 }
