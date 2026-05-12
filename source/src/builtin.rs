@@ -7,13 +7,14 @@ use {
             Code,
             CodeValue,
             EvalRes,
+            EResult,
             ExprContext,
             QExprId,
             SerialValue,
             SerialValueSource,
+            Type,
             Unique,
             Value,
-            Type,
         },
     },
     paste::paste,
@@ -37,18 +38,21 @@ macro_rules! aspect{
             pub fn[< $name: snake _aspect_id >]() -> Unique {
                 return unique!();
             }
-            pub fn[< $name: snake _get >](xx: & ExprContext, v: &dyn Type) -> Result <Box<dyn $name>,
-            String > {
+            pub fn[
+                < $name: snake _get >
+            ](xx: & ExprContext, loc: QExprId, v: & dyn Type) -> EResult < Box < dyn $name >> {
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
-                    return Err(format!("TODO Type is missing aspect"));
+                    return EResult::err(loc, format!("Type ({}) is missing aspect {}", v.desc(), stringify!{
+                        $name
+                    }));
                 };
-                return Ok(*out.downcast::<Box<dyn $name>>().unwrap());
+                return EResult:: ok(* out.downcast::< Box < dyn $name >>().unwrap());
             }
-            pub fn[< $name: snake _get_maybe >](xx: & ExprContext, v: &dyn Type) -> Option<Box<dyn $name>> {
+            pub fn[< $name: snake _get_maybe >](xx: & ExprContext, v: & dyn Type) -> Option < Box < dyn $name >> {
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
                     return None;
                 };
-                return Some(*out.downcast::<Box<dyn $name>>().unwrap());
+                return Some(* out.downcast::< Box < dyn $name >>().unwrap());
             }
         }
     };
@@ -59,30 +63,30 @@ aspect!(AspectDrop {
 });
 
 aspect!(AspectFunction {
-    fn call(&self, xx: & ExprContext, loc: QExprId, function: CodeValue, argument: CodeValue) -> EvalRes;
+    fn call(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes;
 });
 
 aspect!(AspectSerial {
-    fn to_serial(&self, artifacts: & mut Artifacts, value: Box < dyn Value >) -> SerialValue;
+    fn to_serial(&self, artifacts: & mut Artifacts, self_: Box < dyn Value >) -> EResult < SerialValue >;
 });
 
 aspect!(AspectLiftJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used after evaluating a target block, for producing a value to serialize.
-    fn lift(&self, value: & v8:: Value) -> Box < dyn Value >;
+    fn lift(&self, self_: & v8:: Value) -> Box < dyn Value >;
 });
 
 aspect!(AspectJsStackValue {
     /// Value is guaranteed to be of the type described by the aspect's type.
-    fn to_value(&self, value: JsCode) -> CodeValue;
+    fn to_value(&self, loc: QExprId, self_: JsCode) -> CodeValue;
 });
 
 aspect!(AspectConsumeJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used before interacting with JS: namely, function call arguments.
-    fn consume(&self, cv: CodeValue) -> JsCode;
+    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
 });
 
 aspect!(AspectJsString {});
@@ -91,4 +95,12 @@ aspect!(AspectNull {});
 
 aspect!(AspectString {
     fn get(&self, value: & dyn Value) -> String;
+});
+
+aspect!(AspectSet {
+    fn set(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes;
+});
+
+aspect!(AspectField {
+    fn field(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes;
 });

@@ -3,48 +3,44 @@ use serde::{
     Serialize,
 };
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct ExprId(pub usize);
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct ScopeKey(pub String);
-
-//. #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+//. #[derive(Debug,Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 //. #[serde(rename_all = "snake_case", deny_unknown_fields)]
 //. pub enum ModuleHash {
 //.    Sha256(String),
 //. }
 //. 
-//. #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+//. #[derive(Debug,Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 //. #[serde(rename_all = "snake_case", deny_unknown_fields)]
 //. pub enum RemotePathHttpType {
 //.    File,
 //.    Zip,
 //. }
 //. 
-//. #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+//. #[derive(Debug,Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 //. #[serde(rename_all = "snake_case", deny_unknown_fields)]
 //. pub struct RemotePathHttp {
 //.    pub url: String,
 //.    pub r#type: RemotePathHttpType,
 //. }
 //. 
-//. #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+//. #[derive(Debug,Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 //. #[serde(rename_all = "snake_case", deny_unknown_fields)]
 //. pub enum RemotePath {
 //.    Http(RemotePathHttp),
 //. }
 //. 
-//. #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+//. #[derive(Debug,Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 //. #[serde(rename_all = "snake_case", deny_unknown_fields)]
 //. pub struct ImportSpecRemote {
 //.    pub hash: ModuleHash,
 //.    pub r#path: RemotePath,
 //.    pub subpath: Vec<String>,
 //. }
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SourceSpecAbsolute {
     Virtual(Box<SerialModule>),
@@ -52,7 +48,7 @@ pub enum SourceSpecAbsolute {
     //. Remote(ImportSpecRemote),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SerialValue {
     Null,
@@ -64,45 +60,66 @@ pub enum SerialValue {
     //. Map(BTreeMap<SerialValue, SerialValue>),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprBind {
+    pub base: String,
+    pub value: Box<SerialExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprSequence {
     pub exprs: Vec<SerialExpr>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprScopeUse {
-    pub key: ScopeKey,
+    pub key: Box<SerialExpr>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprSet {
+    pub base: Box<SerialExpr>,
+    pub value: Box<SerialExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprField {
+    pub base: Box<SerialExpr>,
+    pub key: Box<SerialExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprCall {
     pub func: Box<SerialExpr>,
     pub args: Box<SerialExpr>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SerialExprType {
     Literal(SerialValue),
-    //. Sequence(SerialExprSequence),
-    //. ScopeCreate(SerialExprScopeCreate),
+    Sequence(SerialExprSequence),
     ScopeUse(SerialExprScopeUse),
-    //. Set(SerialExprSet),
-    //. Get(SerialExprGet),
+    Bind(SerialExprBind),
+    Set(SerialExprSet),
+    Field(SerialExprField),
     Call(SerialExprCall),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExpr {
     pub id: ExprId,
     pub r#type: SerialExprType,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SerialModule {
     V1(SerialExpr),

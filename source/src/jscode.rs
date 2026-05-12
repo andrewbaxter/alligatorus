@@ -1,46 +1,66 @@
 use crate::langhelp::{
     CodeDyn,
     QExprId,
+    ScopeEntryId,
 };
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-pub struct ScopeEntryId(pub usize);
-
 #[derive(Clone)]
-pub struct JsCodeSeq {
-    pub sub: Vec<JsCode>,
+pub(crate) struct JsCodeSeq {
+    pub(crate) sub: Vec<JsCode>,
 }
 
 #[derive(Clone)]
-pub struct JsCodeSet {
-    pub id: ScopeEntryId,
-    pub value: Box<JsCode>,
+pub(crate) struct JsCodeFieldSet {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) key: String,
+    pub(crate) value: Box<JsCode>,
 }
 
 #[derive(Clone)]
-pub struct JsCodeGet {
-    pub id: ScopeEntryId,
+pub(crate) struct JsCodeBind {
+    pub(crate) base: ScopeEntryId,
+    pub(crate) value: Box<JsCode>,
 }
 
 #[derive(Clone)]
-pub struct JsCodeCall {
-    pub func: Box<JsCode>,
-    pub args: Vec<JsCode>,
+pub(crate) struct JsCodeBindingSet {
+    pub(crate) base: ScopeEntryId,
+    pub(crate) value: Box<JsCode>,
 }
 
 #[derive(Clone)]
-pub enum JsCodeType {
+pub(crate) struct JsCodeBindingUse {
+    pub(crate) id: ScopeEntryId,
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeField {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) field: String,
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeCall {
+    pub(crate) func: Box<JsCode>,
+    pub(crate) args: Vec<JsCode>,
+}
+
+#[derive(Clone)]
+pub(crate) enum JsCodeType {
     Seq(JsCodeSeq),
     Value(serde_json::Value),
-    Set(JsCodeSet),
-    Get(JsCodeGet),
+    FieldSet(JsCodeFieldSet),
+    Bind(JsCodeBind),
+    BindingSet(JsCodeBindingSet),
+    BindingUse(JsCodeBindingUse),
+    Field(JsCodeField),
     Call(JsCodeCall),
 }
 
 #[derive(Clone)]
-pub struct JsCode {
-    pub loc: QExprId,
-    pub type_: JsCodeType,
+pub(crate) struct JsCode {
+    pub(crate) loc: QExprId,
+    pub(crate) type_: JsCodeType,
 }
 
 impl CodeDyn for JsCode {
