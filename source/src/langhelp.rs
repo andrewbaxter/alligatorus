@@ -114,7 +114,7 @@ pub(crate) struct GlobalContext {
 }
 
 /// One per module (per import env).
-pub(crate) struct CompileContext {
+pub(crate) struct CompileImportContext {
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) next_unique_id: Counter,
@@ -122,7 +122,7 @@ pub(crate) struct CompileContext {
 
 /// Multiple evaluations per module.
 pub(crate) struct EvalContext {
-    pub(crate) ix: Rc<CompileContext>,
+    pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_scope_entry_id: Counter,
 }
 

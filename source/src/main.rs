@@ -53,7 +53,7 @@ use {
             Code_,
             CodeDyn,
             CodeValue,
-            CompileContext,
+            CompileImportContext,
             CompileId,
             CompileRes,
             ConstKey,
@@ -496,7 +496,7 @@ fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<Co
     return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
 }
 
-fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
+fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
     match &expr.r#type {
         ExprType::Literal(p) => {
             return EvalRes {
@@ -511,7 +511,7 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             };
         },
         ExprType::ScopeUse(p) => return er_seq_cv!(expr.loc, erb, {
-            let key = erb.must_er(eval_expr(xx, p.key.as_ref(), target))?;
+            let key = erb.must_er(eval_expr_half(xx, p.key.as_ref(), target))?;
             let constkey = erb.must_res(extract_const_key(xx, expr.loc, key.value.as_ref()))?;
             let scope = shed!{
                 'found _;
@@ -534,8 +534,8 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
         }),
         ExprType::Call(p) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                func = eval_expr(xx, p.func.as_ref(), target),
-                arg = eval_expr(xx, p.arg.as_ref(), target),
+                func = eval_expr_half(xx, p.func.as_ref(), target),
+                arg = eval_expr_half(xx, p.arg.as_ref(), target),
             });
             let func_type = func.value.type_(xx, expr.loc);
             let aspect_func = erb.must_er(aspect_function_get(xx, expr.loc, func_type.as_ref()))?;
@@ -544,8 +544,8 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
         }),
         ExprType::Set(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_expr(xx, e.base.as_ref(), target),
-                value = eval_expr(xx, e.value.as_ref(), target),
+                base = eval_expr_half(xx, e.base.as_ref(), target),
+                value = eval_expr_half(xx, e.value.as_ref(), target),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let base_set = erb.must_er(aspect_set_get(xx, expr.loc, base_type.as_ref()))?;
@@ -554,8 +554,8 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
         }),
         ExprType::Field(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_expr(xx, e.base.as_ref(), target),
-                field = eval_expr(xx, e.key.as_ref(), target),
+                base = eval_expr_half(xx, e.base.as_ref(), target),
+                field = eval_expr_half(xx, e.key.as_ref(), target),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
@@ -564,8 +564,8 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
         }),
         ExprType::Bind(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_expr(xx, e.base.as_ref(), target),
-                value = eval_expr(xx, e.value.as_ref(), target),
+                base = eval_expr_half(xx, e.base.as_ref(), target),
+                value = eval_expr_half(xx, e.value.as_ref(), target),
             });
             let base_constkey = erb.must_res(extract_const_key(xx, expr.loc, base.value.as_ref()))?;
             let binding = erb.must_er(target.bind(xx, expr.loc, base.code, value))?;
@@ -579,7 +579,7 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             let mut code = vec![];
             let mut last_val = None;
             for expr in &e.seq {
-                let r = erb.must_er(eval_expr(xx, expr, target))?;
+                let r = erb.must_er(eval_expr_half(xx, expr, target))?;
                 code.push(r.code);
                 last_val = Some(r.value);
             }
@@ -588,8 +588,25 @@ fn eval_expr<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: last_val.unwrap_or_else(|| Box::new(ValueNull))
             });
         }),
-        ExprType::Stage(e) => { },
-        ExprType::Lower(expr_lower) => 
+        ExprType::Stage(e) => {
+            let cix = &xx.vx.ix;
+            let import_state = xx.import_state.get();
+            let resolved = match substitute_lowers(cix, import_state, &e.expr) {
+                Ok(e) => e,
+                Err(errors) => return EvalRes {
+                    v: None,
+                    errors,
+                },
+            };
+            return EvalRes::ok(CodeValue {
+                code: Code {
+                    loc: expr.loc,
+                    code: Code_::None,
+                },
+                value: Box::new(resolved),
+            });
+        },
+        ExprType::Lower(_) => 
         // Just a marker for replacement
         unreachable!(),
     }
@@ -1091,20 +1108,135 @@ fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
 
 fn eval() { }
 
-async fn compile_importid(
-    fx: &Arc<GlobalContext>,
-    import_state: ImportStateId,
-    source: Module,
-    compile_path: Vec<(CompileId, ExprId)>,
-) -> CompileRes {
-    let cmx = Rc::new(CompileContext {
-        gx: fx.clone(),
-        compile_path: compile_path,
-        next_unique_id: Default::default(),
-    });
+impl Value for Expr {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(MortarExprType)
+    }
+}
+struct MortarExprType;
 
-    // Prep scope
-    let mut s1_scope = HashMap::new();
+impl Value for MortarExprType {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(MortarExprType)
+    }
+}
+
+impl Type for MortarExprType {
+    fn desc(&self) -> String {
+        return format!("expr");
+    }
+
+    fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
+        return None;
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        todo!();
+        //.        let expr = (cv.value.as_ref() as &dyn Any).downcast_ref::<Expr>().unwrap();
+        //.        let result = eval_expr(xx, expr, &MortarTarget);
+        //.        match result.v {
+        //.            Some(result_cv) => {
+        //.                let mut converted = typecheck_convert(xx, loc, type_, result_cv);
+        //.                converted.errors.extend(result.errors);
+        //.                converted
+        //.            },
+        //.            None => EvalRes {
+        //.                v: None,
+        //.                errors: result.errors,
+        //.            },
+        //.        }
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        todo!();
+        //. return EvalRes::err(loc, format!("Cannot convert to expr type"));
+    }
+}
+
+impl Aspect for MortarExprType { }
+
+fn substitute_lowers(
+    cix: &Rc<CompileImportContext>,
+    import_state: ImportStateId,
+    expr: &Expr,
+) -> Result<Expr, Vec<ExprErr>> {
+    match &expr.r#type {
+        ExprType::Lower(e) => {
+            let resolved_inner = substitute_lowers(cix, import_state, &e.expr)?;
+            let value = eval_expr(cix, import_state, &resolved_inner)?;
+            let value_cell = Rc::new(RefCell::new(Some(value)));
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: ExprType::Literal(Rc::new(move || {
+                    value_cell.borrow_mut().take().expect("Lower literal consumed twice")
+                })),
+            })
+        },
+        ExprType::Stage(_) => Ok(expr.clone()),
+        ExprType::Literal(_) => Ok(expr.clone()),
+        ExprType::ScopeUse(_) => Ok(expr.clone()),
+        ExprType::Call(c) => {
+            let func = substitute_lowers(cix, import_state, &c.func)?;
+            let arg = substitute_lowers(cix, import_state, &c.arg)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: ExprType::Call(ExprCall {
+                    func: Rc::new(func),
+                    arg: Rc::new(arg),
+                }),
+            })
+        },
+        ExprType::Bind(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let value = substitute_lowers(cix, import_state, &e.value)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: ExprType::Bind(ExprBind {
+                    base: Rc::new(base),
+                    value: Rc::new(value),
+                }),
+            })
+        },
+        ExprType::Set(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let value = substitute_lowers(cix, import_state, &e.value)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: ExprType::Set(ExprSet {
+                    base: Rc::new(base),
+                    value: Rc::new(value),
+                }),
+            })
+        },
+        ExprType::Field(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let key = substitute_lowers(cix, import_state, &e.key)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: ExprType::Field(ExprField {
+                    base: Rc::new(base),
+                    key: Rc::new(key),
+                }),
+            })
+        },
+        ExprType::Seq(e) => {
+            let mut resolved = Vec::new();
+            for sub in &e.seq {
+                resolved.push(substitute_lowers(cix, import_state, sub)?);
+            }
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: ExprType::Seq(ExprSeq { seq: resolved }),
+            })
+        },
+    }
+}
+
+fn eval_expr(
+    cix: &Rc<CompileImportContext>,
+    import_state: ImportStateId,
+    expr: &Expr,
+) -> Result<Box<dyn Value>, Vec<ExprErr>> {
     let mut js_scope_isolate = v8::Isolate::new(Default::default());
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
@@ -1112,9 +1244,10 @@ async fn compile_importid(
     let js_scope_context2 = &mut v8::ContextScope::new(&mut js_scope_handle2, js_scope_context);
     tc_scope!(let js_scope, js_scope_context2);
     let ex = Rc::new(EvalContext {
-        ix: cmx.clone(),
+        ix: cix.clone(),
         next_scope_entry_id: Default::default(),
     });
+    let mut s1_scope = HashMap::new();
     for (key, eval_value, js_value) in [(
         "print",
         MortarScopeEntry {
@@ -1144,8 +1277,8 @@ async fn compile_importid(
             );
         s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
-    let root_loc;
-    let root_xx = Rc::new(ExprContext {
+    let root_loc = expr.loc;
+    let xx = Rc::new(ExprContext {
         vx: ex.clone(),
         import_state: Rc::new(Cell::new(import_state)),
         scope: Rc::new(Scope {
@@ -1153,109 +1286,17 @@ async fn compile_importid(
             parent: None,
         }),
     });
-    let stage1 = match source {
-        Module::V1(root_expr) => {
-            root_loc = root_expr.loc;
-            eval_expr(
-                //. .
-                &root_xx,
-                &root_expr,
-                &MortarTarget,
-            )
-        },
-    };
-    if !stage1.errors.is_empty() {
-        return CompileRes::Err(stage1.errors);
+    let result = eval_expr_half(&xx, expr, &MortarTarget);
+    if !result.errors.is_empty() {
+        return Err(result.errors);
     }
-    let stage1_cv = stage1.v.unwrap();
-    let value_type = stage1_cv.value.type_(root_xx.as_ref(), root_loc);
-    let value_serial = match aspect_serial_get(&root_xx, root_loc, value_type.as_ref()).into_res() {
-        Ok(v) => v,
-        Err(e) => return CompileRes::Err(e),
-    };
-    let value_from_js = match aspect_lift_js_get(&root_xx, root_loc, value_type.as_ref()).into_res() {
-        Ok(v) => v,
-        Err(e) => return CompileRes::Err(e),
-    };
-    let stage1_code = match stage1_cv.code.cast::<JsCode>().into_res() {
-        Ok(v) => v,
-        Err(e) => return CompileRes::Err(e),
-    };
-    let value = match stage1_code {
-        None => {
-            stage1_cv.value
-        },
+    let cv = result.v.unwrap();
+    let value_type = cv.value.type_(&xx, root_loc);
+    let stage1_code = cv.code.cast::<JsCode>().into_res()?;
+    match stage1_code {
+        None => Ok(cv.value),
         Some(code) => {
-            #[derive(Default)]
-            struct JsSourceBuilder {
-                lines: Vec<String>,
-                mapping: HashMap<usize, QExprId>,
-                next_expr_id: usize,
-            }
-
-            impl JsSourceBuilder {
-                fn push(&mut self, id: QExprId, line: String) {
-                    let js_num = self.lines.len() + 1;
-                    self.mapping.insert(js_num, id);
-                    self.lines.push(line);
-                }
-
-                fn next_expr_id(&mut self) -> usize {
-                    let id = self.next_expr_id;
-                    self.next_expr_id += 1;
-                    id
-                }
-            }
-
-            fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
-                let out = format!("e{}", lines.next_expr_id());
-                lines.push(code.loc, format!("let {};", out));
-                match &code.type_ {
-                    JsCodeType::Seq(c) => {
-                        let mut last_var = out.clone();
-                        for x in &c.sub {
-                            last_var = render_code(lines, x);
-                        }
-                        lines.push(code.loc, format!("{} = {};", out, last_var));
-                    },
-                    JsCodeType::Value(c) => {
-                        lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
-                    },
-                    JsCodeType::BindingUse(c) => {
-                        lines.push(code.loc, format!("{} = {};", out, scope_entry_id_js_key(c.id)));
-                    },
-                    JsCodeType::Call(c) => {
-                        let func_var = render_code(lines, &c.func);
-                        let mut arg_vars = vec![];
-                        for arg in &c.args {
-                            arg_vars.push(render_code(lines, arg));
-                        }
-                        lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
-                    },
-                    JsCodeType::Field(js_code_field) => {
-                        let base = render_code(lines, &js_code_field.base);
-                        lines.push(code.loc, format!("{} = {}.{};", out, base, js_code_field.field));
-                    },
-                    JsCodeType::Bind(c) => {
-                        let val_var = render_code(lines, &c.value);
-                        lines.push(code.loc, format!("let {} = {};", scope_entry_id_js_key(c.base), val_var));
-                        lines.push(code.loc, format!("{} = null;", out));
-                    },
-                    JsCodeType::BindingSet(c) => {
-                        let val_var = render_code(lines, &c.value);
-                        lines.push(code.loc, format!("{} = {};", scope_entry_id_js_key(c.base), val_var));
-                        lines.push(code.loc, format!("{} = null;", out));
-                    },
-                    JsCodeType::FieldSet(c) => {
-                        let base_var = render_code(lines, &c.base);
-                        let val_var = render_code(lines, &c.value);
-                        lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
-                        lines.push(code.loc, format!("{} = null;", out));
-                    },
-                }
-                return out;
-            }
-
+            let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
             let mut code1 = JsSourceBuilder::default();
             let root_var = render_code(&mut code1, &code);
             code1.push(root_loc, root_var);
@@ -1263,7 +1304,7 @@ async fn compile_importid(
                 v8::Script::compile(js_scope, v8::String::new(js_scope, &code1.lines.join("\n")).unwrap(), None)
                     .unwrap()
                     .run(js_scope) {
-                value_from_js.lift(&stage2)
+                Ok(value_from_js.lift(&stage2))
             } else {
                 let text;
                 match js_scope.exception() {
@@ -1276,20 +1317,134 @@ async fn compile_importid(
                 }
                 match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
                     Some(js_expr) => {
-                        return CompileRes::Err(vec![ExprErr {
+                        Err(vec![ExprErr {
                             loc: *code1.mapping.get(&js_expr).unwrap(),
                             errors: vec![ExprSubErr::Opaque(text)]
-                        }]);
+                        }])
                     },
                     None => {
-                        return CompileRes::Err(vec![ExprErr {
+                        Err(vec![ExprErr {
                             loc: root_loc,
                             errors: vec![ExprSubErr::Opaque(text)]
-                        }]);
+                        }])
                     },
                 }
             }
         },
+    }
+}
+
+#[derive(Default)]
+struct JsSourceBuilder {
+    lines: Vec<String>,
+    mapping: HashMap<usize, QExprId>,
+    next_expr_id: usize,
+}
+
+impl JsSourceBuilder {
+    fn push(&mut self, id: QExprId, line: String) {
+        let js_num = self.lines.len() + 1;
+        self.mapping.insert(js_num, id);
+        self.lines.push(line);
+    }
+
+    fn next_expr_id(&mut self) -> usize {
+        let id = self.next_expr_id;
+        self.next_expr_id += 1;
+        id
+    }
+}
+
+fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
+    let out = format!("e{}", lines.next_expr_id());
+    lines.push(code.loc, format!("let {};", out));
+    match &code.type_ {
+        JsCodeType::Seq(c) => {
+            let mut last_var = out.clone();
+            for x in &c.sub {
+                last_var = render_code(lines, x);
+            }
+            lines.push(code.loc, format!("{} = {};", out, last_var));
+        },
+        JsCodeType::Value(c) => {
+            lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
+        },
+        JsCodeType::BindingUse(c) => {
+            lines.push(code.loc, format!("{} = {};", out, scope_entry_id_js_key(c.id)));
+        },
+        JsCodeType::Call(c) => {
+            let func_var = render_code(lines, &c.func);
+            let mut arg_vars = vec![];
+            for arg in &c.args {
+                arg_vars.push(render_code(lines, arg));
+            }
+            lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
+        },
+        JsCodeType::Field(js_code_field) => {
+            let base = render_code(lines, &js_code_field.base);
+            lines.push(code.loc, format!("{} = {}.{};", out, base, js_code_field.field));
+        },
+        JsCodeType::Bind(c) => {
+            let val_var = render_code(lines, &c.value);
+            lines.push(code.loc, format!("let {} = {};", scope_entry_id_js_key(c.base), val_var));
+            lines.push(code.loc, format!("{} = null;", out));
+        },
+        JsCodeType::BindingSet(c) => {
+            let val_var = render_code(lines, &c.value);
+            lines.push(code.loc, format!("{} = {};", scope_entry_id_js_key(c.base), val_var));
+            lines.push(code.loc, format!("{} = null;", out));
+        },
+        JsCodeType::FieldSet(c) => {
+            let base_var = render_code(lines, &c.base);
+            let val_var = render_code(lines, &c.value);
+            lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
+            lines.push(code.loc, format!("{} = null;", out));
+        },
+    }
+    return out;
+}
+
+async fn compile_importid(
+    fx: &Arc<GlobalContext>,
+    import_state: ImportStateId,
+    source: Module,
+    compile_path: Vec<(CompileId, ExprId)>,
+) -> CompileRes {
+    let cix = Rc::new(CompileImportContext {
+        gx: fx.clone(),
+        compile_path: compile_path,
+        next_unique_id: Default::default(),
+    });
+    let root_expr = match source {
+        Module::V1(e) => e,
+    };
+    let root_expr = match substitute_lowers(&cix, import_state, &root_expr) {
+        Ok(e) => e,
+        Err(errors) => return CompileRes::Err(errors),
+    };
+    let root_loc = root_expr.loc;
+    let value = match eval_expr(&cix, import_state, &root_expr) {
+        Ok(v) => v,
+        Err(errors) => return CompileRes::Err(errors),
+    };
+
+    // Serialize result
+    let ex = Rc::new(EvalContext {
+        ix: cix.clone(),
+        next_scope_entry_id: Default::default(),
+    });
+    let xx = Rc::new(ExprContext {
+        vx: ex,
+        import_state: Rc::new(Cell::new(import_state)),
+        scope: Rc::new(Scope {
+            values: RefCell::new(HashMap::new()),
+            parent: None,
+        }),
+    });
+    let value_type = value.type_(&xx, root_loc);
+    let value_serial = match aspect_serial_get(&xx, root_loc, value_type.as_ref()).into_res() {
+        Ok(v) => v,
+        Err(e) => return CompileRes::Err(e),
     };
     let mut artifacts = fx.artifacts.write().unwrap();
     let value = match value_serial.to_serial(&mut artifacts, value).into_res() {
