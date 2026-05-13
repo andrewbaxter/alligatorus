@@ -85,7 +85,7 @@ use {
             SerialExprLower,
             SerialExprSequence,
             SerialExprStage,
-            SerialExprType,
+            SerialExpr_,
             SerialLiteral,
             SerialModule,
             SourceSpecAbsolute,
@@ -362,7 +362,7 @@ pub struct ExprLower {
 type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
 
 #[derive(Clone)]
-pub enum ExprType {
+pub enum Expr_ {
     Literal(LitValue),
     Bind(ExprBind),
     Set(ExprSet),
@@ -377,7 +377,7 @@ pub enum ExprType {
 #[derive(Clone)]
 pub struct Expr {
     pub loc: QExprId,
-    pub r#type: ExprType,
+    pub r#type: Expr_,
 }
 
 pub enum Module {
@@ -496,9 +496,9 @@ fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<Co
     return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
 }
 
-fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
+fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
     match &expr.r#type {
-        ExprType::Literal(p) => {
+        Expr_::Literal(p) => {
             return EvalRes {
                 v: Some(CodeValue {
                     code: Code {
@@ -510,8 +510,8 @@ fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalR
                 errors: vec![],
             };
         },
-        ExprType::ScopeUse(p) => return er_seq_cv!(expr.loc, erb, {
-            let key = erb.must_er(eval_expr_half(xx, p.key.as_ref(), target))?;
+        Expr_::ScopeUse(p) => return er_seq_cv!(expr.loc, erb, {
+            let key = erb.must_er(eval_half(xx, p.key.as_ref(), target))?;
             let constkey = erb.must_res(extract_const_key(xx, expr.loc, key.value.as_ref()))?;
             let scope = shed!{
                 'found _;
@@ -532,40 +532,40 @@ fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalR
             let binding = scope.get(&constkey).unwrap();
             return Ok(binding.use_(expr.loc, key.code));
         }),
-        ExprType::Call(p) => return er_seq_cv!(expr.loc, erb, {
+        Expr_::Call(p) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                func = eval_expr_half(xx, p.func.as_ref(), target),
-                arg = eval_expr_half(xx, p.arg.as_ref(), target),
+                func = eval_half(xx, p.func.as_ref(), target),
+                arg = eval_half(xx, p.arg.as_ref(), target),
             });
             let func_type = func.value.type_(xx, expr.loc);
             let aspect_func = erb.must_er(aspect_function_get(xx, expr.loc, func_type.as_ref()))?;
             let v = erb.must_er(aspect_func.call(xx, expr.loc, func, arg))?;
             return Ok(v);
         }),
-        ExprType::Set(e) => return er_seq_cv!(expr.loc, erb, {
+        Expr_::Set(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_expr_half(xx, e.base.as_ref(), target),
-                value = eval_expr_half(xx, e.value.as_ref(), target),
+                base = eval_half(xx, e.base.as_ref(), target),
+                value = eval_half(xx, e.value.as_ref(), target),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let base_set = erb.must_er(aspect_set_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(base_set.set(xx, expr.loc, base, value))?;
             return Ok(v);
         }),
-        ExprType::Field(e) => return er_seq_cv!(expr.loc, erb, {
+        Expr_::Field(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_expr_half(xx, e.base.as_ref(), target),
-                field = eval_expr_half(xx, e.key.as_ref(), target),
+                base = eval_half(xx, e.base.as_ref(), target),
+                field = eval_half(xx, e.key.as_ref(), target),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
             return Ok(v);
         }),
-        ExprType::Bind(e) => return er_seq_cv!(expr.loc, erb, {
+        Expr_::Bind(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_expr_half(xx, e.base.as_ref(), target),
-                value = eval_expr_half(xx, e.value.as_ref(), target),
+                base = eval_half(xx, e.base.as_ref(), target),
+                value = eval_half(xx, e.value.as_ref(), target),
             });
             let base_constkey = erb.must_res(extract_const_key(xx, expr.loc, base.value.as_ref()))?;
             let binding = erb.must_er(target.bind(xx, expr.loc, base.code, value))?;
@@ -575,11 +575,11 @@ fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalR
                 value: Box::new(ValueNull)
             });
         }),
-        ExprType::Seq(e) => return er_seq_cv!(expr.loc, erb, {
+        Expr_::Seq(e) => return er_seq_cv!(expr.loc, erb, {
             let mut code = vec![];
             let mut last_val = None;
             for expr in &e.seq {
-                let r = erb.must_er(eval_expr_half(xx, expr, target))?;
+                let r = erb.must_er(eval_half(xx, expr, target))?;
                 code.push(r.code);
                 last_val = Some(r.value);
             }
@@ -588,7 +588,7 @@ fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalR
                 value: last_val.unwrap_or_else(|| Box::new(ValueNull))
             });
         }),
-        ExprType::Stage(e) => {
+        Expr_::Stage(e) => {
             let cix = &xx.vx.ix;
             let import_state = xx.import_state.get();
             let resolved = match substitute_lowers(cix, import_state, &e.expr) {
@@ -606,7 +606,7 @@ fn eval_expr_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalR
                 value: Box::new(resolved),
             });
         },
-        ExprType::Lower(_) => 
+        Expr_::Lower(_) => 
         // Just a marker for replacement
         unreachable!(),
     }
@@ -1106,22 +1106,20 @@ fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     return format!("a{}", e.0);
 }
 
-fn eval() { }
-
 impl Value for Expr {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarExprType)
+        Rc::new(ExprType)
     }
 }
-struct MortarExprType;
+struct ExprType;
 
-impl Value for MortarExprType {
+impl Value for ExprType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarExprType)
+        Rc::new(ExprType)
     }
 }
 
-impl Type for MortarExprType {
+impl Type for ExprType {
     fn desc(&self) -> String {
         return format!("expr");
     }
@@ -1153,7 +1151,7 @@ impl Type for MortarExprType {
     }
 }
 
-impl Aspect for MortarExprType { }
+impl Aspect for ExprType { }
 
 fn substitute_lowers(
     cix: &Rc<CompileImportContext>,
@@ -1161,78 +1159,78 @@ fn substitute_lowers(
     expr: &Expr,
 ) -> Result<Expr, Vec<ExprErr>> {
     match &expr.r#type {
-        ExprType::Lower(e) => {
+        Expr_::Lower(e) => {
             let resolved_inner = substitute_lowers(cix, import_state, &e.expr)?;
-            let value = eval_expr(cix, import_state, &resolved_inner)?;
+            let value = eval(cix, import_state, &resolved_inner)?;
             let value_cell = Rc::new(RefCell::new(Some(value)));
             Ok(Expr {
                 loc: expr.loc,
-                r#type: ExprType::Literal(Rc::new(move || {
+                r#type: Expr_::Literal(Rc::new(move || {
                     value_cell.borrow_mut().take().expect("Lower literal consumed twice")
                 })),
             })
         },
-        ExprType::Stage(_) => Ok(expr.clone()),
-        ExprType::Literal(_) => Ok(expr.clone()),
-        ExprType::ScopeUse(_) => Ok(expr.clone()),
-        ExprType::Call(c) => {
+        Expr_::Stage(_) => Ok(expr.clone()),
+        Expr_::Literal(_) => Ok(expr.clone()),
+        Expr_::ScopeUse(_) => Ok(expr.clone()),
+        Expr_::Call(c) => {
             let func = substitute_lowers(cix, import_state, &c.func)?;
             let arg = substitute_lowers(cix, import_state, &c.arg)?;
             Ok(Expr {
                 loc: expr.loc,
-                r#type: ExprType::Call(ExprCall {
+                r#type: Expr_::Call(ExprCall {
                     func: Rc::new(func),
                     arg: Rc::new(arg),
                 }),
             })
         },
-        ExprType::Bind(e) => {
+        Expr_::Bind(e) => {
             let base = substitute_lowers(cix, import_state, &e.base)?;
             let value = substitute_lowers(cix, import_state, &e.value)?;
             Ok(Expr {
                 loc: expr.loc,
-                r#type: ExprType::Bind(ExprBind {
+                r#type: Expr_::Bind(ExprBind {
                     base: Rc::new(base),
                     value: Rc::new(value),
                 }),
             })
         },
-        ExprType::Set(e) => {
+        Expr_::Set(e) => {
             let base = substitute_lowers(cix, import_state, &e.base)?;
             let value = substitute_lowers(cix, import_state, &e.value)?;
             Ok(Expr {
                 loc: expr.loc,
-                r#type: ExprType::Set(ExprSet {
+                r#type: Expr_::Set(ExprSet {
                     base: Rc::new(base),
                     value: Rc::new(value),
                 }),
             })
         },
-        ExprType::Field(e) => {
+        Expr_::Field(e) => {
             let base = substitute_lowers(cix, import_state, &e.base)?;
             let key = substitute_lowers(cix, import_state, &e.key)?;
             Ok(Expr {
                 loc: expr.loc,
-                r#type: ExprType::Field(ExprField {
+                r#type: Expr_::Field(ExprField {
                     base: Rc::new(base),
                     key: Rc::new(key),
                 }),
             })
         },
-        ExprType::Seq(e) => {
+        Expr_::Seq(e) => {
             let mut resolved = Vec::new();
             for sub in &e.seq {
                 resolved.push(substitute_lowers(cix, import_state, sub)?);
             }
             Ok(Expr {
                 loc: expr.loc,
-                r#type: ExprType::Seq(ExprSeq { seq: resolved }),
+                r#type: Expr_::Seq(ExprSeq { seq: resolved }),
             })
         },
     }
 }
 
-fn eval_expr(
+fn eval(
     cix: &Rc<CompileImportContext>,
     import_state: ImportStateId,
     expr: &Expr,
@@ -1286,7 +1284,7 @@ fn eval_expr(
             parent: None,
         }),
     });
-    let result = eval_expr_half(&xx, expr, &MortarTarget);
+    let result = eval_half(&xx, expr, &MortarTarget);
     if !result.errors.is_empty() {
         return Err(result.errors);
     }
@@ -1423,7 +1421,7 @@ async fn compile_importid(
         Err(errors) => return CompileRes::Err(errors),
     };
     let root_loc = root_expr.loc;
-    let value = match eval_expr(&cix, import_state, &root_expr) {
+    let value = match eval(&cix, import_state, &root_expr) {
         Ok(v) => v,
         Err(errors) => return CompileRes::Err(errors),
     };
@@ -1472,45 +1470,45 @@ async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModu
             return Expr {
                 loc: (source_id, m.id),
                 r#type: match &m.r#type {
-                    SerialExprType::Literal(lit) => ExprType::Literal(match lit {
+                    SerialExpr_::Literal(lit) => Expr_::Literal(match lit {
                         SerialLiteral::Null => Rc::new(|| Box::new(ValueNull)),
                         SerialLiteral::String(l) => {
                             let l = l.clone();
                             Rc::new(move || Box::new(ValueString(l.clone())))
                         },
                     }),
-                    SerialExprType::ScopeUse(expr) => ExprType::ScopeUse(
+                    SerialExpr_::ScopeUse(expr) => Expr_::ScopeUse(
                         ExprScopeUse { key: Rc::new(serial_expr_to_expr(source_id, &expr.key)) },
                     ),
-                    SerialExprType::Call(expr) => ExprType::Call(ExprCall {
+                    SerialExpr_::Call(expr) => Expr_::Call(ExprCall {
                         func: Rc::new(serial_expr_to_expr(source_id, &expr.func)),
                         arg: Rc::new(serial_expr_to_expr(source_id, &expr.arg)),
                     }),
-                    SerialExprType::Set(expr) => ExprType::Set(ExprSet {
+                    SerialExpr_::Set(expr) => Expr_::Set(ExprSet {
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
                         value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),
                     }),
-                    SerialExprType::Field(expr) => ExprType::Field(ExprField {
+                    SerialExpr_::Field(expr) => Expr_::Field(ExprField {
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
                         key: Rc::new(serial_expr_to_expr(source_id, &expr.key)),
                     }),
-                    SerialExprType::Sequence(expr) => ExprType::Seq(
+                    SerialExpr_::Sequence(expr) => Expr_::Seq(
                         ExprSeq { seq: expr.exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
                     ),
-                    SerialExprType::Bind(expr) => ExprType::Bind(ExprBind {
+                    SerialExpr_::Bind(expr) => Expr_::Bind(ExprBind {
                         base: Rc::new(Expr {
                             loc: (source_id, m.id),
-                            r#type: ExprType::Literal({
+                            r#type: Expr_::Literal({
                                 let base = expr.base.clone();
                                 Rc::new(move || Box::new(ValueString(base.clone())))
                             }),
                         }),
                         value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),
                     }),
-                    SerialExprType::Stage(expr) => ExprType::Stage(
+                    SerialExpr_::Stage(expr) => Expr_::Stage(
                         ExprStage { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
                     ),
-                    SerialExprType::Lower(expr) => ExprType::Lower(
+                    SerialExpr_::Lower(expr) => Expr_::Lower(
                         ExprLower { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
                     ),
                 },
@@ -1632,7 +1630,7 @@ mod test {
                 SerialExprLower,
                 SerialExprSequence,
                 SerialExprStage,
-                SerialExprType,
+                SerialExpr_,
                 SerialLiteral,
                 SerialModule,
             },
@@ -1655,16 +1653,16 @@ mod test {
         fn lit_str(&self, s: &str) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::Literal(SerialLiteral::String(s.to_string())),
+                r#type: SerialExpr_::Literal(SerialLiteral::String(s.to_string())),
             }
         }
 
         fn scope_use(&self, key: &str) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::ScopeUse(SerialExprBindingUse { key: Box::new(SerialExpr {
+                r#type: SerialExpr_::ScopeUse(SerialExprBindingUse { key: Box::new(SerialExpr {
                     id: self.id(),
-                    r#type: SerialExprType::Literal(SerialLiteral::String(key.to_string())),
+                    r#type: SerialExpr_::Literal(SerialLiteral::String(key.to_string())),
                 }) }),
             };
         }
@@ -1672,7 +1670,7 @@ mod test {
         fn call(&self, func: SerialExpr, args: SerialExpr) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::Call(SerialExprCall {
+                r#type: SerialExpr_::Call(SerialExprCall {
                     func: Box::new(func),
                     arg: Box::new(args),
                 }),
@@ -1682,14 +1680,14 @@ mod test {
         fn seq(&self, exprs: Vec<SerialExpr>) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::Sequence(SerialExprSequence { exprs: exprs }),
+                r#type: SerialExpr_::Sequence(SerialExprSequence { exprs: exprs }),
             };
         }
 
         fn bind(&self, key: &str, expr: SerialExpr) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::Bind(SerialExprBind {
+                r#type: SerialExpr_::Bind(SerialExprBind {
                     base: key.to_string(),
                     value: Box::new(expr),
                 }),
@@ -1699,14 +1697,14 @@ mod test {
         fn stage(&self, expr: SerialExpr) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::Stage(SerialExprStage { expr: Box::new(expr) }),
+                r#type: SerialExpr_::Stage(SerialExprStage { expr: Box::new(expr) }),
             };
         }
 
         fn lower(&self, expr: SerialExpr) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExprType::Lower(SerialExprLower { expr: Box::new(expr) }),
+                r#type: SerialExpr_::Lower(SerialExprLower { expr: Box::new(expr) }),
             };
         }
     }
