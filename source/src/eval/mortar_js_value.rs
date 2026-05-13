@@ -6,6 +6,7 @@ use {
         Type,
         Value,
     },
+    dumpster::unsync::Gc,
     std::rc::Rc,
 };
 
@@ -21,8 +22,14 @@ pub struct MortarJsValueDataAccess {
     pub key: String,
 }
 
+pub struct MortarJsValueDataDefinitionSet {
+    pub set: Gc<super::definition_set::DefinitionSet>,
+    pub func_index: usize,
+}
+
 pub enum MortarJsValueSource {
     Binding(MortarJsValueDataScope),
+    DefinitionSet(MortarJsValueDataDefinitionSet),
     // Result of effect
     Expr,
     Field(MortarJsValueDataAccess),

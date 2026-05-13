@@ -49,6 +49,7 @@ use {
         Erb,
         mortar_js_value::{
             MortarJsValue,
+            MortarJsValueDataDefinitionSet,
             MortarJsValueSource,
         },
         mortar_null::TypeMortarNull,
@@ -96,8 +97,9 @@ impl DefinitionSet {
     }
 }
 
-/// Wraps a Gc<DefinitionSet> + func_index for passing through v8::External.
-pub(crate) struct DefinitionSetFunctionRef {
+/// A function within a definition set. Used both as the v8::External data
+/// passed through JS and as the Type after lifting.
+pub(crate) struct DefinitionSetFunction {
     pub set: Gc<DefinitionSet>,
     pub func_index: usize,
 }
@@ -150,7 +152,7 @@ fn new_func_js_callback(
         });
         idx
     };
-    let func_ref = Box::new(DefinitionSetFunctionRef { set: ds.clone(), func_index: idx });
+    let func_ref = Box::new(DefinitionSetFunction { set: ds.clone(), func_index: idx });
 
     let ptr = Box::into_raw(func_ref) as *mut c_void;
     let ext = v8::External::new(scope, ptr);
@@ -162,11 +164,11 @@ fn impl_js_callback(
     args: v8::FunctionCallbackArguments<'_>,
     mut ret: v8::ReturnValue<'_>,
 ) {
-    // args[0] is the function ref (v8::External -> DefinitionSetFunctionRef)
+    // args[0] is the function ref (v8::External -> DefinitionSetFunction)
     let func_ref_ext: v8::Local<v8::External> = args.get(0).try_cast().expect(
         "impl: first argument must be a function ref (v8::External)"
     );
-    let func_ref = unsafe { &*(func_ref_ext.value() as *const DefinitionSetFunctionRef) };
+    let func_ref = unsafe { &*(func_ref_ext.value() as *const DefinitionSetFunction) };
 
     // args[1] is the staged expr (v8::External -> StagedExpr)
     let staged_ext: v8::Local<v8::External> = args.get(1).try_cast().expect(
@@ -314,7 +316,8 @@ impl AspectField for MortarTypeDefineResult {
 }
 
 // --- MortarTypeDefinitionSetFunction: the eval_half type of a function ref ---
-// Stateless during eval_half. After lift, ValueDefinitionSetFunction carries the data.
+// Stateless during eval_half. After lift, becomes a MortarJsValue with
+// DefinitionSetFunction type and DefinitionSet source.
 
 pub(crate) struct MortarTypeDefinitionSetFunction;
 
@@ -375,40 +378,41 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
     fn lift(&self, value: &v8::Value) -> Box<dyn Value> {
         assert!(value.is_external(), "Expected v8::External for definition set function");
         let ext = unsafe { &*(value as *const v8::Value as *const v8::External) };
-        // Take ownership of the DefinitionSetFunctionRef
-        let func_ref = unsafe { Box::from_raw(ext.value() as *mut DefinitionSetFunctionRef) };
+        // Take ownership of the DefinitionSetFunction
+        let func_ref = unsafe { Box::from_raw(ext.value() as *mut DefinitionSetFunction) };
         func_ref.set.finish().expect("Definition set finish failed");
-        Box::new(ValueDefinitionSetFunction {
-            set: func_ref.set,
-            func_index: func_ref.func_index,
+        Box::new(MortarJsValue {
+            source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
+                set: func_ref.set.clone(),
+                func_index: func_ref.func_index,
+            }),
+            type_: Rc::new(DefinitionSetFunction {
+                set: func_ref.set,
+                func_index: func_ref.func_index,
+            }),
         })
     }
 }
 
-// --- TypeLiftedDefinitionSetFunction: the type AFTER lift, carries the set ---
+// --- DefinitionSetFunction as Type: used after lift ---
 
-pub(crate) struct TypeLiftedDefinitionSetFunction {
-    pub set: Gc<DefinitionSet>,
-    pub func_index: usize,
-}
-
-impl Value for TypeLiftedDefinitionSetFunction {
+impl Value for DefinitionSetFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeLiftedDefinitionSetFunction {
+        Rc::new(DefinitionSetFunction {
             set: self.set.clone(),
             func_index: self.func_index,
         })
     }
 }
 
-impl Type for TypeLiftedDefinitionSetFunction {
+impl Type for DefinitionSetFunction {
     fn desc(&self) -> String {
-        format!("lifted_definition_set_function")
+        format!("definition_set_function")
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeLiftedDefinitionSetFunction {
+            return Some(Box::new(Box::new(DefinitionSetFunction {
                 set: self.set.clone(),
                 func_index: self.func_index,
             }) as Box<dyn AspectFunction>));
@@ -417,17 +421,17 @@ impl Type for TypeLiftedDefinitionSetFunction {
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert lifted_definition_set_function"))
+        EvalRes::err(loc, format!("Cannot convert definition_set_function"))
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to lifted_definition_set_function"))
+        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
     }
 }
 
-impl Aspect for TypeLiftedDefinitionSetFunction { }
+impl Aspect for DefinitionSetFunction { }
 
-impl AspectFunction for TypeLiftedDefinitionSetFunction {
+impl AspectFunction for DefinitionSetFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, _argument: CodeValue) -> EvalRes {
         // Ensure scope entry IDs are allocated
         {
@@ -474,22 +478,6 @@ impl AspectFunction for TypeLiftedDefinitionSetFunction {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarNull),
             }),
-        })
-    }
-}
-
-// --- ValueDefinitionSetFunction: the lifted value data ---
-
-pub(crate) struct ValueDefinitionSetFunction {
-    pub set: Gc<DefinitionSet>,
-    pub func_index: usize,
-}
-
-impl Value for ValueDefinitionSetFunction {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeLiftedDefinitionSetFunction {
-            set: self.set.clone(),
-            func_index: self.func_index,
         })
     }
 }

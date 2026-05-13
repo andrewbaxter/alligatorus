@@ -253,6 +253,9 @@ impl AspectSet for TypeMortarString {
                 MortarJsValueSource::Expr => {
                     return erb.err_new(format!("Cannot modify a temporary value"));
                 },
+                MortarJsValueSource::DefinitionSet(_) => {
+                    return erb.err_new(format!("Cannot modify a definition set function"));
+                },
                 MortarJsValueSource::Binding(b) => {
                     let mut seq = vec![];
                     if let Some(self_code) = self_code {
