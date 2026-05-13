@@ -14,6 +14,7 @@ use {
         builtin::{
             aspect_consume_js_get,
             aspect_field_get,
+            aspect_field_get_maybe,
             aspect_function_get,
             aspect_lift_js_get,
             aspect_serial_get,
@@ -341,9 +342,24 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 field = eval_half(xx, e.key.as_ref(), target),
             });
             let base_type = base.value.type_(xx, expr.loc);
-            let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
-            let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
-            return Ok(v);
+            if let Some(aspect_field) = aspect_field_get_maybe(xx, base_type.as_ref()) {
+                let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
+                return Ok(v);
+            }
+            // Fallback: check if mortar string type has this field via field_opt
+            let mortar_string_field = aspect_field_get_maybe(xx, &TypeMortarString);
+            if let Some(msf) = mortar_string_field {
+                let field_key_type = field.value.type_(xx, expr.loc);
+                if let Some(field_key_string) = aspect_string_get_maybe(xx, field_key_type.as_ref()) {
+                    let key_name = field_key_string.get(field.value.as_ref());
+                    if msf.field_opt(xx, &key_name).is_some() {
+                        let converted = erb.must_er(TypeMortarString.cast_from(xx, expr.loc, &base))?;
+                        let v = erb.must_er(msf.field(xx, expr.loc, converted, field))?;
+                        return Ok(v);
+                    }
+                }
+            }
+            return erb.err_new(format!("Type ({}) is missing aspect AspectField", base_type.desc()));
         }),
         Expr_::Bind(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {

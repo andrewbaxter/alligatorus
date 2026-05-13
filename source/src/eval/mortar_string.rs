@@ -3,17 +3,22 @@ use {
         Erb,
         mortar_js_value::{
             MortarJsValue,
+            MortarJsValueDataAccess,
             MortarJsValueSource,
         },
+        mortar_function::MortarTypeFunction,
+        mortar_null::TypeMortarNull,
         null::ValueNull,
     },
     crate::{
         builtin::{
             AspectConsumeJs,
+            AspectField,
             AspectJsString,
             AspectSet,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
+            aspect_field_aspect_id,
             aspect_js_string_aspect_id,
             aspect_js_string_get,
             aspect_string_get,
@@ -22,6 +27,7 @@ use {
         jscode::{
             JsCode,
             JsCodeBindingSet,
+            JsCodeField,
             JsCodeFieldSet,
             JsCodeSeq,
             JsCodeType,
@@ -68,6 +74,9 @@ impl Type for TypeMortarString {
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectField>));
         }
         return None;
     }
@@ -157,6 +166,54 @@ impl AspectConsumeJs for TypeMortarString {
                 v: None,
                 errors: r.errors,
             };
+        }
+    }
+}
+
+impl AspectField for TypeMortarString {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            let field_type = match self.field_opt(xx, &key_name) {
+                Some(t) => t,
+                None => return erb.err_new(format!("Field '{}' not found on mortar string", key_name)),
+            };
+            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+            return Ok(CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc: loc,
+                        type_: JsCodeType::Field(JsCodeField {
+                            base: Box::new(self_code),
+                            field: key_name.clone(),
+                        }),
+                    })),
+                },
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Field(MortarJsValueDataAccess {
+                        loc: loc,
+                        base: Box::new(MortarJsValue {
+                            source: MortarJsValueSource::Expr,
+                            type_: Rc::new(TypeMortarString),
+                        }),
+                        key: key_name,
+                    }),
+                    type_: field_type,
+                }),
+            });
+        });
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        match key {
+            "toLowerCase" => Some(Rc::new(MortarTypeFunction {
+                arg: Rc::new(TypeMortarNull),
+                ret: Rc::new(TypeMortarString),
+            })),
+            _ => None,
         }
     }
 }

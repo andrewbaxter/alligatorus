@@ -221,6 +221,7 @@ mod test {
                 SerialExprBind,
                 SerialExprBindingUse,
                 SerialExprCall,
+                SerialExprField,
                 SerialExprLower,
                 SerialExprSequence,
                 SerialExprStage,
@@ -244,6 +245,13 @@ mod test {
             return ExprId(id);
         }
 
+        fn lit_null(&self) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExpr_::Literal(SerialLiteral::Null),
+            }
+        }
+
         fn lit_str(&self, s: &str) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
@@ -258,6 +266,16 @@ mod test {
                     id: self.id(),
                     r#type: SerialExpr_::Literal(SerialLiteral::String(key.to_string())),
                 }) }),
+            };
+        }
+
+        fn field(&self, base: SerialExpr, key: SerialExpr) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExpr_::Field(SerialExprField {
+                    base: Box::new(base),
+                    key: Box::new(key),
+                }),
             };
         }
 
@@ -303,8 +321,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_hello1() {
+    #[tokio::test]
+    async fn test_hello1() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
@@ -312,11 +330,13 @@ mod test {
             gx,
             SourceId(0),
             SerialModule::V1(mb.call(mb.scope_use("print"), mb.lit_str("Hello world (mortar)"))),
-        );
+        )
+            .await
+            .unwrap();
     }
 
-    #[test]
-    fn test_hello2() {
+    #[tokio::test]
+    async fn test_hello2() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
@@ -331,11 +351,13 @@ mod test {
                     ],
                 ),
             ),
-        );
+        )
+            .await
+            .unwrap();
     }
 
-    #[test]
-    fn test_hello3() {
+    #[tokio::test]
+    async fn test_hello3() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
@@ -345,11 +367,13 @@ mod test {
             SerialModule::V1(
                 mb.call(mb.scope_use("print"), mb.stage(mb.lower(mb.lit_str("Hello world (mortar)")))),
             ),
-        );
+        )
+            .await
+            .unwrap();
     }
 
-    #[test]
-    fn test_hello4() {
+    #[tokio::test]
+    async fn test_hello4() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
@@ -357,6 +381,27 @@ mod test {
             gx,
             SourceId(0),
             SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.lit_str("Hello world (mortar)")))),
-        );
+        )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_hello5() {
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(
+            gx,
+            SourceId(0),
+            SerialModule::V1(
+                mb.call(
+                    mb.scope_use("print"),
+                    mb.call(mb.field(mb.lit_str("HELLO WORLD"), mb.lit_str("toLowerCase")), mb.lit_null()),
+                ),
+            ),
+        )
+            .await
+            .unwrap();
     }
 }

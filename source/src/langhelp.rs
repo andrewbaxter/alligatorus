@@ -167,7 +167,7 @@ impl Code {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ExprErr {
     pub(crate) loc: QExprId,
