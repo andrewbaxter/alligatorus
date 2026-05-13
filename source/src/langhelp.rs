@@ -124,6 +124,7 @@ pub(crate) struct CompileImportContext {
 pub(crate) struct EvalContext {
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_scope_entry_id: Counter,
+    pub(crate) definition_sets: std::cell::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
 }
 
 /// Per expression

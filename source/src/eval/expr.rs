@@ -1,16 +1,29 @@
 use {
-    crate::langhelp::{
-        Aspect,
-        CodeValue,
-        EvalRes,
-        ExprContext,
-        QExprId,
-        Type,
-        Unique,
-        Value,
+    crate::{
+        builtin::{
+            AspectConsumeJs,
+            aspect_consume_js_aspect_id,
+        },
+        jscode::{
+            JsCode,
+            JsCodeExternal,
+            JsCodeType,
+        },
+        langhelp::{
+            Aspect,
+            CodeValue,
+            EResult,
+            EvalRes,
+            ExprContext,
+            QExprId,
+            Type,
+            Unique,
+            Value,
+        },
     },
     std::{
         any::Any,
+        cell::RefCell,
         rc::Rc,
     },
 };
@@ -64,6 +77,11 @@ pub struct ExprLower {
     pub expr: Rc<Expr>,
 }
 
+#[derive(Clone)]
+pub struct ExprTuple {
+    pub elements: Vec<Expr>,
+}
+
 pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
 
 #[derive(Clone)]
@@ -77,6 +95,7 @@ pub enum Expr_ {
     Call(ExprCall),
     Stage(ExprStage),
     Lower(ExprLower),
+    Tuple(ExprTuple),
 }
 
 #[derive(Clone)]
@@ -102,12 +121,25 @@ impl Value for ExprType {
     }
 }
 
+/// Stored in JsCodeExternal during eval_half. Value is taken out during eval() setup.
+pub(crate) struct StagedExprCell {
+    pub value: RefCell<Option<Box<dyn Value>>>,
+}
+
+/// Thin-pointer wrapper for v8::External (stored behind Box raw pointer).
+pub struct StagedExpr {
+    pub value: Box<dyn Value>,
+}
+
 impl Type for ExprType {
     fn desc(&self) -> String {
         return format!("expr");
     }
 
-    fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeJs>));
+        }
         return None;
     }
 
@@ -121,3 +153,15 @@ impl Type for ExprType {
 }
 
 impl Aspect for ExprType { }
+
+impl AspectConsumeJs for ExprType {
+    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        let cell = Rc::new(StagedExprCell {
+            value: RefCell::new(Some(cv.value)),
+        });
+        EResult::ok(JsCode {
+            loc,
+            type_: JsCodeType::External(JsCodeExternal { value: cell }),
+        })
+    }
+}

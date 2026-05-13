@@ -108,3 +108,8 @@ aspect!(AspectField {
     fn field(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes;
     fn field_opt(&self, xx: & ExprContext, key: &str) -> Option<Rc<dyn Type>>;
 });
+
+aspect!(AspectTuple {
+    fn element_types(&self) -> Vec<Rc<dyn Type>>;
+    fn take_elements(&self, value: Box<dyn Value>) -> Vec<EvalRes>;
+});

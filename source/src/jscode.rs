@@ -1,7 +1,13 @@
-use crate::langhelp::{
-    CodeDyn,
-    QExprId,
-    ScopeEntryId,
+use {
+    crate::langhelp::{
+        CodeDyn,
+        QExprId,
+        ScopeEntryId,
+    },
+    std::{
+        any::Any,
+        rc::Rc,
+    },
 };
 
 #[derive(Clone)]
@@ -46,6 +52,12 @@ pub(crate) struct JsCodeCall {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeExternal {
+    /// Opaque value to pass through JS as v8::External.
+    pub(crate) value: Rc<dyn Any>,
+}
+
+#[derive(Clone)]
 pub(crate) enum JsCodeType {
     Seq(JsCodeSeq),
     Value(serde_json::Value),
@@ -55,6 +67,9 @@ pub(crate) enum JsCodeType {
     BindingUse(JsCodeBindingUse),
     Field(JsCodeField),
     Call(JsCodeCall),
+    /// A Rust value embedded as a v8::External. The id indexes into a registry
+    /// set up before JS execution.
+    External(JsCodeExternal),
 }
 
 #[derive(Clone)]

@@ -8,11 +8,14 @@ pub mod mortar_null;
 pub mod mortar_string;
 pub mod mortar_function;
 pub mod expr;
+pub mod tuple;
+pub mod definition_set;
 
 use {
     crate::{
         builtin::{
             aspect_consume_js_get,
+            aspect_consume_js_get_maybe,
             aspect_field_get,
             aspect_field_get_maybe,
             aspect_function_get,
@@ -20,6 +23,7 @@ use {
             aspect_serial_get,
             aspect_set_get,
             aspect_string_get_maybe,
+            aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
@@ -61,6 +65,11 @@ use {
             SerialModule,
         },
     },
+    definition_set::{
+        DefinitionSet,
+        MortarTypeDefineResult,
+        define_js_callback,
+    },
     expr::{
         Expr,
         ExprBind,
@@ -71,6 +80,7 @@ use {
         ExprSeq,
         ExprSet,
         ExprStage,
+        ExprTuple,
         Expr_,
         Module,
     },
@@ -81,6 +91,7 @@ use {
     mortar_string::TypeMortarString,
     null::ValueNull,
     std::{
+        any::Any,
         cell::{
             Cell,
             RefCell,
@@ -96,6 +107,10 @@ use {
         },
     },
     string::ValueString,
+    tuple::{
+        StaticScopeEntry,
+        ValueTuple,
+    },
     v8::tc_scope,
 };
 
@@ -206,8 +221,20 @@ impl Target for MortarTarget {
         carry: Code,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        let vtype = cv.value.type_(xx, loc);
+
+        // Check if this value has a JS representation
+        let has_js_aspect = aspect_consume_js_get_maybe(xx, vtype.as_ref()).is_some();
+        let has_js_code = !matches!(cv.code.code, Code_::None);
+        if !has_js_aspect || !has_js_code {
+            let can_cast = TypeMortarString::cast_from(&TypeMortarString, xx, loc, &cv).v.is_some();
+            if !can_cast {
+                // Static binding: no JS representation
+                return EResult::ok((carry, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+            }
+        }
+
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
-            let vtype = cv.value.type_(xx, loc);
             let (vcode, vtype) = erb.must_er(er_one!{
                 to_js = aspect_consume_js_get(xx, loc, vtype.as_ref()) => {
                     to_js.to_js(loc, cv).map(|c| (c, vtype.clone()))
@@ -261,6 +288,9 @@ impl Target for MortarTarget {
                     };
                 },
             }
+        }
+        if out.is_empty() {
+            return EResult::ok(Code { loc: loc, code: Code_::None });
         }
         return EResult::ok(Code {
             loc: loc,
@@ -405,15 +435,28 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: Box::new(resolved),
             });
         },
-        Expr_::Lower(_) => 
+        Expr_::Lower(_) =>
         // Just a marker for replacement
         unreachable!(),
+        Expr_::Tuple(t) => {
+            let elements: Vec<EvalRes> = t.elements.iter()
+                .map(|e| eval_half(xx, e, target))
+                .collect();
+            return EvalRes::ok(CodeValue {
+                code: Code { loc: expr.loc, code: Code_::None },
+                value: Box::new(ValueTuple { elements }),
+            });
+        },
     }
 }
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let source_type = source.value.type_(xx, loc);
+        // Identity check: if same concrete type, pass through
+        if (source_type.as_ref() as &dyn Any).type_id() == (dest_type as &dyn Any).type_id() {
+            return Ok(source);
+        }
         let dest;
         if let Some(dest1) = erb.maybe_er(source_type.cast_to(xx, loc, &source, dest_type)) {
             dest = dest1;
@@ -504,6 +547,16 @@ fn substitute_lowers(
                 r#type: Expr_::Seq(ExprSeq { seq: resolved }),
             })
         },
+        Expr_::Tuple(t) => {
+            let mut elements = Vec::new();
+            for e in &t.elements {
+                elements.push(substitute_lowers(cix, import_state, e)?);
+            }
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::Tuple(ExprTuple { elements }),
+            })
+        },
     }
 }
 
@@ -521,6 +574,7 @@ fn eval(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
+        definition_sets: RefCell::new(Vec::new()),
     });
     let mut s1_scope = HashMap::new();
     for (key, eval_value, js_value) in [(
@@ -552,6 +606,29 @@ fn eval(
             );
         s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
+    // define: a rust function placed in javascript, called via javascript
+    for (key, eval_value, js_value) in [(
+        "define",
+        MortarScopeEntry {
+            js_key: ScopeEntryId(ex.next_scope_entry_id.next()),
+            type_: Rc::new(MortarTypeFunction {
+                arg: Rc::new(tuple::TypeTuple { types: vec![] }),
+                ret: Rc::new(MortarTypeDefineResult),
+            }),
+        },
+        v8::Function::builder(define_js_callback)
+            .build(js_scope).unwrap().cast::<v8::Value>(),
+    )] {
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
+                js_value,
+            );
+        s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
+    }
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {
         vx: ex.clone(),
@@ -568,44 +645,102 @@ fn eval(
     let cv = result.v.unwrap();
     let value_type = cv.value.type_(&xx, root_loc);
     let stage1_code = cv.code.cast::<JsCode>().into_res()?;
-    match stage1_code {
-        None => Ok(cv.value),
-        Some(code) => {
-            let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let mut code1 = JsSourceBuilder::default();
-            let root_var = render_code(&mut code1, &code);
-            code1.push(root_loc, root_var);
-            if let Some(stage2) =
-                v8::Script::compile(js_scope, v8::String::new(js_scope, &code1.lines.join("\n")).unwrap(), None)
-                    .unwrap()
-                    .run(js_scope) {
-                Ok(value_from_js.lift(&stage2))
-            } else {
-                let text;
-                match js_scope.exception() {
-                    Some(e) => {
-                        text = e.to_rust_string_lossy(&js_scope);
-                    },
-                    None => {
-                        text = format!("Script failed to return, but no exception captured (compiler bug)");
-                    },
-                }
-                match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
-                    Some(js_expr) => {
-                        Err(vec![ExprErr {
-                            loc: *code1.mapping.get(&js_expr).unwrap(),
-                            errors: vec![ExprSubErr::Opaque(text)]
-                        }])
-                    },
-                    None => {
-                        Err(vec![ExprErr {
-                            loc: root_loc,
-                            errors: vec![ExprSubErr::Opaque(text)]
-                        }])
-                    },
-                }
+
+    // Compile definition set implementations
+    let mut def_funcs: Vec<(ScopeEntryId, JsCode)> = vec![];
+    for ds in ex.definition_sets.borrow().iter() {
+        for func_data in ds.functions.borrow().iter() {
+            let impl_expr = func_data.impl_expr.borrow();
+            let impl_expr = impl_expr.as_ref()
+                .expect("Definition set function missing implementation");
+            let impl_expr_ast = (impl_expr.as_ref() as &dyn Any)
+                .downcast_ref::<Expr>()
+                .expect("Definition set impl must be an Expr");
+            let impl_result = eval_half(&xx, impl_expr_ast, &MortarTarget);
+            if !impl_result.errors.is_empty() {
+                return Err(impl_result.errors);
             }
-        },
+            let impl_cv = impl_result.v.unwrap();
+            let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
+                .expect("Definition set function body must produce JS code")
+                .clone();
+            let scope_id = func_data.scope_entry_id.get()
+                .expect("Definition set function not registered");
+            def_funcs.push((scope_id, impl_code));
+        }
+    }
+
+    let has_js = stage1_code.is_some() || !def_funcs.is_empty();
+    if !has_js {
+        return Ok(cv.value);
+    }
+
+    let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+    let mut code1 = JsSourceBuilder::default();
+
+    // Render definition set function implementations as JS functions
+    for (scope_id, impl_code) in &def_funcs {
+        let func_name = scope_entry_id_js_key(*scope_id);
+        code1.push(root_loc, format!("function {}() {{", func_name));
+        let body_var = render_code(&mut code1, impl_code);
+        code1.push(root_loc, format!("return {};", body_var));
+        code1.push(root_loc, "}".to_string());
+    }
+
+    // Render main code
+    if let Some(code) = stage1_code {
+        let root_var = render_code(&mut code1, &code);
+        code1.push(root_loc, root_var);
+    } else {
+        code1.push(root_loc, "null".to_string());
+    }
+
+    // Set up staged expr globals as v8::External
+    for (id, staged_any) in code1.staged_values.iter().enumerate() {
+        let cell = staged_any.downcast_ref::<expr::StagedExprCell>().unwrap();
+        let value = cell.value.borrow_mut().take().unwrap();
+        let staged = Box::new(expr::StagedExpr { value });
+        let ptr = Box::into_raw(staged) as *mut std::ffi::c_void;
+        let ext = v8::External::new(js_scope, ptr);
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &format!("__staged_{}", id)).unwrap().cast(),
+                ext.into(),
+            );
+    }
+
+    if let Some(stage2) =
+        v8::Script::compile(js_scope, v8::String::new(js_scope, &code1.lines.join("\n")).unwrap(), None)
+            .unwrap()
+            .run(js_scope) {
+        Ok(value_from_js.lift(&stage2))
+    } else {
+        let text;
+        match js_scope.exception() {
+            Some(e) => {
+                text = e.to_rust_string_lossy(&js_scope);
+            },
+            None => {
+                text = format!("Script failed to return, but no exception captured (compiler bug)");
+            },
+        }
+        match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
+            Some(js_expr) => {
+                Err(vec![ExprErr {
+                    loc: *code1.mapping.get(&js_expr).unwrap(),
+                    errors: vec![ExprSubErr::Opaque(text)]
+                }])
+            },
+            None => {
+                Err(vec![ExprErr {
+                    loc: root_loc,
+                    errors: vec![ExprSubErr::Opaque(text)]
+                }])
+            },
+        }
     }
 }
 
@@ -614,6 +749,7 @@ struct JsSourceBuilder {
     lines: Vec<String>,
     mapping: HashMap<usize, QExprId>,
     next_expr_id: usize,
+    staged_values: Vec<Rc<dyn Any>>,
 }
 
 impl JsSourceBuilder {
@@ -648,12 +784,22 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             lines.push(code.loc, format!("{} = {};", out, scope_entry_id_js_key(c.id)));
         },
         JsCodeType::Call(c) => {
-            let func_var = render_code(lines, &c.func);
-            let mut arg_vars = vec![];
-            for arg in &c.args {
-                arg_vars.push(render_code(lines, arg));
+            // Special case: method call preserves `this` binding
+            if let JsCodeType::Field(f) = &c.func.type_ {
+                let base_var = render_code(lines, &f.base);
+                let mut arg_vars = vec![];
+                for arg in &c.args {
+                    arg_vars.push(render_code(lines, arg));
+                }
+                lines.push(code.loc, format!("{} = {}.{}({});", out, base_var, f.field, arg_vars.join(",")));
+            } else {
+                let func_var = render_code(lines, &c.func);
+                let mut arg_vars = vec![];
+                for arg in &c.args {
+                    arg_vars.push(render_code(lines, arg));
+                }
+                lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
             }
-            lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
         },
         JsCodeType::Field(js_code_field) => {
             let base = render_code(lines, &js_code_field.base);
@@ -674,6 +820,11 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             let val_var = render_code(lines, &c.value);
             lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
             lines.push(code.loc, format!("{} = null;", out));
+        },
+        JsCodeType::External(ext) => {
+            let id = lines.staged_values.len();
+            lines.staged_values.push(ext.value.clone());
+            lines.push(code.loc, format!("{} = __staged_{};", out, id));
         },
     }
     return out;
@@ -707,6 +858,7 @@ pub async fn compile_importid(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
+        definition_sets: RefCell::new(Vec::new()),
     });
     let xx = Rc::new(ExprContext {
         vx: ex,

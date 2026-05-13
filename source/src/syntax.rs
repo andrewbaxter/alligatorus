@@ -141,6 +141,7 @@ pub enum SerialExpr_ {
     Call(SerialExprCall),
     Stage(SerialExprStage),
     Lower(SerialExprLower),
+    Tuple(Vec<SerialExpr>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

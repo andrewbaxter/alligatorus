@@ -7,6 +7,7 @@ use {
             aspect_consume_js_get,
             aspect_function_aspect_id,
             aspect_js_stack_value_get,
+            aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
@@ -90,6 +91,54 @@ impl AspectFunction for MortarTypeFunction {
     ) -> crate::langhelp::EvalRes {
         return er_seq_cv!(loc, erb, {
             let func_type = function.value.type_(xx, loc);
+            let arg_type = argument.value.type_(xx, loc);
+
+            // Check if argument is a tuple
+            if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
+                let func_to_js = erb.must_er(aspect_consume_js_get(xx, loc, func_type.as_ref()))?;
+                let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, self.ret.as_ref()))?;
+                let func = erb.must_er(func_to_js.to_js(loc, function))?;
+
+                // Get parameter types from function arg type
+                let param_types = if let Some(param_tuple) = aspect_tuple_get_maybe(xx, self.arg.as_ref()) {
+                    param_tuple.element_types()
+                } else {
+                    vec![self.arg.clone()]
+                };
+
+                let elements = arg_tuple.take_elements(argument.value);
+                if elements.len() != param_types.len() {
+                    return erb.err_new(
+                        format!("Function expects {} arguments, got {}", param_types.len(), elements.len())
+                    );
+                }
+
+                let mut js_args = vec![];
+                for (elem, param_type) in elements.into_iter().zip(param_types.iter()) {
+                    let cv = match elem.v {
+                        Some(cv) => cv,
+                        None => {
+                            erb.errors.extend(elem.errors);
+                            return erb.err_new(format!("Tuple element failed to evaluate"));
+                        },
+                    };
+                    erb.errors.extend(elem.errors);
+                    let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
+                    let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, param_type.as_ref()))?;
+                    let js = erb.must_er(elem_to_js.to_js(loc, converted))?;
+                    js_args.push(js);
+                }
+
+                return Ok(ret_stack.to_value(loc, JsCode {
+                    loc: loc,
+                    type_: JsCodeType::Call(JsCodeCall {
+                        func: Box::new(func),
+                        args: js_args,
+                    })
+                }));
+            }
+
+            // Non-tuple argument path (original behavior)
             er_all!(erb, {
                 func_to_js = aspect_consume_js_get(xx, loc, func_type.as_ref()),
                 arg_to_js = aspect_consume_js_get(xx, loc, self.arg.as_ref()),

@@ -19,6 +19,7 @@ use {
                 ExprScopeUse,
                 ExprSet,
                 ExprStage,
+                ExprTuple,
                 Module,
             },
             null::ValueNull,
@@ -142,6 +143,9 @@ async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModu
                     SerialExpr_::Lower(expr) => Expr_::Lower(
                         ExprLower { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
                     ),
+                    SerialExpr_::Tuple(exprs) => Expr_::Tuple(ExprTuple {
+                        elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect(),
+                    }),
                 },
             };
         }
@@ -262,7 +266,7 @@ mod test {
         fn tuple(&self, values: Vec<SerialExpr>) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
-                r#type: SerialExpr_::Tuple(SerialLiteral::Tuple(values)),
+                r#type: SerialExpr_::Tuple(values),
             }
         }
 
@@ -424,30 +428,41 @@ mod test {
                 // javascript. It keeps a counter for ids, and a mapping of all definitions to
                 // their implementations (Option). Definition references are bi-directional so use
                 // dumpster's GC ref.
+                //
+                // `define` is a rust function placed in javascript, and called via javascript. It
+                // creates a new object with `define` and `new_func` methods. The
+                // `Gc<DefinitionSet>` is shared between them.
                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-                // Creates a `DefinitionSetFunction` in the definition set. A
+                // `new_func` creates a `DefinitionSetFunction` in the definition set. A
                 // `DefinitionSetFunction` is just like a `MortarTypeFunction` but it keeps a an
-                // id and reference to the definition set as well.
+                // id and Gc copy of definition set as well.
                 //
                 // Because this returns a `DefinitionSetFunction`, a
                 // `MortarTypeDefinitionSetFunction` will also need to be defined to use in the
                 // `new_func` function signature.
+                //
+                // It returns a `WeakPersistent` to the `DefinitionSetFunction`.
                 mb.bind("f", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.tuple(vec![]))),
-                // Provide an implementation for the function (store it in the DefinitionSet
-                // itself). Error (javascript exception) if the function already has a definition.
+                // This is another javascript method. It takes the `DefinitionSetFunction` and a
+                // staged expr and stores it in the `DefinitionSet` as the impl for the function
+                // implementation for the function (store it in the DefinitionSet itself). Error
+                // (javascript exception) if the function already has a definition.
                 mb.call(
                     mb.field(mb.scope_use("d"), mb.str("impl")),
                     mb.tuple(vec![mb.scope_use("f"), mb.stage(mb.call(mb.scope_use("print"), mb.str("hello")))])
                 ),
-                // Return the function.
+                // Finally, return the function.
                 //
-                // `MortarTypeDefinitionSetFunction`'s aspect lift method runs a "finish"
-                // procedure on the definition set that confirms that all functions have
-                // implementations, or else return an error.
+                // `MortarTypeDefinitionSetFunction`'s aspect lift method will extract the
+                // `DefinitionSetFunction` from the script return value.
                 //
-                // The lift method returns a value where the value type is the
-                // `DefinitionSetFunction` itself, and the value data is a new MortarValue data
-                // variant, `DefinitionSet`, with the definition set id and definition id.
+                // First it will run a "finish" procedure on the definition set that confirms that
+                // all functions have implementations, or else return an error.
+                //
+                // Then it returns a value where the value type is the `DefinitionSetFunction`
+                // itself (which implements `Type` and aspects similar to `MortarTypeFunction`),
+                // and the value data is a new MortarValue data variant, `DefinitionSet`, with the
+                // definition set id and definition id.
                 mb.scope_use("f")
             ]))),
             // `DefinitionSetFunction`'s type and aspect methods should ensure that its
@@ -458,8 +473,8 @@ mod test {
             // javascript variables derived from definition set and definition id (reserve
             // scope ids, and keep the scope id in a lookup).
             //
-            // Then, when calling a `DefinitionSetFunction` value, use the js code to refer to
-            // the binding.
+            // Then, when calling a `DefinitionSetFunction` value, lookup the scope entry
+            // using the definition set/definition id.
             mb.call(mb.scope_use("hello"), mb.tuple(vec![])),
         ]))).await.unwrap();
     }
