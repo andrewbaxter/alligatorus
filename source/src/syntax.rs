@@ -131,7 +131,7 @@ pub struct SerialExprLower {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub enum SerialExprType {
+pub enum SerialExpr_ {
     Literal(SerialLiteral),
     Sequence(SerialExprSequence),
     ScopeUse(SerialExprBindingUse),
@@ -147,7 +147,7 @@ pub enum SerialExprType {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExpr {
     pub id: ExprId,
-    pub r#type: SerialExprType,
+    pub r#type: SerialExpr_,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
