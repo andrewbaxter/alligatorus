@@ -252,10 +252,17 @@ mod test {
             }
         }
 
-        fn lit_str(&self, s: &str) -> SerialExpr {
+        fn str(&self, s: &str) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
                 r#type: SerialExpr_::Literal(SerialLiteral::String(s.to_string())),
+            }
+        }
+
+        fn tuple(&self, values: Vec<SerialExpr>) -> SerialExpr {
+            return SerialExpr {
+                id: self.id(),
+                r#type: SerialExpr_::Tuple(SerialLiteral::Tuple(values)),
             }
         }
 
@@ -326,11 +333,7 @@ mod test {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        compile(
-            gx,
-            SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lit_str("Hello world (mortar)"))),
-        )
+        compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("print"), mb.str("Hello world (mortar)"))))
             .await
             .unwrap();
     }
@@ -346,7 +349,7 @@ mod test {
             SerialModule::V1(
                 mb.seq(
                     vec![
-                        mb.bind("hello", mb.lit_str("Hello world (mortar)")),
+                        mb.bind("hello", mb.str("Hello world (mortar)")),
                         mb.call(mb.scope_use("print"), mb.scope_use("hello"))
                     ],
                 ),
@@ -364,9 +367,7 @@ mod test {
         compile(
             gx,
             SourceId(0),
-            SerialModule::V1(
-                mb.call(mb.scope_use("print"), mb.lower(mb.stage(mb.lit_str("Hello world (mortar)")))),
-            ),
+            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.stage(mb.str("Hello world (mortar)"))))),
         )
             .await
             .unwrap();
@@ -380,7 +381,7 @@ mod test {
         compile(
             gx,
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.lit_str("Hello world (mortar)")))),
+            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.str("Hello world (mortar)")))),
         )
             .await
             .unwrap();
@@ -397,11 +398,69 @@ mod test {
             SerialModule::V1(
                 mb.call(
                     mb.scope_use("print"),
-                    mb.call(mb.field(mb.lit_str("HELLO WORLD"), mb.lit_str("toLowerCase")), mb.lit_null()),
+                    mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.lit_null()),
                 ),
             ),
         )
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_hello6() {
+        //! Define a function that prints "hello", then call it.
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
+            // The function must be defined at a higher evaluation level, because (in the
+            // future) the exact function signature isn't known until after `define` is called
+            // in javascript, so type checking can't occur during half evaluation.
+            //
+            // So the code to generate the function is run, then after running the exact type
+            // is "lifted" from the `lowered` code's result value.
+            mb.bind("hello", mb.lower(mb.seq(vec![
+                // Returns a `DefinitionSet`. The ownership of this will need to be transfered to
+                // javascript. It keeps a counter for ids, and a mapping of all definitions to
+                // their implementations (Option). Definition references are bi-directional so use
+                // dumpster's GC ref.
+                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                // Creates a `DefinitionSetFunction` in the definition set. A
+                // `DefinitionSetFunction` is just like a `MortarTypeFunction` but it keeps a an
+                // id and reference to the definition set as well.
+                //
+                // Because this returns a `DefinitionSetFunction`, a
+                // `MortarTypeDefinitionSetFunction` will also need to be defined to use in the
+                // `new_func` function signature.
+                mb.bind("f", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.tuple(vec![]))),
+                // Provide an implementation for the function (store it in the DefinitionSet
+                // itself). Error (javascript exception) if the function already has a definition.
+                mb.call(
+                    mb.field(mb.scope_use("d"), mb.str("impl")),
+                    mb.tuple(vec![mb.scope_use("f"), mb.stage(mb.call(mb.scope_use("print"), mb.str("hello")))])
+                ),
+                // Return the function.
+                //
+                // `MortarTypeDefinitionSetFunction`'s aspect lift method runs a "finish"
+                // procedure on the definition set that confirms that all functions have
+                // implementations, or else return an error.
+                //
+                // The lift method returns a value where the value type is the
+                // `DefinitionSetFunction` itself, and the value data is a new MortarValue data
+                // variant, `DefinitionSet`, with the definition set id and definition id.
+                mb.scope_use("f")
+            ]))),
+            // `DefinitionSetFunction`'s type and aspect methods should ensure that its
+            // definition set is registered with the evaluation context, so that when half
+            // evaluation is done the evaluation context has a list of all definition sets
+            // used in the javascript to be executed. All definitions in all the definition
+            // sets should have their implementations rendered into functions and bound to
+            // javascript variables derived from definition set and definition id (reserve
+            // scope ids, and keep the scope id in a lookup).
+            //
+            // Then, when calling a `DefinitionSetFunction` value, use the js code to refer to
+            // the binding.
+            mb.call(mb.scope_use("hello"), mb.tuple(vec![])),
+        ]))).await.unwrap();
     }
 }

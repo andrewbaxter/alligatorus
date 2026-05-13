@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 aargvark = { version = "0.9", features = ["serde_json"] }
+dumpster = "2.1.0"
 flowcontrol = "0.2"
 futures = "0.3"
 http = "1"
