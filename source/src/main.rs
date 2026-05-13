@@ -365,7 +365,7 @@ mod test {
             gx,
             SourceId(0),
             SerialModule::V1(
-                mb.call(mb.scope_use("print"), mb.stage(mb.lower(mb.lit_str("Hello world (mortar)")))),
+                mb.call(mb.scope_use("print"), mb.lower(mb.stage(mb.lit_str("Hello world (mortar)")))),
             ),
         )
             .await

@@ -111,26 +111,12 @@ impl Type for ExprType {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
-        todo!();
-        //.        let expr = (cv.value.as_ref() as &dyn Any).downcast_ref::<Expr>().unwrap();
-        //.        let result = eval_expr(xx, expr, &MortarTarget);
-        //.        match result.v {
-        //.            Some(result_cv) => {
-        //.                let mut converted = typecheck_convert(xx, loc, type_, result_cv);
-        //.                converted.errors.extend(result.errors);
-        //.                converted
-        //.            },
-        //.            None => EvalRes {
-        //.                v: None,
-        //.                errors: result.errors,
-        //.            },
-        //.        }
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        return EvalRes::err(loc, format!("Cannot convert expr to other type"));
     }
 
-    fn cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        todo!();
-        //. return EvalRes::err(loc, format!("Cannot convert to expr type"));
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        return EvalRes::err(loc, format!("Cannot convert to expr type"));
     }
 }
 
