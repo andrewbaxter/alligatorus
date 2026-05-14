@@ -190,9 +190,6 @@ async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModu
         assemble_errors(&mut errors, &r);
     }
     assemble_errors(&mut errors, &res);
-    if let CompileResResult::Err(e) = &res.result {
-        eprintln!("compile errors: {:#?}", e);
-    }
     return Ok(res.logs);
 }
 

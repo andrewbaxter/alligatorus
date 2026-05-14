@@ -533,13 +533,18 @@ fn substitute_lowers(
         Expr_::Lower(e) => {
             let resolved_inner = substitute_lowers(cix, import_state, &e.expr)?;
             let eval_result = eval(cix, import_state, &resolved_inner)?;
-            let value_cell = Rc::new(RefCell::new(Some(eval_result.value)));
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Literal(Rc::new(move || {
-                    value_cell.borrow_mut().take().expect("Lower literal consumed twice")
-                })),
-            })
+            let value: Box<dyn Value> = eval_result.value;
+            if let Some(expr) = (value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
+                Ok(expr.clone())
+            } else {
+                let value_cell = Rc::new(RefCell::new(Some(value)));
+                Ok(Expr {
+                    loc: expr.loc,
+                    r#type: Expr_::Literal(Rc::new(move || {
+                        value_cell.borrow_mut().take().expect("Lower literal consumed twice")
+                    })),
+                })
+            }
         },
         Expr_::Stage(_) => Ok(expr.clone()),
         Expr_::Literal(_) => Ok(expr.clone()),
