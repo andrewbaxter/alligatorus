@@ -118,7 +118,7 @@ impl AspectLiftJs for TypeMortarNull {
 impl AspectNull for TypeMortarNull { }
 
 impl AspectConsumeJs for TypeMortarNull {
-    fn to_js(&self, loc: QExprId, _cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EResult<JsCode> {
         EResult::ok(JsCode {
             loc: loc,
             type_: JsCodeType::Value(serde_json::Value::Null),

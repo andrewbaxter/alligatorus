@@ -6,7 +6,7 @@ use {
         },
         jscode::{
             JsCode,
-            JsCodeExternal,
+            JsCodeBindingUse,
             JsCodeType,
         },
         langhelp::{
@@ -16,6 +16,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -152,13 +153,15 @@ impl Type for ExprType {
 impl Aspect for ExprType { }
 
 impl AspectConsumeJs for ExprType {
-    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         let cell = Rc::new(StagedExprCell {
             value: RefCell::new(Some(cv.value)),
         });
+        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+        xx.vx.externals.borrow_mut().push((id, cell));
         EResult::ok(JsCode {
             loc,
-            type_: JsCodeType::External(JsCodeExternal { value: cell }),
+            type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
         })
     }
 }

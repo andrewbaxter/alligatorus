@@ -89,7 +89,7 @@ aspect!(AspectConsumeJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used before interacting with JS: namely, function call arguments.
-    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
 });
 
 aspect!(AspectJsString {});

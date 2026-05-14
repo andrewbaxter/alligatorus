@@ -283,7 +283,7 @@ impl Target for MortarTarget {
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
             let (vcode, vtype) = erb.must_er(er_one!{
                 to_js = aspect_consume_js_get(xx, loc, vtype.as_ref()) => {
-                    to_js.to_js(loc, cv).map(|c| (c, vtype.clone()))
+                    to_js.to_js(xx, loc, cv).map(|c| (c, vtype.clone()))
                 },
                 js = TypeMortarString:: cast_from(&TypeMortarString, xx, loc, &cv) => {
                     js.code.cast::<JsCode>().map(|x| (x.unwrap().clone(), Rc::new(TypeMortarString) as Rc<dyn Type>))
@@ -622,6 +622,7 @@ fn eval(
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
+        externals: RefCell::new(Vec::new()),
     });
     let mut s1_scope = HashMap::new();
     for (key, eval_value, js_value) in [(
@@ -742,19 +743,24 @@ fn eval(
         code1.push(root_loc, "return null;".to_string());
     }
 
-    // Build staged externals from Rc<StagedExprCell> values
-    let staged_externals: Vec<v8::Local<v8::Value>> = code1.staged_values.iter()
-        .map(|cell| rc_to_v8(js_scope, cell.clone()).into())
-        .collect();
+    // Set externals as globals before running the script
+    for (id, value) in ex.externals.borrow().iter() {
+        let cell: Rc<expr::StagedExprCell> = value.clone()
+            .downcast::<expr::StagedExprCell>()
+            .expect("External must hold StagedExprCell");
+        let ext = rc_to_v8(js_scope, cell);
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(),
+                ext.into(),
+            );
+    }
 
-    // Wrap generated JS in a function with staged values as parameters
-    let params: String = (0..staged_externals.len())
-        .map(|i| format!("__staged_{}", i))
-        .collect::<Vec<_>>()
-        .join(",");
     let js_source = format!(
-        "(function({}) {{\n{}\n}})",
-        params,
+        "(function() {{\n{}\n}})()",
         code1.lines.join("\n"),
     );
     let wrapper_line_offset = 1usize; // function header is line 1
@@ -764,45 +770,36 @@ fn eval(
         v8::String::new(js_scope, &js_source).unwrap(),
         None,
     ).unwrap();
-    let func_val = match script.run(js_scope) {
-        Some(v) => v,
-        None => return Err(vec![ExprErr {
-            loc: root_loc,
-            errors: vec![ExprSubErr::Opaque(
-                "Failed to compile generated JS function".to_string(),
-            )],
-        }]),
-    };
-    let func: v8::Local<v8::Function> = func_val.try_cast().unwrap();
-    let undefined = v8::undefined(js_scope);
-
-    if let Some(stage2) = func.call(js_scope, undefined.into(), &staged_externals) {
-        Ok(value_from_js.lift(&stage2))
-    } else {
-        let text;
-        match js_scope.exception() {
-            Some(e) => {
-                text = e.to_rust_string_lossy(&js_scope);
-            },
-            None => {
-                text = format!("Script failed to return, but no exception captured (compiler bug)");
-            },
-        }
-        match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
-            Some(js_line) => {
-                let original_line = js_line - wrapper_line_offset;
-                Err(vec![ExprErr {
-                    loc: *code1.mapping.get(&original_line).unwrap_or(&root_loc),
-                    errors: vec![ExprSubErr::Opaque(text)]
-                }])
-            },
-            None => {
-                Err(vec![ExprErr {
-                    loc: root_loc,
-                    errors: vec![ExprSubErr::Opaque(text)]
-                }])
-            },
-        }
+    match script.run(js_scope) {
+        Some(stage2) => {
+            Ok(value_from_js.lift(&stage2))
+        },
+        None => {
+            let text;
+            match js_scope.exception() {
+                Some(e) => {
+                    text = e.to_rust_string_lossy(&js_scope);
+                },
+                None => {
+                    text = format!("Script failed to return, but no exception captured (compiler bug)");
+                },
+            }
+            match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
+                Some(js_line) => {
+                    let original_line = js_line - wrapper_line_offset;
+                    Err(vec![ExprErr {
+                        loc: *code1.mapping.get(&original_line).unwrap_or(&root_loc),
+                        errors: vec![ExprSubErr::Opaque(text)]
+                    }])
+                },
+                None => {
+                    Err(vec![ExprErr {
+                        loc: root_loc,
+                        errors: vec![ExprSubErr::Opaque(text)]
+                    }])
+                },
+            }
+        },
     }
 }
 
@@ -811,7 +808,6 @@ struct JsSourceBuilder {
     lines: Vec<String>,
     mapping: HashMap<usize, QExprId>,
     next_expr_id: usize,
-    staged_values: Vec<Rc<expr::StagedExprCell>>,
 }
 
 impl JsSourceBuilder {
@@ -883,14 +879,6 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
-        JsCodeType::External(ext) => {
-            let id = lines.staged_values.len();
-            let cell: Rc<expr::StagedExprCell> = ext.value.clone()
-                .downcast::<expr::StagedExprCell>()
-                .expect("JsCodeExternal must hold StagedExprCell");
-            lines.staged_values.push(cell);
-            lines.push(code.loc, format!("{} = __staged_{};", out, id));
-        },
     }
     return out;
 }
@@ -924,6 +912,7 @@ pub async fn compile_importid(
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
+        externals: RefCell::new(Vec::new()),
     });
     let xx = Rc::new(ExprContext {
         vx: ex,

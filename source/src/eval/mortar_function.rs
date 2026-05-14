@@ -74,7 +74,7 @@ impl Type for MortarTypeFunction {
 }
 
 impl AspectConsumeJs for MortarTypeFunction {
-    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         return cv.code.cast::<JsCode>().map(|x| x.unwrap().clone());
     }
 }
@@ -97,7 +97,7 @@ impl AspectFunction for MortarTypeFunction {
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
                 let func_to_js = erb.must_er(aspect_consume_js_get(xx, loc, func_type.as_ref()))?;
                 let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, self.ret.as_ref()))?;
-                let func = erb.must_er(func_to_js.to_js(loc, function))?;
+                let func = erb.must_er(func_to_js.to_js(xx, loc, function))?;
 
                 // Get parameter types from function arg type
                 let param_types = if let Some(param_tuple) = aspect_tuple_get_maybe(xx, self.arg.as_ref()) {
@@ -125,7 +125,7 @@ impl AspectFunction for MortarTypeFunction {
                     erb.errors.extend(elem.errors);
                     let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
                     let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, param_type.as_ref()))?;
-                    let js = erb.must_er(elem_to_js.to_js(loc, converted))?;
+                    let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_args.push(js);
                 }
 
@@ -146,8 +146,8 @@ impl AspectFunction for MortarTypeFunction {
                 argument = typecheck_convert(xx, loc, self.arg.as_ref(), argument),
             });
             er_all!(erb, {
-                func = func_to_js.to_js(loc, function),
-                arg = arg_to_js.to_js(loc, argument),
+                func = func_to_js.to_js(xx, loc, function),
+                arg = arg_to_js.to_js(xx, loc, argument),
             });
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc: loc,

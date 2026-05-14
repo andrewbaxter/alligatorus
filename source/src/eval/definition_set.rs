@@ -224,7 +224,7 @@ impl Type for MortarTypeDefineResult {
 impl Aspect for MortarTypeDefineResult { }
 
 impl AspectConsumeJs for MortarTypeDefineResult {
-    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
     }
 }
@@ -345,7 +345,7 @@ impl Type for MortarTypeDefinitionSetFunction {
 impl Aspect for MortarTypeDefinitionSetFunction { }
 
 impl AspectConsumeJs for MortarTypeDefinitionSetFunction {
-    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
     }
 }

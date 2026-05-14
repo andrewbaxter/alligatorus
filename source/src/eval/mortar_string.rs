@@ -142,7 +142,7 @@ impl Aspect for TypeMortarString { }
 impl AspectJsString for TypeMortarString { }
 
 impl AspectConsumeJs for TypeMortarString {
-    fn to_js(&self, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         let r = cv.code.cast::<JsCode>();
         if let Some(c) = r.v {
             if let Some(c) = c {
@@ -226,7 +226,7 @@ impl AspectSet for TypeMortarString {
                 value_to_js = aspect_consume_js_get(xx, loc, value_type.as_ref()),
                 self_code = self_.code.cast::<JsCode>(),
             });
-            let value_code = erb.must_er(value_to_js.to_js(loc, value))?;
+            let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;
             let v = (self_.value.as_ref() as &dyn std::any::Any).downcast_ref::<MortarJsValue>().unwrap();
             match &v.source {
                 MortarJsValueSource::Field(b) => {
