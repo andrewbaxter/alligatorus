@@ -114,6 +114,52 @@ use {
     v8::tc_scope,
 };
 
+// --- Rc<T> ↔ v8::External helpers ---
+
+/// Weak handle storage, set as an isolate slot. During dispose_annex(), slots
+/// are cleared first (Weak handles dropped — but isolate ptr is already null so
+/// finalizers can't be cancelled), then finalizer_map is drained, running our
+/// guaranteed finalizer callbacks.
+pub(crate) struct V8RcStore {
+    weaks: RefCell<Vec<v8::Weak<v8::External>>>,
+}
+
+/// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the
+/// boxed Rc when the isolate is disposed, preventing leaks. Use `rc_from_v8`
+/// to retrieve a clone of the Rc (incrementing the refcount, never taking
+/// ownership), which prevents double-free.
+pub(crate) fn rc_to_v8<'s, T: 'static>(
+    scope: &mut v8::PinScope<'s, '_, ()>,
+    value: Rc<T>,
+) -> v8::Local<'s, v8::External> {
+    let ptr = Box::into_raw(Box::new(value)) as *mut std::ffi::c_void;
+    let ext = v8::External::new(&*scope, ptr);
+    let weak = v8::Weak::with_guaranteed_finalizer(
+        &mut *scope,
+        ext,
+        Box::new(move || unsafe {
+            drop(Box::from_raw(ptr as *mut Rc<T>));
+        }),
+    );
+    scope
+        .get_slot::<V8RcStore>()
+        .unwrap()
+        .weaks
+        .borrow_mut()
+        .push(weak);
+    ext
+}
+
+/// Extract an `Rc<T>` from a `v8::External` created by `rc_to_v8`. Clones
+/// the Rc (bumps refcount) without taking ownership of the box — the weak
+/// finalizer remains the sole owner.
+pub(crate) fn rc_from_v8<T: 'static>(value: &v8::Value) -> Rc<T> {
+    assert!(value.is_external(), "rc_from_v8: expected v8::External");
+    let ext = unsafe { &*(value as *const v8::Value as *const v8::External) };
+    let ptr = ext.value() as *const Rc<T>;
+    unsafe { (*ptr).clone() }
+}
+
 /// EvalResBuilder
 pub(crate) struct Erb {
     loc: QExprId,
@@ -566,6 +612,7 @@ fn eval(
     expr: &Expr,
 ) -> Result<Box<dyn Value>, Vec<ExprErr>> {
     let mut js_scope_isolate = v8::Isolate::new(Default::default());
+    js_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
     let js_scope_context = v8::Context::new(&mut js_scope_handle2, Default::default());
@@ -690,32 +737,46 @@ fn eval(
     // Render main code
     if let Some(code) = stage1_code {
         let root_var = render_code(&mut code1, &code);
-        code1.push(root_loc, root_var);
+        code1.push(root_loc, format!("return {};", root_var));
     } else {
-        code1.push(root_loc, "null".to_string());
+        code1.push(root_loc, "return null;".to_string());
     }
 
-    // Set up staged expr globals as v8::External
-    for (id, staged_any) in code1.staged_values.iter().enumerate() {
-        let cell = staged_any.downcast_ref::<expr::StagedExprCell>().unwrap();
-        let value = cell.value.borrow_mut().take().unwrap();
-        let staged = Box::new(expr::StagedExpr { value });
-        let ptr = Box::into_raw(staged) as *mut std::ffi::c_void;
-        let ext = v8::External::new(js_scope, ptr);
-        js_scope
-            .get_current_context()
-            .global(js_scope)
-            .set(
-                js_scope,
-                v8::String::new(js_scope, &format!("__staged_{}", id)).unwrap().cast(),
-                ext.into(),
-            );
-    }
+    // Build staged externals from Rc<StagedExprCell> values
+    let staged_externals: Vec<v8::Local<v8::Value>> = code1.staged_values.iter()
+        .map(|cell| rc_to_v8(js_scope, cell.clone()).into())
+        .collect();
 
-    if let Some(stage2) =
-        v8::Script::compile(js_scope, v8::String::new(js_scope, &code1.lines.join("\n")).unwrap(), None)
-            .unwrap()
-            .run(js_scope) {
+    // Wrap generated JS in a function with staged values as parameters
+    let params: String = (0..staged_externals.len())
+        .map(|i| format!("__staged_{}", i))
+        .collect::<Vec<_>>()
+        .join(",");
+    let js_source = format!(
+        "(function({}) {{\n{}\n}})",
+        params,
+        code1.lines.join("\n"),
+    );
+    let wrapper_line_offset = 1usize; // function header is line 1
+
+    let script = v8::Script::compile(
+        js_scope,
+        v8::String::new(js_scope, &js_source).unwrap(),
+        None,
+    ).unwrap();
+    let func_val = match script.run(js_scope) {
+        Some(v) => v,
+        None => return Err(vec![ExprErr {
+            loc: root_loc,
+            errors: vec![ExprSubErr::Opaque(
+                "Failed to compile generated JS function".to_string(),
+            )],
+        }]),
+    };
+    let func: v8::Local<v8::Function> = func_val.try_cast().unwrap();
+    let undefined = v8::undefined(js_scope);
+
+    if let Some(stage2) = func.call(js_scope, undefined.into(), &staged_externals) {
         Ok(value_from_js.lift(&stage2))
     } else {
         let text;
@@ -728,9 +789,10 @@ fn eval(
             },
         }
         match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
-            Some(js_expr) => {
+            Some(js_line) => {
+                let original_line = js_line - wrapper_line_offset;
                 Err(vec![ExprErr {
-                    loc: *code1.mapping.get(&js_expr).unwrap(),
+                    loc: *code1.mapping.get(&original_line).unwrap_or(&root_loc),
                     errors: vec![ExprSubErr::Opaque(text)]
                 }])
             },
@@ -749,7 +811,7 @@ struct JsSourceBuilder {
     lines: Vec<String>,
     mapping: HashMap<usize, QExprId>,
     next_expr_id: usize,
-    staged_values: Vec<Rc<dyn Any>>,
+    staged_values: Vec<Rc<expr::StagedExprCell>>,
 }
 
 impl JsSourceBuilder {
@@ -823,7 +885,10 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
         },
         JsCodeType::External(ext) => {
             let id = lines.staged_values.len();
-            lines.staged_values.push(ext.value.clone());
+            let cell: Rc<expr::StagedExprCell> = ext.value.clone()
+                .downcast::<expr::StagedExprCell>()
+                .expect("JsCodeExternal must hold StagedExprCell");
+            lines.staged_values.push(cell);
             lines.push(code.loc, format!("{} = __staged_{};", out, id));
         },
     }

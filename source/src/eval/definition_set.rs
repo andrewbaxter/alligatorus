@@ -41,7 +41,6 @@ use {
             Cell,
             RefCell,
         },
-        ffi::c_void,
         mem,
         rc::Rc,
     },
@@ -113,10 +112,8 @@ pub(crate) fn define_js_callback(
 ) {
     let obj = v8::Object::new(scope);
 
-    // Create DefinitionSet and store directly as v8::External on the object
-    let ds = Box::new(Gc::new(DefinitionSet::new()));
-    let ptr = Box::into_raw(ds) as *mut c_void;
-    let ds_ext = v8::External::new(scope, ptr);
+    // Create DefinitionSet and store as v8::External via rc_to_v8
+    let ds_ext = super::rc_to_v8(scope, Rc::new(Gc::new(DefinitionSet::new())));
     let ds_key = v8::String::new(scope, "_ds").unwrap();
     obj.set(scope, ds_key.into(), ds_ext.into());
 
@@ -140,8 +137,7 @@ fn new_func_js_callback(
 ) {
     let this = args.this();
     let ds_key = v8::String::new(scope, "_ds").unwrap();
-    let ds_ext: v8::Local<v8::External> = this.get(scope, ds_key.into()).unwrap().try_cast().unwrap();
-    let ds = unsafe { &*(ds_ext.value() as *const Gc<DefinitionSet>) };
+    let ds: Rc<Gc<DefinitionSet>> = super::rc_from_v8(&*this.get(scope, ds_key.into()).unwrap());
 
     let idx = {
         let mut functions = ds.functions.borrow_mut();
@@ -152,10 +148,9 @@ fn new_func_js_callback(
         });
         idx
     };
-    let func_ref = Box::new(DefinitionSetFunction { set: ds.clone(), func_index: idx });
+    let func_ref = Rc::new(DefinitionSetFunction { set: (*ds).clone(), func_index: idx });
 
-    let ptr = Box::into_raw(func_ref) as *mut c_void;
-    let ext = v8::External::new(scope, ptr);
+    let ext = super::rc_to_v8(scope, func_ref);
     ret.set(ext.into());
 }
 
@@ -164,20 +159,13 @@ fn impl_js_callback(
     args: v8::FunctionCallbackArguments<'_>,
     mut ret: v8::ReturnValue<'_>,
 ) {
-    // args[0] is the function ref (v8::External -> DefinitionSetFunction)
-    let func_ref_ext: v8::Local<v8::External> = args.get(0).try_cast().expect(
-        "impl: first argument must be a function ref (v8::External)"
-    );
-    let func_ref = unsafe { &*(func_ref_ext.value() as *const DefinitionSetFunction) };
+    // args[0] is the function ref (Rc<DefinitionSetFunction>)
+    let func_ref: Rc<DefinitionSetFunction> = super::rc_from_v8(&*args.get(0));
 
-    // args[1] is the staged expr (v8::External -> StagedExpr)
-    let staged_ext: v8::Local<v8::External> = args.get(1).try_cast().expect(
-        "impl: second argument must be a staged expr (v8::External)"
-    );
-    // Take ownership of the StagedExpr
-    let staged = unsafe {
-        Box::from_raw(staged_ext.value() as *mut super::expr::StagedExpr)
-    };
+    // args[1] is the staged expr (Rc<StagedExprCell>) — take-once via RefCell
+    let staged_cell: Rc<super::expr::StagedExprCell> = super::rc_from_v8(&*args.get(1));
+    let staged_value = staged_cell.value.borrow_mut().take()
+        .expect("impl: staged expr already consumed (double use)");
 
     let functions = func_ref.set.functions.borrow();
     let func_data = &functions[func_ref.func_index];
@@ -190,7 +178,7 @@ fn impl_js_callback(
         scope.throw_exception(exception);
         return;
     }
-    *impl_expr = Some(staged.value);
+    *impl_expr = Some(staged_value);
 
     ret.set(v8::null(scope).into());
 }
@@ -376,10 +364,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetFunction {
 
 impl AspectLiftJs for MortarTypeDefinitionSetFunction {
     fn lift(&self, value: &v8::Value) -> Box<dyn Value> {
-        assert!(value.is_external(), "Expected v8::External for definition set function");
-        let ext = unsafe { &*(value as *const v8::Value as *const v8::External) };
-        // Take ownership of the DefinitionSetFunction
-        let func_ref = unsafe { Box::from_raw(ext.value() as *mut DefinitionSetFunction) };
+        let func_ref: Rc<DefinitionSetFunction> = super::rc_from_v8(value);
         func_ref.set.finish().expect("Definition set finish failed");
         Box::new(MortarJsValue {
             source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
@@ -387,7 +372,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
                 func_index: func_ref.func_index,
             }),
             type_: Rc::new(DefinitionSetFunction {
-                set: func_ref.set,
+                set: func_ref.set.clone(),
                 func_index: func_ref.func_index,
             }),
         })

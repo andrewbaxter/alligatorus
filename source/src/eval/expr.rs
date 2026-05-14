@@ -121,14 +121,11 @@ impl Value for ExprType {
     }
 }
 
-/// Stored in JsCodeExternal during eval_half. Value is taken out during eval() setup.
+/// Stored in JsCodeExternal during eval_half. Value is taken out via
+/// `rc_from_v8` + `borrow_mut().take()` — a safe take-once pattern that
+/// panics on double-consume instead of double-freeing.
 pub(crate) struct StagedExprCell {
     pub value: RefCell<Option<Box<dyn Value>>>,
-}
-
-/// Thin-pointer wrapper for v8::External (stored behind Box raw pointer).
-pub struct StagedExpr {
-    pub value: Box<dyn Value>,
 }
 
 impl Type for ExprType {
