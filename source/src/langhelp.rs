@@ -91,9 +91,23 @@ pub(crate) enum SerialValue {
     Null,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct LogEntry {
+    pub(crate) timestamp_ms: u64,
+    pub(crate) message: String,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum CompileRes {
+pub(crate) struct CompileRes {
+    pub(crate) logs: Vec<LogEntry>,
+    pub(crate) result: CompileResResult,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum CompileResResult {
     Ok(SerialValue),
     Err(Vec<ExprErr>),
 }

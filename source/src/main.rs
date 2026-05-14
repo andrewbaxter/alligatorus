@@ -28,10 +28,12 @@ use {
         },
         langhelp::{
             CompileRes,
+            CompileResResult,
             ExprErr,
             ExprSubErr,
             GlobalContext,
             ImportStateId,
+            LogEntry,
             SerialValueSource,
             SourceId,
             Unique,
@@ -94,7 +96,7 @@ fn new_gx() -> Arc<GlobalContext> {
     return gx;
 }
 
-async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModule) -> Result<(), Vec<ExprErr>> {
+async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModule) -> Result<Vec<LogEntry>, Vec<ExprErr>> {
     eprintln!("code {:#?}", source);
 
     fn serial_module_to_module(source_id: SourceId, m: &SerialModule) -> Module {
@@ -161,7 +163,7 @@ async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModu
     let res = compile_importid(&gx, ImportStateId(0), module, vec![]).await;
 
     fn assemble_errors(out: &mut HashMap<String, HashMap<String, Vec<String>>>, r: &CompileRes) {
-        let CompileRes::Err(errors) = r else {
+        let CompileResResult::Err(errors) = &r.result else {
             return;
         };
         for eval_err in errors {
@@ -188,7 +190,10 @@ async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModu
         assemble_errors(&mut errors, &r);
     }
     assemble_errors(&mut errors, &res);
-    return Ok(());
+    if let CompileResResult::Err(e) = &res.result {
+        eprintln!("compile errors: {:#?}", e);
+    }
+    return Ok(res.logs);
 }
 
 #[derive(Aargvark)]
@@ -203,7 +208,7 @@ async fn main() {
     setup_v8();
     let gx = new_gx();
     match compile(gx, SourceId(0), args.root.value).await {
-        Ok(()) => { },
+        Ok(_logs) => { },
         Err(e) => {
             eprintln!("{}", serde_json::to_string_pretty(&e).unwrap());
             exit(1);
@@ -337,9 +342,11 @@ mod test {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("print"), mb.str("Hello world (mortar)"))))
+        let logs = compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))))
             .await
             .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
@@ -347,20 +354,22 @@ mod test {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        compile(
+        let logs = compile(
             gx,
             SourceId(0),
             SerialModule::V1(
                 mb.seq(
                     vec![
                         mb.bind("hello", mb.str("Hello world (mortar)")),
-                        mb.call(mb.scope_use("print"), mb.scope_use("hello"))
+                        mb.call(mb.scope_use("log"), mb.scope_use("hello"))
                     ],
                 ),
             ),
         )
             .await
             .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
@@ -368,13 +377,15 @@ mod test {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        compile(
+        let logs = compile(
             gx,
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.stage(mb.str("Hello world (mortar)"))))),
+            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.stage(mb.str("Hello world (mortar)"))))),
         )
             .await
             .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
@@ -382,13 +393,15 @@ mod test {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        compile(
+        let logs = compile(
             gx,
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("print"), mb.lower(mb.str("Hello world (mortar)")))),
+            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
         )
             .await
             .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
@@ -401,7 +414,7 @@ mod test {
             SourceId(0),
             SerialModule::V1(
                 mb.call(
-                    mb.scope_use("print"),
+                    mb.scope_use("log"),
                     mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.lit_null()),
                 ),
             ),
@@ -416,7 +429,7 @@ mod test {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
+        let logs = compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
             // The function must be defined at a higher evaluation level, because (in the
             // future) the exact function signature isn't known until after `define` is called
             // in javascript, so type checking can't occur during half evaluation.
@@ -449,7 +462,7 @@ mod test {
                 // (javascript exception) if the function already has a definition.
                 mb.call(
                     mb.field(mb.scope_use("d"), mb.str("impl")),
-                    mb.tuple(vec![mb.scope_use("f"), mb.stage(mb.call(mb.scope_use("print"), mb.str("hello")))])
+                    mb.tuple(vec![mb.scope_use("f"), mb.stage(mb.call(mb.scope_use("log"), mb.str("hello")))])
                 ),
                 // Finally, return the function.
                 //
@@ -477,5 +490,7 @@ mod test {
             // using the definition set/definition id.
             mb.call(mb.scope_use("hello"), mb.tuple(vec![])),
         ]))).await.unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].message, "hello");
     }
 }

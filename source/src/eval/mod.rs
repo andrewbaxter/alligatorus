@@ -38,6 +38,7 @@ use {
             CompileId,
             CompileImportContext,
             CompileRes,
+            CompileResResult,
             ConstKey,
             EResult,
             EvalContext,
@@ -122,6 +123,10 @@ use {
 /// guaranteed finalizer callbacks.
 pub(crate) struct V8RcStore {
     weaks: RefCell<Vec<v8::Weak<v8::External>>>,
+}
+
+pub(crate) struct V8LogStore {
+    pub(crate) logs: RefCell<Vec<crate::langhelp::LogEntry>>,
 }
 
 /// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the
@@ -527,8 +532,8 @@ fn substitute_lowers(
     match &expr.r#type {
         Expr_::Lower(e) => {
             let resolved_inner = substitute_lowers(cix, import_state, &e.expr)?;
-            let value = eval(cix, import_state, &resolved_inner)?;
-            let value_cell = Rc::new(RefCell::new(Some(value)));
+            let eval_result = eval(cix, import_state, &resolved_inner)?;
+            let value_cell = Rc::new(RefCell::new(Some(eval_result.value)));
             Ok(Expr {
                 loc: expr.loc,
                 r#type: Expr_::Literal(Rc::new(move || {
@@ -606,13 +611,19 @@ fn substitute_lowers(
     }
 }
 
+struct EvalResult {
+    value: Box<dyn Value>,
+    logs: Vec<crate::langhelp::LogEntry>,
+}
+
 fn eval(
     cix: &Rc<CompileImportContext>,
     import_state: ImportStateId,
     expr: &Expr,
-) -> Result<Box<dyn Value>, Vec<ExprErr>> {
+) -> Result<EvalResult, Vec<ExprErr>> {
     let mut js_scope_isolate = v8::Isolate::new(Default::default());
     js_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
+    js_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
     let js_scope_context = v8::Context::new(&mut js_scope_handle2, Default::default());
@@ -626,7 +637,7 @@ fn eval(
     });
     let mut s1_scope = HashMap::new();
     for (key, eval_value, js_value) in [(
-        "print",
+        "log",
         MortarScopeEntry {
             js_key: ScopeEntryId(ex.next_scope_entry_id.next()),
             type_: Rc::new(MortarTypeFunction {
@@ -640,7 +651,17 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'_>,
                 _ret: v8::ReturnValue<'_>,
             | {
-                println!("{}", args.get(0).to_string(scope).unwrap().to_rust_string_lossy(scope));
+                let message = args.get(0).to_string(scope).unwrap().to_rust_string_lossy(scope);
+                let timestamp_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64;
+                scope
+                    .get_slot::<V8LogStore>()
+                    .unwrap()
+                    .logs
+                    .borrow_mut()
+                    .push(crate::langhelp::LogEntry { timestamp_ms, message });
             },
         ).build(js_scope).unwrap().cast::<v8::Value>(),
     )] {
@@ -720,7 +741,8 @@ fn eval(
 
     let has_js = stage1_code.is_some() || !def_funcs.is_empty();
     if !has_js {
-        return Ok(cv.value);
+        let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
+        return Ok(EvalResult { value: cv.value, logs });
     }
 
     let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
@@ -770,7 +792,8 @@ fn eval(
     ).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {
-            Ok(value_from_js.lift(&stage2))
+            let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
+            Ok(EvalResult { value: value_from_js.lift(&stage2), logs })
         },
         None => {
             let text;
@@ -896,13 +919,14 @@ pub async fn compile_importid(
     };
     let root_expr = match substitute_lowers(&cix, import_state, &root_expr) {
         Ok(e) => e,
-        Err(errors) => return CompileRes::Err(errors),
+        Err(errors) => return CompileRes { logs: vec![], result: CompileResResult::Err(errors) },
     };
     let root_loc = root_expr.loc;
-    let value = match eval(&cix, import_state, &root_expr) {
+    let eval_result = match eval(&cix, import_state, &root_expr) {
         Ok(v) => v,
-        Err(errors) => return CompileRes::Err(errors),
+        Err(errors) => return CompileRes { logs: vec![], result: CompileResResult::Err(errors) },
     };
+    let logs = eval_result.logs;
 
     // Serialize result
     let ex = Rc::new(EvalContext {
@@ -919,17 +943,17 @@ pub async fn compile_importid(
             parent: None,
         }),
     });
-    let value_type = value.type_(&xx, root_loc);
+    let value_type = eval_result.value.type_(&xx, root_loc);
     let value_serial = match aspect_serial_get(&xx, root_loc, value_type.as_ref()).into_res() {
         Ok(v) => v,
-        Err(e) => return CompileRes::Err(e),
+        Err(e) => return CompileRes { logs, result: CompileResResult::Err(e) },
     };
     let mut artifacts = fx.artifacts.write().unwrap();
-    let value = match value_serial.to_serial(&mut artifacts, value).into_res() {
+    let value = match value_serial.to_serial(&mut artifacts, eval_result.value).into_res() {
         Ok(v) => v,
-        Err(e) => return CompileRes::Err(e),
+        Err(e) => return CompileRes { logs, result: CompileResResult::Err(e) },
     };
-    return CompileRes::Ok(value);
+    return CompileRes { logs, result: CompileResResult::Ok(value) };
 }
 
 pub fn setup_v8() {
