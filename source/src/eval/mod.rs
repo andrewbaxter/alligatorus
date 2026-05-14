@@ -725,6 +725,7 @@ fn eval(
 
     let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
     let mut code1 = JsSourceBuilder::default();
+    code1.push(root_loc, "(function() {".to_string());
 
     // Render definition set function implementations as JS functions
     for (scope_id, impl_code) in &def_funcs {
@@ -759,11 +760,8 @@ fn eval(
             );
     }
 
-    let js_source = format!(
-        "(function() {{\n{}\n}})()",
-        code1.lines.join("\n"),
-    );
-    let wrapper_line_offset = 1usize; // function header is line 1
+    code1.push(root_loc, "})()".to_string());
+    let js_source = code1.lines.join("\n");
 
     let script = v8::Script::compile(
         js_scope,
@@ -786,9 +784,8 @@ fn eval(
             }
             match js_scope.message().and_then(|e| e.get_line_number(&js_scope)) {
                 Some(js_line) => {
-                    let original_line = js_line - wrapper_line_offset;
                     Err(vec![ExprErr {
-                        loc: *code1.mapping.get(&original_line).unwrap_or(&root_loc),
+                        loc: *code1.mapping.get(&(js_line as usize)).unwrap_or(&root_loc),
                         errors: vec![ExprSubErr::Opaque(text)]
                     }])
                 },
