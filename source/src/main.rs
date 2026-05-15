@@ -96,7 +96,11 @@ fn new_gx() -> Arc<GlobalContext> {
     return gx;
 }
 
-async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModule) -> Result<Vec<LogEntry>, Vec<ExprErr>> {
+async fn compile(
+    gx: Arc<GlobalContext>,
+    source_id: SourceId,
+    source: SerialModule,
+) -> Result<Vec<LogEntry>, Vec<ExprErr>> {
     eprintln!("code {:#?}", source);
 
     fn serial_module_to_module(source_id: SourceId, m: &SerialModule) -> Module {
@@ -145,9 +149,9 @@ async fn compile(gx: Arc<GlobalContext>, source_id: SourceId, source: SerialModu
                     SerialExpr_::Lower(expr) => Expr_::Lower(
                         ExprLower { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
                     ),
-                    SerialExpr_::Tuple(exprs) => Expr_::Tuple(ExprTuple {
-                        elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect(),
-                    }),
+                    SerialExpr_::Tuple(exprs) => Expr_::Tuple(
+                        ExprTuple { elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
+                    ),
                 },
             };
         }
@@ -335,74 +339,84 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_hello1() {
+    async fn test_00100_call_lit() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        let logs = compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))))
-            .await
-            .unwrap();
+        let logs =
+            compile(
+                gx,
+                SourceId(0),
+                SerialModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))),
+            )
+                .await
+                .unwrap();
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
-    async fn test_hello2() {
+    async fn test_00200_bind_use() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        let logs = compile(
-            gx,
-            SourceId(0),
-            SerialModule::V1(
-                mb.seq(
-                    vec![
-                        mb.bind("hello", mb.str("Hello world (mortar)")),
-                        mb.call(mb.scope_use("log"), mb.scope_use("hello"))
-                    ],
+        let logs =
+            compile(
+                gx,
+                SourceId(0),
+                SerialModule::V1(
+                    mb.seq(
+                        vec![
+                            mb.bind("hello", mb.str("Hello world (mortar)")),
+                            mb.call(mb.scope_use("log"), mb.scope_use("hello"))
+                        ],
+                    ),
                 ),
-            ),
-        )
-            .await
-            .unwrap();
+            )
+                .await
+                .unwrap();
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
-    async fn test_hello3() {
+    async fn test_00300_stage_lower() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        let logs = compile(
-            gx,
-            SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.stage(mb.str("Hello world (mortar)"))))),
-        )
-            .await
-            .unwrap();
+        let logs =
+            compile(
+                gx,
+                SourceId(0),
+                SerialModule::V1(
+                    mb.call(mb.scope_use("log"), mb.lower(mb.stage(mb.str("Hello world (mortar)")))),
+                ),
+            )
+                .await
+                .unwrap();
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
-    async fn test_hello4() {
+    async fn test_00400_lower_nostage() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
-        let logs = compile(
-            gx,
-            SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
-        )
-            .await
-            .unwrap();
+        let logs =
+            compile(
+                gx,
+                SourceId(0),
+                SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
+            )
+                .await
+                .unwrap();
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].message, "Hello world (mortar)");
     }
 
     #[tokio::test]
-    async fn test_hello5() {
+    async fn test_00500_method_call() {
         setup_v8();
         let gx = new_gx();
         let mb = ModuleBuilder::default();
@@ -421,7 +435,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_hello6() {
+    async fn test_00600define_func() {
         //! Define a function that prints "hello", then call it.
         setup_v8();
         let gx = new_gx();
