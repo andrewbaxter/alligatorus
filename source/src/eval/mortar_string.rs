@@ -14,11 +14,13 @@ use {
         builtin::{
             AspectConsumeJs,
             AspectField,
+            AspectJsStackValue,
             AspectJsString,
             AspectSet,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
             aspect_field_aspect_id,
+            aspect_js_stack_value_aspect_id,
             aspect_js_string_aspect_id,
             aspect_js_string_get,
             aspect_string_get,
@@ -77,6 +79,9 @@ impl Type for TypeMortarString {
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectField>));
+        }
+        if *key == aspect_js_stack_value_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsStackValue>));
         }
         return None;
     }
@@ -140,6 +145,18 @@ impl Type for TypeMortarString {
 impl Aspect for TypeMortarString { }
 
 impl AspectJsString for TypeMortarString { }
+
+impl AspectJsStackValue for TypeMortarString {
+    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+        CodeValue {
+            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            value: Box::new(MortarJsValue {
+                source: MortarJsValueSource::Expr,
+                type_: Rc::new(TypeMortarString),
+            }),
+        }
+    }
+}
 
 impl AspectConsumeJs for TypeMortarString {
     fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {

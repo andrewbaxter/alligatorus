@@ -166,34 +166,24 @@ async fn compile(
     source_names.insert(source_id, "(virtual)".to_string());
     let res = compile_importid(&gx, ImportStateId(0), module, vec![]).await;
 
-    fn assemble_errors(out: &mut HashMap<String, HashMap<String, Vec<String>>>, r: &CompileRes) {
-        let CompileResResult::Err(errors) = &r.result else {
-            return;
-        };
-        for eval_err in errors {
-            let out =
-                out
-                    .entry(eval_err.loc.0.0.to_string())
-                    .or_default()
-                    .entry(eval_err.loc.1.0.to_string())
-                    .or_default();
-            for err in &eval_err.errors {
-                out.push(match err {
-                    ExprSubErr::Opaque(err) => err.clone(),
-                });
-            }
+    fn collect_errors(r: &CompileRes) -> Vec<ExprErr> {
+        match &r.result {
+            CompileResResult::Err(errs) => errs.clone(),
+            CompileResResult::Ok(_) => vec![],
         }
     }
 
-    let mut errors = HashMap::new();
+    let mut all_errors = vec![];
     for (_, r) in gx.compile_results.lock().unwrap().iter() {
         let Ok(r) = r.clone().await else {
-            // Root module errors are handled by importer
             continue;
         };
-        assemble_errors(&mut errors, &r);
+        all_errors.extend(collect_errors(&r));
     }
-    assemble_errors(&mut errors, &res);
+    all_errors.extend(collect_errors(&res));
+    if !all_errors.is_empty() {
+        return Err(all_errors);
+    }
     return Ok(res.logs);
 }
 
