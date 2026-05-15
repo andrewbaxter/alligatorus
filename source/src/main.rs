@@ -255,7 +255,7 @@ mod test {
             return ExprId(id);
         }
 
-        fn lit_null(&self) -> SerialExpr {
+        fn null(&self) -> SerialExpr {
             return SerialExpr {
                 id: self.id(),
                 r#type: SerialExpr_::Literal(SerialLiteral::Null),
@@ -356,6 +356,16 @@ mod test {
     }
 
     #[tokio::test]
+    async fn test_00101_type_error() {
+        setup_v8();
+        let gx = new_gx();
+        let mb = ModuleBuilder::default();
+        compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.null())))
+            .await
+            .unwrap_err();
+    }
+
+    #[tokio::test]
     async fn test_00200_bind_use() {
         setup_v8();
         let gx = new_gx();
@@ -426,7 +436,7 @@ mod test {
             SerialModule::V1(
                 mb.call(
                     mb.scope_use("log"),
-                    mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.lit_null()),
+                    mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.null()),
                 ),
             ),
         )
