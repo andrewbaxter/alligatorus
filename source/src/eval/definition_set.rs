@@ -122,11 +122,6 @@ pub(crate) fn define_js_callback(
     let nf_key = v8::String::new(scope, "new_func").unwrap();
     obj.set(scope, nf_key.into(), new_func_fn.into());
 
-    // impl method
-    let impl_fn = v8::Function::builder(impl_js_callback).build(scope).unwrap();
-    let impl_key = v8::String::new(scope, "impl").unwrap();
-    obj.set(scope, impl_key.into(), impl_fn.into());
-
     ret.set(obj.into());
 }
 
@@ -150,20 +145,39 @@ fn new_func_js_callback(
     };
     let func_ref = Rc::new(DefinitionSetFunction { set: (*ds).clone(), func_index: idx });
 
-    let ext = super::rc_to_v8(scope, func_ref);
-    ret.set(ext.into());
+    // Build result object with {func, impl}
+    let result_obj = v8::Object::new(scope);
+
+    // func: the function ref external
+    let func_ext = super::rc_to_v8(scope, func_ref.clone());
+    let func_key = v8::String::new(scope, "func").unwrap();
+    result_obj.set(scope, func_key.into(), func_ext.into());
+
+    // _func: internal reference for impl callback
+    let internal_func_ext = super::rc_to_v8(scope, func_ref);
+    let internal_func_key = v8::String::new(scope, "_func").unwrap();
+    result_obj.set(scope, internal_func_key.into(), internal_func_ext.into());
+
+    // impl: method that takes staged expr
+    let impl_fn = v8::Function::builder(builder_impl_js_callback).build(scope).unwrap();
+    let impl_key = v8::String::new(scope, "impl").unwrap();
+    result_obj.set(scope, impl_key.into(), impl_fn.into());
+
+    ret.set(result_obj.into());
 }
 
-fn impl_js_callback(
+fn builder_impl_js_callback(
     scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>,
     args: v8::FunctionCallbackArguments<'_>,
     mut ret: v8::ReturnValue<'_>,
 ) {
-    // args[0] is the function ref (Rc<DefinitionSetFunction>)
-    let func_ref: Rc<DefinitionSetFunction> = super::rc_from_v8(&*args.get(0));
+    // Get func_ref from this._func
+    let this = args.this();
+    let func_key = v8::String::new(scope, "_func").unwrap();
+    let func_ref: Rc<DefinitionSetFunction> = super::rc_from_v8(&*this.get(scope, func_key.into()).unwrap());
 
-    // args[1] is the staged expr (Rc<StagedExprCell>) — take-once via RefCell
-    let staged_cell: Rc<super::expr::StagedExprCell> = super::rc_from_v8(&*args.get(1));
+    // args[0] is the staged expr (Rc<StagedExprCell>) — take-once via RefCell
+    let staged_cell: Rc<super::expr::StagedExprCell> = super::rc_from_v8(&*args.get(0));
     let staged_value = staged_cell.value.borrow_mut().take()
         .expect("impl: staged expr already consumed (double use)");
 
@@ -250,16 +264,7 @@ impl AspectField for MortarTypeDefineResult {
             let field_type: Rc<dyn Type> = match key_name.as_str() {
                 "new_func" => Rc::new(super::mortar_function::MortarTypeFunction {
                     arg: Rc::new(super::tuple::TypeTuple { types: vec![] }),
-                    ret: Rc::new(MortarTypeDefinitionSetFunction),
-                }),
-                "impl" => Rc::new(super::mortar_function::MortarTypeFunction {
-                    arg: Rc::new(super::tuple::TypeTuple {
-                        types: vec![
-                            Rc::new(MortarTypeDefinitionSetFunction),
-                            Rc::new(super::expr::ExprType),
-                        ],
-                    }),
-                    ret: Rc::new(TypeMortarNull),
+                    ret: Rc::new(MortarTypeNewFuncResult),
                 }),
                 _ => return erb.err_new(format!("Unknown field '{}' on define result", key_name)),
             };
@@ -287,16 +292,7 @@ impl AspectField for MortarTypeDefineResult {
         match key {
             "new_func" => Some(Rc::new(super::mortar_function::MortarTypeFunction {
                 arg: Rc::new(super::tuple::TypeTuple { types: vec![] }),
-                ret: Rc::new(MortarTypeDefinitionSetFunction),
-            })),
-            "impl" => Some(Rc::new(super::mortar_function::MortarTypeFunction {
-                arg: Rc::new(super::tuple::TypeTuple {
-                    types: vec![
-                        Rc::new(MortarTypeDefinitionSetFunction),
-                        Rc::new(super::expr::ExprType),
-                    ],
-                }),
-                ret: Rc::new(TypeMortarNull),
+                ret: Rc::new(MortarTypeNewFuncResult),
             })),
             _ => None,
         }
@@ -376,6 +372,117 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
                 func_index: func_ref.func_index,
             }),
         })
+    }
+}
+
+// --- MortarTypeNewFuncResult: the return type of new_func (object with func + builder fields) ---
+
+pub(crate) struct MortarTypeNewFuncResult;
+
+impl Value for MortarTypeNewFuncResult {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(MortarTypeNewFuncResult)
+    }
+}
+
+impl Type for MortarTypeNewFuncResult {
+    fn desc(&self) -> String {
+        format!("new_func_result")
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(MortarTypeNewFuncResult) as Box<dyn AspectField>));
+        }
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(MortarTypeNewFuncResult) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_js_stack_value_aspect_id() {
+            return Some(Box::new(Box::new(MortarTypeNewFuncResult) as Box<dyn AspectJsStackValue>));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert new_func_result"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to new_func_result"))
+    }
+}
+
+impl Aspect for MortarTypeNewFuncResult { }
+
+impl AspectConsumeJs for MortarTypeNewFuncResult {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectJsStackValue for MortarTypeNewFuncResult {
+    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+        CodeValue {
+            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            value: Box::new(MortarJsValue {
+                source: MortarJsValueSource::Expr,
+                type_: Rc::new(MortarTypeNewFuncResult),
+            }),
+        }
+    }
+}
+
+impl AspectField for MortarTypeNewFuncResult {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        er_seq_cv!(loc, erb, {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            let field_type: Rc<dyn Type> = match key_name.as_str() {
+                "func" => Rc::new(MortarTypeDefinitionSetFunction),
+                "impl" => Rc::new(super::mortar_function::MortarTypeFunction {
+                    arg: Rc::new(super::tuple::TypeTuple {
+                        types: vec![
+                            Rc::new(super::expr::ExprType),
+                        ],
+                    }),
+                    ret: Rc::new(TypeMortarNull),
+                }),
+                _ => return erb.err_new(format!("Unknown field '{}' on new_func_result", key_name)),
+            };
+            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc,
+                        type_: JsCodeType::Field(crate::jscode::JsCodeField {
+                            base: Box::new(self_code),
+                            field: key_name,
+                        }),
+                    })),
+                },
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: field_type,
+                }),
+            });
+        })
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        match key {
+            "func" => Some(Rc::new(MortarTypeDefinitionSetFunction)),
+            "impl" => Some(Rc::new(super::mortar_function::MortarTypeFunction {
+                arg: Rc::new(super::tuple::TypeTuple {
+                    types: vec![
+                        Rc::new(super::expr::ExprType),
+                    ],
+                }),
+                ret: Rc::new(TypeMortarNull),
+            })),
+            _ => None,
+        }
     }
 }
 

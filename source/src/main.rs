@@ -457,23 +457,16 @@ mod test {
                 // creates a new object with `define` and `new_func` methods. The
                 // `Gc<DefinitionSet>` is shared between them.
                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-                // `new_func` creates a `DefinitionSetFunction` in the definition set. A
-                // `DefinitionSetFunction` is just like a `MortarTypeFunction` but it keeps a an
-                // id and Gc copy of definition set as well.
-                //
-                // Because this returns a `DefinitionSetFunction`, a
-                // `MortarTypeDefinitionSetFunction` will also need to be defined to use in the
-                // `new_func` function signature.
-                //
-                // It returns a `WeakPersistent` to the `DefinitionSetFunction`.
-                mb.bind("f", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.tuple(vec![]))),
-                // This is another javascript method. It takes the `DefinitionSetFunction` and a
-                // staged expr and stores it in the `DefinitionSet` as the impl for the function
-                // implementation for the function (store it in the DefinitionSet itself). Error
-                // (javascript exception) if the function already has a definition.
+                // `new_func` creates a `DefinitionSetFunction` in the definition set and returns
+                // an object with `func` (the function ref) and `builder` (a FunctionBuilder with
+                // an `impl` method).
+                mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.tuple(vec![]))),
+                mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
+                // The result's `impl` method takes a staged expr and stores it as the
+                // implementation for the function. Error if already has a definition.
                 mb.call(
-                    mb.field(mb.scope_use("d"), mb.str("impl")),
-                    mb.tuple(vec![mb.scope_use("f"), mb.stage(mb.call(mb.scope_use("log"), mb.str("hello")))])
+                    mb.field(mb.scope_use("nfr"), mb.str("impl")),
+                    mb.tuple(vec![mb.stage(mb.call(mb.scope_use("log"), mb.str("hello")))])
                 ),
                 // Finally, return the function.
                 //
