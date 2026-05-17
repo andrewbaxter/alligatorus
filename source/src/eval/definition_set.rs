@@ -7,11 +7,14 @@ use {
             AspectJsStackValue,
             AspectLiftJs,
             aspect_consume_js_aspect_id,
+            aspect_consume_js_get,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
             aspect_js_stack_value_aspect_id,
+            aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
             aspect_string_get,
+            aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
@@ -52,6 +55,7 @@ use {
             MortarJsValueSource,
         },
         mortar_null::TypeMortarNull,
+        typecheck_convert,
     },
 };
 
@@ -59,7 +63,10 @@ use {
 
 pub(crate) struct DefinitionSetFunctionData {
     pub impl_expr: RefCell<Option<Box<dyn Value>>>,
+    pub arg_type_expr: RefCell<Option<Box<dyn Value>>>,
+    pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub arg_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
 pub(crate) struct DefinitionSet {
@@ -139,7 +146,10 @@ fn new_func_js_callback(
         let idx = functions.len();
         functions.push(DefinitionSetFunctionData {
             impl_expr: RefCell::new(None),
+            arg_type_expr: RefCell::new(None),
+            ret_type_expr: RefCell::new(None),
             scope_entry_id: Cell::new(None),
+            arg_scope_entry_id: Cell::new(None),
         });
         idx
     };
@@ -162,6 +172,16 @@ fn new_func_js_callback(
     let impl_fn = v8::Function::builder(builder_impl_js_callback).build(scope).unwrap();
     let impl_key = v8::String::new(scope, "impl").unwrap();
     result_obj.set(scope, impl_key.into(), impl_fn.into());
+
+    // arg: method that takes a staged type expr
+    let arg_fn = v8::Function::builder(builder_arg_js_callback).build(scope).unwrap();
+    let arg_key = v8::String::new(scope, "arg").unwrap();
+    result_obj.set(scope, arg_key.into(), arg_fn.into());
+
+    // ret: method that takes a staged type expr
+    let ret_fn = v8::Function::builder(builder_ret_js_callback).build(scope).unwrap();
+    let ret_key = v8::String::new(scope, "ret").unwrap();
+    result_obj.set(scope, ret_key.into(), ret_fn.into());
 
     ret.set(result_obj.into());
 }
@@ -193,6 +213,64 @@ fn builder_impl_js_callback(
         return;
     }
     *impl_expr = Some(staged_value);
+
+    ret.set(v8::null(scope).into());
+}
+
+fn builder_arg_js_callback(
+    scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut ret: v8::ReturnValue<'_>,
+) {
+    let this = args.this();
+    let func_key = v8::String::new(scope, "_func").unwrap();
+    let func_ref: Rc<DefinitionSetFunction> = super::rc_from_v8(&*this.get(scope, func_key.into()).unwrap());
+
+    let staged_cell: Rc<super::expr::StagedExprCell> = super::rc_from_v8(&*args.get(0));
+    let staged_value = staged_cell.value.borrow_mut().take()
+        .expect("arg: staged expr already consumed (double use)");
+
+    let functions = func_ref.set.functions.borrow();
+    let func_data = &functions[func_ref.func_index];
+    let mut arg_type_expr = func_data.arg_type_expr.borrow_mut();
+    if arg_type_expr.is_some() {
+        drop(arg_type_expr);
+        drop(functions);
+        let msg = v8::String::new(scope, "Function already has an arg type").unwrap();
+        let exception = v8::Exception::error(scope, msg);
+        scope.throw_exception(exception);
+        return;
+    }
+    *arg_type_expr = Some(staged_value);
+
+    ret.set(v8::null(scope).into());
+}
+
+fn builder_ret_js_callback(
+    scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>,
+    args: v8::FunctionCallbackArguments<'_>,
+    mut ret: v8::ReturnValue<'_>,
+) {
+    let this = args.this();
+    let func_key = v8::String::new(scope, "_func").unwrap();
+    let func_ref: Rc<DefinitionSetFunction> = super::rc_from_v8(&*this.get(scope, func_key.into()).unwrap());
+
+    let staged_cell: Rc<super::expr::StagedExprCell> = super::rc_from_v8(&*args.get(0));
+    let staged_value = staged_cell.value.borrow_mut().take()
+        .expect("ret: staged expr already consumed (double use)");
+
+    let functions = func_ref.set.functions.borrow();
+    let func_data = &functions[func_ref.func_index];
+    let mut ret_type_expr = func_data.ret_type_expr.borrow_mut();
+    if ret_type_expr.is_some() {
+        drop(ret_type_expr);
+        drop(functions);
+        let msg = v8::String::new(scope, "Function already has a ret type").unwrap();
+        let exception = v8::Exception::error(scope, msg);
+        scope.throw_exception(exception);
+        return;
+    }
+    *ret_type_expr = Some(staged_value);
 
     ret.set(v8::null(scope).into());
 }
@@ -440,7 +518,7 @@ impl AspectField for MortarTypeNewFuncResult {
             let key_name = key_string.get(key.value.as_ref());
             let field_type: Rc<dyn Type> = match key_name.as_str() {
                 "func" => Rc::new(MortarTypeDefinitionSetFunction),
-                "impl" => Rc::new(super::mortar_function::MortarTypeFunction {
+                "impl" | "arg" | "ret" => Rc::new(super::mortar_function::MortarTypeFunction {
                     arg: Rc::new(super::tuple::TypeTuple {
                         types: vec![
                             Rc::new(super::expr::ExprType),
@@ -473,7 +551,7 @@ impl AspectField for MortarTypeNewFuncResult {
     fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         match key {
             "func" => Some(Rc::new(MortarTypeDefinitionSetFunction)),
-            "impl" => Some(Rc::new(super::mortar_function::MortarTypeFunction {
+            "impl" | "arg" | "ret" => Some(Rc::new(super::mortar_function::MortarTypeFunction {
                 arg: Rc::new(super::tuple::TypeTuple {
                     types: vec![
                         Rc::new(super::expr::ExprType),
@@ -524,7 +602,7 @@ impl Type for DefinitionSetFunction {
 impl Aspect for DefinitionSetFunction { }
 
 impl AspectFunction for DefinitionSetFunction {
-    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, _argument: CodeValue) -> EvalRes {
+    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Ensure scope entry IDs are allocated
         {
             let functions = self.set.functions.borrow();
@@ -548,28 +626,91 @@ impl AspectFunction for DefinitionSetFunction {
             }
         }
 
-        let scope_id = self.set.functions.borrow()[self.func_index]
-            .scope_entry_id.get()
-            .expect("Definition set function not registered");
+        // Clone arg/ret type exprs (to release borrow before eval)
+        let (scope_id, arg_type_expr, ret_type_expr) = {
+            let functions = self.set.functions.borrow();
+            let fd = &functions[self.func_index];
+            let sid = fd.scope_entry_id.get()
+                .expect("Definition set function not registered");
+            let arg_e = fd.arg_type_expr.borrow().as_ref().map(|v| {
+                (v.as_ref() as &dyn Any)
+                    .downcast_ref::<super::expr::Expr>()
+                    .expect("arg type must be an Expr")
+                    .clone()
+            });
+            let ret_e = fd.ret_type_expr.borrow().as_ref().map(|v| {
+                (v.as_ref() as &dyn Any)
+                    .downcast_ref::<super::expr::Expr>()
+                    .expect("ret type must be an Expr")
+                    .clone()
+            });
+            (sid, arg_e, ret_e)
+        };
 
-        EvalRes::ok(CodeValue {
-            code: Code {
+        // Resolve arg/ret types by evaluating the type exprs
+        return er_seq_cv!(loc, erb, {
+            let arg_type: Option<Rc<dyn Type>> = match &arg_type_expr {
+                Some(expr) => {
+                    let r = super::eval_half_mortar(xx, expr);
+                    let cv = erb.must_er(r)?;
+                    Some(cv.value.type_(xx, loc))
+                },
+                None => None,
+            };
+            let ret_type: Option<Rc<dyn Type>> = match &ret_type_expr {
+                Some(expr) => {
+                    let r = super::eval_half_mortar(xx, expr);
+                    let cv = erb.must_er(r)?;
+                    Some(cv.value.type_(xx, loc))
+                },
+                None => None,
+            };
+
+            // Handle argument
+            let mut js_args = vec![];
+            if let Some(arg_type) = &arg_type {
+                let arg_value_type = argument.value.type_(xx, loc);
+                if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
+                    let elements = arg_tuple.take_elements(argument.value);
+                    if elements.len() != 1 {
+                        return erb.err_new(
+                            format!("Function expects 1 argument, got {}", elements.len())
+                        );
+                    }
+                    let elem = elements.into_iter().next().unwrap();
+                    let cv = match elem.v {
+                        Some(cv) => cv,
+                        None => {
+                            erb.errors.extend(elem.errors);
+                            return erb.err_new(format!("Argument failed to evaluate"));
+                        },
+                    };
+                    erb.errors.extend(elem.errors);
+                    let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), cv))?;
+                    let to_js = erb.must_er(aspect_consume_js_get(xx, loc, arg_type.as_ref()))?;
+                    let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+                    js_args.push(js);
+                } else {
+                    let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), argument))?;
+                    let to_js = erb.must_er(aspect_consume_js_get(xx, loc, arg_type.as_ref()))?;
+                    let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+                    js_args.push(js);
+                }
+            }
+
+            let ret_type_rc: Rc<dyn Type> = ret_type.unwrap_or_else(|| Rc::new(TypeMortarNull));
+            let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, ret_type_rc.as_ref()))?;
+
+            return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
-                code: Code_::Dyn(Rc::new(JsCode {
-                    loc,
-                    type_: JsCodeType::Call(JsCodeCall {
-                        func: Box::new(JsCode {
-                            loc,
-                            type_: JsCodeType::BindingUse(JsCodeBindingUse { id: scope_id }),
-                        }),
-                        args: vec![],
+                type_: JsCodeType::Call(JsCodeCall {
+                    func: Box::new(JsCode {
+                        loc,
+                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: scope_id }),
                     }),
-                })),
-            },
-            value: Box::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarNull),
-            }),
-        })
+                    args: js_args,
+                }),
+            }));
+        });
     }
 }

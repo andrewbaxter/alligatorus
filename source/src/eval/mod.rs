@@ -524,6 +524,10 @@ pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     return format!("a{}", e.0);
 }
 
+pub(crate) fn eval_half_mortar(xx: &ExprContext, expr: &Expr) -> EvalRes {
+    eval_half(xx, expr, &MortarTarget)
+}
+
 fn substitute_lowers(
     cix: &Rc<CompileImportContext>,
     import_state: ImportStateId,
@@ -703,6 +707,11 @@ fn eval(
             );
         s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
+    // Type references (static scope entries, no JS representation)
+    s1_scope.insert(
+        ConstKey::String("String".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+    );
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {
         vx: ex.clone(),
@@ -721,7 +730,7 @@ fn eval(
     let stage1_code = cv.code.cast::<JsCode>().into_res()?;
 
     // Compile definition set implementations
-    let mut def_funcs: Vec<(ScopeEntryId, JsCode)> = vec![];
+    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, JsCode)> = vec![];
     for ds in ex.definition_sets.borrow().iter() {
         for func_data in ds.functions.borrow().iter() {
             let impl_expr = func_data.impl_expr.borrow();
@@ -730,17 +739,84 @@ fn eval(
             let impl_expr_ast = (impl_expr.as_ref() as &dyn Any)
                 .downcast_ref::<Expr>()
                 .expect("Definition set impl must be an Expr");
-            let impl_result = eval_half(&xx, impl_expr_ast, &MortarTarget);
+
+            // Resolve arg type and create scope entry if present
+            let arg_scope_id = if func_data.arg_type_expr.borrow().is_some() {
+                let arg_expr = func_data.arg_type_expr.borrow();
+                let arg_expr_ast = (arg_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                    .downcast_ref::<Expr>()
+                    .expect("arg type must be an Expr");
+                let arg_result = eval_half(&xx, arg_expr_ast, &MortarTarget);
+                if !arg_result.errors.is_empty() {
+                    return Err(arg_result.errors);
+                }
+                let arg_cv = arg_result.v.unwrap();
+                let arg_type = arg_cv.value.type_(&xx, root_loc);
+
+                let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                func_data.arg_scope_entry_id.set(Some(id));
+                Some((id, arg_type))
+            } else {
+                None
+            };
+
+            // Resolve ret type if present
+            let ret_type: Option<Rc<dyn Type>> = if func_data.ret_type_expr.borrow().is_some() {
+                let ret_expr = func_data.ret_type_expr.borrow();
+                let ret_expr_ast = (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                    .downcast_ref::<Expr>()
+                    .expect("ret type must be an Expr");
+                let ret_result = eval_half(&xx, ret_expr_ast, &MortarTarget);
+                if !ret_result.errors.is_empty() {
+                    return Err(ret_result.errors);
+                }
+                let ret_cv = ret_result.v.unwrap();
+                Some(ret_cv.value.type_(&xx, root_loc))
+            } else {
+                None
+            };
+
+            // Evaluate impl body with arg in scope if needed
+            let func_xx = if let Some((arg_id, ref arg_type)) = arg_scope_id {
+                let child_scope = Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: Some(xx.scope.clone()),
+                });
+                child_scope.values.borrow_mut().insert(
+                    ConstKey::String("arg".to_string()),
+                    Box::new(MortarScopeEntry { js_key: arg_id, type_: arg_type.clone() }),
+                );
+                Rc::new(ExprContext {
+                    vx: xx.vx.clone(),
+                    import_state: xx.import_state.clone(),
+                    scope: child_scope,
+                })
+            } else {
+                xx.clone()
+            };
+            let impl_result = eval_half(&func_xx, impl_expr_ast, &MortarTarget);
             if !impl_result.errors.is_empty() {
                 return Err(impl_result.errors);
             }
             let impl_cv = impl_result.v.unwrap();
+
+            // Type check return value against ret type if specified
+            let impl_cv = if let Some(ref ret_type) = ret_type {
+                let r = typecheck_convert(&func_xx, root_loc, ret_type.as_ref(), impl_cv);
+                if !r.errors.is_empty() {
+                    return Err(r.errors);
+                }
+                r.v.unwrap()
+            } else {
+                impl_cv
+            };
+
             let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
                 .expect("Definition set function body must produce JS code")
                 .clone();
             let scope_id = func_data.scope_entry_id.get()
                 .expect("Definition set function not registered");
-            def_funcs.push((scope_id, impl_code));
+            def_funcs.push((scope_id, arg_scope_id.map(|(id, _)| id), impl_code));
         }
     }
 
@@ -755,9 +831,13 @@ fn eval(
     code1.push(root_loc, "(function() {".to_string());
 
     // Render definition set function implementations as JS functions
-    for (scope_id, impl_code) in &def_funcs {
+    for (scope_id, arg_scope_id, impl_code) in &def_funcs {
         let func_name = scope_entry_id_js_key(*scope_id);
-        code1.push(root_loc, format!("function {}() {{", func_name));
+        if let Some(arg_id) = arg_scope_id {
+            code1.push(root_loc, format!("function {}({}) {{", func_name, scope_entry_id_js_key(*arg_id)));
+        } else {
+            code1.push(root_loc, format!("function {}() {{", func_name));
+        }
         let body_var = render_code(&mut code1, impl_code);
         code1.push(root_loc, format!("return {};", body_var));
         code1.push(root_loc, "}".to_string());

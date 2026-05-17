@@ -230,6 +230,10 @@ impl AspectField for TypeMortarString {
                 arg: Rc::new(TypeMortarNull),
                 ret: Rc::new(TypeMortarString),
             })),
+            "toUpperCase" => Some(Rc::new(MortarTypeFunction {
+                arg: Rc::new(TypeMortarNull),
+                ret: Rc::new(TypeMortarString),
+            })),
             _ => None,
         }
     }
