@@ -90,6 +90,7 @@ pub(crate) struct DefinitionSetDataTypeInterfaceMethodImplData {
 
 pub(crate) struct DefinitionSetInterfaceMethodData {
     pub name: String,
+    pub arg_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub field_name: String,
 }

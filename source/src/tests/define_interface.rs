@@ -50,7 +50,7 @@ async fn test_00900define_interface() {
                 mb.tuple(vec![
                     mb.field(mb.scope_use("iface"), mb.str("type")),
                     mb.stage(mb.record(vec![
-                        ("to_string".to_string(), mb.call(
+                        ("to_string", mb.call(
                             mb.field(mb.scope_use("self"), mb.str("toUpperCase")),
                             mb.null(),
                         )),

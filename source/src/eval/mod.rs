@@ -502,15 +502,21 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: Box::new(ValueTuple { elements }),
             });
         },
-        Expr_::Record(r) => {
-            let entries: Vec<(String, EvalRes)> = r.entries.iter()
-                .map(|(k, e)| (k.clone(), eval_half(xx, e, target)))
-                .collect();
-            return EvalRes::ok(CodeValue {
+        Expr_::Record(r) => return er_seq_cv!(expr.loc, erb, {
+            let mut entries = Vec::new();
+            for (k_expr, v_expr) in &r.entries {
+                let k_cv = erb.must_er(eval_half(xx, k_expr, target))?;
+                let k_str = erb.must_res(extract_const_key(xx, expr.loc, k_cv.value.as_ref()))?;
+                let key = match k_str {
+                    ConstKey::String(s) => s,
+                };
+                entries.push((key, eval_half(xx, v_expr, target)));
+            }
+            return Ok(CodeValue {
                 code: Code { loc: expr.loc, code: Code_::None },
                 value: Box::new(ValueRecord { entries }),
             });
-        },
+        }),
     }
 }
 
@@ -641,7 +647,10 @@ fn substitute_lowers(
         Expr_::Record(r) => {
             let mut entries = Vec::new();
             for (k, e) in &r.entries {
-                entries.push((k.clone(), substitute_lowers(cix, import_state, e)?));
+                entries.push((
+                    substitute_lowers(cix, import_state, k)?,
+                    substitute_lowers(cix, import_state, e)?,
+                ));
             }
             Ok(Expr {
                 loc: expr.loc,

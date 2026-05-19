@@ -128,25 +128,40 @@ impl AspectField for DefinitionSetInterface {
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
 
-            let (field_name, ret_type_expr_clone) = {
+            let (field_name, arg_type_expr_clone, ret_type_expr_clone) = {
                 let interfaces = self.set.interfaces.borrow();
                 let iface = &interfaces[self.interface_index];
                 let methods = iface.methods.borrow();
                 let method = methods.iter().find(|m| m.name == key_name);
                 match method {
                     Some(m) => {
+                        let arg_clone = m.arg_type_expr.borrow().as_ref().map(|v| {
+                            (v.as_ref() as &dyn Any)
+                                .downcast_ref::<crate::eval::expr::Expr>()
+                                .expect("arg type must be an Expr")
+                                .clone()
+                        });
                         let ret_clone = m.ret_type_expr.borrow().as_ref().map(|v| {
                             (v.as_ref() as &dyn Any)
                                 .downcast_ref::<crate::eval::expr::Expr>()
                                 .expect("ret type must be an Expr")
                                 .clone()
                         });
-                        (m.field_name.clone(), ret_clone)
+                        (m.field_name.clone(), arg_clone, ret_clone)
                     },
                     None => return erb.err_new(
                         format!("Field '{}' not found on interface", key_name)
                     ),
                 }
+            };
+
+            let arg_type: Rc<dyn Type> = match arg_type_expr_clone {
+                Some(expr) => {
+                    let r = crate::eval::eval_half_mortar(xx, &expr);
+                    let cv = erb.must_er(r)?;
+                    cv.value.type_(xx, loc)
+                },
+                None => Rc::new(TypeMortarNull),
             };
 
             let ret_type: Rc<dyn Type> = match ret_type_expr_clone {
@@ -160,7 +175,7 @@ impl AspectField for DefinitionSetInterface {
 
             let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
             let field_type = Rc::new(MortarTypeFunction {
-                arg: Rc::new(TypeMortarNull),
+                arg: arg_type,
                 ret: ret_type,
             });
             return Ok(CodeValue {

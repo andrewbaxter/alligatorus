@@ -154,7 +154,7 @@ async fn compile(
                         ExprTuple { elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
                     ),
                     SerialExpr_::Record(entries) => Expr_::Record(
-                        ExprRecord { entries: entries.iter().map(|(k, e)| (k.clone(), serial_expr_to_expr(source_id, e))).collect() },
+                        ExprRecord { entries: entries.iter().map(|(k, e)| (serial_expr_to_expr(source_id, k), serial_expr_to_expr(source_id, e))).collect() },
                     ),
                 },
             };

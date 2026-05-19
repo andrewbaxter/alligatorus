@@ -142,7 +142,7 @@ pub enum SerialExpr_ {
     Stage(SerialExprStage),
     Lower(SerialExprLower),
     Tuple(Vec<SerialExpr>),
-    Record(Vec<(String, SerialExpr)>),
+    Record(Vec<(SerialExpr, SerialExpr)>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

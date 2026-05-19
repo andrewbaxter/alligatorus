@@ -247,6 +247,34 @@ jswrap!(struct NewDataResult(self_, scope) {
             },
         };
 
+        // Extract string keys from record key expressions
+        let record_string_entries: Vec<(String, &crate::eval::expr::Expr)> = {
+            let mut out = Vec::new();
+            for (k_expr, v_expr) in record_entries {
+                match &k_expr.r#type {
+                    crate::eval::expr::Expr_::Literal(lit) => {
+                        let val = lit();
+                        let val_any: &dyn std::any::Any = val.as_ref();
+                        if let Some(s) = val_any.downcast_ref::<crate::eval::string::ValueString>() {
+                            out.push((s.0.clone(), v_expr));
+                        } else {
+                            let msg = v8::String::new(scope, "Record keys must be string literals").unwrap();
+                            let exception = v8::Exception::error(scope, msg);
+                            scope.throw_exception(exception);
+                            return;
+                        }
+                    },
+                    _ => {
+                        let msg = v8::String::new(scope, "Record keys must be string literals").unwrap();
+                        let exception = v8::Exception::error(scope, msg);
+                        scope.throw_exception(exception);
+                        return;
+                    },
+                }
+            }
+            out
+        };
+
         let interface_index = iface_ref.interface_index;
 
         // Extract method names and indices from interface (release borrow after)
@@ -259,13 +287,13 @@ jswrap!(struct NewDataResult(self_, scope) {
 
         let mut method_impls = Vec::new();
         for (imethod_idx, imethod_name) in &iface_method_names {
-            let entry = record_entries.iter()
+            let entry = record_string_entries.iter()
                 .find(|(k, _)| k == imethod_name);
             match entry {
                 Some((_, expr)) => {
                     method_impls.push(DefinitionSetDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
-                        impl_expr: Box::new(expr.clone()),
+                        impl_expr: Box::new((*expr).clone()),
                         scope_entry_id: Cell::new(None),
                         self_scope_entry_id: Cell::new(None),
                     });
@@ -341,6 +369,7 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
             let idx = methods.len();
             methods.push(DefinitionSetInterfaceMethodData {
                 name,
+                arg_type_expr: RefCell::new(None),
                 ret_type_expr: RefCell::new(None),
                 field_name,
             });
@@ -355,6 +384,24 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
 
 jswrap!(struct NewInterfaceMethodResult(self_, scope) {
     data { interface_ref: Rc<DefinitionSetInterfaceRef>, method_index: usize }
+    fn arg_(staged: StagedExpr) -> () {
+        let interfaces = self_.interface_ref.set.interfaces.borrow();
+        let iface = &interfaces[self_.interface_ref.interface_index];
+        let methods = iface.methods.borrow();
+        let method = &methods[self_.method_index];
+        let mut arg_type_expr = method.arg_type_expr.borrow_mut();
+        if arg_type_expr.is_some() {
+            drop(arg_type_expr);
+            drop(methods);
+            drop(iface);
+            drop(interfaces);
+            let msg = v8::String::new(scope, "Interface method already has an arg type").unwrap();
+            let exception = v8::Exception::error(scope, msg);
+            scope.throw_exception(exception);
+            return;
+        }
+        *arg_type_expr = Some(staged.0);
+    }
     fn ret_(staged: StagedExpr) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];

@@ -109,10 +109,10 @@ impl ModuleBuilder {
         };
     }
 
-    pub fn record(&self, entries: Vec<(String, SerialExpr)>) -> SerialExpr {
+    pub fn record(&self, entries: Vec<(&str, SerialExpr)>) -> SerialExpr {
         return SerialExpr {
             id: self.id(),
-            r#type: SerialExpr_::Record(entries),
+            r#type: SerialExpr_::Record(entries.into_iter().map(|(k, v)| (self.str(k), v)).collect()),
         };
     }
 }

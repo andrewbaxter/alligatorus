@@ -85,7 +85,7 @@ pub struct ExprTuple {
 
 #[derive(Clone)]
 pub struct ExprRecord {
-    pub entries: Vec<(String, Expr)>,
+    pub entries: Vec<(Expr, Expr)>,
 }
 
 pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
