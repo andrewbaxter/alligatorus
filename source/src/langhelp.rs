@@ -273,6 +273,9 @@ pub(crate) trait Type: Value {
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes;
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes;
+    /// Return a unique identity for types that need finer-grained equality than Rust TypeId.
+    /// Two types with the same Rust TypeId but different identities are NOT equal.
+    fn identity(&self) -> Option<usize> { None }
 }
 
 #[derive(Default)]

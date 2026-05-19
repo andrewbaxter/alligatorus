@@ -508,8 +508,16 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
     return er_seq_cv!(loc, erb, {
         let source_type = source.value.type_(xx, loc);
         // Identity check: if same concrete type, pass through
-        if (source_type.as_ref() as &dyn Any).type_id() == (dest_type as &dyn Any).type_id() {
-            return Ok(source);
+        let rust_type_eq = (source_type.as_ref() as &dyn Any).type_id() == (dest_type as &dyn Any).type_id();
+        if rust_type_eq {
+            let ids_match = match (source_type.identity(), dest_type.identity()) {
+                (Some(a), Some(b)) => a == b,
+                (None, None) => true,
+                _ => false,
+            };
+            if ids_match {
+                return Ok(source);
+            }
         }
         let dest;
         if let Some(dest1) = erb.maybe_er(source_type.cast_to(xx, loc, &source, dest_type)) {
@@ -788,7 +796,115 @@ fn eval(
         }
     }
 
-    let has_js = stage1_code.is_some() || !def_funcs.is_empty();
+    // Compile data type method implementations
+    struct CompiledDataMethod {
+        scope_entry_id: ScopeEntryId,
+        self_scope_entry_id: ScopeEntryId,
+        data_field: String,
+        impl_code: JsCode,
+    }
+    let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
+    for ds in ex.definition_sets.borrow().iter() {
+        for dt_data in ds.data_types.borrow().iter() {
+            // Resolve underlying type
+            let underlying_type: Rc<dyn Type> = {
+                let expr = dt_data.underlying_type_expr.borrow();
+                let expr_ast = (expr.as_ref().unwrap().as_ref() as &dyn Any)
+                    .downcast_ref::<expr::Expr>()
+                    .expect("underlying type must be an Expr");
+                let result = eval_half(&xx, expr_ast, &MortarTarget);
+                if !result.errors.is_empty() {
+                    return Err(result.errors);
+                }
+                result.v.unwrap().value.type_(&xx, root_loc)
+            };
+
+            let data_field = dt_data.data_field.clone();
+
+            for method in dt_data.methods.borrow().iter() {
+                let impl_expr = method.impl_expr.borrow();
+                let impl_expr_ast = (impl_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                    .downcast_ref::<expr::Expr>()
+                    .expect("Method impl must be an Expr");
+
+                // Allocate self scope entry ID if needed
+                if method.self_scope_entry_id.get().is_none() {
+                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                    method.self_scope_entry_id.set(Some(id));
+                }
+                if method.scope_entry_id.get().is_none() {
+                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                    method.scope_entry_id.set(Some(id));
+                }
+                let self_id = method.self_scope_entry_id.get().unwrap();
+                let method_id = method.scope_entry_id.get().unwrap();
+
+                // Resolve ret type
+                let ret_type: Option<Rc<dyn Type>> = if method.ret_type_expr.borrow().is_some() {
+                    let ret_expr = method.ret_type_expr.borrow();
+                    let ret_expr_ast = (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                        .downcast_ref::<expr::Expr>()
+                        .expect("ret type must be an Expr");
+                    let ret_result = eval_half(&xx, ret_expr_ast, &MortarTarget);
+                    if !ret_result.errors.is_empty() {
+                        return Err(ret_result.errors);
+                    }
+                    Some(ret_result.v.unwrap().value.type_(&xx, root_loc))
+                } else {
+                    None
+                };
+
+                // Compile method body with `self` in scope
+                let method_xx = {
+                    let child_scope = Rc::new(Scope {
+                        values: RefCell::new(HashMap::new()),
+                        parent: Some(xx.scope.clone()),
+                    });
+                    child_scope.values.borrow_mut().insert(
+                        ConstKey::String("self".to_string()),
+                        Box::new(MortarScopeEntry {
+                            js_key: self_id,
+                            type_: underlying_type.clone(),
+                        }),
+                    );
+                    Rc::new(ExprContext {
+                        vx: xx.vx.clone(),
+                        import_state: xx.import_state.clone(),
+                        scope: child_scope,
+                    })
+                };
+                let impl_result = eval_half(&method_xx, impl_expr_ast, &MortarTarget);
+                if !impl_result.errors.is_empty() {
+                    return Err(impl_result.errors);
+                }
+                let impl_cv = impl_result.v.unwrap();
+
+                // Type check return value
+                let impl_cv = if let Some(ref ret_type) = ret_type {
+                    let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
+                    if !r.errors.is_empty() {
+                        return Err(r.errors);
+                    }
+                    r.v.unwrap()
+                } else {
+                    impl_cv
+                };
+
+                let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
+                    .expect("Method body must produce JS code")
+                    .clone();
+
+                def_data_methods.push(CompiledDataMethod {
+                    scope_entry_id: method_id,
+                    self_scope_entry_id: self_id,
+                    data_field: data_field.clone(),
+                    impl_code,
+                });
+            }
+        }
+    }
+
+    let has_js = stage1_code.is_some() || !def_funcs.is_empty() || !def_data_methods.is_empty();
     if !has_js {
         let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
         return Ok(EvalResult { value: cv.value, logs });
@@ -807,6 +923,21 @@ fn eval(
             code1.push(root_loc, format!("function {}() {{", func_name));
         }
         let body_var = render_code(&mut code1, impl_code);
+        code1.push(root_loc, format!("return {};", body_var));
+        code1.push(root_loc, "}".to_string());
+    }
+
+    // Render data type method implementations as JS functions
+    // Methods use `this` to access the wrapper object; self = this.<data_field>
+    for method in &def_data_methods {
+        let func_name = scope_entry_id_js_key(method.scope_entry_id);
+        code1.push(root_loc, format!("function {}() {{", func_name));
+        code1.push(root_loc, format!(
+            "let {} = this.{};",
+            scope_entry_id_js_key(method.self_scope_entry_id),
+            method.data_field,
+        ));
+        let body_var = render_code(&mut code1, &method.impl_code);
         code1.push(root_loc, format!("return {};", body_var));
         code1.push(root_loc, "}".to_string());
     }
@@ -951,6 +1082,14 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             let val_var = render_code(lines, &c.value);
             lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
             lines.push(code.loc, format!("{} = null;", out));
+        },
+        JsCodeType::Object(c) => {
+            let mut fields_str = vec![];
+            for (key, value) in &c.fields {
+                let val_var = render_code(lines, value);
+                fields_str.push(format!("{}: {}", key, val_var));
+            }
+            lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
     }
     return out;

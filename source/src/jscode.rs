@@ -46,6 +46,11 @@ pub(crate) struct JsCodeCall {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeObject {
+    pub(crate) fields: Vec<(String, JsCode)>,
+}
+
+#[derive(Clone)]
 pub(crate) enum JsCodeType {
     Seq(JsCodeSeq),
     Value(serde_json::Value),
@@ -55,6 +60,7 @@ pub(crate) enum JsCodeType {
     BindingUse(JsCodeBindingUse),
     Field(JsCodeField),
     Call(JsCodeCall),
+    Object(JsCodeObject),
 }
 
 #[derive(Clone)]
