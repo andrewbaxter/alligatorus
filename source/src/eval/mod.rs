@@ -9,6 +9,8 @@ pub mod mortar_string;
 pub mod mortar_function;
 pub mod expr;
 pub mod tuple;
+#[macro_use]
+pub mod jswrap;
 pub mod definition_set;
 
 use {
@@ -67,10 +69,10 @@ use {
         },
     },
     definition_set::{
+        DefineResult,
         DefinitionSet,
-        MortarTypeDefineResult,
-        define_js_callback,
     },
+    jswrap::JsWrap,
     expr::{
         Expr,
         ExprBind,
@@ -112,6 +114,7 @@ use {
         StaticScopeEntry,
         ValueTuple,
     },
+    dumpster::unsync::Gc,
     v8::tc_scope,
 };
 
@@ -645,58 +648,23 @@ fn eval(
         externals: RefCell::new(Vec::new()),
     });
     let mut s1_scope = HashMap::new();
-    for (key, eval_value, js_value) in [(
-        "log",
-        MortarScopeEntry {
-            js_key: ScopeEntryId(ex.next_scope_entry_id.next()),
-            type_: Rc::new(MortarTypeFunction {
-                arg: Rc::new(TypeMortarString),
-                ret: Rc::new(TypeMortarNull),
-            }),
-        },
-        v8::Function::builder(
-            |
-                scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>,
-                args: v8::FunctionCallbackArguments<'_>,
-                _ret: v8::ReturnValue<'_>,
-            | {
-                let message = args.get(0).to_string(scope).unwrap().to_rust_string_lossy(scope);
-                let timestamp_ms = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis() as u64;
-                scope
-                    .get_slot::<V8LogStore>()
-                    .unwrap()
-                    .logs
-                    .borrow_mut()
-                    .push(crate::langhelp::LogEntry { timestamp_ms, message });
-            },
-        ).build(js_scope).unwrap().cast::<v8::Value>(),
-    )] {
-        js_scope
-            .get_current_context()
-            .global(js_scope)
-            .set(
-                js_scope,
-                v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
-                js_value,
-            );
-        s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
-    }
-    // define: a rust function placed in javascript, called via javascript
-    for (key, eval_value, js_value) in [(
-        "define",
-        MortarScopeEntry {
-            js_key: ScopeEntryId(ex.next_scope_entry_id.next()),
-            type_: Rc::new(MortarTypeFunction {
-                arg: Rc::new(tuple::TypeTuple { types: vec![] }),
-                ret: Rc::new(MortarTypeDefineResult),
-            }),
-        },
-        v8::Function::builder(define_js_callback)
-            .build(js_scope).unwrap().cast::<v8::Value>(),
-    )] {
+    for (key, eval_value, js_value) in [
+        jswrap!(fn log(ex, js_scope, scope)(message: String) -> () {
+            let timestamp_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
+            scope
+                .get_slot::<V8LogStore>()
+                .unwrap()
+                .logs
+                .borrow_mut()
+                .push(crate::langhelp::LogEntry { timestamp_ms, message });
+        }),
+        jswrap!(fn define(ex, js_scope, scope)() -> DefineResult {
+            DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new())) }
+        }),
+    ] {
         js_scope
             .get_current_context()
             .global(js_scope)
