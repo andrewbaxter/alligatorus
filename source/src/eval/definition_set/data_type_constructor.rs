@@ -188,6 +188,18 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                         method.self_scope_entry_id.set(Some(id));
                     }
                 }
+                for impl_data in dt.interface_impls.borrow().iter() {
+                    for method_impl in &impl_data.method_impls {
+                        if method_impl.scope_entry_id.get().is_none() {
+                            let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                            method_impl.scope_entry_id.set(Some(id));
+                        }
+                        if method_impl.self_scope_entry_id.get().is_none() {
+                            let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                            method_impl.self_scope_entry_id.set(Some(id));
+                        }
+                    }
+                }
             }
         }
 
@@ -264,6 +276,20 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                     loc,
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
                 }));
+            }
+            for impl_data in dt.interface_impls.borrow().iter() {
+                let interfaces = self.set.interfaces.borrow();
+                let iface = &interfaces[impl_data.interface_index];
+                let iface_methods = iface.methods.borrow();
+                for method_impl in &impl_data.method_impls {
+                    let iface_method = &iface_methods[method_impl.interface_method_index];
+                    let method_id = method_impl.scope_entry_id.get()
+                        .expect("Interface method impl scope entry ID not allocated");
+                    object_fields.push((iface_method.field_name.clone(), JsCode {
+                        loc,
+                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
+                    }));
+                }
             }
 
             let result_type = Rc::new(DefinitionSetDataType {

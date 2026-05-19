@@ -83,6 +83,11 @@ pub struct ExprTuple {
     pub elements: Vec<Expr>,
 }
 
+#[derive(Clone)]
+pub struct ExprRecord {
+    pub entries: Vec<(String, Expr)>,
+}
+
 pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
 
 #[derive(Clone)]
@@ -97,6 +102,7 @@ pub enum Expr_ {
     Stage(ExprStage),
     Lower(ExprLower),
     Tuple(ExprTuple),
+    Record(ExprRecord),
 }
 
 #[derive(Clone)]

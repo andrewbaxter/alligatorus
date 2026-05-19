@@ -112,6 +112,7 @@ use {
     string::ValueString,
     tuple::{
         StaticScopeEntry,
+        ValueRecord,
         ValueTuple,
     },
     dumpster::unsync::Gc,
@@ -501,6 +502,15 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: Box::new(ValueTuple { elements }),
             });
         },
+        Expr_::Record(r) => {
+            let entries: Vec<(String, EvalRes)> = r.entries.iter()
+                .map(|(k, e)| (k.clone(), eval_half(xx, e, target)))
+                .collect();
+            return EvalRes::ok(CodeValue {
+                code: Code { loc: expr.loc, code: Code_::None },
+                value: Box::new(ValueRecord { entries }),
+            });
+        },
     }
 }
 
@@ -626,6 +636,16 @@ fn substitute_lowers(
             Ok(Expr {
                 loc: expr.loc,
                 r#type: Expr_::Tuple(ExprTuple { elements }),
+            })
+        },
+        Expr_::Record(r) => {
+            let mut entries = Vec::new();
+            for (k, e) in &r.entries {
+                entries.push((k.clone(), substitute_lowers(cix, import_state, e)?));
+            }
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::Record(expr::ExprRecord { entries }),
             })
         },
     }
@@ -900,6 +920,96 @@ fn eval(
                     data_field: data_field.clone(),
                     impl_code,
                 });
+            }
+
+            // Compile interface method implementations
+            for impl_data in dt_data.interface_impls.borrow().iter() {
+                for method_impl in &impl_data.method_impls {
+                    let impl_expr_ast = (method_impl.impl_expr.as_ref() as &dyn Any)
+                        .downcast_ref::<expr::Expr>()
+                        .expect("Interface method impl must be an Expr");
+
+                    if method_impl.self_scope_entry_id.get().is_none() {
+                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                        method_impl.self_scope_entry_id.set(Some(id));
+                    }
+                    if method_impl.scope_entry_id.get().is_none() {
+                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                        method_impl.scope_entry_id.set(Some(id));
+                    }
+                    let self_id = method_impl.self_scope_entry_id.get().unwrap();
+                    let method_id = method_impl.scope_entry_id.get().unwrap();
+
+                    // Resolve ret type from interface method
+                    let ret_type_expr_clone = {
+                        let interfaces = ds.interfaces.borrow();
+                        let iface = &interfaces[impl_data.interface_index];
+                        let iface_methods = iface.methods.borrow();
+                        let iface_method = &iface_methods[method_impl.interface_method_index];
+                        iface_method.ret_type_expr.borrow().as_ref().map(|v| {
+                            (v.as_ref() as &dyn Any)
+                                .downcast_ref::<expr::Expr>()
+                                .expect("ret type must be an Expr")
+                                .clone()
+                        })
+                    };
+                    let ret_type: Option<Rc<dyn Type>> = match ret_type_expr_clone {
+                        Some(ret_expr_ast) => {
+                            let ret_result = eval_half(&xx, &ret_expr_ast, &MortarTarget);
+                            if !ret_result.errors.is_empty() {
+                                return Err(ret_result.errors);
+                            }
+                            Some(ret_result.v.unwrap().value.type_(&xx, root_loc))
+                        },
+                        None => None,
+                    };
+
+                    // Compile method body with `self` in scope
+                    let method_xx = {
+                        let child_scope = Rc::new(Scope {
+                            values: RefCell::new(HashMap::new()),
+                            parent: Some(xx.scope.clone()),
+                        });
+                        child_scope.values.borrow_mut().insert(
+                            ConstKey::String("self".to_string()),
+                            Box::new(MortarScopeEntry {
+                                js_key: self_id,
+                                type_: underlying_type.clone(),
+                            }),
+                        );
+                        Rc::new(ExprContext {
+                            vx: xx.vx.clone(),
+                            import_state: xx.import_state.clone(),
+                            scope: child_scope,
+                        })
+                    };
+                    let impl_result = eval_half(&method_xx, impl_expr_ast, &MortarTarget);
+                    if !impl_result.errors.is_empty() {
+                        return Err(impl_result.errors);
+                    }
+                    let impl_cv = impl_result.v.unwrap();
+
+                    let impl_cv = if let Some(ref ret_type) = ret_type {
+                        let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
+                        if !r.errors.is_empty() {
+                            return Err(r.errors);
+                        }
+                        r.v.unwrap()
+                    } else {
+                        impl_cv
+                    };
+
+                    let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
+                        .expect("Interface method body must produce JS code")
+                        .clone();
+
+                    def_data_methods.push(CompiledDataMethod {
+                        scope_entry_id: method_id,
+                        self_scope_entry_id: self_id,
+                        data_field: data_field.clone(),
+                        impl_code,
+                    });
+                }
             }
         }
     }

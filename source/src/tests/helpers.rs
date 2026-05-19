@@ -108,4 +108,11 @@ impl ModuleBuilder {
             r#type: SerialExpr_::Lower(SerialExprLower { expr: Box::new(expr) }),
         };
     }
+
+    pub fn record(&self, entries: Vec<(String, SerialExpr)>) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::Record(entries),
+        };
+    }
 }

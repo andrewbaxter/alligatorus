@@ -4,10 +4,17 @@ use {
         DefinitionSetDataMethodData,
         DefinitionSetDataTypeConstructor,
         DefinitionSetDataTypeData,
+        DefinitionSetDataTypeInterfaceImplData,
+        DefinitionSetDataTypeInterfaceMethodImplData,
         DefinitionSetDataTypeRef,
         DefinitionSetFunction,
         DefinitionSetFunctionData,
+        DefinitionSetInterfaceData,
+        DefinitionSetInterfaceMethodData,
+        DefinitionSetInterfaceRef,
         next_data_type_identity,
+        next_interface_identity,
+        next_interface_method_id,
     },
     crate::{
         builtin::{
@@ -97,6 +104,7 @@ jswrap!(struct DefineResult(self_, scope) {
             data_types.push(DefinitionSetDataTypeData {
                 underlying_type_expr: RefCell::new(None),
                 methods: RefCell::new(Vec::new()),
+                interface_impls: RefCell::new(Vec::new()),
                 identity,
                 data_field,
                 unique_field,
@@ -108,6 +116,24 @@ jswrap!(struct DefineResult(self_, scope) {
             data_type_index: idx,
         });
         NewDataResult { data_type_ref }
+    }
+    fn new_interface() -> NewInterfaceResult {
+        let ds = self_.ds.clone();
+        let identity = next_interface_identity();
+        let idx = {
+            let mut interfaces = ds.interfaces.borrow_mut();
+            let idx = interfaces.len();
+            interfaces.push(DefinitionSetInterfaceData {
+                methods: RefCell::new(Vec::new()),
+                identity,
+            });
+            idx
+        };
+        let interface_ref = Rc::new(DefinitionSetInterfaceRef {
+            set: (*ds).clone(),
+            interface_index: idx,
+        });
+        NewInterfaceResult { interface_ref }
     }
 });
 
@@ -206,6 +232,60 @@ jswrap!(struct NewDataResult(self_, scope) {
             method_index,
         }
     }
+    fn impl_interface(iface_ref: Rc<DefinitionSetInterfaceRef>, record: StagedExpr) -> () {
+        let record_expr = (record.0.as_ref() as &dyn std::any::Any)
+            .downcast_ref::<crate::eval::expr::Expr>()
+            .expect("impl_interface record must be a staged expression");
+
+        let record_entries = match &record_expr.r#type {
+            crate::eval::expr::Expr_::Record(r) => &r.entries,
+            _ => {
+                let msg = v8::String::new(scope, "impl_interface argument must be a Record expression").unwrap();
+                let exception = v8::Exception::error(scope, msg);
+                scope.throw_exception(exception);
+                return;
+            },
+        };
+
+        let interface_index = iface_ref.interface_index;
+
+        // Extract method names and indices from interface (release borrow after)
+        let iface_method_names: Vec<(usize, String)> = {
+            let interfaces = iface_ref.set.interfaces.borrow();
+            let iface = &interfaces[interface_index];
+            let methods = iface.methods.borrow();
+            methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
+        };
+
+        let mut method_impls = Vec::new();
+        for (imethod_idx, imethod_name) in &iface_method_names {
+            let entry = record_entries.iter()
+                .find(|(k, _)| k == imethod_name);
+            match entry {
+                Some((_, expr)) => {
+                    method_impls.push(DefinitionSetDataTypeInterfaceMethodImplData {
+                        interface_method_index: *imethod_idx,
+                        impl_expr: Box::new(expr.clone()),
+                        scope_entry_id: Cell::new(None),
+                        self_scope_entry_id: Cell::new(None),
+                    });
+                },
+                None => {
+                    let msg = v8::String::new(scope, &format!("Missing implementation for interface method '{}'", imethod_name)).unwrap();
+                    let exception = v8::Exception::error(scope, msg);
+                    scope.throw_exception(exception);
+                    return;
+                },
+            }
+        }
+
+        let data_types = self_.data_type_ref.set.data_types.borrow();
+        let dt = &data_types[self_.data_type_ref.data_type_index];
+        dt.interface_impls.borrow_mut().push(DefinitionSetDataTypeInterfaceImplData {
+            interface_index,
+            method_impls,
+        });
+    }
 });
 
 jswrap!(struct NewDataMethodResult(self_, scope) {
@@ -245,6 +325,75 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
         *ret_type_expr = Some(staged.0);
     }
 });
+
+// --- Interface JsWrap structs ---
+
+jswrap!(struct NewInterfaceResult(self_, scope) {
+    data { interface_ref: Rc<DefinitionSetInterfaceRef> }
+    field type_: Rc<DefinitionSetInterfaceRef> { self_.interface_ref.clone() }
+    fn new_func(name: String) -> NewInterfaceMethodResult {
+        let iface_ref = &self_.interface_ref;
+        let field_name = format!("_im{}", next_interface_method_id());
+        let method_index = {
+            let interfaces = iface_ref.set.interfaces.borrow();
+            let iface = &interfaces[iface_ref.interface_index];
+            let mut methods = iface.methods.borrow_mut();
+            let idx = methods.len();
+            methods.push(DefinitionSetInterfaceMethodData {
+                name,
+                ret_type_expr: RefCell::new(None),
+                field_name,
+            });
+            idx
+        };
+        NewInterfaceMethodResult {
+            interface_ref: self_.interface_ref.clone(),
+            method_index,
+        }
+    }
+});
+
+jswrap!(struct NewInterfaceMethodResult(self_, scope) {
+    data { interface_ref: Rc<DefinitionSetInterfaceRef>, method_index: usize }
+    fn ret_(staged: StagedExpr) -> () {
+        let interfaces = self_.interface_ref.set.interfaces.borrow();
+        let iface = &interfaces[self_.interface_ref.interface_index];
+        let methods = iface.methods.borrow();
+        let method = &methods[self_.method_index];
+        let mut ret_type_expr = method.ret_type_expr.borrow_mut();
+        if ret_type_expr.is_some() {
+            drop(ret_type_expr);
+            drop(methods);
+            drop(iface);
+            drop(interfaces);
+            let msg = v8::String::new(scope, "Interface method already has a ret type").unwrap();
+            let exception = v8::Exception::error(scope, msg);
+            scope.throw_exception(exception);
+            return;
+        }
+        *ret_type_expr = Some(staged.0);
+    }
+});
+
+// --- JsWrap for Rc<DefinitionSetInterfaceRef> ---
+
+impl JsWrap for Rc<DefinitionSetInterfaceRef> {
+    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+        Rc::new(super::MortarTypeDefinitionSetInterfaceRef)
+    }
+    fn from_v8<'s>(
+        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        crate::eval::rc_from_v8(&*value)
+    }
+    fn into_v8<'s>(
+        self,
+        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+    ) -> v8::Local<'s, v8::Value> {
+        crate::eval::rc_to_v8(scope, self).into()
+    }
+}
 
 // --- JsWrap for Rc<DefinitionSetDataTypeRef> ---
 

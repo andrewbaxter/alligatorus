@@ -84,6 +84,16 @@ impl AspectTuple for TypeTuple {
     }
 }
 
+pub(crate) struct ValueRecord {
+    pub entries: Vec<(String, EvalRes)>,
+}
+
+impl Value for ValueRecord {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeTuple { types: vec![] })
+    }
+}
+
 /// A value whose data is entirely carried by its type.
 pub(crate) struct StaticValue {
     pub type_: Rc<dyn Type>,

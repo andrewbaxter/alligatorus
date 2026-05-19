@@ -3,12 +3,15 @@ mod data_type_ref;
 mod data_type_constructor;
 mod data_type;
 mod function;
+mod interface_ref;
+mod interface;
 
 pub(crate) use {
     jswrap_structs::DefineResult,
     data_type_ref::MortarTypeDefinitionSetDataTypeRef,
     data_type_constructor::MortarTypeDefinitionSetDataTypeConstructor,
     function::MortarTypeDefinitionSetFunction,
+    interface_ref::MortarTypeDefinitionSetInterfaceRef,
 };
 
 use {
@@ -33,6 +36,18 @@ pub(crate) fn next_data_type_identity() -> usize {
     NEXT_DATA_TYPE_IDENTITY.fetch_add(1, Ordering::Relaxed)
 }
 
+static NEXT_INTERFACE_IDENTITY: AtomicUsize = AtomicUsize::new(0);
+
+pub(crate) fn next_interface_identity() -> usize {
+    NEXT_INTERFACE_IDENTITY.fetch_add(1, Ordering::Relaxed)
+}
+
+static NEXT_INTERFACE_METHOD_ID: AtomicUsize = AtomicUsize::new(0);
+
+pub(crate) fn next_interface_method_id() -> usize {
+    NEXT_INTERFACE_METHOD_ID.fetch_add(1, Ordering::Relaxed)
+}
+
 // --- DefinitionSet data ---
 
 pub(crate) struct DefinitionSetFunctionData {
@@ -55,14 +70,39 @@ pub(crate) struct DefinitionSetDataMethodData {
 pub(crate) struct DefinitionSetDataTypeData {
     pub underlying_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub methods: RefCell<Vec<DefinitionSetDataMethodData>>,
+    pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
     pub identity: usize,
     pub data_field: String,
     pub unique_field: String,
 }
 
+pub(crate) struct DefinitionSetDataTypeInterfaceImplData {
+    pub interface_index: usize,
+    pub method_impls: Vec<DefinitionSetDataTypeInterfaceMethodImplData>,
+}
+
+pub(crate) struct DefinitionSetDataTypeInterfaceMethodImplData {
+    pub interface_method_index: usize,
+    pub impl_expr: Box<dyn Value>,
+    pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
+}
+
+pub(crate) struct DefinitionSetInterfaceMethodData {
+    pub name: String,
+    pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
+    pub field_name: String,
+}
+
+pub(crate) struct DefinitionSetInterfaceData {
+    pub methods: RefCell<Vec<DefinitionSetInterfaceMethodData>>,
+    pub identity: usize,
+}
+
 pub(crate) struct DefinitionSet {
     pub functions: RefCell<Vec<DefinitionSetFunctionData>>,
     pub data_types: RefCell<Vec<DefinitionSetDataTypeData>>,
+    pub interfaces: RefCell<Vec<DefinitionSetInterfaceData>>,
     pub finished: Cell<bool>,
     pub next_field_id: Counter,
 }
@@ -78,6 +118,7 @@ impl DefinitionSet {
         DefinitionSet {
             functions: RefCell::new(Vec::new()),
             data_types: RefCell::new(Vec::new()),
+            interfaces: RefCell::new(Vec::new()),
             finished: Cell::new(false),
             next_field_id: Counter::default(),
         }
@@ -122,6 +163,16 @@ pub(crate) struct DefinitionSetDataTypeRef {
 pub(crate) struct DefinitionSetDataTypeConstructor {
     pub set: Gc<DefinitionSet>,
     pub data_type_index: usize,
+}
+
+pub(crate) struct DefinitionSetInterfaceRef {
+    pub set: Gc<DefinitionSet>,
+    pub interface_index: usize,
+}
+
+pub(crate) struct DefinitionSetInterface {
+    pub set: Gc<DefinitionSet>,
+    pub interface_index: usize,
 }
 
 pub(crate) struct DefinitionSetDataType {

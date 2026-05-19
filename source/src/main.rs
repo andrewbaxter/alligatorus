@@ -15,6 +15,7 @@ use {
                 ExprCall,
                 ExprField,
                 ExprLower,
+                ExprRecord,
                 ExprSeq,
                 ExprScopeUse,
                 ExprSet,
@@ -151,6 +152,9 @@ async fn compile(
                     ),
                     SerialExpr_::Tuple(exprs) => Expr_::Tuple(
                         ExprTuple { elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
+                    ),
+                    SerialExpr_::Record(entries) => Expr_::Record(
+                        ExprRecord { entries: entries.iter().map(|(k, e)| (k.clone(), serial_expr_to_expr(source_id, e))).collect() },
                     ),
                 },
             };

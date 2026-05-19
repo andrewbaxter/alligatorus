@@ -129,25 +129,51 @@ impl AspectField for DefinitionSetDataType {
             let key_name = key_string.get(key.value.as_ref());
 
             // Look up method by name - extract data before calling eval
-            let (field_name, ret_type_expr_clone) = {
+            let lookup_result: Option<(String, Option<crate::eval::expr::Expr>)> = 'lookup: {
                 let data_types = self.set.data_types.borrow();
                 let dt = &data_types[self.data_type_index];
-                let methods = dt.methods.borrow();
-                let method = methods.iter().find(|m| m.name == key_name);
-                match method {
-                    Some(m) => {
+
+                // Check direct methods first
+                {
+                    let methods = dt.methods.borrow();
+                    if let Some(m) = methods.iter().find(|m| m.name == key_name) {
                         let ret_clone = m.ret_type_expr.borrow().as_ref().map(|v| {
                             (v.as_ref() as &dyn Any)
                                 .downcast_ref::<crate::eval::expr::Expr>()
                                 .expect("ret type must be an Expr")
                                 .clone()
                         });
-                        (m.field_name.clone(), ret_clone)
-                    },
-                    None => return erb.err_new(
-                        format!("Field '{}' not found on data type", key_name)
-                    ),
+                        break 'lookup Some((m.field_name.clone(), ret_clone));
+                    }
                 }
+
+                // Check interface methods
+                {
+                    let interface_impls = dt.interface_impls.borrow();
+                    for impl_data in interface_impls.iter() {
+                        let interfaces = self.set.interfaces.borrow();
+                        let iface = &interfaces[impl_data.interface_index];
+                        let iface_methods = iface.methods.borrow();
+                        if let Some(method) = iface_methods.iter().find(|m| m.name == key_name) {
+                            let ret_clone = method.ret_type_expr.borrow().as_ref().map(|v| {
+                                (v.as_ref() as &dyn Any)
+                                    .downcast_ref::<crate::eval::expr::Expr>()
+                                    .expect("ret type must be an Expr")
+                                    .clone()
+                            });
+                            break 'lookup Some((method.field_name.clone(), ret_clone));
+                        }
+                    }
+                }
+
+                None
+            };
+
+            let (field_name, ret_type_expr_clone) = match lookup_result {
+                Some(r) => r,
+                None => return erb.err_new(
+                    format!("Field '{}' not found on data type", key_name)
+                ),
             };
 
             // Resolve return type
@@ -187,6 +213,8 @@ impl AspectField for DefinitionSetDataType {
     fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         let data_types = self.set.data_types.borrow();
         let dt = &data_types[self.data_type_index];
+
+        // Check direct methods
         let methods = dt.methods.borrow();
         for method in methods.iter() {
             if method.name == key {
@@ -196,6 +224,24 @@ impl AspectField for DefinitionSetDataType {
                 }));
             }
         }
+        drop(methods);
+
+        // Check interface methods
+        let interface_impls = dt.interface_impls.borrow();
+        for impl_data in interface_impls.iter() {
+            let interfaces = self.set.interfaces.borrow();
+            let iface = &interfaces[impl_data.interface_index];
+            let iface_methods = iface.methods.borrow();
+            for method in iface_methods.iter() {
+                if method.name == key {
+                    return Some(Rc::new(MortarTypeFunction {
+                        arg: Rc::new(TypeMortarNull),
+                        ret: Rc::new(TypeMortarNull),
+                    }));
+                }
+            }
+        }
+
         None
     }
 }
