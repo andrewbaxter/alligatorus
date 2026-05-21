@@ -2,8 +2,11 @@ use {
     crate::{
         builtin::{
             AspectConsumeJs,
+            AspectLiftJs,
             aspect_consume_js_aspect_id,
+            aspect_lift_js_aspect_id,
         },
+        eval::rc_from_v8,
         jscode::{
             JsCode,
             JsCodeBindingUse,
@@ -144,6 +147,9 @@ impl Type for ExprType {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeJs>));
         }
+        if *key == aspect_lift_js_aspect_id() {
+            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectLiftJs>));
+        }
         return None;
     }
 
@@ -169,5 +175,12 @@ impl AspectConsumeJs for ExprType {
             loc,
             type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
         })
+    }
+}
+
+impl AspectLiftJs for ExprType {
+    fn lift(&self, value: &v8::Value) -> Box<dyn Value> {
+        let cell: Rc<StagedExprCell> = rc_from_v8(value);
+        cell.value.borrow_mut().take().expect("Expr value already consumed during lift")
     }
 }

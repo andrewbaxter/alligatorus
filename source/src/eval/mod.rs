@@ -32,6 +32,7 @@ use {
             JsCodeBind,
             JsCodeSeq,
             JsCodeType,
+            JsCodeArray,
         },
         langhelp::{
             Code,
@@ -732,7 +733,16 @@ fn eval(
     }
     let cv = result.v.unwrap();
     let value_type = cv.value.type_(&xx, root_loc);
-    let stage1_code = cv.code.cast::<JsCode>().into_res()?;
+    let (stage1_code, fallback_value) = match aspect_consume_js_get_maybe(&xx, value_type.as_ref()) {
+        Some(to_js) => {
+            let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
+            (Some(js), None)
+        },
+        None => {
+            let code = cv.code.cast::<JsCode>().into_res()?.cloned();
+            (code, Some(cv.value))
+        },
+    };
 
     // Compile definition set implementations
     let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, JsCode)> = vec![];
@@ -1026,10 +1036,9 @@ fn eval(
     let has_js = stage1_code.is_some() || !def_funcs.is_empty() || !def_data_methods.is_empty();
     if !has_js {
         let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
-        return Ok(EvalResult { value: cv.value, logs });
+        return Ok(EvalResult { value: fallback_value.expect("No JS and no fallback value"), logs });
     }
 
-    let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
     let mut code1 = JsSourceBuilder::default();
     code1.push(root_loc, "(function() {".to_string());
 
@@ -1095,8 +1104,28 @@ fn eval(
     ).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {
+            let value: Box<dyn Value> = if let Some(tuple_aspect) = aspect_tuple_get_maybe(&xx, value_type.as_ref()) {
+                let elem_types = tuple_aspect.element_types();
+                let array = v8::Local::<v8::Array>::try_from(stage2)
+                    .expect("Expected JS array for tuple result");
+                let mut elements = Vec::new();
+                for (i, elem_type) in elem_types.iter().enumerate() {
+                    let elem_v8 = array.get_index(js_scope, i as u32)
+                        .expect("Array index out of bounds in tuple lift");
+                    let elem_lift = aspect_lift_js_get(&xx, root_loc, elem_type.as_ref()).into_res()?;
+                    let lifted = elem_lift.lift(&elem_v8);
+                    elements.push(EvalRes::ok(CodeValue {
+                        code: Code { loc: root_loc, code: Code_::None },
+                        value: lifted,
+                    }));
+                }
+                Box::new(ValueTuple { elements })
+            } else {
+                let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+                value_from_js.lift(&stage2)
+            };
             let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
-            Ok(EvalResult { value: value_from_js.lift(&stage2), logs })
+            Ok(EvalResult { value, logs })
         },
         None => {
             let text;
@@ -1209,6 +1238,13 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
                 fields_str.push(format!("{}: {}", key, val_var));
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
+        },
+        JsCodeType::Array(c) => {
+            let mut elem_vars = vec![];
+            for elem in &c.elements {
+                elem_vars.push(render_code(lines, elem));
+            }
+            lines.push(code.loc, format!("{} = [{}];", out, elem_vars.join(", ")));
         },
     }
     return out;

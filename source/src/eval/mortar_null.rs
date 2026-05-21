@@ -118,10 +118,13 @@ impl AspectLiftJs for TypeMortarNull {
 impl AspectNull for TypeMortarNull { }
 
 impl AspectConsumeJs for TypeMortarNull {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EResult<JsCode> {
-        EResult::ok(JsCode {
-            loc: loc,
-            type_: JsCodeType::Value(serde_json::Value::Null),
-        })
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        match cv.code.code {
+            Code_::Dyn(_) => cv.code.cast::<JsCode>().map(|x| x.unwrap().clone()),
+            Code_::None => EResult::ok(JsCode {
+                loc,
+                type_: JsCodeType::Value(serde_json::Value::Null),
+            }),
+        }
     }
 }

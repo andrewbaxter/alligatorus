@@ -51,6 +51,11 @@ pub(crate) struct JsCodeObject {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeArray {
+    pub(crate) elements: Vec<JsCode>,
+}
+
+#[derive(Clone)]
 pub(crate) enum JsCodeType {
     Seq(JsCodeSeq),
     Value(serde_json::Value),
@@ -61,6 +66,7 @@ pub(crate) enum JsCodeType {
     Field(JsCodeField),
     Call(JsCodeCall),
     Object(JsCodeObject),
+    Array(JsCodeArray),
 }
 
 #[derive(Clone)]
