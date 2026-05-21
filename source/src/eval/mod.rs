@@ -479,10 +479,7 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             let mut entries = Vec::new();
             for (k_expr, v_expr) in &r.entries {
                 let k_cv = erb.must_er(eval_half(xx, k_expr, target))?;
-                let k_str = erb.must_res(extract_const_key(xx, expr.loc, k_cv.value.as_ref()))?;
-                let key = match k_str {
-                    ConstKey::String(s) => s,
-                };
+                let key = erb.must_res(extract_const_key(xx, expr.loc, k_cv.value.as_ref()))?;
                 entries.push((key, eval_half(xx, v_expr, target)));
             }
             return Ok(CodeValue {

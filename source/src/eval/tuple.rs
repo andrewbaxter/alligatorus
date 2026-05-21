@@ -21,6 +21,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -172,7 +173,7 @@ impl AspectBindJs for TypeTuple {
 }
 
 pub(crate) struct ValueRecord {
-    pub entries: Vec<(String, EvalRes)>,
+    pub entries: Vec<(ConstKey, EvalRes)>,
 }
 
 impl Value for ValueRecord {
