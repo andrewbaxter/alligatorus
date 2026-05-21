@@ -2,9 +2,11 @@ use {
     super::DefinitionSetInterface,
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectField,
             AspectJsStackValue,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
@@ -30,6 +32,7 @@ use {
         },
     },
     crate::eval::{
+        DefaultBindJs,
         Erb,
         mortar_function::MortarTypeFunction,
         mortar_js_value::{
@@ -79,6 +82,9 @@ impl Type for DefinitionSetInterface {
                 set: self.set.clone(),
                 interface_index: self.interface_index,
             }) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(DefinitionSetInterface {

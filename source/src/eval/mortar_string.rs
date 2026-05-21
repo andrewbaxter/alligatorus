@@ -1,5 +1,6 @@
 use {
     super::{
+        DefaultBindJs,
         Erb,
         mortar_js_value::{
             MortarJsValue,
@@ -12,11 +13,13 @@ use {
     },
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectField,
             AspectJsStackValue,
             AspectJsString,
             AspectSet,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
             aspect_field_aspect_id,
@@ -76,6 +79,9 @@ impl Type for TypeMortarString {
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectField>));

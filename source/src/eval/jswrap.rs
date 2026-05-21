@@ -132,6 +132,9 @@ macro_rules! jswrap {
                     if *key == aspect_consume_js_aspect_id() {
                         return Some(Box::new(Box::new([<$name Type>]) as Box<dyn AspectConsumeJs>));
                     }
+                    if *key == aspect_bind_js_aspect_id() {
+                        return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
+                    }
                     if *key == aspect_js_stack_value_aspect_id() {
                         return Some(Box::new(Box::new([<$name Type>]) as Box<dyn AspectJsStackValue>));
                     }

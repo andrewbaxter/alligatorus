@@ -1,11 +1,14 @@
 use {
+    super::DefaultBindJs,
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectJsStackValue,
             AspectLiftJs,
             AspectNull,
             AspectSerial,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
@@ -73,6 +76,9 @@ impl Type for TypeMortarNull {
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         return None;
     }

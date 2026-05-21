@@ -1,9 +1,12 @@
 use {
+    super::DefaultBindJs,
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectLiftJs,
             AspectTuple,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
             aspect_lift_js_aspect_id,
@@ -72,6 +75,9 @@ impl Type for TypeTuple {
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeTuple { types: self.types.clone() }) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_lift_js_aspect_id() {
             let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.types.iter()

@@ -6,10 +6,12 @@ use {
     },
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectField,
             AspectJsStackValue,
             AspectLiftJs,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
@@ -32,6 +34,7 @@ use {
         },
     },
     crate::eval::{
+        DefaultBindJs,
         Erb,
         mortar_js_value::{
             MortarJsValue,
@@ -63,6 +66,9 @@ impl Type for MortarTypeDefinitionSetExports {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetExports) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetExports) as Box<dyn AspectJsStackValue>));

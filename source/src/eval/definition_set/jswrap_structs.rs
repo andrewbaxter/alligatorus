@@ -19,9 +19,11 @@ use {
     },
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectField,
             AspectJsStackValue,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
@@ -46,6 +48,7 @@ use {
         },
     },
     crate::eval::{
+        DefaultBindJs,
         Erb,
         jswrap::{
             JsWrap,

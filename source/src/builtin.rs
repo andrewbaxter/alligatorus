@@ -92,6 +92,10 @@ aspect!(AspectConsumeJs {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
 });
 
+aspect!(AspectBindJs {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult < (JsCode, Rc < dyn Type >) >;
+});
+
 aspect!(AspectJsString {});
 
 aspect!(AspectNull {});

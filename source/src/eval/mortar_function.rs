@@ -1,8 +1,11 @@
 use {
+    super::DefaultBindJs,
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectFunction,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
             aspect_function_aspect_id,
@@ -60,6 +63,9 @@ impl Type for MortarTypeFunction {
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         return None;
     }

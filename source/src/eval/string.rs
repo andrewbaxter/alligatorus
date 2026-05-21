@@ -1,12 +1,15 @@
 use {
     super::{
+        DefaultBindJs,
         Erb,
         mortar_string::TypeMortarString,
     },
     crate::{
         builtin::{
+            AspectBindJs,
             AspectField,
             AspectString,
+            aspect_bind_js_aspect_id,
             aspect_field_aspect_id,
             aspect_string_aspect_id,
             aspect_string_get,
@@ -49,6 +52,9 @@ impl Type for TypeString {
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeString) as Box<dyn AspectField>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         return None;
     }

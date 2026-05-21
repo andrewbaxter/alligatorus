@@ -1,8 +1,11 @@
 use {
+    super::DefaultBindJs,
     crate::{
         builtin::{
+            AspectBindJs,
             AspectConsumeJs,
             AspectLiftJs,
+            aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_lift_js_aspect_id,
         },
@@ -146,6 +149,9 @@ impl Type for ExprType {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_lift_js_aspect_id() {
             return Some(Box::new(Box::new(ExprType) as Box<dyn AspectLiftJs>));
