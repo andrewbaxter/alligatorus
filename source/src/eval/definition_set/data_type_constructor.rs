@@ -163,6 +163,7 @@ impl Type for DefinitionSetDataTypeConstructor {
 
 impl Aspect for DefinitionSetDataTypeConstructor { }
 
+
 impl AspectFunction for DefinitionSetDataTypeConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Ensure scope entry IDs are allocated for all functions and methods

@@ -167,6 +167,7 @@ impl Type for DefinitionSetFunction {
 
 impl Aspect for DefinitionSetFunction { }
 
+
 impl AspectFunction for DefinitionSetFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Ensure scope entry IDs are allocated

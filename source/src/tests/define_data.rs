@@ -20,7 +20,7 @@ async fn test_00800define_data() {
         // Define the data type inside a lower block, return the constructor
         mb.bind("make_upper", mb.lower(mb.seq(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-            mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.tuple(vec![]))),
+            mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper"))),
             // Set underlying type to String
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),

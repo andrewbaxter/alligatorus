@@ -7,6 +7,7 @@ use {
         DefinitionSetDataTypeInterfaceImplData,
         DefinitionSetDataTypeInterfaceMethodImplData,
         DefinitionSetDataTypeRef,
+        DefinitionSetExports,
         DefinitionSetFunction,
         DefinitionSetFunctionData,
         DefinitionSetInterfaceData,
@@ -73,12 +74,13 @@ use {
 
 jswrap!(struct DefineResult(self_, scope) {
     data { ds: Rc<Gc<DefinitionSet>> }
-    fn new_func() -> NewFuncResult {
+    fn new_func(name: String) -> NewFuncResult {
         let ds = self_.ds.clone();
         let idx = {
             let mut functions = ds.functions.borrow_mut();
             let idx = functions.len();
             functions.push(DefinitionSetFunctionData {
+                name: Some(name),
                 impl_expr: RefCell::new(None),
                 arg_type_expr: RefCell::new(None),
                 ret_type_expr: RefCell::new(None),
@@ -93,7 +95,7 @@ jswrap!(struct DefineResult(self_, scope) {
         });
         NewFuncResult { func_ref }
     }
-    fn new_data() -> NewDataResult {
+    fn new_data(name: String) -> NewDataResult {
         let ds = self_.ds.clone();
         let identity = next_data_type_identity();
         let unique_field = format!("_{}", ds.next_field_id.next());
@@ -102,6 +104,7 @@ jswrap!(struct DefineResult(self_, scope) {
             let mut data_types = ds.data_types.borrow_mut();
             let idx = data_types.len();
             data_types.push(DefinitionSetDataTypeData {
+                name: Some(name),
                 underlying_type_expr: RefCell::new(None),
                 methods: RefCell::new(Vec::new()),
                 interface_impls: RefCell::new(Vec::new()),
@@ -116,6 +119,11 @@ jswrap!(struct DefineResult(self_, scope) {
             data_type_index: idx,
         });
         NewDataResult { data_type_ref }
+    }
+    fn build() -> Rc<DefinitionSetExports> {
+        Rc::new(DefinitionSetExports {
+            set: (*self_.ds).clone(),
+        })
     }
     fn new_interface() -> NewInterfaceResult {
         let ds = self_.ds.clone();
@@ -167,6 +175,36 @@ jswrap!(struct NewFuncResult(self_, scope) {
             return;
         }
         *arg_type_expr = Some(staged.0);
+    }
+    fn arg_type(type_ref: Rc<DefinitionSetInterfaceRef>) -> () {
+        let functions = self_.func_ref.set.functions.borrow();
+        let func_data = &functions[self_.func_ref.func_index];
+        let mut arg_type_expr = func_data.arg_type_expr.borrow_mut();
+        if arg_type_expr.is_some() {
+            drop(arg_type_expr);
+            drop(functions);
+            let msg = v8::String::new(scope, "Function already has an arg type").unwrap();
+            let exception = v8::Exception::error(scope, msg);
+            scope.throw_exception(exception);
+            return;
+        }
+        // Create a literal Expr that evaluates to the interface type
+        use crate::eval::mortar_js_value::{MortarJsValue, MortarJsValueSource};
+        let set = type_ref.set.clone();
+        let idx = type_ref.interface_index;
+        let literal_expr: Box<dyn crate::langhelp::Value> = Box::new(crate::eval::expr::Expr {
+            loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
+            r#type: crate::eval::expr::Expr_::Literal(Rc::new(move || {
+                Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(super::DefinitionSetInterface {
+                        set: set.clone(),
+                        interface_index: idx,
+                    }),
+                })
+            })),
+        });
+        *arg_type_expr = Some(literal_expr);
     }
     fn ret_(staged: StagedExpr) -> () {
         let functions = self_.func_ref.set.functions.borrow();
@@ -467,6 +505,26 @@ impl JsWrap for Rc<DefinitionSetDataTypeRef> {
 impl JsWrap for Rc<DefinitionSetDataTypeConstructor> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(super::MortarTypeDefinitionSetDataTypeConstructor)
+    }
+    fn from_v8<'s>(
+        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        crate::eval::rc_from_v8(&*value)
+    }
+    fn into_v8<'s>(
+        self,
+        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+    ) -> v8::Local<'s, v8::Value> {
+        crate::eval::rc_to_v8(scope, self).into()
+    }
+}
+
+// --- JsWrap for Rc<DefinitionSetExports> ---
+
+impl JsWrap for Rc<DefinitionSetExports> {
+    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+        Rc::new(super::MortarTypeDefinitionSetExports)
     }
     fn from_v8<'s>(
         _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,

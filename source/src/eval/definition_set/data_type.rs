@@ -1,5 +1,5 @@
 use {
-    super::DefinitionSetDataType,
+    super::{DefinitionSetDataType, DefinitionSetInterface},
     crate::{
         builtin::{
             AspectConsumeJs,
@@ -89,7 +89,29 @@ impl Type for DefinitionSetDataType {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        // Allow casting to any interface this data type implements
+        if let Some(target_identity) = type_.identity() {
+            let data_types = self.set.data_types.borrow();
+            let dt = &data_types[self.data_type_index];
+            let interface_impls = dt.interface_impls.borrow();
+            let interfaces = self.set.interfaces.borrow();
+            for impl_data in interface_impls.iter() {
+                let iface = &interfaces[impl_data.interface_index];
+                if iface.identity == target_identity {
+                    return EvalRes::ok(CodeValue {
+                        code: cv.code.clone(),
+                        value: Box::new(MortarJsValue {
+                            source: MortarJsValueSource::Expr,
+                            type_: Rc::new(DefinitionSetInterface {
+                                set: self.set.clone(),
+                                interface_index: impl_data.interface_index,
+                            }),
+                        }),
+                    });
+                }
+            }
+        }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 

@@ -2,6 +2,7 @@ mod jswrap_structs;
 mod data_type_ref;
 mod data_type_constructor;
 mod data_type;
+mod exports;
 mod function;
 mod interface_ref;
 mod interface;
@@ -10,6 +11,7 @@ pub(crate) use {
     jswrap_structs::DefineResult,
     data_type_ref::MortarTypeDefinitionSetDataTypeRef,
     data_type_constructor::MortarTypeDefinitionSetDataTypeConstructor,
+    exports::MortarTypeDefinitionSetExports,
     function::MortarTypeDefinitionSetFunction,
     interface_ref::MortarTypeDefinitionSetInterfaceRef,
 };
@@ -51,6 +53,7 @@ pub(crate) fn next_interface_method_id() -> usize {
 // --- DefinitionSet data ---
 
 pub(crate) struct DefinitionSetFunctionData {
+    pub name: Option<String>,
     pub impl_expr: RefCell<Option<Box<dyn Value>>>,
     pub arg_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
@@ -68,6 +71,7 @@ pub(crate) struct DefinitionSetDataMethodData {
 }
 
 pub(crate) struct DefinitionSetDataTypeData {
+    pub name: Option<String>,
     pub underlying_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub methods: RefCell<Vec<DefinitionSetDataMethodData>>,
     pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
@@ -174,6 +178,10 @@ pub(crate) struct DefinitionSetInterfaceRef {
 pub(crate) struct DefinitionSetInterface {
     pub set: Gc<DefinitionSet>,
     pub interface_index: usize,
+}
+
+pub(crate) struct DefinitionSetExports {
+    pub set: Gc<DefinitionSet>,
 }
 
 pub(crate) struct DefinitionSetDataType {

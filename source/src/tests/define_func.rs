@@ -18,7 +18,7 @@ async fn test_00600define_func() {
     let logs = compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
         mb.bind("hello", mb.lower(mb.seq(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-            mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.tuple(vec![]))),
+            mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("f"))),
             mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
             mb.call(
                 mb.field(mb.scope_use("nfr"), mb.str("impl")),
@@ -42,7 +42,7 @@ async fn test_00700define_func_arg_ret() {
     let logs = compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
         mb.bind("my_func", mb.lower(mb.seq(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-            mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.tuple(vec![]))),
+            mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("f"))),
             mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
             // Set arg type to String
             mb.call(
