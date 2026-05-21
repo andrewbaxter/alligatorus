@@ -179,8 +179,8 @@ impl AspectConsumeJs for ExprType {
 }
 
 impl AspectLiftJs for ExprType {
-    fn lift(&self, value: &v8::Value) -> Box<dyn Value> {
-        let cell: Rc<StagedExprCell> = rc_from_v8(value);
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+        let cell: Rc<StagedExprCell> = rc_from_v8(&value);
         cell.value.borrow_mut().take().expect("Expr value already consumed during lift")
     }
 }

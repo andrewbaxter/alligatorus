@@ -96,8 +96,8 @@ impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
-    fn lift(&self, value: &v8::Value) -> Box<dyn Value> {
-        let iface_ref: Rc<DefinitionSetInterfaceRef> = rc_from_v8(value);
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+        let iface_ref: Rc<DefinitionSetInterfaceRef> = rc_from_v8(&value);
         iface_ref.set.finish().expect("Definition set finish failed");
         Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,

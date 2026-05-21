@@ -2,9 +2,11 @@ use {
     crate::{
         builtin::{
             AspectConsumeJs,
+            AspectLiftJs,
             AspectTuple,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
+            aspect_lift_js_aspect_id,
             aspect_tuple_aspect_id,
         },
         jscode::{
@@ -71,6 +73,16 @@ impl Type for TypeTuple {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeTuple { types: self.types.clone() }) as Box<dyn AspectConsumeJs>));
         }
+        if *key == aspect_lift_js_aspect_id() {
+            let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.types.iter()
+                .map(|t| {
+                    let a = t.aspect(_xx, &aspect_lift_js_aspect_id())
+                        .expect(&format!("Tuple element type ({}) missing AspectLiftJs", t.desc()));
+                    *a.downcast::<Box<dyn AspectLiftJs>>().unwrap()
+                })
+                .collect();
+            return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftJs>));
+        }
         return None;
     }
 
@@ -93,6 +105,30 @@ impl AspectTuple for TypeTuple {
     fn take_elements(&self, value: Box<dyn Value>) -> Vec<EvalRes> {
         let tuple: Box<ValueTuple> = (value as Box<dyn Any>).downcast().unwrap();
         tuple.elements
+    }
+}
+
+struct TupleLiftJs {
+    element_lifts: Vec<Box<dyn AspectLiftJs>>,
+}
+
+impl Aspect for TupleLiftJs {}
+
+impl AspectLiftJs for TupleLiftJs {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+        let array = v8::Local::<v8::Array>::try_from(value)
+            .expect("Expected JS array for tuple lift");
+        let mut elements = Vec::new();
+        for (i, elem_lift) in self.element_lifts.iter().enumerate() {
+            let elem_v8 = array.get_index(scope, i as u32)
+                .expect("Array index out of bounds in tuple lift");
+            let lifted = elem_lift.lift(scope, elem_v8);
+            elements.push(EvalRes::ok(CodeValue {
+                code: Code { loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)), code: Code_::None },
+                value: lifted,
+            }));
+        }
+        Box::new(ValueTuple { elements })
     }
 }
 

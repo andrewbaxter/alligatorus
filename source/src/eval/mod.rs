@@ -25,14 +25,12 @@ use {
             aspect_serial_get,
             aspect_set_get,
             aspect_string_get_maybe,
-            aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
             JsCodeBind,
             JsCodeSeq,
             JsCodeType,
-            JsCodeArray,
         },
         langhelp::{
             Code,
@@ -1104,26 +1102,8 @@ fn eval(
     ).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {
-            let value: Box<dyn Value> = if let Some(tuple_aspect) = aspect_tuple_get_maybe(&xx, value_type.as_ref()) {
-                let elem_types = tuple_aspect.element_types();
-                let array = v8::Local::<v8::Array>::try_from(stage2)
-                    .expect("Expected JS array for tuple result");
-                let mut elements = Vec::new();
-                for (i, elem_type) in elem_types.iter().enumerate() {
-                    let elem_v8 = array.get_index(js_scope, i as u32)
-                        .expect("Array index out of bounds in tuple lift");
-                    let elem_lift = aspect_lift_js_get(&xx, root_loc, elem_type.as_ref()).into_res()?;
-                    let lifted = elem_lift.lift(&elem_v8);
-                    elements.push(EvalRes::ok(CodeValue {
-                        code: Code { loc: root_loc, code: Code_::None },
-                        value: lifted,
-                    }));
-                }
-                Box::new(ValueTuple { elements })
-            } else {
-                let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-                value_from_js.lift(&stage2)
-            };
+            let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+            let value: Box<dyn Value> = value_from_js.lift(&*js_scope, stage2);
             let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
             Ok(EvalResult { value, logs })
         },
