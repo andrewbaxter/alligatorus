@@ -1,5 +1,4 @@
 use {
-    super::DefaultBindJs,
     crate::{
         builtin::{
             AspectBindJs,
@@ -78,7 +77,7 @@ impl Type for TypeMortarNull {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectBindJs>));
         }
         return None;
     }
@@ -132,5 +131,12 @@ impl AspectConsumeJs for TypeMortarNull {
                 type_: JsCodeType::Value(serde_json::Value::Null),
             }),
         }
+    }
+}
+
+impl AspectBindJs for TypeMortarNull {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
     }
 }

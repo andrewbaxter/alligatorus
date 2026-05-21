@@ -41,7 +41,6 @@ use {
         },
     },
     crate::eval::{
-        DefaultBindJs,
         Erb,
         mortar_js_value::{
             MortarJsValue,
@@ -79,7 +78,7 @@ impl Type for MortarTypeDefinitionSetFunction {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetFunction) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(MortarTypeDefinitionSetFunction) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetFunction) as Box<dyn AspectJsStackValue>));
@@ -104,6 +103,13 @@ impl Aspect for MortarTypeDefinitionSetFunction { }
 impl AspectConsumeJs for MortarTypeDefinitionSetFunction {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectBindJs for MortarTypeDefinitionSetFunction {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
     }
 }
 

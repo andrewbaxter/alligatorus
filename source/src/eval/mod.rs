@@ -16,8 +16,6 @@ pub mod definition_set;
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            aspect_bind_js_aspect_id,
             aspect_bind_js_get_maybe,
             aspect_consume_js_get,
             aspect_consume_js_get_maybe,
@@ -35,7 +33,6 @@ use {
             JsCodeType,
         },
         langhelp::{
-            Aspect,
             Code,
             CodeValue,
             Code_,
@@ -250,24 +247,6 @@ fn path_to_fs_path(path: &Vec<String>) -> PathBuf {
 
 fn cerr<T>(e: String) -> Result<T, ExprSubErr> {
     return Err(ExprSubErr::Opaque(e));
-}
-
-pub(crate) struct DefaultBindJs;
-
-impl Aspect for DefaultBindJs { }
-
-impl AspectBindJs for DefaultBindJs {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
-        let vtype = cv.value.type_(xx, loc);
-        er_one! {
-            to_js = aspect_consume_js_get(xx, loc, vtype.as_ref()) => {
-                to_js.to_js(xx, loc, cv).map(|c| (c, vtype.clone()))
-            },
-            js = TypeMortarString::cast_from(&TypeMortarString, xx, loc, &cv) => {
-                js.code.cast::<JsCode>().map(|x| (x.unwrap().clone(), Rc::new(TypeMortarString) as Rc<dyn Type>))
-            },
-        }
-    }
 }
 
 trait Effect { }

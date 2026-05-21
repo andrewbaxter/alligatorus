@@ -1,5 +1,4 @@
 use {
-    super::DefaultBindJs,
     crate::{
         builtin::{
             AspectBindJs,
@@ -65,7 +64,7 @@ impl Type for MortarTypeFunction {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindJs>));
         }
         return None;
     }
@@ -82,6 +81,13 @@ impl Type for MortarTypeFunction {
 impl AspectConsumeJs for MortarTypeFunction {
     fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         return cv.code.cast::<JsCode>().map(|x| x.unwrap().clone());
+    }
+}
+
+impl AspectBindJs for MortarTypeFunction {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
     }
 }
 

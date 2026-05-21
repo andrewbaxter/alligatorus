@@ -1,6 +1,5 @@
 use {
     super::{
-        DefaultBindJs,
         Erb,
         mortar_string::TypeMortarString,
     },
@@ -14,6 +13,7 @@ use {
             aspect_string_aspect_id,
             aspect_string_get,
         },
+        jscode::JsCode,
         langhelp::{
             Aspect,
             CodeValue,
@@ -54,7 +54,7 @@ impl Type for TypeString {
             return Some(Box::new(Box::new(TypeString) as Box<dyn AspectField>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectBindJs>));
         }
         return None;
     }
@@ -84,6 +84,15 @@ impl Type for TypeString {
 }
 
 impl Aspect for TypeString { }
+
+impl AspectBindJs for TypeString {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        TypeMortarString::cast_from(&TypeMortarString, xx, loc, &cv).map(|js| {
+            let jscode = js.code.cast::<JsCode>().v.unwrap().unwrap().clone();
+            (jscode, Rc::new(TypeMortarString) as Rc<dyn Type>)
+        })
+    }
+}
 
 impl AspectString for TypeString {
     fn get(&self, value: &dyn Value) -> String {

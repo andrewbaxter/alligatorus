@@ -48,7 +48,6 @@ use {
         },
     },
     crate::eval::{
-        DefaultBindJs,
         Erb,
         jswrap::{
             JsWrap,

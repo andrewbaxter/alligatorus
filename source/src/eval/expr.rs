@@ -1,5 +1,4 @@
 use {
-    super::DefaultBindJs,
     crate::{
         builtin::{
             AspectBindJs,
@@ -151,7 +150,7 @@ impl Type for ExprType {
             return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(DefaultBindJs) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_lift_js_aspect_id() {
             return Some(Box::new(Box::new(ExprType) as Box<dyn AspectLiftJs>));
@@ -181,6 +180,13 @@ impl AspectConsumeJs for ExprType {
             loc,
             type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
         })
+    }
+}
+
+impl AspectBindJs for ExprType {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
     }
 }
 
