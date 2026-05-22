@@ -12,6 +12,7 @@ pub mod tuple;
 #[macro_use]
 pub mod jswrap;
 pub mod type_ref;
+pub mod v8util;
 pub mod definition_set;
 
 use {

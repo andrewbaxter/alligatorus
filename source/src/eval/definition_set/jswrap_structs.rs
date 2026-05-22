@@ -156,9 +156,7 @@ jswrap!(struct NewFuncResult(self_, scope) {
         if impl_expr.is_some() {
             drop(impl_expr);
             drop(functions);
-            let msg = v8::String::new(scope, "Function already has an implementation").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Function already has an implementation");
             return;
         }
         *impl_expr = Some(staged.0);
@@ -170,9 +168,7 @@ jswrap!(struct NewFuncResult(self_, scope) {
         if arg_type_expr.is_some() {
             drop(arg_type_expr);
             drop(functions);
-            let msg = v8::String::new(scope, "Function already has an arg type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Function already has an arg type");
             return;
         }
         *arg_type_expr = Some(staged.0);
@@ -184,9 +180,7 @@ jswrap!(struct NewFuncResult(self_, scope) {
         if arg_type_expr.is_some() {
             drop(arg_type_expr);
             drop(functions);
-            let msg = v8::String::new(scope, "Function already has an arg type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Function already has an arg type");
             return;
         }
         // Create a literal Expr that evaluates to the interface type
@@ -214,9 +208,7 @@ jswrap!(struct NewFuncResult(self_, scope) {
         if ret_type_expr.is_some() {
             drop(ret_type_expr);
             drop(functions);
-            let msg = v8::String::new(scope, "Function already has a ret type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Function already has a ret type");
             return;
         }
         *ret_type_expr = Some(staged.0);
@@ -241,9 +233,7 @@ jswrap!(struct NewDataResult(self_, scope) {
         if underlying.is_some() {
             drop(underlying);
             drop(data_types);
-            let msg = v8::String::new(scope, "Data type already has an underlying type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Data type already has an underlying type");
             return;
         }
         *underlying = Some(type_ref.0);
@@ -279,9 +269,7 @@ jswrap!(struct NewDataResult(self_, scope) {
         let record_entries = match &record_expr.r#type {
             crate::eval::expr::Expr_::Record(r) => &r.entries,
             _ => {
-                let msg = v8::String::new(scope, "impl_interface argument must be a Record expression").unwrap();
-                let exception = v8::Exception::error(scope, msg);
-                scope.throw_exception(exception);
+                crate::eval::v8util::throw_error(scope, "impl_interface argument must be a Record expression");
                 return;
             },
         };
@@ -297,16 +285,12 @@ jswrap!(struct NewDataResult(self_, scope) {
                         if let Some(s) = val_any.downcast_ref::<crate::eval::string::ValueString>() {
                             out.push((s.0.clone(), v_expr));
                         } else {
-                            let msg = v8::String::new(scope, "Record keys must be string literals").unwrap();
-                            let exception = v8::Exception::error(scope, msg);
-                            scope.throw_exception(exception);
+                            crate::eval::v8util::throw_error(scope, "Record keys must be string literals");
                             return;
                         }
                     },
                     _ => {
-                        let msg = v8::String::new(scope, "Record keys must be string literals").unwrap();
-                        let exception = v8::Exception::error(scope, msg);
-                        scope.throw_exception(exception);
+                        crate::eval::v8util::throw_error(scope, "Record keys must be string literals");
                         return;
                     },
                 }
@@ -338,9 +322,7 @@ jswrap!(struct NewDataResult(self_, scope) {
                     });
                 },
                 None => {
-                    let msg = v8::String::new(scope, &format!("Missing implementation for interface method '{}'", imethod_name)).unwrap();
-                    let exception = v8::Exception::error(scope, msg);
-                    scope.throw_exception(exception);
+                    crate::eval::v8util::throw_error(scope, &format!("Missing implementation for interface method '{}'", imethod_name));
                     return;
                 },
             }
@@ -367,9 +349,7 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
             drop(impl_expr);
             drop(methods);
             drop(data_types);
-            let msg = v8::String::new(scope, "Method already has an implementation").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Method already has an implementation");
             return;
         }
         *impl_expr = Some(staged.0);
@@ -384,9 +364,7 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
             drop(ret_type_expr);
             drop(methods);
             drop(data_types);
-            let msg = v8::String::new(scope, "Method already has a ret type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Method already has a ret type");
             return;
         }
         *ret_type_expr = Some(staged.0);
@@ -434,9 +412,7 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
             drop(methods);
             drop(iface);
             drop(interfaces);
-            let msg = v8::String::new(scope, "Interface method already has an arg type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Interface method already has an arg type");
             return;
         }
         *arg_type_expr = Some(staged.0);
@@ -452,9 +428,7 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
             drop(methods);
             drop(iface);
             drop(interfaces);
-            let msg = v8::String::new(scope, "Interface method already has a ret type").unwrap();
-            let exception = v8::Exception::error(scope, msg);
-            scope.throw_exception(exception);
+            crate::eval::v8util::throw_error(scope, "Interface method already has a ret type");
             return;
         }
         *ret_type_expr = Some(staged.0);
