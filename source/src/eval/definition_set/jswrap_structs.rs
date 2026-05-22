@@ -82,6 +82,7 @@ jswrap!(struct DefineResult(self_, scope) {
             let idx = functions.len();
             functions.push(DefinitionSetFunctionData {
                 name: Some(name),
+                description: RefCell::new(None),
                 impl_expr: RefCell::new(None),
                 arg_type_expr: RefCell::new(None),
                 ret_type_expr: RefCell::new(None),
@@ -106,6 +107,7 @@ jswrap!(struct DefineResult(self_, scope) {
             let idx = data_types.len();
             data_types.push(DefinitionSetDataTypeData {
                 name: Some(name),
+                description: RefCell::new(None),
                 underlying_type: RefCell::new(None),
                 methods: RefCell::new(Vec::new()),
                 interface_impls: RefCell::new(Vec::new()),
@@ -133,6 +135,7 @@ jswrap!(struct DefineResult(self_, scope) {
             let mut interfaces = ds.interfaces.borrow_mut();
             let idx = interfaces.len();
             interfaces.push(DefinitionSetInterfaceData {
+                description: RefCell::new(None),
                 methods: RefCell::new(Vec::new()),
                 identity,
             });
@@ -149,6 +152,11 @@ jswrap!(struct DefineResult(self_, scope) {
 jswrap!(struct NewFuncResult(self_, scope) {
     data { func_ref: Rc<DefinitionSetFunction> }
     field func: Rc<DefinitionSetFunction> { self_.func_ref.clone() }
+    fn set_description(description: String) -> () {
+        let functions = self_.func_ref.set.functions.borrow();
+        let func_data = &functions[self_.func_ref.func_index];
+        *func_data.description.borrow_mut() = Some(description);
+    }
     fn impl_(staged: StagedExpr) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
@@ -220,6 +228,11 @@ jswrap!(struct NewFuncResult(self_, scope) {
 jswrap!(struct NewDataResult(self_, scope) {
     data { data_type_ref: Rc<DefinitionSetDataTypeRef> }
     field type_: Rc<DefinitionSetDataTypeRef> { self_.data_type_ref.clone() }
+    fn set_description(description: String) -> () {
+        let data_types = self_.data_type_ref.set.data_types.borrow();
+        let dt = &data_types[self_.data_type_ref.data_type_index];
+        *dt.description.borrow_mut() = Some(description);
+    }
     field new_: Rc<DefinitionSetDataTypeConstructor> {
         Rc::new(DefinitionSetDataTypeConstructor {
             set: self_.data_type_ref.set.clone(),
@@ -376,6 +389,11 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
 jswrap!(struct NewInterfaceResult(self_, scope) {
     data { interface_ref: Rc<DefinitionSetInterfaceRef> }
     field type_: Rc<DefinitionSetInterfaceRef> { self_.interface_ref.clone() }
+    fn set_description(description: String) -> () {
+        let interfaces = self_.interface_ref.set.interfaces.borrow();
+        let iface = &interfaces[self_.interface_ref.interface_index];
+        *iface.description.borrow_mut() = Some(description);
+    }
     fn new_func(name: String) -> NewInterfaceMethodResult {
         let iface_ref = &self_.interface_ref;
         let field_name = format!("_im{}", next_interface_method_id());

@@ -55,7 +55,12 @@ impl Value for DefinitionSetDataType {
 
 impl Type for DefinitionSetDataType {
     fn desc(&self) -> String {
-        format!("data_type(index={})", self.data_type_index)
+        let data_types = self.set.data_types.borrow();
+        let dt = &data_types[self.data_type_index];
+        match dt.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("data_type(index={})", self.data_type_index),
+        }
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

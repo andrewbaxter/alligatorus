@@ -58,7 +58,12 @@ impl Value for DefinitionSetInterface {
 
 impl Type for DefinitionSetInterface {
     fn desc(&self) -> String {
-        format!("interface(index={})", self.interface_index)
+        let interfaces = self.set.interfaces.borrow();
+        let iface = &interfaces[self.interface_index];
+        match iface.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("interface(index={})", self.interface_index),
+        }
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

@@ -148,7 +148,12 @@ impl Value for DefinitionSetDataTypeConstructor {
 
 impl Type for DefinitionSetDataTypeConstructor {
     fn desc(&self) -> String {
-        format!("definition_set_data_type_constructor")
+        let data_types = self.set.data_types.borrow();
+        let dt = &data_types[self.data_type_index];
+        match dt.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("definition_set_data_type_constructor"),
+        }
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

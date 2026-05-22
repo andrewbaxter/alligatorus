@@ -44,6 +44,7 @@ pub(crate) fn next_interface_method_id() -> usize {
 
 pub(crate) struct DefinitionSetFunctionData {
     pub name: Option<String>,
+    pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Box<dyn Value>>>,
     pub arg_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
@@ -62,6 +63,7 @@ pub(crate) struct DefinitionSetDataMethodData {
 
 pub(crate) struct DefinitionSetDataTypeData {
     pub name: Option<String>,
+    pub description: RefCell<Option<String>>,
     pub underlying_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub methods: RefCell<Vec<DefinitionSetDataMethodData>>,
     pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
@@ -89,6 +91,7 @@ pub(crate) struct DefinitionSetInterfaceMethodData {
 }
 
 pub(crate) struct DefinitionSetInterfaceData {
+    pub description: RefCell<Option<String>>,
     pub methods: RefCell<Vec<DefinitionSetInterfaceMethodData>>,
     pub identity: Unique,
 }

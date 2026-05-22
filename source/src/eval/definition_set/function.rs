@@ -152,7 +152,12 @@ impl Value for DefinitionSetFunction {
 
 impl Type for DefinitionSetFunction {
     fn desc(&self) -> String {
-        format!("definition_set_function")
+        let functions = self.set.functions.borrow();
+        let func_data = &functions[self.func_index];
+        match func_data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("definition_set_function"),
+        }
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
