@@ -75,7 +75,17 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         EvalRes::err(loc, format!("Cannot convert interface_ref"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+        if (source_type.as_ref() as &dyn Any).type_id() == std::any::TypeId::of::<MortarTypeDefinitionSetInterfaceRef>() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),
+                }),
+            });
+        }
         EvalRes::err(loc, format!("Cannot convert to interface_ref"))
     }
 }

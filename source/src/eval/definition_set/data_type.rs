@@ -58,18 +58,18 @@ impl Value for DefinitionSetDataType {
 
 impl Type for DefinitionSetDataType {
     fn desc(&self) -> String {
-        let data_types = self.set.data_types.borrow();
-        let dt = &data_types[self.data_type_index];
-        format!("data_type(identity={})", dt.identity)
-    }
-
-    fn identity(&self) -> Option<usize> {
-        let data_types = self.set.data_types.borrow();
-        let dt = &data_types[self.data_type_index];
-        Some(dt.identity)
+        format!("data_type(index={})", self.data_type_index)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        // Check own data type identity aspect
+        {
+            let data_types = self.set.data_types.borrow();
+            let dt = &data_types[self.data_type_index];
+            if *key == dt.identity {
+                return Some(Box::new(true));
+            }
+        }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(DefinitionSetDataType {
                 set: self.set.clone(),
@@ -94,30 +94,62 @@ impl Type for DefinitionSetDataType {
                 data_type_index: self.data_type_index,
             }) as Box<dyn AspectJsStackValue>));
         }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
-        // Allow casting to any interface this data type implements
-        if let Some(target_identity) = type_.identity() {
+        // Check interface identity aspects
+        {
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
             let interface_impls = dt.interface_impls.borrow();
             let interfaces = self.set.interfaces.borrow();
             for impl_data in interface_impls.iter() {
                 let iface = &interfaces[impl_data.interface_index];
-                if iface.identity == target_identity {
-                    return EvalRes::ok(CodeValue {
-                        code: cv.code.clone(),
-                        value: Box::new(MortarJsValue {
-                            source: MortarJsValueSource::Expr,
-                            type_: Rc::new(DefinitionSetInterface {
-                                set: self.set.clone(),
-                                interface_index: impl_data.interface_index,
-                            }),
-                        }),
-                    });
+                if *key == iface.identity {
+                    return Some(Box::new(true));
                 }
+            }
+        }
+        return None;
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        // Extract own identity + interface identities (drop borrows before calling aspect())
+        let (own_identity, iface_data) = {
+            let data_types = self.set.data_types.borrow();
+            let dt = &data_types[self.data_type_index];
+            let own = dt.identity.clone();
+            let interface_impls = dt.interface_impls.borrow();
+            let interfaces = self.set.interfaces.borrow();
+            let ifaces: Vec<(usize, crate::langhelp::Unique)> = interface_impls.iter().map(|impl_data| {
+                let iface = &interfaces[impl_data.interface_index];
+                (impl_data.interface_index, iface.identity.clone())
+            }).collect();
+            (own, ifaces)
+        };
+        // Same data type check
+        if type_.aspect(xx, &own_identity).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(DefinitionSetDataType {
+                        set: self.set.clone(),
+                        data_type_index: self.data_type_index,
+                    }),
+                }),
+            });
+        }
+        // Interface casting
+        for (interface_index, identity) in iface_data {
+            if type_.aspect(xx, &identity).is_some() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(DefinitionSetInterface {
+                            set: self.set.clone(),
+                            interface_index,
+                        }),
+                    }),
+                });
             }
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))

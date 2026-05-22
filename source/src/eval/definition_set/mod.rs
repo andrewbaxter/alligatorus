@@ -28,21 +28,10 @@ use {
     crate::langhelp::{
         Counter,
         ScopeEntryId,
+        Unique,
         Value,
     },
 };
-
-static NEXT_DATA_TYPE_IDENTITY: AtomicUsize = AtomicUsize::new(0);
-
-pub(crate) fn next_data_type_identity() -> usize {
-    NEXT_DATA_TYPE_IDENTITY.fetch_add(1, Ordering::Relaxed)
-}
-
-static NEXT_INTERFACE_IDENTITY: AtomicUsize = AtomicUsize::new(0);
-
-pub(crate) fn next_interface_identity() -> usize {
-    NEXT_INTERFACE_IDENTITY.fetch_add(1, Ordering::Relaxed)
-}
 
 static NEXT_INTERFACE_METHOD_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -75,7 +64,7 @@ pub(crate) struct DefinitionSetDataTypeData {
     pub underlying_type_expr: RefCell<Option<Box<dyn Value>>>,
     pub methods: RefCell<Vec<DefinitionSetDataMethodData>>,
     pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
-    pub identity: usize,
+    pub identity: Unique,
     pub data_field: String,
     pub unique_field: String,
 }
@@ -101,7 +90,7 @@ pub(crate) struct DefinitionSetInterfaceMethodData {
 
 pub(crate) struct DefinitionSetInterfaceData {
     pub methods: RefCell<Vec<DefinitionSetInterfaceMethodData>>,
-    pub identity: usize,
+    pub identity: Unique,
 }
 
 pub(crate) struct DefinitionSet {

@@ -13,8 +13,6 @@ use {
         DefinitionSetInterfaceData,
         DefinitionSetInterfaceMethodData,
         DefinitionSetInterfaceRef,
-        next_data_type_identity,
-        next_interface_identity,
         next_interface_method_id,
     },
     crate::{
@@ -42,6 +40,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            SerialValueSource,
             Type,
             Unique,
             Value,
@@ -99,7 +98,8 @@ jswrap!(struct DefineResult(self_, scope) {
     }
     fn new_data(name: String) -> NewDataResult {
         let ds = self_.ds.clone();
-        let identity = next_data_type_identity();
+        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+        let identity = Unique(SerialValueSource::Compile(uc.compile_id.clone()), uc.counter.next());
         let unique_field = format!("_{}", ds.next_field_id.next());
         let data_field = format!("_{}", ds.next_field_id.next());
         let idx = {
@@ -129,7 +129,8 @@ jswrap!(struct DefineResult(self_, scope) {
     }
     fn new_interface() -> NewInterfaceResult {
         let ds = self_.ds.clone();
-        let identity = next_interface_identity();
+        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+        let identity = Unique(SerialValueSource::Compile(uc.compile_id.clone()), uc.counter.next());
         let idx = {
             let mut interfaces = ds.interfaces.borrow_mut();
             let idx = interfaces.len();

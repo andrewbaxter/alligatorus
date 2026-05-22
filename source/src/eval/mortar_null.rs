@@ -12,6 +12,7 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
             aspect_null_aspect_id,
+            aspect_null_get,
             aspect_serial_aspect_id,
         },
         jscode::{
@@ -36,9 +37,11 @@ use {
     },
     std::{
         any::Any,
+        mem,
         rc::Rc,
     },
     super::{
+        Erb,
         mortar_js_value::{
             MortarJsValue,
             MortarJsValueSource,
@@ -82,12 +85,25 @@ impl Type for TypeMortarNull {
         return None;
     }
 
-    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert mortar null to other type"))
+    fn cast_to(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            erb.must_er(aspect_null_get(ex, loc, type_))?;
+            return Ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(ValueNull),
+            });
+        });
     }
 
-    fn cast_from(&self, _ex: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to mortar null"))
+    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let type_ = cv.value.type_(ex, loc);
+            erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
+            return Ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(ValueNull),
+            });
+        });
     }
 }
 

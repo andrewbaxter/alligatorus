@@ -162,8 +162,19 @@ impl Type for ExprType {
         return EvalRes::err(loc, format!("Cannot convert expr to other type"));
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        return EvalRes::err(loc, format!("Cannot convert to expr type"));
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+        if (source_type.as_ref() as &dyn Any).type_id() == std::any::TypeId::of::<ExprType>() {
+            let expr = (cv.value.as_ref() as &dyn Any)
+                .downcast_ref::<Expr>()
+                .expect("ExprType value must be an Expr")
+                .clone();
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(expr),
+            });
+        }
+        EvalRes::err(loc, format!("Cannot convert to expr type"))
     }
 }
 

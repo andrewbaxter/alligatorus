@@ -38,6 +38,7 @@ use {
             Code_,
             CompileId,
             CompileImportContext,
+            Counter,
             CompileRes,
             CompileResResult,
             ConstKey,
@@ -130,6 +131,11 @@ pub(crate) struct V8RcStore {
 
 pub(crate) struct V8LogStore {
     pub(crate) logs: RefCell<Vec<crate::langhelp::LogEntry>>,
+}
+
+pub(crate) struct V8UniqueCounter {
+    pub(crate) compile_id: CompileId,
+    pub(crate) counter: Counter,
 }
 
 /// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the
@@ -493,18 +499,6 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let source_type = source.value.type_(xx, loc);
-        // Identity check: if same concrete type, pass through
-        let rust_type_eq = (source_type.as_ref() as &dyn Any).type_id() == (dest_type as &dyn Any).type_id();
-        if rust_type_eq {
-            let ids_match = match (source_type.identity(), dest_type.identity()) {
-                (Some(a), Some(b)) => a == b,
-                (None, None) => true,
-                _ => false,
-            };
-            if ids_match {
-                return Ok(source);
-            }
-        }
         let dest;
         if let Some(dest1) = erb.maybe_er(source_type.cast_to(xx, loc, &source, dest_type)) {
             dest = dest1;
@@ -643,6 +637,10 @@ fn eval(
     let mut js_scope_isolate = v8::Isolate::new(Default::default());
     js_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
     js_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
+    js_scope_isolate.set_slot(V8UniqueCounter {
+        compile_id: cix.compile_path.last().map(|(c, _)| c.clone()).unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
+        counter: Counter::default(),
+    });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
     let js_scope_context = v8::Context::new(&mut js_scope_handle2, Default::default());

@@ -58,18 +58,18 @@ impl Value for DefinitionSetInterface {
 
 impl Type for DefinitionSetInterface {
     fn desc(&self) -> String {
-        let interfaces = self.set.interfaces.borrow();
-        let iface = &interfaces[self.interface_index];
-        format!("interface(identity={})", iface.identity)
-    }
-
-    fn identity(&self) -> Option<usize> {
-        let interfaces = self.set.interfaces.borrow();
-        let iface = &interfaces[self.interface_index];
-        Some(iface.identity)
+        format!("interface(index={})", self.interface_index)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        // Check interface identity aspect
+        {
+            let interfaces = self.set.interfaces.borrow();
+            let iface = &interfaces[self.interface_index];
+            if *key == iface.identity {
+                return Some(Box::new(true));
+            }
+        }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(DefinitionSetInterface {
                 set: self.set.clone(),
@@ -101,7 +101,25 @@ impl Type for DefinitionSetInterface {
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let identity = {
+            let interfaces = self.set.interfaces.borrow();
+            let iface = &interfaces[self.interface_index];
+            iface.identity.clone()
+        };
+        let source_type = cv.value.type_(xx, loc);
+        if source_type.aspect(xx, &identity).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(DefinitionSetInterface {
+                        set: self.set.clone(),
+                        interface_index: self.interface_index,
+                    }),
+                }),
+            });
+        }
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
     }
 }
