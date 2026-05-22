@@ -277,7 +277,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                 (dt.unique_field.clone(), JsCode {
                     loc,
                     type_: JsCodeType::Value(serde_json::Value::Number(
-                        serde_json::Number::from(dt.identity.1 as u64),
+                        serde_json::Number::from(dt.identity.discriminator()),
                     )),
                 }),
                 (dt.data_field.clone(), underlying_js),

@@ -66,18 +66,23 @@ pub(crate) enum ExprSubErr {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub(crate) struct ScopeEntryId(pub usize);
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum SerialValueSource {
-    Builtin,
-    Compile(CompileId),
-}
-
 pub(crate) struct ValueTypeAny {}
 
 /// A value guaranteed to be unique in the world
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Unique(pub SerialValueSource, pub usize);
+pub(crate) enum Unique {
+    Builtin { file: &'static str, line: usize },
+    Compile(CompileId, usize),
+}
+
+impl Unique {
+    pub(crate) fn discriminator(&self) -> u64 {
+        match self {
+            Unique::Builtin { line, .. } => *line as u64,
+            Unique::Compile(_, n) => *n as u64,
+        }
+    }
+}
 
 impl Value for Unique {
     fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {

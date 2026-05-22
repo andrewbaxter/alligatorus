@@ -35,7 +35,6 @@ use {
             GlobalContext,
             ImportStateId,
             LogEntry,
-            SerialValueSource,
             SourceId,
             Unique,
         },
@@ -66,7 +65,7 @@ fn new_gx() -> Arc<GlobalContext> {
         move || {
             let v = next;
             next += 1;
-            return Unique(SerialValueSource::Builtin, v);
+            return Unique::Builtin { file: file!(), line: v };
         }
     };
     let gx = Arc::new(GlobalContext {

@@ -114,6 +114,10 @@ macro_rules! jswrap {
 
             pub(crate) struct [<$name Type>];
 
+            fn [<$name:snake _type_identity>]() -> Unique {
+                Unique::Builtin { file: file!(), line: line!() as usize }
+            }
+
             impl Value for [<$name Type>] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
                     Rc::new([<$name Type>])
@@ -126,6 +130,9 @@ macro_rules! jswrap {
                 }
 
                 fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+                    if *key == [<$name:snake _type_identity>]() {
+                        return Some(Box::new(true));
+                    }
                     if *key == aspect_field_aspect_id() {
                         return Some(Box::new(Box::new([<$name Type>]) as Box<dyn AspectField>));
                     }
@@ -151,7 +158,7 @@ macro_rules! jswrap {
                     &self, xx: &ExprContext, loc: QExprId, cv: &CodeValue,
                 ) -> EvalRes {
                     let source_type = cv.value.type_(xx, loc);
-                    if (source_type.as_ref() as &dyn std::any::Any).type_id() == std::any::TypeId::of::<[<$name Type>]>() {
+                    if source_type.aspect(xx, &[<$name:snake _type_identity>]()).is_some() {
                         return EvalRes::ok(CodeValue {
                             code: cv.code.clone(),
                             value: Box::new(crate::eval::mortar_js_value::MortarJsValue {

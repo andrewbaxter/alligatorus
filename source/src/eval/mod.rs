@@ -54,7 +54,6 @@ use {
             Scope,
             ScopeEntry,
             ScopeEntryId,
-            SerialValueSource,
             SourceId,
             Type,
             Unique,

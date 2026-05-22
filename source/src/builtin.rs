@@ -11,7 +11,6 @@ use {
             ExprContext,
             QExprId,
             SerialValue,
-            SerialValueSource,
             Type,
             Unique,
             Value,
@@ -26,7 +25,7 @@ use {
 
 macro_rules! unique{
     () => {
-        Unique(SerialValueSource::Builtin, line!() as usize)
+        Unique::Builtin { file: file!(), line: line!() as usize }
     };
 }
 

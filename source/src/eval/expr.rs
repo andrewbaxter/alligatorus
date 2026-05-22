@@ -127,6 +127,10 @@ impl Value for Expr {
 }
 pub(crate) struct ExprType;
 
+fn expr_type_identity() -> Unique {
+    Unique::Builtin { file: file!(), line: line!() as usize }
+}
+
 impl Value for ExprType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(ExprType)
@@ -146,6 +150,9 @@ impl Type for ExprType {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == expr_type_identity() {
+            return Some(Box::new(true));
+        }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeJs>));
         }
@@ -164,7 +171,7 @@ impl Type for ExprType {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
-        if (source_type.as_ref() as &dyn Any).type_id() == std::any::TypeId::of::<ExprType>() {
+        if source_type.aspect(xx, &expr_type_identity()).is_some() {
             let expr = (cv.value.as_ref() as &dyn Any)
                 .downcast_ref::<Expr>()
                 .expect("ExprType value must be an Expr")

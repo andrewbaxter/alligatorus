@@ -44,6 +44,10 @@ use {
 
 pub(crate) struct MortarTypeDefinitionSetInterfaceRef;
 
+fn interface_ref_type_identity() -> Unique {
+    Unique::Builtin { file: file!(), line: line!() as usize }
+}
+
 impl Value for MortarTypeDefinitionSetInterfaceRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(MortarTypeDefinitionSetInterfaceRef)
@@ -56,6 +60,9 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == interface_ref_type_identity() {
+            return Some(Box::new(true));
+        }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetInterfaceRef) as Box<dyn AspectConsumeJs>));
         }
@@ -77,7 +84,7 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
-        if (source_type.as_ref() as &dyn Any).type_id() == std::any::TypeId::of::<MortarTypeDefinitionSetInterfaceRef>() {
+        if source_type.aspect(xx, &interface_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code.clone(),
                 value: Box::new(MortarJsValue {
