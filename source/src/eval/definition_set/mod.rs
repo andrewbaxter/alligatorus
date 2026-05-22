@@ -22,6 +22,7 @@ use {
             Cell,
             RefCell,
         },
+        rc::Rc,
         sync::atomic::{AtomicUsize, Ordering},
     },
     dumpster::unsync::Gc,
@@ -61,7 +62,7 @@ pub(crate) struct DefinitionSetDataMethodData {
 
 pub(crate) struct DefinitionSetDataTypeData {
     pub name: Option<String>,
-    pub underlying_type_expr: RefCell<Option<Box<dyn Value>>>,
+    pub underlying_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub methods: RefCell<Vec<DefinitionSetDataMethodData>>,
     pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
     pub identity: Unique,
@@ -129,7 +130,7 @@ impl DefinitionSet {
         }
         let data_types = self.data_types.borrow();
         for (i, dt_data) in data_types.iter().enumerate() {
-            if dt_data.underlying_type_expr.borrow().is_none() {
+            if dt_data.underlying_type.borrow().is_none() {
                 return Err(format!("Data type {} is missing underlying type", i));
             }
             for (j, method) in dt_data.methods.borrow().iter().enumerate() {

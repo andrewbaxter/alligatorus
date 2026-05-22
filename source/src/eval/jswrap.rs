@@ -58,6 +58,30 @@ impl JsWrap for StagedExpr {
     }
 }
 
+/// Wrapper for type references received from JS.
+/// Extracts a TypeRefValue from a StagedExprCell and returns the Rc<dyn Type>.
+pub(crate) struct TypeRef(pub Rc<dyn Type>);
+
+impl JsWrap for TypeRef {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeRefType)
+    }
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
+        let value = cell.value
+            .borrow_mut()
+            .take()
+            .expect("type ref already consumed (double use)");
+        let type_ref_value = (value.as_ref() as &dyn std::any::Any)
+            .downcast_ref::<super::type_ref::TypeRefValue>()
+            .expect("Expected TypeRefValue in StagedExprCell");
+        TypeRef(type_ref_value.0.clone())
+    }
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("TypeRef should not be sent back to v8")
+    }
+}
+
 pub(crate) fn jswrap_method_name(s: &str) -> &str {
     s.strip_suffix('_').unwrap_or(s)
 }

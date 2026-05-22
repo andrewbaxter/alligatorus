@@ -11,6 +11,7 @@ pub mod expr;
 pub mod tuple;
 #[macro_use]
 pub mod jswrap;
+pub mod type_ref;
 pub mod definition_set;
 
 use {
@@ -811,18 +812,10 @@ fn eval(
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
     for ds in ex.definition_sets.borrow().iter() {
         for dt_data in ds.data_types.borrow().iter() {
-            // Resolve underlying type
-            let underlying_type: Rc<dyn Type> = {
-                let expr = dt_data.underlying_type_expr.borrow();
-                let expr_ast = (expr.as_ref().unwrap().as_ref() as &dyn Any)
-                    .downcast_ref::<expr::Expr>()
-                    .expect("underlying type must be an Expr");
-                let result = eval_half(&xx, expr_ast, &MortarTarget);
-                if !result.errors.is_empty() {
-                    return Err(result.errors);
-                }
-                result.v.unwrap().value.type_(&xx, root_loc)
-            };
+            let underlying_type: Rc<dyn Type> = dt_data.underlying_type.borrow()
+                .as_ref()
+                .expect("Data type missing underlying type")
+                .clone();
 
             let data_field = dt_data.data_field.clone();
 

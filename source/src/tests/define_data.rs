@@ -24,7 +24,7 @@ async fn test_00800define_data() {
             // Set underlying type to String
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),
-                mb.tuple(vec![mb.stage(mb.scope_use("String"))]),
+                mb.scope_use("String"),
             ),
             // Define to_string method
             mb.bind("mnfr", mb.call(

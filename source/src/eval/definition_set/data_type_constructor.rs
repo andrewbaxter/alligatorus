@@ -228,22 +228,15 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
             }
         }
 
-        // Resolve underlying type
-        let underlying_type_expr = {
+        let underlying_type = {
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
-            let expr = dt.underlying_type_expr.borrow();
-            expr.as_ref().map(|v| {
-                (v.as_ref() as &dyn Any)
-                    .downcast_ref::<crate::eval::expr::Expr>()
-                    .expect("underlying type must be an Expr")
-                    .clone()
-            }).expect("Data type missing underlying type")
+            dt.underlying_type.borrow().as_ref()
+                .expect("Data type missing underlying type")
+                .clone()
         };
 
         return er_seq_cv!(loc, erb, {
-            let underlying_cv = erb.must_er(crate::eval::eval_half_mortar(xx, &underlying_type_expr))?;
-            let underlying_type = underlying_cv.value.type_(xx, loc);
 
             // Convert argument to underlying type
             let arg_value_type = argument.value.type_(xx, loc);

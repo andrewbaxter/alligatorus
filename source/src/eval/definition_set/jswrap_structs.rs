@@ -50,6 +50,7 @@ use {
         jswrap::{
             JsWrap,
             StagedExpr,
+            TypeRef,
             jswrap_method_name,
         },
         mortar_function::MortarTypeFunction,
@@ -105,7 +106,7 @@ jswrap!(struct DefineResult(self_, scope) {
             let idx = data_types.len();
             data_types.push(DefinitionSetDataTypeData {
                 name: Some(name),
-                underlying_type_expr: RefCell::new(None),
+                underlying_type: RefCell::new(None),
                 methods: RefCell::new(Vec::new()),
                 interface_impls: RefCell::new(Vec::new()),
                 identity,
@@ -233,10 +234,10 @@ jswrap!(struct NewDataResult(self_, scope) {
             data_type_index: self_.data_type_ref.data_type_index,
         })
     }
-    fn set_underlying(staged: StagedExpr) -> () {
+    fn set_underlying(type_ref: TypeRef) -> () {
         let data_types = self_.data_type_ref.set.data_types.borrow();
         let dt = &data_types[self_.data_type_ref.data_type_index];
-        let mut underlying = dt.underlying_type_expr.borrow_mut();
+        let mut underlying = dt.underlying_type.borrow_mut();
         if underlying.is_some() {
             drop(underlying);
             drop(data_types);
@@ -245,7 +246,7 @@ jswrap!(struct NewDataResult(self_, scope) {
             scope.throw_exception(exception);
             return;
         }
-        *underlying = Some(staged.0);
+        *underlying = Some(type_ref.0);
     }
     fn new_func(name: String) -> NewDataMethodResult {
         let ds_ref = &self_.data_type_ref;

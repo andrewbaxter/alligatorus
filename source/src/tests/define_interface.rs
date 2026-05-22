@@ -41,7 +41,7 @@ async fn test_00900define_interface() {
             )),
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),
-                mb.tuple(vec![mb.stage(mb.scope_use("String"))]),
+                mb.scope_use("String"),
             ),
 
             // Implement interface on data type
@@ -112,7 +112,7 @@ async fn test_00910interface_cast() {
             )),
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),
-                mb.tuple(vec![mb.stage(mb.scope_use("String"))]),
+                mb.scope_use("String"),
             ),
 
             // Implement interface on data type
