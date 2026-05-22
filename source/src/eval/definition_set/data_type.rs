@@ -49,10 +49,7 @@ use {
 
 impl Value for DefinitionSetDataType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetDataType {
-            set: self.set.clone(),
-            data_type_index: self.data_type_index,
-        })
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 

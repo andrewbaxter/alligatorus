@@ -49,7 +49,7 @@ pub(crate) struct MortarTypeFunction {
 
 impl Value for MortarTypeFunction {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        todo!()
+        Rc::new(super::type_ref::TypeType)
     }
 }
 

@@ -33,7 +33,7 @@ pub(crate) struct TypeNull;
 
 impl Value for TypeNull {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeNull);
+        Rc::new(super::type_ref::TypeType)
     }
 }
 

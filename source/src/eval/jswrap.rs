@@ -64,7 +64,7 @@ pub(crate) struct TypeRef(pub Rc<dyn Type>);
 
 impl JsWrap for TypeRef {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeRefType)
+        Rc::new(super::type_ref::TypeType)
     }
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
@@ -144,7 +144,7 @@ macro_rules! jswrap {
 
             impl Value for [<$name Type>] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-                    Rc::new([<$name Type>])
+                    Rc::new(crate::eval::type_ref::TypeType)
                 }
             }
 

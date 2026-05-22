@@ -53,7 +53,7 @@ pub(crate) struct MortarTypeDefinitionSetExports;
 
 impl Value for MortarTypeDefinitionSetExports {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarTypeDefinitionSetExports)
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 
@@ -135,9 +135,7 @@ struct DefinitionSetExportsType {
 
 impl Value for DefinitionSetExportsType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetExportsType {
-            set: self.set.clone(),
-        })
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 

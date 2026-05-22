@@ -37,7 +37,7 @@ pub(crate) struct TypeString;
 
 impl Value for TypeString {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        unimplemented!();
+        Rc::new(super::type_ref::TypeType)
     }
 }
 

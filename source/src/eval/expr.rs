@@ -133,7 +133,7 @@ fn expr_type_identity() -> Unique {
 
 impl Value for ExprType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(ExprType)
+        Rc::new(super::type_ref::TypeType)
     }
 }
 

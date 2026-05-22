@@ -60,7 +60,7 @@ pub(crate) struct TypeTuple {
 
 impl Value for TypeTuple {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeTuple { types: vec![] })
+        Rc::new(super::type_ref::TypeType)
     }
 }
 

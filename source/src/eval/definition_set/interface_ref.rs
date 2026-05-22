@@ -50,7 +50,7 @@ fn interface_ref_type_identity() -> Unique {
 
 impl Value for MortarTypeDefinitionSetInterfaceRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarTypeDefinitionSetInterfaceRef)
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 

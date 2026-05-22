@@ -64,7 +64,7 @@ pub(crate) struct MortarTypeDefinitionSetFunction;
 
 impl Value for MortarTypeDefinitionSetFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarTypeDefinitionSetFunction)
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 
@@ -146,10 +146,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
 
 impl Value for DefinitionSetFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetFunction {
-            set: self.set.clone(),
-            func_index: self.func_index,
-        })
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 

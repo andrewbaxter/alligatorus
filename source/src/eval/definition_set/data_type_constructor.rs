@@ -63,7 +63,7 @@ pub(crate) struct MortarTypeDefinitionSetDataTypeConstructor;
 
 impl Value for MortarTypeDefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarTypeDefinitionSetDataTypeConstructor)
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 
@@ -142,10 +142,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
 
 impl Value for DefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetDataTypeConstructor {
-            set: self.set.clone(),
-            data_type_index: self.data_type_index,
-        })
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 

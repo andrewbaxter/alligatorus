@@ -46,7 +46,7 @@ pub(crate) struct MortarTypeDefinitionSetDataTypeRef;
 
 impl Value for MortarTypeDefinitionSetDataTypeRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(MortarTypeDefinitionSetDataTypeRef)
+        Rc::new(crate::eval::type_ref::TypeType)
     }
 }
 
