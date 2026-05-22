@@ -75,15 +75,6 @@ pub(crate) enum Unique {
     Compile(CompileId, usize),
 }
 
-impl Unique {
-    pub(crate) fn discriminator(&self) -> u64 {
-        match self {
-            Unique::Builtin { line, .. } => *line as u64,
-            Unique::Compile(_, n) => *n as u64,
-        }
-    }
-}
-
 impl Value for Unique {
     fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
         todo!()

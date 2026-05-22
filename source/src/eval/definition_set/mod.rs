@@ -66,7 +66,6 @@ pub(crate) struct DefinitionSetDataTypeData {
     pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
     pub identity: Unique,
     pub data_field: String,
-    pub unique_field: String,
 }
 
 pub(crate) struct DefinitionSetDataTypeInterfaceImplData {

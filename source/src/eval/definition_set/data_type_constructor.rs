@@ -274,12 +274,6 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
             let mut object_fields = vec![
-                (dt.unique_field.clone(), JsCode {
-                    loc,
-                    type_: JsCodeType::Value(serde_json::Value::Number(
-                        serde_json::Number::from(dt.identity.discriminator()),
-                    )),
-                }),
                 (dt.data_field.clone(), underlying_js),
             ];
             for method in dt.methods.borrow().iter() {

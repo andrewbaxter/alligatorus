@@ -99,7 +99,6 @@ jswrap!(struct DefineResult(self_, scope) {
         let ds = self_.ds.clone();
         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
         let identity = Unique::Compile(uc.compile_id.clone(), uc.counter.next());
-        let unique_field = format!("_{}", ds.next_field_id.next());
         let data_field = format!("_{}", ds.next_field_id.next());
         let idx = {
             let mut data_types = ds.data_types.borrow_mut();
@@ -111,7 +110,6 @@ jswrap!(struct DefineResult(self_, scope) {
                 interface_impls: RefCell::new(Vec::new()),
                 identity,
                 data_field,
-                unique_field,
             });
             idx
         };
