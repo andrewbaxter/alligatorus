@@ -46,28 +46,20 @@ macro_rules! r_all{
     };
 }
 
-/// Returns the first non-error EvalRes or an error EvalRes containing all failures.
+/// Returns the first matching Option or an error EResult if none match.
 macro_rules! er_one{
-    ($($i: ident = $e: expr => $b: expr,) *) => {
+    ($loc: expr, $ctx: expr, {
+        $($i: ident = $e: expr => $b: expr,) *
+    }) => {
         'done: {
-            let mut maybe_errors = vec![];
             $('next: {
-                let $i = $e;
-                if $i.v.is_none() {
-                    maybe_errors.extend($i.errors);
+                let Some($i) = $e else {
                     break 'next;
-                }
-                let errors = $i.errors;
-                let $i = $i.v.unwrap();
-                let mut out = $b;
-                out.errors.extend(errors);
-                break 'done out;
+                };
+                break 'done $b;
             }) * 
             //. .
-            break 'done EResult {
-                v: None,
-                errors: maybe_errors,
-            };
+            break 'done EResult:: err($loc, format!("No match while {}", $ctx));
         }
     };
 }

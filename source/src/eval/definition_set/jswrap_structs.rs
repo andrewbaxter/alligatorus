@@ -228,16 +228,16 @@ jswrap!(struct NewFuncResult(self_, scope) {
 jswrap!(struct NewDataResult(self_, scope) {
     data { data_type_ref: Rc<DefinitionSetDataTypeRef> }
     field type_: Rc<DefinitionSetDataTypeRef> { self_.data_type_ref.clone() }
-    fn set_description(description: String) -> () {
-        let data_types = self_.data_type_ref.set.data_types.borrow();
-        let dt = &data_types[self_.data_type_ref.data_type_index];
-        *dt.description.borrow_mut() = Some(description);
-    }
     field new_: Rc<DefinitionSetDataTypeConstructor> {
         Rc::new(DefinitionSetDataTypeConstructor {
             set: self_.data_type_ref.set.clone(),
             data_type_index: self_.data_type_ref.data_type_index,
         })
+    }
+    fn set_description(description: String) -> () {
+        let data_types = self_.data_type_ref.set.data_types.borrow();
+        let dt = &data_types[self_.data_type_ref.data_type_index];
+        *dt.description.borrow_mut() = Some(description);
     }
     fn set_underlying(type_ref: TypeRef) -> () {
         let data_types = self_.data_type_ref.set.data_types.borrow();

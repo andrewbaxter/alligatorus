@@ -25,7 +25,9 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_js_string_aspect_id,
             aspect_js_string_get,
+            aspect_js_string_get_maybe,
             aspect_string_get,
+            aspect_string_get_maybe,
         },
         eval::expr,
         jscode::{
@@ -107,8 +109,8 @@ impl Type for TypeMortarString {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(xx, loc);
-            return Ok(erb.must_er(er_one!{
-                aspect_string = aspect_string_get(xx, loc, type_.as_ref()) => er_seq_cv !(loc, erb, {
+            return Ok(erb.must_er(er_one!(loc, "searching for string aspects", {
+                aspect_string = aspect_string_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
                     let CodeValue { code, value } = cv;
                     let mut seq = vec![];
                     if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
@@ -132,7 +134,7 @@ impl Type for TypeMortarString {
                         }),
                     });
                 }),
-                _x = aspect_js_string_get(xx, loc, type_.as_ref()) => er_seq_cv !(loc, erb, {
+                _x = aspect_js_string_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
                     let CodeValue { code, value: _value } = cv;
                     return Ok(CodeValue {
                         code: code.clone(),
@@ -142,7 +144,7 @@ impl Type for TypeMortarString {
                         })
                     });
                 }),
-            })?);
+            }))?);
         });
     }
 }
@@ -154,7 +156,10 @@ impl AspectJsString for TypeMortarString { }
 impl AspectJsStackValue for TypeMortarString {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarString),
