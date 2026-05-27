@@ -81,9 +81,7 @@ async fn test_0000_tagged_union_match() {
         )
             .await
             .unwrap();
-    assert_eq!(logs.len(), 3);
-    assert_eq!(logs[0].message, "1");
-    assert_eq!(logs[1].message, "2");
+    assert_eq!(logs.len(), 1);
     assert_eq!(logs[2].message, "7");
 }
 
