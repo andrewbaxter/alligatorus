@@ -41,6 +41,7 @@ use {
         jscode::{
             BINDING_PREFIX,
             EXPR_PREFIX,
+            TAG_VAR,
             JsCode,
             JsCodeBind,
             JsCodeBlock,
@@ -161,6 +162,7 @@ pub(crate) struct V8LogStore {
 pub(crate) struct V8UniqueCounter {
     pub(crate) compile_id: CompileId,
     pub(crate) counter: Counter,
+    pub(crate) tag_counter: Counter,
 }
 
 /// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the boxed Rc
@@ -301,14 +303,8 @@ pub(crate) trait Target {
         loc: QExprId,
         base: CodeValue,
         element_key: ConstKey,
-        cases: Vec<(ConstKey, Rc<dyn Type>, &Expr)>,
+        cases: Vec<(String, Rc<dyn Type>, &Expr)>,
         fallback: Option<&Expr>,
-    ) -> EvalRes;
-    fn record(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        entries: Vec<(ConstKey, EvalRes)>,
     ) -> EvalRes;
 }
 pub(crate) struct MortarTarget;
@@ -430,7 +426,7 @@ impl Target for MortarTarget {
         loc: QExprId,
         base: CodeValue,
         element_key: ConstKey,
-        cases: Vec<(ConstKey, Rc<dyn Type>, &Expr)>,
+        cases: Vec<(String, Rc<dyn Type>, &Expr)>,
         fallback: Option<&Expr>,
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
@@ -468,7 +464,7 @@ impl Target for MortarTarget {
                     }
                 };
                 js_cases.push(JsCodeMatchBranch {
-                    tag: tag.clone(),
+                    js_tag: tag.clone(),
                     body: body_js,
                 });
             }
@@ -504,69 +500,6 @@ impl Target for MortarTarget {
         });
     }
 
-    fn record(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        entries: Vec<(ConstKey, EvalRes)>,
-    ) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            // Try to produce a JS object when all entries have JS representations
-            let mut js_fields: Vec<(String, JsCode)> = Vec::new();
-            let mut type_entries: Vec<(String, Rc<dyn Type>)> = Vec::new();
-            let mut all_js = true;
-            for (key, entry_res) in &entries {
-                let key_str = match key {
-                    ConstKey::String(s) => s.clone(),
-                };
-                if let Some(cv) = &entry_res.v {
-                    let vtype = cv.value.type_(xx, loc);
-                    if aspect_consume_js_get_maybe(xx, vtype.as_ref()).is_some() {
-                        type_entries.push((key_str, vtype));
-                    } else {
-                        all_js = false;
-                        break;
-                    }
-                } else {
-                    all_js = false;
-                    break;
-                }
-            }
-            if all_js && !entries.is_empty() {
-                let consumed_entries: Vec<(ConstKey, EvalRes)> = entries;
-                for (key, entry_res) in consumed_entries {
-                    let key_str = match &key {
-                        ConstKey::String(s) => s.clone(),
-                    };
-                    erb.errors.extend(entry_res.errors);
-                    if let Some(cv) = entry_res.v {
-                        let vtype = cv.value.type_(xx, loc);
-                        let consume = aspect_consume_js_get_maybe(xx, vtype.as_ref()).unwrap();
-                        let js = erb.must_er(consume.to_js(xx, loc, cv))?;
-                        js_fields.push((key_str, js));
-                    } else {
-                        return Err(());
-                    }
-                }
-                return Ok(CodeValue {
-                    code: Code {
-                        loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
-                            loc,
-                            type_: JsCodeType::NewObject(JsCodeNewObject { fields: js_fields }),
-                        })),
-                    },
-                    value: Box::new(tuple::StaticValue {
-                        type_: Rc::new(tuple::TypeRecord { entries: type_entries }),
-                    }),
-                });
-            }
-            return Ok(CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: Box::new(ValueRecord { entries }),
-            });
-        });
-    }
 }
 
 fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
@@ -717,16 +650,26 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                 value: Box::new(ValueTuple { elements }),
             });
         },
-        Expr_::Record(r) => return er_seq_cv!(expr.loc, erb, {
-            let mut entries = Vec::new();
+        Expr_::Record(r) => {
+            let mut entries = std::collections::BTreeMap::new();
+            let mut errors = vec![];
             for (k_expr, v_expr) in &r.entries {
-                let k_cv = erb.must_er(eval_half(xx, k_expr, target))?;
-                let key = erb.must_res(extract_const_key(xx, expr.loc, k_cv.value.as_ref()))?;
-                entries.push((key, eval_half(xx, v_expr, target)));
+                let k_res = eval_half(xx, k_expr, target);
+                errors.extend(k_res.errors);
+                let Some(k_cv) = k_res.v else { continue; };
+                match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
+                    Ok(key) => { entries.insert(key, eval_half(xx, v_expr, target)); },
+                    Err(e) => errors.push(ExprErr { loc: expr.loc, errors: vec![ExprSubErr::Opaque(e)] }),
+                }
             }
-            let r = erb.must_er(target.record(xx, expr.loc, entries))?;
-            return Ok(r);
-        }),
+            if !errors.is_empty() {
+                return EvalRes { v: None, errors };
+            }
+            return EvalRes::ok(CodeValue {
+                code: Code { loc: expr.loc, code: Code_::None },
+                value: Box::new(ValueRecord { entries }),
+            });
+        },
         Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
                 base = eval_half(xx, e.base.as_ref(), target),
@@ -794,16 +737,16 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             for case in &e.cases {
                 let cond_cv = erb.must_er(eval_half(xx, &case.condition, target))?;
                 let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_ref()))?;
-                if !variants.iter().any(|(t, _)| t == &tag) {
+                if !variants.iter().any(|(t, _, _)| t == &tag) {
                     return erb.err_new(format!("Match case tag '{:?}' not found in tagged union", tag));
                 }
                 case_tags.push(tag);
             }
 
             // Check exhaustiveness
-            let is_exhaustive = variants.iter().all(|(vt, _)| case_tags.contains(vt));
+            let is_exhaustive = variants.iter().all(|(vt, _, _)| case_tags.contains(vt));
             if !is_exhaustive && e.fallback.is_none() {
-                for (variant_tag, _) in &variants {
+                for (variant_tag, _, _) in &variants {
                     if !case_tags.contains(variant_tag) {
                         return erb.err_new(format!(
                             "Non-exhaustive match: missing case for tag '{:?}'", variant_tag
@@ -819,8 +762,8 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             let mut cases = Vec::new();
             for (i, case) in e.cases.iter().enumerate() {
                 let tag = &case_tags[i];
-                let variant_type = variants.iter().find(|(t, _)| t == tag).unwrap().1.clone();
-                cases.push((tag.clone(), variant_type, &case.body));
+                let (_, js_tag, variant_type) = variants.iter().find(|(t, _, _)| t == tag).unwrap();
+                cases.push((js_tag.clone(), variant_type.clone(), &case.body));
             }
             let v = erb.must_er(target.match_(
                 xx,
@@ -1107,6 +1050,7 @@ fn eval(
             .map(|(c, _)| c.clone())
             .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
         counter: Counter::default(),
+        tag_counter: Counter::default(),
     });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
@@ -1116,6 +1060,7 @@ fn eval(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
+        next_tag_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });
@@ -1703,13 +1648,10 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
         JsCodeType::Match(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
-            lines.push(code.loc, format!("{{ let [__tag, {}] = Object.entries({})[0];", elem_key, base_var));
-            lines.push(code.loc, "switch (__tag) {".to_string());
+            lines.push(code.loc, format!("{{ let [{}, {}] = Object.entries({})[0];", TAG_VAR, elem_key, base_var));
+            lines.push(code.loc, format!("switch ({}) {{", TAG_VAR));
             for case in &c.cases {
-                let tag_js = match &case.tag {
-                    ConstKey::String(s) => format!("\"{}\"", s),
-                };
-                lines.push(code.loc, format!("case {}: {{", tag_js));
+                lines.push(code.loc, format!("case \"{}\": {{", case.js_tag));
                 let body_var = render_code(lines, &case.body);
                 lines.push(code.loc, format!("{} = {};", out, body_var));
                 lines.push(code.loc, "break; }".to_string());
@@ -1761,6 +1703,7 @@ pub async fn compile_importid(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
+        next_tag_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });

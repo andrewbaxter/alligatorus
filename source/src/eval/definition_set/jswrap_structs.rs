@@ -246,8 +246,11 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
         let variant_index = {
             let mut variants = self_.data.variants.borrow_mut();
             let idx = variants.len();
+            let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+            let js_tag = format!("{}{}", crate::jscode::TAG_PREFIX, uc.tag_counter.next());
             variants.push(TaggedUnionVariant {
                 tag: crate::langhelp::ConstKey::String(tag),
+                js_tag,
                 type_: type_ref.0,
             });
             idx

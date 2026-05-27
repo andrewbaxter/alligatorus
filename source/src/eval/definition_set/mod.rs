@@ -188,6 +188,7 @@ pub(crate) struct DefinitionSetDataType {
 
 pub(crate) struct TaggedUnionVariant {
     pub tag: crate::langhelp::ConstKey,
+    pub js_tag: String,
     pub type_: Rc<dyn crate::langhelp::Type>,
 }
 

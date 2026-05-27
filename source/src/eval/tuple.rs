@@ -16,7 +16,10 @@ use {
         },
         jscode::{
             JsCode,
+            JsCodeBlock,
+            JsCodeBlockEntry,
             JsCodeNewArray,
+            JsCodeNewObject,
             JsCodeType,
         },
         langhelp::{
@@ -37,6 +40,7 @@ use {
     },
     std::{
         any::Any,
+        collections::BTreeMap,
         rc::Rc,
     },
 };
@@ -142,8 +146,25 @@ impl AspectLiftJs for TupleLiftJs {
     }
 }
 
+/// When a compound value (Tuple/Record) is the last expression in a block, the block's code
+/// contains binding declarations but the compound value has Code_::None. When consumed to JS,
+/// the generated JS references those bindings. This helper wraps the consumed JS with the
+/// carry code so the bindings are in scope.
+fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
+    if let Some(Some(carry_js)) = carry.cast::<JsCode>().v {
+        let mut entries = match &carry_js.type_ {
+            JsCodeType::Block(block) => block.entries.clone(),
+            _ => vec![JsCodeBlockEntry::Code(carry_js.clone())],
+        };
+        entries.push(JsCodeBlockEntry::Code(js));
+        return JsCode { loc, type_: JsCodeType::Block(JsCodeBlock { entries }) };
+    }
+    js
+}
+
 impl AspectConsumeJs for TypeTuple {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        let carry = cv.code;
         let tuple: Box<ValueTuple> = (cv.value as Box<dyn Any>).downcast().unwrap();
         let mut errors = vec![];
         let mut js_elements = Vec::new();
@@ -165,10 +186,10 @@ impl AspectConsumeJs for TypeTuple {
                 errors,
             };
         }
-        EResult::ok(JsCode {
+        EResult::ok(wrap_with_carry(loc, carry, JsCode {
             loc,
             type_: JsCodeType::NewArray(JsCodeNewArray { elements: js_elements }),
-        })
+        }))
     }
 }
 
@@ -180,12 +201,106 @@ impl AspectBindJs for TypeTuple {
 }
 
 pub(crate) struct ValueRecord {
-    pub entries: Vec<(ConstKey, EvalRes)>,
+    pub entries: BTreeMap<ConstKey, EvalRes>,
 }
 
 impl Value for ValueRecord {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        let entry_types: BTreeMap<ConstKey, Rc<dyn Type>> = self.entries.iter().map(|(k, e)| {
+            let t = match &e.v {
+                Some(cv) => cv.value.type_(xx, loc),
+                None => Rc::new(TypeTuple { types: vec![] }) as Rc<dyn Type>,
+            };
+            (k.clone(), t)
+        }).collect();
+        Rc::new(TypeValueRecord { entry_types })
+    }
+}
+
+pub(crate) struct TypeValueRecord {
+    pub entry_types: BTreeMap<ConstKey, Rc<dyn Type>>,
+}
+
+impl Value for TypeValueRecord {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeTuple { types: vec![] })
+        Rc::new(super::type_ref::TypeType)
+    }
+}
+
+impl Type for TypeValueRecord {
+    fn desc(&self) -> String {
+        format!("record({})", self.entry_types.iter().map(|(k, t)| format!("{:?}: {}", k, t.desc())).collect::<Vec<_>>().join(", "))
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectBindJs>));
+        }
+        if *key == aspect_lift_js_aspect_id() {
+            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.entry_types.iter().map(|(k, t)| {
+                let key_str = match k {
+                    ConstKey::String(s) => s.clone(),
+                };
+                let a = t
+                    .aspect(_xx, &aspect_lift_js_aspect_id())
+                    .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftJs", k, t.desc()));
+                (key_str, *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
+            }).collect();
+            return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert record to other type"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to record type"))
+    }
+}
+
+impl Aspect for TypeValueRecord { }
+
+impl AspectConsumeJs for TypeValueRecord {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        let carry = cv.code;
+        let record: Box<ValueRecord> = (cv.value as Box<dyn Any>).downcast().unwrap();
+        let mut errors = vec![];
+        let mut js_fields = Vec::new();
+        for (key, elem_res) in record.entries.into_iter() {
+            let elem_type = self.entry_types.get(&key).expect("Record entry type missing");
+            let key_str = match &key {
+                ConstKey::String(s) => s.clone(),
+            };
+            errors.extend(elem_res.errors);
+            if let Some(elem_cv) = elem_res.v {
+                match aspect_consume_js_get(xx, loc, elem_type.as_ref()).into_res() {
+                    Ok(to_js) => match to_js.to_js(xx, loc, elem_cv).into_res() {
+                        Ok(js) => js_fields.push((key_str, js)),
+                        Err(e) => errors.extend(e),
+                    },
+                    Err(e) => errors.extend(e),
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return EResult { v: None, errors };
+        }
+        EResult::ok(wrap_with_carry(loc, carry, JsCode {
+            loc,
+            type_: JsCodeType::NewObject(JsCodeNewObject { fields: js_fields }),
+        }))
+    }
+}
+
+impl AspectBindJs for TypeValueRecord {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
     }
 }
 

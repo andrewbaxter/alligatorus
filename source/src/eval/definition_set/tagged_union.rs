@@ -299,8 +299,8 @@ impl Type for TaggedUnionType {
 impl Aspect for TaggedUnionType { }
 
 impl AspectTaggedUnion for TaggedUnionType {
-    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, Rc<dyn Type>)> {
-        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.type_.clone())).collect()
+    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, String, Rc<dyn Type>)> {
+        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
     }
 }
 
@@ -374,7 +374,7 @@ impl AspectFunction for TaggedUnionConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let variants = self.data.variants.borrow();
         let variant = &variants[self.variant_index];
-        let tag = variant.tag.clone();
+        let js_tag = variant.js_tag.clone();
         let underlying_type = variant.type_.clone();
         drop(variants);
 
@@ -384,16 +384,12 @@ impl AspectFunction for TaggedUnionConstructor {
             let to_js = erb.must_er(aspect_consume_js_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
 
-            let tag_str = match &tag {
-                crate::langhelp::ConstKey::String(s) => s.clone(),
-            };
-
             let result_type = Rc::new(TaggedUnionType { data: self.data.clone() });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
                 type_: JsCodeType::NewObject(JsCodeNewObject {
-                    fields: vec![(tag_str, underlying_js)],
+                    fields: vec![(js_tag, underlying_js)],
                 }),
             }));
         });
