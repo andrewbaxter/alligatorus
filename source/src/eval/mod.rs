@@ -6,6 +6,7 @@ pub mod mortar_js_value;
 pub mod mortar_scope_entry;
 pub mod mortar_null;
 pub mod mortar_string;
+pub mod mortar_list;
 pub mod mortar_function;
 pub mod expr;
 pub mod tuple;
@@ -90,6 +91,7 @@ use {
     },
     flowcontrol::shed,
     mortar_function::MortarTypeFunction,
+    mortar_list::TypeListConstructor,
     mortar_null::TypeMortarNull,
     mortar_scope_entry::MortarScopeEntry,
     mortar_string::TypeMortarString,
@@ -682,6 +684,14 @@ fn eval(
     s1_scope.insert(
         ConstKey::String("String".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+    );
+    s1_scope.insert(
+        ConstKey::String("string".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+    );
+    s1_scope.insert(
+        ConstKey::String("list".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
     );
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {

@@ -251,8 +251,8 @@ macro_rules! jswrap {
                                         loc,
                                         code: Code_::Dyn(Rc::new(JsCode {
                                             loc,
-                                            type_: JsCodeType::Field(
-                                                crate::jscode::JsCodeField {
+                                            type_: JsCodeType::FieldUse(
+                                                crate::jscode::JsCodeFieldUse {
                                                     base: Box::new(self_code),
                                                     field: format!("_{}", _jw_idx),
                                                 },
@@ -280,8 +280,8 @@ macro_rules! jswrap {
                                         loc,
                                         code: Code_::Dyn(Rc::new(JsCode {
                                             loc,
-                                            type_: JsCodeType::Field(
-                                                crate::jscode::JsCodeField {
+                                            type_: JsCodeType::FieldUse(
+                                                crate::jscode::JsCodeFieldUse {
                                                     base: Box::new(self_code),
                                                     field: format!("_{}", _jw_idx),
                                                 },
