@@ -1434,7 +1434,6 @@ fn eval(
         });
     }
     let mut code1 = JsSourceBuilder::default();
-    code1.push(root_loc, "(function() {".to_string());
 
     // Render definition set function implementations as JS functions
     for (scope_id, arg_scope_id, impl_code) in &def_funcs {
@@ -1466,11 +1465,10 @@ fn eval(
     // Render main code
     if let Some(code) = stage1_code {
         let root_var = render_code(&mut code1, &code);
-        code1.push(root_loc, format!("return {};", root_var));
+        code1.push(root_loc, format!("{};", root_var));
     } else {
-        code1.push(root_loc, "return null;".to_string());
+        code1.push(root_loc, "null;".to_string());
     }
-
     // Set externals as globals before running the script
     for (id, value) in ex.externals.borrow().iter() {
         let cell: Rc<expr::StagedExprCell> =
@@ -1481,7 +1479,6 @@ fn eval(
             .global(js_scope)
             .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
     }
-    code1.push(root_loc, "})()".to_string());
     let js_source = code1.lines.join("\n");
     eprintln!("source: [[{}]]", js_source);
     let script = v8::Script::compile(js_scope, v8::String::new(js_scope, &js_source).unwrap(), None).unwrap();
