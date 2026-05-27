@@ -93,6 +93,30 @@ pub struct ExprRecord {
     pub entries: Vec<(Expr, Expr)>,
 }
 
+#[derive(Clone)]
+pub struct ExprConditionBranch {
+    pub condition: Expr,
+    pub body: Expr,
+}
+
+#[derive(Clone)]
+pub struct ExprIf {
+    pub conditions: Vec<ExprConditionBranch>,
+    pub else_: Option<Rc<Expr>>,
+}
+
+#[derive(Clone)]
+pub struct ExprOperatorLt {
+    pub base: Rc<Expr>,
+    pub reference: Rc<Expr>,
+}
+
+#[derive(Clone)]
+pub struct ExprOperatorAdd {
+    pub base: Rc<Expr>,
+    pub reference: Rc<Expr>,
+}
+
 pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
 
 #[derive(Clone)]
@@ -108,6 +132,9 @@ pub enum Expr_ {
     Lower(ExprLower),
     Tuple(ExprTuple),
     Record(ExprRecord),
+    If(ExprIf),
+    OperatorLt(ExprOperatorLt),
+    OperatorAdd(ExprOperatorAdd),
 }
 
 #[derive(Clone)]
@@ -181,7 +208,18 @@ impl Type for ExprType {
                 value: Box::new(expr),
             });
         }
-        EvalRes::err(loc, format!("Cannot convert to expr type"))
+        // Wrap any non-Expr value as a literal Expr that reproduces the value
+        let type_rc = cv.value.type_(xx, loc);
+        let expr = Expr {
+            loc,
+            r#type: Expr_::Literal(Rc::new(move || {
+                Box::new(crate::eval::tuple::StaticValue { type_: type_rc.clone() })
+            })),
+        };
+        return EvalRes::ok(CodeValue {
+            code: cv.code.clone(),
+            value: Box::new(expr),
+        });
     }
 }
 

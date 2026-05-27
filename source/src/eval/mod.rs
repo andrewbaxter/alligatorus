@@ -2,10 +2,14 @@
 pub mod util;
 pub mod null;
 pub mod string;
+pub mod number;
+pub mod bool;
 pub mod mortar_js_value;
 pub mod mortar_scope_entry;
 pub mod mortar_null;
 pub mod mortar_string;
+pub mod mortar_number;
+pub mod mortar_bool;
 pub mod mortar_list;
 pub mod mortar_function;
 pub mod expr;
@@ -20,11 +24,14 @@ use {
     crate::{
         builtin::{
             aspect_bind_js_get_maybe,
+            aspect_bool_get_maybe,
             aspect_consume_js_get,
             aspect_consume_js_get_maybe,
             aspect_field_get,
             aspect_function_get,
             aspect_lift_js_get,
+            aspect_operator_add_get,
+            aspect_operator_lt_get,
             aspect_serial_get,
             aspect_set_get,
             aspect_string_get_maybe,
@@ -32,6 +39,9 @@ use {
         jscode::{
             JsCode,
             JsCodeBind,
+            JsCodeIf,
+            JsCodeOperatorAdd,
+            JsCodeOperatorLt,
             JsCodeSeq,
             JsCodeType,
         },
@@ -89,11 +99,13 @@ use {
         Expr_,
         Module,
     },
+    bool::ValueBool,
     flowcontrol::shed,
     mortar_function::MortarTypeFunction,
     mortar_list::TypeListConstructor,
     mortar_null::TypeMortarNull,
     mortar_scope_entry::MortarScopeEntry,
+    mortar_number::TypeMortarNumber,
     mortar_string::TypeMortarString,
     null::ValueNull,
     std::{
@@ -496,6 +508,100 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: Box::new(ValueRecord { entries }),
             });
         }),
+        Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
+            er_all!(erb, {
+                base = eval_half(xx, e.base.as_ref(), target),
+                reference = eval_half(xx, e.reference.as_ref(), target),
+            });
+            let base_type = base.value.type_(xx, expr.loc);
+            let aspect_lt = erb.must_er(aspect_operator_lt_get(xx, expr.loc, base_type.as_ref()))?;
+            let v = erb.must_er(aspect_lt.lt(xx, expr.loc, base, reference))?;
+            return Ok(v);
+        }),
+        Expr_::OperatorAdd(e) => return er_seq_cv!(expr.loc, erb, {
+            er_all!(erb, {
+                base = eval_half(xx, e.base.as_ref(), target),
+                reference = eval_half(xx, e.reference.as_ref(), target),
+            });
+            let base_type = base.value.type_(xx, expr.loc);
+            let aspect_add = erb.must_er(aspect_operator_add_get(xx, expr.loc, base_type.as_ref()))?;
+            let v = erb.must_er(aspect_add.add(xx, expr.loc, base, reference))?;
+            return Ok(v);
+        }),
+        Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
+            // Try constant folding first: check if all conditions resolve to constant bools
+            let mut conditions_evaluated = Vec::new();
+            let mut all_const = true;
+            for branch in &e.conditions {
+                let cond = erb.must_er(eval_half(xx, &branch.condition, target))?;
+                let cond_type = cond.value.type_(xx, expr.loc);
+                if let Some(aspect_bool) = aspect_bool_get_maybe(xx, cond_type.as_ref()) {
+                    let val = aspect_bool.get(cond.value.as_ref());
+                    conditions_evaluated.push((val, cond, &branch.body));
+                } else {
+                    all_const = false;
+                    conditions_evaluated.push((false, cond, &branch.body));
+                }
+            }
+            if all_const {
+                // Constant folding: find the first true branch
+                for (val, _cond, body) in &conditions_evaluated {
+                    if *val {
+                        let body_cv = erb.must_er(eval_half(xx, body, target))?;
+                        return Ok(body_cv);
+                    }
+                }
+                // No true branch; use else or null
+                if let Some(else_expr) = &e.else_ {
+                    let else_cv = erb.must_er(eval_half(xx, else_expr, target))?;
+                    return Ok(else_cv);
+                }
+                return Ok(CodeValue {
+                    code: Code { loc: expr.loc, code: Code_::None },
+                    value: Box::new(ValueNull),
+                });
+            } else {
+                // Generate JS if/else chain
+                fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<JsCode, ()> {
+                    let vtype = cv.value.type_(xx, loc);
+                    if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+                        return erb.must_er(consume.to_js(xx, loc, cv));
+                    }
+                    // Fall back to extracting code directly (e.g. set returns null + JS code)
+                    match erb.must_er(cv.code.cast::<JsCode>())? {
+                        Some(c) => Ok(c.clone()),
+                        None => Ok(JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) }),
+                    }
+                }
+                let mut js_conditions = Vec::new();
+                for (_val, cond, body) in conditions_evaluated {
+                    let cond_js = cv_to_js(&mut erb, xx, expr.loc, cond)?;
+                    let body_cv = erb.must_er(eval_half(xx, body, target))?;
+                    let body_js = cv_to_js(&mut erb, xx, expr.loc, body_cv)?;
+                    js_conditions.push((cond_js, body_js));
+                }
+                let js_else = if let Some(else_expr) = &e.else_ {
+                    let else_cv = erb.must_er(eval_half(xx, else_expr, target))?;
+                    let else_js = cv_to_js(&mut erb, xx, expr.loc, else_cv)?;
+                    Some(Box::new(else_js))
+                } else {
+                    None
+                };
+                return Ok(CodeValue {
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::Dyn(Rc::new(JsCode {
+                            loc: expr.loc,
+                            type_: JsCodeType::If(JsCodeIf {
+                                conditions: js_conditions,
+                                else_: js_else,
+                            }),
+                        })),
+                    },
+                    value: Box::new(ValueNull),
+                });
+            }
+        }),
     }
 }
 
@@ -508,7 +614,13 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
         } else if let Some(dest1) = erb.maybe_er(dest_type.cast_from(xx, loc, &source)) {
             dest = dest1;
         } else {
-            return erb.err_new(format!("TODO incompatible types"));
+            return erb.err_new(
+                format!(
+                    "Incompatible types: source {} cannot convert to dest {}",
+                    source_type.desc(),
+                    dest_type.desc()
+                )
+            );
         }
         return Ok(dest);
     });
@@ -623,6 +735,45 @@ fn substitute_lowers(
                 r#type: Expr_::Record(expr::ExprRecord { entries }),
             })
         },
+        Expr_::If(e) => {
+            let mut conditions = Vec::new();
+            for b in &e.conditions {
+                conditions.push(expr::ExprConditionBranch {
+                    condition: substitute_lowers(cix, import_state, &b.condition)?,
+                    body: substitute_lowers(cix, import_state, &b.body)?,
+                });
+            }
+            let else_ = match &e.else_ {
+                Some(e) => Some(Rc::new(substitute_lowers(cix, import_state, e)?)),
+                None => None,
+            };
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::If(expr::ExprIf { conditions, else_ }),
+            })
+        },
+        Expr_::OperatorLt(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let reference = substitute_lowers(cix, import_state, &e.reference)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
+                    base: Rc::new(base),
+                    reference: Rc::new(reference),
+                }),
+            })
+        },
+        Expr_::OperatorAdd(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let reference = substitute_lowers(cix, import_state, &e.reference)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
+                    base: Rc::new(base),
+                    reference: Rc::new(reference),
+                }),
+            })
+        },
     }
 }
 
@@ -688,6 +839,10 @@ fn eval(
     s1_scope.insert(
         ConstKey::String("string".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+    );
+    s1_scope.insert(
+        ConstKey::String("number".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("list".to_string()),
@@ -1190,6 +1345,34 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
                 elem_vars.push(render_code(lines, elem));
             }
             lines.push(code.loc, format!("{} = [{}];", out, elem_vars.join(", ")));
+        },
+        JsCodeType::If(c) => {
+            for (i, (cond, body)) in c.conditions.iter().enumerate() {
+                let cond_var = render_code(lines, cond);
+                if i == 0 {
+                    lines.push(code.loc, format!("if ({}) {{", cond_var));
+                } else {
+                    lines.push(code.loc, format!("}} else if ({}) {{", cond_var));
+                }
+                let body_var = render_code(lines, body);
+                lines.push(code.loc, format!("{} = {};", out, body_var));
+            }
+            if let Some(else_) = &c.else_ {
+                lines.push(code.loc, "} else {".to_string());
+                let else_var = render_code(lines, else_);
+                lines.push(code.loc, format!("{} = {};", out, else_var));
+            }
+            lines.push(code.loc, "}".to_string());
+        },
+        JsCodeType::OperatorLt(c) => {
+            let base_var = render_code(lines, &c.base);
+            let ref_var = render_code(lines, &c.reference);
+            lines.push(code.loc, format!("{} = ({} < {});", out, base_var, ref_var));
+        },
+        JsCodeType::OperatorAdd(c) => {
+            let base_var = render_code(lines, &c.base);
+            let ref_var = render_code(lines, &c.reference);
+            lines.push(code.loc, format!("{} = ({} + {});", out, base_var, ref_var));
         },
     }
     return out;

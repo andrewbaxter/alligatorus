@@ -13,8 +13,12 @@ use {
                 Expr_,
                 ExprBind,
                 ExprCall,
+                ExprConditionBranch,
                 ExprField,
+                ExprIf,
                 ExprLower,
+                ExprOperatorAdd,
+                ExprOperatorLt,
                 ExprRecord,
                 ExprSeq,
                 ExprScopeUse,
@@ -24,6 +28,7 @@ use {
                 Module,
             },
             null::ValueNull,
+            number::ValueNumber,
             setup_v8,
             string::ValueString,
         },
@@ -114,6 +119,10 @@ async fn compile(
                             let l = l.clone();
                             Rc::new(move || Box::new(ValueString(l.clone())))
                         },
+                        SerialLiteral::Number(n) => {
+                            let n = n.into_inner();
+                            Rc::new(move || Box::new(ValueNumber(n)))
+                        },
                     }),
                     SerialExpr_::ScopeUse(expr) => Expr_::ScopeUse(
                         ExprScopeUse { key: Rc::new(serial_expr_to_expr(source_id, &expr.key)) },
@@ -155,6 +164,21 @@ async fn compile(
                     SerialExpr_::Record(entries) => Expr_::Record(
                         ExprRecord { entries: entries.iter().map(|(k, e)| (serial_expr_to_expr(source_id, k), serial_expr_to_expr(source_id, e))).collect() },
                     ),
+                    SerialExpr_::If(expr) => Expr_::If(ExprIf {
+                        conditions: expr.conditions.iter().map(|b| ExprConditionBranch {
+                            condition: serial_expr_to_expr(source_id, &b.condition),
+                            body: serial_expr_to_expr(source_id, &b.body),
+                        }).collect(),
+                        else_: expr.else_.as_ref().map(|e| Rc::new(serial_expr_to_expr(source_id, e))),
+                    }),
+                    SerialExpr_::OperatorLt(expr) => Expr_::OperatorLt(ExprOperatorLt {
+                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
+                        reference: Rc::new(serial_expr_to_expr(source_id, &expr.reference)),
+                    }),
+                    SerialExpr_::OperatorAdd(expr) => Expr_::OperatorAdd(ExprOperatorAdd {
+                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
+                        reference: Rc::new(serial_expr_to_expr(source_id, &expr.reference)),
+                    }),
                 },
             };
         }

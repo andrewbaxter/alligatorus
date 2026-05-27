@@ -56,6 +56,24 @@ pub(crate) struct JsCodeNewArray {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeIf {
+    pub(crate) conditions: Vec<(JsCode, JsCode)>,
+    pub(crate) else_: Option<Box<JsCode>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeOperatorLt {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) reference: Box<JsCode>,
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeOperatorAdd {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) reference: Box<JsCode>,
+}
+
+#[derive(Clone)]
 pub(crate) enum JsCodeType {
     Literal(serde_json::Value),
     NewObject(JsCodeNewObject),
@@ -67,6 +85,9 @@ pub(crate) enum JsCodeType {
     FieldUse(JsCodeFieldUse),
     FieldSet(JsCodeFieldSet),
     Call(JsCodeCall),
+    If(JsCodeIf),
+    OperatorLt(JsCodeOperatorLt),
+    OperatorAdd(JsCodeOperatorAdd),
 }
 
 #[derive(Clone)]

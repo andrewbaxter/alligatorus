@@ -131,6 +131,17 @@ impl AspectFunction for MortarTypeFunction {
                 };
 
                 let elements = arg_tuple.take_elements(argument.value);
+
+                // Empty tuple calling a null-arg function → zero JS args
+                let (elements, param_types) = if elements.is_empty()
+                    && param_types.len() == 1
+                    && crate::builtin::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some()
+                {
+                    (vec![], vec![])
+                } else {
+                    (elements, param_types)
+                };
+
                 if elements.len() != param_types.len() {
                     return erb.err_new(
                         format!("Function expects {} arguments, got {}", param_types.len(), elements.len())

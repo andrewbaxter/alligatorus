@@ -117,3 +117,23 @@ aspect!(AspectTuple {
     fn take_elements(&self, value: Box<dyn Value>) -> Vec<EvalRes>;
 });
 
+aspect!(AspectNumber {
+    fn get(&self, value: & dyn Value) -> f64;
+});
+
+aspect!(AspectBool {
+    fn get(&self, value: & dyn Value) -> bool;
+});
+
+aspect!(AspectJsNumber {});
+
+aspect!(AspectJsBool {});
+
+aspect!(AspectOperatorLt {
+    fn lt(&self, xx: & ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes;
+});
+
+aspect!(AspectOperatorAdd {
+    fn add(&self, xx: & ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes;
+});
+
