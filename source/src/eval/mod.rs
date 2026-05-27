@@ -88,11 +88,11 @@ use {
     expr::{
         Expr,
         ExprBind,
+        ExprBlock,
         ExprCall,
         ExprField,
         ExprLower,
         ExprScopeUse,
-        ExprSeq,
         ExprSet,
         ExprStage,
         ExprTuple,
@@ -449,19 +449,30 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: Box::new(ValueNull)
             });
         }),
-        Expr_::Seq(e) => return er_seq_cv!(expr.loc, erb, {
-            let mut code = vec![];
-            let mut last_val = None;
-            for expr in &e.seq {
-                let r = erb.must_er(eval_half(xx, expr, target))?;
-                code.push(r.code);
-                last_val = Some(r.value);
-            }
-            return Ok(CodeValue {
-                code: erb.must_er(target.seq(expr.loc, code))?,
-                value: last_val.unwrap_or_else(|| Box::new(ValueNull))
+        Expr_::Block(e) => {
+            let child_scope = Rc::new(Scope {
+                values: RefCell::new(HashMap::new()),
+                parent: Some(xx.scope.clone()),
             });
-        }),
+            let child_xx = ExprContext {
+                vx: xx.vx.clone(),
+                import_state: xx.import_state.clone(),
+                scope: child_scope,
+            };
+            return er_seq_cv!(expr.loc, erb, {
+                let mut code = vec![];
+                let mut last_val = None;
+                for sub in &e.exprs {
+                    let r = erb.must_er(eval_half(&child_xx, sub, target))?;
+                    code.push(r.code);
+                    last_val = Some(r.value);
+                }
+                return Ok(CodeValue {
+                    code: erb.must_er(target.seq(expr.loc, code))?,
+                    value: last_val.unwrap_or_else(|| Box::new(ValueNull))
+                });
+            });
+        },
         Expr_::Stage(e) => {
             let cix = &xx.vx.ix;
             let import_state = xx.import_state.get();
@@ -703,14 +714,14 @@ fn substitute_lowers(
                 }),
             })
         },
-        Expr_::Seq(e) => {
+        Expr_::Block(e) => {
             let mut resolved = Vec::new();
-            for sub in &e.seq {
+            for sub in &e.exprs {
                 resolved.push(substitute_lowers(cix, import_state, sub)?);
             }
             Ok(Expr {
                 loc: expr.loc,
-                r#type: Expr_::Seq(ExprSeq { seq: resolved }),
+                r#type: Expr_::Block(ExprBlock { exprs: resolved }),
             })
         },
         Expr_::Tuple(t) => {

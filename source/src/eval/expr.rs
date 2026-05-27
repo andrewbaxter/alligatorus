@@ -35,11 +35,6 @@ use {
 };
 
 #[derive(Clone)]
-pub struct ExprSequence {
-    pub exprs: Vec<Expr>,
-}
-
-#[derive(Clone)]
 pub struct ExprBind {
     pub base: Rc<Expr>,
     pub value: Rc<Expr>,
@@ -58,8 +53,8 @@ pub struct ExprField {
 }
 
 #[derive(Clone)]
-pub struct ExprSeq {
-    pub seq: Vec<Expr>,
+pub struct ExprBlock {
+    pub exprs: Vec<Expr>,
 }
 
 #[derive(Clone)]
@@ -125,7 +120,7 @@ pub enum Expr_ {
     Bind(ExprBind),
     Set(ExprSet),
     Field(ExprField),
-    Seq(ExprSeq),
+    Block(ExprBlock),
     ScopeUse(ExprScopeUse),
     Call(ExprCall),
     Stage(ExprStage),

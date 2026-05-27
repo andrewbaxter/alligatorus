@@ -20,7 +20,7 @@ use {
                 ExprOperatorAdd,
                 ExprOperatorLt,
                 ExprRecord,
-                ExprSeq,
+                ExprBlock,
                 ExprScopeUse,
                 ExprSet,
                 ExprStage,
@@ -142,8 +142,8 @@ async fn compile(
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
                         key: Rc::new(serial_expr_to_expr(source_id, &expr.key)),
                     }),
-                    SerialExpr_::Block(expr) => Expr_::Seq(
-                        ExprSeq { seq: expr.exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
+                    SerialExpr_::Block(expr) => Expr_::Block(
+                        ExprBlock { exprs: expr.exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
                     ),
                     SerialExpr_::Bind(expr) => Expr_::Bind(ExprBind {
                         base: Rc::new(Expr {
