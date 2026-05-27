@@ -25,14 +25,14 @@ async fn test_list() {
                             "my_list",
                             mb.call(
                                 mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
-                                mb.tuple(vec![])
+                                mb.tuple(vec![mb.str("c"), mb.str("d")])
                             )
                         ),
                         mb.call(mb.field(mb.scope_use("my_list"), mb.str("push")), mb.str("a")),
                         mb.call(mb.field(mb.scope_use("my_list"), mb.str("push")), mb.str("b")),
                         mb.call(
                             mb.scope_use("log"),
-                            mb.call(mb.field(mb.scope_use("my_list"), mb.str("join")), mb.str("x"))
+                            mb.call(mb.field(mb.scope_use("my_list"), mb.str("join")), mb.str("_"))
                         ),
                     ],
                 ),
@@ -41,5 +41,5 @@ async fn test_list() {
             .await
             .unwrap();
     assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "axb");
+    assert_eq!(logs[0].message, "c_d_a_b");
 }
