@@ -39,10 +39,11 @@ use {
         jscode::{
             JsCode,
             JsCodeBind,
+            JsCodeBlock,
+            JsCodeBlockEntry,
             JsCodeIf,
             JsCodeOperatorAdd,
             JsCodeOperatorLt,
-            JsCodeSeq,
             JsCodeType,
         },
         langhelp::{
@@ -275,8 +276,8 @@ trait Target {
         loc: QExprId,
         carry: Code,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)>;
-    fn seq(&self, loc: QExprId, c: Vec<Code>) -> EResult<Code>;
+    ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)>;
+    fn block(&self, loc: QExprId, entries: Vec<JsCodeBlockEntry>) -> EResult<Code>;
 }
 struct MortarTarget;
 
@@ -289,38 +290,36 @@ impl Target for MortarTarget {
         loc: QExprId,
         carry: Code,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
-            return EResult::ok((carry, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+            let mut entries = vec![];
+            if let Some(carry) = carry.cast::<JsCode>().into_res().ok().flatten() {
+                entries.push(JsCodeBlockEntry::Code(carry.clone()));
+            }
+            return EResult::ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
         };
-        return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
+        return er_seq!(loc, erb, (Vec<JsCodeBlockEntry>, Box < dyn ScopeEntry >), {
             let bind_result = bind_js.bind_js(xx, loc, cv);
             if bind_result.v.is_none() {
-                return Ok((carry, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+                let mut entries = vec![];
+                if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
+                    entries.push(JsCodeBlockEntry::Code(carry.clone()));
+                }
+                return Ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
             }
             let (vcode, vtype) = erb.must_er(bind_result)?;
             let js_key = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-            let mut allcode = vec![];
+            let mut entries = vec![];
             if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
-                allcode.push(carry.clone());
+                entries.push(JsCodeBlockEntry::Code(carry.clone()));
             }
-            allcode.push(JsCode {
-                loc: loc,
-                type_: JsCodeType::Bind(JsCodeBind {
-                    base: js_key,
-                    value: Box::new(vcode),
-                }),
-            });
+            entries.push(JsCodeBlockEntry::Bind(JsCodeBind {
+                base: js_key,
+                value: Box::new(vcode),
+            }));
             return Ok((
-                //. .
-                Code {
-                    loc: loc,
-                    code: Code_::Dyn(Rc::new(JsCode {
-                        loc: loc,
-                        type_: JsCodeType::Seq(JsCodeSeq { sub: allcode })
-                    }))
-                },
+                entries,
                 Box::new(MortarScopeEntry {
                     js_key: js_key,
                     type_: vtype,
@@ -329,24 +328,8 @@ impl Target for MortarTarget {
         });
     }
 
-    fn seq(&self, loc: QExprId, c: Vec<Code>) -> EResult<Code> {
-        let mut out = vec![];
-        for c in c {
-            match c.cast::<JsCode>().into_res() {
-                Ok(v) => {
-                    if let Some(v) = v {
-                        out.push(v.clone());
-                    }
-                },
-                Err(e) => {
-                    return EResult {
-                        v: None,
-                        errors: e,
-                    };
-                },
-            }
-        }
-        if out.is_empty() {
+    fn block(&self, loc: QExprId, entries: Vec<JsCodeBlockEntry>) -> EResult<Code> {
+        if entries.is_empty() {
             return EResult::ok(Code {
                 loc: loc,
                 code: Code_::None,
@@ -356,7 +339,7 @@ impl Target for MortarTarget {
             loc: loc,
             code: Code_::Dyn(Rc::new(JsCode {
                 loc: loc,
-                type_: JsCodeType::Seq(JsCodeSeq { sub: out }),
+                type_: JsCodeType::Block(JsCodeBlock { entries }),
             })),
         });
     }
@@ -436,19 +419,9 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
             return Ok(v);
         }),
-        Expr_::Bind(e) => return er_seq_cv!(expr.loc, erb, {
-            er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref(), target),
-                value = eval_half(xx, e.value.as_ref(), target),
-            });
-            let base_constkey = erb.must_res(extract_const_key(xx, expr.loc, base.value.as_ref()))?;
-            let binding = erb.must_er(target.bind(xx, expr.loc, base.code, value))?;
-            xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
-            return Ok(CodeValue {
-                code: binding.0,
-                value: Box::new(ValueNull)
-            });
-        }),
+        Expr_::Bind(_) => {
+            return EvalRes::err(expr.loc, format!("Bind expression must be directly inside a block"));
+        },
         Expr_::Block(e) => {
             let child_scope = Rc::new(Scope {
                 values: RefCell::new(HashMap::new()),
@@ -460,15 +433,31 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 scope: child_scope,
             };
             return er_seq_cv!(expr.loc, erb, {
-                let mut code = vec![];
+                let mut entries = vec![];
                 let mut last_val = None;
                 for sub in &e.exprs {
-                    let r = erb.must_er(eval_half(&child_xx, sub, target))?;
-                    code.push(r.code);
-                    last_val = Some(r.value);
+                    if let Expr_::Bind(bind) = &sub.r#type {
+                        er_all!(erb, {
+                            base = eval_half(&child_xx, bind.base.as_ref(), target),
+                            value = eval_half(&child_xx, bind.value.as_ref(), target),
+                        });
+                        let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_ref()))?;
+                        let binding = erb.must_er(target.bind(&child_xx, sub.loc, base.code, value))?;
+                        entries.extend(binding.0);
+                        child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
+                        last_val = Some(Box::new(ValueNull) as Box<dyn Value>);
+                    } else {
+                        let r = erb.must_er(eval_half(&child_xx, sub, target))?;
+                        match r.code.cast::<JsCode>().into_res() {
+                            Ok(Some(js)) => entries.push(JsCodeBlockEntry::Code(js.clone())),
+                            Ok(None) => {},
+                            Err(e) => { erb.errors.extend(e); return Err(()); },
+                        }
+                        last_val = Some(r.value);
+                    }
                 }
                 return Ok(CodeValue {
-                    code: erb.must_er(target.seq(expr.loc, code))?,
+                    code: erb.must_er(target.block(expr.loc, entries))?,
                     value: last_val.unwrap_or_else(|| Box::new(ValueNull))
                 });
             });
@@ -1291,12 +1280,25 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
     let out = format!("e{}", lines.next_expr_id());
     lines.push(code.loc, format!("let {};", out));
     match &code.type_ {
-        JsCodeType::Seq(c) => {
-            let mut last_var = out.clone();
-            for x in &c.sub {
-                last_var = render_code(lines, x);
+        JsCodeType::Block(c) => {
+            for entry in &c.entries {
+                match entry {
+                    JsCodeBlockEntry::Bind(b) => {
+                        let bind_key = scope_entry_id_js_key(b.base);
+                        lines.push(code.loc, format!("let {};", bind_key));
+                        lines.push(code.loc, "{".to_string());
+                        let val_var = render_code(lines, &b.value);
+                        lines.push(code.loc, format!("{} = {};", bind_key, val_var));
+                        lines.push(code.loc, "}".to_string());
+                    },
+                    JsCodeBlockEntry::Code(sub) => {
+                        lines.push(code.loc, "{".to_string());
+                        let sub_var = render_code(lines, sub);
+                        lines.push(code.loc, format!("{} = {};", out, sub_var));
+                        lines.push(code.loc, "}".to_string());
+                    },
+                }
             }
-            lines.push(code.loc, format!("{} = {};", out, last_var));
         },
         JsCodeType::Literal(c) => {
             lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
@@ -1325,11 +1327,6 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
         JsCodeType::FieldUse(js_code_field) => {
             let base = render_code(lines, &js_code_field.base);
             lines.push(code.loc, format!("{} = {}.{};", out, base, js_code_field.field));
-        },
-        JsCodeType::Bind(c) => {
-            let val_var = render_code(lines, &c.value);
-            lines.push(code.loc, format!("let {} = {};", scope_entry_id_js_key(c.base), val_var));
-            lines.push(code.loc, format!("{} = null;", out));
         },
         JsCodeType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);

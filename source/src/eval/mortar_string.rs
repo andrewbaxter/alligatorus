@@ -35,7 +35,8 @@ use {
             JsCodeBindingSet,
             JsCodeFieldUse,
             JsCodeFieldSet,
-            JsCodeSeq,
+            JsCodeBlock,
+            JsCodeBlockEntry,
             JsCodeType,
         },
         langhelp::{
@@ -125,7 +126,7 @@ impl Type for TypeMortarString {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Seq(JsCodeSeq { sub: seq })
+                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
                             }))
                         },
                         value: Box::new(MortarJsValue {
@@ -311,7 +312,7 @@ impl AspectSet for TypeMortarString {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Seq(JsCodeSeq { sub: seq })
+                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
                             }))
                         },
                         value: Box::new(ValueNull),

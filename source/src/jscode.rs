@@ -5,8 +5,14 @@ use crate::langhelp::{
 };
 
 #[derive(Clone)]
-pub(crate) struct JsCodeSeq {
-    pub(crate) sub: Vec<JsCode>,
+pub(crate) enum JsCodeBlockEntry {
+    Bind(JsCodeBind),
+    Code(JsCode),
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeBlock {
+    pub(crate) entries: Vec<JsCodeBlockEntry>,
 }
 
 #[derive(Clone)]
@@ -78,8 +84,7 @@ pub(crate) enum JsCodeType {
     Literal(serde_json::Value),
     NewObject(JsCodeNewObject),
     NewArray(JsCodeNewArray),
-    Seq(JsCodeSeq),
-    Bind(JsCodeBind),
+    Block(JsCodeBlock),
     BindingUse(JsCodeBindingUse),
     BindingSet(JsCodeBindingSet),
     FieldUse(JsCodeFieldUse),
