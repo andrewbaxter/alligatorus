@@ -3,12 +3,15 @@ use {
         builtin::{
             AspectBindJs,
             AspectConsumeJs,
+            AspectField,
             AspectLiftJs,
             AspectTuple,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
+            aspect_field_aspect_id,
             aspect_lift_js_aspect_id,
+            aspect_string_get,
             aspect_tuple_aspect_id,
         },
         jscode::{
@@ -212,5 +215,152 @@ impl ScopeEntry for StaticScopeEntry {
             },
             value: Box::new(StaticValue { type_: self.type_.clone() }),
         }
+    }
+}
+
+// --- Record types (for JS object records) ---
+
+pub(crate) struct TypeRecord {
+    pub entries: Vec<(String, Rc<dyn Type>)>,
+}
+
+impl Value for TypeRecord {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeType)
+    }
+}
+
+impl Type for TypeRecord {
+    fn desc(&self) -> String {
+        format!("record({})", self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", "))
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectBindJs>));
+        }
+        if *key == aspect_lift_js_aspect_id() {
+            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.entries.iter().map(|(k, t)| {
+                let a = t
+                    .aspect(_xx, &aspect_lift_js_aspect_id())
+                    .expect(&format!("Record entry '{}' type ({}) missing AspectLiftJs", k, t.desc()));
+                (k.clone(), *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
+            }).collect();
+            return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert record to other type"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to record type"))
+    }
+}
+
+impl Aspect for TypeRecord { }
+
+impl AspectConsumeJs for TypeRecord {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectBindJs for TypeRecord {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+    }
+}
+
+struct RecordLiftJs {
+    entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)>,
+}
+
+impl Aspect for RecordLiftJs { }
+
+impl AspectLiftJs for RecordLiftJs {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
+        let mut entries = Vec::new();
+        for (key, entry_lift) in &self.entry_lifts {
+            let v8_key = v8::String::new(scope, key).unwrap();
+            let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
+            let lifted = entry_lift.lift(scope, v8_val);
+            entries.push((key.clone(), lifted));
+        }
+        Box::new(LiftedRecord { entries })
+    }
+}
+
+pub(crate) struct LiftedRecord {
+    pub entries: Vec<(String, Box<dyn Value>)>,
+}
+
+impl Value for LiftedRecord {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        let type_entries: Vec<(String, Rc<dyn Type>)> = self.entries.iter()
+            .map(|(k, v)| (k.clone(), v.type_(xx, loc)))
+            .collect();
+        Rc::new(LiftedRecordType { entries: type_entries })
+    }
+}
+
+pub(crate) struct LiftedRecordType {
+    pub entries: Vec<(String, Rc<dyn Type>)>,
+}
+
+impl Value for LiftedRecordType {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeType)
+    }
+}
+
+impl Type for LiftedRecordType {
+    fn desc(&self) -> String {
+        format!("lifted_record({})", self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", "))
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(LiftedRecordType { entries: self.entries.clone() }) as Box<dyn AspectField>));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert lifted record"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to lifted record"))
+    }
+}
+
+impl Aspect for LiftedRecordType { }
+
+impl AspectField for LiftedRecordType {
+    fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
+        return super::util::er_seq_cv_inline(loc, |erb| {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            if let Some((_, entry_type)) = self.entries.iter().find(|(k, _)| k == &key_name) {
+                return Ok(CodeValue {
+                    code: Code { loc, code: Code_::None },
+                    value: Box::new(StaticValue { type_: entry_type.clone() }),
+                });
+            }
+            return erb.err_new(format!("Field '{}' not found on record", key_name));
+        });
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        self.entries.iter().find(|(k, _)| k == key).map(|(_, t)| t.clone())
     }
 }

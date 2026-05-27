@@ -19,6 +19,8 @@ use {
                 ExprLower,
                 ExprOperatorAdd,
                 ExprForeach,
+                ExprMatch,
+                ExprMatchBranch,
                 ExprOperatorLt,
                 ExprRecord,
                 ExprBlock,
@@ -197,6 +199,15 @@ async fn compile(
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
                         element_key: Rc::new(serial_expr_to_expr(source_id, &expr.element_key)),
                         body: Rc::new(serial_expr_to_expr(source_id, &expr.body)),
+                    }),
+                    SerialExpr_::Match(expr) => Expr_::Match(ExprMatch {
+                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
+                        element_key: Rc::new(serial_expr_to_expr(source_id, &expr.element_key)),
+                        cases: expr.cases.iter().map(|c| ExprMatchBranch {
+                            condition: serial_expr_to_expr(source_id, &c.condition),
+                            body: serial_expr_to_expr(source_id, &c.body),
+                        }).collect(),
+                        fallback: expr.fallback.as_ref().map(|e| Rc::new(serial_expr_to_expr(source_id, e))),
                     }),
                 },
             };

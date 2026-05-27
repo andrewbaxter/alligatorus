@@ -36,13 +36,20 @@ use {
             aspect_serial_get,
             aspect_set_get,
             aspect_string_get_maybe,
+            aspect_tagged_union_get,
         },
         jscode::{
+            BINDING_PREFIX,
+            EXPR_PREFIX,
+            TAG_PREFIX,
             JsCode,
             JsCodeBind,
             JsCodeBlock,
             JsCodeBlockEntry,
             JsCodeIf,
+            JsCodeMatch,
+            JsCodeMatchBranch,
+            JsCodeNewObject,
             JsCodeOperatorAdd,
             JsCodeOperatorLt,
             JsCodeType,
@@ -95,6 +102,8 @@ use {
         ExprField,
         ExprForeach,
         ExprLower,
+        ExprMatch,
+        ExprMatchBranch,
         ExprScopeUse,
         ExprSet,
         ExprStage,
@@ -193,14 +202,14 @@ pub(crate) struct Erb {
 }
 
 impl Erb {
-    fn new(loc: QExprId) -> Self {
+    pub(crate) fn new(loc: QExprId) -> Self {
         return Self {
             loc: loc,
             errors: Default::default(),
         };
     }
 
-    fn maybe_er<T>(&mut self, r: EResult<T>) -> Option<T> {
+    pub(crate) fn maybe_er<T>(&mut self, r: EResult<T>) -> Option<T> {
         let Some(cv) = r.v else {
             return None;
         };
@@ -208,7 +217,7 @@ impl Erb {
         return Some(cv);
     }
 
-    fn must_er<T>(&mut self, r: EResult<T>) -> Result<T, ()> {
+    pub(crate) fn must_er<T>(&mut self, r: EResult<T>) -> Result<T, ()> {
         self.errors.extend(r.errors);
         let Some(cv) = r.v else {
             return Err(());
@@ -216,7 +225,7 @@ impl Erb {
         return Ok(cv);
     }
 
-    fn maybe_res<T>(&mut self, r: Result<T, String>) -> Option<T> {
+    pub(crate) fn maybe_res<T>(&mut self, r: Result<T, String>) -> Option<T> {
         match r {
             Ok(r) => {
                 return Some(r);
@@ -227,7 +236,7 @@ impl Erb {
         }
     }
 
-    fn must_res<T>(&mut self, r: Result<T, String>) -> Result<T, ()> {
+    pub(crate) fn must_res<T>(&mut self, r: Result<T, String>) -> Result<T, ()> {
         match r {
             Ok(r) => {
                 return Ok(r);
@@ -239,7 +248,7 @@ impl Erb {
         }
     }
 
-    fn err_new(&mut self, message: impl ToString) -> Result<CodeValue, ()> {
+    pub(crate) fn err_new(&mut self, message: impl ToString) -> Result<CodeValue, ()> {
         self.errors.push(ExprErr {
             loc: self.loc,
             errors: vec![ExprSubErr::Opaque(message.to_string())],
@@ -247,7 +256,7 @@ impl Erb {
         return Err(());
     }
 
-    fn err_push(&mut self, message: impl ToString) {
+    pub(crate) fn err_push(&mut self, message: impl ToString) {
         self.errors.push(ExprErr {
             loc: self.loc,
             errors: vec![ExprSubErr::Opaque(message.to_string())],
@@ -502,6 +511,60 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 let key = erb.must_res(extract_const_key(xx, expr.loc, k_cv.value.as_ref()))?;
                 entries.push((key, eval_half(xx, v_expr, target)));
             }
+            // Try to produce a JS object when all entries have JS representations
+            let mut js_fields: Vec<(String, JsCode)> = Vec::new();
+            let mut type_entries: Vec<(String, Rc<dyn Type>)> = Vec::new();
+            let mut all_js = true;
+            for (key, entry_res) in &entries {
+                let key_str = match key {
+                    ConstKey::String(s) => s.clone(),
+                    _ => { all_js = false; break; },
+                };
+                if let Some(cv) = &entry_res.v {
+                    let vtype = cv.value.type_(xx, expr.loc);
+                    if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+                        // We'll consume these later if all_js stays true
+                        type_entries.push((key_str, vtype));
+                    } else {
+                        all_js = false;
+                        break;
+                    }
+                } else {
+                    all_js = false;
+                    break;
+                }
+            }
+            if all_js && !entries.is_empty() {
+                // Consume all entries to JS
+                let consumed_entries: Vec<(ConstKey, EvalRes)> = entries;
+                for (key, entry_res) in consumed_entries {
+                    let key_str = match &key {
+                        ConstKey::String(s) => s.clone(),
+                        _ => unreachable!(),
+                    };
+                    erb.errors.extend(entry_res.errors);
+                    if let Some(cv) = entry_res.v {
+                        let vtype = cv.value.type_(xx, expr.loc);
+                        let consume = aspect_consume_js_get_maybe(xx, vtype.as_ref()).unwrap();
+                        let js = erb.must_er(consume.to_js(xx, expr.loc, cv))?;
+                        js_fields.push((key_str, js));
+                    } else {
+                        return Err(());
+                    }
+                }
+                return Ok(CodeValue {
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::Dyn(Rc::new(JsCode {
+                            loc: expr.loc,
+                            type_: JsCodeType::NewObject(JsCodeNewObject { fields: js_fields }),
+                        })),
+                    },
+                    value: Box::new(tuple::StaticValue {
+                        type_: Rc::new(tuple::TypeRecord { entries: type_entries }),
+                    }),
+                });
+            }
             return Ok(CodeValue {
                 code: Code {
                     loc: expr.loc,
@@ -561,6 +624,114 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
 
             let v = erb.must_er(iterable.foreach(xx, expr.loc, base, element_scope_id, body))?;
             return Ok(v);
+        }),
+        Expr_::Match(e) => return er_seq_cv!(expr.loc, erb, {
+            er_all!(erb, {
+                base = eval_half(xx, e.base.as_ref(), target),
+                element_key_cv = eval_half(xx, e.element_key.as_ref(), target),
+            });
+            let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
+            let base_type = base.value.type_(xx, expr.loc);
+            let tagged_union = erb.must_er(aspect_tagged_union_get(xx, expr.loc, base_type.as_ref()))?;
+            let variants = tagged_union.variants();
+
+            // Validate case tags against variant tags
+            let mut case_tags: Vec<String> = Vec::new();
+            for case in &e.cases {
+                let cond_cv = erb.must_er(eval_half(xx, &case.condition, target))?;
+                let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_ref()))?;
+                let tag_str = match &tag {
+                    ConstKey::String(s) => s.clone(),
+                    _ => return erb.err_new("Match case condition must be a string"),
+                };
+                if !variants.iter().any(|(t, _)| t == &tag_str) {
+                    return erb.err_new(format!("Match case tag '{}' not found in tagged union", tag_str));
+                }
+                case_tags.push(tag_str);
+            }
+
+            // Check exhaustiveness (if no fallback, all variants must be covered)
+            if e.fallback.is_none() {
+                for (variant_tag, _) in &variants {
+                    if !case_tags.contains(variant_tag) {
+                        return erb.err_new(format!(
+                            "Non-exhaustive match: missing case for tag '{}'", variant_tag
+                        ));
+                    }
+                }
+            }
+
+            // Generate JS match code
+            let base_type_inner = base.value.type_(xx, expr.loc);
+            let to_js = erb.must_er(aspect_consume_js_get(xx, expr.loc, base_type_inner.as_ref()))?;
+            let base_js = erb.must_er(to_js.to_js(xx, expr.loc, base))?;
+
+            let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            let mut js_cases = Vec::new();
+            for (i, case) in e.cases.iter().enumerate() {
+                let tag_str = &case_tags[i];
+                let variant_type = variants.iter().find(|(t, _)| t == tag_str).unwrap().1.clone();
+
+                let child_scope = Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: Some(xx.scope.clone()),
+                });
+                child_scope.values.borrow_mut().insert(
+                    element_key.clone(),
+                    Box::new(MortarScopeEntry {
+                        js_key: element_scope_id,
+                        type_: variant_type,
+                    }),
+                );
+                let child_xx = ExprContext {
+                    vx: xx.vx.clone(),
+                    import_state: xx.import_state.clone(),
+                    scope: child_scope,
+                };
+                let body_cv = erb.must_er(eval_half(&child_xx, &case.body, target))?;
+                let body_type = body_cv.value.type_(&child_xx, expr.loc);
+                let body_js = if let Some(consume) = aspect_consume_js_get_maybe(&child_xx, body_type.as_ref()) {
+                    erb.must_er(consume.to_js(&child_xx, expr.loc, body_cv))?
+                } else {
+                    match erb.must_er(body_cv.code.cast::<JsCode>())? {
+                        Some(c) => c.clone(),
+                        None => JsCode { loc: expr.loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                    }
+                };
+                js_cases.push(JsCodeMatchBranch {
+                    tag: tag_str.clone(),
+                    body: body_js,
+                });
+            }
+
+            let js_fallback = if let Some(fallback_expr) = &e.fallback {
+                let fb_cv = erb.must_er(eval_half(xx, fallback_expr, target))?;
+                let fb_type = fb_cv.value.type_(xx, expr.loc);
+                let fb_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, fb_type.as_ref()) {
+                    erb.must_er(consume.to_js(xx, expr.loc, fb_cv))?
+                } else {
+                    match erb.must_er(fb_cv.code.cast::<JsCode>())? {
+                        Some(c) => c.clone(),
+                        None => JsCode { loc: expr.loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                    }
+                };
+                Some(Box::new(fb_js))
+            } else {
+                None
+            };
+
+            let match_js = JsCode {
+                loc: expr.loc,
+                type_: JsCodeType::Match(JsCodeMatch {
+                    base: Box::new(base_js),
+                    element_key: element_scope_id,
+                    cases: js_cases,
+                    fallback: js_fallback,
+                }),
+            };
+            let null_stack = crate::builtin::aspect_js_stack_value_get(xx, expr.loc, &TypeMortarNull as &dyn Type);
+            let null_stack = erb.must_er(null_stack)?;
+            return Ok(null_stack.to_value(expr.loc, match_js));
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
             // Try constant folding first: check if all conditions resolve to constant bools
@@ -661,7 +832,7 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
 }
 
 pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
-    return format!("a{}", e.0);
+    return format!("{}{}", BINDING_PREFIX, e.0);
 }
 
 pub(crate) fn eval_half_mortar(xx: &ExprContext, expr: &Expr) -> EvalRes {
@@ -818,6 +989,30 @@ fn substitute_lowers(
                     base: Rc::new(base),
                     element_key: Rc::new(element_key),
                     body: Rc::new(body),
+                }),
+            })
+        },
+        Expr_::Match(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let element_key = substitute_lowers(cix, import_state, &e.element_key)?;
+            let mut cases = Vec::new();
+            for c in &e.cases {
+                cases.push(ExprMatchBranch {
+                    condition: substitute_lowers(cix, import_state, &c.condition)?,
+                    body: substitute_lowers(cix, import_state, &c.body)?,
+                });
+            }
+            let fallback = match &e.fallback {
+                Some(f) => Some(Rc::new(substitute_lowers(cix, import_state, f)?)),
+                None => None,
+            };
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::Match(ExprMatch {
+                    base: Rc::new(base),
+                    element_key: Rc::new(element_key),
+                    cases,
+                    fallback,
                 }),
             })
         },
@@ -1324,7 +1519,7 @@ impl JsSourceBuilder {
 }
 
 fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
-    let out = format!("e{}", lines.next_expr_id());
+    let out = format!("{}{}", EXPR_PREFIX, lines.next_expr_id());
     lines.push(code.loc, format!("let {};", out));
     match &code.type_ {
         JsCodeType::Block(c) => {
@@ -1435,6 +1630,30 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             lines.push(code.loc, format!("for (let {} of {}) {{", elem_key, base_var));
             let body_var = render_code(lines, &c.body);
             lines.push(code.loc, format!("{} = {};", out, body_var));
+            lines.push(code.loc, "}".to_string());
+        },
+        JsCodeType::Match(c) => {
+            let base_var = render_code(lines, &c.base);
+            let tag_var = format!("{}{}", TAG_PREFIX, lines.next_expr_id());
+            let elem_key = scope_entry_id_js_key(c.element_key);
+            lines.push(code.loc, format!("for (let [{}, {}] of Object.entries({})) {{", tag_var, elem_key, base_var));
+            for (i, case) in c.cases.iter().enumerate() {
+                if i == 0 {
+                    lines.push(code.loc, format!("if ({} === \"{}\") {{", tag_var, case.tag));
+                } else {
+                    lines.push(code.loc, format!("}} else if ({} === \"{}\") {{", tag_var, case.tag));
+                }
+                let body_var = render_code(lines, &case.body);
+                lines.push(code.loc, format!("{} = {};", out, body_var));
+            }
+            if let Some(fallback) = &c.fallback {
+                lines.push(code.loc, "} else {".to_string());
+                let fb_var = render_code(lines, fallback);
+                lines.push(code.loc, format!("{} = {};", out, fb_var));
+            }
+            if !c.cases.is_empty() || c.fallback.is_some() {
+                lines.push(code.loc, "}".to_string());
+            }
             lines.push(code.loc, "}".to_string());
         },
     }

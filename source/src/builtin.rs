@@ -151,3 +151,7 @@ aspect!(AspectIterable {
     ) -> EvalRes;
 });
 
+aspect!(AspectTaggedUnion {
+    fn variants(&self) -> Vec<(String, Rc<dyn Type>)>;
+});
+

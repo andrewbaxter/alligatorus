@@ -64,6 +64,23 @@ macro_rules! er_one{
     };
 }
 
+pub(crate) fn er_seq_cv_inline(
+    loc: crate::langhelp::QExprId,
+    f: impl FnOnce(&mut super::Erb) -> Result<crate::langhelp::CodeValue, ()>,
+) -> crate::langhelp::EvalRes {
+    let mut erb = super::Erb::new(loc);
+    match f(&mut erb) {
+        Ok(v) => crate::langhelp::EResult {
+            v: Some(v),
+            errors: std::mem::take(&mut erb.errors),
+        },
+        Err(()) => crate::langhelp::EResult {
+            v: None,
+            errors: std::mem::take(&mut erb.errors),
+        },
+    }
+}
+
 macro_rules! r_one{
     ($loc: expr, {
         $($i: ident = $e: expr => $b: expr,) *

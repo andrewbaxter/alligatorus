@@ -4,6 +4,10 @@ use crate::langhelp::{
     ScopeEntryId,
 };
 
+pub(crate) const EXPR_PREFIX: &str = "e";
+pub(crate) const BINDING_PREFIX: &str = "a";
+pub(crate) const TAG_PREFIX: &str = "t";
+
 #[derive(Clone)]
 pub(crate) enum JsCodeBlockEntry {
     Bind(JsCodeBind),
@@ -101,6 +105,21 @@ pub(crate) enum JsCodeType {
     OperatorLt(JsCodeOperatorLt),
     OperatorAdd(JsCodeOperatorAdd),
     Foreach(JsCodeForeach),
+    Match(JsCodeMatch),
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeMatchBranch {
+    pub(crate) tag: String,
+    pub(crate) body: JsCode,
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeMatch {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) element_key: ScopeEntryId,
+    pub(crate) cases: Vec<JsCodeMatchBranch>,
+    pub(crate) fallback: Option<Box<JsCode>>,
 }
 
 #[derive(Clone)]

@@ -6,6 +6,7 @@ mod exports;
 mod function;
 mod interface_ref;
 mod interface;
+mod tagged_union;
 
 pub(crate) use {
     jswrap_structs::DefineResult,
@@ -14,6 +15,8 @@ pub(crate) use {
     exports::MortarTypeDefinitionSetExports,
     function::MortarTypeDefinitionSetFunction,
     interface_ref::MortarTypeDefinitionSetInterfaceRef,
+    tagged_union::MortarTypeTaggedUnionRef,
+    tagged_union::MortarTypeTaggedUnionConstructorRef,
 };
 
 use {
@@ -179,4 +182,25 @@ pub(crate) struct DefinitionSetExports {
 pub(crate) struct DefinitionSetDataType {
     pub set: Gc<DefinitionSet>,
     pub data_type_index: usize,
+}
+
+// --- Tagged union data ---
+
+pub(crate) struct TaggedUnionVariant {
+    pub tag: String,
+    pub type_: Rc<dyn crate::langhelp::Type>,
+}
+
+pub(crate) struct TaggedUnionData {
+    pub variants: RefCell<Vec<TaggedUnionVariant>>,
+    pub identity: Unique,
+}
+
+pub(crate) struct TaggedUnionRef {
+    pub data: Rc<TaggedUnionData>,
+}
+
+pub(crate) struct TaggedUnionConstructorRef {
+    pub data: Rc<TaggedUnionData>,
+    pub variant_index: usize,
 }

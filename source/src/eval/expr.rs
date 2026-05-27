@@ -119,6 +119,20 @@ pub struct ExprForeach {
     pub body: Rc<Expr>,
 }
 
+#[derive(Clone)]
+pub struct ExprMatchBranch {
+    pub condition: Expr,
+    pub body: Expr,
+}
+
+#[derive(Clone)]
+pub struct ExprMatch {
+    pub base: Rc<Expr>,
+    pub element_key: Rc<Expr>,
+    pub cases: Vec<ExprMatchBranch>,
+    pub fallback: Option<Rc<Expr>>,
+}
+
 pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
 
 #[derive(Clone)]
@@ -138,6 +152,7 @@ pub enum Expr_ {
     OperatorLt(ExprOperatorLt),
     OperatorAdd(ExprOperatorAdd),
     Foreach(ExprForeach),
+    Match(ExprMatch),
 }
 
 #[derive(Clone)]

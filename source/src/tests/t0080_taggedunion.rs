@@ -62,7 +62,7 @@ async fn test_0000_tagged_union_match() {
                         mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
                         mb.match_(
                             mb.scope_use("x"),
-                            mb.scope_use("y"),
+                            mb.str("y"),
                             vec![
                                 (mb.str("strtag"), mb.call(mb.scope_use("log"), mb.scope_use("y"))),
                                 (
@@ -82,7 +82,7 @@ async fn test_0000_tagged_union_match() {
             .await
             .unwrap();
     assert_eq!(logs.len(), 1);
-    assert_eq!(logs[2].message, "7");
+    assert_eq!(logs[0].message, "7");
 }
 
 #[tokio::test]
@@ -138,7 +138,7 @@ async fn test_0010_tagged_union_match_fallback() {
                         mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
                         mb.match_(
                             mb.scope_use("x"),
-                            mb.scope_use("y"),
+                            mb.str("y"),
                             vec![(mb.str("strtag"), mb.call(mb.scope_use("log"), mb.scope_use("y"))),],
                             Some(mb.call(mb.scope_use("log"), mb.str("fallback")))
                         )
@@ -201,7 +201,7 @@ async fn test_0020_tagged_union_nonexhaustive() {
                     mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
                     mb.match_(
                         mb.scope_use("x"),
-                        mb.scope_use("y"),
+                        mb.str("y"),
                         vec![
                             (
                                 mb.str("numtag"),

@@ -13,6 +13,10 @@ use {
         DefinitionSetInterfaceData,
         DefinitionSetInterfaceMethodData,
         DefinitionSetInterfaceRef,
+        TaggedUnionConstructorRef,
+        TaggedUnionData,
+        TaggedUnionRef,
+        TaggedUnionVariant,
         next_interface_method_id,
     },
     crate::{
@@ -127,6 +131,15 @@ jswrap!(struct DefineResult(self_, scope) {
             set: (*self_.ds).clone(),
         })
     }
+    fn tagged_union() -> TaggedUnionBuilder {
+        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+        let identity = Unique::Compile(uc.compile_id.clone(), uc.counter.next());
+        let data = Rc::new(TaggedUnionData {
+            variants: RefCell::new(Vec::new()),
+            identity,
+        });
+        TaggedUnionBuilder { data }
+    }
     fn new_interface() -> NewInterfaceResult {
         let ds = self_.ds.clone();
         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
@@ -220,6 +233,28 @@ jswrap!(struct NewFuncResult(self_, scope) {
             return;
         }
         *ret_type_expr = Some(staged.0);
+    }
+});
+
+// --- Tagged union JsWrap structs ---
+
+jswrap!(struct TaggedUnionBuilder(self_, scope) {
+    data { data: Rc<TaggedUnionData> }
+    field type_: Rc<TaggedUnionRef> { Rc::new(TaggedUnionRef { data: self_.data.clone() }) }
+    fn variant(tag: String, type_ref: TypeRef) -> Rc<TaggedUnionConstructorRef> {
+        let variant_index = {
+            let mut variants = self_.data.variants.borrow_mut();
+            let idx = variants.len();
+            variants.push(TaggedUnionVariant {
+                tag,
+                type_: type_ref.0,
+            });
+            idx
+        };
+        Rc::new(TaggedUnionConstructorRef {
+            data: self_.data.clone(),
+            variant_index,
+        })
     }
 });
 
