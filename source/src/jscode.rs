@@ -80,6 +80,13 @@ pub(crate) struct JsCodeOperatorAdd {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeForeach {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) element_key: ScopeEntryId,
+    pub(crate) body: Box<JsCode>,
+}
+
+#[derive(Clone)]
 pub(crate) enum JsCodeType {
     Literal(serde_json::Value),
     NewObject(JsCodeNewObject),
@@ -93,6 +100,7 @@ pub(crate) enum JsCodeType {
     If(JsCodeIf),
     OperatorLt(JsCodeOperatorLt),
     OperatorAdd(JsCodeOperatorAdd),
+    Foreach(JsCodeForeach),
 }
 
 #[derive(Clone)]

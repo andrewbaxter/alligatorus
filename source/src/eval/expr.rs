@@ -112,6 +112,13 @@ pub struct ExprOperatorAdd {
     pub reference: Rc<Expr>,
 }
 
+#[derive(Clone)]
+pub struct ExprForeach {
+    pub base: Rc<Expr>,
+    pub element_key: Rc<Expr>,
+    pub body: Rc<Expr>,
+}
+
 pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
 
 #[derive(Clone)]
@@ -130,6 +137,7 @@ pub enum Expr_ {
     If(ExprIf),
     OperatorLt(ExprOperatorLt),
     OperatorAdd(ExprOperatorAdd),
+    Foreach(ExprForeach),
 }
 
 #[derive(Clone)]

@@ -18,6 +18,7 @@ use {
                 ExprIf,
                 ExprLower,
                 ExprOperatorAdd,
+                ExprForeach,
                 ExprOperatorLt,
                 ExprRecord,
                 ExprBlock,
@@ -191,6 +192,11 @@ async fn compile(
                     SerialExpr_::OperatorAdd(expr) => Expr_::OperatorAdd(ExprOperatorAdd {
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
                         reference: Rc::new(serial_expr_to_expr(source_id, &expr.reference)),
+                    }),
+                    SerialExpr_::Foreach(expr) => Expr_::Foreach(ExprForeach {
+                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
+                        element_key: Rc::new(serial_expr_to_expr(source_id, &expr.element_key)),
+                        body: Rc::new(serial_expr_to_expr(source_id, &expr.body)),
                     }),
                 },
             };

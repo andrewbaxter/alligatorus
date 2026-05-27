@@ -6,7 +6,9 @@ use {
             Aspect,
             Code,
             CodeValue,
+            ConstKey,
             EvalRes,
+            ScopeEntryId,
             EResult,
             ExprContext,
             QExprId,
@@ -135,5 +137,17 @@ aspect!(AspectOperatorLt {
 
 aspect!(AspectOperatorAdd {
     fn add(&self, xx: & ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes;
+});
+
+aspect!(AspectIterable {
+    fn element_type(&self) -> Rc<dyn Type>;
+    fn foreach(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ScopeEntryId,
+        body: CodeValue,
+    ) -> EvalRes;
 });
 

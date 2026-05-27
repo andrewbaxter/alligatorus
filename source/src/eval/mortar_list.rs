@@ -5,12 +5,14 @@ use {
             AspectConsumeJs,
             AspectField,
             AspectFunction,
+            AspectIterable,
             AspectJsStackValue,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
+            aspect_iterable_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_js_stack_value_get,
             aspect_js_string_get_maybe,
@@ -20,6 +22,7 @@ use {
         jscode::{
             JsCode,
             JsCodeFieldUse,
+            JsCodeForeach,
             JsCodeNewArray,
             JsCodeType,
         },
@@ -32,6 +35,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -265,6 +269,9 @@ impl Type for TypeMortarListInstance {
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectJsStackValue>));
         }
+        if *key == aspect_iterable_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
+        }
         None
     }
 
@@ -362,5 +369,43 @@ impl AspectField for TypeMortarListInstance {
             },
             _ => None,
         }
+    }
+}
+
+impl AspectIterable for TypeMortarListInstance {
+    fn element_type(&self) -> Rc<dyn Type> {
+        self.element_type.clone()
+    }
+
+    fn foreach(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ScopeEntryId,
+        body: CodeValue,
+    ) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_consume = erb.must_er(aspect_consume_js_get(xx, loc, &*Rc::new(self.clone())))?;
+            let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
+
+            let body_js = match body.code.cast::<JsCode>().into_res() {
+                Ok(Some(js)) => js.clone(),
+                Ok(None) => JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                Err(e) => { erb.errors.extend(e); return Err(()); },
+            };
+
+            let foreach_js = JsCode {
+                loc,
+                type_: JsCodeType::Foreach(JsCodeForeach {
+                    base: Box::new(base_js),
+                    element_key,
+                    body: Box::new(body_js),
+                }),
+            };
+            let null_type = Rc::new(super::mortar_null::TypeMortarNull);
+            let stack_value = erb.must_er(aspect_js_stack_value_get(xx, loc, null_type.as_ref()))?;
+            return Ok(stack_value.to_value(loc, foreach_js));
+        });
     }
 }

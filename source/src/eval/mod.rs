@@ -30,6 +30,7 @@ use {
             aspect_field_get,
             aspect_function_get,
             aspect_lift_js_get,
+            aspect_iterable_get,
             aspect_operator_add_get,
             aspect_operator_lt_get,
             aspect_serial_get,
@@ -92,6 +93,7 @@ use {
         ExprBlock,
         ExprCall,
         ExprField,
+        ExprForeach,
         ExprLower,
         ExprScopeUse,
         ExprSet,
@@ -528,6 +530,38 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             let v = erb.must_er(aspect_add.add(xx, expr.loc, base, reference))?;
             return Ok(v);
         }),
+        Expr_::Foreach(e) => return er_seq_cv!(expr.loc, erb, {
+            er_all!(erb, {
+                base = eval_half(xx, e.base.as_ref(), target),
+                element_key_cv = eval_half(xx, e.element_key.as_ref(), target),
+            });
+            let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
+            let base_type = base.value.type_(xx, expr.loc);
+            let iterable = erb.must_er(aspect_iterable_get(xx, expr.loc, base_type.as_ref()))?;
+
+            // Create child scope with element bound, then eval body
+            let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            let child_scope = Rc::new(Scope {
+                values: RefCell::new(HashMap::new()),
+                parent: Some(xx.scope.clone()),
+            });
+            child_scope.values.borrow_mut().insert(
+                element_key,
+                Box::new(MortarScopeEntry {
+                    js_key: element_scope_id,
+                    type_: iterable.element_type(),
+                }),
+            );
+            let child_xx = ExprContext {
+                vx: xx.vx.clone(),
+                import_state: xx.import_state.clone(),
+                scope: child_scope,
+            };
+            let body = erb.must_er(eval_half(&child_xx, e.body.as_ref(), target))?;
+
+            let v = erb.must_er(iterable.foreach(xx, expr.loc, base, element_scope_id, body))?;
+            return Ok(v);
+        }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
             // Try constant folding first: check if all conditions resolve to constant bools
             let mut conditions_evaluated = Vec::new();
@@ -771,6 +805,19 @@ fn substitute_lowers(
                 r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
                     base: Rc::new(base),
                     reference: Rc::new(reference),
+                }),
+            })
+        },
+        Expr_::Foreach(e) => {
+            let base = substitute_lowers(cix, import_state, &e.base)?;
+            let element_key = substitute_lowers(cix, import_state, &e.element_key)?;
+            let body = substitute_lowers(cix, import_state, &e.body)?;
+            Ok(Expr {
+                loc: expr.loc,
+                r#type: Expr_::Foreach(ExprForeach {
+                    base: Rc::new(base),
+                    element_key: Rc::new(element_key),
+                    body: Rc::new(body),
                 }),
             })
         },
@@ -1381,6 +1428,14 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             let base_var = render_code(lines, &c.base);
             let ref_var = render_code(lines, &c.reference);
             lines.push(code.loc, format!("{} = ({} + {});", out, base_var, ref_var));
+        },
+        JsCodeType::Foreach(c) => {
+            let base_var = render_code(lines, &c.base);
+            let elem_key = scope_entry_id_js_key(c.element_key);
+            lines.push(code.loc, format!("for (let {} of {}) {{", elem_key, base_var));
+            let body_var = render_code(lines, &c.body);
+            lines.push(code.loc, format!("{} = {};", out, body_var));
+            lines.push(code.loc, "}".to_string());
         },
     }
     return out;
