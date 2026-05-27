@@ -1,6 +1,7 @@
 mod helpers;
-mod basic;
-mod define_func;
-mod define_data;
-mod define_interface;
-mod lists;
+mod t0000_basic;
+mod t0010_define_func;
+mod t0020_define_data;
+mod t0030_define_interface;
+mod t0040_lists;
+mod t0050_numbers;

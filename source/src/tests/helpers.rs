@@ -2,14 +2,19 @@ use {
     crate::syntax::{
         ExprId,
         SerialExpr,
+        SerialExpr_,
         SerialExprBind,
         SerialExprBindingUse,
         SerialExprCall,
+        SerialExprConditionBranch,
         SerialExprField,
+        SerialExprIf,
         SerialExprLower,
+        SerialExprOperatorAdd,
+        SerialExprOperatorLt,
         SerialExprSequence,
+        SerialExprSet,
         SerialExprStage,
-        SerialExpr_,
         SerialLiteral,
     },
     std::cell::Cell,
@@ -31,6 +36,13 @@ impl ModuleBuilder {
         return SerialExpr {
             id: self.id(),
             r#type: SerialExpr_::Literal(SerialLiteral::Null),
+        }
+    }
+
+    pub fn num(&self, v: f64) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::Literal(SerialLiteral::Number(v.try_into().unwrap())),
         }
     }
 
@@ -90,6 +102,49 @@ impl ModuleBuilder {
             id: self.id(),
             r#type: SerialExpr_::Bind(SerialExprBind {
                 base: key.to_string(),
+                value: Box::new(expr),
+            }),
+        };
+    }
+
+    pub fn if_(&self, cases: Vec<(SerialExpr, SerialExpr)>, else_: Option<SerialExpr>) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::If(SerialExprIf {
+                conditions: cases.into_iter().map(|x| SerialExprConditionBranch {
+                    condition: x.0,
+                    body: x.1,
+                }).collect(),
+                else_: else_.map(Box::new),
+            }),
+        };
+    }
+
+    pub fn operator_lt(&self, base: SerialExpr, reference: SerialExpr) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::OperatorLt(SerialExprOperatorLt {
+                base: Box::new(base),
+                reference: Box::new(reference),
+            }),
+        };
+    }
+
+    pub fn operator_add(&self, base: SerialExpr, reference: SerialExpr) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::OperatorAdd(SerialExprOperatorAdd {
+                base: Box::new(base),
+                reference: Box::new(reference),
+            }),
+        };
+    }
+
+    pub fn set(&self, base: SerialExpr, expr: SerialExpr) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::Set(SerialExprSet {
+                base: Box::new(base),
                 value: Box::new(expr),
             }),
         };

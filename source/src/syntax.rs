@@ -1,6 +1,9 @@
-use serde::{
-    Deserialize,
-    Serialize,
+use {
+    ordered_float::NotNan,
+    serde::{
+        Deserialize,
+        Serialize,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
@@ -55,7 +58,7 @@ pub enum SourceSpecAbsolute {
 pub enum SerialLiteral {
     Null,
     String(String),
-    //. Number(NotNan<f64>),
+    Number(NotNan<f64>),
     //. Bool(bool),
     //. Array(Vec<SerialValue>),
     //. Set(BTreeSet<SerialValue>),
@@ -121,12 +124,47 @@ pub struct SerialExprStage {
     pub expr: Box<SerialExpr>,
 }
 
-/// Places a value in a staged source tree (or the root source if outside any
-/// source tree).
+/// Places a value in a staged source tree. When at the root source level,
+/// initiates a new higher level evaluation before continuing to evaluate the root
+/// source.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprLower {
     pub expr: Box<SerialExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprConditionBranch {
+    pub condition: SerialExpr,
+    pub body: SerialExpr,
+}
+
+/// An `if` statement, with multiple condition clauses and optionally one
+/// default/else clause.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprIf {
+    pub conditions: Vec<SerialExprConditionBranch>,
+    pub else_: Option<Box<SerialExpr>>,
+}
+
+/// Evaluated in order "base", "reference". Result matches the type of the "base"
+/// argument.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprOperatorLt {
+    pub base: Box<SerialExpr>,
+    pub reference: Box<SerialExpr>,
+}
+
+/// Evaluated in order "base", "reference". Result matches the type of the "base"
+/// argument.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprOperatorAdd {
+    pub base: Box<SerialExpr>,
+    pub reference: Box<SerialExpr>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -143,6 +181,9 @@ pub enum SerialExpr_ {
     Lower(SerialExprLower),
     Tuple(Vec<SerialExpr>),
     Record(Vec<(SerialExpr, SerialExpr)>),
+    If(SerialExprIf),
+    OperatorLt(SerialExprOperatorLt),
+    OperatorAdd(SerialExprOperatorAdd),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

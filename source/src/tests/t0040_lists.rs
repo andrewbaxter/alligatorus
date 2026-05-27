@@ -10,7 +10,7 @@ use {
 };
 
 #[tokio::test]
-async fn test_list() {
+async fn test_0000_list() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
