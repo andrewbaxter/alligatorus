@@ -194,7 +194,7 @@ impl AspectField for DefinitionSetInterface {
             };
             let arg_type: Rc<dyn Type> = match arg_type_expr_clone {
                 Some(expr) => {
-                    let r = crate::eval::eval_half_mortar(xx, &expr);
+                    let r = crate::eval::eval_half(xx, &expr, &crate::eval::MortarTarget);
                     let cv = erb.must_er(r)?;
                     cv.value.type_(xx, loc)
                 },
@@ -202,7 +202,7 @@ impl AspectField for DefinitionSetInterface {
             };
             let ret_type: Rc<dyn Type> = match ret_type_expr_clone {
                 Some(expr) => {
-                    let r = crate::eval::eval_half_mortar(xx, &expr);
+                    let r = crate::eval::eval_half(xx, &expr, &crate::eval::MortarTarget);
                     let cv = erb.must_er(r)?;
                     cv.value.type_(xx, loc)
                 },

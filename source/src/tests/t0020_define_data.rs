@@ -50,7 +50,7 @@ async fn test_00800define_data() {
         // Create an instance and call to_string
         mb.bind("val", mb.call(
             mb.scope_use("make_upper"),
-            mb.tuple(vec![mb.str("hello")]),
+            mb.str("hello"),
         )),
         mb.call(
             mb.scope_use("log"),

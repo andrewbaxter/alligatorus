@@ -131,10 +131,11 @@ jswrap!(struct DefineResult(self_, scope) {
             set: (*self_.ds).clone(),
         })
     }
-    fn tagged_union() -> TaggedUnionBuilder {
+    fn tagged_union(description: String) -> TaggedUnionBuilder {
         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
         let identity = Unique::Compile(uc.compile_id.clone(), uc.counter.next());
         let data = Rc::new(TaggedUnionData {
+            description: Some(description),
             variants: RefCell::new(Vec::new()),
             identity,
         });
@@ -246,7 +247,7 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
             let mut variants = self_.data.variants.borrow_mut();
             let idx = variants.len();
             variants.push(TaggedUnionVariant {
-                tag,
+                tag: crate::langhelp::ConstKey::String(tag),
                 type_: type_ref.0,
             });
             idx

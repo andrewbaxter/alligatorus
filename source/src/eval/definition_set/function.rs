@@ -232,7 +232,7 @@ impl AspectFunction for DefinitionSetFunction {
         return er_seq_cv!(loc, erb, {
             let arg_type: Option<Rc<dyn Type>> = match &arg_type_expr {
                 Some(expr) => {
-                    let r = crate::eval::eval_half_mortar(xx, expr);
+                    let r = crate::eval::eval_half(xx, expr, &crate::eval::MortarTarget);
                     let cv = erb.must_er(r)?;
                     Some(cv.value.type_(xx, loc))
                 },
@@ -240,7 +240,7 @@ impl AspectFunction for DefinitionSetFunction {
             };
             let ret_type: Option<Rc<dyn Type>> = match &ret_type_expr {
                 Some(expr) => {
-                    let r = crate::eval::eval_half_mortar(xx, expr);
+                    let r = crate::eval::eval_half(xx, expr, &crate::eval::MortarTarget);
                     let cv = erb.must_er(r)?;
                     Some(cv.value.type_(xx, loc))
                 },

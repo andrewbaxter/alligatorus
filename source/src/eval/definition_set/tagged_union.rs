@@ -20,7 +20,6 @@ use {
             aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
             aspect_tagged_union_aspect_id,
-            aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
@@ -300,7 +299,7 @@ impl Type for TaggedUnionType {
 impl Aspect for TaggedUnionType { }
 
 impl AspectTaggedUnion for TaggedUnionType {
-    fn variants(&self) -> Vec<(String, Rc<dyn Type>)> {
+    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, Rc<dyn Type>)> {
         self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.type_.clone())).collect()
     }
 }
@@ -347,7 +346,7 @@ impl Type for TaggedUnionConstructor {
     fn desc(&self) -> String {
         let variants = self.data.variants.borrow();
         let tag = &variants[self.variant_index].tag;
-        format!("tagged_union_constructor({})", tag)
+        format!("tagged_union_constructor({:?})", tag)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -380,36 +379,21 @@ impl AspectFunction for TaggedUnionConstructor {
         drop(variants);
 
         return er_seq_cv!(loc, erb, {
-            // Unwrap tuple if needed (single-element tuple → unwrap)
-            let arg_value_type = argument.value.type_(xx, loc);
-            let converted = if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
-                let elements = arg_tuple.take_elements(argument.value);
-                if elements.len() != 1 {
-                    return erb.err_new(format!("Tagged union constructor expects 1 argument, got {}", elements.len()));
-                }
-                let elem = elements.into_iter().next().unwrap();
-                let cv = match elem.v {
-                    Some(cv) => cv,
-                    None => {
-                        erb.errors.extend(elem.errors);
-                        return erb.err_new(format!("Argument failed to evaluate"));
-                    },
-                };
-                erb.errors.extend(elem.errors);
-                erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), cv))?
-            } else {
-                erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?
-            };
+            let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
 
             let to_js = erb.must_er(aspect_consume_js_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+
+            let tag_str = match &tag {
+                crate::langhelp::ConstKey::String(s) => s.clone(),
+            };
 
             let result_type = Rc::new(TaggedUnionType { data: self.data.clone() });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
                 type_: JsCodeType::NewObject(JsCodeNewObject {
-                    fields: vec![(tag, underlying_js)],
+                    fields: vec![(tag_str, underlying_js)],
                 }),
             }));
         });

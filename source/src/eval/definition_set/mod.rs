@@ -187,11 +187,12 @@ pub(crate) struct DefinitionSetDataType {
 // --- Tagged union data ---
 
 pub(crate) struct TaggedUnionVariant {
-    pub tag: String,
+    pub tag: crate::langhelp::ConstKey,
     pub type_: Rc<dyn crate::langhelp::Type>,
 }
 
 pub(crate) struct TaggedUnionData {
+    pub description: Option<String>,
     pub variants: RefCell<Vec<TaggedUnionVariant>>,
     pub identity: Unique,
 }

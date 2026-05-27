@@ -64,7 +64,7 @@ async fn test_00900define_interface() {
         // Create an instance and call to_string
         mb.bind("val", mb.call(
             mb.scope_use("make_upper"),
-            mb.tuple(vec![mb.str("hello")]),
+            mb.str("hello"),
         )),
         mb.call(
             mb.scope_use("log"),
@@ -165,7 +165,7 @@ async fn test_00910interface_cast() {
             mb.scope_use("do_log"),
             mb.tuple(vec![mb.call(
                 mb.scope_use("make_upper"),
-                mb.tuple(vec![mb.str("hello")]),
+                mb.str("hello"),
             )]),
         ),
     ]))).await.unwrap();

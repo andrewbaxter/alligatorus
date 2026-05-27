@@ -18,7 +18,6 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
-            aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
@@ -241,25 +240,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
         };
         return er_seq_cv!(loc, erb, {
             // Convert argument to underlying type
-            let arg_value_type = argument.value.type_(xx, loc);
-            let converted = if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
-                let elements = arg_tuple.take_elements(argument.value);
-                if elements.len() != 1 {
-                    return erb.err_new(format!("Constructor expects 1 argument, got {}", elements.len()));
-                }
-                let elem = elements.into_iter().next().unwrap();
-                let cv = match elem.v {
-                    Some(cv) => cv,
-                    None => {
-                        erb.errors.extend(elem.errors);
-                        return erb.err_new(format!("Argument failed to evaluate"));
-                    },
-                };
-                erb.errors.extend(elem.errors);
-                erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), cv))?
-            } else {
-                erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?
-            };
+            let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
             let to_js = erb.must_er(aspect_consume_js_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
 

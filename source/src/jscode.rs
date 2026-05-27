@@ -1,12 +1,12 @@
 use crate::langhelp::{
     CodeDyn,
+    ConstKey,
     QExprId,
     ScopeEntryId,
 };
 
 pub(crate) const EXPR_PREFIX: &str = "e";
 pub(crate) const BINDING_PREFIX: &str = "a";
-pub(crate) const TAG_PREFIX: &str = "t";
 
 #[derive(Clone)]
 pub(crate) enum JsCodeBlockEntry {
@@ -110,7 +110,7 @@ pub(crate) enum JsCodeType {
 
 #[derive(Clone)]
 pub(crate) struct JsCodeMatchBranch {
-    pub(crate) tag: String,
+    pub(crate) tag: ConstKey,
     pub(crate) body: JsCode,
 }
 

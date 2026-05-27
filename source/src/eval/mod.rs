@@ -41,7 +41,6 @@ use {
         jscode::{
             BINDING_PREFIX,
             EXPR_PREFIX,
-            TAG_PREFIX,
             JsCode,
             JsCodeBind,
             JsCodeBlock,
@@ -278,7 +277,7 @@ fn cerr<T>(e: String) -> Result<T, ExprSubErr> {
 
 trait Effect { }
 
-trait Target {
+pub(crate) trait Target {
     type Effect;
 
     fn bind(
@@ -289,8 +288,30 @@ trait Target {
         cv: CodeValue,
     ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)>;
     fn block(&self, loc: QExprId, entries: Vec<JsCodeBlockEntry>) -> EResult<Code>;
+    fn if_(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        conditions: Vec<(CodeValue, &Expr)>,
+        else_: Option<&Expr>,
+    ) -> EvalRes;
+    fn match_(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ConstKey,
+        cases: Vec<(ConstKey, Rc<dyn Type>, &Expr)>,
+        fallback: Option<&Expr>,
+    ) -> EvalRes;
+    fn record(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        entries: Vec<(ConstKey, EvalRes)>,
+    ) -> EvalRes;
 }
-struct MortarTarget;
+pub(crate) struct MortarTarget;
 
 impl Target for MortarTarget {
     type Effect = JsCode;
@@ -354,6 +375,198 @@ impl Target for MortarTarget {
             })),
         });
     }
+
+    fn if_(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        conditions: Vec<(CodeValue, &Expr)>,
+        else_: Option<&Expr>,
+    ) -> EvalRes {
+        fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<JsCode, ()> {
+            let vtype = cv.value.type_(xx, loc);
+            if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+                return erb.must_er(consume.to_js(xx, loc, cv));
+            }
+            match erb.must_er(cv.code.cast::<JsCode>())? {
+                Some(c) => Ok(c.clone()),
+                None => Ok(JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) }),
+            }
+        }
+        return er_seq_cv!(loc, erb, {
+            let mut js_conditions = Vec::new();
+            for (cond, body) in conditions {
+                let cond_js = cv_to_js(&mut erb, xx, loc, cond)?;
+                let body_cv = erb.must_er(eval_half(xx, body, self))?;
+                let body_js = cv_to_js(&mut erb, xx, loc, body_cv)?;
+                js_conditions.push((cond_js, body_js));
+            }
+            let js_else = if let Some(else_expr) = else_ {
+                let else_cv = erb.must_er(eval_half(xx, else_expr, self))?;
+                let else_js = cv_to_js(&mut erb, xx, loc, else_cv)?;
+                Some(Box::new(else_js))
+            } else {
+                None
+            };
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc,
+                        type_: JsCodeType::If(JsCodeIf {
+                            conditions: js_conditions,
+                            else_: js_else,
+                        }),
+                    })),
+                },
+                value: Box::new(ValueNull),
+            });
+        });
+    }
+
+    fn match_(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ConstKey,
+        cases: Vec<(ConstKey, Rc<dyn Type>, &Expr)>,
+        fallback: Option<&Expr>,
+    ) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_type = base.value.type_(xx, loc);
+            let to_js = erb.must_er(aspect_consume_js_get(xx, loc, base_type.as_ref()))?;
+            let base_js = erb.must_er(to_js.to_js(xx, loc, base))?;
+
+            let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            let mut js_cases = Vec::new();
+            for (tag, variant_type, body_expr) in &cases {
+                let child_scope = Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: Some(xx.scope.clone()),
+                });
+                child_scope.values.borrow_mut().insert(
+                    element_key.clone(),
+                    Box::new(MortarScopeEntry {
+                        js_key: element_scope_id,
+                        type_: variant_type.clone(),
+                    }),
+                );
+                let child_xx = ExprContext {
+                    vx: xx.vx.clone(),
+                    import_state: xx.import_state.clone(),
+                    scope: child_scope,
+                };
+                let body_cv = erb.must_er(eval_half(&child_xx, body_expr, self))?;
+                let body_type = body_cv.value.type_(&child_xx, loc);
+                let body_js = if let Some(consume) = aspect_consume_js_get_maybe(&child_xx, body_type.as_ref()) {
+                    erb.must_er(consume.to_js(&child_xx, loc, body_cv))?
+                } else {
+                    match erb.must_er(body_cv.code.cast::<JsCode>())? {
+                        Some(c) => c.clone(),
+                        None => JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                    }
+                };
+                js_cases.push(JsCodeMatchBranch {
+                    tag: tag.clone(),
+                    body: body_js,
+                });
+            }
+
+            let js_fallback = if let Some(fallback_expr) = fallback {
+                let fb_cv = erb.must_er(eval_half(xx, fallback_expr, self))?;
+                let fb_type = fb_cv.value.type_(xx, loc);
+                let fb_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, fb_type.as_ref()) {
+                    erb.must_er(consume.to_js(xx, loc, fb_cv))?
+                } else {
+                    match erb.must_er(fb_cv.code.cast::<JsCode>())? {
+                        Some(c) => c.clone(),
+                        None => JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                    }
+                };
+                Some(Box::new(fb_js))
+            } else {
+                None
+            };
+
+            let match_js = JsCode {
+                loc,
+                type_: JsCodeType::Match(JsCodeMatch {
+                    base: Box::new(base_js),
+                    element_key: element_scope_id,
+                    cases: js_cases,
+                    fallback: js_fallback,
+                }),
+            };
+            let null_stack = crate::builtin::aspect_js_stack_value_get(xx, loc, &TypeMortarNull as &dyn Type);
+            let null_stack = erb.must_er(null_stack)?;
+            return Ok(null_stack.to_value(loc, match_js));
+        });
+    }
+
+    fn record(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        entries: Vec<(ConstKey, EvalRes)>,
+    ) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            // Try to produce a JS object when all entries have JS representations
+            let mut js_fields: Vec<(String, JsCode)> = Vec::new();
+            let mut type_entries: Vec<(String, Rc<dyn Type>)> = Vec::new();
+            let mut all_js = true;
+            for (key, entry_res) in &entries {
+                let key_str = match key {
+                    ConstKey::String(s) => s.clone(),
+                };
+                if let Some(cv) = &entry_res.v {
+                    let vtype = cv.value.type_(xx, loc);
+                    if aspect_consume_js_get_maybe(xx, vtype.as_ref()).is_some() {
+                        type_entries.push((key_str, vtype));
+                    } else {
+                        all_js = false;
+                        break;
+                    }
+                } else {
+                    all_js = false;
+                    break;
+                }
+            }
+            if all_js && !entries.is_empty() {
+                let consumed_entries: Vec<(ConstKey, EvalRes)> = entries;
+                for (key, entry_res) in consumed_entries {
+                    let key_str = match &key {
+                        ConstKey::String(s) => s.clone(),
+                    };
+                    erb.errors.extend(entry_res.errors);
+                    if let Some(cv) = entry_res.v {
+                        let vtype = cv.value.type_(xx, loc);
+                        let consume = aspect_consume_js_get_maybe(xx, vtype.as_ref()).unwrap();
+                        let js = erb.must_er(consume.to_js(xx, loc, cv))?;
+                        js_fields.push((key_str, js));
+                    } else {
+                        return Err(());
+                    }
+                }
+                return Ok(CodeValue {
+                    code: Code {
+                        loc,
+                        code: Code_::Dyn(Rc::new(JsCode {
+                            loc,
+                            type_: JsCodeType::NewObject(JsCodeNewObject { fields: js_fields }),
+                        })),
+                    },
+                    value: Box::new(tuple::StaticValue {
+                        type_: Rc::new(tuple::TypeRecord { entries: type_entries }),
+                    }),
+                });
+            }
+            return Ok(CodeValue {
+                code: Code { loc, code: Code_::None },
+                value: Box::new(ValueRecord { entries }),
+            });
+        });
+    }
 }
 
 fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
@@ -364,7 +577,7 @@ fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<Co
     return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
 }
 
-fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
+pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
     match &expr.r#type {
         Expr_::Literal(p) => {
             return EvalRes {
@@ -511,67 +724,8 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 let key = erb.must_res(extract_const_key(xx, expr.loc, k_cv.value.as_ref()))?;
                 entries.push((key, eval_half(xx, v_expr, target)));
             }
-            // Try to produce a JS object when all entries have JS representations
-            let mut js_fields: Vec<(String, JsCode)> = Vec::new();
-            let mut type_entries: Vec<(String, Rc<dyn Type>)> = Vec::new();
-            let mut all_js = true;
-            for (key, entry_res) in &entries {
-                let key_str = match key {
-                    ConstKey::String(s) => s.clone(),
-                    _ => { all_js = false; break; },
-                };
-                if let Some(cv) = &entry_res.v {
-                    let vtype = cv.value.type_(xx, expr.loc);
-                    if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
-                        // We'll consume these later if all_js stays true
-                        type_entries.push((key_str, vtype));
-                    } else {
-                        all_js = false;
-                        break;
-                    }
-                } else {
-                    all_js = false;
-                    break;
-                }
-            }
-            if all_js && !entries.is_empty() {
-                // Consume all entries to JS
-                let consumed_entries: Vec<(ConstKey, EvalRes)> = entries;
-                for (key, entry_res) in consumed_entries {
-                    let key_str = match &key {
-                        ConstKey::String(s) => s.clone(),
-                        _ => unreachable!(),
-                    };
-                    erb.errors.extend(entry_res.errors);
-                    if let Some(cv) = entry_res.v {
-                        let vtype = cv.value.type_(xx, expr.loc);
-                        let consume = aspect_consume_js_get_maybe(xx, vtype.as_ref()).unwrap();
-                        let js = erb.must_er(consume.to_js(xx, expr.loc, cv))?;
-                        js_fields.push((key_str, js));
-                    } else {
-                        return Err(());
-                    }
-                }
-                return Ok(CodeValue {
-                    code: Code {
-                        loc: expr.loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
-                            loc: expr.loc,
-                            type_: JsCodeType::NewObject(JsCodeNewObject { fields: js_fields }),
-                        })),
-                    },
-                    value: Box::new(tuple::StaticValue {
-                        type_: Rc::new(tuple::TypeRecord { entries: type_entries }),
-                    }),
-                });
-            }
-            return Ok(CodeValue {
-                code: Code {
-                    loc: expr.loc,
-                    code: Code_::None
-                },
-                value: Box::new(ValueRecord { entries }),
-            });
+            let r = erb.must_er(target.record(xx, expr.loc, entries))?;
+            return Ok(r);
         }),
         Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
@@ -636,102 +790,47 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
             let variants = tagged_union.variants();
 
             // Validate case tags against variant tags
-            let mut case_tags: Vec<String> = Vec::new();
+            let mut case_tags: Vec<ConstKey> = Vec::new();
             for case in &e.cases {
                 let cond_cv = erb.must_er(eval_half(xx, &case.condition, target))?;
                 let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_ref()))?;
-                let tag_str = match &tag {
-                    ConstKey::String(s) => s.clone(),
-                    _ => return erb.err_new("Match case condition must be a string"),
-                };
-                if !variants.iter().any(|(t, _)| t == &tag_str) {
-                    return erb.err_new(format!("Match case tag '{}' not found in tagged union", tag_str));
+                if !variants.iter().any(|(t, _)| t == &tag) {
+                    return erb.err_new(format!("Match case tag '{:?}' not found in tagged union", tag));
                 }
-                case_tags.push(tag_str);
+                case_tags.push(tag);
             }
 
-            // Check exhaustiveness (if no fallback, all variants must be covered)
-            if e.fallback.is_none() {
+            // Check exhaustiveness
+            let is_exhaustive = variants.iter().all(|(vt, _)| case_tags.contains(vt));
+            if !is_exhaustive && e.fallback.is_none() {
                 for (variant_tag, _) in &variants {
                     if !case_tags.contains(variant_tag) {
                         return erb.err_new(format!(
-                            "Non-exhaustive match: missing case for tag '{}'", variant_tag
+                            "Non-exhaustive match: missing case for tag '{:?}'", variant_tag
                         ));
                     }
                 }
             }
-
-            // Generate JS match code
-            let base_type_inner = base.value.type_(xx, expr.loc);
-            let to_js = erb.must_er(aspect_consume_js_get(xx, expr.loc, base_type_inner.as_ref()))?;
-            let base_js = erb.must_er(to_js.to_js(xx, expr.loc, base))?;
-
-            let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-            let mut js_cases = Vec::new();
-            for (i, case) in e.cases.iter().enumerate() {
-                let tag_str = &case_tags[i];
-                let variant_type = variants.iter().find(|(t, _)| t == tag_str).unwrap().1.clone();
-
-                let child_scope = Rc::new(Scope {
-                    values: RefCell::new(HashMap::new()),
-                    parent: Some(xx.scope.clone()),
-                });
-                child_scope.values.borrow_mut().insert(
-                    element_key.clone(),
-                    Box::new(MortarScopeEntry {
-                        js_key: element_scope_id,
-                        type_: variant_type,
-                    }),
-                );
-                let child_xx = ExprContext {
-                    vx: xx.vx.clone(),
-                    import_state: xx.import_state.clone(),
-                    scope: child_scope,
-                };
-                let body_cv = erb.must_er(eval_half(&child_xx, &case.body, target))?;
-                let body_type = body_cv.value.type_(&child_xx, expr.loc);
-                let body_js = if let Some(consume) = aspect_consume_js_get_maybe(&child_xx, body_type.as_ref()) {
-                    erb.must_er(consume.to_js(&child_xx, expr.loc, body_cv))?
-                } else {
-                    match erb.must_er(body_cv.code.cast::<JsCode>())? {
-                        Some(c) => c.clone(),
-                        None => JsCode { loc: expr.loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
-                    }
-                };
-                js_cases.push(JsCodeMatchBranch {
-                    tag: tag_str.clone(),
-                    body: body_js,
-                });
+            if is_exhaustive && e.fallback.is_some() {
+                return erb.err_new("Exhaustive match must not have a fallback");
             }
 
-            let js_fallback = if let Some(fallback_expr) = &e.fallback {
-                let fb_cv = erb.must_er(eval_half(xx, fallback_expr, target))?;
-                let fb_type = fb_cv.value.type_(xx, expr.loc);
-                let fb_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, fb_type.as_ref()) {
-                    erb.must_er(consume.to_js(xx, expr.loc, fb_cv))?
-                } else {
-                    match erb.must_er(fb_cv.code.cast::<JsCode>())? {
-                        Some(c) => c.clone(),
-                        None => JsCode { loc: expr.loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
-                    }
-                };
-                Some(Box::new(fb_js))
-            } else {
-                None
-            };
-
-            let match_js = JsCode {
-                loc: expr.loc,
-                type_: JsCodeType::Match(JsCodeMatch {
-                    base: Box::new(base_js),
-                    element_key: element_scope_id,
-                    cases: js_cases,
-                    fallback: js_fallback,
-                }),
-            };
-            let null_stack = crate::builtin::aspect_js_stack_value_get(xx, expr.loc, &TypeMortarNull as &dyn Type);
-            let null_stack = erb.must_er(null_stack)?;
-            return Ok(null_stack.to_value(expr.loc, match_js));
+            // Delegate code generation to target
+            let mut cases = Vec::new();
+            for (i, case) in e.cases.iter().enumerate() {
+                let tag = &case_tags[i];
+                let variant_type = variants.iter().find(|(t, _)| t == tag).unwrap().1.clone();
+                cases.push((tag.clone(), variant_type, &case.body));
+            }
+            let v = erb.must_er(target.match_(
+                xx,
+                expr.loc,
+                base,
+                element_key,
+                cases,
+                e.fallback.as_deref(),
+            ))?;
+            return Ok(v);
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
             // Try constant folding first: check if all conditions resolve to constant bools
@@ -766,45 +865,18 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                     value: Box::new(ValueNull),
                 });
             } else {
-                // Generate JS if/else chain
-                fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<JsCode, ()> {
-                    let vtype = cv.value.type_(xx, loc);
-                    if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
-                        return erb.must_er(consume.to_js(xx, loc, cv));
-                    }
-                    // Fall back to extracting code directly (e.g. set returns null + JS code)
-                    match erb.must_er(cv.code.cast::<JsCode>())? {
-                        Some(c) => Ok(c.clone()),
-                        None => Ok(JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) }),
-                    }
-                }
-                let mut js_conditions = Vec::new();
-                for (_val, cond, body) in conditions_evaluated {
-                    let cond_js = cv_to_js(&mut erb, xx, expr.loc, cond)?;
-                    let body_cv = erb.must_er(eval_half(xx, body, target))?;
-                    let body_js = cv_to_js(&mut erb, xx, expr.loc, body_cv)?;
-                    js_conditions.push((cond_js, body_js));
-                }
-                let js_else = if let Some(else_expr) = &e.else_ {
-                    let else_cv = erb.must_er(eval_half(xx, else_expr, target))?;
-                    let else_js = cv_to_js(&mut erb, xx, expr.loc, else_cv)?;
-                    Some(Box::new(else_js))
-                } else {
-                    None
-                };
-                return Ok(CodeValue {
-                    code: Code {
-                        loc: expr.loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
-                            loc: expr.loc,
-                            type_: JsCodeType::If(JsCodeIf {
-                                conditions: js_conditions,
-                                else_: js_else,
-                            }),
-                        })),
-                    },
-                    value: Box::new(ValueNull),
-                });
+                // Delegate code generation to target
+                let conditions: Vec<(CodeValue, &Expr)> = conditions_evaluated
+                    .into_iter()
+                    .map(|(_, cond, body)| (cond, body as &Expr))
+                    .collect();
+                let v = erb.must_er(target.if_(
+                    xx,
+                    expr.loc,
+                    conditions,
+                    e.else_.as_deref(),
+                ))?;
+                return Ok(v);
             }
         }),
     }
@@ -833,10 +905,6 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
 
 pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     return format!("{}{}", BINDING_PREFIX, e.0);
-}
-
-pub(crate) fn eval_half_mortar(xx: &ExprContext, expr: &Expr) -> EvalRes {
-    eval_half(xx, expr, &MortarTarget)
 }
 
 fn substitute_lowers(
@@ -1634,27 +1702,25 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
         },
         JsCodeType::Match(c) => {
             let base_var = render_code(lines, &c.base);
-            let tag_var = format!("{}{}", TAG_PREFIX, lines.next_expr_id());
             let elem_key = scope_entry_id_js_key(c.element_key);
-            lines.push(code.loc, format!("for (let [{}, {}] of Object.entries({})) {{", tag_var, elem_key, base_var));
-            for (i, case) in c.cases.iter().enumerate() {
-                if i == 0 {
-                    lines.push(code.loc, format!("if ({} === \"{}\") {{", tag_var, case.tag));
-                } else {
-                    lines.push(code.loc, format!("}} else if ({} === \"{}\") {{", tag_var, case.tag));
-                }
+            lines.push(code.loc, format!("{{ let [__tag, {}] = Object.entries({})[0];", elem_key, base_var));
+            lines.push(code.loc, "switch (__tag) {".to_string());
+            for case in &c.cases {
+                let tag_js = match &case.tag {
+                    ConstKey::String(s) => format!("\"{}\"", s),
+                };
+                lines.push(code.loc, format!("case {}: {{", tag_js));
                 let body_var = render_code(lines, &case.body);
                 lines.push(code.loc, format!("{} = {};", out, body_var));
+                lines.push(code.loc, "break; }".to_string());
             }
             if let Some(fallback) = &c.fallback {
-                lines.push(code.loc, "} else {".to_string());
+                lines.push(code.loc, "default: {".to_string());
                 let fb_var = render_code(lines, fallback);
                 lines.push(code.loc, format!("{} = {};", out, fb_var));
-            }
-            if !c.cases.is_empty() || c.fallback.is_some() {
                 lines.push(code.loc, "}".to_string());
             }
-            lines.push(code.loc, "}".to_string());
+            lines.push(code.loc, "} }".to_string());
         },
     }
     return out;
