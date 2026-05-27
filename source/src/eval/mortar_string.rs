@@ -33,7 +33,7 @@ use {
         jscode::{
             JsCode,
             JsCodeBindingSet,
-            JsCodeField,
+            JsCodeFieldUse,
             JsCodeFieldSet,
             JsCodeSeq,
             JsCodeType,
@@ -118,7 +118,7 @@ impl Type for TypeMortarString {
                     };
                     seq.push(JsCode {
                         loc: loc,
-                        type_: JsCodeType::Value(serde_json::Value::String(aspect_string.get(value.as_ref())))
+                        type_: JsCodeType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
                     });
                     return Ok(CodeValue {
                         code: Code {
@@ -220,7 +220,7 @@ impl AspectField for TypeMortarString {
                     loc: loc,
                     code: Code_::Dyn(Rc::new(JsCode {
                         loc: loc,
-                        type_: JsCodeType::Field(JsCodeField {
+                        type_: JsCodeType::FieldUse(JsCodeFieldUse {
                             base: Box::new(self_code),
                             field: key_name.clone(),
                         }),

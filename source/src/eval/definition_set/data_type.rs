@@ -1,5 +1,8 @@
 use {
-    super::{DefinitionSetDataType, DefinitionSetInterface},
+    super::{
+        DefinitionSetDataType,
+        DefinitionSetInterface,
+    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -14,7 +17,7 @@ use {
         },
         jscode::{
             JsCode,
-            JsCodeField,
+            JsCodeFieldUse,
             JsCodeType,
         },
         langhelp::{
@@ -96,6 +99,7 @@ impl Type for DefinitionSetDataType {
                 data_type_index: self.data_type_index,
             }) as Box<dyn AspectJsStackValue>));
         }
+
         // Check interface identity aspects
         {
             let data_types = self.set.data_types.borrow();
@@ -113,7 +117,8 @@ impl Type for DefinitionSetDataType {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
-        // Extract own identity + interface identities (drop borrows before calling aspect())
+        // Extract own identity + interface identities (drop borrows before calling
+        // aspect())
         let (own_identity, iface_data) = {
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
@@ -126,6 +131,7 @@ impl Type for DefinitionSetDataType {
             }).collect();
             (own, ifaces)
         };
+
         // Same data type check
         if type_.aspect(xx, &own_identity).is_some() {
             return EvalRes::ok(CodeValue {
@@ -139,6 +145,7 @@ impl Type for DefinitionSetDataType {
                 }),
             });
         }
+
         // Interface casting
         for (interface_index, identity) in iface_data {
             if type_.aspect(xx, &identity).is_some() {
@@ -180,7 +187,10 @@ impl AspectBindJs for DefinitionSetDataType {
 impl AspectJsStackValue for DefinitionSetDataType {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(DefinitionSetDataType {
@@ -199,8 +209,8 @@ impl AspectField for DefinitionSetDataType {
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
 
-            // Look up method by name - extract data before calling eval
-            // (field_name, arg_type_expr, ret_type_expr)
+            // Look up method by name - extract data before calling eval (field_name,
+            // arg_type_expr, ret_type_expr)
             type MethodLookup = (String, Option<crate::eval::expr::Expr>, Option<crate::eval::expr::Expr>);
             let lookup_result: Option<MethodLookup> = 'lookup: {
                 let data_types = self.set.data_types.borrow();
@@ -244,15 +254,11 @@ impl AspectField for DefinitionSetDataType {
                         }
                     }
                 }
-
                 None
             };
-
             let (field_name, arg_type_expr_clone, ret_type_expr_clone) = match lookup_result {
                 Some(r) => r,
-                None => return erb.err_new(
-                    format!("Field '{}' not found on data type", key_name)
-                ),
+                None => return erb.err_new(format!("Field '{}' not found on data type", key_name)),
             };
 
             // Resolve arg type
@@ -274,7 +280,6 @@ impl AspectField for DefinitionSetDataType {
                 },
                 None => Rc::new(TypeMortarNull),
             };
-
             let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
             let field_type = Rc::new(MortarTypeFunction {
                 arg: arg_type,
@@ -285,7 +290,7 @@ impl AspectField for DefinitionSetDataType {
                     loc,
                     code: Code_::Dyn(Rc::new(JsCode {
                         loc,
-                        type_: JsCodeType::Field(JsCodeField {
+                        type_: JsCodeType::FieldUse(JsCodeFieldUse {
                             base: Box::new(self_code),
                             field: field_name,
                         }),
@@ -330,7 +335,6 @@ impl AspectField for DefinitionSetDataType {
                 }
             }
         }
-
         None
     }
 }

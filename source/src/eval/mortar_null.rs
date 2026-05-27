@@ -144,7 +144,7 @@ impl AspectConsumeJs for TypeMortarNull {
             Code_::Dyn(_) => cv.code.cast::<JsCode>().map(|x| x.unwrap().clone()),
             Code_::None => EResult::ok(JsCode {
                 loc,
-                type_: JsCodeType::Value(serde_json::Value::Null),
+                type_: JsCodeType::Literal(serde_json::Value::Null),
             }),
         }
     }

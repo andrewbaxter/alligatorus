@@ -34,7 +34,7 @@ pub(crate) struct JsCodeBindingUse {
 }
 
 #[derive(Clone)]
-pub(crate) struct JsCodeField {
+pub(crate) struct JsCodeFieldUse {
     pub(crate) base: Box<JsCode>,
     pub(crate) field: String,
 }
@@ -46,27 +46,27 @@ pub(crate) struct JsCodeCall {
 }
 
 #[derive(Clone)]
-pub(crate) struct JsCodeObject {
+pub(crate) struct JsCodeNewObject {
     pub(crate) fields: Vec<(String, JsCode)>,
 }
 
 #[derive(Clone)]
-pub(crate) struct JsCodeArray {
+pub(crate) struct JsCodeNewArray {
     pub(crate) elements: Vec<JsCode>,
 }
 
 #[derive(Clone)]
 pub(crate) enum JsCodeType {
+    Literal(serde_json::Value),
+    NewObject(JsCodeNewObject),
+    NewArray(JsCodeNewArray),
     Seq(JsCodeSeq),
-    Value(serde_json::Value),
-    FieldSet(JsCodeFieldSet),
     Bind(JsCodeBind),
-    BindingSet(JsCodeBindingSet),
     BindingUse(JsCodeBindingUse),
-    Field(JsCodeField),
+    BindingSet(JsCodeBindingSet),
+    FieldUse(JsCodeFieldUse),
+    FieldSet(JsCodeFieldSet),
     Call(JsCodeCall),
-    Object(JsCodeObject),
-    Array(JsCodeArray),
 }
 
 #[derive(Clone)]

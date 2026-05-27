@@ -13,7 +13,7 @@ use {
         },
         jscode::{
             JsCode,
-            JsCodeArray,
+            JsCodeNewArray,
             JsCodeType,
         },
         langhelp::{
@@ -80,13 +80,13 @@ impl Type for TypeTuple {
             return Some(Box::new(Box::new(TypeTuple { types: self.types.clone() }) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.types.iter()
-                .map(|t| {
-                    let a = t.aspect(_xx, &aspect_lift_js_aspect_id())
+            let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.types.iter().map(|t| {
+                let a =
+                    t
+                        .aspect(_xx, &aspect_lift_js_aspect_id())
                         .expect(&format!("Tuple element type ({}) missing AspectLiftJs", t.desc()));
-                    *a.downcast::<Box<dyn AspectLiftJs>>().unwrap()
-                })
-                .collect();
+                *a.downcast::<Box<dyn AspectLiftJs>>().unwrap()
+            }).collect();
             return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftJs>));
         }
         return None;
@@ -118,19 +118,20 @@ struct TupleLiftJs {
     element_lifts: Vec<Box<dyn AspectLiftJs>>,
 }
 
-impl Aspect for TupleLiftJs {}
+impl Aspect for TupleLiftJs { }
 
 impl AspectLiftJs for TupleLiftJs {
     fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
-        let array = v8::Local::<v8::Array>::try_from(value)
-            .expect("Expected JS array for tuple lift");
+        let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lift");
         let mut elements = Vec::new();
         for (i, elem_lift) in self.element_lifts.iter().enumerate() {
-            let elem_v8 = array.get_index(scope, i as u32)
-                .expect("Array index out of bounds in tuple lift");
+            let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lift");
             let lifted = elem_lift.lift(scope, elem_v8);
             elements.push(EvalRes::ok(CodeValue {
-                code: Code { loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)), code: Code_::None },
+                code: Code {
+                    loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
+                    code: Code_::None,
+                },
                 value: lifted,
             }));
         }
@@ -156,11 +157,14 @@ impl AspectConsumeJs for TypeTuple {
             }
         }
         if !errors.is_empty() {
-            return EResult { v: None, errors };
+            return EResult {
+                v: None,
+                errors,
+            };
         }
         EResult::ok(JsCode {
             loc,
-            type_: JsCodeType::Array(JsCodeArray { elements: js_elements }),
+            type_: JsCodeType::NewArray(JsCodeNewArray { elements: js_elements }),
         })
     }
 }
@@ -193,7 +197,8 @@ impl Value for StaticValue {
     }
 }
 
-/// A scope entry for non-JS values. Returns Code_::None and reconstructs the value from its type.
+/// A scope entry for non-JS values. Returns Code_::None and reconstructs the value
+/// from its type.
 pub(crate) struct StaticScopeEntry {
     pub type_: Rc<dyn Type>,
 }
@@ -201,7 +206,10 @@ pub(crate) struct StaticScopeEntry {
 impl ScopeEntry for StaticScopeEntry {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::None },
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
             value: Box::new(StaticValue { type_: self.type_.clone() }),
         }
     }

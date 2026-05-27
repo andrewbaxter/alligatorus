@@ -23,7 +23,7 @@ use {
         jscode::{
             JsCode,
             JsCodeBindingUse,
-            JsCodeObject,
+            JsCodeNewObject,
             JsCodeType,
         },
         langhelp::{
@@ -57,8 +57,8 @@ use {
     },
 };
 
-// --- MortarTypeDefinitionSetDataTypeConstructor: eval_half type during JS execution ---
-
+// --- MortarTypeDefinitionSetDataTypeConstructor: eval_half type during JS
+// execution ---
 pub(crate) struct MortarTypeDefinitionSetDataTypeConstructor;
 
 impl Value for MortarTypeDefinitionSetDataTypeConstructor {
@@ -74,13 +74,17 @@ impl Type for MortarTypeDefinitionSetDataTypeConstructor {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectConsumeJs>));
+            return Some(
+                Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectConsumeJs>),
+            );
         }
         if *key == aspect_bind_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectJsStackValue>));
+            return Some(
+                Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectJsStackValue>),
+            );
         }
         if *key == aspect_lift_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectLiftJs>));
@@ -115,7 +119,10 @@ impl AspectBindJs for MortarTypeDefinitionSetDataTypeConstructor {
 impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeConstructor {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetDataTypeConstructor),
@@ -139,7 +146,6 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
 }
 
 // --- DefinitionSetDataTypeConstructor as Type: used after lift ---
-
 impl Value for DefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::type_ref::TypeType)
@@ -176,7 +182,6 @@ impl Type for DefinitionSetDataTypeConstructor {
 }
 
 impl Aspect for DefinitionSetDataTypeConstructor { }
-
 
 impl AspectFunction for DefinitionSetDataTypeConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
@@ -221,33 +226,26 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
         // Register with eval context (dedup)
         {
             let mut sets = xx.vx.definition_sets.borrow_mut();
-            let already = sets.iter().any(|s| std::ptr::eq(
-                &**s as *const DefinitionSet,
-                &*self.set as *const DefinitionSet,
-            ));
+            let already =
+                sets
+                    .iter()
+                    .any(|s| std::ptr::eq(&**s as *const DefinitionSet, &*self.set as *const DefinitionSet));
             if !already {
                 sets.push(self.set.clone());
             }
         }
-
         let underlying_type = {
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
-            dt.underlying_type.borrow().as_ref()
-                .expect("Data type missing underlying type")
-                .clone()
+            dt.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone()
         };
-
         return er_seq_cv!(loc, erb, {
-
             // Convert argument to underlying type
             let arg_value_type = argument.value.type_(xx, loc);
             let converted = if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
                 let elements = arg_tuple.take_elements(argument.value);
                 if elements.len() != 1 {
-                    return erb.err_new(
-                        format!("Constructor expects 1 argument, got {}", elements.len())
-                    );
+                    return erb.err_new(format!("Constructor expects 1 argument, got {}", elements.len()));
                 }
                 let elem = elements.into_iter().next().unwrap();
                 let cv = match elem.v {
@@ -268,12 +266,9 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
             // Build wrapper object fields
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
-            let mut object_fields = vec![
-                (dt.data_field.clone(), underlying_js),
-            ];
+            let mut object_fields = vec![(dt.data_field.clone(), underlying_js),];
             for method in dt.methods.borrow().iter() {
-                let method_id = method.scope_entry_id.get()
-                    .expect("Method scope entry ID not allocated");
+                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
                 object_fields.push((method.field_name.clone(), JsCode {
                     loc,
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
@@ -285,24 +280,22 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                 let iface_methods = iface.methods.borrow();
                 for method_impl in &impl_data.method_impls {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
-                    let method_id = method_impl.scope_entry_id.get()
-                        .expect("Interface method impl scope entry ID not allocated");
+                    let method_id =
+                        method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
                     object_fields.push((iface_method.field_name.clone(), JsCode {
                         loc,
                         type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
                     }));
                 }
             }
-
             let result_type = Rc::new(DefinitionSetDataType {
                 set: self.set.clone(),
                 data_type_index: self.data_type_index,
             });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
-
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
-                type_: JsCodeType::Object(JsCodeObject { fields: object_fields }),
+                type_: JsCodeType::NewObject(JsCodeNewObject { fields: object_fields }),
             }));
         });
     }

@@ -120,10 +120,9 @@ use {
     v8::tc_scope,
 };
 
-// --- Rc<T> ↔ v8::External helpers ---
-
-/// Weak handle storage, set as an isolate slot. During dispose_annex(), slots
-/// are cleared first (Weak handles dropped — but isolate ptr is already null so
+// --- Rc`<T>` ↔ v8::External helpers ---
+/// Weak handle storage, set as an isolate slot. During dispose_annex(), slots are
+/// cleared first (Weak handles dropped — but isolate ptr is already null so
 /// finalizers can't be cancelled), then finalizer_map is drained, running our
 /// guaranteed finalizer callbacks.
 pub(crate) struct V8RcStore {
@@ -139,40 +138,35 @@ pub(crate) struct V8UniqueCounter {
     pub(crate) counter: Counter,
 }
 
-/// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the
-/// boxed Rc when the isolate is disposed, preventing leaks. Use `rc_from_v8`
-/// to retrieve a clone of the Rc (incrementing the refcount, never taking
-/// ownership), which prevents double-free.
-pub(crate) fn rc_to_v8<'s, T: 'static>(
-    scope: &mut v8::PinScope<'s, '_, ()>,
-    value: Rc<T>,
-) -> v8::Local<'s, v8::External> {
+/// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the boxed Rc
+/// when the isolate is disposed, preventing leaks. Use `rc_from_v8` to retrieve a
+/// clone of the Rc (incrementing the refcount, never taking ownership), which
+/// prevents double-free.
+pub(crate) fn rc_to_v8<
+    's,
+    T: 'static,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<T>) -> v8::Local<'s, v8::External> {
     let ptr = Box::into_raw(Box::new(value)) as *mut std::ffi::c_void;
     let ext = v8::External::new(&*scope, ptr);
-    let weak = v8::Weak::with_guaranteed_finalizer(
-        &mut *scope,
-        ext,
-        Box::new(move || unsafe {
-            drop(Box::from_raw(ptr as *mut Rc<T>));
-        }),
-    );
-    scope
-        .get_slot::<V8RcStore>()
-        .unwrap()
-        .weaks
-        .borrow_mut()
-        .push(weak);
+    let weak = v8::Weak::with_guaranteed_finalizer(&mut *scope, ext, Box::new(move || unsafe {
+        drop(Box::from_raw(ptr as *mut Rc<T>));
+    }));
+    scope.get_slot::<V8RcStore>().unwrap().weaks.borrow_mut().push(weak);
     ext
 }
 
-/// Extract an `Rc<T>` from a `v8::External` created by `rc_to_v8`. Clones
-/// the Rc (bumps refcount) without taking ownership of the box — the weak
-/// finalizer remains the sole owner.
+/// Extract an `Rc<T>` from a `v8::External` created by `rc_to_v8`. Clones the Rc
+/// (bumps refcount) without taking ownership of the box — the weak finalizer
+/// remains the sole owner.
 pub(crate) fn rc_from_v8<T: 'static>(value: &v8::Value) -> Rc<T> {
     assert!(value.is_external(), "rc_from_v8: expected v8::External");
-    let ext = unsafe { &*(value as *const v8::Value as *const v8::External) };
+    let ext = unsafe {
+        &*(value as *const v8::Value as *const v8::External)
+    };
     let ptr = ext.value() as *const Rc<T>;
-    unsafe { (*ptr).clone() }
+    unsafe {
+        (*ptr).clone()
+    }
 }
 
 /// EvalResBuilder
@@ -286,7 +280,6 @@ impl Target for MortarTarget {
         let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
             return EResult::ok((carry, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
         };
-
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
             let bind_result = bind_js.bind_js(xx, loc, cv);
             if bind_result.v.is_none() {
@@ -340,7 +333,10 @@ impl Target for MortarTarget {
             }
         }
         if out.is_empty() {
-            return EResult::ok(Code { loc: loc, code: Code_::None });
+            return EResult::ok(Code {
+                loc: loc,
+                code: Code_::None,
+            });
         }
         return EResult::ok(Code {
             loc: loc,
@@ -470,15 +466,16 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 value: Box::new(resolved),
             });
         },
-        Expr_::Lower(_) =>
+        Expr_::Lower(_) => 
         // Just a marker for replacement
         unreachable!(),
         Expr_::Tuple(t) => {
-            let elements: Vec<EvalRes> = t.elements.iter()
-                .map(|e| eval_half(xx, e, target))
-                .collect();
+            let elements: Vec<EvalRes> = t.elements.iter().map(|e| eval_half(xx, e, target)).collect();
             return EvalRes::ok(CodeValue {
-                code: Code { loc: expr.loc, code: Code_::None },
+                code: Code {
+                    loc: expr.loc,
+                    code: Code_::None,
+                },
                 value: Box::new(ValueTuple { elements }),
             });
         },
@@ -490,7 +487,10 @@ fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) -> EvalRes {
                 entries.push((key, eval_half(xx, v_expr, target)));
             }
             return Ok(CodeValue {
-                code: Code { loc: expr.loc, code: Code_::None },
+                code: Code {
+                    loc: expr.loc,
+                    code: Code_::None
+                },
                 value: Box::new(ValueRecord { entries }),
             });
         }),
@@ -612,10 +612,9 @@ fn substitute_lowers(
         Expr_::Record(r) => {
             let mut entries = Vec::new();
             for (k, e) in &r.entries {
-                entries.push((
-                    substitute_lowers(cix, import_state, k)?,
-                    substitute_lowers(cix, import_state, e)?,
-                ));
+                entries.push(
+                    (substitute_lowers(cix, import_state, k)?, substitute_lowers(cix, import_state, e)?),
+                );
             }
             Ok(Expr {
                 loc: expr.loc,
@@ -639,7 +638,11 @@ fn eval(
     js_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
     js_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
     js_scope_isolate.set_slot(V8UniqueCounter {
-        compile_id: cix.compile_path.last().map(|(c, _)| c.clone()).unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
+        compile_id: cix
+            .compile_path
+            .last()
+            .map(|(c, _)| c.clone())
+            .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
         counter: Counter::default(),
     });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
@@ -654,23 +657,16 @@ fn eval(
         externals: RefCell::new(Vec::new()),
     });
     let mut s1_scope = HashMap::new();
-    for (key, eval_value, js_value) in [
-        jswrap!(fn log(ex, js_scope, scope)(message: String) -> () {
-            let timestamp_ms = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64;
-            scope
-                .get_slot::<V8LogStore>()
-                .unwrap()
-                .logs
-                .borrow_mut()
-                .push(crate::langhelp::LogEntry { timestamp_ms, message });
-        }),
-        jswrap!(fn define(ex, js_scope, scope)() -> DefineResult {
-            DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new())) }
-        }),
-    ] {
+    for (key, eval_value, js_value) in [jswrap!(fn log(ex, js_scope, scope)(message: String) ->() {
+        let timestamp_ms =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+        scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(crate::langhelp::LogEntry {
+            timestamp_ms,
+            message
+        });
+    }), jswrap!(fn define(ex, js_scope, scope)() -> DefineResult {
+        DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new())) }
+    })] {
         js_scope
             .get_current_context()
             .global(js_scope)
@@ -681,6 +677,7 @@ fn eval(
             );
         s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
+
     // Type references (static scope entries, no JS representation)
     s1_scope.insert(
         ConstKey::String("String".to_string()),
@@ -717,25 +714,25 @@ fn eval(
     for ds in ex.definition_sets.borrow().iter() {
         for func_data in ds.functions.borrow().iter() {
             let impl_expr = func_data.impl_expr.borrow();
-            let impl_expr = impl_expr.as_ref()
-                .expect("Definition set function missing implementation");
-            let impl_expr_ast = (impl_expr.as_ref() as &dyn Any)
-                .downcast_ref::<Expr>()
-                .expect("Definition set impl must be an Expr");
+            let impl_expr = impl_expr.as_ref().expect("Definition set function missing implementation");
+            let impl_expr_ast =
+                (impl_expr.as_ref() as &dyn Any)
+                    .downcast_ref::<Expr>()
+                    .expect("Definition set impl must be an Expr");
 
             // Resolve arg type and create scope entry if present
             let arg_scope_id = if func_data.arg_type_expr.borrow().is_some() {
                 let arg_expr = func_data.arg_type_expr.borrow();
-                let arg_expr_ast = (arg_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                    .downcast_ref::<Expr>()
-                    .expect("arg type must be an Expr");
+                let arg_expr_ast =
+                    (arg_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                        .downcast_ref::<Expr>()
+                        .expect("arg type must be an Expr");
                 let arg_result = eval_half(&xx, arg_expr_ast, &MortarTarget);
                 if !arg_result.errors.is_empty() {
                     return Err(arg_result.errors);
                 }
                 let arg_cv = arg_result.v.unwrap();
                 let arg_type = arg_cv.value.type_(&xx, root_loc);
-
                 let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
                 func_data.arg_scope_entry_id.set(Some(id));
                 Some((id, arg_type))
@@ -746,9 +743,10 @@ fn eval(
             // Resolve ret type if present
             let ret_type: Option<Rc<dyn Type>> = if func_data.ret_type_expr.borrow().is_some() {
                 let ret_expr = func_data.ret_type_expr.borrow();
-                let ret_expr_ast = (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                    .downcast_ref::<Expr>()
-                    .expect("ret type must be an Expr");
+                let ret_expr_ast =
+                    (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                        .downcast_ref::<Expr>()
+                        .expect("ret type must be an Expr");
                 let ret_result = eval_half(&xx, ret_expr_ast, &MortarTarget);
                 if !ret_result.errors.is_empty() {
                     return Err(ret_result.errors);
@@ -765,10 +763,13 @@ fn eval(
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
                 });
-                child_scope.values.borrow_mut().insert(
-                    ConstKey::String("arg".to_string()),
-                    Box::new(MortarScopeEntry { js_key: arg_id, type_: arg_type.clone() }),
-                );
+                child_scope
+                    .values
+                    .borrow_mut()
+                    .insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
+                        js_key: arg_id,
+                        type_: arg_type.clone(),
+                    }));
                 Rc::new(ExprContext {
                     vx: xx.vx.clone(),
                     import_state: xx.import_state.clone(),
@@ -793,12 +794,14 @@ fn eval(
             } else {
                 impl_cv
             };
-
-            let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
-                .expect("Definition set function body must produce JS code")
-                .clone();
-            let scope_id = func_data.scope_entry_id.get()
-                .expect("Definition set function not registered");
+            let impl_code =
+                impl_cv
+                    .code
+                    .cast::<JsCode>()
+                    .into_res()?
+                    .expect("Definition set function body must produce JS code")
+                    .clone();
+            let scope_id = func_data.scope_entry_id.get().expect("Definition set function not registered");
             def_funcs.push((scope_id, arg_scope_id.map(|(id, _)| id), impl_code));
         }
     }
@@ -810,21 +813,19 @@ fn eval(
         data_field: String,
         impl_code: JsCode,
     }
+
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
     for ds in ex.definition_sets.borrow().iter() {
         for dt_data in ds.data_types.borrow().iter() {
-            let underlying_type: Rc<dyn Type> = dt_data.underlying_type.borrow()
-                .as_ref()
-                .expect("Data type missing underlying type")
-                .clone();
-
+            let underlying_type: Rc<dyn Type> =
+                dt_data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
             let data_field = dt_data.data_field.clone();
-
             for method in dt_data.methods.borrow().iter() {
                 let impl_expr = method.impl_expr.borrow();
-                let impl_expr_ast = (impl_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                    .downcast_ref::<expr::Expr>()
-                    .expect("Method impl must be an Expr");
+                let impl_expr_ast =
+                    (impl_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                        .downcast_ref::<expr::Expr>()
+                        .expect("Method impl must be an Expr");
 
                 // Allocate self scope entry ID if needed
                 if method.self_scope_entry_id.get().is_none() {
@@ -841,9 +842,10 @@ fn eval(
                 // Resolve ret type
                 let ret_type: Option<Rc<dyn Type>> = if method.ret_type_expr.borrow().is_some() {
                     let ret_expr = method.ret_type_expr.borrow();
-                    let ret_expr_ast = (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                        .downcast_ref::<expr::Expr>()
-                        .expect("ret type must be an Expr");
+                    let ret_expr_ast =
+                        (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
+                            .downcast_ref::<expr::Expr>()
+                            .expect("ret type must be an Expr");
                     let ret_result = eval_half(&xx, ret_expr_ast, &MortarTarget);
                     if !ret_result.errors.is_empty() {
                         return Err(ret_result.errors);
@@ -859,13 +861,13 @@ fn eval(
                         values: RefCell::new(HashMap::new()),
                         parent: Some(xx.scope.clone()),
                     });
-                    child_scope.values.borrow_mut().insert(
-                        ConstKey::String("self".to_string()),
-                        Box::new(MortarScopeEntry {
+                    child_scope
+                        .values
+                        .borrow_mut()
+                        .insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
                             js_key: self_id,
                             type_: underlying_type.clone(),
-                        }),
-                    );
+                        }));
                     Rc::new(ExprContext {
                         vx: xx.vx.clone(),
                         import_state: xx.import_state.clone(),
@@ -888,11 +890,8 @@ fn eval(
                 } else {
                     impl_cv
                 };
-
-                let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
-                    .expect("Method body must produce JS code")
-                    .clone();
-
+                let impl_code =
+                    impl_cv.code.cast::<JsCode>().into_res()?.expect("Method body must produce JS code").clone();
                 def_data_methods.push(CompiledDataMethod {
                     scope_entry_id: method_id,
                     self_scope_entry_id: self_id,
@@ -904,10 +903,10 @@ fn eval(
             // Compile interface method implementations
             for impl_data in dt_data.interface_impls.borrow().iter() {
                 for method_impl in &impl_data.method_impls {
-                    let impl_expr_ast = (method_impl.impl_expr.as_ref() as &dyn Any)
-                        .downcast_ref::<expr::Expr>()
-                        .expect("Interface method impl must be an Expr");
-
+                    let impl_expr_ast =
+                        (method_impl.impl_expr.as_ref() as &dyn Any)
+                            .downcast_ref::<expr::Expr>()
+                            .expect("Interface method impl must be an Expr");
                     if method_impl.self_scope_entry_id.get().is_none() {
                         let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
                         method_impl.self_scope_entry_id.set(Some(id));
@@ -949,13 +948,13 @@ fn eval(
                             values: RefCell::new(HashMap::new()),
                             parent: Some(xx.scope.clone()),
                         });
-                        child_scope.values.borrow_mut().insert(
-                            ConstKey::String("self".to_string()),
-                            Box::new(MortarScopeEntry {
+                        child_scope
+                            .values
+                            .borrow_mut()
+                            .insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
                                 js_key: self_id,
                                 type_: underlying_type.clone(),
-                            }),
-                        );
+                            }));
                         Rc::new(ExprContext {
                             vx: xx.vx.clone(),
                             import_state: xx.import_state.clone(),
@@ -967,7 +966,6 @@ fn eval(
                         return Err(impl_result.errors);
                     }
                     let impl_cv = impl_result.v.unwrap();
-
                     let impl_cv = if let Some(ref ret_type) = ret_type {
                         let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
                         if !r.errors.is_empty() {
@@ -977,11 +975,13 @@ fn eval(
                     } else {
                         impl_cv
                     };
-
-                    let impl_code = impl_cv.code.cast::<JsCode>().into_res()?
-                        .expect("Interface method body must produce JS code")
-                        .clone();
-
+                    let impl_code =
+                        impl_cv
+                            .code
+                            .cast::<JsCode>()
+                            .into_res()?
+                            .expect("Interface method body must produce JS code")
+                            .clone();
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
                         self_scope_entry_id: self_id,
@@ -992,13 +992,14 @@ fn eval(
             }
         }
     }
-
     let has_js = stage1_code.is_some() || !def_funcs.is_empty() || !def_data_methods.is_empty();
     if !has_js {
         let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
-        return Ok(EvalResult { value: fallback_value.expect("No JS and no fallback value"), logs });
+        return Ok(EvalResult {
+            value: fallback_value.expect("No JS and no fallback value"),
+            logs,
+        });
     }
-
     let mut code1 = JsSourceBuilder::default();
     code1.push(root_loc, "(function() {".to_string());
 
@@ -1015,16 +1016,15 @@ fn eval(
         code1.push(root_loc, "}".to_string());
     }
 
-    // Render data type method implementations as JS functions
-    // Methods use `this` to access the wrapper object; self = this.<data_field>
+    // Render data type method implementations as JS functions Methods use `this` to
+    // access the wrapper object; self = this.<data_field>
     for method in &def_data_methods {
         let func_name = scope_entry_id_js_key(method.scope_entry_id);
         code1.push(root_loc, format!("function {}() {{", func_name));
-        code1.push(root_loc, format!(
-            "let {} = this.{};",
-            scope_entry_id_js_key(method.self_scope_entry_id),
-            method.data_field,
-        ));
+        code1.push(
+            root_loc,
+            format!("let {} = this.{};", scope_entry_id_js_key(method.self_scope_entry_id), method.data_field,),
+        );
         let body_var = render_code(&mut code1, &method.impl_code);
         code1.push(root_loc, format!("return {};", body_var));
         code1.push(root_loc, "}".to_string());
@@ -1040,34 +1040,27 @@ fn eval(
 
     // Set externals as globals before running the script
     for (id, value) in ex.externals.borrow().iter() {
-        let cell: Rc<expr::StagedExprCell> = value.clone()
-            .downcast::<expr::StagedExprCell>()
-            .expect("External must hold StagedExprCell");
+        let cell: Rc<expr::StagedExprCell> =
+            value.clone().downcast::<expr::StagedExprCell>().expect("External must hold StagedExprCell");
         let ext = rc_to_v8(js_scope, cell);
         js_scope
             .get_current_context()
             .global(js_scope)
-            .set(
-                js_scope,
-                v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(),
-                ext.into(),
-            );
+            .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
     }
-
     code1.push(root_loc, "})()".to_string());
     let js_source = code1.lines.join("\n");
-
-    let script = v8::Script::compile(
-        js_scope,
-        v8::String::new(js_scope, &js_source).unwrap(),
-        None,
-    ).unwrap();
+    eprintln!("source: [[{}]]", js_source);
+    let script = v8::Script::compile(js_scope, v8::String::new(js_scope, &js_source).unwrap(), None).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {
             let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
             let value: Box<dyn Value> = value_from_js.lift(&*js_scope, stage2);
             let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
-            Ok(EvalResult { value, logs })
+            Ok(EvalResult {
+                value,
+                logs,
+            })
         },
         None => {
             let text;
@@ -1129,7 +1122,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, format!("{} = {};", out, last_var));
         },
-        JsCodeType::Value(c) => {
+        JsCodeType::Literal(c) => {
             lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
         },
         JsCodeType::BindingUse(c) => {
@@ -1137,7 +1130,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
         },
         JsCodeType::Call(c) => {
             // Special case: method call preserves `this` binding
-            if let JsCodeType::Field(f) = &c.func.type_ {
+            if let JsCodeType::FieldUse(f) = &c.func.type_ {
                 let base_var = render_code(lines, &f.base);
                 let mut arg_vars = vec![];
                 for arg in &c.args {
@@ -1153,7 +1146,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
                 lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
             }
         },
-        JsCodeType::Field(js_code_field) => {
+        JsCodeType::FieldUse(js_code_field) => {
             let base = render_code(lines, &js_code_field.base);
             lines.push(code.loc, format!("{} = {}.{};", out, base, js_code_field.field));
         },
@@ -1173,7 +1166,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
-        JsCodeType::Object(c) => {
+        JsCodeType::NewObject(c) => {
             let mut fields_str = vec![];
             for (key, value) in &c.fields {
                 let val_var = render_code(lines, value);
@@ -1181,7 +1174,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
-        JsCodeType::Array(c) => {
+        JsCodeType::NewArray(c) => {
             let mut elem_vars = vec![];
             for elem in &c.elements {
                 elem_vars.push(render_code(lines, elem));
@@ -1208,12 +1201,18 @@ pub async fn compile_importid(
     };
     let root_expr = match substitute_lowers(&cix, import_state, &root_expr) {
         Ok(e) => e,
-        Err(errors) => return CompileRes { logs: vec![], result: CompileResResult::Err(errors) },
+        Err(errors) => return CompileRes {
+            logs: vec![],
+            result: CompileResResult::Err(errors),
+        },
     };
     let root_loc = root_expr.loc;
     let eval_result = match eval(&cix, import_state, &root_expr) {
         Ok(v) => v,
-        Err(errors) => return CompileRes { logs: vec![], result: CompileResResult::Err(errors) },
+        Err(errors) => return CompileRes {
+            logs: vec![],
+            result: CompileResResult::Err(errors),
+        },
     };
     let logs = eval_result.logs;
 
@@ -1235,14 +1234,23 @@ pub async fn compile_importid(
     let value_type = eval_result.value.type_(&xx, root_loc);
     let value_serial = match aspect_serial_get(&xx, root_loc, value_type.as_ref()).into_res() {
         Ok(v) => v,
-        Err(e) => return CompileRes { logs, result: CompileResResult::Err(e) },
+        Err(e) => return CompileRes {
+            logs,
+            result: CompileResResult::Err(e),
+        },
     };
     let mut artifacts = fx.artifacts.write().unwrap();
     let value = match value_serial.to_serial(&mut artifacts, eval_result.value).into_res() {
         Ok(v) => v,
-        Err(e) => return CompileRes { logs, result: CompileResResult::Err(e) },
+        Err(e) => return CompileRes {
+            logs,
+            result: CompileResResult::Err(e),
+        },
     };
-    return CompileRes { logs, result: CompileResResult::Ok(value) };
+    return CompileRes {
+        logs,
+        result: CompileResResult::Ok(value),
+    };
 }
 
 pub fn setup_v8() {
