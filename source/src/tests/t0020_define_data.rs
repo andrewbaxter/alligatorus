@@ -16,9 +16,9 @@ async fn test_00800define_data() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
+    let logs = compile(gx, SourceId(0), SerialModule::V1(mb.block(vec![
         // Define the data type inside a lower block, return the constructor
-        mb.bind("make_upper", mb.lower(mb.seq(vec![
+        mb.bind("make_upper", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
             mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper"))),
             // Set underlying type to String

@@ -78,7 +78,7 @@ pub struct SerialExprBind {
 /// empty, evaluates to null.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct SerialExprSequence {
+pub struct SerialExprBlock {
     pub exprs: Vec<SerialExpr>,
 }
 
@@ -171,7 +171,7 @@ pub struct SerialExprOperatorAdd {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SerialExpr_ {
     Literal(SerialLiteral),
-    Sequence(SerialExprSequence),
+    Block(SerialExprBlock),
     ScopeUse(SerialExprBindingUse),
     Bind(SerialExprBind),
     Set(SerialExprSet),

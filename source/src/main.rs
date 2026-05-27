@@ -70,7 +70,10 @@ fn new_gx() -> Arc<GlobalContext> {
         move || {
             let v = next;
             next += 1;
-            return Unique::Builtin { file: file!(), line: v };
+            return Unique::Builtin {
+                file: file!(),
+                line: v,
+            };
         }
     };
     let gx = Arc::new(GlobalContext {
@@ -139,7 +142,7 @@ async fn compile(
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
                         key: Rc::new(serial_expr_to_expr(source_id, &expr.key)),
                     }),
-                    SerialExpr_::Sequence(expr) => Expr_::Seq(
+                    SerialExpr_::Block(expr) => Expr_::Seq(
                         ExprSeq { seq: expr.exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
                     ),
                     SerialExpr_::Bind(expr) => Expr_::Bind(ExprBind {
@@ -162,7 +165,17 @@ async fn compile(
                         ExprTuple { elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
                     ),
                     SerialExpr_::Record(entries) => Expr_::Record(
-                        ExprRecord { entries: entries.iter().map(|(k, e)| (serial_expr_to_expr(source_id, k), serial_expr_to_expr(source_id, e))).collect() },
+                        ExprRecord {
+                            entries: entries
+                                .iter()
+                                .map(
+                                    |(k, e)| (
+                                        serial_expr_to_expr(source_id, k),
+                                        serial_expr_to_expr(source_id, e),
+                                    ),
+                                )
+                                .collect(),
+                        },
                     ),
                     SerialExpr_::If(expr) => Expr_::If(ExprIf {
                         conditions: expr.conditions.iter().map(|b| ExprConditionBranch {
@@ -233,6 +246,5 @@ async fn main() {
         },
     };
 }
-
 #[cfg(test)]
 mod tests;

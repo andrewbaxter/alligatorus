@@ -15,11 +15,7 @@ async fn test_00100_call_lit() {
     let gx = new_gx();
     let mb = ModuleBuilder::default();
     let logs =
-        compile(
-            gx,
-            SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))),
-        )
+        compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))))
             .await
             .unwrap();
     assert_eq!(logs.len(), 1);
@@ -31,9 +27,7 @@ async fn test_00101_type_error() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.null())))
-        .await
-        .unwrap_err();
+    compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.null()))).await.unwrap_err();
 }
 
 #[tokio::test]
@@ -46,7 +40,7 @@ async fn test_00200_bind_use() {
             gx,
             SourceId(0),
             SerialModule::V1(
-                mb.seq(
+                mb.block(
                     vec![
                         mb.bind("hello", mb.str("Hello world (mortar)")),
                         mb.call(mb.scope_use("log"), mb.scope_use("hello"))
@@ -69,9 +63,7 @@ async fn test_00300_stage_lower() {
         compile(
             gx,
             SourceId(0),
-            SerialModule::V1(
-                mb.call(mb.scope_use("log"), mb.lower(mb.stage(mb.str("Hello world (mortar)")))),
-            ),
+            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.stage(mb.str("Hello world (mortar)"))))),
         )
             .await
             .unwrap();

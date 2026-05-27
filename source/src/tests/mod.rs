@@ -5,3 +5,5 @@ mod t0020_define_data;
 mod t0030_define_interface;
 mod t0040_lists;
 mod t0050_numbers;
+mod t0060_scope;
+//. mod t0070_foreach;

@@ -23,7 +23,7 @@ async fn test_0000_number_lit() {
             gx,
             SourceId(0),
             SerialModule::V1(
-                mb.seq(
+                mb.block(
                     vec![
                         mb.bind("x", mb.num(4.)),
                         mb.if_(
@@ -62,12 +62,12 @@ async fn test_00100_number_mortar() {
             gx,
             SourceId(0),
             SerialModule::V1(
-                mb.seq(
+                mb.block(
                     vec![
                         mb.bind(
                             "maybe_add",
                             mb.lower(
-                                mb.seq(
+                                mb.block(
                                     vec![
                                         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                         mb.bind(
@@ -90,7 +90,7 @@ async fn test_00100_number_mortar() {
                                             mb.tuple(
                                                 vec![
                                                     mb.stage(
-                                                        mb.seq(
+                                                        mb.block(
                                                             vec![
                                                                 mb.if_(
                                                                     vec![

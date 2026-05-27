@@ -16,8 +16,8 @@ async fn test_00900define_interface() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
-        mb.bind("make_upper", mb.lower(mb.seq(vec![
+    let logs = compile(gx, SourceId(0), SerialModule::V1(mb.block(vec![
+        mb.bind("make_upper", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
 
             // Create interface with a to_string method
@@ -86,9 +86,9 @@ async fn test_00910interface_cast() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx, SourceId(0), SerialModule::V1(mb.seq(vec![
+    let logs = compile(gx, SourceId(0), SerialModule::V1(mb.block(vec![
         // Lower block defines interface, data type, and function; returns exports
-        mb.bind("defs", mb.lower(mb.seq(vec![
+        mb.bind("defs", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
 
             // Create interface with a to_string method

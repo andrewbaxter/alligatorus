@@ -19,7 +19,7 @@ async fn test_0000_list() {
             gx,
             SourceId(0),
             SerialModule::V1(
-                mb.seq(
+                mb.block(
                     vec![
                         mb.bind(
                             "my_list",

@@ -12,7 +12,7 @@ use {
         SerialExprLower,
         SerialExprOperatorAdd,
         SerialExprOperatorLt,
-        SerialExprSequence,
+        SerialExprBlock,
         SerialExprSet,
         SerialExprStage,
         SerialLiteral,
@@ -90,10 +90,10 @@ impl ModuleBuilder {
         };
     }
 
-    pub fn seq(&self, exprs: Vec<SerialExpr>) -> SerialExpr {
+    pub fn block(&self, exprs: Vec<SerialExpr>) -> SerialExpr {
         return SerialExpr {
             id: self.id(),
-            r#type: SerialExpr_::Sequence(SerialExprSequence { exprs: exprs }),
+            r#type: SerialExpr_::Block(SerialExprBlock { exprs: exprs }),
         };
     }
 
