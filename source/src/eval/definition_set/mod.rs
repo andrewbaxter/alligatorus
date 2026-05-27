@@ -49,8 +49,8 @@ pub(crate) struct DefinitionSetFunctionData {
     pub name: Option<String>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Box<dyn Value>>>,
-    pub arg_type_expr: RefCell<Option<Box<dyn Value>>>,
-    pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
+    pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
+    pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub arg_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
@@ -58,7 +58,7 @@ pub(crate) struct DefinitionSetFunctionData {
 pub(crate) struct DefinitionSetDataMethodData {
     pub name: String,
     pub impl_expr: RefCell<Option<Box<dyn Value>>>,
-    pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
+    pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub field_name: String,
@@ -88,8 +88,8 @@ pub(crate) struct DefinitionSetDataTypeInterfaceMethodImplData {
 
 pub(crate) struct DefinitionSetInterfaceMethodData {
     pub name: String,
-    pub arg_type_expr: RefCell<Option<Box<dyn Value>>>,
-    pub ret_type_expr: RefCell<Option<Box<dyn Value>>>,
+    pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
+    pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub field_name: String,
 }
 
@@ -130,18 +130,42 @@ impl DefinitionSet {
         }
         let functions = self.functions.borrow();
         for (i, func_data) in functions.iter().enumerate() {
+            let name = func_data.name.as_deref().unwrap_or("(unnamed)");
             if func_data.impl_expr.borrow().is_none() {
-                return Err(format!("Definition set function {} is missing an implementation", i));
+                return Err(format!("Definition set function '{}' is missing an implementation", name));
+            }
+            if func_data.arg_type.borrow().is_none() {
+                return Err(format!("Definition set function '{}' is missing an arg type", name));
+            }
+            if func_data.ret_type.borrow().is_none() {
+                return Err(format!("Definition set function '{}' is missing a return type", name));
             }
         }
         let data_types = self.data_types.borrow();
         for (i, dt_data) in data_types.iter().enumerate() {
+            let name = dt_data.name.as_deref().unwrap_or("(unnamed)");
             if dt_data.underlying_type.borrow().is_none() {
-                return Err(format!("Data type {} is missing underlying type", i));
+                return Err(format!("Data type '{}' is missing underlying type", name));
             }
-            for (j, method) in dt_data.methods.borrow().iter().enumerate() {
+            for method in dt_data.methods.borrow().iter() {
                 if method.impl_expr.borrow().is_none() {
-                    return Err(format!("Data type {} method {} is missing implementation", i, j));
+                    return Err(format!("Data type '{}' method '{}' is missing implementation", name, method.name));
+                }
+                if method.ret_type.borrow().is_none() {
+                    return Err(format!("Data type '{}' method '{}' is missing a return type", name, method.name));
+                }
+                // Note: data type methods don't have arg_type - they receive `self` implicitly
+            }
+        }
+        let interfaces = self.interfaces.borrow();
+        for (i, iface) in interfaces.iter().enumerate() {
+            let iface_name = iface.description.borrow().clone().unwrap_or_else(|| format!("(interface {})", i));
+            for method in iface.methods.borrow().iter() {
+                if method.arg_type.borrow().is_none() {
+                    return Err(format!("Interface '{}' method '{}' is missing an arg type", iface_name, method.name));
+                }
+                if method.ret_type.borrow().is_none() {
+                    return Err(format!("Interface '{}' method '{}' is missing a return type", iface_name, method.name));
                 }
             }
         }

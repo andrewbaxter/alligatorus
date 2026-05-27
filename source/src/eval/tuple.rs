@@ -128,12 +128,12 @@ struct TupleLiftJs {
 impl Aspect for TupleLiftJs { }
 
 impl AspectLiftJs for TupleLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lift");
         let mut elements = Vec::new();
         for (i, elem_lift) in self.element_lifts.iter().enumerate() {
             let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lift");
-            let lifted = elem_lift.lift(scope, elem_v8);
+            let lifted = elem_lift.lift(scope, elem_v8)?;
             elements.push(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
@@ -142,7 +142,7 @@ impl AspectLiftJs for TupleLiftJs {
                 value: lifted,
             }));
         }
-        Box::new(ValueTuple { elements })
+        Ok(Box::new(ValueTuple { elements }))
     }
 }
 
@@ -400,16 +400,16 @@ struct RecordLiftJs {
 impl Aspect for RecordLiftJs { }
 
 impl AspectLiftJs for RecordLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
         let mut entries = Vec::new();
         for (key, entry_lift) in &self.entry_lifts {
             let v8_key = v8::String::new(scope, key).unwrap();
             let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
-            let lifted = entry_lift.lift(scope, v8_val);
+            let lifted = entry_lift.lift(scope, v8_val)?;
             entries.push((key.clone(), lifted));
         }
-        Box::new(LiftedRecord { entries })
+        Ok(Box::new(LiftedRecord { entries }))
     }
 }
 

@@ -17,6 +17,7 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
+            aspect_null_get_maybe,
             aspect_tuple_get_maybe,
         },
         jscode::{
@@ -126,10 +127,10 @@ impl AspectJsStackValue for MortarTypeDefinitionSetFunction {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetFunction {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let func_ref: Rc<DefinitionSetFunction> = rc_from_v8(&value);
-        func_ref.set.finish().expect("Definition set finish failed");
-        Box::new(MortarJsValue {
+        func_ref.set.finish()?;
+        Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
                 set: func_ref.set.clone(),
                 func_index: func_ref.func_index,
@@ -138,7 +139,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
                 set: func_ref.set.clone(),
                 func_index: func_ref.func_index,
             }),
-        })
+        }))
     }
 }
 
@@ -207,57 +208,33 @@ impl AspectFunction for DefinitionSetFunction {
             }
         }
 
-        // Clone arg/ret type exprs (to release borrow before eval)
-        let (scope_id, arg_type_expr, ret_type_expr) = {
+        // Get arg/ret types directly
+        let (scope_id, arg_type, ret_type) = {
             let functions = self.set.functions.borrow();
             let fd = &functions[self.func_index];
             let sid = fd.scope_entry_id.get()
                 .expect("Definition set function not registered");
-            let arg_e = fd.arg_type_expr.borrow().as_ref().map(|v| {
-                (v.as_ref() as &dyn Any)
-                    .downcast_ref::<crate::eval::expr::Expr>()
-                    .expect("arg type must be an Expr")
-                    .clone()
-            });
-            let ret_e = fd.ret_type_expr.borrow().as_ref().map(|v| {
-                (v.as_ref() as &dyn Any)
-                    .downcast_ref::<crate::eval::expr::Expr>()
-                    .expect("ret type must be an Expr")
-                    .clone()
-            });
-            (sid, arg_e, ret_e)
+            let arg_type = fd.arg_type.borrow().clone().expect("Definition set function missing arg type");
+            let ret_type = fd.ret_type.borrow().clone().expect("Definition set function missing return type");
+            (sid, arg_type, ret_type)
         };
 
-        // Resolve arg/ret types by evaluating the type exprs
         return er_seq_cv!(loc, erb, {
-            let arg_type: Option<Rc<dyn Type>> = match &arg_type_expr {
-                Some(expr) => {
-                    let r = crate::eval::eval_half(xx, expr, &crate::eval::MortarTarget);
-                    let cv = erb.must_er(r)?;
-                    Some(cv.value.type_(xx, loc))
-                },
-                None => None,
-            };
-            let ret_type: Option<Rc<dyn Type>> = match &ret_type_expr {
-                Some(expr) => {
-                    let r = crate::eval::eval_half(xx, expr, &crate::eval::MortarTarget);
-                    let cv = erb.must_er(r)?;
-                    Some(cv.value.type_(xx, loc))
-                },
-                None => None,
-            };
 
             // Handle argument
             let mut js_args = vec![];
-            if let Some(arg_type) = &arg_type {
-                let arg_value_type = argument.value.type_(xx, loc);
-                if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
-                    let elements = arg_tuple.take_elements(argument.value);
-                    if elements.len() != 1 {
-                        return erb.err_new(
-                            format!("Function expects 1 argument, got {}", elements.len())
-                        );
-                    }
+            let arg_value_type = argument.value.type_(xx, loc);
+            if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
+                let elements = arg_tuple.take_elements(argument.value);
+                // Empty tuple calling a null-arg function → zero JS args
+                let is_null_arg = aspect_null_get_maybe(xx, arg_type.as_ref()).is_some();
+                if elements.is_empty() && is_null_arg {
+                    // No args needed, no args provided
+                } else if elements.len() != 1 {
+                    return erb.err_new(
+                        format!("Function expects 1 argument, got {}", elements.len())
+                    );
+                } else {
                     let elem = elements.into_iter().next().unwrap();
                     let cv = match elem.v {
                         Some(cv) => cv,
@@ -271,15 +248,15 @@ impl AspectFunction for DefinitionSetFunction {
                     let to_js = erb.must_er(aspect_consume_js_get(xx, loc, arg_type.as_ref()))?;
                     let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
                     js_args.push(js);
-                } else {
-                    let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), argument))?;
-                    let to_js = erb.must_er(aspect_consume_js_get(xx, loc, arg_type.as_ref()))?;
-                    let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
-                    js_args.push(js);
                 }
+            } else {
+                let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), argument))?;
+                let to_js = erb.must_er(aspect_consume_js_get(xx, loc, arg_type.as_ref()))?;
+                let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+                js_args.push(js);
             }
 
-            let ret_type_rc: Rc<dyn Type> = ret_type.unwrap_or_else(|| Rc::new(TypeMortarNull));
+            let ret_type_rc: Rc<dyn Type> = ret_type;
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, ret_type_rc.as_ref()))?;
 
             return Ok(ret_stack.to_value(loc, JsCode {

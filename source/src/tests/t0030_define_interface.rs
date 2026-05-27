@@ -30,18 +30,22 @@ async fn test_00900define_interface() {
                 mb.str("to_string"),
             )),
             mb.call(
+                mb.field(mb.scope_use("iface_meth"), mb.str("arg")),
+                mb.tuple(vec![mb.scope_use("null")]),
+            ),
+            mb.call(
                 mb.field(mb.scope_use("iface_meth"), mb.str("ret")),
-                mb.tuple(vec![mb.stage(mb.scope_use("String"))]),
+                mb.tuple(vec![mb.scope_use("string")]),
             ),
 
-            // Create data type with String underlying
+            // Create data type with string underlying
             mb.bind("ndr", mb.call(
                 mb.field(mb.scope_use("d"), mb.str("new_data")),
                 mb.str("upper"),
             )),
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),
-                mb.scope_use("String"),
+                mb.scope_use("string"),
             ),
 
             // Implement interface on data type
@@ -101,18 +105,22 @@ async fn test_00910interface_cast() {
                 mb.str("to_string"),
             )),
             mb.call(
+                mb.field(mb.scope_use("iface_meth"), mb.str("arg")),
+                mb.tuple(vec![mb.scope_use("null")]),
+            ),
+            mb.call(
                 mb.field(mb.scope_use("iface_meth"), mb.str("ret")),
-                mb.tuple(vec![mb.stage(mb.scope_use("String"))]),
+                mb.tuple(vec![mb.scope_use("string")]),
             ),
 
-            // Create data type with String underlying
+            // Create data type with string underlying
             mb.bind("ndr", mb.call(
                 mb.field(mb.scope_use("d"), mb.str("new_data")),
                 mb.str("upper"),
             )),
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),
-                mb.scope_use("String"),
+                mb.scope_use("string"),
             ),
 
             // Implement interface on data type
@@ -137,6 +145,10 @@ async fn test_00910interface_cast() {
             mb.call(
                 mb.field(mb.scope_use("do_log_fn"), mb.str("arg_type")),
                 mb.field(mb.scope_use("iface"), mb.str("type")),
+            ),
+            mb.call(
+                mb.field(mb.scope_use("do_log_fn"), mb.str("ret")),
+                mb.tuple(vec![mb.scope_use("null")]),
             ),
             mb.call(
                 mb.field(mb.scope_use("do_log_fn"), mb.str("impl")),

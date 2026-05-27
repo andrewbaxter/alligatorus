@@ -209,9 +209,8 @@ impl AspectField for DefinitionSetDataType {
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
 
-            // Look up method by name - extract data before calling eval (field_name,
-            // arg_type_expr, ret_type_expr)
-            type MethodLookup = (String, Option<crate::eval::expr::Expr>, Option<crate::eval::expr::Expr>);
+            // Look up method by name - get types directly
+            type MethodLookup = (String, Rc<dyn Type>, Rc<dyn Type>);
             let lookup_result: Option<MethodLookup> = 'lookup: {
                 let data_types = self.set.data_types.borrow();
                 let dt = &data_types[self.data_type_index];
@@ -220,13 +219,8 @@ impl AspectField for DefinitionSetDataType {
                 {
                     let methods = dt.methods.borrow();
                     if let Some(m) = methods.iter().find(|m| m.name == key_name) {
-                        let ret_clone = m.ret_type_expr.borrow().as_ref().map(|v| {
-                            (v.as_ref() as &dyn Any)
-                                .downcast_ref::<crate::eval::expr::Expr>()
-                                .expect("ret type must be an Expr")
-                                .clone()
-                        });
-                        break 'lookup Some((m.field_name.clone(), None, ret_clone));
+                        let ret_t = m.ret_type.borrow().clone().expect("Data type method missing return type");
+                        break 'lookup Some((m.field_name.clone(), Rc::new(TypeMortarNull), ret_t));
                     }
                 }
 
@@ -238,47 +232,17 @@ impl AspectField for DefinitionSetDataType {
                         let iface = &interfaces[impl_data.interface_index];
                         let iface_methods = iface.methods.borrow();
                         if let Some(method) = iface_methods.iter().find(|m| m.name == key_name) {
-                            let arg_clone = method.arg_type_expr.borrow().as_ref().map(|v| {
-                                (v.as_ref() as &dyn Any)
-                                    .downcast_ref::<crate::eval::expr::Expr>()
-                                    .expect("arg type must be an Expr")
-                                    .clone()
-                            });
-                            let ret_clone = method.ret_type_expr.borrow().as_ref().map(|v| {
-                                (v.as_ref() as &dyn Any)
-                                    .downcast_ref::<crate::eval::expr::Expr>()
-                                    .expect("ret type must be an Expr")
-                                    .clone()
-                            });
-                            break 'lookup Some((method.field_name.clone(), arg_clone, ret_clone));
+                            let arg_t = method.arg_type.borrow().clone().expect("Interface method missing arg type");
+                            let ret_t = method.ret_type.borrow().clone().expect("Interface method missing return type");
+                            break 'lookup Some((method.field_name.clone(), arg_t, ret_t));
                         }
                     }
                 }
                 None
             };
-            let (field_name, arg_type_expr_clone, ret_type_expr_clone) = match lookup_result {
+            let (field_name, arg_type, ret_type) = match lookup_result {
                 Some(r) => r,
                 None => return erb.err_new(format!("Field '{}' not found on data type", key_name)),
-            };
-
-            // Resolve arg type
-            let arg_type: Rc<dyn Type> = match arg_type_expr_clone {
-                Some(expr) => {
-                    let r = crate::eval::eval_half(xx, &expr, &crate::eval::MortarTarget);
-                    let cv = erb.must_er(r)?;
-                    cv.value.type_(xx, loc)
-                },
-                None => Rc::new(TypeMortarNull),
-            };
-
-            // Resolve return type
-            let ret_type: Rc<dyn Type> = match ret_type_expr_clone {
-                Some(expr) => {
-                    let r = crate::eval::eval_half(xx, &expr, &crate::eval::MortarTarget);
-                    let cv = erb.must_er(r)?;
-                    cv.value.type_(xx, loc)
-                },
-                None => Rc::new(TypeMortarNull),
             };
             let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
             let field_type = Rc::new(MortarTypeFunction {

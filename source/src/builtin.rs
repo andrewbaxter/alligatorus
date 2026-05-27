@@ -78,7 +78,7 @@ aspect!(AspectLiftJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used after evaluating a target block, for producing a value to serialize.
-    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Box < dyn Value >;
+    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Result<Box < dyn Value >, String>;
 });
 
 aspect!(AspectJsStackValue {

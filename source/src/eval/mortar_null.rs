@@ -131,8 +131,8 @@ impl AspectSerial for TypeMortarNull {
 }
 
 impl AspectLiftJs for TypeMortarNull {
-    fn lift(&self, _scope: &v8::PinScope, _value: v8::Local<v8::Value>) -> Box<dyn Value> {
-        Box::new(ValueNull)
+    fn lift(&self, _scope: &v8::PinScope, _value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+        Ok(Box::new(ValueNull))
     }
 }
 

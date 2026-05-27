@@ -21,10 +21,10 @@ async fn test_00800define_data() {
         mb.bind("make_upper", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
             mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper"))),
-            // Set underlying type to String
+            // Set underlying type to string
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("set_underlying")),
-                mb.scope_use("String"),
+                mb.scope_use("string"),
             ),
             // Define to_string method
             mb.bind("mnfr", mb.call(
@@ -33,7 +33,7 @@ async fn test_00800define_data() {
             )),
             mb.call(
                 mb.field(mb.scope_use("mnfr"), mb.str("ret")),
-                mb.tuple(vec![mb.stage(mb.scope_use("String"))]),
+                mb.tuple(vec![mb.scope_use("string")]),
             ),
             mb.call(
                 mb.field(mb.scope_use("mnfr"), mb.str("impl")),

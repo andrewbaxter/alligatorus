@@ -88,8 +88,8 @@ jswrap!(struct DefineResult(self_, scope) {
                 name: Some(name),
                 description: RefCell::new(None),
                 impl_expr: RefCell::new(None),
-                arg_type_expr: RefCell::new(None),
-                ret_type_expr: RefCell::new(None),
+                arg_type: RefCell::new(None),
+                ret_type: RefCell::new(None),
                 scope_entry_id: Cell::new(None),
                 arg_scope_entry_id: Cell::new(None),
             });
@@ -184,57 +184,44 @@ jswrap!(struct NewFuncResult(self_, scope) {
         }
         *impl_expr = Some(staged.0);
     }
-    fn arg_(staged: StagedExpr) -> () {
+    fn arg_(type_ref: TypeRef) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
-        let mut arg_type_expr = func_data.arg_type_expr.borrow_mut();
-        if arg_type_expr.is_some() {
-            drop(arg_type_expr);
+        let mut arg_type = func_data.arg_type.borrow_mut();
+        if arg_type.is_some() {
+            drop(arg_type);
             drop(functions);
             crate::eval::v8util::throw_error(scope, "Function already has an arg type");
             return;
         }
-        *arg_type_expr = Some(staged.0);
+        *arg_type = Some(type_ref.0);
     }
-    fn arg_type(type_ref: Rc<DefinitionSetInterfaceRef>) -> () {
+    fn arg_type(iface_ref: Rc<DefinitionSetInterfaceRef>) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
-        let mut arg_type_expr = func_data.arg_type_expr.borrow_mut();
-        if arg_type_expr.is_some() {
-            drop(arg_type_expr);
+        let mut arg_type = func_data.arg_type.borrow_mut();
+        if arg_type.is_some() {
+            drop(arg_type);
             drop(functions);
             crate::eval::v8util::throw_error(scope, "Function already has an arg type");
             return;
         }
-        // Create a literal Expr that evaluates to the interface type
-        use crate::eval::mortar_js_value::{MortarJsValue, MortarJsValueSource};
-        let set = type_ref.set.clone();
-        let idx = type_ref.interface_index;
-        let literal_expr: Box<dyn crate::langhelp::Value> = Box::new(crate::eval::expr::Expr {
-            loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
-            r#type: crate::eval::expr::Expr_::Literal(Rc::new(move || {
-                Box::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
-                    type_: Rc::new(super::DefinitionSetInterface {
-                        set: set.clone(),
-                        interface_index: idx,
-                    }),
-                })
-            })),
-        });
-        *arg_type_expr = Some(literal_expr);
+        *arg_type = Some(Rc::new(super::DefinitionSetInterface {
+            set: iface_ref.set.clone(),
+            interface_index: iface_ref.interface_index,
+        }) as Rc<dyn crate::langhelp::Type>);
     }
-    fn ret_(staged: StagedExpr) -> () {
+    fn ret_(type_ref: TypeRef) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
-        let mut ret_type_expr = func_data.ret_type_expr.borrow_mut();
-        if ret_type_expr.is_some() {
-            drop(ret_type_expr);
+        let mut ret_type = func_data.ret_type.borrow_mut();
+        if ret_type.is_some() {
+            drop(ret_type);
             drop(functions);
             crate::eval::v8util::throw_error(scope, "Function already has a ret type");
             return;
         }
-        *ret_type_expr = Some(staged.0);
+        *ret_type = Some(type_ref.0);
     }
 });
 
@@ -301,7 +288,7 @@ jswrap!(struct NewDataResult(self_, scope) {
             methods.push(DefinitionSetDataMethodData {
                 name,
                 impl_expr: RefCell::new(None),
-                ret_type_expr: RefCell::new(None),
+                ret_type: RefCell::new(None),
                 scope_entry_id: Cell::new(None),
                 self_scope_entry_id: Cell::new(None),
                 field_name,
@@ -406,20 +393,20 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
         }
         *impl_expr = Some(staged.0);
     }
-    fn ret_(staged: StagedExpr) -> () {
+    fn ret_(type_ref: TypeRef) -> () {
         let data_types = self_.data_type_ref.set.data_types.borrow();
         let dt = &data_types[self_.data_type_ref.data_type_index];
         let methods = dt.methods.borrow();
         let method = &methods[self_.method_index];
-        let mut ret_type_expr = method.ret_type_expr.borrow_mut();
-        if ret_type_expr.is_some() {
-            drop(ret_type_expr);
+        let mut ret_type = method.ret_type.borrow_mut();
+        if ret_type.is_some() {
+            drop(ret_type);
             drop(methods);
             drop(data_types);
             crate::eval::v8util::throw_error(scope, "Method already has a ret type");
             return;
         }
-        *ret_type_expr = Some(staged.0);
+        *ret_type = Some(type_ref.0);
     }
 });
 
@@ -443,8 +430,8 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
             let idx = methods.len();
             methods.push(DefinitionSetInterfaceMethodData {
                 name,
-                arg_type_expr: RefCell::new(None),
-                ret_type_expr: RefCell::new(None),
+                arg_type: RefCell::new(None),
+                ret_type: RefCell::new(None),
                 field_name,
             });
             idx
@@ -458,37 +445,37 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
 
 jswrap!(struct NewInterfaceMethodResult(self_, scope) {
     data { interface_ref: Rc<DefinitionSetInterfaceRef>, method_index: usize }
-    fn arg_(staged: StagedExpr) -> () {
+    fn arg_(type_ref: TypeRef) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];
         let methods = iface.methods.borrow();
         let method = &methods[self_.method_index];
-        let mut arg_type_expr = method.arg_type_expr.borrow_mut();
-        if arg_type_expr.is_some() {
-            drop(arg_type_expr);
+        let mut arg_type = method.arg_type.borrow_mut();
+        if arg_type.is_some() {
+            drop(arg_type);
             drop(methods);
             drop(iface);
             drop(interfaces);
             crate::eval::v8util::throw_error(scope, "Interface method already has an arg type");
             return;
         }
-        *arg_type_expr = Some(staged.0);
+        *arg_type = Some(type_ref.0);
     }
-    fn ret_(staged: StagedExpr) -> () {
+    fn ret_(type_ref: TypeRef) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];
         let methods = iface.methods.borrow();
         let method = &methods[self_.method_index];
-        let mut ret_type_expr = method.ret_type_expr.borrow_mut();
-        if ret_type_expr.is_some() {
-            drop(ret_type_expr);
+        let mut ret_type = method.ret_type.borrow_mut();
+        if ret_type.is_some() {
+            drop(ret_type);
             drop(methods);
             drop(iface);
             drop(interfaces);
             crate::eval::v8util::throw_error(scope, "Interface method already has a ret type");
             return;
         }
-        *ret_type_expr = Some(staged.0);
+        *ret_type = Some(type_ref.0);
     }
 });
 

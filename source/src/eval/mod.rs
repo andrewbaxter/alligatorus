@@ -1101,8 +1101,8 @@ fn eval(
 
     // Type references (static scope entries, no JS representation)
     s1_scope.insert(
-        ConstKey::String("String".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+        ConstKey::String("null".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNull) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("string".to_string()),
@@ -1153,45 +1153,16 @@ fn eval(
                     .downcast_ref::<Expr>()
                     .expect("Definition set impl must be an Expr");
 
-            // Resolve arg type and create scope entry if present
-            let arg_scope_id = if func_data.arg_type_expr.borrow().is_some() {
-                let arg_expr = func_data.arg_type_expr.borrow();
-                let arg_expr_ast =
-                    (arg_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                        .downcast_ref::<Expr>()
-                        .expect("arg type must be an Expr");
-                let arg_result = eval_half(&xx, arg_expr_ast, &MortarTarget);
-                if !arg_result.errors.is_empty() {
-                    return Err(arg_result.errors);
-                }
-                let arg_cv = arg_result.v.unwrap();
-                let arg_type = arg_cv.value.type_(&xx, root_loc);
-                let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                func_data.arg_scope_entry_id.set(Some(id));
-                Some((id, arg_type))
-            } else {
-                None
-            };
+            let arg_type: Rc<dyn Type> = func_data.arg_type.borrow().clone()
+                .expect("Definition set function missing arg type");
+            let ret_type: Rc<dyn Type> = func_data.ret_type.borrow().clone()
+                .expect("Definition set function missing return type");
 
-            // Resolve ret type if present
-            let ret_type: Option<Rc<dyn Type>> = if func_data.ret_type_expr.borrow().is_some() {
-                let ret_expr = func_data.ret_type_expr.borrow();
-                let ret_expr_ast =
-                    (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                        .downcast_ref::<Expr>()
-                        .expect("ret type must be an Expr");
-                let ret_result = eval_half(&xx, ret_expr_ast, &MortarTarget);
-                if !ret_result.errors.is_empty() {
-                    return Err(ret_result.errors);
-                }
-                let ret_cv = ret_result.v.unwrap();
-                Some(ret_cv.value.type_(&xx, root_loc))
-            } else {
-                None
-            };
+            let arg_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            func_data.arg_scope_entry_id.set(Some(arg_id));
 
-            // Evaluate impl body with arg in scope if needed
-            let func_xx = if let Some((arg_id, ref arg_type)) = arg_scope_id {
+            // Evaluate impl body with arg in scope
+            let func_xx = {
                 let child_scope = Rc::new(Scope {
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
@@ -1201,15 +1172,13 @@ fn eval(
                     .borrow_mut()
                     .insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
                         js_key: arg_id,
-                        type_: arg_type.clone(),
+                        type_: arg_type,
                     }));
                 Rc::new(ExprContext {
                     vx: xx.vx.clone(),
                     import_state: xx.import_state.clone(),
                     scope: child_scope,
                 })
-            } else {
-                xx.clone()
             };
             let impl_result = eval_half(&func_xx, impl_expr_ast, &MortarTarget);
             if !impl_result.errors.is_empty() {
@@ -1217,15 +1186,13 @@ fn eval(
             }
             let impl_cv = impl_result.v.unwrap();
 
-            // Type check return value against ret type if specified
-            let impl_cv = if let Some(ref ret_type) = ret_type {
+            // Type check return value against ret type
+            let impl_cv = {
                 let r = typecheck_convert(&func_xx, root_loc, ret_type.as_ref(), impl_cv);
                 if !r.errors.is_empty() {
                     return Err(r.errors);
                 }
                 r.v.unwrap()
-            } else {
-                impl_cv
             };
             let impl_code =
                 impl_cv
@@ -1235,7 +1202,7 @@ fn eval(
                     .expect("Definition set function body must produce JS code")
                     .clone();
             let scope_id = func_data.scope_entry_id.get().expect("Definition set function not registered");
-            def_funcs.push((scope_id, arg_scope_id.map(|(id, _)| id), impl_code));
+            def_funcs.push((scope_id, Some(arg_id), impl_code));
         }
     }
 
@@ -1272,21 +1239,8 @@ fn eval(
                 let self_id = method.self_scope_entry_id.get().unwrap();
                 let method_id = method.scope_entry_id.get().unwrap();
 
-                // Resolve ret type
-                let ret_type: Option<Rc<dyn Type>> = if method.ret_type_expr.borrow().is_some() {
-                    let ret_expr = method.ret_type_expr.borrow();
-                    let ret_expr_ast =
-                        (ret_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                            .downcast_ref::<expr::Expr>()
-                            .expect("ret type must be an Expr");
-                    let ret_result = eval_half(&xx, ret_expr_ast, &MortarTarget);
-                    if !ret_result.errors.is_empty() {
-                        return Err(ret_result.errors);
-                    }
-                    Some(ret_result.v.unwrap().value.type_(&xx, root_loc))
-                } else {
-                    None
-                };
+                let ret_type: Rc<dyn Type> = method.ret_type.borrow().clone()
+                    .expect("Data type method missing return type");
 
                 // Compile method body with `self` in scope
                 let method_xx = {
@@ -1314,14 +1268,12 @@ fn eval(
                 let impl_cv = impl_result.v.unwrap();
 
                 // Type check return value
-                let impl_cv = if let Some(ref ret_type) = ret_type {
+                let impl_cv = {
                     let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
                     if !r.errors.is_empty() {
                         return Err(r.errors);
                     }
                     r.v.unwrap()
-                } else {
-                    impl_cv
                 };
                 let impl_code =
                     impl_cv.code.cast::<JsCode>().into_res()?.expect("Method body must produce JS code").clone();
@@ -1352,27 +1304,13 @@ fn eval(
                     let method_id = method_impl.scope_entry_id.get().unwrap();
 
                     // Resolve ret type from interface method
-                    let ret_type_expr_clone = {
+                    let ret_type: Rc<dyn Type> = {
                         let interfaces = ds.interfaces.borrow();
                         let iface = &interfaces[impl_data.interface_index];
                         let iface_methods = iface.methods.borrow();
                         let iface_method = &iface_methods[method_impl.interface_method_index];
-                        iface_method.ret_type_expr.borrow().as_ref().map(|v| {
-                            (v.as_ref() as &dyn Any)
-                                .downcast_ref::<expr::Expr>()
-                                .expect("ret type must be an Expr")
-                                .clone()
-                        })
-                    };
-                    let ret_type: Option<Rc<dyn Type>> = match ret_type_expr_clone {
-                        Some(ret_expr_ast) => {
-                            let ret_result = eval_half(&xx, &ret_expr_ast, &MortarTarget);
-                            if !ret_result.errors.is_empty() {
-                                return Err(ret_result.errors);
-                            }
-                            Some(ret_result.v.unwrap().value.type_(&xx, root_loc))
-                        },
-                        None => None,
+                        iface_method.ret_type.borrow().clone()
+                            .expect("Interface method missing return type")
                     };
 
                     // Compile method body with `self` in scope
@@ -1399,14 +1337,12 @@ fn eval(
                         return Err(impl_result.errors);
                     }
                     let impl_cv = impl_result.v.unwrap();
-                    let impl_cv = if let Some(ref ret_type) = ret_type {
+                    let impl_cv = {
                         let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
                         if !r.errors.is_empty() {
                             return Err(r.errors);
                         }
                         r.v.unwrap()
-                    } else {
-                        impl_cv
                     };
                     let impl_code =
                         impl_cv
@@ -1485,7 +1421,10 @@ fn eval(
     match script.run(js_scope) {
         Some(stage2) => {
             let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let value: Box<dyn Value> = value_from_js.lift(&*js_scope, stage2);
+            let value: Box<dyn Value> = value_from_js.lift(&*js_scope, stage2).map_err(|e| vec![ExprErr {
+                loc: root_loc,
+                errors: vec![ExprSubErr::Opaque(e)],
+            }])?;
             let logs = js_scope.get_slot::<V8LogStore>().unwrap().logs.take();
             Ok(EvalResult {
                 value,

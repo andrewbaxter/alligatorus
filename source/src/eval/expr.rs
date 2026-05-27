@@ -265,8 +265,8 @@ impl AspectBindJs for ExprType {
 }
 
 impl AspectLiftJs for ExprType {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let cell: Rc<StagedExprCell> = rc_from_v8(&value);
-        cell.value.borrow_mut().take().expect("Expr value already consumed during lift")
+        Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }

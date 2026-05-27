@@ -124,12 +124,12 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
 }
 
 impl AspectLiftJs for MortarTypeTaggedUnionRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let ref_: Rc<TaggedUnionRef> = rc_from_v8(&value);
-        Box::new(MortarJsValue {
+        Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(TaggedUnionType { data: ref_.data.clone() }),
-        })
+        }))
     }
 }
 
@@ -201,15 +201,15 @@ impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
 }
 
 impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Box<dyn Value> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let ref_: Rc<TaggedUnionConstructorRef> = rc_from_v8(&value);
-        Box::new(MortarJsValue {
+        Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(TaggedUnionConstructor {
                 data: ref_.data.clone(),
                 variant_index: ref_.variant_index,
             }),
-        })
+        }))
     }
 }
 
