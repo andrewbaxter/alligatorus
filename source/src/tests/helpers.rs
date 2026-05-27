@@ -7,11 +7,13 @@ use {
         SerialExprBindingUse,
         SerialExprBlock,
         SerialExprCall,
-        SerialExprConditionBranch,
         SerialExprField,
         SerialExprForeach,
         SerialExprIf,
+        SerialExprIfConditionBranch,
         SerialExprLower,
+        SerialExprMatch,
+        SerialExprMatchTagBranch,
         SerialExprOperatorAdd,
         SerialExprOperatorLt,
         SerialExprSet,
@@ -72,6 +74,27 @@ impl ModuleBuilder {
         }
     }
 
+    pub fn match_(
+        &self,
+        base: SerialExpr,
+        element_key: SerialExpr,
+        cases: Vec<(SerialExpr, SerialExpr)>,
+        fallback: Option<SerialExpr>,
+    ) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::Match(SerialExprMatch {
+                base: Box::new(base),
+                element_key: Box::new(element_key),
+                cases: cases.into_iter().map(|x| SerialExprMatchTagBranch {
+                    condition: x.0,
+                    body: x.1,
+                }).collect(),
+                fallback: fallback.map(Box::new),
+            }),
+        }
+    }
+
     pub fn scope_use(&self, key: &str) -> SerialExpr {
         return SerialExpr {
             id: self.id(),
@@ -123,11 +146,11 @@ impl ModuleBuilder {
         return SerialExpr {
             id: self.id(),
             r#type: SerialExpr_::If(SerialExprIf {
-                conditions: cases.into_iter().map(|x| SerialExprConditionBranch {
+                conditions: cases.into_iter().map(|x| SerialExprIfConditionBranch {
                     condition: x.0,
                     body: x.1,
                 }).collect(),
-                else_: else_.map(Box::new),
+                fallback: else_.map(Box::new),
             }),
         };
     }

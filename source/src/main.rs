@@ -183,7 +183,7 @@ async fn compile(
                             condition: serial_expr_to_expr(source_id, &b.condition),
                             body: serial_expr_to_expr(source_id, &b.body),
                         }).collect(),
-                        else_: expr.else_.as_ref().map(|e| Rc::new(serial_expr_to_expr(source_id, e))),
+                        else_: expr.fallback.as_ref().map(|e| Rc::new(serial_expr_to_expr(source_id, e))),
                     }),
                     SerialExpr_::OperatorLt(expr) => Expr_::OperatorLt(ExprOperatorLt {
                         base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
