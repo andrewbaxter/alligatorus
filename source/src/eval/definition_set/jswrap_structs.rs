@@ -138,6 +138,7 @@ jswrap!(struct DefineResult(self_, scope) {
             description: Some(description),
             variants: RefCell::new(Vec::new()),
             identity,
+            next_tag_id: crate::langhelp::Counter::default(),
         });
         TaggedUnionBuilder { data }
     }
@@ -246,8 +247,7 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
         let variant_index = {
             let mut variants = self_.data.variants.borrow_mut();
             let idx = variants.len();
-            let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
-            let js_tag = format!("{}{}", crate::jscode::TAG_PREFIX, uc.tag_counter.next());
+            let js_tag = format!("{}{}", crate::jscode::TAG_PREFIX, self_.data.next_tag_id.next());
             variants.push(TaggedUnionVariant {
                 tag: crate::langhelp::ConstKey::String(tag),
                 js_tag,

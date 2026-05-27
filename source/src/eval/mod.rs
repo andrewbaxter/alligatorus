@@ -162,7 +162,6 @@ pub(crate) struct V8LogStore {
 pub(crate) struct V8UniqueCounter {
     pub(crate) compile_id: CompileId,
     pub(crate) counter: Counter,
-    pub(crate) tag_counter: Counter,
 }
 
 /// Store an `Rc<T>` as a `v8::External`. A guaranteed finalizer drops the boxed Rc
@@ -652,11 +651,15 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
         },
         Expr_::Record(r) => {
             let mut entries = std::collections::BTreeMap::new();
+            let mut key_codes = vec![];
             let mut errors = vec![];
             for (k_expr, v_expr) in &r.entries {
                 let k_res = eval_half(xx, k_expr, target);
                 errors.extend(k_res.errors);
                 let Some(k_cv) = k_res.v else { continue; };
+                if let Some(js) = k_cv.code.cast::<JsCode>().v.flatten() {
+                    key_codes.push(js.clone());
+                }
                 match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
                     Ok(key) => { entries.insert(key, eval_half(xx, v_expr, target)); },
                     Err(e) => errors.push(ExprErr { loc: expr.loc, errors: vec![ExprSubErr::Opaque(e)] }),
@@ -665,8 +668,20 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             if !errors.is_empty() {
                 return EvalRes { v: None, errors };
             }
+            let code = if key_codes.is_empty() {
+                Code { loc: expr.loc, code: Code_::None }
+            } else {
+                let block_entries = key_codes.into_iter().map(JsCodeBlockEntry::Code).collect();
+                Code {
+                    loc: expr.loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc: expr.loc,
+                        type_: JsCodeType::Block(JsCodeBlock { entries: block_entries }),
+                    })),
+                }
+            };
             return EvalRes::ok(CodeValue {
-                code: Code { loc: expr.loc, code: Code_::None },
+                code,
                 value: Box::new(ValueRecord { entries }),
             });
         },
@@ -1050,7 +1065,6 @@ fn eval(
             .map(|(c, _)| c.clone())
             .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
         counter: Counter::default(),
-        tag_counter: Counter::default(),
     });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
@@ -1060,7 +1074,6 @@ fn eval(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
-        next_tag_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });
@@ -1703,7 +1716,6 @@ pub async fn compile_importid(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_scope_entry_id: Default::default(),
-        next_tag_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });

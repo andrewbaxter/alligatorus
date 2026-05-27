@@ -196,6 +196,7 @@ pub(crate) struct TaggedUnionData {
     pub description: Option<String>,
     pub variants: RefCell<Vec<TaggedUnionVariant>>,
     pub identity: Unique,
+    pub next_tag_id: Counter,
 }
 
 pub(crate) struct TaggedUnionRef {
