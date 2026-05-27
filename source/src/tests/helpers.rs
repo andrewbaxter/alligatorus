@@ -5,14 +5,15 @@ use {
         SerialExpr_,
         SerialExprBind,
         SerialExprBindingUse,
+        SerialExprBlock,
         SerialExprCall,
         SerialExprConditionBranch,
         SerialExprField,
+        SerialExprForeach,
         SerialExprIf,
         SerialExprLower,
         SerialExprOperatorAdd,
         SerialExprOperatorLt,
-        SerialExprBlock,
         SerialExprSet,
         SerialExprStage,
         SerialLiteral,
@@ -57,6 +58,17 @@ impl ModuleBuilder {
         return SerialExpr {
             id: self.id(),
             r#type: SerialExpr_::Tuple(values),
+        }
+    }
+
+    pub fn foreach(&self, base: SerialExpr, element_key: SerialExpr, body: SerialExpr) -> SerialExpr {
+        return SerialExpr {
+            id: self.id(),
+            r#type: SerialExpr_::Foreach(SerialExprForeach {
+                base: Box::new(base),
+                element_key: Box::new(element_key),
+                body: Box::new(body),
+            }),
         }
     }
 

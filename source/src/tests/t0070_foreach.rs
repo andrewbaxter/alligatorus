@@ -10,7 +10,7 @@ use {
 };
 
 #[tokio::test]
-async fn test_0000_list() {
+async fn test_0000_foreach_list() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
@@ -46,6 +46,8 @@ async fn test_0000_list() {
         )
             .await
             .unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "c_d_a_b");
+    assert_eq!(logs.len(), 3);
+    assert_eq!(logs[0].message, "1");
+    assert_eq!(logs[1].message, "2");
+    assert_eq!(logs[2].message, "7");
 }

@@ -167,6 +167,18 @@ pub struct SerialExprOperatorAdd {
     pub reference: Box<SerialExpr>,
 }
 
+/// Evaluated in order "base", "element_key", "body". Generates code to iterate
+/// over `base` via the "iterable" aspect. Creates a new scope before evaluating
+/// body - the current iteration element is available in that scope using the
+/// "element_key" key.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SerialExprForeach {
+    pub base: Box<SerialExpr>,
+    pub element_key: Box<SerialExpr>,
+    pub body: Box<SerialExpr>,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SerialExpr_ {
@@ -184,6 +196,7 @@ pub enum SerialExpr_ {
     If(SerialExprIf),
     OperatorLt(SerialExprOperatorLt),
     OperatorAdd(SerialExprOperatorAdd),
+    Foreach(SerialExprForeach),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
