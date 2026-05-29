@@ -53,7 +53,6 @@ use {
             JsCodeNewObject,
             JsCodeOperatorAdd,
             JsCodeOperatorLt,
-            JsCodeStageCall,
             JsCodeType,
         },
         langhelp::{
@@ -307,13 +306,7 @@ pub(crate) trait Target {
         cases: Vec<(String, Rc<dyn Type>, &Expr)>,
         fallback: Option<&Expr>,
     ) -> EvalRes;
-    fn stage(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        tree: Expr,
-        lower_values: Vec<CodeValue>,
-    ) -> EvalRes;
+    fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes;
 }
 pub(crate) struct MortarTarget;
 
@@ -335,7 +328,7 @@ impl Target for MortarTarget {
             }
             return EResult::ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
         };
-        return er_seq!(loc, erb, (Vec<JsCodeBlockEntry>, Box < dyn ScopeEntry >), {
+        return er_seq!(loc, erb, (Vec < JsCodeBlockEntry >, Box < dyn ScopeEntry >), {
             let bind_result = bind_js.bind_js(xx, loc, cv);
             if bind_result.v.is_none() {
                 let mut entries = vec![];
@@ -354,13 +347,10 @@ impl Target for MortarTarget {
                 base: js_key,
                 value: Box::new(vcode),
             }));
-            return Ok((
-                entries,
-                Box::new(MortarScopeEntry {
-                    js_key: js_key,
-                    type_: vtype,
-                }),
-            ));
+            return Ok((entries, Box::new(MortarScopeEntry {
+                js_key: js_key,
+                type_: vtype,
+            })));
         });
     }
 
@@ -394,9 +384,13 @@ impl Target for MortarTarget {
             }
             match erb.must_er(cv.code.cast::<JsCode>())? {
                 Some(c) => Ok(c.clone()),
-                None => Ok(JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) }),
+                None => Ok(JsCode {
+                    loc,
+                    type_: JsCodeType::Literal(serde_json::Value::Null),
+                }),
             }
         }
+
         return er_seq_cv!(loc, erb, {
             let mut js_conditions = Vec::new();
             for (cond, body) in conditions {
@@ -441,7 +435,6 @@ impl Target for MortarTarget {
             let base_type = base.value.type_(xx, loc);
             let to_js = erb.must_er(aspect_consume_js_get(xx, loc, base_type.as_ref()))?;
             let base_js = erb.must_er(to_js.to_js(xx, loc, base))?;
-
             let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
             let mut js_cases = Vec::new();
             for (tag, variant_type, body_expr) in &cases {
@@ -449,13 +442,10 @@ impl Target for MortarTarget {
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
                 });
-                child_scope.values.borrow_mut().insert(
-                    element_key.clone(),
-                    Box::new(MortarScopeEntry {
-                        js_key: element_scope_id,
-                        type_: variant_type.clone(),
-                    }),
-                );
+                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(MortarScopeEntry {
+                    js_key: element_scope_id,
+                    type_: variant_type.clone(),
+                }),);
                 let child_xx = ExprContext {
                     vx: xx.vx.clone(),
                     import_state: xx.import_state.clone(),
@@ -468,7 +458,10 @@ impl Target for MortarTarget {
                 } else {
                     match erb.must_er(body_cv.code.cast::<JsCode>())? {
                         Some(c) => c.clone(),
-                        None => JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                        None => JsCode {
+                            loc,
+                            type_: JsCodeType::Literal(serde_json::Value::Null)
+                        },
                     }
                 };
                 js_cases.push(JsCodeMatchBranch {
@@ -476,7 +469,6 @@ impl Target for MortarTarget {
                     body: body_js,
                 });
             }
-
             let js_fallback = if let Some(fallback_expr) = fallback {
                 let fb_cv = erb.must_er(eval_half(xx, fallback_expr, self))?;
                 let fb_type = fb_cv.value.type_(xx, loc);
@@ -485,14 +477,16 @@ impl Target for MortarTarget {
                 } else {
                     match erb.must_er(fb_cv.code.cast::<JsCode>())? {
                         Some(c) => c.clone(),
-                        None => JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
+                        None => JsCode {
+                            loc,
+                            type_: JsCodeType::Literal(serde_json::Value::Null)
+                        },
                     }
                 };
                 Some(Box::new(fb_js))
             } else {
                 None
             };
-
             let match_js = JsCode {
                 loc,
                 type_: JsCodeType::Match(JsCodeMatch {
@@ -508,17 +502,9 @@ impl Target for MortarTarget {
         });
     }
 
-    fn stage(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        tree: Expr,
-        lower_values: Vec<CodeValue>,
-    ) -> EvalRes {
+    fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes {
         // Store tree as external
-        let tree_cell = Rc::new(expr::StagedExprCell {
-            value: RefCell::new(Some(Box::new(tree))),
-        });
+        let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(tree))) });
         let tree_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, tree_cell));
         let tree_js = JsCode {
@@ -526,88 +512,74 @@ impl Target for MortarTarget {
             type_: JsCodeType::BindingUse(JsCodeBindingUse { id: tree_id }),
         };
 
-        // For each lower value, produce JsCode that evaluates to a
-        // StagedExprCell External. Values already resolved (Code_::None)
-        // are stored directly. Values needing v8 evaluation get their
-        // AspectLiftJs stored as an external; a JsCode::Call to __wrap
-        // converts the v8 result into a StagedExprCell External.
-        let mut value_js_codes = Vec::new();
+        // Build args for __stage(tree, lift1, val1, lift2, val2, ...). For each lower
+        // value, pass a (lift, value) pair:
+        //
+        // * Code_::None: lift=null, value=StagedExprCell external
+        //
+        // * Code_::Dyn:  lift=StageLiftCell external, value=raw v8 result __stage handles the
+        //   lifting internally.
+        let mut stage_args = vec![tree_js];
         return er_seq_cv!(loc, erb, {
-        for cv in lower_values {
-            let vtype = cv.value.type_(xx, loc);
-            match cv.code.code {
-                Code_::None => {
-                    let cell = Rc::new(expr::StagedExprCell {
-                        value: RefCell::new(Some(cv.value)),
-                    });
-                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                    xx.vx.externals.borrow_mut().push((id, cell));
-                    value_js_codes.push(JsCode {
-                        loc,
-                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
-                    });
-                },
-                Code_::Dyn(_) => {
-                    // Store the lift aspect as an external
-                    let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
-                    let lift_cell = Rc::new(StageLiftCell { lift });
-                    let lift_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                    xx.vx.externals.borrow_mut().push((lift_id, lift_cell));
-
-                    // Get the JsCode that produces the raw v8 value
-                    let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
-                        erb.must_er(consume.to_js(xx, loc, cv))?
-                    } else {
-                        erb.must_er(cv.code.cast::<JsCode>())?.unwrap().clone()
-                    };
-
-                    // __wrap(lift_external, raw_value) → StagedExprCell External
-                    value_js_codes.push(JsCode {
-                        loc,
-                        type_: JsCodeType::Call(crate::jscode::JsCodeCall {
-                            func: Box::new(JsCode {
-                                loc,
-                                type_: JsCodeType::BindingUse(JsCodeBindingUse {
-                                    id: ScopeEntryId(STAGE_WRAP_SCOPE_ID),
-                                }),
-                            }),
-                            args: vec![
-                                JsCode {
-                                    loc,
-                                    type_: JsCodeType::BindingUse(JsCodeBindingUse { id: lift_id }),
-                                },
-                                inner_js,
-                            ],
-                        }),
-                    });
-                },
+            for cv in lower_values {
+                let vtype = cv.value.type_(xx, loc);
+                match cv.code.code {
+                    Code_::None => {
+                        let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
+                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                        xx.vx.externals.borrow_mut().push((id, cell));
+                        stage_args.push(JsCode {
+                            loc,
+                            type_: JsCodeType::Literal(serde_json::Value::Null),
+                        });
+                        stage_args.push(JsCode {
+                            loc,
+                            type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
+                        });
+                    },
+                    Code_::Dyn(_) => {
+                        let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
+                        let lift_cell = Rc::new(StageLiftCell { lift });
+                        let lift_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                        xx.vx.externals.borrow_mut().push((lift_id, lift_cell));
+                        let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+                            erb.must_er(consume.to_js(xx, loc, cv))?
+                        } else {
+                            erb.must_er(cv.code.cast::<JsCode>())?.unwrap().clone()
+                        };
+                        stage_args.push(JsCode {
+                            loc,
+                            type_: JsCodeType::BindingUse(JsCodeBindingUse { id: lift_id }),
+                        });
+                        stage_args.push(inner_js);
+                    },
+                }
             }
-        }
-
-        let stage_js = JsCode {
-            loc,
-            type_: JsCodeType::StageCall(JsCodeStageCall {
-                tree: Box::new(tree_js),
-                values: value_js_codes,
-            }),
-        };
-
-        return Ok(CodeValue {
-            code: Code {
+            let stage_js = JsCode {
                 loc,
-                code: Code_::Dyn(Rc::new(stage_js)),
-            },
-            value: Box::new(expr::StagedExprPlaceholder),
-        });
+                type_: JsCodeType::Call(crate::jscode::JsCodeCall {
+                    func: Box::new(JsCode {
+                        loc,
+                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: ScopeEntryId(STAGE_FN_SCOPE_ID), }),
+                    }),
+                    args: stage_args,
+                }),
+            };
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(stage_js)),
+                },
+                value: Box::new(expr::StagedExprPlaceholder),
+            });
         });
     }
-
 }
 
-/// Well-known scope entry ID for the __wrap function (not a real scope entry).
-const STAGE_WRAP_SCOPE_ID: usize = usize::MAX;
+/// Well-known scope entry ID for the __stage function (not a real scope entry).
+const STAGE_FN_SCOPE_ID: usize = usize::MAX;
 
-/// Holds an AspectLiftJs, stored as a v8::External so __wrap can use it.
+/// Holds an AspectLiftJs, stored as a v8::External so __stage can lift raw values.
 pub(crate) struct StageLiftCell {
     pub lift: Box<dyn crate::builtin::AspectLiftJs>,
 }
@@ -717,8 +689,11 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                         let r = erb.must_er(eval_half(&child_xx, sub, target))?;
                         match r.code.cast::<JsCode>().into_res() {
                             Ok(Some(js)) => entries.push(JsCodeBlockEntry::Code(js.clone())),
-                            Ok(None) => {},
-                            Err(e) => { erb.errors.extend(e); return Err(()); },
+                            Ok(None) => { },
+                            Err(e) => {
+                                erb.errors.extend(e);
+                                return Err(());
+                            },
                         }
                         last_val = Some(r.value);
                     }
@@ -730,8 +705,89 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             });
         },
         Expr_::Stage(e) => {
-            // Find matched lowers at net depth 1 within this stage's inner tree
-            let matched_lower_exprs = find_matched_lowers(&e.expr, 0, 0);
+            fn find_matched_lowers_inner<'a>(expr: &'a Expr, sd: usize, ld: usize, out: &mut Vec<&'a Expr>) {
+                match &expr.r#type {
+                    Expr_::Lower(e) => {
+                        let new_ld = ld + 1;
+                        if new_ld - sd == 1 {
+                            // Matched! Collect the inner expression. Don't descend further.
+                            out.push(&e.expr);
+                        } else {
+                            find_matched_lowers_inner(&e.expr, sd, new_ld, out);
+                        }
+                    },
+                    Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
+                    Expr_::Literal(_) | Expr_::ScopeUse(_) => { },
+                    Expr_::Call(c) => {
+                        find_matched_lowers_inner(&c.func, sd, ld, out);
+                        find_matched_lowers_inner(&c.arg, sd, ld, out);
+                    },
+                    Expr_::Bind(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.value, sd, ld, out);
+                    },
+                    Expr_::Set(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.value, sd, ld, out);
+                    },
+                    Expr_::Field(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.key, sd, ld, out);
+                    },
+                    Expr_::Block(e) => {
+                        for sub in &e.exprs {
+                            find_matched_lowers_inner(sub, sd, ld, out);
+                        }
+                    },
+                    Expr_::Tuple(t) => {
+                        for e in &t.elements {
+                            find_matched_lowers_inner(e, sd, ld, out);
+                        }
+                    },
+                    Expr_::Record(r) => {
+                        for (k, v) in &r.entries {
+                            find_matched_lowers_inner(k, sd, ld, out);
+                            find_matched_lowers_inner(v, sd, ld, out);
+                        }
+                    },
+                    Expr_::If(e) => {
+                        for b in &e.conditions {
+                            find_matched_lowers_inner(&b.condition, sd, ld, out);
+                            find_matched_lowers_inner(&b.body, sd, ld, out);
+                        }
+                        if let Some(el) = &e.else_ {
+                            find_matched_lowers_inner(el, sd, ld, out);
+                        }
+                    },
+                    Expr_::OperatorLt(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.reference, sd, ld, out);
+                    },
+                    Expr_::OperatorAdd(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.reference, sd, ld, out);
+                    },
+                    Expr_::Foreach(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.element_key, sd, ld, out);
+                        find_matched_lowers_inner(&e.body, sd, ld, out);
+                    },
+                    Expr_::Match(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.element_key, sd, ld, out);
+                        for c in &e.cases {
+                            find_matched_lowers_inner(&c.condition, sd, ld, out);
+                            find_matched_lowers_inner(&c.body, sd, ld, out);
+                        }
+                        if let Some(f) = &e.fallback {
+                            find_matched_lowers_inner(f, sd, ld, out);
+                        }
+                    },
+                }
+            }
+
+            let mut matched_lower_exprs = Vec::new();
+            find_matched_lowers_inner(expr, 0, 0, &mut matched_lower_exprs);
             if matched_lower_exprs.is_empty() {
                 // No matched lowers - return the inner tree as-is
                 return EvalRes::ok(CodeValue {
@@ -742,6 +798,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                     value: Box::new(e.expr.as_ref().clone()),
                 });
             }
+
             // half_eval each matched lower's inner expression
             return er_seq_cv!(expr.loc, erb, {
                 let mut lower_values = Vec::new();
@@ -774,20 +831,33 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             for (k_expr, v_expr) in &r.entries {
                 let k_res = eval_half(xx, k_expr, target);
                 errors.extend(k_res.errors);
-                let Some(k_cv) = k_res.v else { continue; };
+                let Some(k_cv) = k_res.v else {
+                    continue;
+                };
                 if let Some(js) = k_cv.code.cast::<JsCode>().v.flatten() {
                     key_codes.push(js.clone());
                 }
                 match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
-                    Ok(key) => { entries.insert(key, eval_half(xx, v_expr, target)); },
-                    Err(e) => errors.push(ExprErr { loc: expr.loc, errors: vec![ExprSubErr::Opaque(e)] }),
+                    Ok(key) => {
+                        entries.insert(key, eval_half(xx, v_expr, target));
+                    },
+                    Err(e) => errors.push(ExprErr {
+                        loc: expr.loc,
+                        errors: vec![ExprSubErr::Opaque(e)],
+                    }),
                 }
             }
             if !errors.is_empty() {
-                return EvalRes { v: None, errors };
+                return EvalRes {
+                    v: None,
+                    errors,
+                };
             }
             let code = if key_codes.is_empty() {
-                Code { loc: expr.loc, code: Code_::None }
+                Code {
+                    loc: expr.loc,
+                    code: Code_::None,
+                }
             } else {
                 let block_entries = key_codes.into_iter().map(JsCodeBlockEntry::Code).collect();
                 Code {
@@ -838,20 +908,16 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
             });
-            child_scope.values.borrow_mut().insert(
-                element_key,
-                Box::new(MortarScopeEntry {
-                    js_key: element_scope_id,
-                    type_: iterable.element_type(),
-                }),
-            );
+            child_scope.values.borrow_mut().insert(element_key, Box::new(MortarScopeEntry {
+                js_key: element_scope_id,
+                type_: iterable.element_type(),
+            }),);
             let child_xx = ExprContext {
                 vx: xx.vx.clone(),
                 import_state: xx.import_state.clone(),
                 scope: child_scope,
             };
             let body = erb.must_er(eval_half(&child_xx, e.body.as_ref(), target))?;
-
             let v = erb.must_er(iterable.foreach(xx, expr.loc, base, element_scope_id, body))?;
             return Ok(v);
         }),
@@ -881,9 +947,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             if !is_exhaustive && e.fallback.is_none() {
                 for (variant_tag, _, _) in &variants {
                     if !case_tags.contains(variant_tag) {
-                        return erb.err_new(format!(
-                            "Non-exhaustive match: missing case for tag '{:?}'", variant_tag
-                        ));
+                        return erb.err_new(format!("Non-exhaustive match: missing case for tag '{:?}'", variant_tag));
                     }
                 }
             }
@@ -898,14 +962,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                 let (_, js_tag, variant_type) = variants.iter().find(|(t, _, _)| t == tag).unwrap();
                 cases.push((js_tag.clone(), variant_type.clone(), &case.body));
             }
-            let v = erb.must_er(target.match_(
-                xx,
-                expr.loc,
-                base,
-                element_key,
-                cases,
-                e.fallback.as_deref(),
-            ))?;
+            let v = erb.must_er(target.match_(xx, expr.loc, base, element_key, cases, e.fallback.as_deref()))?;
             return Ok(v);
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
@@ -931,27 +988,24 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                         return Ok(body_cv);
                     }
                 }
+
                 // No true branch; use else or null
                 if let Some(else_expr) = &e.else_ {
                     let else_cv = erb.must_er(eval_half(xx, else_expr, target))?;
                     return Ok(else_cv);
                 }
                 return Ok(CodeValue {
-                    code: Code { loc: expr.loc, code: Code_::None },
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::None
+                    },
                     value: Box::new(ValueNull),
                 });
             } else {
                 // Delegate code generation to target
-                let conditions: Vec<(CodeValue, &Expr)> = conditions_evaluated
-                    .into_iter()
-                    .map(|(_, cond, body)| (cond, body as &Expr))
-                    .collect();
-                let v = erb.must_er(target.if_(
-                    xx,
-                    expr.loc,
-                    conditions,
-                    e.else_.as_deref(),
-                ))?;
+                let conditions: Vec<(CodeValue, &Expr)> =
+                    conditions_evaluated.into_iter().map(|(_, cond, body)| (cond, body as &Expr)).collect();
+                let v = erb.must_er(target.if_(xx, expr.loc, conditions, e.else_.as_deref(),))?;
                 return Ok(v);
             }
         }),
@@ -968,11 +1022,7 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
             dest = dest1;
         } else {
             return erb.err_new(
-                format!(
-                    "Incompatible types: source {} cannot convert to dest {}",
-                    source_type.desc(),
-                    dest_type.desc()
-                )
+                format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
             );
         }
         return Ok(dest);
@@ -982,313 +1032,6 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
 pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     return format!("{}{}", BINDING_PREFIX, e.0);
 }
-
-/// Walk the expression tree counting stage/lower nesting depths.
-/// Returns the max (lower_depth - stage_depth) where lower_depth > stage_depth.
-/// This tells us how many extra `stage` wrappers are needed at the root.
-fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
-    fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
-        match &expr.r#type {
-            Expr_::Lower(e) => {
-                let new_ld = ld + 1;
-                let excess = new_ld.saturating_sub(sd);
-                excess.max(max_lower_excess(&e.expr, sd, new_ld))
-            },
-            Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
-            Expr_::Literal(_) | Expr_::ScopeUse(_) => 0,
-            Expr_::Call(c) => {
-                max_lower_excess(&c.func, sd, ld)
-                    .max(max_lower_excess(&c.arg, sd, ld))
-            },
-            Expr_::Bind(e) => {
-                max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.value, sd, ld))
-            },
-            Expr_::Set(e) => {
-                max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.value, sd, ld))
-            },
-            Expr_::Field(e) => {
-                max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.key, sd, ld))
-            },
-            Expr_::Block(e) => {
-                e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
-            },
-            Expr_::Tuple(t) => {
-                t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
-            },
-            Expr_::Record(r) => {
-                r.entries.iter().map(|(k, v)| {
-                    max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
-                }).max().unwrap_or(0)
-            },
-            Expr_::If(e) => {
-                let mut m = 0;
-                for b in &e.conditions {
-                    m = m.max(max_lower_excess(&b.condition, sd, ld));
-                    m = m.max(max_lower_excess(&b.body, sd, ld));
-                }
-                if let Some(el) = &e.else_ {
-                    m = m.max(max_lower_excess(el, sd, ld));
-                }
-                m
-            },
-            Expr_::OperatorLt(e) => {
-                max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.reference, sd, ld))
-            },
-            Expr_::OperatorAdd(e) => {
-                max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.reference, sd, ld))
-            },
-            Expr_::Foreach(e) => {
-                max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.element_key, sd, ld))
-                    .max(max_lower_excess(&e.body, sd, ld))
-            },
-            Expr_::Match(e) => {
-                let mut m = max_lower_excess(&e.base, sd, ld)
-                    .max(max_lower_excess(&e.element_key, sd, ld));
-                for c in &e.cases {
-                    m = m.max(max_lower_excess(&c.condition, sd, ld));
-                    m = m.max(max_lower_excess(&c.body, sd, ld));
-                }
-                if let Some(f) = &e.fallback {
-                    m = m.max(max_lower_excess(f, sd, ld));
-                }
-                m
-            },
-        }
-    }
-    recurse_children(expr, stage_depth, lower_depth)
-}
-
-/// Walk an expression tree and collect references to the inner expressions of
-/// Lower nodes at net depth 1 (lower_depth - stage_depth == 1, starting from 0).
-/// Does not descend into matched Lower nodes.
-fn find_matched_lowers<'a>(expr: &'a Expr, stage_depth: usize, lower_depth: usize) -> Vec<&'a Expr> {
-    let mut result = Vec::new();
-    find_matched_lowers_inner(expr, stage_depth, lower_depth, &mut result);
-    result
-}
-
-fn find_matched_lowers_inner<'a>(expr: &'a Expr, sd: usize, ld: usize, out: &mut Vec<&'a Expr>) {
-    match &expr.r#type {
-        Expr_::Lower(e) => {
-            let new_ld = ld + 1;
-            if new_ld - sd == 1 {
-                // Matched! Collect the inner expression. Don't descend further.
-                out.push(&e.expr);
-            } else {
-                find_matched_lowers_inner(&e.expr, sd, new_ld, out);
-            }
-        },
-        Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
-        Expr_::Literal(_) | Expr_::ScopeUse(_) => {},
-        Expr_::Call(c) => {
-            find_matched_lowers_inner(&c.func, sd, ld, out);
-            find_matched_lowers_inner(&c.arg, sd, ld, out);
-        },
-        Expr_::Bind(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.value, sd, ld, out);
-        },
-        Expr_::Set(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.value, sd, ld, out);
-        },
-        Expr_::Field(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.key, sd, ld, out);
-        },
-        Expr_::Block(e) => {
-            for sub in &e.exprs {
-                find_matched_lowers_inner(sub, sd, ld, out);
-            }
-        },
-        Expr_::Tuple(t) => {
-            for e in &t.elements {
-                find_matched_lowers_inner(e, sd, ld, out);
-            }
-        },
-        Expr_::Record(r) => {
-            for (k, v) in &r.entries {
-                find_matched_lowers_inner(k, sd, ld, out);
-                find_matched_lowers_inner(v, sd, ld, out);
-            }
-        },
-        Expr_::If(e) => {
-            for b in &e.conditions {
-                find_matched_lowers_inner(&b.condition, sd, ld, out);
-                find_matched_lowers_inner(&b.body, sd, ld, out);
-            }
-            if let Some(el) = &e.else_ {
-                find_matched_lowers_inner(el, sd, ld, out);
-            }
-        },
-        Expr_::OperatorLt(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.reference, sd, ld, out);
-        },
-        Expr_::OperatorAdd(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.reference, sd, ld, out);
-        },
-        Expr_::Foreach(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.element_key, sd, ld, out);
-            find_matched_lowers_inner(&e.body, sd, ld, out);
-        },
-        Expr_::Match(e) => {
-            find_matched_lowers_inner(&e.base, sd, ld, out);
-            find_matched_lowers_inner(&e.element_key, sd, ld, out);
-            for c in &e.cases {
-                find_matched_lowers_inner(&c.condition, sd, ld, out);
-                find_matched_lowers_inner(&c.body, sd, ld, out);
-            }
-            if let Some(f) = &e.fallback {
-                find_matched_lowers_inner(f, sd, ld, out);
-            }
-        },
-    }
-}
-
-/// Clone an expression tree, replacing Lower nodes at net depth 1
-/// (lower_depth - stage_depth == 1) with Expr values from the iterator.
-fn clone_with_lower_substitutions(
-    expr: &Expr,
-    sd: usize,
-    ld: usize,
-    values: &mut dyn Iterator<Item = Box<dyn Value>>,
-) -> Expr {
-    match &expr.r#type {
-        Expr_::Lower(e) => {
-            let new_ld = ld + 1;
-            if new_ld - sd == 1 {
-                let value = values.next().expect("Not enough lower values for substitution");
-                if let Some(expr_val) = (value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
-                    expr_val.clone()
-                } else {
-                    let value_cell = Rc::new(RefCell::new(Some(value)));
-                    Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Literal(Rc::new(move || {
-                            value_cell.borrow_mut().take().expect("Lower literal consumed twice")
-                        })),
-                    }
-                }
-            } else {
-                Expr {
-                    loc: expr.loc,
-                    r#type: Expr_::Lower(ExprLower {
-                        expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, new_ld, values)),
-                    }),
-                }
-            }
-        },
-        Expr_::Stage(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Stage(ExprStage {
-                expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values)),
-            }),
-        },
-        Expr_::Literal(_) | Expr_::ScopeUse(_) => expr.clone(),
-        Expr_::Call(c) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Call(ExprCall {
-                func: Rc::new(clone_with_lower_substitutions(&c.func, sd, ld, values)),
-                arg: Rc::new(clone_with_lower_substitutions(&c.arg, sd, ld, values)),
-            }),
-        },
-        Expr_::Bind(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Bind(ExprBind {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
-            }),
-        },
-        Expr_::Set(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Set(ExprSet {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
-            }),
-        },
-        Expr_::Field(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Field(ExprField {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                key: Rc::new(clone_with_lower_substitutions(&e.key, sd, ld, values)),
-            }),
-        },
-        Expr_::Block(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Block(ExprBlock {
-                exprs: e.exprs.iter().map(|sub| clone_with_lower_substitutions(sub, sd, ld, values)).collect(),
-            }),
-        },
-        Expr_::Tuple(t) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Tuple(ExprTuple {
-                elements: t.elements.iter().map(|e| clone_with_lower_substitutions(e, sd, ld, values)).collect(),
-            }),
-        },
-        Expr_::Record(r) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Record(expr::ExprRecord {
-                entries: r.entries.iter().map(|(k, v)| {
-                    (clone_with_lower_substitutions(k, sd, ld, values), clone_with_lower_substitutions(v, sd, ld, values))
-                }).collect(),
-            }),
-        },
-        Expr_::If(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::If(expr::ExprIf {
-                conditions: e.conditions.iter().map(|b| expr::ExprConditionBranch {
-                    condition: clone_with_lower_substitutions(&b.condition, sd, ld, values),
-                    body: clone_with_lower_substitutions(&b.body, sd, ld, values),
-                }).collect(),
-                else_: e.else_.as_ref().map(|el| Rc::new(clone_with_lower_substitutions(el, sd, ld, values))),
-            }),
-        },
-        Expr_::OperatorLt(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
-            }),
-        },
-        Expr_::OperatorAdd(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
-            }),
-        },
-        Expr_::Foreach(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Foreach(ExprForeach {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
-                body: Rc::new(clone_with_lower_substitutions(&e.body, sd, ld, values)),
-            }),
-        },
-        Expr_::Match(e) => Expr {
-            loc: expr.loc,
-            r#type: Expr_::Match(ExprMatch {
-                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
-                cases: e.cases.iter().map(|c| ExprMatchBranch {
-                    condition: clone_with_lower_substitutions(&c.condition, sd, ld, values),
-                    body: clone_with_lower_substitutions(&c.body, sd, ld, values),
-                }).collect(),
-                fallback: e.fallback.as_ref().map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values))),
-            }),
-        },
-    }
-}
-
 
 struct EvalResult {
     value: Box<dyn Value>,
@@ -1361,7 +1104,6 @@ fn eval(
         ConstKey::String("list".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
     );
-
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {
         vx: ex.clone(),
@@ -1398,12 +1140,10 @@ fn eval(
                 (impl_expr.as_ref() as &dyn Any)
                     .downcast_ref::<Expr>()
                     .expect("Definition set impl must be an Expr");
-
-            let arg_type: Rc<dyn Type> = func_data.arg_type.borrow().clone()
-                .expect("Definition set function missing arg type");
-            let ret_type: Rc<dyn Type> = func_data.ret_type.borrow().clone()
-                .expect("Definition set function missing return type");
-
+            let arg_type: Rc<dyn Type> =
+                func_data.arg_type.borrow().clone().expect("Definition set function missing arg type");
+            let ret_type: Rc<dyn Type> =
+                func_data.ret_type.borrow().clone().expect("Definition set function missing return type");
             let arg_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
             func_data.arg_scope_entry_id.set(Some(arg_id));
 
@@ -1484,9 +1224,8 @@ fn eval(
                 }
                 let self_id = method.self_scope_entry_id.get().unwrap();
                 let method_id = method.scope_entry_id.get().unwrap();
-
-                let ret_type: Rc<dyn Type> = method.ret_type.borrow().clone()
-                    .expect("Data type method missing return type");
+                let ret_type: Rc<dyn Type> =
+                    method.ret_type.borrow().clone().expect("Data type method missing return type");
 
                 // Compile method body with `self` in scope
                 let method_xx = {
@@ -1555,8 +1294,7 @@ fn eval(
                         let iface = &interfaces[impl_data.interface_index];
                         let iface_methods = iface.methods.borrow();
                         let iface_method = &iface_methods[method_impl.interface_method_index];
-                        iface_method.ret_type.borrow().clone()
-                            .expect("Interface method missing return type")
+                        iface_method.ret_type.borrow().clone().expect("Interface method missing return type")
                     };
 
                     // Compile method body with `self` in scope
@@ -1651,73 +1389,214 @@ fn eval(
     } else {
         code1.push(root_loc, "null;".to_string());
     }
-    // Register __stage and __wrap v8 functions
+
+    // Register __stage v8 function Signature: __stage(tree, lift1, val1, lift2, val2,
+    // ...) If lift is null, val is already a StagedExprCell external. If lift is a
+    // StageLiftCell external, val is a raw v8 value to lift.
     {
-        fn stage_callback<'s>(
+        fn stage_callback<
+            's,
+        >(
             scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
             let tree_cell: Rc<expr::StagedExprCell> = rc_from_v8(&*args.get(0));
             let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
-            let tree = (tree_value.as_ref() as &dyn Any)
-                .downcast_ref::<Expr>()
-                .expect("stage tree must be an Expr")
-                .clone();
-
-            let values_obj = v8::Local::<v8::Array>::try_from(args.get(1))
-                .expect("stage arg 1 must be an array");
+            let tree =
+                (tree_value.as_ref() as &dyn Any)
+                    .downcast_ref::<Expr>()
+                    .expect("stage tree must be an Expr")
+                    .clone();
             let mut values: Vec<Box<dyn Value>> = Vec::new();
-            for i in 0..values_obj.length() {
-                let v = values_obj.get_index(scope, i).unwrap();
-                let cell: Rc<expr::StagedExprCell> = rc_from_v8(&*v);
-                values.push(
-                    cell.value.borrow_mut().take()
-                        .expect("stage lower value already consumed"),
-                );
+            let mut i = 1;
+            while i < args.length() {
+                let lift_arg = args.get(i);
+                let val_arg = args.get(i + 1);
+                i += 2;
+                if lift_arg.is_null_or_undefined() {
+                    // Already a StagedExprCell external
+                    let cell: Rc<expr::StagedExprCell> = rc_from_v8(&*val_arg);
+                    values.push(cell.value.borrow_mut().take().expect("stage lower value already consumed"));
+                } else {
+                    // Lift the raw v8 value
+                    let lift_cell: Rc<StageLiftCell> = rc_from_v8(&*lift_arg);
+                    let value = lift_cell.lift.lift(&*scope, val_arg).expect("__stage: lift failed");
+                    values.push(value);
+                }
             }
 
-            let new_tree = clone_with_lower_substitutions(
-                &tree, 0, 0,
-                &mut values.into_iter(),
-            );
+            /// Clone an expression tree, replacing Lower nodes at net depth 1 (lower_depth -
+            /// stage_depth == 1) with Expr values from the iterator.
+            fn clone_with_lower_substitutions(
+                expr: &Expr,
+                sd: usize,
+                ld: usize,
+                values: &mut dyn Iterator<Item = Box<dyn Value>>,
+            ) -> Expr {
+                match &expr.r#type {
+                    Expr_::Lower(e) => {
+                        let new_ld = ld + 1;
+                        if new_ld - sd == 1 {
+                            let value = values.next().expect("Not enough lower values for substitution");
+                            if let Some(expr_val) = (value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
+                                expr_val.clone()
+                            } else {
+                                let value_cell = Rc::new(RefCell::new(Some(value)));
+                                Expr {
+                                    loc: expr.loc,
+                                    r#type: Expr_::Literal(Rc::new(move || {
+                                        value_cell.borrow_mut().take().expect("Lower literal consumed twice")
+                                    })),
+                                }
+                            }
+                        } else {
+                            Expr {
+                                loc: expr.loc,
+                                r#type: Expr_::Lower(
+                                    ExprLower {
+                                        expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, new_ld, values)),
+                                    },
+                                ),
+                            }
+                        }
+                    },
+                    Expr_::Stage(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Stage(
+                            ExprStage { expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values)) },
+                        ),
+                    },
+                    Expr_::Literal(_) | Expr_::ScopeUse(_) => expr.clone(),
+                    Expr_::Call(c) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Call(ExprCall {
+                            func: Rc::new(clone_with_lower_substitutions(&c.func, sd, ld, values)),
+                            arg: Rc::new(clone_with_lower_substitutions(&c.arg, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::Bind(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Bind(ExprBind {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::Set(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Set(ExprSet {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::Field(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Field(ExprField {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            key: Rc::new(clone_with_lower_substitutions(&e.key, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::Block(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Block(
+                            ExprBlock {
+                                exprs: e
+                                    .exprs
+                                    .iter()
+                                    .map(|sub| clone_with_lower_substitutions(sub, sd, ld, values))
+                                    .collect(),
+                            },
+                        ),
+                    },
+                    Expr_::Tuple(t) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Tuple(
+                            ExprTuple {
+                                elements: t
+                                    .elements
+                                    .iter()
+                                    .map(|e| clone_with_lower_substitutions(e, sd, ld, values))
+                                    .collect(),
+                            },
+                        ),
+                    },
+                    Expr_::Record(r) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Record(expr::ExprRecord { entries: r.entries.iter().map(|(k, v)| {
+                            (
+                                clone_with_lower_substitutions(k, sd, ld, values),
+                                clone_with_lower_substitutions(v, sd, ld, values),
+                            )
+                        }).collect() }),
+                    },
+                    Expr_::If(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::If(expr::ExprIf {
+                            conditions: e.conditions.iter().map(|b| expr::ExprConditionBranch {
+                                condition: clone_with_lower_substitutions(&b.condition, sd, ld, values),
+                                body: clone_with_lower_substitutions(&b.body, sd, ld, values),
+                            }).collect(),
+                            else_: e
+                                .else_
+                                .as_ref()
+                                .map(|el| Rc::new(clone_with_lower_substitutions(el, sd, ld, values))),
+                        }),
+                    },
+                    Expr_::OperatorLt(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::OperatorAdd(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::Foreach(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Foreach(ExprForeach {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
+                            body: Rc::new(clone_with_lower_substitutions(&e.body, sd, ld, values)),
+                        }),
+                    },
+                    Expr_::Match(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Match(ExprMatch {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
+                            cases: e.cases.iter().map(|c| ExprMatchBranch {
+                                condition: clone_with_lower_substitutions(&c.condition, sd, ld, values),
+                                body: clone_with_lower_substitutions(&c.body, sd, ld, values),
+                            }).collect(),
+                            fallback: e
+                                .fallback
+                                .as_ref()
+                                .map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values))),
+                        }),
+                    },
+                }
+            }
 
-            let result_cell = Rc::new(expr::StagedExprCell {
-                value: RefCell::new(Some(Box::new(new_tree))),
-            });
-            let ext = rc_to_v8(scope, result_cell);
-            rv.set(ext.into());
-        }
-
-        fn wrap_callback<'s>(
-            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-            args: v8::FunctionCallbackArguments<'s>,
-            mut rv: v8::ReturnValue<'s>,
-        ) {
-            let lift_cell: Rc<StageLiftCell> = rc_from_v8(&*args.get(0));
-            let raw_value = args.get(1);
-            let value = lift_cell.lift.lift(&*scope, raw_value)
-                .expect("__wrap: lift failed");
-            let result_cell = Rc::new(expr::StagedExprCell {
-                value: RefCell::new(Some(value)),
-            });
+            let new_tree = clone_with_lower_substitutions(&tree, 0, 0, &mut values.into_iter());
+            let result_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(new_tree))) });
             let ext = rc_to_v8(scope, result_cell);
             rv.set(ext.into());
         }
 
         let stage_fn = v8::Function::builder(stage_callback).build(js_scope).unwrap();
-        js_scope.get_current_context().global(js_scope).set(
-            js_scope,
-            v8::String::new(js_scope, "__stage").unwrap().cast(),
-            stage_fn.into(),
-        );
-
-        let wrap_fn = v8::Function::builder(wrap_callback).build(js_scope).unwrap();
-        js_scope.get_current_context().global(js_scope).set(
-            js_scope,
-            v8::String::new(js_scope, &scope_entry_id_js_key(ScopeEntryId(STAGE_WRAP_SCOPE_ID))).unwrap().cast(),
-            wrap_fn.into(),
-        );
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(ScopeEntryId(STAGE_FN_SCOPE_ID))).unwrap().cast(),
+                stage_fn.into(),
+            );
     }
 
     // Set externals as globals before running the script
@@ -1936,14 +1815,6 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, "} }".to_string());
         },
-        JsCodeType::StageCall(c) => {
-            let tree_var = render_code(lines, &c.tree);
-            let mut value_vars = vec![];
-            for v in &c.values {
-                value_vars.push(render_code(lines, v));
-            }
-            lines.push(code.loc, format!("{} = __stage({}, [{}]);", out, tree_var, value_vars.join(", ")));
-        },
     }
     return out;
 }
@@ -1964,15 +1835,88 @@ pub async fn compile_importid(
     };
     let root_loc = root_expr.loc;
 
-    // Step 1: Count lower excess and wrap root in stage layers
-    // Root is treated as implicit stage (stage_depth=1)
+    // Step 1: Count lower excess and wrap root in stage layers Root is treated as
+    // implicit stage (stage_depth=1)
+    fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
+        //! Walk the expression tree counting stage/lower nesting depths. Returns the max
+        //! (lower_depth - stage_depth) where lower_depth > stage_depth. This tells us how
+        //! many extra `stage` wrappers are needed at the root.
+        fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
+            match &expr.r#type {
+                Expr_::Lower(e) => {
+                    let new_ld = ld + 1;
+                    let excess = new_ld.saturating_sub(sd);
+                    excess.max(max_lower_excess(&e.expr, sd, new_ld))
+                },
+                Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
+                Expr_::Literal(_) | Expr_::ScopeUse(_) => 0,
+                Expr_::Call(c) => {
+                    max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
+                },
+                Expr_::Bind(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
+                },
+                Expr_::Set(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
+                },
+                Expr_::Field(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.key, sd, ld))
+                },
+                Expr_::Block(e) => {
+                    e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
+                },
+                Expr_::Tuple(t) => {
+                    t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
+                },
+                Expr_::Record(r) => {
+                    r.entries.iter().map(|(k, v)| {
+                        max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
+                    }).max().unwrap_or(0)
+                },
+                Expr_::If(e) => {
+                    let mut m = 0;
+                    for b in &e.conditions {
+                        m = m.max(max_lower_excess(&b.condition, sd, ld));
+                        m = m.max(max_lower_excess(&b.body, sd, ld));
+                    }
+                    if let Some(el) = &e.else_ {
+                        m = m.max(max_lower_excess(el, sd, ld));
+                    }
+                    m
+                },
+                Expr_::OperatorLt(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+                },
+                Expr_::OperatorAdd(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+                },
+                Expr_::Foreach(e) => {
+                    max_lower_excess(&e.base, sd, ld)
+                        .max(max_lower_excess(&e.element_key, sd, ld))
+                        .max(max_lower_excess(&e.body, sd, ld))
+                },
+                Expr_::Match(e) => {
+                    let mut m = max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.element_key, sd, ld));
+                    for c in &e.cases {
+                        m = m.max(max_lower_excess(&c.condition, sd, ld));
+                        m = m.max(max_lower_excess(&c.body, sd, ld));
+                    }
+                    if let Some(f) = &e.fallback {
+                        m = m.max(max_lower_excess(f, sd, ld));
+                    }
+                    m
+                },
+            }
+        }
+
+        recurse_children(expr, stage_depth, lower_depth)
+    }
+
     let excess = max_lower_excess(&root_expr, 0, 0);
-    for _ in 0..excess {
+    for _ in 0 .. excess {
         root_expr = Expr {
             loc: root_loc,
-            r#type: Expr_::Stage(ExprStage {
-                expr: Rc::new(root_expr),
-            }),
+            r#type: Expr_::Stage(ExprStage { expr: Rc::new(root_expr) }),
         };
     }
 
@@ -1990,8 +1934,7 @@ pub async fn compile_importid(
         let eval_value = eval_result.value;
         all_logs.extend(eval_result.logs);
         if !is_stage {
-            // This was the final eval (root was not a stage)
-            // Serialize result
+            // This was the final eval (root was not a stage) Serialize result
             let logs = all_logs;
             let ex = Rc::new(EvalContext {
                 ix: cix.clone(),
@@ -2028,6 +1971,7 @@ pub async fn compile_importid(
                 result: CompileResResult::Ok(value),
             };
         }
+
         // Result is an Expr (from stage eval) - use it as next expression
         let next_expr = match (eval_value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
             Some(expr) => expr.clone(),
@@ -2037,9 +1981,7 @@ pub async fn compile_importid(
                     logs: all_logs,
                     result: CompileResResult::Err(vec![ExprErr {
                         loc: root_loc,
-                        errors: vec![ExprSubErr::Opaque(
-                            "Stage eval produced non-Expr value".to_string(),
-                        )],
+                        errors: vec![ExprSubErr::Opaque("Stage eval produced non-Expr value".to_string(),)],
                     }]),
                 };
             },

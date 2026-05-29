@@ -71,7 +71,10 @@ pub(crate) struct ValueTypeAny {}
 /// A value guaranteed to be unique in the world
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum Unique {
-    Builtin { file: &'static str, line: usize },
+    Builtin {
+        file: &'static str,
+        line: usize,
+    },
     Compile(CompileId, usize),
 }
 
@@ -134,7 +137,9 @@ pub(crate) struct CompileImportContext {
 pub(crate) struct EvalContext {
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_scope_entry_id: Counter,
-    pub(crate) definition_sets: std::cell::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
+    pub(crate) definition_sets: std
+    ::cell
+    ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, Rc<dyn Any>)>>,
 }
 

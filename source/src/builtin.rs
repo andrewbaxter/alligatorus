@@ -27,7 +27,10 @@ use {
 
 macro_rules! unique{
     () => {
-        Unique::Builtin { file: file!(), line: line!() as usize }
+        Unique::Builtin {
+            file: file!(),
+            line: line!() as usize
+        }
     };
 }
 
@@ -78,7 +81,8 @@ aspect!(AspectLiftJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used after evaluating a target block, for producing a value to serialize.
-    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Result<Box < dyn Value >, String>;
+    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Result < Box < dyn Value >,
+    String >;
 });
 
 aspect!(AspectJsStackValue {
@@ -90,11 +94,11 @@ aspect!(AspectConsumeJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used before interacting with JS: namely, function call arguments.
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
+    fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
 });
 
 aspect!(AspectBindJs {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult < (JsCode, Rc < dyn Type >) >;
+    fn bind_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult <(JsCode, Rc < dyn Type >) >;
 });
 
 aspect!(AspectJsString {});
@@ -111,12 +115,12 @@ aspect!(AspectSet {
 
 aspect!(AspectField {
     fn field(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes;
-    fn field_opt(&self, xx: & ExprContext, key: &str) -> Option<Rc<dyn Type>>;
+    fn field_opt(&self, xx: & ExprContext, key: & str) -> Option < Rc < dyn Type >>;
 });
 
 aspect!(AspectTuple {
-    fn element_types(&self) -> Vec<Rc<dyn Type>>;
-    fn take_elements(&self, value: Box<dyn Value>) -> Vec<EvalRes>;
+    fn element_types(&self) -> Vec < Rc < dyn Type >>;
+    fn take_elements(&self, value: Box < dyn Value >) -> Vec < EvalRes >;
 });
 
 aspect!(AspectNumber {
@@ -140,10 +144,10 @@ aspect!(AspectOperatorAdd {
 });
 
 aspect!(AspectIterable {
-    fn element_type(&self) -> Rc<dyn Type>;
+    fn element_type(&self) -> Rc < dyn Type >;
     fn foreach(
         &self,
-        xx: &ExprContext,
+        xx: & ExprContext,
         loc: QExprId,
         base: CodeValue,
         element_key: ScopeEntryId,
@@ -153,6 +157,5 @@ aspect!(AspectIterable {
 
 aspect!(AspectTaggedUnion {
     /// Returns (const_key, js_tag, type) for each variant
-    fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)>;
+    fn variants(&self) -> Vec <(ConstKey, String, Rc < dyn Type >) >;
 });
-

@@ -36,7 +36,10 @@ use {
     },
     super::{
         Erb,
-        mortar_js_value::{MortarJsValue, MortarJsValueSource},
+        mortar_js_value::{
+            MortarJsValue,
+            MortarJsValueSource,
+        },
         typecheck_convert,
     },
 };
@@ -129,25 +132,21 @@ impl AspectFunction for MortarTypeFunction {
                 } else {
                     vec![self.arg.clone()]
                 };
-
                 let elements = arg_tuple.take_elements(argument.value);
 
                 // Empty tuple calling a null-arg function → zero JS args
-                let (elements, param_types) = if elements.is_empty()
-                    && param_types.len() == 1
-                    && crate::builtin::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some()
-                {
-                    (vec![], vec![])
-                } else {
-                    (elements, param_types)
-                };
-
+                let (elements, param_types) =
+                    if elements.is_empty() && param_types.len() == 1 &&
+                        crate::builtin::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
+                        (vec![], vec![])
+                    } else {
+                        (elements, param_types)
+                    };
                 if elements.len() != param_types.len() {
                     return erb.err_new(
                         format!("Function expects {} arguments, got {}", param_types.len(), elements.len())
                     );
                 }
-
                 let mut js_args = vec![];
                 for (elem, param_type) in elements.into_iter().zip(param_types.iter()) {
                     let cv = match elem.v {
@@ -163,7 +162,6 @@ impl AspectFunction for MortarTypeFunction {
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_args.push(js);
                 }
-
                 return Ok(ret_stack.to_value(loc, JsCode {
                     loc: loc,
                     type_: JsCodeType::Call(JsCodeCall {

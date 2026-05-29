@@ -49,7 +49,11 @@ use {
     super::{
         Erb,
         mortar_function::MortarTypeFunction,
-        mortar_js_value::{MortarJsValue, MortarJsValueDataAccess, MortarJsValueSource},
+        mortar_js_value::{
+            MortarJsValue,
+            MortarJsValueDataAccess,
+            MortarJsValueSource,
+        },
         mortar_null::TypeMortarNull,
         mortar_string::TypeMortarString,
         tuple::StaticValue,
@@ -58,7 +62,6 @@ use {
 };
 
 // --- list constructor (the "list" function in scope) ---
-
 #[derive(Clone)]
 pub(crate) struct TypeListConstructor;
 
@@ -89,20 +92,22 @@ impl Type for TypeListConstructor {
     }
 }
 
-impl Aspect for TypeListConstructor {}
+impl Aspect for TypeListConstructor { }
 
 impl AspectFunction for TypeListConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let element_type = argument.value.type_(xx, loc);
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::None },
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
             value: Box::new(TypeMortarList { element_type }),
         })
     }
 }
 
 // --- list type (result of list(string)) ---
-
 #[derive(Clone)]
 struct TypeMortarList {
     element_type: Rc<dyn Type>,
@@ -135,7 +140,7 @@ impl Type for TypeMortarList {
     }
 }
 
-impl Aspect for TypeMortarList {}
+impl Aspect for TypeMortarList { }
 
 impl AspectField for TypeMortarList {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
@@ -146,10 +151,13 @@ impl AspectField for TypeMortarList {
             match key_name.as_str() {
                 "new" => {
                     return Ok(CodeValue {
-                        code: Code { loc, code: Code_::None },
-                        value: Box::new(StaticValue {
-                            type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }),
-                        }),
+                        code: Code {
+                            loc,
+                            code: Code_::None
+                        },
+                        value: Box::new(
+                            StaticValue { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }), }
+                        ),
                     });
                 },
                 _ => return erb.err_new(format!("Field '{}' not found on list type", key_name)),
@@ -166,7 +174,6 @@ impl AspectField for TypeMortarList {
 }
 
 // --- list new function ---
-
 #[derive(Clone)]
 struct TypeListNew {
     element_type: Rc<dyn Type>,
@@ -199,36 +206,29 @@ impl Type for TypeListNew {
     }
 }
 
-impl Aspect for TypeListNew {}
+impl Aspect for TypeListNew { }
 
 impl AspectFunction for TypeListNew {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let arg_type = argument.value.type_(xx, loc);
             let mut js_elements = vec![];
-
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
                 let elements = arg_tuple.take_elements(argument.value);
                 for elem_res in elements {
                     let elem_cv = erb.must_er(elem_res)?;
-                    let converted =
-                        erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
-                    let elem_to_js =
-                        erb.must_er(aspect_consume_js_get(xx, loc, self.element_type.as_ref()))?;
+                    let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
+                    let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, self.element_type.as_ref()))?;
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_elements.push(js);
                 }
             } else {
-                let converted =
-                    erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), argument))?;
-                let elem_to_js =
-                    erb.must_er(aspect_consume_js_get(xx, loc, self.element_type.as_ref()))?;
+                let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), argument))?;
+                let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, self.element_type.as_ref()))?;
                 let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                 js_elements.push(js);
             }
-
-            let instance_type =
-                Rc::new(TypeMortarListInstance { element_type: self.element_type.clone() });
+            let instance_type = Rc::new(TypeMortarListInstance { element_type: self.element_type.clone() });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, instance_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
@@ -239,7 +239,6 @@ impl AspectFunction for TypeListNew {
 }
 
 // --- list instance type ---
-
 #[derive(Clone)]
 struct TypeMortarListInstance {
     element_type: Rc<dyn Type>,
@@ -284,7 +283,7 @@ impl Type for TypeMortarListInstance {
     }
 }
 
-impl Aspect for TypeMortarListInstance {}
+impl Aspect for TypeMortarListInstance { }
 
 impl AspectJsStackValue for TypeMortarListInstance {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
@@ -388,13 +387,17 @@ impl AspectIterable for TypeMortarListInstance {
         return er_seq_cv!(loc, erb, {
             let base_consume = erb.must_er(aspect_consume_js_get(xx, loc, &*Rc::new(self.clone())))?;
             let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
-
             let body_js = match body.code.cast::<JsCode>().into_res() {
                 Ok(Some(js)) => js.clone(),
-                Ok(None) => JsCode { loc, type_: JsCodeType::Literal(serde_json::Value::Null) },
-                Err(e) => { erb.errors.extend(e); return Err(()); },
+                Ok(None) => JsCode {
+                    loc,
+                    type_: JsCodeType::Literal(serde_json::Value::Null)
+                },
+                Err(e) => {
+                    erb.errors.extend(e);
+                    return Err(());
+                },
             };
-
             let foreach_js = JsCode {
                 loc,
                 type_: JsCodeType::Foreach(JsCodeForeach {

@@ -18,7 +18,6 @@ pub(crate) use {
     tagged_union::MortarTypeTaggedUnionRef,
     tagged_union::MortarTypeTaggedUnionConstructorRef,
 };
-
 use {
     std::{
         cell::{
@@ -26,7 +25,10 @@ use {
             RefCell,
         },
         rc::Rc,
-        sync::atomic::{AtomicUsize, Ordering},
+        sync::atomic::{
+            AtomicUsize,
+            Ordering,
+        },
     },
     dumpster::unsync::Gc,
     crate::langhelp::{
@@ -44,7 +46,6 @@ pub(crate) fn next_interface_method_id() -> usize {
 }
 
 // --- DefinitionSet data ---
-
 pub(crate) struct DefinitionSetFunctionData {
     pub name: Option<String>,
     pub description: RefCell<Option<String>>,
@@ -162,10 +163,14 @@ impl DefinitionSet {
             let iface_name = iface.description.borrow().clone().unwrap_or_else(|| format!("(interface {})", i));
             for method in iface.methods.borrow().iter() {
                 if method.arg_type.borrow().is_none() {
-                    return Err(format!("Interface '{}' method '{}' is missing an arg type", iface_name, method.name));
+                    return Err(
+                        format!("Interface '{}' method '{}' is missing an arg type", iface_name, method.name),
+                    );
                 }
                 if method.ret_type.borrow().is_none() {
-                    return Err(format!("Interface '{}' method '{}' is missing a return type", iface_name, method.name));
+                    return Err(
+                        format!("Interface '{}' method '{}' is missing a return type", iface_name, method.name),
+                    );
                 }
             }
         }
@@ -209,7 +214,6 @@ pub(crate) struct DefinitionSetDataType {
 }
 
 // --- Tagged union data ---
-
 pub(crate) struct TaggedUnionVariant {
     pub tag: crate::langhelp::ConstKey,
     pub js_tag: String,

@@ -146,10 +146,11 @@ impl AspectLiftJs for TupleLiftJs {
     }
 }
 
-/// When a compound value (Tuple/Record) is the last expression in a block, the block's code
-/// contains binding declarations but the compound value has Code_::None. When consumed to JS,
-/// the generated JS references those bindings. This helper wraps the consumed JS with the
-/// carry code so the bindings are in scope.
+/// When a compound value (Tuple/Record) is the last expression in a block, the
+/// block's code contains binding declarations but the compound value has
+/// Code_::None. When consumed to JS, the generated JS references those bindings.
+/// This helper wraps the consumed JS with the carry code so the bindings are in
+/// scope.
 fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
     if let Some(Some(carry_js)) = carry.cast::<JsCode>().v {
         let mut entries = match &carry_js.type_ {
@@ -157,7 +158,10 @@ fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
             _ => vec![JsCodeBlockEntry::Code(carry_js.clone())],
         };
         entries.push(JsCodeBlockEntry::Code(js));
-        return JsCode { loc, type_: JsCodeType::Block(JsCodeBlock { entries }) };
+        return JsCode {
+            loc,
+            type_: JsCodeType::Block(JsCodeBlock { entries }),
+        };
     }
     js
 }
@@ -229,24 +233,36 @@ impl Value for TypeValueRecord {
 
 impl Type for TypeValueRecord {
     fn desc(&self) -> String {
-        format!("record({})", self.entry_types.iter().map(|(k, t)| format!("{:?}: {}", k, t.desc())).collect::<Vec<_>>().join(", "))
+        format!(
+            "record({})",
+            self.entry_types.iter().map(|(k, t)| format!("{:?}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectConsumeJs>));
+            return Some(
+                Box::new(
+                    Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectConsumeJs>,
+                ),
+            );
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectBindJs>));
+            return Some(
+                Box::new(
+                    Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectBindJs>,
+                ),
+            );
         }
         if *key == aspect_lift_js_aspect_id() {
             let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.entry_types.iter().map(|(k, t)| {
                 let key_str = match k {
                     ConstKey::String(s) => s.clone(),
                 };
-                let a = t
-                    .aspect(_xx, &aspect_lift_js_aspect_id())
-                    .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftJs", k, t.desc()));
+                let a =
+                    t
+                        .aspect(_xx, &aspect_lift_js_aspect_id())
+                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftJs", k, t.desc()));
                 (key_str, *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
             }).collect();
             return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
@@ -288,7 +304,10 @@ impl AspectConsumeJs for TypeValueRecord {
             }
         }
         if !errors.is_empty() {
-            return EResult { v: None, errors };
+            return EResult {
+                v: None,
+                errors,
+            };
         }
         EResult::ok(wrap_with_carry(loc, carry, JsCode {
             loc,
@@ -334,7 +353,6 @@ impl ScopeEntry for StaticScopeEntry {
 }
 
 // --- Record types (for JS object records) ---
-
 pub(crate) struct TypeRecord {
     pub entries: Vec<(String, Rc<dyn Type>)>,
 }
@@ -347,21 +365,29 @@ impl Value for TypeRecord {
 
 impl Type for TypeRecord {
     fn desc(&self) -> String {
-        format!("record({})", self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", "))
+        format!(
+            "record({})",
+            self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectConsumeJs>));
+            return Some(
+                Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectConsumeJs>),
+            );
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectBindJs>));
+            return Some(
+                Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectBindJs>),
+            );
         }
         if *key == aspect_lift_js_aspect_id() {
             let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.entries.iter().map(|(k, t)| {
-                let a = t
-                    .aspect(_xx, &aspect_lift_js_aspect_id())
-                    .expect(&format!("Record entry '{}' type ({}) missing AspectLiftJs", k, t.desc()));
+                let a =
+                    t
+                        .aspect(_xx, &aspect_lift_js_aspect_id())
+                        .expect(&format!("Record entry '{}' type ({}) missing AspectLiftJs", k, t.desc()));
                 (k.clone(), *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
             }).collect();
             return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
@@ -419,9 +445,8 @@ pub(crate) struct LiftedRecord {
 
 impl Value for LiftedRecord {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        let type_entries: Vec<(String, Rc<dyn Type>)> = self.entries.iter()
-            .map(|(k, v)| (k.clone(), v.type_(xx, loc)))
-            .collect();
+        let type_entries: Vec<(String, Rc<dyn Type>)> =
+            self.entries.iter().map(|(k, v)| (k.clone(), v.type_(xx, loc))).collect();
         Rc::new(LiftedRecordType { entries: type_entries })
     }
 }
@@ -438,12 +463,17 @@ impl Value for LiftedRecordType {
 
 impl Type for LiftedRecordType {
     fn desc(&self) -> String {
-        format!("lifted_record({})", self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", "))
+        format!(
+            "lifted_record({})",
+            self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(LiftedRecordType { entries: self.entries.clone() }) as Box<dyn AspectField>));
+            return Some(
+                Box::new(Box::new(LiftedRecordType { entries: self.entries.clone() }) as Box<dyn AspectField>),
+            );
         }
         return None;
     }
@@ -467,7 +497,10 @@ impl AspectField for LiftedRecordType {
             let key_name = key_string.get(key.value.as_ref());
             if let Some((_, entry_type)) = self.entries.iter().find(|(k, _)| k == &key_name) {
                 return Ok(CodeValue {
-                    code: Code { loc, code: Code_::None },
+                    code: Code {
+                        loc,
+                        code: Code_::None,
+                    },
                     value: Box::new(StaticValue { type_: entry_type.clone() }),
                 });
             }

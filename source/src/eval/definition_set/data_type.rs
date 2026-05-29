@@ -233,7 +233,8 @@ impl AspectField for DefinitionSetDataType {
                         let iface_methods = iface.methods.borrow();
                         if let Some(method) = iface_methods.iter().find(|m| m.name == key_name) {
                             let arg_t = method.arg_type.borrow().clone().expect("Interface method missing arg type");
-                            let ret_t = method.ret_type.borrow().clone().expect("Interface method missing return type");
+                            let ret_t =
+                                method.ret_type.borrow().clone().expect("Interface method missing return type");
                             break 'lookup Some((method.field_name.clone(), arg_t, ret_t));
                         }
                     }

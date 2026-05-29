@@ -98,7 +98,10 @@ impl AspectBindJs for MortarTypeDefinitionSetDataTypeRef {
 impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeRef {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetDataTypeRef),

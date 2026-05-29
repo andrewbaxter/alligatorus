@@ -126,7 +126,9 @@ impl Type for TypeMortarString {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
+                                type_: JsCodeType::Block(
+                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                                )
                             }))
                         },
                         value: Box::new(MortarJsValue {
@@ -312,7 +314,9 @@ impl AspectSet for TypeMortarString {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
+                                type_: JsCodeType::Block(
+                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                                )
                             }))
                         },
                         value: Box::new(ValueNull),

@@ -96,7 +96,7 @@ impl Type for TypeMortarBool {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(xx, loc);
             return Ok(erb.must_er(er_one!(loc, "searching for bool aspects", {
-                aspect_bool = aspect_bool_get_maybe(xx, type_.as_ref()) => er_seq_cv!(loc, erb, {
+                aspect_bool = aspect_bool_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
                     let CodeValue { code, value } = cv;
                     let mut seq = vec![];
                     if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
@@ -112,7 +112,9 @@ impl Type for TypeMortarBool {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
+                                type_: JsCodeType::Block(
+                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                                )
                             }))
                         },
                         value: Box::new(MortarJsValue {
@@ -121,7 +123,7 @@ impl Type for TypeMortarBool {
                         }),
                     });
                 }),
-                _x = aspect_js_bool_get_maybe(xx, type_.as_ref()) => er_seq_cv!(loc, erb, {
+                _x = aspect_js_bool_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
                     let CodeValue { code, value: _value } = cv;
                     return Ok(CodeValue {
                         code: code.clone(),

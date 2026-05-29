@@ -105,7 +105,10 @@ impl AspectBindJs for MortarTypeDefinitionSetExports {
 impl AspectJsStackValue for MortarTypeDefinitionSetExports {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetExports),
@@ -120,15 +123,12 @@ impl AspectLiftJs for MortarTypeDefinitionSetExports {
         exports.set.finish()?;
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
-            type_: Rc::new(DefinitionSetExportsType {
-                set: exports.set.clone(),
-            }),
+            type_: Rc::new(DefinitionSetExportsType { set: exports.set.clone() }),
         }))
     }
 }
 
 // --- Post-lift type with field access ---
-
 struct DefinitionSetExportsType {
     set: dumpster::unsync::Gc<super::DefinitionSet>,
 }
@@ -146,9 +146,9 @@ impl Type for DefinitionSetExportsType {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetExportsType {
-                set: self.set.clone(),
-            }) as Box<dyn AspectField>));
+            return Some(
+                Box::new(Box::new(DefinitionSetExportsType { set: self.set.clone() }) as Box<dyn AspectField>),
+            );
         }
         return None;
     }
@@ -177,7 +177,10 @@ impl AspectField for DefinitionSetExportsType {
                 for (i, func_data) in functions.iter().enumerate() {
                     if func_data.name.as_deref() == Some(&key_name) {
                         return Ok(CodeValue {
-                            code: Code { loc, code: Code_::None },
+                            code: Code {
+                                loc,
+                                code: Code_::None
+                            },
                             value: Box::new(MortarJsValue {
                                 source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
                                     set: self.set.clone(),
@@ -199,7 +202,10 @@ impl AspectField for DefinitionSetExportsType {
                 for (i, dt_data) in data_types.iter().enumerate() {
                     if dt_data.name.as_deref() == Some(&key_name) {
                         return Ok(CodeValue {
-                            code: Code { loc, code: Code_::None },
+                            code: Code {
+                                loc,
+                                code: Code_::None
+                            },
                             value: Box::new(MortarJsValue {
                                 source: MortarJsValueSource::Expr,
                                 type_: Rc::new(DefinitionSetDataTypeConstructor {
@@ -211,7 +217,6 @@ impl AspectField for DefinitionSetExportsType {
                     }
                 }
             }
-
             return erb.err_new(format!("'{}' not found in definition set", key_name));
         });
     }

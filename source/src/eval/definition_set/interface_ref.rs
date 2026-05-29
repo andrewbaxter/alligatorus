@@ -45,7 +45,10 @@ use {
 pub(crate) struct MortarTypeDefinitionSetInterfaceRef;
 
 fn interface_ref_type_identity() -> Unique {
-    Unique::Builtin { file: file!(), line: line!() as usize }
+    Unique::Builtin {
+        file: file!(),
+        line: line!() as usize,
+    }
 }
 
 impl Value for MortarTypeDefinitionSetInterfaceRef {
@@ -115,7 +118,10 @@ impl AspectBindJs for MortarTypeDefinitionSetInterfaceRef {
 impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),

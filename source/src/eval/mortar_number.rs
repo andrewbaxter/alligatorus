@@ -128,7 +128,7 @@ impl Type for TypeMortarNumber {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(xx, loc);
             return Ok(erb.must_er(er_one!(loc, "searching for number aspects", {
-                aspect_number = aspect_number_get_maybe(xx, type_.as_ref()) => er_seq_cv!(loc, erb, {
+                aspect_number = aspect_number_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
                     let CodeValue { code, value } = cv;
                     let mut seq = vec![];
                     if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
@@ -144,7 +144,9 @@ impl Type for TypeMortarNumber {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
+                                type_: JsCodeType::Block(
+                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                                )
                             }))
                         },
                         value: Box::new(MortarJsValue {
@@ -153,7 +155,7 @@ impl Type for TypeMortarNumber {
                         }),
                     });
                 }),
-                _x = aspect_js_number_get_maybe(xx, type_.as_ref()) => er_seq_cv!(loc, erb, {
+                _x = aspect_js_number_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
                     let CodeValue { code, value: _value } = cv;
                     return Ok(CodeValue {
                         code: code.clone(),
@@ -307,7 +309,9 @@ impl AspectSet for TypeMortarNumber {
                             loc: loc,
                             code: Code_::Dyn(Rc::new(JsCode {
                                 loc: loc,
-                                type_: JsCodeType::Block(JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() })
+                                type_: JsCodeType::Block(
+                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                                )
                             }))
                         },
                         value: Box::new(super::null::ValueNull),

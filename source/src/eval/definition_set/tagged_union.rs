@@ -57,7 +57,6 @@ use {
 };
 
 // --- Mortar type for TaggedUnionRef (during eval_half / v8 phase) ---
-
 pub(crate) struct MortarTypeTaggedUnionRef;
 
 impl Value for MortarTypeTaggedUnionRef {
@@ -114,7 +113,10 @@ impl AspectBindJs for MortarTypeTaggedUnionRef {
 impl AspectJsStackValue for MortarTypeTaggedUnionRef {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionRef),
@@ -134,7 +136,6 @@ impl AspectLiftJs for MortarTypeTaggedUnionRef {
 }
 
 // --- Mortar type for TaggedUnionConstructorRef (during eval_half / v8 phase) ---
-
 pub(crate) struct MortarTypeTaggedUnionConstructorRef;
 
 impl Value for MortarTypeTaggedUnionConstructorRef {
@@ -191,7 +192,10 @@ impl AspectBindJs for MortarTypeTaggedUnionConstructorRef {
 impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionConstructorRef),
@@ -214,21 +218,16 @@ impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
 }
 
 // --- JsWrap impls ---
-
 impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionRef> {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(MortarTypeTaggedUnionRef)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }
@@ -237,22 +236,17 @@ impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionConstructorRef> {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(MortarTypeTaggedUnionConstructorRef)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }
 
 // --- Post-lift: TaggedUnionType (type of tagged union values) ---
-
 pub(crate) struct TaggedUnionType {
     pub data: Rc<TaggedUnionData>,
 }
@@ -273,16 +267,24 @@ impl Type for TaggedUnionType {
             return Some(Box::new(true));
         }
         if *key == aspect_tagged_union_aspect_id() {
-            return Some(Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>));
+            return Some(
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>),
+            );
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectConsumeJs>));
+            return Some(
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectConsumeJs>),
+            );
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectBindJs>));
+            return Some(
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectBindJs>),
+            );
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectJsStackValue>));
+            return Some(
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectJsStackValue>),
+            );
         }
         return None;
     }
@@ -320,7 +322,10 @@ impl AspectBindJs for TaggedUnionType {
 impl AspectJsStackValue for TaggedUnionType {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TaggedUnionType { data: self.data.clone() }),
@@ -329,8 +334,8 @@ impl AspectJsStackValue for TaggedUnionType {
     }
 }
 
-// --- Post-lift: TaggedUnionConstructor (callable to create tagged union values) ---
-
+// --- Post-lift: TaggedUnionConstructor (callable to create tagged union values)
+// ---
 pub(crate) struct TaggedUnionConstructor {
     pub data: Rc<TaggedUnionData>,
     pub variant_index: usize,
@@ -377,20 +382,15 @@ impl AspectFunction for TaggedUnionConstructor {
         let js_tag = variant.js_tag.clone();
         let underlying_type = variant.type_.clone();
         drop(variants);
-
         return er_seq_cv!(loc, erb, {
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
-
             let to_js = erb.must_er(aspect_consume_js_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
-
             let result_type = Rc::new(TaggedUnionType { data: self.data.clone() });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
-                type_: JsCodeType::NewObject(JsCodeNewObject {
-                    fields: vec![(js_tag, underlying_js)],
-                }),
+                type_: JsCodeType::NewObject(JsCodeNewObject { fields: vec![(js_tag, underlying_js)], }),
             }));
         });
     }

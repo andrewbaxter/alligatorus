@@ -78,7 +78,9 @@ use {
 };
 
 jswrap!(struct DefineResult(self_, scope) {
-    data { ds: Rc<Gc<DefinitionSet>> }
+    data {
+        ds: Rc < Gc < DefinitionSet >>
+    }
     fn new_func(name: String) -> NewFuncResult {
         let ds = self_.ds.clone();
         let idx = {
@@ -127,9 +129,7 @@ jswrap!(struct DefineResult(self_, scope) {
         NewDataResult { data_type_ref }
     }
     fn build() -> Rc<DefinitionSetExports> {
-        Rc::new(DefinitionSetExports {
-            set: (*self_.ds).clone(),
-        })
+        Rc::new(DefinitionSetExports { set: (*self_.ds).clone(), })
     }
     fn tagged_union(description: String) -> TaggedUnionBuilder {
         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
@@ -165,8 +165,12 @@ jswrap!(struct DefineResult(self_, scope) {
 });
 
 jswrap!(struct NewFuncResult(self_, scope) {
-    data { func_ref: Rc<DefinitionSetFunction> }
-    field func: Rc<DefinitionSetFunction> { self_.func_ref.clone() }
+    data {
+        func_ref: Rc < DefinitionSetFunction >
+    }
+    field func: Rc < DefinitionSetFunction > {
+        self_.func_ref.clone()
+    }
     fn set_description(description: String) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
@@ -226,10 +230,13 @@ jswrap!(struct NewFuncResult(self_, scope) {
 });
 
 // --- Tagged union JsWrap structs ---
-
 jswrap!(struct TaggedUnionBuilder(self_, scope) {
-    data { data: Rc<TaggedUnionData> }
-    field type_: Rc<TaggedUnionRef> { Rc::new(TaggedUnionRef { data: self_.data.clone() }) }
+    data {
+        data: Rc < TaggedUnionData >
+    }
+    field type_: Rc < TaggedUnionRef > {
+        Rc::new(TaggedUnionRef { data: self_.data.clone() })
+    }
     fn variant(tag: String, type_ref: TypeRef) -> Rc<TaggedUnionConstructorRef> {
         let variant_index = {
             let mut variants = self_.data.variants.borrow_mut();
@@ -250,11 +257,14 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
 });
 
 // --- Data type JsWrap structs ---
-
 jswrap!(struct NewDataResult(self_, scope) {
-    data { data_type_ref: Rc<DefinitionSetDataTypeRef> }
-    field type_: Rc<DefinitionSetDataTypeRef> { self_.data_type_ref.clone() }
-    field new_: Rc<DefinitionSetDataTypeConstructor> {
+    data {
+        data_type_ref: Rc < DefinitionSetDataTypeRef >
+    }
+    field type_: Rc < DefinitionSetDataTypeRef > {
+        self_.data_type_ref.clone()
+    }
+    field new_: Rc < DefinitionSetDataTypeConstructor > {
         Rc::new(DefinitionSetDataTypeConstructor {
             set: self_.data_type_ref.set.clone(),
             data_type_index: self_.data_type_ref.data_type_index,
@@ -301,10 +311,10 @@ jswrap!(struct NewDataResult(self_, scope) {
         }
     }
     fn impl_interface(iface_ref: Rc<DefinitionSetInterfaceRef>, record: StagedExpr) -> () {
-        let record_expr = (record.0.as_ref() as &dyn std::any::Any)
-            .downcast_ref::<crate::eval::expr::Expr>()
-            .expect("impl_interface record must be a staged expression");
-
+        let record_expr =
+            (record.0.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<crate::eval::expr::Expr>()
+                .expect("impl_interface record must be a staged expression");
         let record_entries = match &record_expr.r#type {
             crate::eval::expr::Expr_::Record(r) => &r.entries,
             _ => {
@@ -336,7 +346,6 @@ jswrap!(struct NewDataResult(self_, scope) {
             }
             out
         };
-
         let interface_index = iface_ref.interface_index;
 
         // Extract method names and indices from interface (release borrow after)
@@ -346,11 +355,9 @@ jswrap!(struct NewDataResult(self_, scope) {
             let methods = iface.methods.borrow();
             methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
         };
-
         let mut method_impls = Vec::new();
         for (imethod_idx, imethod_name) in &iface_method_names {
-            let entry = record_string_entries.iter()
-                .find(|(k, _)| k == imethod_name);
+            let entry = record_string_entries.iter().find(|(k, _)| k == imethod_name);
             match entry {
                 Some((_, expr)) => {
                     method_impls.push(DefinitionSetDataTypeInterfaceMethodImplData {
@@ -361,12 +368,14 @@ jswrap!(struct NewDataResult(self_, scope) {
                     });
                 },
                 None => {
-                    crate::eval::v8util::throw_error(scope, &format!("Missing implementation for interface method '{}'", imethod_name));
+                    crate::eval::v8util::throw_error(
+                        scope,
+                        &format!("Missing implementation for interface method '{}'", imethod_name)
+                    );
                     return;
                 },
             }
         }
-
         let data_types = self_.data_type_ref.set.data_types.borrow();
         let dt = &data_types[self_.data_type_ref.data_type_index];
         dt.interface_impls.borrow_mut().push(DefinitionSetDataTypeInterfaceImplData {
@@ -377,7 +386,10 @@ jswrap!(struct NewDataResult(self_, scope) {
 });
 
 jswrap!(struct NewDataMethodResult(self_, scope) {
-    data { data_type_ref: Rc<DefinitionSetDataTypeRef>, method_index: usize }
+    data {
+        data_type_ref: Rc < DefinitionSetDataTypeRef >,
+        method_index: usize
+    }
     fn impl_(staged: StagedExpr) -> () {
         let data_types = self_.data_type_ref.set.data_types.borrow();
         let dt = &data_types[self_.data_type_ref.data_type_index];
@@ -411,10 +423,13 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
 });
 
 // --- Interface JsWrap structs ---
-
 jswrap!(struct NewInterfaceResult(self_, scope) {
-    data { interface_ref: Rc<DefinitionSetInterfaceRef> }
-    field type_: Rc<DefinitionSetInterfaceRef> { self_.interface_ref.clone() }
+    data {
+        interface_ref: Rc < DefinitionSetInterfaceRef >
+    }
+    field type_: Rc < DefinitionSetInterfaceRef > {
+        self_.interface_ref.clone()
+    }
     fn set_description(description: String) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];
@@ -444,7 +459,10 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
 });
 
 jswrap!(struct NewInterfaceMethodResult(self_, scope) {
-    data { interface_ref: Rc<DefinitionSetInterfaceRef>, method_index: usize }
+    data {
+        interface_ref: Rc < DefinitionSetInterfaceRef >,
+        method_index: usize
+    }
     fn arg_(type_ref: TypeRef) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];
@@ -479,102 +497,77 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
     }
 });
 
-// --- JsWrap for Rc<DefinitionSetInterfaceRef> ---
-
+// --- JsWrap for Rc`<DefinitionSetInterfaceRef>` ---
 impl JsWrap for Rc<DefinitionSetInterfaceRef> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(super::MortarTypeDefinitionSetInterfaceRef)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }
 
-// --- JsWrap for Rc<DefinitionSetDataTypeRef> ---
-
+// --- JsWrap for Rc`<DefinitionSetDataTypeRef>` ---
 impl JsWrap for Rc<DefinitionSetDataTypeRef> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(super::MortarTypeDefinitionSetDataTypeRef)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }
 
-// --- JsWrap for Rc<DefinitionSetDataTypeConstructor> ---
-
+// --- JsWrap for Rc`<DefinitionSetDataTypeConstructor>` ---
 impl JsWrap for Rc<DefinitionSetDataTypeConstructor> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(super::MortarTypeDefinitionSetDataTypeConstructor)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }
 
-// --- JsWrap for Rc<DefinitionSetExports> ---
-
+// --- JsWrap for Rc`<DefinitionSetExports>` ---
 impl JsWrap for Rc<DefinitionSetExports> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(super::MortarTypeDefinitionSetExports)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }
 
-// --- JsWrap for Rc<DefinitionSetFunction> ---
-
+// --- JsWrap for Rc`<DefinitionSetFunction>` ---
 impl JsWrap for Rc<DefinitionSetFunction> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(super::MortarTypeDefinitionSetFunction)
     }
-    fn from_v8<'s>(
-        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-        value: v8::Local<'s, v8::Value>,
-    ) -> Self {
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::rc_from_v8(&*value)
     }
-    fn into_v8<'s>(
-        self,
-        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    ) -> v8::Local<'s, v8::Value> {
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::rc_to_v8(scope, self).into()
     }
 }

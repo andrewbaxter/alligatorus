@@ -173,7 +173,10 @@ impl Value for Expr {
 pub(crate) struct ExprType;
 
 fn expr_type_identity() -> Unique {
-    Unique::Builtin { file: file!(), line: line!() as usize }
+    Unique::Builtin {
+        file: file!(),
+        line: line!() as usize,
+    }
 }
 
 impl Value for ExprType {
@@ -182,9 +185,9 @@ impl Value for ExprType {
     }
 }
 
-/// Stored in JsCodeExternal during eval_half. Value is taken out via
-/// `rc_from_v8` + `borrow_mut().take()` — a safe take-once pattern that
-/// panics on double-consume instead of double-freeing.
+/// Stored in JsCodeExternal during eval_half. Value is taken out via `rc_from_v8`
+/// + `borrow_mut().take()` — a safe take-once pattern that panics on
+/// double-consume instead of double-freeing.
 pub(crate) struct StagedExprCell {
     pub value: RefCell<Option<Box<dyn Value>>>,
 }
@@ -217,15 +220,17 @@ impl Type for ExprType {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
-            let expr = (cv.value.as_ref() as &dyn Any)
-                .downcast_ref::<Expr>()
-                .expect("ExprType value must be an Expr")
-                .clone();
+            let expr =
+                (cv.value.as_ref() as &dyn Any)
+                    .downcast_ref::<Expr>()
+                    .expect("ExprType value must be an Expr")
+                    .clone();
             return EvalRes::ok(CodeValue {
                 code: cv.code.clone(),
                 value: Box::new(expr),
             });
         }
+
         // Wrap any non-Expr value as a literal Expr that reproduces the value
         let type_rc = cv.value.type_(xx, loc);
         let expr = Expr {
@@ -245,9 +250,7 @@ impl Aspect for ExprType { }
 
 impl AspectConsumeJs for ExprType {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        let cell = Rc::new(StagedExprCell {
-            value: RefCell::new(Some(cv.value)),
-        });
+        let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
         let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
         xx.vx.externals.borrow_mut().push((id, cell));
         EResult::ok(JsCode {
@@ -271,11 +274,10 @@ impl AspectLiftJs for ExprType {
     }
 }
 
-/// Placeholder value for stage results. Its type exposes AspectLiftJs
-/// (to extract the Expr from the v8::External returned by __stage) but
-/// NOT AspectConsumeJs (so eval() preserves the StageCall JsCode).
+/// Placeholder value for stage results. Its type exposes AspectLiftJs (to extract
+/// the Expr from the v8::External returned by __stage) but NOT AspectConsumeJs (so
+/// eval() preserves the Call JsCode).
 pub(crate) struct StagedExprPlaceholder;
-
 struct StagedExprPlaceholderType;
 
 impl Value for StagedExprPlaceholder {
@@ -311,7 +313,7 @@ impl Type for StagedExprPlaceholderType {
     }
 }
 
-impl Aspect for StagedExprPlaceholderType {}
+impl Aspect for StagedExprPlaceholderType { }
 
 impl AspectLiftJs for StagedExprPlaceholderType {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {

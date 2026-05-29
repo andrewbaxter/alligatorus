@@ -60,7 +60,6 @@ use {
 };
 
 // --- MortarTypeDefinitionSetFunction: eval_half type of a function ref ---
-
 pub(crate) struct MortarTypeDefinitionSetFunction;
 
 impl Value for MortarTypeDefinitionSetFunction {
@@ -117,7 +116,10 @@ impl AspectBindJs for MortarTypeDefinitionSetFunction {
 impl AspectJsStackValue for MortarTypeDefinitionSetFunction {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
         CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetFunction),
@@ -144,7 +146,6 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
 }
 
 // --- DefinitionSetFunction as Type: used after lift ---
-
 impl Value for DefinitionSetFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::type_ref::TypeType)
@@ -182,7 +183,6 @@ impl Type for DefinitionSetFunction {
 
 impl Aspect for DefinitionSetFunction { }
 
-
 impl AspectFunction for DefinitionSetFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Ensure scope entry IDs are allocated
@@ -199,10 +199,10 @@ impl AspectFunction for DefinitionSetFunction {
         // Register with eval context (dedup)
         {
             let mut sets = xx.vx.definition_sets.borrow_mut();
-            let already = sets.iter().any(|s| std::ptr::eq(
-                &**s as *const DefinitionSet,
-                &*self.set as *const DefinitionSet,
-            ));
+            let already =
+                sets
+                    .iter()
+                    .any(|s| std::ptr::eq(&**s as *const DefinitionSet, &*self.set as *const DefinitionSet));
             if !already {
                 sets.push(self.set.clone());
             }
@@ -212,28 +212,24 @@ impl AspectFunction for DefinitionSetFunction {
         let (scope_id, arg_type, ret_type) = {
             let functions = self.set.functions.borrow();
             let fd = &functions[self.func_index];
-            let sid = fd.scope_entry_id.get()
-                .expect("Definition set function not registered");
+            let sid = fd.scope_entry_id.get().expect("Definition set function not registered");
             let arg_type = fd.arg_type.borrow().clone().expect("Definition set function missing arg type");
             let ret_type = fd.ret_type.borrow().clone().expect("Definition set function missing return type");
             (sid, arg_type, ret_type)
         };
-
         return er_seq_cv!(loc, erb, {
-
             // Handle argument
             let mut js_args = vec![];
             let arg_value_type = argument.value.type_(xx, loc);
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
                 let elements = arg_tuple.take_elements(argument.value);
+
                 // Empty tuple calling a null-arg function → zero JS args
                 let is_null_arg = aspect_null_get_maybe(xx, arg_type.as_ref()).is_some();
                 if elements.is_empty() && is_null_arg {
                     // No args needed, no args provided
                 } else if elements.len() != 1 {
-                    return erb.err_new(
-                        format!("Function expects 1 argument, got {}", elements.len())
-                    );
+                    return erb.err_new(format!("Function expects 1 argument, got {}", elements.len()));
                 } else {
                     let elem = elements.into_iter().next().unwrap();
                     let cv = match elem.v {
@@ -255,10 +251,8 @@ impl AspectFunction for DefinitionSetFunction {
                 let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
                 js_args.push(js);
             }
-
             let ret_type_rc: Rc<dyn Type> = ret_type;
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, ret_type_rc.as_ref()))?;
-
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
                 type_: JsCodeType::Call(JsCodeCall {
