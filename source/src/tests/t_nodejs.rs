@@ -33,12 +33,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                 mb.tuple(
                     vec![
                         mb.str("call"),
-                        mb.record(
-                            vec![
-                                ("func", mb.scope_use("code")),
-                                ("arg", mb.scope_use("code"))
-                            ]
-                        )
+                        mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))])
                     ]
                 )
             )
@@ -125,10 +120,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                 mb.str("")
                             )
                         ),
-                        mb.call(
-                            mb.field(mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("out")), mb.str("push")),
-                            mb.scope_use("key")
-                        ),
                         mb.set(
                             mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
                             mb.operator_add(
@@ -140,8 +131,13 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str("let ")),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.scope_use("key")),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n{\n")),
-                        mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.scope_use("key")),
-                        mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(" = ")),
+                        mb.bind(
+                            "value",
+                            mb.call(
+                                mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
+                                mb.tuple(vec![mb.scope_use("key"), mb.str(" = "),])
+                            )
+                        ),
                         mb.match_(
                             mb.field(mb.scope_use("arg"), mb.str("code")),
                             mb.str("code"),
@@ -180,17 +176,17 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                                     )
                                                 )
                                             ),
-                                            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str("(")),
+                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str("(")),
                                             mb.call(
-                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
                                                 mb.scope_use("func")
                                             ),
-                                            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(")(")),
+                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")(")),
                                             mb.call(
-                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
                                                 mb.scope_use("rendered_arg")
                                             ),
-                                            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(")")),
+                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")")),
                                         ]
                                     ),
                                 ),
@@ -199,7 +195,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                     mb.block(
                                         vec![
                                             mb.call(
-                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
                                                 mb.call(mb.scope_use("str_to_json"), mb.scope_use("code"))
                                             )
                                         ]
@@ -240,12 +236,12 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                                 )
                                             ),
                                             mb.call(
-                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
                                                 mb.scope_use("base")
                                             ),
-                                            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(".")),
+                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(".")),
                                             mb.call(
-                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
                                                 mb.scope_use("field")
                                             ),
                                         ]
@@ -256,7 +252,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                     mb.block(
                                         vec![
                                             mb.call(
-                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
                                                 mb.scope_use("code")
                                             ),
                                         ]
@@ -264,6 +260,10 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                 ),
                             ],
                             None
+                        ),
+                        mb.call(
+                            mb.field(mb.scope_use("out"), mb.str("push")),
+                            mb.call(mb.field(mb.scope_use("value"), mb.str("join")), mb.str(""))
                         ),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n}\n")),
                         mb.scope_use("key")
@@ -382,13 +382,17 @@ let e2;
 {
 e2 = console;
 }
-e1 = e2.log;
-}
 let e3;
 {
-e3 = "Hello world (node)";
+e3 = "log";
 }
-e0 = (e1)(e3);
+e1 = e2.e3;
 }
-e0;"#);
+let e4;
+{
+e4 = "Hello world (node)";
+}
+e0 = (e1)(e4);
+}
+e0"#);
 }
