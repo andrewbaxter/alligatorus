@@ -44,6 +44,7 @@ use {
             TAG_VAR,
             JsCode,
             JsCodeBind,
+            JsCodeBindingUse,
             JsCodeBlock,
             JsCodeBlockEntry,
             JsCodeIf,
@@ -52,6 +53,7 @@ use {
             JsCodeNewObject,
             JsCodeOperatorAdd,
             JsCodeOperatorLt,
+            JsCodeStageCall,
             JsCodeType,
         },
         langhelp::{
@@ -305,6 +307,13 @@ pub(crate) trait Target {
         cases: Vec<(String, Rc<dyn Type>, &Expr)>,
         fallback: Option<&Expr>,
     ) -> EvalRes;
+    fn stage(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        tree: Expr,
+        lower_values: Vec<CodeValue>,
+    ) -> EvalRes;
 }
 pub(crate) struct MortarTarget;
 
@@ -499,6 +508,108 @@ impl Target for MortarTarget {
         });
     }
 
+    fn stage(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        tree: Expr,
+        lower_values: Vec<CodeValue>,
+    ) -> EvalRes {
+        // Store tree as external
+        let tree_cell = Rc::new(expr::StagedExprCell {
+            value: RefCell::new(Some(Box::new(tree))),
+        });
+        let tree_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+        xx.vx.externals.borrow_mut().push((tree_id, tree_cell));
+        let tree_js = JsCode {
+            loc,
+            type_: JsCodeType::BindingUse(JsCodeBindingUse { id: tree_id }),
+        };
+
+        // For each lower value, produce JsCode that evaluates to a
+        // StagedExprCell External. Values already resolved (Code_::None)
+        // are stored directly. Values needing v8 evaluation get their
+        // AspectLiftJs stored as an external; a JsCode::Call to __wrap
+        // converts the v8 result into a StagedExprCell External.
+        let mut value_js_codes = Vec::new();
+        return er_seq_cv!(loc, erb, {
+        for cv in lower_values {
+            let vtype = cv.value.type_(xx, loc);
+            match cv.code.code {
+                Code_::None => {
+                    let cell = Rc::new(expr::StagedExprCell {
+                        value: RefCell::new(Some(cv.value)),
+                    });
+                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                    xx.vx.externals.borrow_mut().push((id, cell));
+                    value_js_codes.push(JsCode {
+                        loc,
+                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
+                    });
+                },
+                Code_::Dyn(_) => {
+                    // Store the lift aspect as an external
+                    let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
+                    let lift_cell = Rc::new(StageLiftCell { lift });
+                    let lift_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                    xx.vx.externals.borrow_mut().push((lift_id, lift_cell));
+
+                    // Get the JsCode that produces the raw v8 value
+                    let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+                        erb.must_er(consume.to_js(xx, loc, cv))?
+                    } else {
+                        erb.must_er(cv.code.cast::<JsCode>())?.unwrap().clone()
+                    };
+
+                    // __wrap(lift_external, raw_value) → StagedExprCell External
+                    value_js_codes.push(JsCode {
+                        loc,
+                        type_: JsCodeType::Call(crate::jscode::JsCodeCall {
+                            func: Box::new(JsCode {
+                                loc,
+                                type_: JsCodeType::BindingUse(JsCodeBindingUse {
+                                    id: ScopeEntryId(STAGE_WRAP_SCOPE_ID),
+                                }),
+                            }),
+                            args: vec![
+                                JsCode {
+                                    loc,
+                                    type_: JsCodeType::BindingUse(JsCodeBindingUse { id: lift_id }),
+                                },
+                                inner_js,
+                            ],
+                        }),
+                    });
+                },
+            }
+        }
+
+        let stage_js = JsCode {
+            loc,
+            type_: JsCodeType::StageCall(JsCodeStageCall {
+                tree: Box::new(tree_js),
+                values: value_js_codes,
+            }),
+        };
+
+        return Ok(CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(stage_js)),
+            },
+            value: Box::new(expr::StagedExprPlaceholder),
+        });
+        });
+    }
+
+}
+
+/// Well-known scope entry ID for the __wrap function (not a real scope entry).
+const STAGE_WRAP_SCOPE_ID: usize = usize::MAX;
+
+/// Holds an AspectLiftJs, stored as a v8::External so __wrap can use it.
+pub(crate) struct StageLiftCell {
+    pub lift: Box<dyn crate::builtin::AspectLiftJs>,
 }
 
 fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
@@ -619,26 +730,33 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             });
         },
         Expr_::Stage(e) => {
-            let cix = &xx.vx.ix;
-            let import_state = xx.import_state.get();
-            let resolved = match substitute_lowers(cix, import_state, &e.expr) {
-                Ok(e) => e,
-                Err(errors) => return EvalRes {
-                    v: None,
-                    errors,
-                },
-            };
-            return EvalRes::ok(CodeValue {
-                code: Code {
-                    loc: expr.loc,
-                    code: Code_::None,
-                },
-                value: Box::new(resolved),
+            // Find matched lowers at net depth 1 within this stage's inner tree
+            let matched_lower_exprs = find_matched_lowers(&e.expr, 0, 0);
+            if matched_lower_exprs.is_empty() {
+                // No matched lowers - return the inner tree as-is
+                return EvalRes::ok(CodeValue {
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::None,
+                    },
+                    value: Box::new(e.expr.as_ref().clone()),
+                });
+            }
+            // half_eval each matched lower's inner expression
+            return er_seq_cv!(expr.loc, erb, {
+                let mut lower_values = Vec::new();
+                for lower_inner in &matched_lower_exprs {
+                    let cv = erb.must_er(eval_half(xx, lower_inner, target))?;
+                    lower_values.push(cv);
+                }
+                let v = erb.must_er(target.stage(xx, expr.loc, e.expr.as_ref().clone(), lower_values))?;
+                return Ok(v);
             });
         },
-        Expr_::Lower(_) => 
-        // Just a marker for replacement
-        unreachable!(),
+        Expr_::Lower(e) => {
+            // Transparently evaluate inner expression
+            return eval_half(xx, &e.expr, target);
+        },
         Expr_::Tuple(t) => {
             let elements: Vec<EvalRes> = t.elements.iter().map(|e| eval_half(xx, e, target)).collect();
             return EvalRes::ok(CodeValue {
@@ -865,185 +983,312 @@ pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     return format!("{}{}", BINDING_PREFIX, e.0);
 }
 
-fn substitute_lowers(
-    cix: &Rc<CompileImportContext>,
-    import_state: ImportStateId,
-    expr: &Expr,
-) -> Result<Expr, Vec<ExprErr>> {
+/// Walk the expression tree counting stage/lower nesting depths.
+/// Returns the max (lower_depth - stage_depth) where lower_depth > stage_depth.
+/// This tells us how many extra `stage` wrappers are needed at the root.
+fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
+    fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
+        match &expr.r#type {
+            Expr_::Lower(e) => {
+                let new_ld = ld + 1;
+                let excess = new_ld.saturating_sub(sd);
+                excess.max(max_lower_excess(&e.expr, sd, new_ld))
+            },
+            Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
+            Expr_::Literal(_) | Expr_::ScopeUse(_) => 0,
+            Expr_::Call(c) => {
+                max_lower_excess(&c.func, sd, ld)
+                    .max(max_lower_excess(&c.arg, sd, ld))
+            },
+            Expr_::Bind(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.value, sd, ld))
+            },
+            Expr_::Set(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.value, sd, ld))
+            },
+            Expr_::Field(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.key, sd, ld))
+            },
+            Expr_::Block(e) => {
+                e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
+            },
+            Expr_::Tuple(t) => {
+                t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
+            },
+            Expr_::Record(r) => {
+                r.entries.iter().map(|(k, v)| {
+                    max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
+                }).max().unwrap_or(0)
+            },
+            Expr_::If(e) => {
+                let mut m = 0;
+                for b in &e.conditions {
+                    m = m.max(max_lower_excess(&b.condition, sd, ld));
+                    m = m.max(max_lower_excess(&b.body, sd, ld));
+                }
+                if let Some(el) = &e.else_ {
+                    m = m.max(max_lower_excess(el, sd, ld));
+                }
+                m
+            },
+            Expr_::OperatorLt(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.reference, sd, ld))
+            },
+            Expr_::OperatorAdd(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.reference, sd, ld))
+            },
+            Expr_::Foreach(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.element_key, sd, ld))
+                    .max(max_lower_excess(&e.body, sd, ld))
+            },
+            Expr_::Match(e) => {
+                let mut m = max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.element_key, sd, ld));
+                for c in &e.cases {
+                    m = m.max(max_lower_excess(&c.condition, sd, ld));
+                    m = m.max(max_lower_excess(&c.body, sd, ld));
+                }
+                if let Some(f) = &e.fallback {
+                    m = m.max(max_lower_excess(f, sd, ld));
+                }
+                m
+            },
+        }
+    }
+    recurse_children(expr, stage_depth, lower_depth)
+}
+
+/// Walk an expression tree and collect references to the inner expressions of
+/// Lower nodes at net depth 1 (lower_depth - stage_depth == 1, starting from 0).
+/// Does not descend into matched Lower nodes.
+fn find_matched_lowers<'a>(expr: &'a Expr, stage_depth: usize, lower_depth: usize) -> Vec<&'a Expr> {
+    let mut result = Vec::new();
+    find_matched_lowers_inner(expr, stage_depth, lower_depth, &mut result);
+    result
+}
+
+fn find_matched_lowers_inner<'a>(expr: &'a Expr, sd: usize, ld: usize, out: &mut Vec<&'a Expr>) {
     match &expr.r#type {
         Expr_::Lower(e) => {
-            let resolved_inner = substitute_lowers(cix, import_state, &e.expr)?;
-            let eval_result = eval(cix, import_state, &resolved_inner)?;
-            let value: Box<dyn Value> = eval_result.value;
-            if let Some(expr) = (value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
-                Ok(expr.clone())
+            let new_ld = ld + 1;
+            if new_ld - sd == 1 {
+                // Matched! Collect the inner expression. Don't descend further.
+                out.push(&e.expr);
             } else {
-                let value_cell = Rc::new(RefCell::new(Some(value)));
-                Ok(Expr {
-                    loc: expr.loc,
-                    r#type: Expr_::Literal(Rc::new(move || {
-                        value_cell.borrow_mut().take().expect("Lower literal consumed twice")
-                    })),
-                })
+                find_matched_lowers_inner(&e.expr, sd, new_ld, out);
             }
         },
-        Expr_::Stage(_) => Ok(expr.clone()),
-        Expr_::Literal(_) => Ok(expr.clone()),
-        Expr_::ScopeUse(_) => Ok(expr.clone()),
+        Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
+        Expr_::Literal(_) | Expr_::ScopeUse(_) => {},
         Expr_::Call(c) => {
-            let func = substitute_lowers(cix, import_state, &c.func)?;
-            let arg = substitute_lowers(cix, import_state, &c.arg)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Call(ExprCall {
-                    func: Rc::new(func),
-                    arg: Rc::new(arg),
-                }),
-            })
+            find_matched_lowers_inner(&c.func, sd, ld, out);
+            find_matched_lowers_inner(&c.arg, sd, ld, out);
         },
         Expr_::Bind(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let value = substitute_lowers(cix, import_state, &e.value)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Bind(ExprBind {
-                    base: Rc::new(base),
-                    value: Rc::new(value),
-                }),
-            })
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.value, sd, ld, out);
         },
         Expr_::Set(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let value = substitute_lowers(cix, import_state, &e.value)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Set(ExprSet {
-                    base: Rc::new(base),
-                    value: Rc::new(value),
-                }),
-            })
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.value, sd, ld, out);
         },
         Expr_::Field(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let key = substitute_lowers(cix, import_state, &e.key)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Field(ExprField {
-                    base: Rc::new(base),
-                    key: Rc::new(key),
-                }),
-            })
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.key, sd, ld, out);
         },
         Expr_::Block(e) => {
-            let mut resolved = Vec::new();
             for sub in &e.exprs {
-                resolved.push(substitute_lowers(cix, import_state, sub)?);
+                find_matched_lowers_inner(sub, sd, ld, out);
             }
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Block(ExprBlock { exprs: resolved }),
-            })
         },
         Expr_::Tuple(t) => {
-            let mut elements = Vec::new();
             for e in &t.elements {
-                elements.push(substitute_lowers(cix, import_state, e)?);
+                find_matched_lowers_inner(e, sd, ld, out);
             }
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Tuple(ExprTuple { elements }),
-            })
         },
         Expr_::Record(r) => {
-            let mut entries = Vec::new();
-            for (k, e) in &r.entries {
-                entries.push(
-                    (substitute_lowers(cix, import_state, k)?, substitute_lowers(cix, import_state, e)?),
-                );
+            for (k, v) in &r.entries {
+                find_matched_lowers_inner(k, sd, ld, out);
+                find_matched_lowers_inner(v, sd, ld, out);
             }
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Record(expr::ExprRecord { entries }),
-            })
         },
         Expr_::If(e) => {
-            let mut conditions = Vec::new();
             for b in &e.conditions {
-                conditions.push(expr::ExprConditionBranch {
-                    condition: substitute_lowers(cix, import_state, &b.condition)?,
-                    body: substitute_lowers(cix, import_state, &b.body)?,
-                });
+                find_matched_lowers_inner(&b.condition, sd, ld, out);
+                find_matched_lowers_inner(&b.body, sd, ld, out);
             }
-            let else_ = match &e.else_ {
-                Some(e) => Some(Rc::new(substitute_lowers(cix, import_state, e)?)),
-                None => None,
-            };
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::If(expr::ExprIf { conditions, else_ }),
-            })
+            if let Some(el) = &e.else_ {
+                find_matched_lowers_inner(el, sd, ld, out);
+            }
         },
         Expr_::OperatorLt(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let reference = substitute_lowers(cix, import_state, &e.reference)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
-                    base: Rc::new(base),
-                    reference: Rc::new(reference),
-                }),
-            })
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.reference, sd, ld, out);
         },
         Expr_::OperatorAdd(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let reference = substitute_lowers(cix, import_state, &e.reference)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
-                    base: Rc::new(base),
-                    reference: Rc::new(reference),
-                }),
-            })
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.reference, sd, ld, out);
         },
         Expr_::Foreach(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let element_key = substitute_lowers(cix, import_state, &e.element_key)?;
-            let body = substitute_lowers(cix, import_state, &e.body)?;
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Foreach(ExprForeach {
-                    base: Rc::new(base),
-                    element_key: Rc::new(element_key),
-                    body: Rc::new(body),
-                }),
-            })
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.element_key, sd, ld, out);
+            find_matched_lowers_inner(&e.body, sd, ld, out);
         },
         Expr_::Match(e) => {
-            let base = substitute_lowers(cix, import_state, &e.base)?;
-            let element_key = substitute_lowers(cix, import_state, &e.element_key)?;
-            let mut cases = Vec::new();
+            find_matched_lowers_inner(&e.base, sd, ld, out);
+            find_matched_lowers_inner(&e.element_key, sd, ld, out);
             for c in &e.cases {
-                cases.push(ExprMatchBranch {
-                    condition: substitute_lowers(cix, import_state, &c.condition)?,
-                    body: substitute_lowers(cix, import_state, &c.body)?,
-                });
+                find_matched_lowers_inner(&c.condition, sd, ld, out);
+                find_matched_lowers_inner(&c.body, sd, ld, out);
             }
-            let fallback = match &e.fallback {
-                Some(f) => Some(Rc::new(substitute_lowers(cix, import_state, f)?)),
-                None => None,
-            };
-            Ok(Expr {
-                loc: expr.loc,
-                r#type: Expr_::Match(ExprMatch {
-                    base: Rc::new(base),
-                    element_key: Rc::new(element_key),
-                    cases,
-                    fallback,
-                }),
-            })
+            if let Some(f) = &e.fallback {
+                find_matched_lowers_inner(f, sd, ld, out);
+            }
         },
     }
 }
+
+/// Clone an expression tree, replacing Lower nodes at net depth 1
+/// (lower_depth - stage_depth == 1) with Expr values from the iterator.
+fn clone_with_lower_substitutions(
+    expr: &Expr,
+    sd: usize,
+    ld: usize,
+    values: &mut dyn Iterator<Item = Box<dyn Value>>,
+) -> Expr {
+    match &expr.r#type {
+        Expr_::Lower(e) => {
+            let new_ld = ld + 1;
+            if new_ld - sd == 1 {
+                let value = values.next().expect("Not enough lower values for substitution");
+                if let Some(expr_val) = (value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
+                    expr_val.clone()
+                } else {
+                    let value_cell = Rc::new(RefCell::new(Some(value)));
+                    Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Literal(Rc::new(move || {
+                            value_cell.borrow_mut().take().expect("Lower literal consumed twice")
+                        })),
+                    }
+                }
+            } else {
+                Expr {
+                    loc: expr.loc,
+                    r#type: Expr_::Lower(ExprLower {
+                        expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, new_ld, values)),
+                    }),
+                }
+            }
+        },
+        Expr_::Stage(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Stage(ExprStage {
+                expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values)),
+            }),
+        },
+        Expr_::Literal(_) | Expr_::ScopeUse(_) => expr.clone(),
+        Expr_::Call(c) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Call(ExprCall {
+                func: Rc::new(clone_with_lower_substitutions(&c.func, sd, ld, values)),
+                arg: Rc::new(clone_with_lower_substitutions(&c.arg, sd, ld, values)),
+            }),
+        },
+        Expr_::Bind(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Bind(ExprBind {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
+            }),
+        },
+        Expr_::Set(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Set(ExprSet {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
+            }),
+        },
+        Expr_::Field(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Field(ExprField {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                key: Rc::new(clone_with_lower_substitutions(&e.key, sd, ld, values)),
+            }),
+        },
+        Expr_::Block(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Block(ExprBlock {
+                exprs: e.exprs.iter().map(|sub| clone_with_lower_substitutions(sub, sd, ld, values)).collect(),
+            }),
+        },
+        Expr_::Tuple(t) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Tuple(ExprTuple {
+                elements: t.elements.iter().map(|e| clone_with_lower_substitutions(e, sd, ld, values)).collect(),
+            }),
+        },
+        Expr_::Record(r) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Record(expr::ExprRecord {
+                entries: r.entries.iter().map(|(k, v)| {
+                    (clone_with_lower_substitutions(k, sd, ld, values), clone_with_lower_substitutions(v, sd, ld, values))
+                }).collect(),
+            }),
+        },
+        Expr_::If(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::If(expr::ExprIf {
+                conditions: e.conditions.iter().map(|b| expr::ExprConditionBranch {
+                    condition: clone_with_lower_substitutions(&b.condition, sd, ld, values),
+                    body: clone_with_lower_substitutions(&b.body, sd, ld, values),
+                }).collect(),
+                else_: e.else_.as_ref().map(|el| Rc::new(clone_with_lower_substitutions(el, sd, ld, values))),
+            }),
+        },
+        Expr_::OperatorLt(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
+            }),
+        },
+        Expr_::OperatorAdd(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
+            }),
+        },
+        Expr_::Foreach(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Foreach(ExprForeach {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
+                body: Rc::new(clone_with_lower_substitutions(&e.body, sd, ld, values)),
+            }),
+        },
+        Expr_::Match(e) => Expr {
+            loc: expr.loc,
+            r#type: Expr_::Match(ExprMatch {
+                base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
+                cases: e.cases.iter().map(|c| ExprMatchBranch {
+                    condition: clone_with_lower_substitutions(&c.condition, sd, ld, values),
+                    body: clone_with_lower_substitutions(&c.body, sd, ld, values),
+                }).collect(),
+                fallback: e.fallback.as_ref().map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values))),
+            }),
+        },
+    }
+}
+
 
 struct EvalResult {
     value: Box<dyn Value>,
@@ -1116,6 +1361,7 @@ fn eval(
         ConstKey::String("list".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
     );
+
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {
         vx: ex.clone(),
@@ -1405,15 +1651,92 @@ fn eval(
     } else {
         code1.push(root_loc, "null;".to_string());
     }
+    // Register __stage and __wrap v8 functions
+    {
+        fn stage_callback<'s>(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            let tree_cell: Rc<expr::StagedExprCell> = rc_from_v8(&*args.get(0));
+            let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
+            let tree = (tree_value.as_ref() as &dyn Any)
+                .downcast_ref::<Expr>()
+                .expect("stage tree must be an Expr")
+                .clone();
+
+            let values_obj = v8::Local::<v8::Array>::try_from(args.get(1))
+                .expect("stage arg 1 must be an array");
+            let mut values: Vec<Box<dyn Value>> = Vec::new();
+            for i in 0..values_obj.length() {
+                let v = values_obj.get_index(scope, i).unwrap();
+                let cell: Rc<expr::StagedExprCell> = rc_from_v8(&*v);
+                values.push(
+                    cell.value.borrow_mut().take()
+                        .expect("stage lower value already consumed"),
+                );
+            }
+
+            let new_tree = clone_with_lower_substitutions(
+                &tree, 0, 0,
+                &mut values.into_iter(),
+            );
+
+            let result_cell = Rc::new(expr::StagedExprCell {
+                value: RefCell::new(Some(Box::new(new_tree))),
+            });
+            let ext = rc_to_v8(scope, result_cell);
+            rv.set(ext.into());
+        }
+
+        fn wrap_callback<'s>(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            let lift_cell: Rc<StageLiftCell> = rc_from_v8(&*args.get(0));
+            let raw_value = args.get(1);
+            let value = lift_cell.lift.lift(&*scope, raw_value)
+                .expect("__wrap: lift failed");
+            let result_cell = Rc::new(expr::StagedExprCell {
+                value: RefCell::new(Some(value)),
+            });
+            let ext = rc_to_v8(scope, result_cell);
+            rv.set(ext.into());
+        }
+
+        let stage_fn = v8::Function::builder(stage_callback).build(js_scope).unwrap();
+        js_scope.get_current_context().global(js_scope).set(
+            js_scope,
+            v8::String::new(js_scope, "__stage").unwrap().cast(),
+            stage_fn.into(),
+        );
+
+        let wrap_fn = v8::Function::builder(wrap_callback).build(js_scope).unwrap();
+        js_scope.get_current_context().global(js_scope).set(
+            js_scope,
+            v8::String::new(js_scope, &scope_entry_id_js_key(ScopeEntryId(STAGE_WRAP_SCOPE_ID))).unwrap().cast(),
+            wrap_fn.into(),
+        );
+    }
+
     // Set externals as globals before running the script
     for (id, value) in ex.externals.borrow().iter() {
-        let cell: Rc<expr::StagedExprCell> =
-            value.clone().downcast::<expr::StagedExprCell>().expect("External must hold StagedExprCell");
-        let ext = rc_to_v8(js_scope, cell);
-        js_scope
-            .get_current_context()
-            .global(js_scope)
-            .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
+        if let Ok(cell) = value.clone().downcast::<expr::StagedExprCell>() {
+            let ext = rc_to_v8(js_scope, cell);
+            js_scope
+                .get_current_context()
+                .global(js_scope)
+                .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
+        } else if let Ok(cell) = value.clone().downcast::<StageLiftCell>() {
+            let ext = rc_to_v8(js_scope, cell);
+            js_scope
+                .get_current_context()
+                .global(js_scope)
+                .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
+        } else {
+            panic!("External must hold StagedExprCell or StageLiftCell");
+        }
     }
     let js_source = code1.lines.join("\n");
     eprintln!("source: [[{}]]", js_source);
@@ -1613,6 +1936,14 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, "} }".to_string());
         },
+        JsCodeType::StageCall(c) => {
+            let tree_var = render_code(lines, &c.tree);
+            let mut value_vars = vec![];
+            for v in &c.values {
+                value_vars.push(render_code(lines, v));
+            }
+            lines.push(code.loc, format!("{} = __stage({}, [{}]);", out, tree_var, value_vars.join(", ")));
+        },
     }
     return out;
 }
@@ -1628,61 +1959,93 @@ pub async fn compile_importid(
         compile_path: compile_path,
         next_unique_id: Default::default(),
     });
-    let root_expr = match source {
+    let mut root_expr = match source {
         Module::V1(e) => e,
     };
-    let root_expr = match substitute_lowers(&cix, import_state, &root_expr) {
-        Ok(e) => e,
-        Err(errors) => return CompileRes {
-            logs: vec![],
-            result: CompileResResult::Err(errors),
-        },
-    };
     let root_loc = root_expr.loc;
-    let eval_result = match eval(&cix, import_state, &root_expr) {
-        Ok(v) => v,
-        Err(errors) => return CompileRes {
-            logs: vec![],
-            result: CompileResResult::Err(errors),
-        },
-    };
-    let logs = eval_result.logs;
 
-    // Serialize result
-    let ex = Rc::new(EvalContext {
-        ix: cix.clone(),
-        next_scope_entry_id: Default::default(),
-        definition_sets: RefCell::new(Vec::new()),
-        externals: RefCell::new(Vec::new()),
-    });
-    let xx = Rc::new(ExprContext {
-        vx: ex,
-        import_state: Rc::new(Cell::new(import_state)),
-        scope: Rc::new(Scope {
-            values: RefCell::new(HashMap::new()),
-            parent: None,
-        }),
-    });
-    let value_type = eval_result.value.type_(&xx, root_loc);
-    let value_serial = match aspect_serial_get(&xx, root_loc, value_type.as_ref()).into_res() {
-        Ok(v) => v,
-        Err(e) => return CompileRes {
-            logs,
-            result: CompileResResult::Err(e),
-        },
-    };
-    let mut artifacts = fx.artifacts.write().unwrap();
-    let value = match value_serial.to_serial(&mut artifacts, eval_result.value).into_res() {
-        Ok(v) => v,
-        Err(e) => return CompileRes {
-            logs,
-            result: CompileResResult::Err(e),
-        },
-    };
-    return CompileRes {
-        logs,
-        result: CompileResResult::Ok(value),
-    };
+    // Step 1: Count lower excess and wrap root in stage layers
+    // Root is treated as implicit stage (stage_depth=1)
+    let excess = max_lower_excess(&root_expr, 0, 0);
+    for _ in 0..excess {
+        root_expr = Expr {
+            loc: root_loc,
+            r#type: Expr_::Stage(ExprStage {
+                expr: Rc::new(root_expr),
+            }),
+        };
+    }
+
+    // Step 2: Repeatedly eval until root is no longer a Stage, then once more
+    let mut all_logs = Vec::new();
+    loop {
+        let is_stage = matches!(&root_expr.r#type, Expr_::Stage(_));
+        let eval_result = match eval(&cix, import_state, &root_expr) {
+            Ok(v) => v,
+            Err(errors) => return CompileRes {
+                logs: all_logs,
+                result: CompileResResult::Err(errors),
+            },
+        };
+        let eval_value = eval_result.value;
+        all_logs.extend(eval_result.logs);
+        if !is_stage {
+            // This was the final eval (root was not a stage)
+            // Serialize result
+            let logs = all_logs;
+            let ex = Rc::new(EvalContext {
+                ix: cix.clone(),
+                next_scope_entry_id: Default::default(),
+                definition_sets: RefCell::new(Vec::new()),
+                externals: RefCell::new(Vec::new()),
+            });
+            let xx = Rc::new(ExprContext {
+                vx: ex,
+                import_state: Rc::new(Cell::new(import_state)),
+                scope: Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: None,
+                }),
+            });
+            let value_type = eval_value.type_(&xx, root_loc);
+            let value_serial = match aspect_serial_get(&xx, root_loc, value_type.as_ref()).into_res() {
+                Ok(v) => v,
+                Err(e) => return CompileRes {
+                    logs,
+                    result: CompileResResult::Err(e),
+                },
+            };
+            let mut artifacts = fx.artifacts.write().unwrap();
+            let value = match value_serial.to_serial(&mut artifacts, eval_value).into_res() {
+                Ok(v) => v,
+                Err(e) => return CompileRes {
+                    logs,
+                    result: CompileResResult::Err(e),
+                },
+            };
+            return CompileRes {
+                logs,
+                result: CompileResResult::Ok(value),
+            };
+        }
+        // Result is an Expr (from stage eval) - use it as next expression
+        let next_expr = match (eval_value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
+            Some(expr) => expr.clone(),
+            None => {
+                // Value is not an Expr - this shouldn't happen for stage results
+                return CompileRes {
+                    logs: all_logs,
+                    result: CompileResResult::Err(vec![ExprErr {
+                        loc: root_loc,
+                        errors: vec![ExprSubErr::Opaque(
+                            "Stage eval produced non-Expr value".to_string(),
+                        )],
+                    }]),
+                };
+            },
+        };
+        root_expr = next_expr;
+    }
 }
 
 pub fn setup_v8() {

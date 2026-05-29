@@ -270,3 +270,52 @@ impl AspectLiftJs for ExprType {
         Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }
+
+/// Placeholder value for stage results. Its type exposes AspectLiftJs
+/// (to extract the Expr from the v8::External returned by __stage) but
+/// NOT AspectConsumeJs (so eval() preserves the StageCall JsCode).
+pub(crate) struct StagedExprPlaceholder;
+
+struct StagedExprPlaceholderType;
+
+impl Value for StagedExprPlaceholder {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(StagedExprPlaceholderType)
+    }
+}
+
+impl Value for StagedExprPlaceholderType {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeType)
+    }
+}
+
+impl Type for StagedExprPlaceholderType {
+    fn desc(&self) -> String {
+        "stage result".to_string()
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_lift_js_aspect_id() {
+            return Some(Box::new(Box::new(StagedExprPlaceholderType) as Box<dyn AspectLiftJs>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert stage result".to_string())
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to stage result".to_string())
+    }
+}
+
+impl Aspect for StagedExprPlaceholderType {}
+
+impl AspectLiftJs for StagedExprPlaceholderType {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+        let cell: Rc<StagedExprCell> = rc_from_v8(&value);
+        Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
+    }
+}

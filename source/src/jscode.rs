@@ -107,6 +107,13 @@ pub(crate) enum JsCodeType {
     OperatorAdd(JsCodeOperatorAdd),
     Foreach(JsCodeForeach),
     Match(JsCodeMatch),
+    StageCall(JsCodeStageCall),
+}
+
+#[derive(Clone)]
+pub(crate) struct JsCodeStageCall {
+    pub(crate) tree: Box<JsCode>,
+    pub(crate) values: Vec<JsCode>,
 }
 
 #[derive(Clone)]
