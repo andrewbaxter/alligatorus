@@ -8,4 +8,4 @@ mod t0050_numbers;
 mod t0060_scope;
 mod t0070_foreach;
 mod t0080_taggedunion;
-//. mod t_nodejs;
+mod t_nodejs;

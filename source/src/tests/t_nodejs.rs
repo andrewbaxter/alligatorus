@@ -23,8 +23,8 @@ use {
 fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
     return mb.lower(mb.block(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-        // Define code variant
-        mb.bind("code_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_tagged_union")), mb.str("Node.js code"))),
+        // # Define "code" tagged union type
+        mb.bind("code_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.str("Node.js code"))),
         mb.bind("code", mb.field(mb.scope_use("code_builder"), mb.str("type"))),
         mb.bind(
             "code_call",
@@ -36,7 +36,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                         mb.record(
                             vec![
                                 ("func", mb.scope_use("code")),
-                                ("args", mb.call(mb.scope_use("list"), mb.scope_use("string")))
+                                ("arg", mb.scope_use("code"))
                             ]
                         )
                     ]
@@ -44,20 +44,20 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
             )
         ),
         mb.bind(
-            "code_lit",
+            "code_lit_str",
             mb.call(
                 mb.field(mb.scope_use("code_builder"), mb.str("variant")),
-                mb.tuple(vec![mb.str("lit"), mb.scope_use("string")])
+                mb.tuple(vec![mb.str("lit_str"), mb.scope_use("string")])
             )
         ),
         mb.bind(
-            "code_field_use",
+            "code_field",
             mb.call(
                 mb.field(mb.scope_use("code_builder"), mb.str("variant")),
                 mb.tuple(
                     vec![
-                        mb.str("field_use"),
-                        mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("string"))])
+                        mb.str("field"),
+                        mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))])
                     ]
                 )
             )
@@ -66,10 +66,10 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
             "code_scope_use",
             mb.call(
                 mb.field(mb.scope_use("code_builder"), mb.str("variant")),
-                mb.tuple(vec![mb.str("scope_use"), mb.record(vec![("field", mb.scope_use("string"))])])
+                mb.tuple(vec![mb.str("scope_use"), mb.scope_use("string")])
             )
         ),
-        // Define render code function (inner)
+        // # Define render-code function (recursive inner version)
         mb.bind(
             "render_inner_builder",
             mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code (inner)"))
@@ -126,7 +126,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                             )
                         ),
                         mb.call(
-                            mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("push")),
+                            mb.field(mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("out")), mb.str("push")),
                             mb.scope_use("key")
                         ),
                         mb.set(
@@ -166,31 +166,17 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                                 )
                                             ),
                                             mb.bind(
-                                                "args",
+                                                "rendered_arg",
                                                 mb.call(
-                                                    mb.field(
-                                                        mb.call(mb.scope_use("list"), mb.scope_use("string")),
-                                                        mb.str("new")
-                                                    ),
-                                                    mb.tuple(vec![])
-                                                )
-                                            ),
-                                            mb.foreach(
-                                                mb.field(mb.scope_use("code"), mb.str("args")),
-                                                mb.str("arg"),
-                                                mb.call(
-                                                    mb.field(mb.scope_use("args"), mb.str("push")),
-                                                    mb.call(
-                                                        mb.lower(mb.scope_use("render_inner")),
-                                                        mb.record(
-                                                            vec![
-                                                                (
-                                                                    "context",
-                                                                    mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                                ),
-                                                                ("code", mb.scope_use("arg"))
-                                                            ]
-                                                        )
+                                                    mb.lower(mb.scope_use("render_inner")),
+                                                    mb.record(
+                                                        vec![
+                                                            (
+                                                                "context",
+                                                                mb.field(mb.scope_use("arg"), mb.str("context")),
+                                                            ),
+                                                            ("code", mb.field(mb.scope_use("code"), mb.str("arg")))
+                                                        ]
                                                     )
                                                 )
                                             ),
@@ -200,37 +186,16 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                                 mb.scope_use("func")
                                             ),
                                             mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(")(")),
-                                            mb.bind("arg_count", mb.num(0.)),
-                                            mb.foreach(
-                                                mb.scope_use("args"),
-                                                mb.str("arg"),
-                                                mb.block(
-                                                    vec![
-                                                        mb.if_(vec![(
-                                                            // todo flip + use gt for clarity
-                                                            mb.operator_lt(mb.num(0.), mb.scope_use("arg_count")),
-                                                            mb.call(
-                                                                mb.field(mb.scope_use("out"), mb.str("push")),
-                                                                mb.str(", ")
-                                                            ),
-                                                        )], None),
-                                                        mb.call(
-                                                            mb.field(mb.scope_use("out"), mb.str("push")),
-                                                            mb.scope_use("arg")
-                                                        ),
-                                                        mb.set(
-                                                            mb.scope_use("arg_count"),
-                                                            mb.operator_add(mb.scope_use("arg_count"), mb.num(1.))
-                                                        ),
-                                                    ]
-                                                )
+                                            mb.call(
+                                                mb.field(mb.scope_use("out"), mb.str("push")),
+                                                mb.scope_use("rendered_arg")
                                             ),
                                             mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(")")),
                                         ]
                                     ),
                                 ),
                                 (
-                                    mb.str("lit"),
+                                    mb.str("lit_str"),
                                     mb.block(
                                         vec![
                                             mb.call(
@@ -241,7 +206,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                     ),
                                 ),
                                 (
-                                    mb.str("field_use"),
+                                    mb.str("field"),
                                     mb.block(
                                         vec![
                                             mb.bind(
@@ -292,7 +257,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                                         vec![
                                             mb.call(
                                                 mb.field(mb.scope_use("out"), mb.str("push")),
-                                                mb.field(mb.scope_use("code"), mb.str("field"))
+                                                mb.scope_use("code")
                                             ),
                                         ]
                                     ),
@@ -306,7 +271,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
                 )
             )
         ),
-        // Define render func (outer)
+        // Define render-code func (outer)
         mb.bind("render_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code"))),
         mb.bind("render", mb.field(mb.scope_use("render_builder"), mb.str("func"))),
         mb.call(mb.field(mb.scope_use("render_builder"), mb.str("arg")), mb.scope_use("code")),
@@ -351,8 +316,8 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
             vec![
                 ("type", mb.scope_use("code")),
                 ("call", mb.scope_use("code_call")),
-                ("lit", mb.scope_use("code_lit")),
-                ("field_use", mb.scope_use("code_field_use")),
+                ("lit_str", mb.scope_use("code_lit_str")),
+                ("field", mb.scope_use("code_field")),
                 ("scope_use", mb.scope_use("code_scope_use")),
                 ("render", mb.scope_use("render"))
             ]
@@ -382,18 +347,21 @@ async fn test_0000_nodejs_code() {
                                 "render",
                                 code(
                                     "call",
-                                    mb.tuple(
+                                    mb.record(
                                         vec![
-                                            code(
-                                                "field",
-                                                mb.tuple(
-                                                    vec![
-                                                        code("scope_use", mb.str("console")),
-                                                        code("lit_str", mb.str("log"))
-                                                    ]
-                                                )
+                                            (
+                                                "func",
+                                                code(
+                                                    "field",
+                                                    mb.record(
+                                                        vec![
+                                                            ("base", code("scope_use", mb.str("console"))),
+                                                            ("field", code("lit_str", mb.str("log")))
+                                                        ]
+                                                    )
+                                                ),
                                             ),
-                                            code("lit_str", mb.str("Hello world (node)"))
+                                            ("arg", code("lit_str", mb.str("Hello world (node)")))
                                         ]
                                     )
                                 )
