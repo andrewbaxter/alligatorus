@@ -26,8 +26,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            ExprErr,
-            ExprSubErr,
             QExprId,
             Type,
             Unique,
@@ -44,6 +42,9 @@ use {
         mortar_js_value::{
             MortarJsValue,
             MortarJsValueSource,
+            mortar_bind_js,
+            mortar_consume_js_to_js,
+            mortar_js_stack_to_value,
         },
     },
 };
@@ -144,51 +145,18 @@ impl AspectJsBool for TypeMortarBool { }
 
 impl AspectJsStackValue for TypeMortarBool {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Box::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarBool),
-            }),
-        }
+        mortar_js_stack_to_value(loc, value, Rc::new(TypeMortarBool))
     }
 }
 
 impl AspectConsumeJs for TypeMortarBool {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        let r = cv.code.cast::<JsCode>();
-        if let Some(c) = r.v {
-            if let Some(c) = c {
-                return EResult {
-                    v: Some(c.clone()),
-                    errors: r.errors,
-                };
-            } else {
-                let mut errors = r.errors;
-                errors.push(ExprErr {
-                    loc: loc,
-                    errors: vec![ExprSubErr::Opaque(format!("Expression resulted in empty code"))],
-                });
-                return EResult {
-                    v: None,
-                    errors: errors,
-                }
-            }
-        } else {
-            return EResult {
-                v: None,
-                errors: r.errors,
-            };
-        }
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
 impl AspectBindJs for TypeMortarBool {
     fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        mortar_bind_js(xx, loc, cv)
     }
 }

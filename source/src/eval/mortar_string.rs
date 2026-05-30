@@ -5,10 +5,13 @@ use {
             MortarJsValue,
             MortarJsValueDataAccess,
             MortarJsValueSource,
+            mortar_bind_js,
+            mortar_consume_js_to_js,
+            mortar_js_stack_to_value,
+            mortar_set,
         },
         mortar_function::MortarTypeFunction,
         mortar_null::TypeMortarNull,
-        null::ValueNull,
     },
     crate::{
         builtin::{
@@ -20,7 +23,6 @@ use {
             AspectSet,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
-            aspect_consume_js_get,
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_js_string_aspect_id,
@@ -29,12 +31,9 @@ use {
             aspect_string_get,
             aspect_string_get_maybe,
         },
-        eval::expr,
         jscode::{
             JsCode,
-            JsCodeBindingSet,
             JsCodeFieldUse,
-            JsCodeFieldSet,
             JsCodeBlock,
             JsCodeBlockEntry,
             JsCodeType,
@@ -47,8 +46,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            ExprErr,
-            ExprSubErr,
             QExprId,
             Type,
             Unique,
@@ -158,52 +155,19 @@ impl AspectJsString for TypeMortarString { }
 
 impl AspectJsStackValue for TypeMortarString {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Box::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarString),
-            }),
-        }
+        mortar_js_stack_to_value(loc, value, Rc::new(TypeMortarString))
     }
 }
 
 impl AspectConsumeJs for TypeMortarString {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        let r = cv.code.cast::<JsCode>();
-        if let Some(c) = r.v {
-            if let Some(c) = c {
-                return EResult {
-                    v: Some(c.clone()),
-                    errors: r.errors,
-                };
-            } else {
-                let mut errors = r.errors;
-                errors.push(ExprErr {
-                    loc: loc,
-                    errors: vec![ExprSubErr::Opaque(format!("Expression resulted in empty code"))],
-                });
-                return EResult {
-                    v: None,
-                    errors: errors,
-                }
-            }
-        } else {
-            return EResult {
-                v: None,
-                errors: r.errors,
-            };
-        }
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
 impl AspectBindJs for TypeMortarString {
     fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        mortar_bind_js(xx, loc, cv)
     }
 }
 
@@ -261,74 +225,6 @@ impl AspectField for TypeMortarString {
 
 impl AspectSet for TypeMortarString {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let value_type = value.value.type_(xx, loc);
-            er_all!(erb, {
-                value_to_js = aspect_consume_js_get(xx, loc, value_type.as_ref()),
-                self_code = self_.code.cast::<JsCode>(),
-            });
-            let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;
-            let v = (self_.value.as_ref() as &dyn std::any::Any).downcast_ref::<MortarJsValue>().unwrap();
-            match &v.source {
-                MortarJsValueSource::Field(b) => {
-                    let Some(self_code) = self_code else {
-                        return erb.err_new(
-                            format!("TODO assertion set left hand doesn't evaluate to js code (empty)")
-                        );
-                    };
-
-                    // Extract the base from FieldUse so FieldSet targets the parent object
-                    let base_code = match &self_code.type_ {
-                        JsCodeType::FieldUse(fu) => *fu.base.clone(),
-                        _ => self_code.clone(),
-                    };
-                    return Ok(CodeValue {
-                        code: Code {
-                            loc: loc,
-                            code: Code_::Dyn(Rc::new(JsCode {
-                                loc: loc,
-                                type_: JsCodeType::FieldSet(JsCodeFieldSet {
-                                    base: Box::new(base_code),
-                                    key: b.key.clone(),
-                                    value: Box::new(value_code)
-                                })
-                            }))
-                        },
-                        value: Box::new(ValueNull),
-                    })
-                },
-                MortarJsValueSource::Expr => {
-                    return erb.err_new(format!("Cannot modify a temporary value"));
-                },
-                MortarJsValueSource::DefinitionSet(_) => {
-                    return erb.err_new(format!("Cannot modify a definition set function"));
-                },
-                MortarJsValueSource::Binding(b) => {
-                    let mut seq = vec![];
-                    if let Some(self_code) = self_code {
-                        seq.push(self_code.clone());
-                    }
-                    seq.push(JsCode {
-                        loc: loc,
-                        type_: JsCodeType::BindingSet(JsCodeBindingSet {
-                            base: b.key,
-                            value: Box::new(value_code),
-                        })
-                    });
-                    return Ok(CodeValue {
-                        code: Code {
-                            loc: loc,
-                            code: Code_::Dyn(Rc::new(JsCode {
-                                loc: loc,
-                                type_: JsCodeType::Block(
-                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
-                                )
-                            }))
-                        },
-                        value: Box::new(ValueNull),
-                    })
-                },
-            }
-        });
+        mortar_set(xx, loc, self_, value)
     }
 }
