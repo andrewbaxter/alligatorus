@@ -7,8 +7,10 @@ use {
             AspectLiftJs,
             AspectTuple,
             aspect_bind_js_aspect_id,
+            aspect_bind_js_get_maybe,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
+            aspect_consume_js_get_maybe,
             aspect_field_aspect_id,
             aspect_lift_js_aspect_id,
             aspect_string_get,
@@ -288,18 +290,15 @@ impl Type for TypeValueRecord {
         // Check compatibility: source must be a record-like type with matching keys
         let source_keys_match = if let Some(source_record) = source_any.downcast_ref::<TypeValueRecord>() {
             self.entry_types.keys().all(|k| source_record.entry_types.contains_key(k))
-        } else if let Some(source_scope) = source_any.downcast_ref::<RecordScopeType>() {
-            self.entry_types.keys().all(|k| source_scope.entry_types.contains_key(k))
         } else {
             false
         };
         if source_keys_match {
-            // Only allow pass-through for non-ValueRecord values (MortarJsValue,
-            // RecordScopeValue, etc.) ValueRecord values should go through
-            // typecheck_convert_record for proper entry conversion
+            // Only allow pass-through for non-ValueRecord values (MortarJsValue, etc.)
+            // ValueRecord values should go through typecheck_convert_record for proper entry
+            // conversion
             let value_any: &dyn std::any::Any = cv.value.as_ref();
-            if value_any.downcast_ref::<ValueRecord>().is_none() &&
-                value_any.downcast_ref::<RecordScopeValue>().is_none() {
+            if value_any.downcast_ref::<ValueRecord>().is_none() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code.clone(),
                     value: Box::new(super::mortar_js_value::MortarJsValue {
@@ -321,7 +320,8 @@ impl AspectField for TypeValueRecord {
             let key_type = key.value.type_(xx, loc);
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
-            let entry_type = self.entry_types.get(&ConstKey::String(key_name.clone())).cloned().ok_or_else(|| {
+            let const_key = ConstKey::String(key_name.clone());
+            let entry_type = self.entry_types.get(&const_key).cloned().ok_or_else(|| {
                 erb.errors.push(crate::langhelp::ExprErr {
                     loc,
                     errors: vec![
@@ -329,7 +329,32 @@ impl AspectField for TypeValueRecord {
                     ],
                 });
             })?;
-            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+
+            // If self_ is still a ValueRecord (not yet bound to JS), extract the field
+            // directly
+            let CodeValue { code: self_code_raw, value: self_value } = self_;
+            let is_none = matches!(self_code_raw.code, Code_::None);
+            let any_value: Box<dyn Any> = self_value;
+            if let Ok(mut record) = any_value.downcast::<ValueRecord>() {
+                if let Some(entry) = record.entries.remove(&const_key) {
+                    if let Some(cv) = entry.v {
+                        return Ok(cv);
+                    }
+                }
+                return erb.err_new(format!("Field '{}' not found on record value", key_name));
+            }
+
+            // If self_ is a static value (no JS code), return a static value for the field
+            if is_none {
+                return Ok(CodeValue {
+                    code: Code {
+                        loc,
+                        code: Code_::None,
+                    },
+                    value: Box::new(StaticValue { type_: entry_type }),
+                });
+            }
+            let self_code = erb.must_er(self_code_raw.cast::<JsCode>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc,
@@ -378,18 +403,35 @@ impl AspectConsumeJs for TypeValueRecord {
         let mut errors = vec![];
         let mut js_fields = Vec::new();
         for (key, elem_res) in record.entries.into_iter() {
-            let elem_type = self.entry_types.get(&key).expect("Record entry type missing");
             let key_str = match &key {
                 ConstKey::String(s) => s.clone(),
             };
             errors.extend(elem_res.errors);
             if let Some(elem_cv) = elem_res.v {
-                match aspect_consume_js_get(xx, loc, elem_type.as_ref()).into_res() {
-                    Ok(to_js) => match to_js.to_js(xx, loc, elem_cv).into_res() {
+                let elem_value_type = elem_cv.value.type_(xx, loc);
+                if let Some(to_js) = aspect_consume_js_get_maybe(xx, elem_value_type.as_ref()) {
+                    match to_js.to_js(xx, loc, elem_cv).into_res() {
                         Ok(js) => js_fields.push((key_str, js)),
                         Err(e) => errors.extend(e),
-                    },
-                    Err(e) => errors.extend(e),
+                    }
+                } else if let Some(bind) = aspect_bind_js_get_maybe(xx, elem_value_type.as_ref()) {
+                    match bind.bind_js(xx, loc, elem_cv).into_res() {
+                        Ok((js, _)) => js_fields.push((key_str, js)),
+                        Err(e) => errors.extend(e),
+                    }
+                } else {
+                    errors.push(crate::langhelp::ExprErr {
+                        loc,
+                        errors: vec![
+                            crate::langhelp::ExprSubErr::Opaque(
+                                format!(
+                                    "Record entry '{}' type ({}) cannot be converted to JS",
+                                    key_str,
+                                    elem_value_type.desc()
+                                ),
+                            )
+                        ],
+                    });
                 }
             }
         }
@@ -442,102 +484,43 @@ impl ScopeEntry for StaticScopeEntry {
     }
 }
 
-/// Scope entry for records: stores individual scope entries per field.
-pub(crate) struct RecordScopeEntry {
-    pub entries: BTreeMap<ConstKey, Rc<dyn ScopeEntry>>,
+/// A scope entry for lifted records that preserves the entry values.
+pub(crate) struct LiftedRecordScopeEntry {
+    pub record: Rc<LiftedRecord>,
+    pub type_: Rc<dyn Type>,
 }
 
-impl ScopeEntry for RecordScopeEntry {
+/// Value wrapper for a shared LiftedRecord.
+pub(crate) struct SharedLiftedRecord {
+    pub record: Rc<LiftedRecord>,
+}
+
+impl Value for SharedLiftedRecord {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        self.record.type_(xx, loc)
+    }
+}
+
+/// Value wrapper for an Rc`<dyn Value>`, allowing shared ownership of a value.
+struct SharedValue {
+    inner: Rc<dyn Value>,
+}
+
+impl Value for SharedValue {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        self.inner.type_(xx, loc)
+    }
+}
+
+impl ScopeEntry for LiftedRecordScopeEntry {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(RecordScopeValue { entries: self.entries.clone() }),
+            value: Box::new(SharedLiftedRecord { record: self.record.clone() }),
         }
-    }
-}
-
-pub(crate) struct RecordScopeValue {
-    pub(crate) entries: BTreeMap<ConstKey, Rc<dyn ScopeEntry>>,
-}
-
-impl Value for RecordScopeValue {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        let entry_types: BTreeMap<ConstKey, Rc<dyn Type>> = self.entries.iter().map(|(k, entry)| {
-            let cv = entry.use_(loc, Code {
-                loc,
-                code: Code_::None,
-            });
-            (k.clone(), cv.value.type_(xx, loc))
-        }).collect();
-        Rc::new(RecordScopeType {
-            entries: self.entries.clone(),
-            entry_types,
-        })
-    }
-}
-
-pub(crate) struct RecordScopeType {
-    entries: BTreeMap<ConstKey, Rc<dyn ScopeEntry>>,
-    entry_types: BTreeMap<ConstKey, Rc<dyn Type>>,
-}
-
-impl Value for RecordScopeType {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
-    }
-}
-
-impl Type for RecordScopeType {
-    fn desc(&self) -> String {
-        format!(
-            "record_scope({})",
-            self.entry_types.iter().map(|(k, t)| format!("{:?}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
-        )
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(RecordScopeType {
-                entries: self.entries.clone(),
-                entry_types: self.entry_types.clone(),
-            }) as Box<dyn AspectField>));
-        }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert record_scope"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to record_scope"))
-    }
-}
-
-impl Aspect for RecordScopeType { }
-
-impl AspectField for RecordScopeType {
-    fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
-        return super::util::er_seq_cv_inline(loc, |erb| {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let const_key = ConstKey::String(key_name.clone());
-            if let Some(entry) = self.entries.get(&const_key) {
-                return Ok(entry.use_(loc, Code {
-                    loc,
-                    code: Code_::None,
-                }));
-            }
-            return erb.err_new(format!("Field '{}' not found on record", key_name));
-        });
-    }
-
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        self.entry_types.get(&ConstKey::String(key.to_string())).cloned()
     }
 }
 
@@ -622,14 +605,14 @@ impl AspectLiftJs for RecordLiftJs {
             let v8_key = v8::String::new(scope, key).unwrap();
             let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
             let lifted = entry_lift.lift(scope, v8_val)?;
-            entries.push((key.clone(), lifted));
+            entries.push((key.clone(), Rc::from(lifted)));
         }
         Ok(Box::new(LiftedRecord { entries }))
     }
 }
 
 pub(crate) struct LiftedRecord {
-    pub entries: Vec<(String, Box<dyn Value>)>,
+    pub entries: Vec<(String, Rc<dyn Value>)>,
 }
 
 impl Value for LiftedRecord {
@@ -679,11 +662,43 @@ impl Type for LiftedRecordType {
 impl Aspect for LiftedRecordType { }
 
 impl AspectField for LiftedRecordType {
-    fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return super::util::er_seq_cv_inline(loc, |erb| {
             let key_type = key.value.type_(xx, loc);
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
+
+            // Try to extract the field directly from the LiftedRecord value
+            let any_value: Box<dyn Any> = self_.value;
+            match any_value.downcast::<LiftedRecord>() {
+                Ok(record) => {
+                    if let Some((_, entry_value)) = record.entries.iter().find(|(k, _)| k == &key_name) {
+                        return Ok(CodeValue {
+                            code: Code {
+                                loc,
+                                code: Code_::None,
+                            },
+                            value: Box::new(SharedValue { inner: entry_value.clone() }),
+                        });
+                    }
+                },
+                Err(any_value) => {
+                    if let Ok(shared) = any_value.downcast::<SharedLiftedRecord>() {
+                        if let Some((_, entry_value)) =
+                            shared.record.entries.iter().find(|(k, _)| k == &key_name) {
+                            return Ok(CodeValue {
+                                code: Code {
+                                    loc,
+                                    code: Code_::None,
+                                },
+                                value: Box::new(SharedValue { inner: entry_value.clone() }),
+                            });
+                        }
+                    }
+                },
+            }
+
+            // Fallback to static value
             if let Some((_, entry_type)) = self.entries.iter().find(|(k, _)| k == &key_name) {
                 return Ok(CodeValue {
                     code: Code {

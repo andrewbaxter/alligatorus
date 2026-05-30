@@ -140,8 +140,6 @@ use {
     },
     string::ValueString,
     tuple::{
-        RecordScopeEntry,
-        RecordScopeValue,
         StaticScopeEntry,
         ValueRecord,
         ValueTuple,
@@ -328,39 +326,20 @@ impl Target for MortarTarget {
         carry: Code,
         cv: CodeValue,
     ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)> {
-        // Special handling for ValueRecord: bind each entry individually
-        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<ValueRecord>() {
-            // just type-checking, we'll move below
-            let _ = record;
-            let record: Box<ValueRecord> = (cv.value as Box<dyn Any>).downcast().unwrap();
-            return er_seq!(loc, erb, (Vec < JsCodeBlockEntry >, Box < dyn ScopeEntry >), {
-                let mut js_entries = vec![];
-                if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
-                    js_entries.push(JsCodeBlockEntry::Code(carry.clone()));
-                }
-                let mut scope_entries: std::collections::BTreeMap<ConstKey, Rc<dyn ScopeEntry>> =
-                    std::collections::BTreeMap::new();
-                for (key, entry_res) in record.entries.into_iter() {
-                    if let Some(entry_cv) = entry_res.v {
-                        erb.errors.extend(entry_res.errors);
-                        let entry_bind = erb.must_er(self.bind(xx, loc, Code {
-                            loc,
-                            code: Code_::None
-                        }, entry_cv))?;
-                        js_entries.extend(entry_bind.0);
-                        scope_entries.insert(key, Rc::from(entry_bind.1));
-                    } else {
-                        erb.errors.extend(entry_res.errors);
-                    }
-                }
-                return Ok((js_entries, Box::new(RecordScopeEntry { entries: scope_entries }) as Box<dyn ScopeEntry>));
-            });
-        }
         let vtype = cv.value.type_(xx, loc);
         let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
             let mut entries = vec![];
             if let Some(carry) = carry.cast::<JsCode>().into_res().ok().flatten() {
                 entries.push(JsCodeBlockEntry::Code(carry.clone()));
+            }
+
+            // For LiftedRecord values, preserve the value so field access works
+            let any_value: Box<dyn Any> = cv.value;
+            if let Ok(record) = any_value.downcast::<tuple::LiftedRecord>() {
+                return EResult::ok((entries, Box::new(tuple::LiftedRecordScopeEntry {
+                    record: Rc::new(*record),
+                    type_: vtype,
+                }) as Box<dyn ScopeEntry>));
             }
             return EResult::ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
         };
@@ -373,7 +352,7 @@ impl Target for MortarTarget {
                 }
                 return Ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
             }
-            let (vcode, vtype) = erb.must_er(bind_result)?;
+            let (vcode, bound_type) = erb.must_er(bind_result)?;
             let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let mut entries = vec![];
             if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
@@ -385,7 +364,7 @@ impl Target for MortarTarget {
             }));
             return Ok((entries, Box::new(MortarScopeEntry {
                 js_key: js_key,
-                type_: vtype,
+                type_: bound_type,
             })));
         });
     }
@@ -1082,20 +1061,7 @@ fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type
         let any_source: Box<dyn Any> = source.value;
         let record = match any_source.downcast::<ValueRecord>() {
             Ok(r) => r,
-            Err(any_source) => match any_source.downcast::<tuple::RecordScopeValue>() {
-                Ok(rsv) => {
-                    let mut entries = std::collections::BTreeMap::new();
-                    for (k, entry) in &rsv.entries {
-                        let cv = entry.use_(loc, Code {
-                            loc,
-                            code: Code_::None
-                        });
-                        entries.insert(k.clone(), EvalRes::ok(cv));
-                    }
-                    Box::new(ValueRecord { entries })
-                },
-                Err(_) => return erb.err_new(format!("Source is not a record value")),
-            },
+            Err(_) => return erb.err_new(format!("Source is not a record value")),
         };
         let mut converted_entries = std::collections::BTreeMap::new();
         for (key, entry_res) in record.entries {

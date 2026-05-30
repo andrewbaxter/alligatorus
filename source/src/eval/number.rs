@@ -98,8 +98,7 @@ impl Aspect for TypeNumber { }
 impl AspectBindJs for TypeNumber {
     fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
         TypeMortarNumber::cast_from(&TypeMortarNumber, xx, loc, &cv).map(|js| {
-            let jscode = js.code.cast::<JsCode>().v.unwrap().unwrap().clone();
-            (jscode, Rc::new(TypeMortarNumber) as Rc<dyn Type>)
+            (js.code.cast::<JsCode>().v.unwrap().unwrap().clone(), Rc::new(TypeMortarNumber) as Rc<dyn Type>)
         })
     }
 }
