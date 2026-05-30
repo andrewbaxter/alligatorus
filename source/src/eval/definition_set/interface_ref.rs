@@ -33,6 +33,7 @@ use {
         mortar_js_value::{
             MortarJsValue,
             MortarJsValueSource,
+            bind_js_some,
         },
         rc_from_v8,
     },
@@ -109,9 +110,9 @@ impl AspectConsumeJs for MortarTypeDefinitionSetInterfaceRef {
 }
 
 impl AspectBindJs for MortarTypeDefinitionSetInterfaceRef {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 

@@ -142,6 +142,7 @@ use {
     tuple::{
         StaticScopeEntry,
         ValueRecord,
+        ValueScopeEntry,
         ValueTuple,
     },
     dumpster::unsync::Gc,
@@ -332,15 +333,6 @@ impl Target for MortarTarget {
             if let Some(carry) = carry.cast::<JsCode>().into_res().ok().flatten() {
                 entries.push(JsCodeBlockEntry::Code(carry.clone()));
             }
-
-            // For LiftedRecord values, preserve the value so field access works
-            let any_value: Box<dyn Any> = cv.value;
-            if let Ok(record) = any_value.downcast::<tuple::LiftedRecord>() {
-                return EResult::ok((entries, Box::new(tuple::LiftedRecordScopeEntry {
-                    record: Rc::new(*record),
-                    type_: vtype,
-                }) as Box<dyn ScopeEntry>));
-            }
             return EResult::ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
         };
         return er_seq!(loc, erb, (Vec < JsCodeBlockEntry >, Box < dyn ScopeEntry >), {
@@ -352,20 +344,31 @@ impl Target for MortarTarget {
                 }
                 return Ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
             }
-            let (vcode, bound_type) = erb.must_er(bind_result)?;
-            let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            let (js_code, bound_cv) = erb.must_er(bind_result)?;
             let mut entries = vec![];
             if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
                 entries.push(JsCodeBlockEntry::Code(carry.clone()));
             }
-            entries.push(JsCodeBlockEntry::Bind(JsCodeBind {
-                base: js_key,
-                value: Box::new(vcode),
-            }));
-            return Ok((entries, Box::new(MortarScopeEntry {
-                js_key: js_key,
-                type_: bound_type,
-            })));
+            match js_code {
+                Some(vcode) => {
+                    let bound_type = bound_cv.value.type_(xx, loc);
+                    let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                    entries.push(JsCodeBlockEntry::Bind(JsCodeBind {
+                        base: js_key,
+                        value: Box::new(vcode),
+                    }));
+                    return Ok((entries, Box::new(MortarScopeEntry {
+                        js_key: js_key,
+                        type_: bound_type,
+                    })));
+                },
+                None => {
+                    return Ok((
+                        entries,
+                        Box::new(ValueScopeEntry { value: Rc::from(bound_cv.value) }) as Box<dyn ScopeEntry>,
+                    ));
+                },
+            }
         });
     }
 

@@ -2,6 +2,7 @@ use {
     super::{
         Erb,
         mortar_string::TypeMortarString,
+        mortar_js_value::bind_js_some,
     },
     crate::{
         builtin::{
@@ -86,9 +87,9 @@ impl Type for TypeString {
 impl Aspect for TypeString { }
 
 impl AspectBindJs for TypeString {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         TypeMortarString::cast_from(&TypeMortarString, xx, loc, &cv).map(|js| {
-            (js.code.cast::<JsCode>().v.unwrap().unwrap().clone(), Rc::new(TypeMortarString) as Rc<dyn Type>)
+            bind_js_some(loc, js.code.cast::<JsCode>().v.unwrap().unwrap().clone(), Rc::new(TypeMortarString) as Rc<dyn Type>)
         })
     }
 }

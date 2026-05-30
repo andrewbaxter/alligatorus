@@ -8,7 +8,10 @@ use {
             aspect_consume_js_aspect_id,
             aspect_lift_js_aspect_id,
         },
-        eval::rc_from_v8,
+        eval::{
+            rc_from_v8,
+            mortar_js_value::bind_js_some,
+        },
         jscode::{
             JsCode,
             JsCodeBindingUse,
@@ -266,9 +269,9 @@ impl AspectConsumeJs for ExprType {
 }
 
 impl AspectBindJs for ExprType {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 

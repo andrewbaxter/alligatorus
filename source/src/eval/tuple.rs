@@ -45,6 +45,7 @@ use {
         collections::BTreeMap,
         rc::Rc,
     },
+    super::mortar_js_value::bind_js_some,
 };
 
 pub(crate) struct ValueTuple {
@@ -200,9 +201,9 @@ impl AspectConsumeJs for TypeTuple {
 }
 
 impl AspectBindJs for TypeTuple {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
@@ -416,7 +417,8 @@ impl AspectConsumeJs for TypeValueRecord {
                     }
                 } else if let Some(bind) = aspect_bind_js_get_maybe(xx, elem_value_type.as_ref()) {
                     match bind.bind_js(xx, loc, elem_cv).into_res() {
-                        Ok((js, _)) => js_fields.push((key_str, js)),
+                        Ok((Some(js), _)) => js_fields.push((key_str, js)),
+                        Ok((None, _)) => {},
                         Err(e) => errors.extend(e),
                     }
                 } else {
@@ -449,9 +451,9 @@ impl AspectConsumeJs for TypeValueRecord {
 }
 
 impl AspectBindJs for TypeValueRecord {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
@@ -484,43 +486,32 @@ impl ScopeEntry for StaticScopeEntry {
     }
 }
 
-/// A scope entry for lifted records that preserves the entry values.
-pub(crate) struct LiftedRecordScopeEntry {
-    pub record: Rc<LiftedRecord>,
-    pub type_: Rc<dyn Type>,
+/// A scope entry that preserves the actual value (for compile-time values without JS
+/// code).
+pub(crate) struct ValueScopeEntry {
+    pub value: Rc<dyn Value>,
 }
 
-/// Value wrapper for a shared LiftedRecord.
-pub(crate) struct SharedLiftedRecord {
-    pub record: Rc<LiftedRecord>,
-}
-
-impl Value for SharedLiftedRecord {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        self.record.type_(xx, loc)
-    }
-}
-
-/// Value wrapper for an Rc`<dyn Value>`, allowing shared ownership of a value.
-struct SharedValue {
-    inner: Rc<dyn Value>,
-}
-
-impl Value for SharedValue {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        self.inner.type_(xx, loc)
-    }
-}
-
-impl ScopeEntry for LiftedRecordScopeEntry {
+impl ScopeEntry for ValueScopeEntry {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(SharedLiftedRecord { record: self.record.clone() }),
+            value: Box::new(SharedValue { inner: self.value.clone() }),
         }
+    }
+}
+
+/// Value wrapper for an Rc`<dyn Value>`, allowing shared ownership of a value.
+pub(crate) struct SharedValue {
+    pub inner: Rc<dyn Value>,
+}
+
+impl Value for SharedValue {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        self.inner.type_(xx, loc)
     }
 }
 
@@ -585,9 +576,9 @@ impl AspectConsumeJs for TypeRecord {
 }
 
 impl AspectBindJs for TypeRecord {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
@@ -647,6 +638,11 @@ impl Type for LiftedRecordType {
                 Box::new(Box::new(LiftedRecordType { entries: self.entries.clone() }) as Box<dyn AspectField>),
             );
         }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(
+                Box::new(Box::new(LiftedRecordType { entries: self.entries.clone() }) as Box<dyn AspectBindJs>),
+            );
+        }
         return None;
     }
 
@@ -660,6 +656,12 @@ impl Type for LiftedRecordType {
 }
 
 impl Aspect for LiftedRecordType { }
+
+impl AspectBindJs for LiftedRecordType {
+    fn bind_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+        EResult::ok((None, cv))
+    }
+}
 
 impl AspectField for LiftedRecordType {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
@@ -683,16 +685,18 @@ impl AspectField for LiftedRecordType {
                     }
                 },
                 Err(any_value) => {
-                    if let Ok(shared) = any_value.downcast::<SharedLiftedRecord>() {
-                        if let Some((_, entry_value)) =
-                            shared.record.entries.iter().find(|(k, _)| k == &key_name) {
-                            return Ok(CodeValue {
-                                code: Code {
-                                    loc,
-                                    code: Code_::None,
-                                },
-                                value: Box::new(SharedValue { inner: entry_value.clone() }),
-                            });
+                    if let Ok(shared) = any_value.downcast::<SharedValue>() {
+                        if let Some(record) = (shared.inner.as_ref() as &dyn Any).downcast_ref::<LiftedRecord>() {
+                            if let Some((_, entry_value)) =
+                                record.entries.iter().find(|(k, _)| k == &key_name) {
+                                return Ok(CodeValue {
+                                    code: Code {
+                                        loc,
+                                        code: Code_::None,
+                                    },
+                                    value: Box::new(SharedValue { inner: entry_value.clone() }),
+                                });
+                            }
                         }
                     }
                 },

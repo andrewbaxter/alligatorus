@@ -45,6 +45,7 @@ use {
         mortar_js_value::{
             MortarJsValue,
             MortarJsValueSource,
+            bind_js_some,
         },
         rc_from_v8,
         typecheck_convert,
@@ -190,9 +191,9 @@ impl AspectConsumeJs for MortarTypeTaggedUnionRef {
 }
 
 impl AspectBindJs for MortarTypeTaggedUnionRef {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
@@ -269,9 +270,9 @@ impl AspectConsumeJs for MortarTypeTaggedUnionConstructorRef {
 }
 
 impl AspectBindJs for MortarTypeTaggedUnionConstructorRef {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
@@ -399,9 +400,9 @@ impl AspectConsumeJs for TaggedUnionType {
 }
 
 impl AspectBindJs for TaggedUnionType {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
