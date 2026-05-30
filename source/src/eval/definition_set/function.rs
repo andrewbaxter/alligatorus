@@ -184,17 +184,6 @@ impl Aspect for DefinitionSetFunction { }
 
 impl AspectFunction for DefinitionSetFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        // Ensure scope entry IDs are allocated
-        {
-            let functions = self.set.functions.borrow();
-            for func_data in functions.iter() {
-                if func_data.scope_entry_id.get().is_none() {
-                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                    func_data.scope_entry_id.set(Some(id));
-                }
-            }
-        }
-
         // Register with eval context (dedup)
         {
             let mut sets = xx.vx.definition_sets.borrow_mut();

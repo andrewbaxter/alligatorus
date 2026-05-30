@@ -124,7 +124,7 @@ impl AspectConsumeJs for TypeType {
             type_: type_ref_value.type_.clone(),
             entry_bindings: type_ref_value.entry_bindings.clone(),
         }) as Box<dyn Value>)) });
-        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, cell));
         let type_ref_code = JsCode {
             loc,

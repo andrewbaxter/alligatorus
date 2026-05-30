@@ -42,7 +42,7 @@ impl Counter {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ImportStateId(pub usize);
 
@@ -63,8 +63,18 @@ pub(crate) enum ExprSubErr {
     Opaque(String),
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-pub(crate) struct ScopeEntryId(pub usize);
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+pub(crate) struct DefSetId(pub usize);
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+pub(crate) enum ScopeEntryId {
+    /// Local bindings within an evaluation
+    Local(usize),
+    /// Builtin/static functions - deterministic indices
+    Builtin(usize),
+    /// Definition set entry - deterministic
+    Def(ImportStateId, DefSetId, usize),
+}
 
 pub(crate) struct ValueTypeAny {}
 
@@ -136,7 +146,8 @@ pub(crate) struct CompileImportContext {
 /// Multiple evaluations per module.
 pub(crate) struct EvalContext {
     pub(crate) ix: Rc<CompileImportContext>,
-    pub(crate) next_scope_entry_id: Counter,
+    pub(crate) next_local_id: Counter,
+    pub(crate) next_builtin_id: Counter,
     pub(crate) definition_sets: std
     ::cell
     ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,

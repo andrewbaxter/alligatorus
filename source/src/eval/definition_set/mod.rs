@@ -33,6 +33,8 @@ use {
     dumpster::unsync::Gc,
     crate::langhelp::{
         Counter,
+        DefSetId,
+        ImportStateId,
         ScopeEntryId,
         Unique,
         Value,
@@ -101,11 +103,14 @@ pub(crate) struct DefinitionSetInterfaceData {
 }
 
 pub(crate) struct DefinitionSet {
+    pub import_id: ImportStateId,
+    pub def_set_id: DefSetId,
     pub functions: RefCell<Vec<DefinitionSetFunctionData>>,
     pub data_types: RefCell<Vec<DefinitionSetDataTypeData>>,
     pub interfaces: RefCell<Vec<DefinitionSetInterfaceData>>,
     pub finished: Cell<bool>,
     pub next_field_id: Counter,
+    pub next_entry_id: Counter,
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
@@ -115,13 +120,16 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
 }
 
 impl DefinitionSet {
-    pub fn new() -> Self {
+    pub fn new(import_id: ImportStateId, def_set_id: DefSetId) -> Self {
         DefinitionSet {
+            import_id,
+            def_set_id,
             functions: RefCell::new(Vec::new()),
             data_types: RefCell::new(Vec::new()),
             interfaces: RefCell::new(Vec::new()),
             finished: Cell::new(false),
             next_field_id: Counter::default(),
+            next_entry_id: Counter::default(),
         }
     }
 

@@ -165,7 +165,7 @@ macro_rules! jswrap{
     ) => {
         {
             (stringify!($name), MortarScopeEntry {
-                js_key: ScopeEntryId($ex.next_scope_entry_id.next()),
+                js_key: ScopeEntryId:: Builtin($ex.next_builtin_id.next()),
                 type_: Rc:: new(MortarTypeFunction {
                     arg: jswrap !(@ arg_mortar_type $($arg_ty), *),
                     ret: <$ret_ty as JsWrap >:: mortar_type(),

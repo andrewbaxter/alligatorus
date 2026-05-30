@@ -186,8 +186,9 @@ impl Value for ExprType {
 }
 
 /// Stored in JsCodeExternal during eval_half. Value is taken out via `rc_from_v8`
-/// + `borrow_mut().take()` — a safe take-once pattern that panics on
-/// double-consume instead of double-freeing.
+///
+/// * `borrow_mut().take()` — a safe take-once pattern that panics on double-consume
+///   instead of double-freeing.
 pub(crate) struct StagedExprCell {
     pub value: RefCell<Option<Box<dyn Value>>>,
 }
@@ -255,7 +256,7 @@ impl AspectConsumeJs for ExprType {
             return EResult::ok(js.clone());
         }
         let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
-        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, cell));
         EResult::ok(JsCode {
             loc,

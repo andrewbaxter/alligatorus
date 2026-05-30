@@ -184,44 +184,6 @@ impl Aspect for DefinitionSetDataTypeConstructor { }
 
 impl AspectFunction for DefinitionSetDataTypeConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        // Ensure scope entry IDs are allocated for all functions and methods
-        {
-            let functions = self.set.functions.borrow();
-            for func_data in functions.iter() {
-                if func_data.scope_entry_id.get().is_none() {
-                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                    func_data.scope_entry_id.set(Some(id));
-                }
-            }
-        }
-        {
-            let data_types = self.set.data_types.borrow();
-            for dt in data_types.iter() {
-                for method in dt.methods.borrow().iter() {
-                    if method.scope_entry_id.get().is_none() {
-                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                        method.scope_entry_id.set(Some(id));
-                    }
-                    if method.self_scope_entry_id.get().is_none() {
-                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                        method.self_scope_entry_id.set(Some(id));
-                    }
-                }
-                for impl_data in dt.interface_impls.borrow().iter() {
-                    for method_impl in &impl_data.method_impls {
-                        if method_impl.scope_entry_id.get().is_none() {
-                            let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                            method_impl.scope_entry_id.set(Some(id));
-                        }
-                        if method_impl.self_scope_entry_id.get().is_none() {
-                            let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                            method_impl.self_scope_entry_id.set(Some(id));
-                        }
-                    }
-                }
-            }
-        }
-
         // Register with eval context (dedup)
         {
             let mut sets = xx.vx.definition_sets.borrow_mut();

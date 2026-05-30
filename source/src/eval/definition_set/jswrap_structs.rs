@@ -86,13 +86,16 @@ jswrap!(struct DefineResult(self_, scope) {
         let idx = {
             let mut functions = ds.functions.borrow_mut();
             let idx = functions.len();
+            let entry_id = ds.next_entry_id.next();
             functions.push(DefinitionSetFunctionData {
                 name: Some(name),
                 description: RefCell::new(None),
                 impl_expr: RefCell::new(None),
                 arg_type: RefCell::new(None),
                 ret_type: RefCell::new(None),
-                scope_entry_id: Cell::new(None),
+                scope_entry_id: Cell::new(
+                    Some(crate::langhelp::ScopeEntryId::Def(ds.import_id, ds.def_set_id, entry_id,))
+                ),
                 arg_scope_entry_id: Cell::new(None),
             });
             idx
@@ -295,11 +298,14 @@ jswrap!(struct NewDataResult(self_, scope) {
             let dt = &data_types[ds_ref.data_type_index];
             let mut methods = dt.methods.borrow_mut();
             let idx = methods.len();
+            let entry_id = ds_ref.set.next_entry_id.next();
             methods.push(DefinitionSetDataMethodData {
                 name,
                 impl_expr: RefCell::new(None),
                 ret_type: RefCell::new(None),
-                scope_entry_id: Cell::new(None),
+                scope_entry_id: Cell::new(
+                    Some(crate::langhelp::ScopeEntryId::Def(ds_ref.set.import_id, ds_ref.set.def_set_id, entry_id,))
+                ),
                 self_scope_entry_id: Cell::new(None),
                 field_name,
             });
@@ -360,10 +366,19 @@ jswrap!(struct NewDataResult(self_, scope) {
             let entry = record_string_entries.iter().find(|(k, _)| k == imethod_name);
             match entry {
                 Some((_, expr)) => {
+                    let entry_id = self_.data_type_ref.set.next_entry_id.next();
                     method_impls.push(DefinitionSetDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
                         impl_expr: Box::new((*expr).clone()),
-                        scope_entry_id: Cell::new(None),
+                        scope_entry_id: Cell::new(
+                            Some(
+                                crate::langhelp::ScopeEntryId::Def(
+                                    self_.data_type_ref.set.import_id,
+                                    self_.data_type_ref.set.def_set_id,
+                                    entry_id,
+                                )
+                            )
+                        ),
                         self_scope_entry_id: Cell::new(None),
                     });
                 },

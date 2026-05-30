@@ -40,7 +40,6 @@ use {
             aspect_tagged_union_get,
         },
         jscode::{
-            BINDING_PREFIX,
             EXPR_PREFIX,
             TAG_VAR,
             JsCode,
@@ -63,6 +62,7 @@ use {
             CompileId,
             CompileImportContext,
             Counter,
+            DefSetId,
             CompileRes,
             CompileResResult,
             ConstKey,
@@ -165,6 +165,11 @@ pub(crate) struct V8LogStore {
 
 pub(crate) struct V8UniqueCounter {
     pub(crate) compile_id: CompileId,
+    pub(crate) counter: Counter,
+}
+
+pub(crate) struct V8DefSetCounter {
+    pub(crate) import_id: ImportStateId,
     pub(crate) counter: Counter,
 }
 
@@ -369,7 +374,7 @@ impl Target for MortarTarget {
                 return Ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
             }
             let (vcode, vtype) = erb.must_er(bind_result)?;
-            let js_key = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let mut entries = vec![];
             if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
                 entries.push(JsCodeBlockEntry::Code(carry.clone()));
@@ -466,7 +471,7 @@ impl Target for MortarTarget {
             let base_type = base.value.type_(xx, loc);
             let to_js = erb.must_er(aspect_consume_js_get(xx, loc, base_type.as_ref()))?;
             let base_js = erb.must_er(to_js.to_js(xx, loc, base))?;
-            let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let mut js_cases = Vec::new();
             for (tag, variant_type, body_expr) in &cases {
                 let child_scope = Rc::new(Scope {
@@ -536,7 +541,7 @@ impl Target for MortarTarget {
     fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes {
         // Store tree as external
         let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(tree))) });
-        let tree_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+        let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, tree_cell));
         let tree_js = JsCode {
             loc,
@@ -557,7 +562,7 @@ impl Target for MortarTarget {
                 match cv.code.code {
                     Code_::None => {
                         let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
-                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, cell));
                         stage_args.push(JsCode {
                             loc,
@@ -571,7 +576,7 @@ impl Target for MortarTarget {
                     Code_::Dyn(_) => {
                         let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
                         let lift_cell = Rc::new(StageLiftCell { lift });
-                        let lift_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+                        let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, lift_cell));
                         let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
                             erb.must_er(consume.to_js(xx, loc, cv))?
@@ -591,7 +596,7 @@ impl Target for MortarTarget {
                 type_: JsCodeType::Call(crate::jscode::JsCodeCall {
                     func: Box::new(JsCode {
                         loc,
-                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: ScopeEntryId(STAGE_FN_SCOPE_ID), }),
+                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: STAGE_FN_SCOPE_ID, }),
                     }),
                     args: stage_args,
                 }),
@@ -608,7 +613,7 @@ impl Target for MortarTarget {
 }
 
 /// Well-known scope entry ID for the __stage function (not a real scope entry).
-const STAGE_FN_SCOPE_ID: usize = usize::MAX;
+const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(usize::MAX);
 
 /// Holds an AspectLiftJs, stored as a v8::External so __stage can lift raw values.
 pub(crate) struct StageLiftCell {
@@ -940,7 +945,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             let iterable = erb.must_er(aspect_iterable_get(xx, expr.loc, base_type.as_ref()))?;
 
             // Create child scope with element bound, then eval body
-            let element_scope_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+            let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let child_scope = Rc::new(Scope {
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
@@ -1122,7 +1127,13 @@ fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type
 }
 
 pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
-    return format!("{}{}", BINDING_PREFIX, e.0);
+    match e {
+        ScopeEntryId::Local(id) => format!("a{}", id),
+        ScopeEntryId::Builtin(id) => format!("b{}", id),
+        ScopeEntryId::Def(import_id, def_set_id, entry_id) => {
+            format!("d{}_{}_{}", import_id.0, def_set_id.0, entry_id)
+        },
+    }
 }
 
 struct EvalResult {
@@ -1146,6 +1157,10 @@ fn eval(
             .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
         counter: Counter::default(),
     });
+    js_scope_isolate.set_slot(V8DefSetCounter {
+        import_id: import_state,
+        counter: Counter::default(),
+    });
     let js_scope_handle = std::pin::pin!(v8::HandleScope::new(&mut js_scope_isolate));
     let mut js_scope_handle2 = js_scope_handle.init();
     let js_scope_context = v8::Context::new(&mut js_scope_handle2, Default::default());
@@ -1153,11 +1168,13 @@ fn eval(
     tc_scope!(let js_scope, js_scope_context2);
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
-        next_scope_entry_id: Default::default(),
+        next_local_id: Default::default(),
+        next_builtin_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });
     let mut s1_scope = HashMap::new();
+    let mut builtin_scope_entries = Vec::new();
     for (key, eval_value, js_value) in [jswrap!(fn log(ex, js_scope, scope)(message: String) ->() {
         let timestamp_ms =
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -1166,7 +1183,10 @@ fn eval(
             message
         });
     }), jswrap!(fn define(ex, js_scope, scope)() -> DefineResult {
-        DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new())) }
+        let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
+        let def_set_id = DefSetId(dsc.counter.next());
+        let import_id = dsc.import_id;
+        DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
     }), jswrap!(fn str_to_json(ex, js_scope, scope)(s: String) -> String {
         serde_json::to_string(&s).unwrap()
     })] {
@@ -1178,6 +1198,10 @@ fn eval(
                 v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
                 js_value,
             );
+        builtin_scope_entries.push((key.to_string(), MortarScopeEntry {
+            js_key: eval_value.js_key,
+            type_: eval_value.type_.clone(),
+        }));
         s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
 
@@ -1255,28 +1279,67 @@ fn eval(
         }
         infos
     };
+
+    // Build scope for definition set body compilation: only builtins and type
+    // references. Definition set members are accessed via lower + to_js.
+    fn build_builtin_scope(
+        builtin_scope_entries: &[(String, MortarScopeEntry)],
+    ) -> HashMap<ConstKey, Box<dyn ScopeEntry>> {
+        let mut scope_entries = HashMap::<ConstKey, Box<dyn ScopeEntry>>::new();
+        for (name, entry) in builtin_scope_entries {
+            scope_entries.insert(ConstKey::String(name.clone()), Box::new(MortarScopeEntry {
+                js_key: entry.js_key,
+                type_: entry.type_.clone(),
+            }));
+        }
+        scope_entries.insert(
+            ConstKey::String("null".to_string()),
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNull) }) as Box<dyn ScopeEntry>,
+        );
+        scope_entries.insert(
+            ConstKey::String("string".to_string()),
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+        );
+        scope_entries.insert(
+            ConstKey::String("number".to_string()),
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
+        );
+        scope_entries.insert(
+            ConstKey::String("list".to_string()),
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
+        );
+        scope_entries
+    }
+
     let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, JsCode)> = vec![];
     for info in &def_func_infos {
         let impl_expr_ast =
             (info.impl_expr_ast.as_ref() as &dyn Any)
                 .downcast_ref::<Expr>()
                 .expect("Definition set impl must be an Expr");
-        let arg_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
 
-        // Evaluate impl body with arg in scope
+        // Create a separate evaluation context for the function body
+        let body_ex = Rc::new(EvalContext {
+            ix: ex.ix.clone(),
+            next_local_id: Counter::default(),
+            next_builtin_id: Counter::default(),
+            definition_sets: RefCell::new(Vec::new()),
+            externals: RefCell::new(Vec::new()),
+        });
+        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
-            let child_scope = Rc::new(Scope {
-                values: RefCell::new(HashMap::new()),
-                parent: Some(xx.scope.clone()),
-            });
-            child_scope.values.borrow_mut().insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
+            let mut body_scope = build_builtin_scope(&builtin_scope_entries);
+            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
                 js_key: arg_id,
                 type_: info.arg_type.clone(),
             }));
             Rc::new(ExprContext {
-                vx: xx.vx.clone(),
+                vx: body_ex,
                 import_state: xx.import_state.clone(),
-                scope: child_scope,
+                scope: Rc::new(Scope {
+                    values: RefCell::new(body_scope),
+                    parent: None,
+                }),
             })
         };
         let impl_result = eval_half(&func_xx, impl_expr_ast, &MortarTarget);
@@ -1323,38 +1386,33 @@ fn eval(
                     (impl_expr.as_ref().unwrap().as_ref() as &dyn Any)
                         .downcast_ref::<expr::Expr>()
                         .expect("Method impl must be an Expr");
-
-                // Allocate self scope entry ID if needed
-                if method.self_scope_entry_id.get().is_none() {
-                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                    method.self_scope_entry_id.set(Some(id));
-                }
-                if method.scope_entry_id.get().is_none() {
-                    let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                    method.scope_entry_id.set(Some(id));
-                }
-                let self_id = method.self_scope_entry_id.get().unwrap();
-                let method_id = method.scope_entry_id.get().unwrap();
+                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
                 let ret_type: Rc<dyn Type> =
                     method.ret_type.borrow().clone().expect("Data type method missing return type");
 
-                // Compile method body with `self` in scope
+                // Create a separate evaluation context for the method body
+                let body_ex = Rc::new(EvalContext {
+                    ix: ex.ix.clone(),
+                    next_local_id: Counter::default(),
+                    next_builtin_id: Counter::default(),
+                    definition_sets: RefCell::new(Vec::new()),
+                    externals: RefCell::new(Vec::new()),
+                });
+                let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
-                    let child_scope = Rc::new(Scope {
-                        values: RefCell::new(HashMap::new()),
-                        parent: Some(xx.scope.clone()),
-                    });
-                    child_scope
-                        .values
-                        .borrow_mut()
-                        .insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
-                            js_key: self_id,
-                            type_: underlying_type.clone(),
-                        }));
+                    let mut body_scope = build_builtin_scope(&builtin_scope_entries);
+                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
+                        js_key: self_id,
+                        type_: underlying_type.clone(),
+                    }));
                     Rc::new(ExprContext {
-                        vx: xx.vx.clone(),
+                        vx: body_ex,
                         import_state: xx.import_state.clone(),
-                        scope: child_scope,
+                        scope: Rc::new(Scope {
+                            values: RefCell::new(body_scope),
+                            parent: None,
+                        }),
                     })
                 };
                 let impl_result = eval_half(&method_xx, impl_expr_ast, &MortarTarget);
@@ -1388,16 +1446,8 @@ fn eval(
                         (method_impl.impl_expr.as_ref() as &dyn Any)
                             .downcast_ref::<expr::Expr>()
                             .expect("Interface method impl must be an Expr");
-                    if method_impl.self_scope_entry_id.get().is_none() {
-                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                        method_impl.self_scope_entry_id.set(Some(id));
-                    }
-                    if method_impl.scope_entry_id.get().is_none() {
-                        let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-                        method_impl.scope_entry_id.set(Some(id));
-                    }
-                    let self_id = method_impl.self_scope_entry_id.get().unwrap();
-                    let method_id = method_impl.scope_entry_id.get().unwrap();
+                    let method_id =
+                        method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not assigned");
 
                     // Resolve ret type from interface method
                     let ret_type: Rc<dyn Type> = {
@@ -1408,23 +1458,29 @@ fn eval(
                         iface_method.ret_type.borrow().clone().expect("Interface method missing return type")
                     };
 
-                    // Compile method body with `self` in scope
+                    // Create a separate evaluation context for the method body
+                    let body_ex = Rc::new(EvalContext {
+                        ix: ex.ix.clone(),
+                        next_local_id: Counter::default(),
+                        next_builtin_id: Counter::default(),
+                        definition_sets: RefCell::new(Vec::new()),
+                        externals: RefCell::new(Vec::new()),
+                    });
+                    let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                    method_impl.self_scope_entry_id.set(Some(self_id));
                     let method_xx = {
-                        let child_scope = Rc::new(Scope {
-                            values: RefCell::new(HashMap::new()),
-                            parent: Some(xx.scope.clone()),
-                        });
-                        child_scope
-                            .values
-                            .borrow_mut()
-                            .insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
-                                js_key: self_id,
-                                type_: underlying_type.clone(),
-                            }));
+                        let mut body_scope = build_builtin_scope(&builtin_scope_entries);
+                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
+                            js_key: self_id,
+                            type_: underlying_type.clone(),
+                        }));
                         Rc::new(ExprContext {
-                            vx: xx.vx.clone(),
+                            vx: body_ex,
                             import_state: xx.import_state.clone(),
-                            scope: child_scope,
+                            scope: Rc::new(Scope {
+                                values: RefCell::new(body_scope),
+                                parent: None,
+                            }),
                         })
                     };
                     let impl_result = eval_half(&method_xx, impl_expr_ast, &MortarTarget);
@@ -1705,7 +1761,7 @@ fn eval(
             .global(js_scope)
             .set(
                 js_scope,
-                v8::String::new(js_scope, &scope_entry_id_js_key(ScopeEntryId(STAGE_FN_SCOPE_ID))).unwrap().cast(),
+                v8::String::new(js_scope, &scope_entry_id_js_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
                 stage_fn.into(),
             );
     }
@@ -2049,7 +2105,8 @@ pub async fn compile_importid(
             let logs = all_logs;
             let ex = Rc::new(EvalContext {
                 ix: cix.clone(),
-                next_scope_entry_id: Default::default(),
+                next_local_id: Default::default(),
+                next_builtin_id: Default::default(),
                 definition_sets: RefCell::new(Vec::new()),
                 externals: RefCell::new(Vec::new()),
             });
