@@ -7,6 +7,7 @@ use {
             AspectFunction,
             AspectIterable,
             AspectJsStackValue,
+            AspectLiftJs,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
@@ -14,6 +15,7 @@ use {
             aspect_function_aspect_id,
             aspect_iterable_aspect_id,
             aspect_js_stack_value_aspect_id,
+            aspect_lift_js_aspect_id,
             aspect_js_stack_value_get,
             aspect_js_string_get_maybe,
             aspect_string_get,
@@ -128,6 +130,22 @@ impl Type for TypeMortarList {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
         }
+
+        // Delegate JS-level aspects to instance type so list(T) works as an instance type
+        // too
+        let instance = TypeMortarListInstance { element_type: self.element_type.clone() };
+        if *key == aspect_consume_js_aspect_id() {
+            return Some(Box::new(Box::new(instance) as Box<dyn AspectConsumeJs>));
+        }
+        if *key == aspect_bind_js_aspect_id() {
+            return Some(Box::new(Box::new(instance) as Box<dyn AspectBindJs>));
+        }
+        if *key == aspect_js_stack_value_aspect_id() {
+            return Some(Box::new(Box::new(instance) as Box<dyn AspectJsStackValue>));
+        }
+        if *key == aspect_iterable_aspect_id() {
+            return Some(Box::new(Box::new(instance) as Box<dyn AspectIterable>));
+        }
         None
     }
 
@@ -135,7 +153,18 @@ impl Type for TypeMortarList {
         EvalRes::err(loc, "Cannot convert list type".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+        let source_any: &dyn Any = source_type.as_ref();
+        if source_any.downcast_ref::<TypeMortarListInstance>().is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(super::mortar_js_value::MortarJsValue {
+                    source: super::mortar_js_value::MortarJsValueSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            });
+        }
         EvalRes::err(loc, "Cannot convert to list type".to_string())
     }
 }
@@ -143,32 +172,40 @@ impl Type for TypeMortarList {
 impl Aspect for TypeMortarList { }
 
 impl AspectField for TypeMortarList {
-    fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            match key_name.as_str() {
-                "new" => {
-                    return Ok(CodeValue {
-                        code: Code {
-                            loc,
-                            code: Code_::None
-                        },
-                        value: Box::new(
-                            StaticValue { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }), }
-                        ),
-                    });
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        let key_type = key.value.type_(xx, loc);
+        let key_string = match aspect_string_get(xx, loc, key_type.as_ref()).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: e,
+            },
+        };
+        let key_name = key_string.get(key.value.as_ref());
+        if key_name == "new" {
+            return EvalRes::ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::None,
                 },
-                _ => return erb.err_new(format!("Field '{}' not found on list type", key_name)),
-            }
-        });
+                value: Box::new(
+                    StaticValue { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }) },
+                ),
+            });
+        }
+
+        // Delegate to instance-level fields (push, join, etc.)
+        let instance = TypeMortarListInstance { element_type: self.element_type.clone() };
+        instance.field(xx, loc, self_, key)
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         match key {
             "new" => Some(Rc::new(TypeListNew { element_type: self.element_type.clone() })),
-            _ => None,
+            _ => {
+                let instance = TypeMortarListInstance { element_type: self.element_type.clone() };
+                instance.field_opt(xx, key)
+            },
         }
     }
 }

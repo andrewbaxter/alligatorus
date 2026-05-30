@@ -28,6 +28,7 @@ use {
             aspect_consume_js_get,
             aspect_consume_js_get_maybe,
             aspect_field_get,
+            aspect_field_get_maybe,
             aspect_function_get,
             aspect_lift_js_get,
             aspect_iterable_get,
@@ -139,6 +140,8 @@ use {
     },
     string::ValueString,
     tuple::{
+        RecordScopeEntry,
+        RecordScopeValue,
         StaticScopeEntry,
         ValueRecord,
         ValueTuple,
@@ -320,6 +323,34 @@ impl Target for MortarTarget {
         carry: Code,
         cv: CodeValue,
     ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)> {
+        // Special handling for ValueRecord: bind each entry individually
+        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<ValueRecord>() {
+            // just type-checking, we'll move below
+            let _ = record;
+            let record: Box<ValueRecord> = (cv.value as Box<dyn Any>).downcast().unwrap();
+            return er_seq!(loc, erb, (Vec < JsCodeBlockEntry >, Box < dyn ScopeEntry >), {
+                let mut js_entries = vec![];
+                if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
+                    js_entries.push(JsCodeBlockEntry::Code(carry.clone()));
+                }
+                let mut scope_entries: std::collections::BTreeMap<ConstKey, Rc<dyn ScopeEntry>> =
+                    std::collections::BTreeMap::new();
+                for (key, entry_res) in record.entries.into_iter() {
+                    if let Some(entry_cv) = entry_res.v {
+                        erb.errors.extend(entry_res.errors);
+                        let entry_bind = erb.must_er(self.bind(xx, loc, Code {
+                            loc,
+                            code: Code_::None
+                        }, entry_cv))?;
+                        js_entries.extend(entry_bind.0);
+                        scope_entries.insert(key, Rc::from(entry_bind.1));
+                    } else {
+                        erb.errors.extend(entry_res.errors);
+                    }
+                }
+                return Ok((js_entries, Box::new(RecordScopeEntry { entries: scope_entries }) as Box<dyn ScopeEntry>));
+            });
+        }
         let vtype = cv.value.type_(xx, loc);
         let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
             let mut entries = vec![];
@@ -787,7 +818,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             }
 
             let mut matched_lower_exprs = Vec::new();
-            find_matched_lowers_inner(expr, 0, 0, &mut matched_lower_exprs);
+            find_matched_lowers_inner(&e.expr, 0, 0, &mut matched_lower_exprs);
             if matched_lower_exprs.is_empty() {
                 // No matched lowers - return the inner tree as-is
                 return EvalRes::ok(CodeValue {
@@ -853,7 +884,13 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                     errors,
                 };
             }
-            let code = if key_codes.is_empty() {
+
+            // Check if any entry value has JS code (Code_::Dyn). If so, the record must also
+            // carry Code_::Dyn so stage processing knows to lift it.
+            let has_entry_code = entries.values().any(|e| {
+                e.v.as_ref().map_or(false, |cv| matches!(cv.code.code, Code_::Dyn(_)))
+            });
+            let code = if key_codes.is_empty() && !has_entry_code {
                 Code {
                     loc: expr.loc,
                     code: Code_::None,
@@ -1020,12 +1057,67 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
             dest = dest1;
         } else if let Some(dest1) = erb.maybe_er(dest_type.cast_from(xx, loc, &source)) {
             dest = dest1;
+        } else if let Some(dest1) = erb.maybe_er(typecheck_convert_record(xx, loc, dest_type, source)) {
+            dest = dest1;
         } else {
             return erb.err_new(
                 format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
             );
         }
         return Ok(dest);
+    });
+}
+
+fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
+    return er_seq_cv!(loc, erb, {
+        let dest_field = match aspect_field_get_maybe(xx, dest_type) {
+            Some(f) => f,
+            None => return erb.err_new(format!("Not a record type")),
+        };
+        let any_source: Box<dyn Any> = source.value;
+        let record = match any_source.downcast::<ValueRecord>() {
+            Ok(r) => r,
+            Err(any_source) => match any_source.downcast::<tuple::RecordScopeValue>() {
+                Ok(rsv) => {
+                    let mut entries = std::collections::BTreeMap::new();
+                    for (k, entry) in &rsv.entries {
+                        let cv = entry.use_(loc, Code {
+                            loc,
+                            code: Code_::None
+                        });
+                        entries.insert(k.clone(), EvalRes::ok(cv));
+                    }
+                    Box::new(ValueRecord { entries })
+                },
+                Err(_) => return erb.err_new(format!("Source is not a record value")),
+            },
+        };
+        let mut converted_entries = std::collections::BTreeMap::new();
+        for (key, entry_res) in record.entries {
+            let key_str = match &key {
+                ConstKey::String(s) => s.clone(),
+            };
+            let dest_entry_type = match dest_field.field_opt(xx, &key_str) {
+                Some(t) => t,
+                None => {
+                    return erb.err_new(format!("Dest record missing key {:?}", key_str));
+                },
+            };
+            let converted_entry = if let Some(entry_cv) = entry_res.v {
+                let conv = erb.must_er(typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv))?;
+                EvalRes::ok(conv)
+            } else {
+                EvalRes {
+                    v: None,
+                    errors: entry_res.errors,
+                }
+            };
+            converted_entries.insert(key, converted_entry);
+        }
+        return Ok(CodeValue {
+            code: source.code,
+            value: Box::new(ValueRecord { entries: converted_entries }),
+        });
     });
 }
 
@@ -1075,6 +1167,8 @@ fn eval(
         });
     }), jswrap!(fn define(ex, js_scope, scope)() -> DefineResult {
         DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new())) }
+    }), jswrap!(fn str_to_json(ex, js_scope, scope)(s: String) -> String {
+        serde_json::to_string(&s).unwrap()
     })] {
         js_scope
             .get_current_context()
@@ -1130,66 +1224,83 @@ fn eval(
         },
     };
 
-    // Compile definition set implementations
-    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, JsCode)> = vec![];
-    for ds in ex.definition_sets.borrow().iter() {
-        for func_data in ds.functions.borrow().iter() {
-            let impl_expr = func_data.impl_expr.borrow();
-            let impl_expr = impl_expr.as_ref().expect("Definition set function missing implementation");
-            let impl_expr_ast =
-                (impl_expr.as_ref() as &dyn Any)
-                    .downcast_ref::<Expr>()
-                    .expect("Definition set impl must be an Expr");
-            let arg_type: Rc<dyn Type> =
-                func_data.arg_type.borrow().clone().expect("Definition set function missing arg type");
-            let ret_type: Rc<dyn Type> =
-                func_data.ret_type.borrow().clone().expect("Definition set function missing return type");
-            let arg_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
-            func_data.arg_scope_entry_id.set(Some(arg_id));
+    // Compile definition set implementations Collect function data first to release
+    // the borrow on definition_sets, since eval_half may trigger function calls that
+    // re-borrow it.
+    struct DefFuncInfo {
+        impl_expr_ast: Box<dyn Value>,
+        arg_type: Rc<dyn Type>,
+        ret_type: Rc<dyn Type>,
+        scope_entry_id: ScopeEntryId,
+    }
 
-            // Evaluate impl body with arg in scope
-            let func_xx = {
-                let child_scope = Rc::new(Scope {
-                    values: RefCell::new(HashMap::new()),
-                    parent: Some(xx.scope.clone()),
+    let def_func_infos: Vec<DefFuncInfo> = {
+        let sets = ex.definition_sets.borrow();
+        let mut infos = vec![];
+        for ds in sets.iter() {
+            for func_data in ds.functions.borrow().iter() {
+                let impl_expr_ast =
+                    func_data.impl_expr.borrow_mut().take().expect("Definition set function missing implementation");
+                let arg_type = func_data.arg_type.borrow().clone().expect("Definition set function missing arg type");
+                let ret_type =
+                    func_data.ret_type.borrow().clone().expect("Definition set function missing return type");
+                let scope_id = func_data.scope_entry_id.get().expect("Definition set function not registered");
+                infos.push(DefFuncInfo {
+                    impl_expr_ast,
+                    arg_type,
+                    ret_type,
+                    scope_entry_id: scope_id,
                 });
-                child_scope
-                    .values
-                    .borrow_mut()
-                    .insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
-                        js_key: arg_id,
-                        type_: arg_type,
-                    }));
-                Rc::new(ExprContext {
-                    vx: xx.vx.clone(),
-                    import_state: xx.import_state.clone(),
-                    scope: child_scope,
-                })
-            };
-            let impl_result = eval_half(&func_xx, impl_expr_ast, &MortarTarget);
-            if !impl_result.errors.is_empty() {
-                return Err(impl_result.errors);
             }
-            let impl_cv = impl_result.v.unwrap();
-
-            // Type check return value against ret type
-            let impl_cv = {
-                let r = typecheck_convert(&func_xx, root_loc, ret_type.as_ref(), impl_cv);
-                if !r.errors.is_empty() {
-                    return Err(r.errors);
-                }
-                r.v.unwrap()
-            };
-            let impl_code =
-                impl_cv
-                    .code
-                    .cast::<JsCode>()
-                    .into_res()?
-                    .expect("Definition set function body must produce JS code")
-                    .clone();
-            let scope_id = func_data.scope_entry_id.get().expect("Definition set function not registered");
-            def_funcs.push((scope_id, Some(arg_id), impl_code));
         }
+        infos
+    };
+    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, JsCode)> = vec![];
+    for info in &def_func_infos {
+        let impl_expr_ast =
+            (info.impl_expr_ast.as_ref() as &dyn Any)
+                .downcast_ref::<Expr>()
+                .expect("Definition set impl must be an Expr");
+        let arg_id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
+
+        // Evaluate impl body with arg in scope
+        let func_xx = {
+            let child_scope = Rc::new(Scope {
+                values: RefCell::new(HashMap::new()),
+                parent: Some(xx.scope.clone()),
+            });
+            child_scope.values.borrow_mut().insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
+                js_key: arg_id,
+                type_: info.arg_type.clone(),
+            }));
+            Rc::new(ExprContext {
+                vx: xx.vx.clone(),
+                import_state: xx.import_state.clone(),
+                scope: child_scope,
+            })
+        };
+        let impl_result = eval_half(&func_xx, impl_expr_ast, &MortarTarget);
+        if !impl_result.errors.is_empty() {
+            return Err(impl_result.errors);
+        }
+        let impl_cv = impl_result.v.unwrap();
+
+        // Type check return value against ret type
+        let impl_cv = {
+            let r = typecheck_convert(&func_xx, root_loc, info.ret_type.as_ref(), impl_cv);
+            if !r.errors.is_empty() {
+                return Err(r.errors);
+            }
+            r.v.unwrap()
+        };
+        let impl_code =
+            impl_cv
+                .code
+                .cast::<JsCode>()
+                .into_res()?
+                .expect("Definition set function body must produce JS code")
+                .clone();
+        def_funcs.push((info.scope_entry_id, Some(arg_id), impl_code));
     }
 
     // Compile data type method implementations

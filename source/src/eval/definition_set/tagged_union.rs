@@ -57,7 +57,9 @@ use {
 };
 
 // --- Mortar type for TaggedUnionRef (during eval_half / v8 phase) ---
-pub(crate) struct MortarTypeTaggedUnionRef;
+pub(crate) struct MortarTypeTaggedUnionRef {
+    pub data: Option<Rc<TaggedUnionData>>,
+}
 
 impl Value for MortarTypeTaggedUnionRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -72,26 +74,92 @@ impl Type for MortarTypeTaggedUnionRef {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionRef) as Box<dyn AspectConsumeJs>));
+            return Some(
+                Box::new(
+                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectConsumeJs>,
+                ),
+            );
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionRef) as Box<dyn AspectBindJs>));
+            return Some(
+                Box::new(Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectBindJs>),
+            );
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionRef) as Box<dyn AspectJsStackValue>));
+            return Some(
+                Box::new(
+                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectJsStackValue>,
+                ),
+            );
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionRef) as Box<dyn AspectLiftJs>));
+            return Some(
+                Box::new(Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectLiftJs>),
+            );
+        }
+        if let Some(data) = &self.data {
+            if *key == aspect_tagged_union_aspect_id() {
+                return Some(
+                    Box::new(Box::new(TaggedUnionType { data: data.clone() }) as Box<dyn AspectTaggedUnion>),
+                );
+            }
         }
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        // Allow converting to another MortarTypeTaggedUnionRef (or TaggedUnionType) with
+        // matching identity
+        let dest_any: &dyn Any = type_;
+        if let Some(dest_ref) = dest_any.downcast_ref::<MortarTypeTaggedUnionRef>() {
+            // Same tagged union identity (or either side has no identity = compatible)
+            match (&self.data, &dest_ref.data) {
+                (Some(s), Some(d)) if s.identity == d.identity => { },
+                (None, _) | (_, None) => { },
+                _ => return EvalRes::err(loc, format!("Cannot convert tagged_union_ref (identity mismatch)")),
+            }
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(MortarTypeTaggedUnionRef { data: dest_ref.data.clone().or(self.data.clone()) }),
+                }),
+            });
+        }
         EvalRes::err(loc, format!("Cannot convert tagged_union_ref"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union_ref"))
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+
+        // Check if source is also a MortarTypeTaggedUnionRef
+        let source_any: &dyn Any = source_type.as_ref();
+        if let Some(source_ref) = source_any.downcast_ref::<MortarTypeTaggedUnionRef>() {
+            match (&self.data, &source_ref.data) {
+                (Some(s), Some(d)) if s.identity == d.identity => { },
+                (None, _) | (_, None) => { },
+                _ => return EvalRes::err(loc, format!("Cannot convert tagged_union_ref (identity mismatch)")),
+            }
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(
+                        MortarTypeTaggedUnionRef { data: self.data.clone().or(source_ref.data.clone()) },
+                    ),
+                }),
+            });
+        }
+        if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: source_type,
+                }),
+            });
+        }
+        EvalRes::err(loc, format!("Cannot convert {} to tagged_union_ref", source_type.desc()))
     }
 }
 
@@ -119,7 +187,7 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
             },
             value: Box::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
-                type_: Rc::new(MortarTypeTaggedUnionRef),
+                type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
             }),
         }
     }
@@ -220,7 +288,7 @@ impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
 // --- JsWrap impls ---
 impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionRef> {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(MortarTypeTaggedUnionRef)
+        Rc::new(MortarTypeTaggedUnionRef { data: None })
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -334,8 +402,7 @@ impl AspectJsStackValue for TaggedUnionType {
     }
 }
 
-// --- Post-lift: TaggedUnionConstructor (callable to create tagged union values)
-// ---
+// ## --- Post-lift: TaggedUnionConstructor (callable to create tagged union values)
 pub(crate) struct TaggedUnionConstructor {
     pub data: Rc<TaggedUnionData>,
     pub variant_index: usize,

@@ -6,7 +6,7 @@ mod exports;
 mod function;
 mod interface_ref;
 mod interface;
-mod tagged_union;
+pub(crate) mod tagged_union;
 
 pub(crate) use {
     jswrap_structs::DefineResult,

@@ -292,6 +292,33 @@ impl AspectSet for TypeMortarNumber {
             let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;
             let v = (self_.value.as_ref() as &dyn std::any::Any).downcast_ref::<MortarJsValue>().unwrap();
             match &v.source {
+                MortarJsValueSource::Field(b) => {
+                    let Some(self_code) = self_code else {
+                        return erb.err_new(
+                            format!("TODO assertion set left hand doesn't evaluate to js code (empty)")
+                        );
+                    };
+
+                    // Extract the base from FieldUse so FieldSet targets the parent object
+                    let base_code = match &self_code.type_ {
+                        JsCodeType::FieldUse(fu) => *fu.base.clone(),
+                        _ => self_code.clone(),
+                    };
+                    return Ok(CodeValue {
+                        code: Code {
+                            loc: loc,
+                            code: Code_::Dyn(Rc::new(JsCode {
+                                loc: loc,
+                                type_: JsCodeType::FieldSet(JsCodeFieldSet {
+                                    base: Box::new(base_code),
+                                    key: b.key.clone(),
+                                    value: Box::new(value_code)
+                                })
+                            }))
+                        },
+                        value: Box::new(super::null::ValueNull),
+                    })
+                },
                 MortarJsValueSource::Binding(b) => {
                     let mut seq = vec![];
                     if let Some(self_code) = self_code {

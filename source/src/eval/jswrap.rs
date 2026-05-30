@@ -69,19 +69,83 @@ impl JsWrap for TypeRef {
         Rc::new(super::type_ref::TypeType)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        // Array format: [StagedExprCell, {entry_name: v8_value, ...}] Produced by
+        // TypeType::to_js when entry_bindings are present (record types)
+        if value.is_array() {
+            let arr = v8::Local::<v8::Array>::try_from(value).unwrap();
+            let type_ext = arr.get_index(scope, 0).unwrap();
+            let bindings_obj = arr.get_index(scope, 1).unwrap();
+            let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*type_ext);
+            let inner = cell.value.borrow_mut().take().expect("type ref already consumed");
+            let type_ref_value =
+                (inner.as_ref() as &dyn std::any::Any)
+                    .downcast_ref::<super::type_ref::TypeRefValue>()
+                    .expect("Expected TypeRefValue");
+            let base_type = type_ref_value.type_.clone();
+
+            // Enhance record types using the actual v8 values
+            let enhanced = enhance_type_with_v8_obj(scope, base_type, bindings_obj);
+            return TypeRef(enhanced);
+        }
         let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
-        let value = cell.value.borrow_mut().take().expect("type ref already consumed (double use)");
+        let inner = cell.value.borrow_mut().take().expect("type ref already consumed (double use)");
         let type_ref_value =
-            (value.as_ref() as &dyn std::any::Any)
+            (inner.as_ref() as &dyn std::any::Any)
                 .downcast_ref::<super::type_ref::TypeRefValue>()
                 .expect("Expected TypeRefValue in StagedExprCell");
-        TypeRef(type_ref_value.0.clone())
+        TypeRef(type_ref_value.type_.clone())
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         unimplemented!("TypeRef should not be sent back to v8")
     }
+}
+
+/// Enhance a record type using v8 values from the bindings object. For entries
+/// that are MortarTypeTaggedUnionRef, extracts the TaggedUnionRef from the v8
+/// external to get variant data.
+fn enhance_type_with_v8_obj<
+    's,
+>(
+    scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+    base_type: Rc<dyn Type>,
+    bindings_obj: v8::Local<'s, v8::Value>,
+) -> Rc<dyn Type> {
+    use std::any::Any;
+
+    let base_any: &dyn Any = base_type.as_ref();
+    if let Some(record_type) = base_any.downcast_ref::<super::tuple::TypeValueRecord>() {
+        if !bindings_obj.is_object() || bindings_obj.is_null_or_undefined() {
+            return base_type;
+        }
+        let obj = v8::Local::<v8::Object>::try_from(bindings_obj).unwrap();
+        let mut new_entries = record_type.entry_types.clone();
+        for (key, entry_type) in &record_type.entry_types {
+            let key_str = match key {
+                crate::langhelp::ConstKey::String(s) => s.clone(),
+            };
+            let type_any: &dyn Any = entry_type.as_ref();
+            if type_any.downcast_ref::<super::definition_set::tagged_union::MortarTypeTaggedUnionRef>().is_some() {
+                let v8_key = v8::String::new(scope, &key_str).unwrap();
+                if let Some(v8_val) = obj.get(scope, v8_key.into()) {
+                    if v8_val.is_external() {
+                        let ref_: Rc<super::definition_set::TaggedUnionRef> = super::rc_from_v8(&*v8_val);
+                        new_entries.insert(
+                            key.clone(),
+                            Rc::new(
+                                super::definition_set::tagged_union::MortarTypeTaggedUnionRef {
+                                    data: Some(ref_.data.clone()),
+                                },
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+        return Rc::new(super::tuple::TypeValueRecord { entry_types: new_entries });
+    }
+    base_type
 }
 
 pub(crate) fn jswrap_method_name(s: &str) -> &str {

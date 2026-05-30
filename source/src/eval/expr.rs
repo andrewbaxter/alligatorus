@@ -250,6 +250,10 @@ impl Aspect for ExprType { }
 
 impl AspectConsumeJs for ExprType {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        // If there's already JS code (e.g. from a __stage call), use it directly
+        if let Some(js) = cv.code.cast::<JsCode>().v.flatten() {
+            return EResult::ok(js.clone());
+        }
         let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
         let id = ScopeEntryId(xx.vx.next_scope_entry_id.next());
         xx.vx.externals.borrow_mut().push((id, cell));

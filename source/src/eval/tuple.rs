@@ -240,6 +240,13 @@ impl Type for TypeValueRecord {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_field_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeValueRecord { entry_types: self.entry_types.clone() }) as Box<dyn AspectField>,
+                ),
+            );
+        }
         if *key == aspect_consume_js_aspect_id() {
             return Some(
                 Box::new(
@@ -274,17 +281,100 @@ impl Type for TypeValueRecord {
         EvalRes::err(loc, format!("Cannot convert record to other type"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+        let source_any: &dyn std::any::Any = source_type.as_ref();
+
+        // Check compatibility: source must be a record-like type with matching keys
+        let source_keys_match = if let Some(source_record) = source_any.downcast_ref::<TypeValueRecord>() {
+            self.entry_types.keys().all(|k| source_record.entry_types.contains_key(k))
+        } else if let Some(source_scope) = source_any.downcast_ref::<RecordScopeType>() {
+            self.entry_types.keys().all(|k| source_scope.entry_types.contains_key(k))
+        } else {
+            false
+        };
+        if source_keys_match {
+            // Only allow pass-through for non-ValueRecord values (MortarJsValue,
+            // RecordScopeValue, etc.) ValueRecord values should go through
+            // typecheck_convert_record for proper entry conversion
+            let value_any: &dyn std::any::Any = cv.value.as_ref();
+            if value_any.downcast_ref::<ValueRecord>().is_none() &&
+                value_any.downcast_ref::<RecordScopeValue>().is_none() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(super::mortar_js_value::MortarJsValue {
+                        source: super::mortar_js_value::MortarJsValueSource::Expr,
+                        type_: Rc::new(TypeValueRecord { entry_types: self.entry_types.clone() }),
+                    }),
+                });
+            }
+        }
         EvalRes::err(loc, format!("Cannot convert to record type"))
     }
 }
 
 impl Aspect for TypeValueRecord { }
 
+impl AspectField for TypeValueRecord {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        return super::util::er_seq_cv_inline(loc, |erb| {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            let entry_type = self.entry_types.get(&ConstKey::String(key_name.clone())).cloned().ok_or_else(|| {
+                erb.errors.push(crate::langhelp::ExprErr {
+                    loc,
+                    errors: vec![
+                        crate::langhelp::ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name),)
+                    ],
+                });
+            })?;
+            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc,
+                        type_: JsCodeType::FieldUse(crate::jscode::JsCodeFieldUse {
+                            base: Box::new(self_code),
+                            field: key_name.clone(),
+                        }),
+                    })),
+                },
+                value: Box::new(super::mortar_js_value::MortarJsValue {
+                    source: super::mortar_js_value::MortarJsValueSource::Field(
+                        super::mortar_js_value::MortarJsValueDataAccess {
+                            loc,
+                            base: Box::new(super::mortar_js_value::MortarJsValue {
+                                source: super::mortar_js_value::MortarJsValueSource::Expr,
+                                type_: Rc::new(TypeValueRecord { entry_types: self.entry_types.clone() }),
+                            }),
+                            key: key_name,
+                        },
+                    ),
+                    type_: entry_type,
+                }),
+            });
+        });
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        self.entry_types.get(&ConstKey::String(key.to_string())).cloned()
+    }
+}
+
 impl AspectConsumeJs for TypeValueRecord {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         let carry = cv.code;
-        let record: Box<ValueRecord> = (cv.value as Box<dyn Any>).downcast().unwrap();
+
+        // If the value is a MortarJsValue (e.g. from cast_from), the JS code already
+        // represents the record object — just pass the code through
+        let record: Box<ValueRecord> = match (cv.value as Box<dyn Any>).downcast::<ValueRecord>() {
+            Ok(r) => r,
+            Err(_) => {
+                return carry.cast::<JsCode>().map(|x| x.unwrap().clone());
+            },
+        };
         let mut errors = vec![];
         let mut js_fields = Vec::new();
         for (key, elem_res) in record.entries.into_iter() {
@@ -349,6 +439,105 @@ impl ScopeEntry for StaticScopeEntry {
             },
             value: Box::new(StaticValue { type_: self.type_.clone() }),
         }
+    }
+}
+
+/// Scope entry for records: stores individual scope entries per field.
+pub(crate) struct RecordScopeEntry {
+    pub entries: BTreeMap<ConstKey, Rc<dyn ScopeEntry>>,
+}
+
+impl ScopeEntry for RecordScopeEntry {
+    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
+            value: Box::new(RecordScopeValue { entries: self.entries.clone() }),
+        }
+    }
+}
+
+pub(crate) struct RecordScopeValue {
+    pub(crate) entries: BTreeMap<ConstKey, Rc<dyn ScopeEntry>>,
+}
+
+impl Value for RecordScopeValue {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        let entry_types: BTreeMap<ConstKey, Rc<dyn Type>> = self.entries.iter().map(|(k, entry)| {
+            let cv = entry.use_(loc, Code {
+                loc,
+                code: Code_::None,
+            });
+            (k.clone(), cv.value.type_(xx, loc))
+        }).collect();
+        Rc::new(RecordScopeType {
+            entries: self.entries.clone(),
+            entry_types,
+        })
+    }
+}
+
+pub(crate) struct RecordScopeType {
+    entries: BTreeMap<ConstKey, Rc<dyn ScopeEntry>>,
+    entry_types: BTreeMap<ConstKey, Rc<dyn Type>>,
+}
+
+impl Value for RecordScopeType {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeType)
+    }
+}
+
+impl Type for RecordScopeType {
+    fn desc(&self) -> String {
+        format!(
+            "record_scope({})",
+            self.entry_types.iter().map(|(k, t)| format!("{:?}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
+        )
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(RecordScopeType {
+                entries: self.entries.clone(),
+                entry_types: self.entry_types.clone(),
+            }) as Box<dyn AspectField>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert record_scope"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to record_scope"))
+    }
+}
+
+impl Aspect for RecordScopeType { }
+
+impl AspectField for RecordScopeType {
+    fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
+        return super::util::er_seq_cv_inline(loc, |erb| {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            let const_key = ConstKey::String(key_name.clone());
+            if let Some(entry) = self.entries.get(&const_key) {
+                return Ok(entry.use_(loc, Code {
+                    loc,
+                    code: Code_::None,
+                }));
+            }
+            return erb.err_new(format!("Field '{}' not found on record", key_name));
+        });
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        self.entry_types.get(&ConstKey::String(key.to_string())).cloned()
     }
 }
 
