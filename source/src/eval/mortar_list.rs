@@ -109,9 +109,9 @@ impl AspectFunction for TypeListConstructor {
     }
 }
 
-// --- list type (result of list(string)) ---
+// --- list type (result of list(string), and also type of list instances) ---
 #[derive(Clone)]
-struct TypeMortarList {
+pub(crate) struct TypeMortarList {
     element_type: Rc<dyn Type>,
 }
 
@@ -130,21 +130,17 @@ impl Type for TypeMortarList {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
         }
-
-        // Delegate JS-level aspects to instance type so list(T) works as an instance type
-        // too
-        let instance = TypeMortarListInstance { element_type: self.element_type.clone() };
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(instance) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(instance) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(instance) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_iterable_aspect_id() {
-            return Some(Box::new(Box::new(instance) as Box<dyn AspectIterable>));
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
         }
         None
     }
@@ -153,10 +149,10 @@ impl Type for TypeMortarList {
         EvalRes::err(loc, "Cannot convert list type".to_string())
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(_xx, loc);
         let source_any: &dyn Any = source_type.as_ref();
-        if source_any.downcast_ref::<TypeMortarListInstance>().is_some() {
+        if source_any.downcast_ref::<TypeMortarList>().is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code.clone(),
                 value: Box::new(super::mortar_js_value::MortarJsValue {
@@ -194,19 +190,128 @@ impl AspectField for TypeMortarList {
             });
         }
 
-        // Delegate to instance-level fields (push, join, etc.)
-        let instance = TypeMortarListInstance { element_type: self.element_type.clone() };
-        instance.field(xx, loc, self_, key)
+        // Instance-level fields (push, join, etc.)
+        return er_seq_cv!(loc, erb, {
+            let field_type = match self.field_opt(xx, &key_name) {
+                Some(t) => t,
+                None => return erb.err_new(format!("Field '{}' not found on list", key_name)),
+            };
+            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc,
+                        type_: JsCodeType::FieldUse(JsCodeFieldUse {
+                            base: Box::new(self_code),
+                            field: key_name.clone(),
+                        }),
+                    })),
+                },
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Field(MortarJsValueDataAccess {
+                        loc,
+                        base: Box::new(MortarJsValue {
+                            source: MortarJsValueSource::Expr,
+                            type_: Rc::new(self.clone()),
+                        }),
+                        key: key_name,
+                    }),
+                    type_: field_type,
+                }),
+            });
+        });
     }
 
     fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         match key {
             "new" => Some(Rc::new(TypeListNew { element_type: self.element_type.clone() })),
-            _ => {
-                let instance = TypeMortarListInstance { element_type: self.element_type.clone() };
-                instance.field_opt(xx, key)
+            "push" => Some(Rc::new(MortarTypeFunction {
+                arg: self.element_type.clone(),
+                ret: Rc::new(TypeMortarNull),
+            })),
+            "join" => {
+                if aspect_js_string_get_maybe(xx, self.element_type.as_ref()).is_some() {
+                    Some(Rc::new(MortarTypeFunction {
+                        arg: Rc::new(TypeMortarString),
+                        ret: Rc::new(TypeMortarString),
+                    }))
+                } else {
+                    None
+                }
             },
+            _ => None,
         }
+    }
+}
+
+impl AspectJsStackValue for TypeMortarList {
+    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Box::new(MortarJsValue {
+                source: MortarJsValueSource::Expr,
+                type_: Rc::new(self.clone()),
+            }),
+        }
+    }
+}
+
+impl AspectConsumeJs for TypeMortarList {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectBindJs for TypeMortarList {
+    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_js(xx, loc, cv).map(|c| (c, vtype))
+    }
+}
+
+impl AspectIterable for TypeMortarList {
+    fn element_type(&self) -> Rc<dyn Type> {
+        self.element_type.clone()
+    }
+
+    fn foreach(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ScopeEntryId,
+        body: CodeValue,
+    ) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_consume = erb.must_er(aspect_consume_js_get(xx, loc, &*Rc::new(self.clone())))?;
+            let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
+            let body_js = match body.code.cast::<JsCode>().into_res() {
+                Ok(Some(js)) => js.clone(),
+                Ok(None) => JsCode {
+                    loc,
+                    type_: JsCodeType::Literal(serde_json::Value::Null)
+                },
+                Err(e) => {
+                    erb.errors.extend(e);
+                    return Err(());
+                },
+            };
+            let foreach_js = JsCode {
+                loc,
+                type_: JsCodeType::Foreach(JsCodeForeach {
+                    base: Box::new(base_js),
+                    element_key,
+                    body: Box::new(body_js),
+                }),
+            };
+            let null_type = Rc::new(super::mortar_null::TypeMortarNull);
+            let stack_value = erb.must_er(aspect_js_stack_value_get(xx, loc, null_type.as_ref()))?;
+            return Ok(stack_value.to_value(loc, foreach_js));
+        });
     }
 }
 
@@ -265,187 +370,12 @@ impl AspectFunction for TypeListNew {
                 let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                 js_elements.push(js);
             }
-            let instance_type = Rc::new(TypeMortarListInstance { element_type: self.element_type.clone() });
+            let instance_type = Rc::new(TypeMortarList { element_type: self.element_type.clone() });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, instance_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
                 type_: JsCodeType::NewArray(JsCodeNewArray { elements: js_elements }),
             }));
-        });
-    }
-}
-
-// --- list instance type ---
-#[derive(Clone)]
-struct TypeMortarListInstance {
-    element_type: Rc<dyn Type>,
-}
-
-impl Value for TypeMortarListInstance {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
-    }
-}
-
-impl Type for TypeMortarListInstance {
-    fn desc(&self) -> String {
-        format!("list({}) instance", self.element_type.desc())
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
-        }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindJs>));
-        }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
-        }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectJsStackValue>));
-        }
-        if *key == aspect_iterable_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
-        }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert list instance".to_string())
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to list instance".to_string())
-    }
-}
-
-impl Aspect for TypeMortarListInstance { }
-
-impl AspectJsStackValue for TypeMortarListInstance {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Box::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(self.clone()),
-            }),
-        }
-    }
-}
-
-impl AspectConsumeJs for TypeMortarListInstance {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindJs for TypeMortarListInstance {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(JsCode, Rc<dyn Type>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| (c, vtype))
-    }
-}
-
-impl AspectField for TypeMortarListInstance {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let field_type = match self.field_opt(xx, &key_name) {
-                Some(t) => t,
-                None => return erb.err_new(format!("Field '{}' not found on list instance", key_name)),
-            };
-            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(JsCode {
-                        loc,
-                        type_: JsCodeType::FieldUse(JsCodeFieldUse {
-                            base: Box::new(self_code),
-                            field: key_name.clone(),
-                        }),
-                    })),
-                },
-                value: Box::new(MortarJsValue {
-                    source: MortarJsValueSource::Field(MortarJsValueDataAccess {
-                        loc,
-                        base: Box::new(MortarJsValue {
-                            source: MortarJsValueSource::Expr,
-                            type_: Rc::new(self.clone()),
-                        }),
-                        key: key_name,
-                    }),
-                    type_: field_type,
-                }),
-            });
-        });
-    }
-
-    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        match key {
-            "push" => Some(Rc::new(MortarTypeFunction {
-                arg: self.element_type.clone(),
-                ret: Rc::new(TypeMortarNull),
-            })),
-            "join" => {
-                if aspect_js_string_get_maybe(xx, self.element_type.as_ref()).is_some() {
-                    Some(Rc::new(MortarTypeFunction {
-                        arg: Rc::new(TypeMortarString),
-                        ret: Rc::new(TypeMortarString),
-                    }))
-                } else {
-                    None
-                }
-            },
-            _ => None,
-        }
-    }
-}
-
-impl AspectIterable for TypeMortarListInstance {
-    fn element_type(&self) -> Rc<dyn Type> {
-        self.element_type.clone()
-    }
-
-    fn foreach(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        base: CodeValue,
-        element_key: ScopeEntryId,
-        body: CodeValue,
-    ) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let base_consume = erb.must_er(aspect_consume_js_get(xx, loc, &*Rc::new(self.clone())))?;
-            let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
-            let body_js = match body.code.cast::<JsCode>().into_res() {
-                Ok(Some(js)) => js.clone(),
-                Ok(None) => JsCode {
-                    loc,
-                    type_: JsCodeType::Literal(serde_json::Value::Null)
-                },
-                Err(e) => {
-                    erb.errors.extend(e);
-                    return Err(());
-                },
-            };
-            let foreach_js = JsCode {
-                loc,
-                type_: JsCodeType::Foreach(JsCodeForeach {
-                    base: Box::new(base_js),
-                    element_key,
-                    body: Box::new(body_js),
-                }),
-            };
-            let null_type = Rc::new(super::mortar_null::TypeMortarNull);
-            let stack_value = erb.must_er(aspect_js_stack_value_get(xx, loc, null_type.as_ref()))?;
-            return Ok(stack_value.to_value(loc, foreach_js));
         });
     }
 }
