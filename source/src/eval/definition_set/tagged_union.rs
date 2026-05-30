@@ -56,6 +56,13 @@ use {
     },
 };
 
+fn tagged_union_ref_type_identity() -> Unique {
+    Unique::Builtin {
+        file: file!(),
+        line: line!() as usize,
+    }
+}
+
 // --- Mortar type for TaggedUnionRef (during eval_half / v8 phase) ---
 pub(crate) struct MortarTypeTaggedUnionRef {
     pub data: Option<Rc<TaggedUnionData>>,
@@ -73,6 +80,9 @@ impl Type for MortarTypeTaggedUnionRef {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == tagged_union_ref_type_identity() {
+            return Some(Box::new(true));
+        }
         if *key == aspect_consume_js_aspect_id() {
             return Some(
                 Box::new(
@@ -98,6 +108,9 @@ impl Type for MortarTypeTaggedUnionRef {
             );
         }
         if let Some(data) = &self.data {
+            if *key == data.identity {
+                return Some(Box::new(true));
+            }
             if *key == aspect_tagged_union_aspect_id() {
                 return Some(
                     Box::new(Box::new(TaggedUnionType { data: data.clone() }) as Box<dyn AspectTaggedUnion>),
@@ -107,48 +120,53 @@ impl Type for MortarTypeTaggedUnionRef {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
-        // Allow converting to another MortarTypeTaggedUnionRef (or TaggedUnionType) with
-        // matching identity
-        let dest_any: &dyn Any = type_;
-        if let Some(dest_ref) = dest_any.downcast_ref::<MortarTypeTaggedUnionRef>() {
-            // Same tagged union identity (or either side has no identity = compatible)
-            match (&self.data, &dest_ref.data) {
-                (Some(s), Some(d)) if s.identity == d.identity => { },
-                (None, _) | (_, None) => { },
-                _ => return EvalRes::err(loc, format!("Cannot convert tagged_union_ref (identity mismatch)")),
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+        if let Some(data) = &self.data {
+            if type_.aspect(xx, &data.identity).is_some() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
+                    }),
+                });
             }
-            return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
-                value: Box::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
-                    type_: Rc::new(MortarTypeTaggedUnionRef { data: dest_ref.data.clone().or(self.data.clone()) }),
-                }),
-            });
+        } else {
+            if type_.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
+                    }),
+                });
+            }
         }
         EvalRes::err(loc, format!("Cannot convert tagged_union_ref"))
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
-
-        // Check if source is also a MortarTypeTaggedUnionRef
-        let source_any: &dyn Any = source_type.as_ref();
-        if let Some(source_ref) = source_any.downcast_ref::<MortarTypeTaggedUnionRef>() {
-            match (&self.data, &source_ref.data) {
-                (Some(s), Some(d)) if s.identity == d.identity => { },
-                (None, _) | (_, None) => { },
-                _ => return EvalRes::err(loc, format!("Cannot convert tagged_union_ref (identity mismatch)")),
+        if let Some(data) = &self.data {
+            if source_type.aspect(xx, &data.identity).is_some() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
+                    }),
+                });
             }
-            return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
-                value: Box::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
-                    type_: Rc::new(
-                        MortarTypeTaggedUnionRef { data: self.data.clone().or(source_ref.data.clone()) },
-                    ),
-                }),
-            });
+        } else {
+            if source_type.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code.clone(),
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
+                    }),
+                });
+            }
         }
         if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
             return EvalRes::ok(CodeValue {
