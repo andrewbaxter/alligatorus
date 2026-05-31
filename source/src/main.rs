@@ -95,6 +95,7 @@ fn new_gx() -> Arc<GlobalContext> {
             }
             out
         },
+        js_sources: Default::default(),
         compile_results: Default::default(),
         const_aspect_mortar_func: builtin_unique(),
         const_aspect_unique: builtin_unique(),

@@ -99,7 +99,11 @@ pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeV
     }
 }
 
-pub(crate) fn mortar_bind_js(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+pub(crate) fn mortar_bind_js(
+    xx: &ExprContext,
+    loc: QExprId,
+    cv: CodeValue,
+) -> EResult<(Option<JsCode>, CodeValue)> {
     let vtype = cv.value.type_(xx, loc);
     mortar_consume_js_to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
 }
@@ -107,7 +111,10 @@ pub(crate) fn mortar_bind_js(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> E
 /// Helper to construct the return value for bind_js when JS code is produced.
 pub(crate) fn bind_js_some(loc: QExprId, js: JsCode, bound_type: Rc<dyn Type>) -> (Option<JsCode>, CodeValue) {
     (Some(js), CodeValue {
-        code: Code { loc, code: Code_::None },
+        code: Code {
+            loc,
+            code: Code_::None,
+        },
         value: Box::new(super::tuple::StaticValue { type_: bound_type }),
     })
 }

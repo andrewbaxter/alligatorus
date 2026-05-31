@@ -363,10 +363,9 @@ impl Target for MortarTarget {
                     })));
                 },
                 None => {
-                    return Ok((
-                        entries,
-                        Box::new(ValueScopeEntry { value: Rc::from(bound_cv.value) }) as Box<dyn ScopeEntry>,
-                    ));
+                    return Ok(
+                        (entries, Box::new(ValueScopeEntry { value: Rc::from(bound_cv.value) }) as Box<dyn ScopeEntry>)
+                    );
                 },
             }
         });
@@ -1755,6 +1754,7 @@ fn eval(
     }
     let js_source = code1.lines.join("\n");
     eprintln!("source: [[{}]]", js_source);
+    cix.gx.js_sources.lock().unwrap().push(js_source.clone());
     let script = v8::Script::compile(js_scope, v8::String::new(js_scope, &js_source).unwrap(), None).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {

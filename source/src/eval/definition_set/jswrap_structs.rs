@@ -452,7 +452,7 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
     }
     fn new_func(name: String) -> NewInterfaceMethodResult {
         let iface_ref = &self_.interface_ref;
-        let field_name = format!("_im{}", next_interface_method_id());
+        let field_name = format!("_im{}", next_interface_method_id(&iface_ref.set));
         let method_index = {
             let interfaces = iface_ref.set.interfaces.borrow();
             let iface = &interfaces[iface_ref.interface_index];

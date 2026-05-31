@@ -16,7 +16,7 @@ async fn test_0000_foreach_list() {
     let mb = ModuleBuilder::default();
     let logs =
         compile(
-            gx,
+            gx.clone(),
             SourceId(0),
             SerialModule::V1(
                 mb.block(
@@ -50,4 +50,51 @@ async fn test_0000_foreach_list() {
     assert_eq!(logs[0].message, "1");
     assert_eq!(logs[1].message, "2");
     assert_eq!(logs[2].message, "7");
+    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+let a0;
+{
+let e1;
+let e2;
+{
+let e3;
+e3 = 1.0;
+e2 = e3;
+}
+let e4;
+{
+let e5;
+e5 = 2.0;
+e4 = e5;
+}
+let e6;
+{
+let e7;
+e7 = 7.0;
+e6 = e7;
+}
+e1 = [e2, e4, e6];
+a0 = e1;
+}
+{
+let e8;
+let e9;
+e9 = a0;
+for (let a1 of e9) {
+let e10;
+{
+let e11;
+let e12;
+e12 = b0;
+let e13;
+let e14;
+e14 = a1;
+e13 = e14.toString();
+e11 = (e12)(e13);
+e10 = e11;
+}
+e8 = e10;
+}
+e0 = e8;
+}
+e0;"#]);
 }

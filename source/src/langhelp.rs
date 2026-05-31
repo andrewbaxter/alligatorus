@@ -123,6 +123,7 @@ pub(crate) enum CompileResResult {
 
 pub(crate) struct GlobalContext {
     pub(crate) artifacts: RwLock<Artifacts>,
+    pub(crate) js_sources: Mutex<Vec<String>>,
     pub(crate) cache_root: Vec<String>,
     // Remote packages/sources, resolved when downloaded (path is deterministic so not
     // returned, use a method to get the path)

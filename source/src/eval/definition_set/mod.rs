@@ -25,10 +25,6 @@ use {
             RefCell,
         },
         rc::Rc,
-        sync::atomic::{
-            AtomicUsize,
-            Ordering,
-        },
     },
     dumpster::unsync::Gc,
     crate::langhelp::{
@@ -41,10 +37,8 @@ use {
     },
 };
 
-static NEXT_INTERFACE_METHOD_ID: AtomicUsize = AtomicUsize::new(0);
-
-pub(crate) fn next_interface_method_id() -> usize {
-    NEXT_INTERFACE_METHOD_ID.fetch_add(1, Ordering::Relaxed)
+pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
+    set.next_interface_method_id.next()
 }
 
 // --- DefinitionSet data ---
@@ -111,6 +105,7 @@ pub(crate) struct DefinitionSet {
     pub finished: Cell<bool>,
     pub next_field_id: Counter,
     pub next_entry_id: Counter,
+    pub next_interface_method_id: Counter,
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
@@ -130,6 +125,7 @@ impl DefinitionSet {
             finished: Cell::new(false),
             next_field_id: Counter::default(),
             next_entry_id: Counter::default(),
+            next_interface_method_id: Counter::default(),
         }
     }
 

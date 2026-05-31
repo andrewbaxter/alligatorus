@@ -335,7 +335,7 @@ async fn test_0000_nodejs_code() {
     };
     let logs =
         compile(
-            gx,
+            gx.clone(),
             SourceId(0),
             SerialModule::V1(
                 mb.block(
@@ -395,4 +395,767 @@ e4 = "Hello world (node)";
 e0 = (e1)(e4);
 }
 e0"#);
+    let js_sources = gx.js_sources.lock().unwrap();
+    assert_eq!(js_sources.len(), 2);
+    assert_eq!(js_sources[0], r#"let e0;
+let e1;
+e1 = b18446744073709551615;
+let e2;
+e2 = a26;
+let e3;
+e3 = a27;
+let e4;
+let a0;
+{
+let e5;
+let e6;
+e6 = b1;
+e5 = (e6)();
+a0 = e5;
+}
+let a1;
+{
+let e7;
+let e8;
+e8 = a0;
+let e9;
+{
+let e10;
+e10 = "Node.js code";
+e9 = e10;
+}
+e7 = e8._3(e9);
+a1 = e7;
+}
+let a2;
+{
+let e11;
+let e12;
+e12 = a1;
+e11 = e12._0;
+a2 = e11;
+}
+let a4;
+{
+let e13;
+let e14;
+e14 = a1;
+let e15;
+{
+let e16;
+e16 = "call";
+e15 = e16;
+}
+let e17;
+let e18;
+e18 = a3;
+let e19;
+let e20;
+e20 = a2;
+let e21;
+e21 = a2;
+e19 = { arg: e20, func: e21 };
+e17 = [e18, e19];
+e13 = e14._1(e15,e17);
+a4 = e13;
+}
+let a6;
+{
+let e22;
+let e23;
+e23 = a1;
+let e24;
+{
+let e25;
+e25 = "lit_str";
+e24 = e25;
+}
+let e26;
+e26 = a5;
+e22 = e23._1(e24,e26);
+a6 = e22;
+}
+let a8;
+{
+let e27;
+let e28;
+e28 = a1;
+let e29;
+{
+let e30;
+e30 = "field";
+e29 = e30;
+}
+let e31;
+let e32;
+e32 = a7;
+let e33;
+let e34;
+e34 = a2;
+let e35;
+e35 = a2;
+e33 = { base: e34, field: e35 };
+e31 = [e32, e33];
+e27 = e28._1(e29,e31);
+a8 = e27;
+}
+let a10;
+{
+let e36;
+let e37;
+e37 = a1;
+let e38;
+{
+let e39;
+e39 = "scope_use";
+e38 = e39;
+}
+let e40;
+e40 = a9;
+e36 = e37._1(e38,e40);
+a10 = e36;
+}
+let a11;
+{
+let e41;
+let e42;
+e42 = a0;
+let e43;
+{
+let e44;
+e44 = "Render Node.js code (inner)";
+e43 = e44;
+}
+e41 = e42._0(e43);
+a11 = e41;
+}
+let a12;
+{
+let e45;
+let e46;
+e46 = a11;
+e45 = e46._0;
+a12 = e45;
+}
+{
+let e47;
+let e48;
+e48 = a11;
+let e49;
+let e50;
+e50 = a13;
+let e51;
+let e52;
+e52 = a2;
+e51 = { code: e52 };
+e49 = [e50, e51];
+e47 = e48._3(e49);
+e4 = e47;
+}
+{
+let e53;
+let e54;
+e54 = a11;
+let e55;
+e55 = a14;
+e53 = e54._5(e55);
+e4 = e53;
+}
+{
+let e56;
+let e57;
+e57 = a11;
+let e58;
+let e59;
+e59 = b18446744073709551615;
+let e60;
+e60 = a15;
+let e61;
+e61 = a16;
+let e62;
+e62 = a12;
+let e63;
+e63 = a17;
+let e64;
+e64 = a12;
+let e65;
+e65 = a18;
+let e66;
+e66 = a12;
+let e67;
+e67 = a19;
+let e68;
+e68 = a12;
+e58 = (e59)(e60,e61,e62,e63,e64,e65,e66,e67,e68);
+e56 = e57._2(e58);
+e4 = e56;
+}
+let a20;
+{
+let e69;
+let e70;
+e70 = a0;
+let e71;
+{
+let e72;
+e72 = "Render Node.js code";
+e71 = e72;
+}
+e69 = e70._0(e71);
+a20 = e69;
+}
+let a21;
+{
+let e73;
+let e74;
+e74 = a20;
+e73 = e74._0;
+a21 = e73;
+}
+{
+let e75;
+let e76;
+e76 = a20;
+let e77;
+e77 = a22;
+e75 = e76._3(e77);
+e4 = e75;
+}
+{
+let e78;
+let e79;
+e79 = a20;
+let e80;
+e80 = a23;
+e78 = e79._5(e80);
+e4 = e78;
+}
+{
+let e81;
+let e82;
+e82 = a20;
+let e83;
+let e84;
+e84 = b18446744073709551615;
+let e85;
+e85 = a24;
+let e86;
+e86 = a25;
+let e87;
+e87 = a12;
+e83 = (e84)(e85,e86,e87);
+e81 = e82._2(e83);
+e4 = e81;
+}
+{
+let e88;
+e4 = e88;
+}
+{
+let e89;
+let e90;
+e90 = a4;
+let e91;
+e91 = a8;
+let e92;
+e92 = a6;
+let e93;
+e93 = a21;
+let e94;
+e94 = a10;
+let e95;
+e95 = a2;
+e89 = { call: e90, field: e91, lit_str: e92, render: e93, scope_use: e94, type: e95 };
+e4 = e89;
+}
+e0 = (e1)(e2,e3,e4);
+e0;"#);
+    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+let e0;
+let a1;
+{
+let e1;
+let e2;
+let e3;
+{
+let e4;
+e4 = "e";
+e3 = e4;
+}
+let e5;
+let e6;
+let e7;
+let e8;
+e8 = a0;
+e7 = e8.context;
+e6 = e7.expr_count;
+e5 = e6.toString();
+e2 = [e3, e5];
+let e9;
+{
+let e10;
+e10 = "";
+e9 = e10;
+}
+e1 = e2.join(e9);
+a1 = e1;
+}
+{
+let e11;
+let e12;
+let e13;
+e13 = a0;
+e12 = e13.context;
+let e14;
+let e15;
+let e16;
+let e17;
+e17 = a0;
+e16 = e17.context;
+e15 = e16.expr_count;
+let e18;
+{
+let e19;
+e19 = 1.0;
+e18 = e19;
+}
+e14 = (e15 + e18);
+e12.expr_count = e14;
+e11 = null;
+e0 = e11;
+}
+let a2;
+{
+let e20;
+let e21;
+let e22;
+e22 = a0;
+e21 = e22.context;
+e20 = e21.out;
+a2 = e20;
+}
+{
+let e23;
+let e24;
+e24 = a2;
+let e25;
+{
+let e26;
+e26 = "let ";
+e25 = e26;
+}
+e23 = e24.push(e25);
+e0 = e23;
+}
+{
+let e27;
+let e28;
+e28 = a2;
+let e29;
+e29 = a1;
+e27 = e28.push(e29);
+e0 = e27;
+}
+{
+let e30;
+let e31;
+e31 = a2;
+let e32;
+{
+let e33;
+e33 = ";\n{\n";
+e32 = e33;
+}
+e30 = e31.push(e32);
+e0 = e30;
+}
+let a3;
+{
+let e34;
+let e35;
+e35 = a1;
+let e36;
+{
+let e37;
+e37 = " = ";
+e36 = e37;
+}
+e34 = [e35, e36];
+a3 = e34;
+}
+{
+let e38;
+let e39;
+let e40;
+e40 = a0;
+e39 = e40.code;
+{ let [__tag, a4] = Object.entries(e39)[0];
+switch (__tag) {
+case "t0": {
+let e41;
+let a5;
+{
+let e42;
+let e43;
+e43 = d0_0_0;
+let e44;
+{
+let e45;
+let e46;
+let e47;
+e47 = a4;
+e46 = e47.func;
+let e48;
+let e49;
+e49 = a0;
+e48 = e49.context;
+e45 = { code: e46, context: e48 };
+e44 = e45;
+}
+e42 = (e43)(e44);
+a5 = e42;
+}
+let a6;
+{
+let e50;
+let e51;
+e51 = d0_0_0;
+let e52;
+{
+let e53;
+let e54;
+let e55;
+e55 = a4;
+e54 = e55.arg;
+let e56;
+let e57;
+e57 = a0;
+e56 = e57.context;
+e53 = { code: e54, context: e56 };
+e52 = e53;
+}
+e50 = (e51)(e52);
+a6 = e50;
+}
+{
+let e58;
+let e59;
+e59 = a3;
+let e60;
+{
+let e61;
+e61 = "(";
+e60 = e61;
+}
+e58 = e59.push(e60);
+e41 = e58;
+}
+{
+let e62;
+let e63;
+e63 = a3;
+let e64;
+e64 = a5;
+e62 = e63.push(e64);
+e41 = e62;
+}
+{
+let e65;
+let e66;
+e66 = a3;
+let e67;
+{
+let e68;
+e68 = ")(";
+e67 = e68;
+}
+e65 = e66.push(e67);
+e41 = e65;
+}
+{
+let e69;
+let e70;
+e70 = a3;
+let e71;
+e71 = a6;
+e69 = e70.push(e71);
+e41 = e69;
+}
+{
+let e72;
+let e73;
+e73 = a3;
+let e74;
+{
+let e75;
+e75 = ")";
+e74 = e75;
+}
+e72 = e73.push(e74);
+e41 = e72;
+}
+e38 = e41;
+break; }
+case "t1": {
+let e76;
+{
+let e77;
+let e78;
+e78 = a3;
+let e79;
+let e80;
+e80 = b2;
+let e81;
+e81 = a4;
+e79 = (e80)(e81);
+e77 = e78.push(e79);
+e76 = e77;
+}
+e38 = e76;
+break; }
+case "t2": {
+let e82;
+let a7;
+{
+let e83;
+let e84;
+e84 = d0_0_0;
+let e85;
+{
+let e86;
+let e87;
+let e88;
+e88 = a4;
+e87 = e88.base;
+let e89;
+let e90;
+e90 = a0;
+e89 = e90.context;
+e86 = { code: e87, context: e89 };
+e85 = e86;
+}
+e83 = (e84)(e85);
+a7 = e83;
+}
+let a8;
+{
+let e91;
+let e92;
+e92 = d0_0_0;
+let e93;
+{
+let e94;
+let e95;
+let e96;
+e96 = a4;
+e95 = e96.field;
+let e97;
+let e98;
+e98 = a0;
+e97 = e98.context;
+e94 = { code: e95, context: e97 };
+e93 = e94;
+}
+e91 = (e92)(e93);
+a8 = e91;
+}
+{
+let e99;
+let e100;
+e100 = a3;
+let e101;
+e101 = a7;
+e99 = e100.push(e101);
+e82 = e99;
+}
+{
+let e102;
+let e103;
+e103 = a3;
+let e104;
+{
+let e105;
+e105 = ".";
+e104 = e105;
+}
+e102 = e103.push(e104);
+e82 = e102;
+}
+{
+let e106;
+let e107;
+e107 = a3;
+let e108;
+e108 = a8;
+e106 = e107.push(e108);
+e82 = e106;
+}
+e38 = e82;
+break; }
+case "t3": {
+let e109;
+{
+let e110;
+let e111;
+e111 = a3;
+let e112;
+e112 = a4;
+e110 = e111.push(e112);
+e109 = e110;
+}
+e38 = e109;
+break; }
+} }
+e0 = e38;
+}
+{
+let e113;
+let e114;
+e114 = a2;
+let e115;
+let e116;
+e116 = a3;
+let e117;
+{
+let e118;
+e118 = "";
+e117 = e118;
+}
+e115 = e116.join(e117);
+e113 = e114.push(e115);
+e0 = e113;
+}
+{
+let e119;
+let e120;
+e120 = a2;
+let e121;
+{
+let e122;
+e122 = ";\n}\n";
+e121 = e122;
+}
+e119 = e120.push(e121);
+e0 = e119;
+}
+{
+let e123;
+e123 = a1;
+e0 = e123;
+}
+return e0;
+}
+function d0_0_1(a0) {
+let e124;
+let a1;
+{
+let e125;
+{
+let e126;
+let e127;
+{
+let e128;
+e128 = 0.0;
+e127 = e128;
+}
+let e129;
+e129 = [];
+e126 = { expr_count: e127, out: e129 };
+e125 = e126;
+}
+a1 = e125;
+}
+{
+let e130;
+let e131;
+let e132;
+e132 = a1;
+e131 = e132.out;
+let e133;
+let e134;
+e134 = d0_0_0;
+let e135;
+{
+let e136;
+let e137;
+e137 = a0;
+let e138;
+e138 = a1;
+e136 = { code: e137, context: e138 };
+e135 = e136;
+}
+e133 = (e134)(e135);
+e130 = e131.push(e133);
+e124 = e130;
+}
+{
+let e139;
+let e140;
+let e141;
+e141 = a1;
+e140 = e141.out;
+let e142;
+{
+let e143;
+e143 = "";
+e142 = e143;
+}
+e139 = e140.join(e142);
+e124 = e139;
+}
+return e124;
+}
+let e144;
+{
+let e145;
+let e146;
+e146 = b0;
+let e147;
+let e148;
+e148 = d0_0_1;
+let e149;
+let e150;
+{
+let e151;
+let e152;
+let e153;
+{
+let e154;
+e154 = "Hello world (node)";
+e153 = e154;
+}
+e152 = { t1: e153 };
+let e155;
+let e156;
+{
+let e157;
+let e158;
+let e159;
+{
+let e160;
+e160 = "console";
+e159 = e160;
+}
+e158 = { t3: e159 };
+let e161;
+let e162;
+{
+let e163;
+e163 = "log";
+e162 = e163;
+}
+e161 = { t1: e162 };
+e157 = { base: e158, field: e161 };
+e156 = e157;
+}
+e155 = { t2: e156 };
+e151 = { arg: e152, func: e155 };
+e150 = e151;
+}
+e149 = { t0: e150 };
+e147 = (e148)(e149);
+e145 = (e146)(e147);
+e144 = e145;
+}
+e144;"#);
 }

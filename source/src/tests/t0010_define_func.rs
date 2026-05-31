@@ -17,7 +17,7 @@ async fn test_00600define_func() {
     let mb = ModuleBuilder::default();
     let logs =
         compile(
-            gx,
+            gx.clone(),
             SourceId(0),
             SerialModule::V1(
                 mb.block(
@@ -59,6 +59,101 @@ async fn test_00600define_func() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "hello");
+    let js_sources = gx.js_sources.lock().unwrap();
+    assert_eq!(js_sources[0], r#"let e0;
+let e1;
+e1 = b18446744073709551615;
+let e2;
+e2 = a6;
+let e3;
+e3 = a7;
+let e4;
+let a0;
+{
+let e5;
+let e6;
+e6 = b1;
+e5 = (e6)();
+a0 = e5;
+}
+let a1;
+{
+let e7;
+let e8;
+e8 = a0;
+let e9;
+{
+let e10;
+e10 = "f";
+e9 = e10;
+}
+e7 = e8._0(e9);
+a1 = e7;
+}
+let a2;
+{
+let e11;
+let e12;
+e12 = a1;
+e11 = e12._0;
+a2 = e11;
+}
+{
+let e13;
+let e14;
+e14 = a1;
+let e15;
+e15 = a3;
+e13 = e14._3(e15);
+e4 = e13;
+}
+{
+let e16;
+let e17;
+e17 = a1;
+let e18;
+e18 = a4;
+e16 = e17._5(e18);
+e4 = e16;
+}
+{
+let e19;
+let e20;
+e20 = a1;
+let e21;
+e21 = a5;
+e19 = e20._2(e21);
+e4 = e19;
+}
+{
+let e22;
+e22 = a2;
+e4 = e22;
+}
+e0 = (e1)(e2,e3,e4);
+e0;"#);
+    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+let e0;
+let e1;
+e1 = b0;
+let e2;
+{
+let e3;
+e3 = "hello";
+e2 = e3;
+}
+e0 = (e1)(e2);
+return e0;
+}
+let e4;
+{
+let e5;
+let e6;
+e6 = d0_0_0;
+e5 = (e6)();
+e4 = e5;
+}
+e4;"#);
 }
 
 #[tokio::test]
@@ -70,7 +165,7 @@ async fn test_00700define_func_arg_ret() {
     let mb = ModuleBuilder::default();
     let logs =
         compile(
-            gx,
+            gx.clone(),
             SourceId(0),
             SerialModule::V1(
                 mb.block(
@@ -108,4 +203,105 @@ async fn test_00700define_func_arg_ret() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO WORLD");
+    let js_sources = gx.js_sources.lock().unwrap();
+    assert_eq!(js_sources[0], r#"let e0;
+let e1;
+e1 = b18446744073709551615;
+let e2;
+e2 = a6;
+let e3;
+e3 = a7;
+let e4;
+let a0;
+{
+let e5;
+let e6;
+e6 = b1;
+e5 = (e6)();
+a0 = e5;
+}
+let a1;
+{
+let e7;
+let e8;
+e8 = a0;
+let e9;
+{
+let e10;
+e10 = "f";
+e9 = e10;
+}
+e7 = e8._0(e9);
+a1 = e7;
+}
+let a2;
+{
+let e11;
+let e12;
+e12 = a1;
+e11 = e12._0;
+a2 = e11;
+}
+{
+let e13;
+let e14;
+e14 = a1;
+let e15;
+e15 = a3;
+e13 = e14._3(e15);
+e4 = e13;
+}
+{
+let e16;
+let e17;
+e17 = a1;
+let e18;
+e18 = a4;
+e16 = e17._5(e18);
+e4 = e16;
+}
+{
+let e19;
+let e20;
+e20 = a1;
+let e21;
+e21 = a5;
+e19 = e20._2(e21);
+e4 = e19;
+}
+{
+let e22;
+e22 = a2;
+e4 = e22;
+}
+e0 = (e1)(e2,e3,e4);
+e0;"#);
+    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+let e0;
+let e1;
+e1 = a0;
+let e2;
+e2 = null;
+e0 = e1.toUpperCase(e2);
+return e0;
+}
+let e3;
+{
+let e4;
+let e5;
+e5 = b0;
+let e6;
+let e7;
+e7 = d0_0_0;
+let e8;
+{
+let e9;
+e9 = "hello world";
+e8 = e9;
+}
+e6 = (e7)(e8);
+e4 = (e5)(e6);
+e3 = e4;
+}
+e3;"#);
 }

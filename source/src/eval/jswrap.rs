@@ -266,7 +266,12 @@ macro_rules! jswrap{
                 }
             }
             impl AspectBindJs for[<$name Type >] {
-                fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue,) -> EResult<(Option<JsCode>, CodeValue)> {
+                fn bind_js(
+                    &self,
+                    xx: &ExprContext,
+                    loc: QExprId,
+                    cv: CodeValue,
+                ) -> EResult<(Option<JsCode>, CodeValue)> {
                     let vtype = cv.value.type_(xx, loc);
                     self.to_js(xx, loc, cv).map(|c| crate::eval::mortar_js_value::bind_js_some(loc, c, vtype))
                 }
