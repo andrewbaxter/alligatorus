@@ -11,6 +11,7 @@ pub mod mortar_string;
 pub mod mortar_number;
 pub mod mortar_bool;
 pub mod mortar_list;
+pub mod mortar_map;
 pub mod mortar_function;
 pub mod expr;
 pub mod tuple;
@@ -121,6 +122,7 @@ use {
     flowcontrol::shed,
     mortar_function::MortarTypeFunction,
     mortar_list::TypeListConstructor,
+    mortar_map::TypeMapConstructor,
     mortar_null::TypeMortarNull,
     mortar_scope_entry::{
         MortarScopeEntryAsScope,
@@ -1230,6 +1232,10 @@ fn eval(
         ConstKey::String("list".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
     );
+    s1_scope.insert(
+        ConstKey::String("map".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeMapConstructor) }) as Box<dyn ScopeEntry>,
+    );
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {
         vx: ex.clone(),
@@ -1315,6 +1321,10 @@ fn eval(
         scope_entries.insert(
             ConstKey::String("list".to_string()),
             Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
+        );
+        scope_entries.insert(
+            ConstKey::String("map".to_string()),
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeMapConstructor) }) as Box<dyn ScopeEntry>,
         );
         scope_entries
     }

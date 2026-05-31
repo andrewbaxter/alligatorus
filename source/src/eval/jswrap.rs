@@ -158,9 +158,12 @@ impl JsWrap for expr::Expr {
     }
 }
 
-impl<K: JsWrapKey, V: JsWrap> JsWrap for std::collections::BTreeMap<K, V> {
+impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, V> {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(expr::ExprType)
+        Rc::new(super::mortar_map::TypeMortarMap {
+            key_type: K::mortar_type(),
+            value_type: V::mortar_type(),
+        })
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
