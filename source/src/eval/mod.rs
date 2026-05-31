@@ -23,6 +23,7 @@ pub mod definition_set;
 use {
     crate::{
         builtin::{
+            aspect_bind_get_maybe,
             aspect_bind_js_get_maybe,
             aspect_bool_get_maybe,
             aspect_consume_js_get,
@@ -323,8 +324,17 @@ impl Target for MortarTarget {
             loc: loc,
             code: Code_::None,
         };
+        if let Some(bind) = aspect_bind_get_maybe(xx, vtype.as_ref()) {
+            return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
+                let scope_entry = erb.must_er(bind.bind(xx, loc, cv))?;
+                return Ok((none_code, scope_entry));
+            });
+        }
         let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
-            return EResult::ok((none_code, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+            return EResult::err(
+                loc,
+                format!("Type ({}) is missing aspect AspectBind and AspectBindJs", vtype.desc()),
+            );
         };
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
             let bind_result = bind_js.bind_js(xx, loc, cv);

@@ -6,11 +6,13 @@ use {
     },
     crate::{
         builtin::{
+            AspectBind,
             AspectBindJs,
             AspectConsumeJs,
             AspectFunction,
             AspectJsStackValue,
             AspectLiftJs,
+            aspect_bind_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
@@ -34,6 +36,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -169,6 +172,12 @@ impl Type for DefinitionSetDataTypeConstructor {
                 data_type_index: self.data_type_index,
             }) as Box<dyn AspectFunction>));
         }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructor {
+                set: self.set.clone(),
+                data_type_index: self.data_type_index,
+            }) as Box<dyn AspectBind>));
+        }
         return None;
     }
 
@@ -182,6 +191,14 @@ impl Type for DefinitionSetDataTypeConstructor {
 }
 
 impl Aspect for DefinitionSetDataTypeConstructor { }
+
+impl AspectBind for DefinitionSetDataTypeConstructor {
+    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
+        EResult::ok(
+            Box::new(crate::eval::tuple::ValueScopeEntry { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
+        )
+    }
+}
 
 impl AspectFunction for DefinitionSetDataTypeConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {

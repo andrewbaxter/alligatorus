@@ -8,6 +8,7 @@ use {
             CodeValue,
             ConstKey,
             EvalRes,
+            ScopeEntry,
             ScopeEntryId,
             EResult,
             ExprContext,
@@ -95,6 +96,10 @@ aspect!(AspectConsumeJs {
     ///
     /// Used before interacting with JS: namely, function call arguments.
     fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
+});
+
+aspect!(AspectBind {
+    fn bind(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < Box < dyn ScopeEntry > >;
 });
 
 aspect!(AspectBindJs {

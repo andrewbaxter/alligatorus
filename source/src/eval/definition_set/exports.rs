@@ -6,11 +6,13 @@ use {
     },
     crate::{
         builtin::{
+            AspectBind,
             AspectBindJs,
             AspectConsumeJs,
             AspectField,
             AspectJsStackValue,
             AspectLiftJs,
+            aspect_bind_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_field_aspect_id,
@@ -28,6 +30,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -151,6 +154,11 @@ impl Type for DefinitionSetExportsType {
                 Box::new(Box::new(DefinitionSetExportsType { set: self.set.clone() }) as Box<dyn AspectField>),
             );
         }
+        if *key == aspect_bind_aspect_id() {
+            return Some(
+                Box::new(Box::new(DefinitionSetExportsType { set: self.set.clone() }) as Box<dyn AspectBind>),
+            );
+        }
         return None;
     }
 
@@ -164,6 +172,14 @@ impl Type for DefinitionSetExportsType {
 }
 
 impl Aspect for DefinitionSetExportsType { }
+
+impl AspectBind for DefinitionSetExportsType {
+    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
+        EResult::ok(
+            Box::new(crate::eval::tuple::ValueScopeEntry { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
+        )
+    }
+}
 
 impl AspectField for DefinitionSetExportsType {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
