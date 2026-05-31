@@ -122,7 +122,10 @@ use {
     mortar_function::MortarTypeFunction,
     mortar_list::TypeListConstructor,
     mortar_null::TypeMortarNull,
-    mortar_scope_entry::MortarScopeEntry,
+    mortar_scope_entry::{
+        MortarScopeEntryAsScope,
+        MortarScopeEntryBinding,
+    },
     mortar_number::TypeMortarNumber,
     mortar_string::TypeMortarString,
     null::ValueNull,
@@ -341,10 +344,9 @@ impl Target for MortarTarget {
             if bind_result.v.is_none() {
                 return Ok((none_code, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
             }
-            let (js_code, bound_cv) = erb.must_er(bind_result)?;
+            let (js_code, mortar_entry) = erb.must_er(bind_result)?;
             match js_code {
                 Some(vcode) => {
-                    let bound_type = bound_cv.value.type_(xx, loc);
                     let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
                     let code = Code {
                         loc: loc,
@@ -356,18 +358,18 @@ impl Target for MortarTarget {
                             })], }),
                         })),
                     };
-                    return Ok((code, Box::new(MortarScopeEntry {
-                        js_key: js_key,
-                        type_: bound_type,
+                    return Ok((code, Box::new(MortarScopeEntryAsScope {
+                        js_key: Some(js_key),
+                        type_: vtype,
+                        inner: mortar_entry,
                     })));
                 },
                 None => {
-                    return Ok(
-                        (
-                            none_code,
-                            Box::new(ValueScopeEntry { value: Rc::from(bound_cv.value) }) as Box<dyn ScopeEntry>,
-                        )
-                    );
+                    return Ok((none_code, Box::new(MortarScopeEntryAsScope {
+                        js_key: None,
+                        type_: vtype,
+                        inner: mortar_entry,
+                    }) as Box<dyn ScopeEntry>));
                 },
             }
         });
@@ -485,7 +487,7 @@ impl Target for MortarTarget {
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
                 });
-                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(MortarScopeEntry {
+                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(MortarScopeEntryBinding {
                     js_key: element_scope_id,
                     type_: variant_type.clone(),
                 }),);
@@ -948,7 +950,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
             });
-            child_scope.values.borrow_mut().insert(element_key, Box::new(MortarScopeEntry {
+            child_scope.values.borrow_mut().insert(element_key, Box::new(MortarScopeEntryBinding {
                 js_key: element_scope_id,
                 type_: iterable.element_type(),
             }),);
@@ -1185,7 +1187,7 @@ fn eval(
                 v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
                 js_value,
             );
-        builtin_scope_entries.push((key.to_string(), MortarScopeEntry {
+        builtin_scope_entries.push((key.to_string(), MortarScopeEntryBinding {
             js_key: eval_value.js_key,
             type_: eval_value.type_.clone(),
         }));
@@ -1270,11 +1272,11 @@ fn eval(
     // Build scope for definition set body compilation: only builtins and type
     // references. Definition set members are accessed via lower + to_js.
     fn build_builtin_scope(
-        builtin_scope_entries: &[(String, MortarScopeEntry)],
+        builtin_scope_entries: &[(String, MortarScopeEntryBinding)],
     ) -> HashMap<ConstKey, Box<dyn ScopeEntry>> {
         let mut scope_entries = HashMap::<ConstKey, Box<dyn ScopeEntry>>::new();
         for (name, entry) in builtin_scope_entries {
-            scope_entries.insert(ConstKey::String(name.clone()), Box::new(MortarScopeEntry {
+            scope_entries.insert(ConstKey::String(name.clone()), Box::new(MortarScopeEntryBinding {
                 js_key: entry.js_key,
                 type_: entry.type_.clone(),
             }));
@@ -1315,7 +1317,7 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntry {
+            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntryBinding {
                 js_key: arg_id,
                 type_: info.arg_type.clone(),
             }));
@@ -1387,7 +1389,7 @@ fn eval(
                 method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
+                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntryBinding {
                         js_key: self_id,
                         type_: underlying_type.clone(),
                     }));
@@ -1454,7 +1456,7 @@ fn eval(
                     method_impl.self_scope_entry_id.set(Some(self_id));
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntry {
+                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntryBinding {
                             js_key: self_id,
                             type_: underlying_type.clone(),
                         }));

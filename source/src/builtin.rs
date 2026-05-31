@@ -1,5 +1,6 @@
 use {
     crate::{
+        eval::mortar_scope_entry::MortarScopeEntry,
         jscode::JsCode,
         langhelp::{
             Artifacts,
@@ -103,7 +104,12 @@ aspect!(AspectBind {
 });
 
 aspect!(AspectBindJs {
-    fn bind_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult <(Option < JsCode >, CodeValue) >;
+    fn bind_js(
+        &self,
+        xx: & ExprContext,
+        loc: QExprId,
+        cv: CodeValue
+    ) -> EResult <(Option < JsCode >, Box < dyn MortarScopeEntry >) >;
 });
 
 aspect!(AspectJsString {});

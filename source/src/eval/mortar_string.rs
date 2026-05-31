@@ -166,7 +166,12 @@ impl AspectConsumeJs for TypeMortarString {
 }
 
 impl AspectBindJs for TypeMortarString {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+    fn bind_js(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
         mortar_bind_js(xx, loc, cv)
     }
 }

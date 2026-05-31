@@ -87,7 +87,12 @@ impl Type for TypeString {
 impl Aspect for TypeString { }
 
 impl AspectBindJs for TypeString {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+    fn bind_js(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
         TypeMortarString::cast_from(&TypeMortarString, xx, loc, &cv).map(|js| {
             bind_js_some(
                 loc,

@@ -113,7 +113,12 @@ impl AspectConsumeJs for MortarTypeDefinitionSetDataTypeConstructor {
 }
 
 impl AspectBindJs for MortarTypeDefinitionSetDataTypeConstructor {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+    fn bind_js(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }

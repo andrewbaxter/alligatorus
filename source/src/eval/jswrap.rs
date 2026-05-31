@@ -153,7 +153,7 @@ pub(crate) fn jswrap_method_name(s: &str) -> &str {
 }
 
 macro_rules! jswrap{
-    // --- Function variant --- Produces a (&str, MortarScopeEntry,
+    // --- Function variant --- Produces a (&str, MortarScopeEntryBinding,
     // v8::Local<v8::Value>) tuple. `$ex` is the EvalContext, `$js_scope` is the v8
     // scope for building. `$scope` is available in the body as the v8 HandleScope.
     (
@@ -164,7 +164,7 @@ macro_rules! jswrap{
         )($($arg: ident: $arg_ty: ty), * $(,) ?) -> $ret_ty: ty $body: block
     ) => {
         {
-            (stringify!($name), MortarScopeEntry {
+            (stringify!($name), MortarScopeEntryBinding {
                 js_key: ScopeEntryId:: Builtin(line!() as usize),
                 type_: Rc:: new(MortarTypeFunction {
                     arg: jswrap !(@ arg_mortar_type $($arg_ty), *),
@@ -271,7 +271,7 @@ macro_rules! jswrap{
                     xx: &ExprContext,
                     loc: QExprId,
                     cv: CodeValue,
-                ) -> EResult<(Option<JsCode>, CodeValue)> {
+                ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
                     let vtype = cv.value.type_(xx, loc);
                     self.to_js(xx, loc, cv).map(|c| crate::eval::mortar_js_value::bind_js_some(loc, c, vtype))
                 }

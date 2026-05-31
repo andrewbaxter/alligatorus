@@ -201,7 +201,12 @@ impl AspectConsumeJs for TypeTuple {
 }
 
 impl AspectBindJs for TypeTuple {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+    fn bind_js(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -451,7 +456,12 @@ impl AspectConsumeJs for TypeValueRecord {
 }
 
 impl AspectBindJs for TypeValueRecord {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
+    fn bind_js(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -591,8 +601,19 @@ impl Type for LiftedRecordType {
 impl Aspect for LiftedRecordType { }
 
 impl AspectBindJs for LiftedRecordType {
-    fn bind_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
-        EResult::ok((None, cv))
+    fn bind_js(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+        EResult::ok((
+            None,
+            Box::new(super::mortar_scope_entry::MortarScopeEntryValue {
+                loc,
+                value: Rc::from(cv.value),
+            }),
+        ))
     }
 }
 
