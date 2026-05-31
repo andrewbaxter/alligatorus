@@ -229,30 +229,32 @@ pub(crate) struct EResult<T> {
     /// errors may be discarded, but the errors from one branch will always be kept.
     /// Errors are accumulated into parent EvalRes's and propagated upward. When root
     /// evaluation has at least one error, compilation fails.
-    pub(crate) errors: Vec<ExprErr>,
+    ///
+    /// If `Some`, the result is in an error state (even if the list is empty).
+    pub(crate) errors: Option<Vec<ExprErr>>,
 }
 
 impl<T> EResult<T> {
     pub(crate) fn ok(v: T) -> Self {
         return Self {
             v: Some(v),
-            errors: vec![],
+            errors: None,
         };
     }
 
     pub(crate) fn err(loc: QExprId, e: String) -> Self {
         return Self {
             v: None,
-            errors: vec![ExprErr {
+            errors: Some(vec![ExprErr {
                 loc: loc,
                 errors: vec![ExprSubErr::Opaque(e)]
-            }],
+            }]),
         };
     }
 
     pub(crate) fn into_res(self) -> Result<T, Vec<ExprErr>> {
-        if !self.errors.is_empty() {
-            return Err(self.errors);
+        if self.errors.is_some() {
+            return Err(self.errors.unwrap_or_default());
         } else {
             return Ok(self.v.unwrap());
         }

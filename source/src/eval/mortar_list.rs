@@ -175,7 +175,7 @@ impl AspectField for TypeMortarList {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
-                errors: e,
+                errors: Some(e),
             },
         };
         let key_name = key_string.get(key.value.as_ref());

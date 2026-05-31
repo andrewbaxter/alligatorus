@@ -81,14 +81,14 @@ pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeV
                 errors: r.errors,
             };
         } else {
-            let mut errors = r.errors;
+            let mut errors = r.errors.unwrap_or_default();
             errors.push(ExprErr {
                 loc: loc,
                 errors: vec![ExprSubErr::Opaque(format!("Expression resulted in empty code"))],
             });
             return EResult {
                 v: None,
-                errors: errors,
+                errors: Some(errors),
             }
         }
     } else {

@@ -176,7 +176,9 @@ impl AspectConsumeJs for TypeTuple {
         let mut errors = vec![];
         let mut js_elements = Vec::new();
         for (elem_res, elem_type) in tuple.elements.into_iter().zip(self.types.iter()) {
-            errors.extend(elem_res.errors);
+            if let Some(errs) = elem_res.errors {
+                errors.extend(errs);
+            }
             if let Some(elem_cv) = elem_res.v {
                 match aspect_consume_js_get(xx, loc, elem_type.as_ref()).into_res() {
                     Ok(to_js) => match to_js.to_js(xx, loc, elem_cv).into_res() {
@@ -190,7 +192,7 @@ impl AspectConsumeJs for TypeTuple {
         if !errors.is_empty() {
             return EResult {
                 v: None,
-                errors,
+                errors: Some(errors),
             };
         }
         EResult::ok(wrap_with_carry(loc, carry, JsCode {
@@ -412,7 +414,9 @@ impl AspectConsumeJs for TypeValueRecord {
             let key_str = match &key {
                 ConstKey::String(s) => s.clone(),
             };
-            errors.extend(elem_res.errors);
+            if let Some(errs) = elem_res.errors {
+                errors.extend(errs);
+            }
             if let Some(elem_cv) = elem_res.v {
                 let elem_value_type = elem_cv.value.type_(xx, loc);
                 if let Some(to_js) = aspect_consume_js_get_maybe(xx, elem_value_type.as_ref()) {
@@ -445,7 +449,7 @@ impl AspectConsumeJs for TypeValueRecord {
         if !errors.is_empty() {
             return EResult {
                 v: None,
-                errors,
+                errors: Some(errors),
             };
         }
         EResult::ok(wrap_with_carry(loc, carry, JsCode {

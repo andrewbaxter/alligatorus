@@ -228,12 +228,16 @@ impl Erb {
         let Some(cv) = r.v else {
             return None;
         };
-        self.errors.extend(r.errors);
+        if let Some(errs) = r.errors {
+            self.errors.extend(errs);
+        }
         return Some(cv);
     }
 
     pub(crate) fn must_er<T>(&mut self, r: EResult<T>) -> Result<T, ()> {
-        self.errors.extend(r.errors);
+        if let Some(errs) = r.errors {
+            self.errors.extend(errs);
+        }
         let Some(cv) = r.v else {
             return Err(());
         };
@@ -397,7 +401,7 @@ impl Target for MortarTarget {
         if !errors.is_empty() {
             return EResult {
                 v: None,
-                errors: errors,
+                errors: Some(errors),
             };
         }
         if js_entries.is_empty() {
@@ -645,7 +649,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                     },
                     value: p(),
                 }),
-                errors: vec![],
+                errors: None,
             };
         },
         Expr_::ScopeUse(p) => return er_seq_cv!(expr.loc, erb, {
@@ -866,7 +870,9 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             let mut errors = vec![];
             for (k_expr, v_expr) in &r.entries {
                 let k_res = eval_half(xx, k_expr, target);
-                errors.extend(k_res.errors);
+                if let Some(errs) = k_res.errors {
+                    errors.extend(errs);
+                }
                 let Some(k_cv) = k_res.v else {
                     continue;
                 };
@@ -886,7 +892,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             if !errors.is_empty() {
                 return EvalRes {
                     v: None,
-                    errors,
+                    errors: Some(errors),
                 };
             }
 
@@ -1221,8 +1227,8 @@ fn eval(
         }),
     });
     let result = eval_half(&xx, expr, &MortarTarget);
-    if !result.errors.is_empty() {
-        return Err(result.errors);
+    if let Some(errs) = result.errors {
+        return Err(errs);
     }
     let cv = result.v.unwrap();
     let value_type = cv.value.type_(&xx, root_loc);
@@ -1331,16 +1337,16 @@ fn eval(
             })
         };
         let impl_result = eval_half(&func_xx, impl_expr_ast, &MortarTarget);
-        if !impl_result.errors.is_empty() {
-            return Err(impl_result.errors);
+        if let Some(errs) = impl_result.errors {
+            return Err(errs);
         }
         let impl_cv = impl_result.v.unwrap();
 
         // Type check return value against ret type
         let impl_cv = {
             let r = typecheck_convert(&func_xx, root_loc, info.ret_type.as_ref(), impl_cv);
-            if !r.errors.is_empty() {
-                return Err(r.errors);
+            if let Some(errs) = r.errors {
+                return Err(errs);
             }
             r.v.unwrap()
         };
@@ -1403,16 +1409,16 @@ fn eval(
                     })
                 };
                 let impl_result = eval_half(&method_xx, impl_expr_ast, &MortarTarget);
-                if !impl_result.errors.is_empty() {
-                    return Err(impl_result.errors);
+                if let Some(errs) = impl_result.errors {
+                    return Err(errs);
                 }
                 let impl_cv = impl_result.v.unwrap();
 
                 // Type check return value
                 let impl_cv = {
                     let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
-                    if !r.errors.is_empty() {
-                        return Err(r.errors);
+                    if let Some(errs) = r.errors {
+                        return Err(errs);
                     }
                     r.v.unwrap()
                 };
@@ -1470,14 +1476,14 @@ fn eval(
                         })
                     };
                     let impl_result = eval_half(&method_xx, impl_expr_ast, &MortarTarget);
-                    if !impl_result.errors.is_empty() {
-                        return Err(impl_result.errors);
+                    if let Some(errs) = impl_result.errors {
+                        return Err(errs);
                     }
                     let impl_cv = impl_result.v.unwrap();
                     let impl_cv = {
                         let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
-                        if !r.errors.is_empty() {
-                            return Err(r.errors);
+                        if let Some(errs) = r.errors {
+                            return Err(errs);
                         }
                         r.v.unwrap()
                     };

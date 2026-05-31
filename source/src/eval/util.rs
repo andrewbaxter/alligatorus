@@ -5,13 +5,16 @@ macro_rules! er_seq{
             match(||-> Result < $t, () > {
                 $($x) *
             })() {
-                Ok(v) => EResult {
-                    v: Some(v),
-                    errors: mem:: take(& mut $v.errors),
+                Ok(v) => {
+                    let errs = mem:: take(& mut $v.errors);
+                    EResult {
+                        v: Some(v),
+                        errors: if errs.is_empty() { None } else { Some(errs) },
+                    }
                 },
                 Err(()) => EResult {
                     v: None,
-                    errors: mem:: take(& mut $v.errors),
+                    errors: Some(mem:: take(& mut $v.errors)),
                 },
             }
         }
@@ -70,13 +73,16 @@ pub(crate) fn er_seq_cv_inline(
 ) -> crate::langhelp::EvalRes {
     let mut erb = super::Erb::new(loc);
     match f(&mut erb) {
-        Ok(v) => crate::langhelp::EResult {
-            v: Some(v),
-            errors: std::mem::take(&mut erb.errors),
+        Ok(v) => {
+            let errs = std::mem::take(&mut erb.errors);
+            crate::langhelp::EResult {
+                v: Some(v),
+                errors: if errs.is_empty() { None } else { Some(errs) },
+            }
         },
         Err(()) => crate::langhelp::EResult {
             v: None,
-            errors: std::mem::take(&mut erb.errors),
+            errors: Some(std::mem::take(&mut erb.errors)),
         },
     }
 }
@@ -103,7 +109,7 @@ macro_rules! r_one{
             //. .
             break 'done EvalRes {
                 v: None,
-                errors: errors,
+                errors: Some(errors),
             };
         }
     };
