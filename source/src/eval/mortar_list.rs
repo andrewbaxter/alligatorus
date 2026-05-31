@@ -110,10 +110,25 @@ impl AspectFunction for TypeListConstructor {
     }
 }
 
+impl super::jswrap::JsWrap for TypeMortarList {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeType)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeMortarList> = super::rc_from_v8(&*value);
+        (*rc).clone()
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_to_v8(scope, Rc::new(self)).into()
+    }
+}
+
 // --- list type (result of list(string), and also type of list instances) ---
 #[derive(Clone)]
 pub(crate) struct TypeMortarList {
-    element_type: Rc<dyn Type>,
+    pub(crate) element_type: Rc<dyn Type>,
 }
 
 impl Value for TypeMortarList {

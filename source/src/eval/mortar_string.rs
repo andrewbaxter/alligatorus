@@ -28,6 +28,7 @@ use {
             aspect_js_string_aspect_id,
             aspect_js_string_get,
             aspect_js_string_get_maybe,
+            aspect_set_aspect_id,
             aspect_string_get,
             aspect_string_get_maybe,
         },
@@ -87,6 +88,9 @@ impl Type for TypeMortarString {
         }
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsStackValue>));
+        }
+        if *key == aspect_set_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectSet>));
         }
         return None;
     }

@@ -331,6 +331,7 @@ impl Type for RecordValue {
             let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.fields.iter().map(|(k, f)| {
                 let key_str = match k {
                     ConstKey::String(s) => s.clone(),
+                    ConstKey::Usize(n) => n.to_string(),
                 };
                 let t = match f {
                     RecordField::Mortar(t) => t.clone(),
@@ -510,6 +511,7 @@ impl AspectConsumeJs for RecordValue {
         for (key, field) in record.fields.into_iter() {
             let key_str = match &key {
                 ConstKey::String(s) => s.clone(),
+                ConstKey::Usize(n) => n.to_string(),
             };
             match field {
                 RecordField::Mortar(_) => {

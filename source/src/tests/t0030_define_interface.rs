@@ -36,15 +36,17 @@ async fn test_00900define_interface() {
                 mb.tuple(
                     vec![
                         mb.field(mb.scope_use("iface"), mb.str("type")),
-                        mb.stage(
-                            mb.record(
-                                vec![
-                                    (
-                                        "to_string",
-                                        mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null(),),
-                                    ),
-                                ]
-                            )
+                        mb.call(
+                            mb.field(
+                                mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("null")])),
+                                mb.str("new"),
+                            ),
+                            mb.record(vec![
+                                (
+                                    "to_string",
+                                    mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())),
+                                ),
+                            ]),
                         ),
                     ]
                 ),
@@ -147,16 +149,20 @@ let e29;
 e29 = a1;
 e28 = e29._0;
 let e30;
-e30 = a7;
+let e31;
+e31 = "\"to_string\"";
+let e32;
+e32 = a7;
+e30 = { [e31]: e32 };
 e26 = e27._5(e28,e30);
 e4 = e26;
 }
 {
-let e31;
-let e32;
-e32 = a5;
-e31 = e32._1;
-e4 = e31;
+let e33;
+let e34;
+e34 = a5;
+e33 = e34._1;
+e4 = e33;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
@@ -228,15 +234,17 @@ async fn test_00910interface_cast() {
                 mb.tuple(
                     vec![
                         mb.field(mb.scope_use("iface"), mb.str("type")),
-                        mb.stage(
-                            mb.record(
-                                vec![
-                                    (
-                                        "to_string",
-                                        mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null(),),
-                                    ),
-                                ]
-                            )
+                        mb.call(
+                            mb.field(
+                                mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("null")])),
+                                mb.str("new"),
+                            ),
+                            mb.record(vec![
+                                (
+                                    "to_string",
+                                    mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())),
+                                ),
+                            ]),
                         ),
                     ]
                 ),
@@ -361,59 +369,63 @@ let e29;
 e29 = a1;
 e28 = e29._0;
 let e30;
-e30 = a7;
+let e31;
+e31 = "\"to_string\"";
+let e32;
+e32 = a7;
+e30 = { [e31]: e32 };
 e26 = e27._5(e28,e30);
 e4 = e26;
 }
 let a8;
 {
-let e31;
-let e32;
-e32 = a0;
 let e33;
-{
 let e34;
-e34 = "do_log";
-e33 = e34;
+e34 = a0;
+let e35;
+{
+let e36;
+e36 = "do_log";
+e35 = e36;
 }
-e31 = e32._0(e33);
-a8 = e31;
+e33 = e34._0(e35);
+a8 = e33;
 }
 {
-let e35;
-let e36;
-e36 = a8;
 let e37;
 let e38;
-e38 = a1;
-e37 = e38._0;
-e35 = e36._4(e37);
-e4 = e35;
-}
-{
+e38 = a8;
 let e39;
 let e40;
-e40 = a8;
+e40 = a1;
+e39 = e40._0;
+e37 = e38._4(e39);
+e4 = e37;
+}
+{
 let e41;
-e41 = a9;
-e39 = e40._5(e41);
-e4 = e39;
-}
-{
 let e42;
+e42 = a8;
 let e43;
-e43 = a8;
-let e44;
-e44 = a10;
-e42 = e43._2(e44);
-e4 = e42;
+e43 = a9;
+e41 = e42._5(e43);
+e4 = e41;
 }
 {
+let e44;
 let e45;
+e45 = a8;
 let e46;
-e46 = a0;
-e45 = e46._2();
-e4 = e45;
+e46 = a10;
+e44 = e45._2(e46);
+e4 = e44;
+}
+{
+let e47;
+let e48;
+e48 = a0;
+e47 = e48._2();
+e4 = e47;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);

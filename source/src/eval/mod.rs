@@ -121,8 +121,6 @@ use {
     bool::ValueBool,
     flowcontrol::shed,
     mortar_function::MortarTypeFunction,
-    mortar_list::TypeListConstructor,
-    mortar_map::TypeMapConstructor,
     mortar_null::TypeMortarNull,
     mortar_scope_entry::{
         MortarScopeEntryAsScope,
@@ -1101,6 +1099,7 @@ fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type
         for (key, field) in record.fields {
             let key_str = match &key {
                 ConstKey::String(s) => s.clone(),
+                ConstKey::Usize(n) => n.to_string(),
             };
             let dest_entry_type = match dest_field.field_opt(xx, &key_str) {
                 Some(t) => t,
@@ -1199,6 +1198,8 @@ fn eval(
         DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
     }), jswrap!(fn str_to_json(ex, js_scope, scope)(s: String) -> String {
         serde_json::to_string(&s).unwrap()
+    }), jswrap!(fn constkey_to_str(ex, js_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
+        key.to_str()
     })] {
         js_scope
             .get_current_context()
@@ -1228,14 +1229,52 @@ fn eval(
         ConstKey::String("number".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
     );
-    s1_scope.insert(
-        ConstKey::String("list".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
-    );
-    s1_scope.insert(
-        ConstKey::String("map".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeMapConstructor) }) as Box<dyn ScopeEntry>,
-    );
+
+    // list/map constructors: jswrap fns for v8 with constructor types for half-eval
+    for (
+        key,
+        constructor_type,
+        (_, jswrap_entry, js_value),
+    ) in [
+        (
+            "list",
+            Rc::new(mortar_list::TypeListConstructor) as Rc<dyn Type>,
+            jswrap!(fn list(ex, js_scope, scope)(element_type: jswrap:: TypeRef) -> mortar_list:: TypeMortarList {
+                mortar_list::TypeMortarList { element_type: element_type.0 }
+            }),
+        ),
+        (
+            "map",
+            Rc::new(mortar_map::TypeMapConstructor) as Rc<dyn Type>,
+            jswrap!(
+                fn map(
+                    ex,
+                    js_scope,
+                    scope
+                )(key_type: jswrap:: TypeRef, value_type: jswrap:: TypeRef) -> mortar_map:: TypeMortarMap {
+                    mortar_map::TypeMortarMap {
+                        key_type: key_type.0,
+                        value_type: value_type.0
+                    }
+                }
+            ),
+        ),
+    ] {
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(jswrap_entry.js_key)).unwrap().cast(),
+                js_value,
+            );
+        let entry = MortarScopeEntryBinding {
+            js_key: jswrap_entry.js_key,
+            type_: constructor_type,
+        };
+        builtin_scope_entries.push((key.to_string(), entry.clone()));
+        s1_scope.insert(ConstKey::String(key.to_string()), Box::new(entry) as Box<dyn ScopeEntry>);
+    }
     let root_loc = expr.loc;
     let xx = Rc::new(ExprContext {
         vx: ex.clone(),
@@ -1317,14 +1356,6 @@ fn eval(
         scope_entries.insert(
             ConstKey::String("number".to_string()),
             Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
-        );
-        scope_entries.insert(
-            ConstKey::String("list".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeListConstructor) }) as Box<dyn ScopeEntry>,
-        );
-        scope_entries.insert(
-            ConstKey::String("map".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeMapConstructor) }) as Box<dyn ScopeEntry>,
         );
         scope_entries
     }
@@ -1936,6 +1967,15 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
+        JsCodeType::NewMap(c) => {
+            let mut fields_str = vec![];
+            for (key, value) in &c.fields {
+                let key_var = render_code(lines, key);
+                let val_var = render_code(lines, value);
+                fields_str.push(format!("[{}]: {}", key_var, val_var));
+            }
+            lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
+        },
         JsCodeType::NewArray(c) => {
             let mut elem_vars = vec![];
             for elem in &c.elements {
@@ -1975,6 +2015,15 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("for (let {} of {}) {{", elem_key, base_var));
+            let body_var = render_code(lines, &c.body);
+            lines.push(code.loc, format!("{} = {};", out, body_var));
+            lines.push(code.loc, "}".to_string());
+        },
+        JsCodeType::ForeachMap(c) => {
+            let base_var = render_code(lines, &c.base);
+            let elem_key = scope_entry_id_js_key(c.element_key);
+            lines.push(code.loc, format!("for (let __entry of Object.entries({})) {{", base_var));
+            lines.push(code.loc, format!("let {} = {{ key: __entry[0], value: __entry[1] }};", elem_key));
             let body_var = render_code(lines, &c.body);
             lines.push(code.loc, format!("{} = {};", out, body_var));
             lines.push(code.loc, "}".to_string());

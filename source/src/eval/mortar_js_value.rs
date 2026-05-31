@@ -132,6 +132,11 @@ pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: JsCode, type_: Rc<dy
 
 pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
+        let target_type = {
+            let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<MortarJsValue>().unwrap();
+            v.type_.clone()
+        };
+        let value = erb.must_er(super::typecheck_convert(xx, loc, target_type.as_ref(), value))?;
         let value_type = value.value.type_(xx, loc);
         er_all!(erb, {
             value_to_js = aspect_consume_js_get(xx, loc, value_type.as_ref()),

@@ -5,20 +5,27 @@ use {
             AspectConsumeJs,
             AspectField,
             AspectFunction,
+            AspectIterable,
             AspectJsStackValue,
+            AspectSet,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
+            aspect_consume_js_get,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
+            aspect_iterable_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_js_stack_value_get,
+            aspect_set_aspect_id,
             aspect_string_get,
-            aspect_string_get_maybe,
             aspect_tuple_get_maybe,
         },
         jscode::{
             JsCode,
             JsCodeFieldUse,
+            JsCodeFieldSet,
+            JsCodeForeachMap,
+            JsCodeNewMap,
             JsCodeNewObject,
             JsCodeType,
             JsCodeBindingUse,
@@ -104,14 +111,6 @@ impl AspectFunction for TypeMapConstructor {
         }
         let key_type = element_types[0].clone();
         let value_type = element_types[1].clone();
-
-        // Validate key type is constkey-able (has AspectString)
-        if aspect_string_get_maybe(xx, key_type.as_ref()).is_none() {
-            return EvalRes::err(
-                loc,
-                format!("map key type '{}' is not constkey-able (must be string-like)", key_type.desc()),
-            );
-        }
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
@@ -122,6 +121,21 @@ impl AspectFunction for TypeMapConstructor {
                 value_type,
             }),
         })
+    }
+}
+
+impl super::jswrap::JsWrap for TypeMortarMap {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::type_ref::TypeType)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeMortarMap> = super::rc_from_v8(&*value);
+        (*rc).clone()
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_to_v8(scope, Rc::new(self)).into()
     }
 }
 
@@ -156,6 +170,12 @@ impl Type for TypeMortarMap {
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectJsStackValue>));
         }
+        if *key == aspect_set_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectSet>));
+        }
+        if *key == aspect_iterable_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
+        }
         None
     }
 
@@ -166,10 +186,40 @@ impl Type for TypeMortarMap {
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         let source_type = cv.value.type_(_xx, loc);
         let source_any: &dyn Any = source_type.as_ref();
-        if source_any.downcast_ref::<TypeMortarMap>().is_some() ||
-            source_any.downcast_ref::<super::tuple::RecordValue>().is_some() {
+        if source_any.downcast_ref::<TypeMortarMap>().is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code.clone(),
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            });
+        }
+        if source_any.downcast_ref::<super::tuple::RecordValue>().is_some() {
+            // Transform record JS object to use canonical ConstKey keys
+            let code = match cv.code.cast::<JsCode>().into_res() {
+                Ok(Some(js)) => {
+                    match &js.type_ {
+                        JsCodeType::NewObject(obj) => Code {
+                            loc,
+                            code: Code_::Dyn(Rc::new(JsCode {
+                                loc,
+                                type_: JsCodeType::NewMap(JsCodeNewMap { fields: obj.fields.iter().map(|(k, v)| {
+                                    let canonical = crate::langhelp::ConstKey::String(k.clone()).to_str();
+                                    (JsCode {
+                                        loc,
+                                        type_: JsCodeType::Literal(serde_json::Value::String(canonical)),
+                                    }, v.clone())
+                                }).collect() }),
+                            })),
+                        },
+                        _ => cv.code.clone(),
+                    }
+                },
+                _ => cv.code.clone(),
+            };
+            return EvalRes::ok(CodeValue {
+                code,
                 value: Box::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),
@@ -257,7 +307,7 @@ impl AspectField for TypeMortarMap {
                 key_type: self.key_type.clone(),
                 value_type: self.value_type.clone(),
             })),
-            _ => None,
+            _ => Some(self.value_type.clone()),
         }
     }
 }
@@ -307,6 +357,69 @@ impl AspectBindJs for TypeMortarMap {
     }
 }
 
+impl AspectSet for TypeMortarMap {
+    fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
+        super::mortar_js_value::mortar_set(xx, loc, self_, value)
+    }
+}
+
+impl AspectIterable for TypeMortarMap {
+    fn element_type(&self) -> Rc<dyn Type> {
+        // Map iteration yields records with "key" and "value" fields
+        Rc::new(super::tuple::RecordValue {
+            source: None,
+            fields: [
+                (
+                    crate::langhelp::ConstKey::String("key".to_string()),
+                    super::tuple::RecordField::Mortar(self.key_type.clone()),
+                ),
+                (
+                    crate::langhelp::ConstKey::String("value".to_string()),
+                    super::tuple::RecordField::Mortar(self.value_type.clone()),
+                ),
+            ]
+                .into_iter()
+                .collect(),
+        })
+    }
+
+    fn foreach(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ScopeEntryId,
+        body: CodeValue,
+    ) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_consume = erb.must_er(aspect_consume_js_get(xx, loc, &*Rc::new(self.clone())))?;
+            let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
+            let body_js = match body.code.cast::<JsCode>().into_res() {
+                Ok(Some(js)) => js.clone(),
+                Ok(None) => JsCode {
+                    loc,
+                    type_: JsCodeType::Literal(serde_json::Value::Null)
+                },
+                Err(e) => {
+                    erb.errors.extend(e);
+                    return Err(());
+                },
+            };
+            let foreach_js = JsCode {
+                loc,
+                type_: JsCodeType::ForeachMap(JsCodeForeachMap {
+                    base: Box::new(base_js),
+                    element_key,
+                    body: Box::new(body_js),
+                }),
+            };
+            let null_type = Rc::new(super::mortar_null::TypeMortarNull);
+            let stack_value = erb.must_er(aspect_js_stack_value_get(xx, loc, null_type.as_ref()))?;
+            return Ok(stack_value.to_value(loc, foreach_js));
+        });
+    }
+}
+
 // --- map new function ---
 #[derive(Clone)]
 struct TypeMapNew {
@@ -344,13 +457,47 @@ impl Type for TypeMapNew {
 impl Aspect for TypeMapNew { }
 
 impl AspectFunction for TypeMapNew {
-    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, _argument: CodeValue) -> EvalRes {
+    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let instance_type = Rc::new(TypeMortarMap {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
         });
         return er_seq_cv!(loc, erb, {
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, instance_type.as_ref()))?;
+
+            // Check if argument is a record — if so, populate the map from its entries
+            let arg_any: Box<dyn Any> = argument.value;
+            if let Ok(record) = arg_any.downcast::<super::tuple::RecordValue>() {
+                let mut map_fields = vec![];
+                for (key, field) in record.fields {
+                    let canonical = key.to_str();
+                    let key_js = JsCode {
+                        loc,
+                        type_: JsCodeType::Literal(serde_json::Value::String(canonical)),
+                    };
+                    match field {
+                        super::tuple::RecordField::EvalRes(entry) => {
+                            if let Some(cv) = entry.v {
+                                let value_type = cv.value.type_(xx, loc);
+                                if let Some(to_js) =
+                                    crate::builtin::aspect_consume_js_get_maybe(xx, value_type.as_ref())
+                                {
+                                    match to_js.to_js(xx, loc, cv).into_res() {
+                                        Ok(js) => map_fields.push((key_js, js)),
+                                        Err(e) => erb.errors.extend(e),
+                                    }
+                                }
+                            }
+                        },
+                        super::tuple::RecordField::Mortar(_) => {},
+                    }
+                }
+                return Ok(ret_stack.to_value(loc, JsCode {
+                    loc,
+                    type_: JsCodeType::NewMap(JsCodeNewMap { fields: map_fields }),
+                }));
+            }
+
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
                 type_: JsCodeType::NewObject(JsCodeNewObject { fields: vec![] }),

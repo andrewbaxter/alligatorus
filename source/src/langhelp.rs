@@ -299,6 +299,7 @@ pub(crate) trait ScopeEntry {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
 pub(crate) enum ConstKey {
     String(String),
+    Usize(usize),
 }
 
 impl ConstKey {
@@ -306,6 +307,7 @@ impl ConstKey {
     pub(crate) fn to_str(&self) -> String {
         let json = match self {
             ConstKey::String(s) => serde_json::Value::String(s.clone()),
+            ConstKey::Usize(n) => serde_json::Value::Number((*n).into()),
         };
         serde_json_canonicalizer::to_string(&json).unwrap()
     }
@@ -316,10 +318,16 @@ impl ConstKey {
             serde_json::from_str(s).map_err(|e| format!("Invalid ConstKey string: {}", e))?;
         match json {
             serde_json::Value::String(s) => Ok(ConstKey::String(s)),
+            serde_json::Value::Number(n) => {
+                if let Some(u) = n.as_u64() {
+                    Ok(ConstKey::Usize(u as usize))
+                } else {
+                    Err(format!("Unsupported ConstKey number: {}", n))
+                }
+            },
             _ => Err(format!("Unsupported ConstKey JSON value: {}", s)),
         }
     }
-
 }
 
 pub(crate) struct Scope {

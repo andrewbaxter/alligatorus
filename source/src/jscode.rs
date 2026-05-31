@@ -64,6 +64,11 @@ pub(crate) struct JsCodeNewObject {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeNewMap {
+    pub(crate) fields: Vec<(JsCode, JsCode)>,
+}
+
+#[derive(Clone)]
 pub(crate) struct JsCodeNewArray {
     pub(crate) elements: Vec<JsCode>,
 }
@@ -94,9 +99,17 @@ pub(crate) struct JsCodeForeach {
 }
 
 #[derive(Clone)]
+pub(crate) struct JsCodeForeachMap {
+    pub(crate) base: Box<JsCode>,
+    pub(crate) element_key: ScopeEntryId,
+    pub(crate) body: Box<JsCode>,
+}
+
+#[derive(Clone)]
 pub(crate) enum JsCodeType {
     Literal(serde_json::Value),
     NewObject(JsCodeNewObject),
+    NewMap(JsCodeNewMap),
     NewArray(JsCodeNewArray),
     Block(JsCodeBlock),
     BindingUse(JsCodeBindingUse),
@@ -108,6 +121,7 @@ pub(crate) enum JsCodeType {
     OperatorLt(JsCodeOperatorLt),
     OperatorAdd(JsCodeOperatorAdd),
     Foreach(JsCodeForeach),
+    ForeachMap(JsCodeForeachMap),
     Match(JsCodeMatch),
 }
 

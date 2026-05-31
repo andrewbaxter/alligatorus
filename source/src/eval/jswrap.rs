@@ -115,30 +115,23 @@ impl JsWrap for crate::langhelp::ConstKey {
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        if value.is_string() {
-            let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-            return crate::langhelp::ConstKey::String(s);
-        }
-        panic!("ConstKey::from_v8: expected a JS string");
+        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+        crate::langhelp::ConstKey::from_str(&s).unwrap_or_else(|e| panic!("ConstKey::from_v8: {}", e))
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        let s = match &self {
-            crate::langhelp::ConstKey::String(s) => s.clone(),
-        };
+        let s = self.to_str();
         v8::String::new(scope, &s).unwrap().into()
     }
 }
 
 impl JsWrapKey for crate::langhelp::ConstKey {
     fn from_js_key(s: &str) -> Self {
-        crate::langhelp::ConstKey::String(s.to_string())
+        crate::langhelp::ConstKey::from_str(s).unwrap_or_else(|e| panic!("ConstKey::from_js_key: {}", e))
     }
 
     fn to_js_key(&self) -> String {
-        match self {
-            crate::langhelp::ConstKey::String(s) => s.clone(),
-        }
+        self.to_str()
     }
 }
 
@@ -187,7 +180,8 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
                         let val = lit();
                         let val_any: &dyn std::any::Any = val.as_ref();
                         if let Some(s) = val_any.downcast_ref::<crate::eval::string::ValueString>() {
-                            s.0.clone()
+                            // Canonicalize: from_js_key expects canonical ConstKey format
+                            crate::langhelp::ConstKey::String(s.0.clone()).to_str()
                         } else {
                             panic!("BTreeMap staged record key must be a string literal")
                         }
@@ -274,6 +268,7 @@ fn enhance_type_with_v8_obj<
             };
             let key_str = match key {
                 crate::langhelp::ConstKey::String(s) => s.clone(),
+                crate::langhelp::ConstKey::Usize(n) => n.to_string(),
             };
             let type_any: &dyn Any = entry_type.as_ref();
             if type_any.downcast_ref::<super::definition_set::tagged_union::MortarTypeTaggedUnionRef>().is_some() {
