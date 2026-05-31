@@ -9,7 +9,11 @@ macro_rules! er_seq{
                     let errs = mem:: take(& mut $v.errors);
                     EResult {
                         v: Some(v),
-                        errors: if errs.is_empty() { None } else { Some(errs) },
+                        errors: if errs.is_empty() {
+                            None
+                        } else {
+                            Some(errs)
+                        },
                     }
                 },
                 Err(()) => EResult {
@@ -77,7 +81,11 @@ pub(crate) fn er_seq_cv_inline(
             let errs = std::mem::take(&mut erb.errors);
             crate::langhelp::EResult {
                 v: Some(v),
-                errors: if errs.is_empty() { None } else { Some(errs) },
+                errors: if errs.is_empty() {
+                    None
+                } else {
+                    Some(errs)
+                },
             }
         },
         Err(()) => crate::langhelp::EResult {

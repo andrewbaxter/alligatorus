@@ -4,7 +4,10 @@ use crate::{
     langhelp::SourceId,
     new_gx,
     syntax::SerialModule,
-    tests::helpers::{ModuleBuilder, sanitize_builtins},
+    tests::helpers::{
+        ModuleBuilder,
+        sanitize_builtins,
+    },
 };
 
 #[tokio::test]

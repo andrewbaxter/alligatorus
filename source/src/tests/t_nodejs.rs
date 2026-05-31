@@ -7,7 +7,10 @@
 //!
 //! * Tests to confirm the chunks work
 use {
-    super::helpers::{ModuleBuilder, sanitize_builtins},
+    super::helpers::{
+        ModuleBuilder,
+        sanitize_builtins,
+    },
     crate::{
         compile,
         eval::setup_v8,

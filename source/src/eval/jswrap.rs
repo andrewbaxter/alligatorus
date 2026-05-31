@@ -13,6 +13,13 @@ pub(crate) trait JsWrap: Sized + 'static {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
 }
 
+/// Trait for types that can be used as BTreeMap keys in JsWrap. Converts between
+/// Rust keys and JS object property names (strings).
+pub(crate) trait JsWrapKey: Sized + Ord + 'static {
+    fn from_js_key(s: &str) -> Self;
+    fn to_js_key(&self) -> String;
+}
+
 impl JsWrap for String {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(super::mortar_string::TypeMortarString)
@@ -99,6 +106,133 @@ impl JsWrap for TypeRef {
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         unimplemented!("TypeRef should not be sent back to v8")
+    }
+}
+
+impl JsWrap for crate::langhelp::ConstKey {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::mortar_string::TypeMortarString)
+    }
+
+    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        if value.is_string() {
+            let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+            return crate::langhelp::ConstKey::String(s);
+        }
+        panic!("ConstKey::from_v8: expected a JS string");
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        let s = match &self {
+            crate::langhelp::ConstKey::String(s) => s.clone(),
+        };
+        v8::String::new(scope, &s).unwrap().into()
+    }
+}
+
+impl JsWrapKey for crate::langhelp::ConstKey {
+    fn from_js_key(s: &str) -> Self {
+        crate::langhelp::ConstKey::String(s.to_string())
+    }
+
+    fn to_js_key(&self) -> String {
+        match self {
+            crate::langhelp::ConstKey::String(s) => s.clone(),
+        }
+    }
+}
+
+impl JsWrap for expr::Expr {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(expr::ExprType)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
+        let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
+        *(inner as Box<dyn std::any::Any>).downcast::<expr::Expr>().expect("Expected Expr in StagedExprCell")
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("Expr should not be sent back to v8")
+    }
+}
+
+impl<K: JsWrapKey, V: JsWrap> JsWrap for std::collections::BTreeMap<K, V> {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(expr::ExprType)
+    }
+
+    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        if value.is_external() {
+            // Staged record expression: extract the record AST and decompose into entries
+            let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
+            let inner = cell.value.borrow_mut().take().expect("BTreeMap staged value already consumed");
+            let record_expr =
+                (inner.as_ref() as &dyn std::any::Any)
+                    .downcast_ref::<expr::Expr>()
+                    .expect("BTreeMap staged value must be an Expr");
+            let entries = match &record_expr.r#type {
+                expr::Expr_::Record(r) => &r.entries,
+                _ => panic!("BTreeMap staged expression must be a Record"),
+            };
+            let mut map = std::collections::BTreeMap::new();
+            for (k_expr, v_expr) in entries {
+                // Extract the key string from the literal expression
+                let key_str = match &k_expr.r#type {
+                    expr::Expr_::Literal(lit) => {
+                        let val = lit();
+                        let val_any: &dyn std::any::Any = val.as_ref();
+                        if let Some(s) = val_any.downcast_ref::<crate::eval::string::ValueString>() {
+                            s.0.clone()
+                        } else {
+                            panic!("BTreeMap staged record key must be a string literal")
+                        }
+                    },
+                    _ => panic!("BTreeMap staged record key must be a literal"),
+                };
+                let key = K::from_js_key(&key_str);
+
+                // Wrap value in a StagedExprCell for V::from_v8
+                let v_cell =
+                    Rc::new(
+                        expr::StagedExprCell {
+                            value: std::cell::RefCell::new(
+                                Some(Box::new(v_expr.clone()) as Box<dyn crate::langhelp::Value>),
+                            ),
+                        },
+                    );
+                let v_ext = v8::External::new(&**scope, Box::into_raw(Box::new(v_cell)) as *mut std::ffi::c_void);
+                let val = V::from_v8(scope, v_ext.into());
+                map.insert(key, val);
+            }
+            map
+        } else {
+            // Regular JS object
+            let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
+            let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
+            let len = keys.length();
+            let mut map = std::collections::BTreeMap::new();
+            for i in 0 .. len {
+                let js_key = keys.get_index(scope, i).unwrap();
+                let key_str = js_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+                let key = K::from_js_key(&key_str);
+                let js_val = obj.get(scope, js_key).unwrap();
+                let val = V::from_v8(scope, js_val);
+                map.insert(key, val);
+            }
+            map
+        }
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        let obj = v8::Object::new(scope);
+        for (k, v) in self {
+            let js_key: v8::Local<v8::Value> = v8::String::new(scope, &k.to_js_key()).unwrap().into();
+            let js_val = V::into_v8(v, scope);
+            obj.set(scope, js_key, js_val);
+        }
+        obj.into()
     }
 }
 

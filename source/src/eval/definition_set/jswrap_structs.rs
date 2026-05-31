@@ -316,42 +316,11 @@ jswrap!(struct NewDataResult(self_, scope) {
             method_index,
         }
     }
-    fn impl_interface(iface_ref: Rc<DefinitionSetInterfaceRef>, record: StagedExpr) -> () {
-        let record_expr =
-            (record.0.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<crate::eval::expr::Expr>()
-                .expect("impl_interface record must be a staged expression");
-        let record_entries = match &record_expr.r#type {
-            crate::eval::expr::Expr_::Record(r) => &r.entries,
-            _ => {
-                crate::eval::v8util::throw_error(scope, "impl_interface argument must be a Record expression");
-                return;
-            },
-        };
-
-        // Extract string keys from record key expressions
-        let record_string_entries: Vec<(String, &crate::eval::expr::Expr)> = {
-            let mut out = Vec::new();
-            for (k_expr, v_expr) in record_entries {
-                match &k_expr.r#type {
-                    crate::eval::expr::Expr_::Literal(lit) => {
-                        let val = lit();
-                        let val_any: &dyn std::any::Any = val.as_ref();
-                        if let Some(s) = val_any.downcast_ref::<crate::eval::string::ValueString>() {
-                            out.push((s.0.clone(), v_expr));
-                        } else {
-                            crate::eval::v8util::throw_error(scope, "Record keys must be string literals");
-                            return;
-                        }
-                    },
-                    _ => {
-                        crate::eval::v8util::throw_error(scope, "Record keys must be string literals");
-                        return;
-                    },
-                }
-            }
-            out
-        };
+    fn impl_interface(
+        iface_ref: Rc<DefinitionSetInterfaceRef>,
+        record: std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>
+    ) -> () {
+        let record_entries = record;
         let interface_index = iface_ref.interface_index;
 
         // Extract method names and indices from interface (release borrow after)
@@ -363,13 +332,13 @@ jswrap!(struct NewDataResult(self_, scope) {
         };
         let mut method_impls = Vec::new();
         for (imethod_idx, imethod_name) in &iface_method_names {
-            let entry = record_string_entries.iter().find(|(k, _)| k == imethod_name);
-            match entry {
-                Some((_, expr)) => {
+            let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
+            match record_entries.get(&const_key) {
+                Some(expr) => {
                     let entry_id = self_.data_type_ref.set.next_entry_id.next();
                     method_impls.push(DefinitionSetDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
-                        impl_expr: Box::new((*expr).clone()),
+                        impl_expr: Box::new(expr.clone()),
                         scope_entry_id: Cell::new(
                             Some(
                                 crate::langhelp::ScopeEntryId::Def(

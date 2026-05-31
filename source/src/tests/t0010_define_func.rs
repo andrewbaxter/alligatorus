@@ -1,5 +1,8 @@
 use {
-    super::helpers::{ModuleBuilder, sanitize_builtins},
+    super::helpers::{
+        ModuleBuilder,
+        sanitize_builtins,
+    },
     crate::{
         compile,
         new_gx,

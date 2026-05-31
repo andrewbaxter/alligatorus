@@ -301,6 +301,27 @@ pub(crate) enum ConstKey {
     String(String),
 }
 
+impl ConstKey {
+    /// Serialize to a canonical JSON string (for persistence/wire format).
+    pub(crate) fn to_str(&self) -> String {
+        let json = match self {
+            ConstKey::String(s) => serde_json::Value::String(s.clone()),
+        };
+        serde_json_canonicalizer::to_string(&json).unwrap()
+    }
+
+    /// Deserialize from a canonical JSON string.
+    pub(crate) fn from_str(s: &str) -> Result<ConstKey, String> {
+        let json: serde_json::Value =
+            serde_json::from_str(s).map_err(|e| format!("Invalid ConstKey string: {}", e))?;
+        match json {
+            serde_json::Value::String(s) => Ok(ConstKey::String(s)),
+            _ => Err(format!("Unsupported ConstKey JSON value: {}", s)),
+        }
+    }
+
+}
+
 pub(crate) struct Scope {
     pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn ScopeEntry>>>,
     pub(crate) parent: Option<Rc<Scope>>,

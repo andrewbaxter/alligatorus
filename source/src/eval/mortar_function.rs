@@ -158,11 +158,15 @@ impl AspectFunction for MortarTypeFunction {
                     let cv = match elem.v {
                         Some(cv) => cv,
                         None => {
-                            if let Some(errs) = elem.errors { erb.errors.extend(errs); }
+                            if let Some(errs) = elem.errors {
+                                erb.errors.extend(errs);
+                            }
                             return erb.err_new(format!("Tuple element failed to evaluate"));
                         },
                     };
-                    if let Some(errs) = elem.errors { erb.errors.extend(errs); }
+                    if let Some(errs) = elem.errors {
+                        erb.errors.extend(errs);
+                    }
                     let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
                     let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, param_type.as_ref()))?;
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
