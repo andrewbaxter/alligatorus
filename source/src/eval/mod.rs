@@ -40,6 +40,8 @@ use {
             aspect_tagged_union_get,
         },
         jscode::{
+            BINDING_PREFIX,
+            BUILTIN_PREFIX,
             EXPR_PREFIX,
             TAG_VAR,
             JsCode,
@@ -1096,8 +1098,8 @@ fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type
 
 pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
     match e {
-        ScopeEntryId::Local(id) => format!("a{}", id),
-        ScopeEntryId::Builtin(id) => format!("b{}", id),
+        ScopeEntryId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
+        ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
         ScopeEntryId::Def(import_id, def_set_id, entry_id) => {
             format!("d{}_{}_{}", import_id.0, def_set_id.0, entry_id)
         },
