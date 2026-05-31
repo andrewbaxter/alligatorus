@@ -85,13 +85,15 @@ impl Type for TypeType {
         // For record values, extract entry binding IDs so TypeRef::from_v8 can look up
         // actual v8 values (needed for tagged union data)
         let mut entry_bindings = std::collections::BTreeMap::new();
-        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<crate::eval::tuple::ValueRecord>() {
-            for (key, entry_res) in &record.entries {
-                if let Some(entry_cv) = &entry_res.v {
-                    if let Some(js) = entry_cv.code.cast::<JsCode>().v.flatten() {
-                        if let JsCodeType::BindingUse(b) = &js.type_ {
-                            if let crate::langhelp::ConstKey::String(s) = key {
-                                entry_bindings.insert(s.clone(), b.id);
+        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<crate::eval::tuple::RecordValue>() {
+            for (key, field) in &record.fields {
+                if let crate::eval::tuple::RecordField::EvalRes(entry_res) = field {
+                    if let Some(entry_cv) = &entry_res.v {
+                        if let Some(js) = entry_cv.code.cast::<JsCode>().v.flatten() {
+                            if let JsCodeType::BindingUse(b) = &js.type_ {
+                                if let crate::langhelp::ConstKey::String(s) = key {
+                                    entry_bindings.insert(s.clone(), b.id);
+                                }
                             }
                         }
                     }

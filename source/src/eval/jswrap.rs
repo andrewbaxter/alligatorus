@@ -115,7 +115,7 @@ fn enhance_type_with_v8_obj<
     use std::any::Any;
 
     let base_any: &dyn Any = base_type.as_ref();
-    if let Some(record_type) = base_any.downcast_ref::<super::tuple::TypeValueRecord>() {
+    if let Some(record_type) = base_any.downcast_ref::<super::tuple::RecordType>() {
         if !bindings_obj.is_object() || bindings_obj.is_null_or_undefined() {
             return base_type;
         }
@@ -143,7 +143,7 @@ fn enhance_type_with_v8_obj<
                 }
             }
         }
-        return Rc::new(super::tuple::TypeValueRecord { entry_types: new_entries });
+        return Rc::new(super::tuple::RecordType { entry_types: new_entries });
     }
     base_type
 }

@@ -147,8 +147,9 @@ use {
     },
     string::ValueString,
     tuple::{
+        RecordField,
+        RecordValue,
         StaticScopeEntry,
-        ValueRecord,
         ValueScopeEntry,
         ValueTuple,
     },
@@ -916,9 +917,13 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                     })),
                 }
             };
+            let fields = entries.into_iter().map(|(k, v)| (k, RecordField::EvalRes(v))).collect();
             return EvalRes::ok(CodeValue {
                 code,
-                value: Box::new(ValueRecord { entries }),
+                value: Box::new(RecordValue {
+                    source: None,
+                    fields,
+                }),
             });
         },
         Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
@@ -1086,12 +1091,12 @@ fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type
             None => return erb.err_new(format!("Not a record type")),
         };
         let any_source: Box<dyn Any> = source.value;
-        let record = match any_source.downcast::<ValueRecord>() {
+        let record = match any_source.downcast::<RecordValue>() {
             Ok(r) => r,
             Err(_) => return erb.err_new(format!("Source is not a record value")),
         };
-        let mut converted_entries = std::collections::BTreeMap::new();
-        for (key, entry_res) in record.entries {
+        let mut converted_fields = std::collections::BTreeMap::new();
+        for (key, field) in record.fields {
             let key_str = match &key {
                 ConstKey::String(s) => s.clone(),
             };
@@ -1101,20 +1106,28 @@ fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type
                     return erb.err_new(format!("Dest record missing key {:?}", key_str));
                 },
             };
-            let converted_entry = if let Some(entry_cv) = entry_res.v {
-                let conv = erb.must_er(typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv))?;
-                EvalRes::ok(conv)
-            } else {
-                EvalRes {
-                    v: None,
-                    errors: entry_res.errors,
-                }
+            let converted_field = match field {
+                RecordField::EvalRes(entry_res) => {
+                    if let Some(entry_cv) = entry_res.v {
+                        let conv = erb.must_er(typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv))?;
+                        RecordField::EvalRes(EvalRes::ok(conv))
+                    } else {
+                        RecordField::EvalRes(EvalRes {
+                            v: None,
+                            errors: entry_res.errors,
+                        })
+                    }
+                },
+                RecordField::Mortar(_) => RecordField::Mortar(dest_entry_type),
             };
-            converted_entries.insert(key, converted_entry);
+            converted_fields.insert(key, converted_field);
         }
         return Ok(CodeValue {
             code: source.code,
-            value: Box::new(ValueRecord { entries: converted_entries }),
+            value: Box::new(RecordValue {
+                source: record.source,
+                fields: converted_fields
+            }),
         });
     });
 }
