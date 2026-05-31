@@ -2,7 +2,9 @@ use {
     crate::{
         builtin::{
             AspectConsumeJs,
+            AspectType,
             aspect_consume_js_aspect_id,
+            aspect_type_aspect_id,
         },
         jscode::{
             JsCode,
@@ -66,6 +68,9 @@ impl Type for TypeType {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeType) as Box<dyn AspectConsumeJs>));
         }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeTypeAspectType) as Box<dyn AspectType>));
+        }
         None
     }
 
@@ -111,6 +116,25 @@ impl Type for TypeType {
 }
 
 impl Aspect for TypeType { }
+struct TypeTypeAspectType;
+
+impl Aspect for TypeTypeAspectType { }
+
+impl AspectType for TypeTypeAspectType {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let any: &dyn Any = value;
+        if let Some(trv) = any.downcast_ref::<TypeRefValue>() {
+            return trv.type_.clone();
+        }
+        if let Some(tt) = any.downcast_ref::<super::tuple::TypeTuple>() {
+            return Rc::new(super::tuple::TypeTuple { types: tt.types.clone() });
+        }
+        if let Some(rv) = any.downcast_ref::<super::tuple::RecordValue>() {
+            return rv.as_type();
+        }
+        panic!("TypeTypeAspectType: unknown type value");
+    }
+}
 
 impl AspectConsumeJs for TypeType {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<JsCode> {

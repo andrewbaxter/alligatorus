@@ -115,13 +115,26 @@ fn enhance_type_with_v8_obj<
     use std::any::Any;
 
     let base_any: &dyn Any = base_type.as_ref();
-    if let Some(record_type) = base_any.downcast_ref::<super::tuple::RecordType>() {
+    if let Some(record_type) = base_any.downcast_ref::<super::tuple::RecordValue>() {
+        if !record_type.is_type() {
+            return base_type;
+        }
         if !bindings_obj.is_object() || bindings_obj.is_null_or_undefined() {
             return base_type;
         }
         let obj = v8::Local::<v8::Object>::try_from(bindings_obj).unwrap();
-        let mut new_entries = record_type.entry_types.clone();
-        for (key, entry_type) in &record_type.entry_types {
+        let mut new_fields: std::collections::BTreeMap<crate::langhelp::ConstKey, super::tuple::RecordField> =
+            record_type.fields.iter().map(|(k, f)| {
+                (k.clone(), match f {
+                    super::tuple::RecordField::Mortar(t) => super::tuple::RecordField::Mortar(t.clone()),
+                    _ => panic!("expected type record"),
+                })
+            }).collect();
+        for (key, field) in &record_type.fields {
+            let entry_type = match field {
+                super::tuple::RecordField::Mortar(t) => t,
+                _ => continue,
+            };
             let key_str = match key {
                 crate::langhelp::ConstKey::String(s) => s.clone(),
             };
@@ -131,19 +144,24 @@ fn enhance_type_with_v8_obj<
                 if let Some(v8_val) = obj.get(scope, v8_key.into()) {
                     if v8_val.is_external() {
                         let ref_: Rc<super::definition_set::TaggedUnionRef> = super::rc_from_v8(&*v8_val);
-                        new_entries.insert(
+                        new_fields.insert(
                             key.clone(),
-                            Rc::new(
-                                super::definition_set::tagged_union::MortarTypeTaggedUnionRef {
-                                    data: Some(ref_.data.clone()),
-                                },
+                            super::tuple::RecordField::Mortar(
+                                Rc::new(
+                                    super::definition_set::tagged_union::MortarTypeTaggedUnionRef {
+                                        data: Some(ref_.data.clone()),
+                                    },
+                                ),
                             ),
                         );
                     }
                 }
             }
         }
-        return Rc::new(super::tuple::RecordType { entry_types: new_entries });
+        return Rc::new(super::tuple::RecordValue {
+            source: None,
+            fields: new_fields,
+        });
     }
     base_type
 }

@@ -166,6 +166,10 @@ aspect!(AspectIterable {
     ) -> EvalRes;
 });
 
+aspect!(AspectType {
+    fn type_(&self, value: & dyn Value) -> Rc < dyn Type >;
+});
+
 aspect!(AspectTaggedUnion {
     /// Returns (const_key, js_tag, type) for each variant
     fn variants(&self) -> Vec <(ConstKey, String, Rc < dyn Type >) >;

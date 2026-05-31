@@ -15,6 +15,7 @@ use {
             aspect_lift_js_aspect_id,
             aspect_string_get,
             aspect_tuple_aspect_id,
+            aspect_type_get_maybe,
         },
         jscode::{
             JsCode,
@@ -231,62 +232,109 @@ pub(crate) struct RecordValue {
     pub fields: BTreeMap<ConstKey, RecordField>,
 }
 
+impl RecordValue {
+    /// Create a type-RecordValue from entry types (all Mortar fields, no source).
+    pub fn from_entry_types(entry_types: BTreeMap<ConstKey, Rc<dyn Type>>) -> RecordValue {
+        RecordValue {
+            source: None,
+            fields: entry_types.into_iter().map(|(k, t)| (k, RecordField::Mortar(t))).collect(),
+        }
+    }
+
+    /// Returns true if this RecordValue represents a type (all Mortar fields, no
+    /// source).
+    pub fn is_type(&self) -> bool {
+        self.source.is_none() && self.fields.values().all(|f| matches!(f, RecordField::Mortar(_)))
+    }
+
+    /// Clone this type-RecordValue. Panics if not a type.
+    fn clone_as_type(&self) -> RecordValue {
+        RecordValue {
+            source: None,
+            fields: self.fields.iter().map(|(k, f)| {
+                (k.clone(), match f {
+                    RecordField::Mortar(t) => RecordField::Mortar(t.clone()),
+                    RecordField::EvalRes(_) => panic!("clone_as_type on non-type record"),
+                })
+            }).collect(),
+        }
+    }
+
+    /// Return self as Rc`<dyn Type>`.
+    pub fn as_type(&self) -> Rc<dyn Type> {
+        Rc::new(self.clone_as_type())
+    }
+
+    /// Extract entry types. For Mortar fields returns the type directly; for EvalRes
+    /// fields uses AspectType to extract the type from the value.
+    pub fn entry_types(&self, xx: &ExprContext, loc: QExprId) -> BTreeMap<ConstKey, Rc<dyn Type>> {
+        self.fields.iter().map(|(k, f)| {
+            (k.clone(), record_field_type(xx, loc, f))
+        }).collect()
+    }
+}
+
+fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn Type> {
+    match f {
+        RecordField::Mortar(t) => t.clone(),
+        RecordField::EvalRes(er) => match &er.v {
+            Some(cv) => {
+                let vtype = cv.value.type_(xx, loc);
+                match aspect_type_get_maybe(xx, vtype.as_ref()) {
+                    Some(at) => at.type_(cv.value.as_ref()),
+                    None => vtype,
+                }
+            },
+            None => Rc::new(TypeTuple { types: vec![] }) as Rc<dyn Type>,
+        },
+    }
+}
+
 impl Value for RecordValue {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        let entry_types: BTreeMap<ConstKey, Rc<dyn Type>> = self.fields.iter().map(|(k, f)| {
-            let t = match f {
-                RecordField::Mortar(t) => t.clone(),
-                RecordField::EvalRes(er) => match &er.v {
-                    Some(cv) => cv.value.type_(xx, loc),
-                    None => Rc::new(TypeTuple { types: vec![] }) as Rc<dyn Type>,
-                },
-            };
-            (k.clone(), t)
+        if self.is_type() {
+            return Rc::new(super::type_ref::TypeType);
+        }
+        let fields = self.fields.iter().map(|(k, f)| {
+            let t = record_field_type(xx, loc, f);
+            (k.clone(), RecordField::Mortar(t))
         }).collect();
-        Rc::new(RecordType { entry_types })
+        Rc::new(RecordValue {
+            source: None,
+            fields,
+        })
     }
 }
 
-pub(crate) struct RecordType {
-    pub entry_types: BTreeMap<ConstKey, Rc<dyn Type>>,
-}
-
-impl Value for RecordType {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
-    }
-}
-
-impl Type for RecordType {
+impl Type for RecordValue {
     fn desc(&self) -> String {
-        format!(
-            "record({})",
-            self.entry_types.iter().map(|(k, t)| format!("{:?}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
-        )
+        format!("record({})", self.fields.iter().map(|(k, f)| {
+            let t_desc = match f {
+                RecordField::Mortar(t) => t.desc(),
+                RecordField::EvalRes(_) => "?".to_string(),
+            };
+            format!("{:?}: {}", k, t_desc)
+        }).collect::<Vec<_>>().join(", "))
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
-            return Some(
-                Box::new(Box::new(RecordType { entry_types: self.entry_types.clone() }) as Box<dyn AspectField>),
-            );
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectField>));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(RecordType { entry_types: self.entry_types.clone() }) as Box<dyn AspectConsumeJs>,
-                ),
-            );
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(RecordType { entry_types: self.entry_types.clone() }) as Box<dyn AspectBindJs>),
-            );
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.entry_types.iter().map(|(k, t)| {
+            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.fields.iter().map(|(k, f)| {
                 let key_str = match k {
                     ConstKey::String(s) => s.clone(),
+                };
+                let t = match f {
+                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::EvalRes(_) => panic!("lift_js on non-type record"),
                 };
                 let a =
                     t
@@ -308,8 +356,8 @@ impl Type for RecordType {
         let source_any: &dyn std::any::Any = source_type.as_ref();
 
         // Check compatibility: source must be a record type with matching keys
-        let source_keys_match = if let Some(source_record) = source_any.downcast_ref::<RecordType>() {
-            self.entry_types.keys().all(|k| source_record.entry_types.contains_key(k))
+        let source_keys_match = if let Some(source_record) = source_any.downcast_ref::<RecordValue>() {
+            source_record.is_type() && self.fields.keys().all(|k| source_record.fields.contains_key(k))
         } else {
             false
         };
@@ -323,7 +371,7 @@ impl Type for RecordType {
                     code: cv.code.clone(),
                     value: Box::new(super::mortar_js_value::MortarJsValue {
                         source: super::mortar_js_value::MortarJsValueSource::Expr,
-                        type_: Rc::new(RecordType { entry_types: self.entry_types.clone() }),
+                        type_: self.as_type(),
                     }),
                 });
             }
@@ -332,23 +380,23 @@ impl Type for RecordType {
     }
 }
 
-impl Aspect for RecordType { }
+impl Aspect for RecordValue { }
 
-impl AspectField for RecordType {
+impl AspectField for RecordValue {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return super::util::er_seq_cv_inline(loc, |erb| {
             let key_type = key.value.type_(xx, loc);
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let const_key = ConstKey::String(key_name.clone());
-            let entry_type = self.entry_types.get(&const_key).cloned().ok_or_else(|| {
+            let entry_type = record_field_type(xx, loc, self.fields.get(&const_key).ok_or_else(|| {
                 erb.errors.push(crate::langhelp::ExprErr {
                     loc,
                     errors: vec![
-                        crate::langhelp::ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name))
+                        crate::langhelp::ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name),)
                     ],
                 });
-            })?;
+            })?);
 
             // If self_ is a RecordValue, extract the field directly
             let CodeValue { code: self_code_raw, value: self_value } = self_;
@@ -385,7 +433,7 @@ impl AspectField for RecordType {
                                             source: source.unwrap_or(
                                                 super::mortar_js_value::MortarJsValueSource::Expr,
                                             ),
-                                            type_: Rc::new(RecordType { entry_types: self.entry_types.clone() }),
+                                            type_: self.as_type(),
                                         }),
                                         key: key_name,
                                     },
@@ -428,7 +476,7 @@ impl AspectField for RecordType {
                             loc,
                             base: Box::new(super::mortar_js_value::MortarJsValue {
                                 source: super::mortar_js_value::MortarJsValueSource::Expr,
-                                type_: Rc::new(RecordType { entry_types: self.entry_types.clone() }),
+                                type_: self.as_type(),
                             }),
                             key: key_name,
                         },
@@ -439,12 +487,13 @@ impl AspectField for RecordType {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        self.entry_types.get(&ConstKey::String(key.to_string())).cloned()
+    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        self.fields.get(&ConstKey::String(key.to_string())).map(|f| record_field_type(xx, loc, f))
     }
 }
 
-impl AspectConsumeJs for RecordType {
+impl AspectConsumeJs for RecordValue {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         let carry = cv.code;
 
@@ -524,7 +573,7 @@ impl AspectConsumeJs for RecordType {
     }
 }
 
-impl AspectBindJs for RecordType {
+impl AspectBindJs for RecordValue {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -564,7 +613,7 @@ impl AspectBindJs for RecordType {
             }
             return EResult::ok((None, Box::new(RecordScopeEntryAsMortar { fields: scope_fields })));
         }
-        let vtype: Rc<dyn Type> = Rc::new(RecordType { entry_types: self.entry_types.clone() });
+        let vtype: Rc<dyn Type> = self.as_type();
         let cv = CodeValue {
             code: cv.code,
             value: record,
@@ -697,7 +746,7 @@ impl super::mortar_scope_entry::MortarScopeEntry for RecordScopeEntryAsMortar {
                 RecordScopeField::Mortar(mse) => {
                     let value = super::mortar_js_value::MortarJsValue {
                         source: super::mortar_js_value::MortarJsValueSource::Expr,
-                        type_: Rc::new(RecordType { entry_types: BTreeMap::new() }),
+                        type_: Rc::new(RecordValue::from_entry_types(BTreeMap::new())),
                     };
                     let er = mse.use_(value);
                     result_fields.insert(key.clone(), RecordField::EvalRes(er));
@@ -735,7 +784,7 @@ impl ScopeEntry for RecordScopeEntry {
                 RecordScopeField::Mortar(mse) => {
                     let value = super::mortar_js_value::MortarJsValue {
                         source: super::mortar_js_value::MortarJsValueSource::Expr,
-                        type_: Rc::new(RecordType { entry_types: BTreeMap::new() }),
+                        type_: Rc::new(RecordValue::from_entry_types(BTreeMap::new())),
                     };
                     let er = mse.use_(value);
                     result_fields.insert(key.clone(), RecordField::EvalRes(er));
