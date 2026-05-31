@@ -148,7 +148,6 @@ pub(crate) struct CompileImportContext {
 pub(crate) struct EvalContext {
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
-    pub(crate) next_builtin_id: Counter,
     pub(crate) definition_sets: std
     ::cell
     ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,

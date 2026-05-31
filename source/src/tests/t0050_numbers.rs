@@ -100,7 +100,7 @@ e0 = e3;
 {
 let e15;
 let e16;
-e16 = b0;
+e16 = b1148;
 let e17;
 let e18;
 e18 = a0;
@@ -205,7 +205,7 @@ async fn test_00100_number_mortar() {
     let js_sources = gx.js_sources.lock().unwrap();
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b18446744073709551615;
+e1 = b1113;
 let e2;
 e2 = a5;
 let e3;
@@ -215,7 +215,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1;
+e6 = b1155;
 e5 = (e6)();
 a0 = e5;
 }
@@ -321,7 +321,7 @@ let e14;
 {
 let e15;
 let e16;
-e16 = b0;
+e16 = b1148;
 let e17;
 let e18;
 let e19;

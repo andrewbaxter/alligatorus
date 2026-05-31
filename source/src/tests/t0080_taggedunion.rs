@@ -86,7 +86,7 @@ async fn test_0000_tagged_union_match() {
     let js_sources = gx.js_sources.lock().unwrap();
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b18446744073709551615;
+e1 = b1113;
 let e2;
 e2 = a6;
 let e3;
@@ -96,7 +96,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1;
+e6 = b1155;
 e5 = (e6)();
 a0 = e5;
 }
@@ -187,7 +187,7 @@ switch (__tag) {
 case "t0": {
 let e6;
 let e7;
-e7 = b0;
+e7 = b1148;
 let e8;
 e8 = a1;
 e6 = (e7)(e8);
@@ -196,7 +196,7 @@ break; }
 case "t1": {
 let e9;
 let e10;
-e10 = b0;
+e10 = b1148;
 let e11;
 let e12;
 e12 = a1;
@@ -278,7 +278,7 @@ async fn test_0010_tagged_union_match_fallback() {
     let js_sources = gx.js_sources.lock().unwrap();
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b18446744073709551615;
+e1 = b1113;
 let e2;
 e2 = a6;
 let e3;
@@ -288,7 +288,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1;
+e6 = b1155;
 e5 = (e6)();
 a0 = e5;
 }
@@ -379,7 +379,7 @@ switch (__tag) {
 case "t0": {
 let e6;
 let e7;
-e7 = b0;
+e7 = b1148;
 let e8;
 e8 = a1;
 e6 = (e7)(e8);
@@ -388,7 +388,7 @@ break; }
 default: {
 let e9;
 let e10;
-e10 = b0;
+e10 = b1148;
 let e11;
 {
 let e12;

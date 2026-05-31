@@ -596,9 +596,6 @@ impl Target for MortarTarget {
     }
 }
 
-/// Well-known scope entry ID for the __stage function (not a real scope entry).
-const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(usize::MAX);
-
 /// Holds an AspectLiftJs, stored as a v8::External so __stage can lift raw values.
 pub(crate) struct StageLiftCell {
     pub lift: Box<dyn crate::builtin::AspectLiftJs>,
@@ -1112,6 +1109,9 @@ struct EvalResult {
     logs: Vec<crate::langhelp::LogEntry>,
 }
 
+/// Well-known scope entry ID for the __stage function (not a real scope entry).
+const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 fn eval(
     cix: &Rc<CompileImportContext>,
     import_state: ImportStateId,
@@ -1140,7 +1140,6 @@ fn eval(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_local_id: Default::default(),
-        next_builtin_id: Default::default(),
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });
@@ -1293,7 +1292,6 @@ fn eval(
         let body_ex = Rc::new(EvalContext {
             ix: ex.ix.clone(),
             next_local_id: Counter::default(),
-            next_builtin_id: Counter::default(),
             definition_sets: RefCell::new(Vec::new()),
             externals: RefCell::new(Vec::new()),
         });
@@ -1365,7 +1363,6 @@ fn eval(
                 let body_ex = Rc::new(EvalContext {
                     ix: ex.ix.clone(),
                     next_local_id: Counter::default(),
-                    next_builtin_id: Counter::default(),
                     definition_sets: RefCell::new(Vec::new()),
                     externals: RefCell::new(Vec::new()),
                 });
@@ -1433,7 +1430,6 @@ fn eval(
                     let body_ex = Rc::new(EvalContext {
                         ix: ex.ix.clone(),
                         next_local_id: Counter::default(),
-                        next_builtin_id: Counter::default(),
                         definition_sets: RefCell::new(Vec::new()),
                         externals: RefCell::new(Vec::new()),
                     });
@@ -2078,7 +2074,6 @@ pub async fn compile_importid(
             let ex = Rc::new(EvalContext {
                 ix: cix.clone(),
                 next_local_id: Default::default(),
-                next_builtin_id: Default::default(),
                 definition_sets: RefCell::new(Vec::new()),
                 externals: RefCell::new(Vec::new()),
             });

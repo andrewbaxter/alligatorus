@@ -62,7 +62,7 @@ async fn test_00600define_func() {
     let js_sources = gx.js_sources.lock().unwrap();
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b18446744073709551615;
+e1 = b1113;
 let e2;
 e2 = a6;
 let e3;
@@ -72,7 +72,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1;
+e6 = b1155;
 e5 = (e6)();
 a0 = e5;
 }
@@ -135,7 +135,7 @@ e0;"#);
     assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
 let e0;
 let e1;
-e1 = b0;
+e1 = b1148;
 let e2;
 {
 let e3;
@@ -206,7 +206,7 @@ async fn test_00700define_func_arg_ret() {
     let js_sources = gx.js_sources.lock().unwrap();
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b18446744073709551615;
+e1 = b1113;
 let e2;
 e2 = a6;
 let e3;
@@ -216,7 +216,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1;
+e6 = b1155;
 e5 = (e6)();
 a0 = e5;
 }
@@ -289,7 +289,7 @@ let e3;
 {
 let e4;
 let e5;
-e5 = b0;
+e5 = b1148;
 let e6;
 let e7;
 e7 = d0_0_0;

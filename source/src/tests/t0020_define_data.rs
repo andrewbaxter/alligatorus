@@ -42,7 +42,7 @@ async fn test_00800define_data() {
     let js_sources = gx.js_sources.lock().unwrap();
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b18446744073709551615;
+e1 = b1113;
 let e2;
 e2 = a6;
 let e3;
@@ -52,7 +52,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1;
+e6 = b1155;
 e5 = (e6)();
 a0 = e5;
 }
@@ -148,7 +148,7 @@ a0 = e4;
 {
 let e8;
 let e9;
-e9 = b0;
+e9 = b1148;
 let e10;
 let e11;
 e11 = a0;
