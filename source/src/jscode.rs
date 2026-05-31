@@ -7,6 +7,7 @@ use crate::langhelp::{
 pub(crate) const EXPR_PREFIX: &str = "e";
 pub(crate) const BINDING_PREFIX: &str = "a";
 pub(crate) const BUILTIN_PREFIX: &str = "b";
+pub(crate) const DEF_PREFIX: &str = "d";
 pub(crate) const TAG_PREFIX: &str = "t";
 pub(crate) const TAG_VAR: &str = "__tag";
 

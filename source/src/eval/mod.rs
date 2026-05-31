@@ -42,6 +42,7 @@ use {
         jscode::{
             BINDING_PREFIX,
             BUILTIN_PREFIX,
+            DEF_PREFIX,
             EXPR_PREFIX,
             TAG_VAR,
             JsCode,
@@ -1101,7 +1102,7 @@ pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
         ScopeEntryId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
         ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
         ScopeEntryId::Def(import_id, def_set_id, entry_id) => {
-            format!("d{}_{}_{}", import_id.0, def_set_id.0, entry_id)
+            format!("{}{}_{}_{}", DEF_PREFIX, import_id.0, def_set_id.0, entry_id)
         },
     }
 }
