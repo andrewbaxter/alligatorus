@@ -531,22 +531,19 @@ impl AspectBindJs for RecordType {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+        let record: Box<RecordValue> = (cv.value as Box<dyn Any>).downcast().unwrap();
+
         // If the record has no source and no JS code (pure compile-time value, e.g. from
         // a lifted record), bind as a value without producing JS.
-        let is_no_code = matches!(cv.code.code, Code_::None);
-        let any_ref: &dyn Any = cv.value.as_ref();
-        let is_sourceless_record = if let Some(record) = any_ref.downcast_ref::<RecordValue>() {
-            record.source.is_none() && record.fields.values().all(|f| match f {
-                RecordField::EvalRes(er) => {
-                    er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
-                },
-                RecordField::Mortar(_) => false,
-            })
-        } else {
-            false
-        };
-        if is_no_code && is_sourceless_record {
-            let record: Box<RecordValue> = (cv.value as Box<dyn Any>).downcast().unwrap();
+        let is_sourceless =
+            matches!(cv.code.code, Code_::None) && record.source.is_none() &&
+                record.fields.values().all(|f| match f {
+                    RecordField::EvalRes(er) => {
+                        er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
+                    },
+                    RecordField::Mortar(_) => false,
+                });
+        if is_sourceless {
             let mut scope_fields = BTreeMap::new();
             for (key, field) in record.fields {
                 match field {
@@ -567,7 +564,11 @@ impl AspectBindJs for RecordType {
             }
             return EResult::ok((None, Box::new(RecordScopeEntryAsMortar { fields: scope_fields })));
         }
-        let vtype = cv.value.type_(xx, loc);
+        let vtype: Rc<dyn Type> = Rc::new(RecordType { entry_types: self.entry_types.clone() });
+        let cv = CodeValue {
+            code: cv.code,
+            value: record,
+        };
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
