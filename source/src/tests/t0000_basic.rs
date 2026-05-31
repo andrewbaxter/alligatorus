@@ -102,7 +102,7 @@ async fn test_00300_stage_lower() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.stage(mb.str("Hello world (mortar)"))))),
+            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
         )
             .await
             .unwrap();

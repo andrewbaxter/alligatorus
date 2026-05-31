@@ -5,6 +5,7 @@ use {
             AspectConsumeJs,
             AspectField,
             AspectLiftJs,
+            AspectRecord,
             AspectTuple,
             aspect_bind_js_aspect_id,
             aspect_bind_js_get_maybe,
@@ -13,6 +14,7 @@ use {
             aspect_consume_js_get_maybe,
             aspect_field_aspect_id,
             aspect_lift_js_aspect_id,
+            aspect_record_aspect_id,
             aspect_string_get,
             aspect_tuple_aspect_id,
             aspect_type_get_maybe,
@@ -327,6 +329,9 @@ impl Type for RecordValue {
         if *key == aspect_bind_js_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindJs>));
         }
+        if *key == aspect_record_aspect_id() {
+            return Some(Box::new(Box::new(RecordAspectImpl) as Box<dyn AspectRecord>));
+        }
         if *key == aspect_lift_js_aspect_id() {
             let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.fields.iter().map(|(k, f)| {
                 let key_str = match k {
@@ -380,6 +385,12 @@ impl Type for RecordValue {
         EvalRes::err(loc, format!("Cannot convert to record type"))
     }
 }
+
+struct RecordAspectImpl;
+
+impl Aspect for RecordAspectImpl { }
+
+impl AspectRecord for RecordAspectImpl { }
 
 impl Aspect for RecordValue { }
 

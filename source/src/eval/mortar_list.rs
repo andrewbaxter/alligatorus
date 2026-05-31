@@ -7,7 +7,7 @@ use {
             AspectFunction,
             AspectIterable,
             AspectJsStackValue,
-            AspectLiftJs,
+            AspectMortarList,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
@@ -15,9 +15,10 @@ use {
             aspect_function_aspect_id,
             aspect_iterable_aspect_id,
             aspect_js_stack_value_aspect_id,
-            aspect_lift_js_aspect_id,
             aspect_js_stack_value_get,
             aspect_js_string_get_maybe,
+            aspect_mortar_list_aspect_id,
+            aspect_mortar_list_get_maybe,
             aspect_string_get,
             aspect_tuple_get_maybe,
         },
@@ -158,6 +159,9 @@ impl Type for TypeMortarList {
         if *key == aspect_iterable_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
         }
+        if *key == aspect_mortar_list_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectMortarList>));
+        }
         None
     }
 
@@ -167,8 +171,7 @@ impl Type for TypeMortarList {
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
         let source_type = cv.value.type_(_xx, loc);
-        let source_any: &dyn Any = source_type.as_ref();
-        if source_any.downcast_ref::<TypeMortarList>().is_some() {
+        if aspect_mortar_list_get_maybe(_xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code.clone(),
                 value: Box::new(super::mortar_js_value::MortarJsValue {
@@ -182,6 +185,12 @@ impl Type for TypeMortarList {
 }
 
 impl Aspect for TypeMortarList { }
+
+impl AspectMortarList for TypeMortarList {
+    fn element_type(&self) -> Rc<dyn Type> {
+        self.element_type.clone()
+    }
+}
 
 impl AspectField for TypeMortarList {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {

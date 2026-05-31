@@ -1073,12 +1073,21 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
             dest = dest1;
         } else if let Some(dest1) = erb.maybe_er(dest_type.cast_from(xx, loc, &source)) {
             dest = dest1;
-        } else if let Some(dest1) = erb.maybe_er(typecheck_convert_record(xx, loc, dest_type, source)) {
-            dest = dest1;
         } else {
-            return erb.err_new(
-                format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
-            );
+            match dest_type.cast_from_owned(xx, loc, source) {
+                Ok(dest1) => {
+                    dest = dest1;
+                },
+                Err(source) => {
+                    if let Some(dest1) = erb.maybe_er(typecheck_convert_record(xx, loc, dest_type, source)) {
+                        dest = dest1;
+                    } else {
+                        return erb.err_new(
+                            format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
+                        );
+                    }
+                },
+            }
         }
         return Ok(dest);
     });

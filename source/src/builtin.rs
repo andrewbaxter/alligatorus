@@ -174,3 +174,14 @@ aspect!(AspectTaggedUnion {
     /// Returns (const_key, js_tag, type) for each variant
     fn variants(&self) -> Vec <(ConstKey, String, Rc < dyn Type >) >;
 });
+
+aspect!(AspectMortarList {
+    fn element_type(&self) -> Rc < dyn Type >;
+});
+
+aspect!(AspectMortarMap {
+    fn key_type(&self) -> Rc < dyn Type >;
+    fn value_type(&self) -> Rc < dyn Type >;
+});
+
+aspect!(AspectRecord {});
