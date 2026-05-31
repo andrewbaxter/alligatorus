@@ -1,3 +1,8 @@
+pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
+    let re = regex::Regex::new(r"\bb\d+\b").unwrap();
+    sources.iter().map(|s| re.replace_all(s, "BUILTIN").into_owned()).collect()
+}
+
 use {
     crate::syntax::{
         ExprId,

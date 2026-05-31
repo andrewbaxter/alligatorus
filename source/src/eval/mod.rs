@@ -292,14 +292,8 @@ trait Effect { }
 pub(crate) trait Target {
     type Effect;
 
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        carry: Code,
-        cv: CodeValue,
-    ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)>;
-    fn block(&self, loc: QExprId, entries: Vec<JsCodeBlockEntry>) -> EResult<Code>;
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)>;
+    fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
     fn if_(
         &self,
         xx: &ExprContext,
@@ -323,59 +317,78 @@ pub(crate) struct MortarTarget;
 impl Target for MortarTarget {
     type Effect = JsCode;
 
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        carry: Code,
-        cv: CodeValue,
-    ) -> EResult<(Vec<JsCodeBlockEntry>, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
-            let mut entries = vec![];
-            if let Some(carry) = carry.cast::<JsCode>().into_res().ok().flatten() {
-                entries.push(JsCodeBlockEntry::Code(carry.clone()));
-            }
-            return EResult::ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+        let none_code = Code {
+            loc: loc,
+            code: Code_::None,
         };
-        return er_seq!(loc, erb, (Vec < JsCodeBlockEntry >, Box < dyn ScopeEntry >), {
+        let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
+            return EResult::ok((none_code, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+        };
+        return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
             let bind_result = bind_js.bind_js(xx, loc, cv);
             if bind_result.v.is_none() {
-                let mut entries = vec![];
-                if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
-                    entries.push(JsCodeBlockEntry::Code(carry.clone()));
-                }
-                return Ok((entries, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+                return Ok((none_code, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
             }
             let (js_code, bound_cv) = erb.must_er(bind_result)?;
-            let mut entries = vec![];
-            if let Some(carry) = erb.maybe_er(carry.cast::<JsCode>()).flatten() {
-                entries.push(JsCodeBlockEntry::Code(carry.clone()));
-            }
             match js_code {
                 Some(vcode) => {
                     let bound_type = bound_cv.value.type_(xx, loc);
                     let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                    entries.push(JsCodeBlockEntry::Bind(JsCodeBind {
-                        base: js_key,
-                        value: Box::new(vcode),
-                    }));
-                    return Ok((entries, Box::new(MortarScopeEntry {
+                    let code = Code {
+                        loc: loc,
+                        code: Code_::Dyn(Rc::new(JsCode {
+                            loc: loc,
+                            type_: JsCodeType::Block(JsCodeBlock { entries: vec![JsCodeBlockEntry::Bind(JsCodeBind {
+                                base: js_key,
+                                value: Box::new(vcode),
+                            })], }),
+                        })),
+                    };
+                    return Ok((code, Box::new(MortarScopeEntry {
                         js_key: js_key,
                         type_: bound_type,
                     })));
                 },
                 None => {
                     return Ok(
-                        (entries, Box::new(ValueScopeEntry { value: Rc::from(bound_cv.value) }) as Box<dyn ScopeEntry>)
+                        (
+                            none_code,
+                            Box::new(ValueScopeEntry { value: Rc::from(bound_cv.value) }) as Box<dyn ScopeEntry>,
+                        )
                     );
                 },
             }
         });
     }
 
-    fn block(&self, loc: QExprId, entries: Vec<JsCodeBlockEntry>) -> EResult<Code> {
-        if entries.is_empty() {
+    fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
+        let mut js_entries = vec![];
+        let mut errors = vec![];
+        for entry in &entries {
+            match entry.cast::<JsCode>().into_res() {
+                Ok(Some(js)) => {
+                    match &js.type_ {
+                        JsCodeType::Block(block) if
+                            !block.entries.is_empty() &&
+                                block.entries.iter().all(|e| matches!(e, JsCodeBlockEntry::Bind(_))) => {
+                            js_entries.extend(block.entries.clone());
+                        },
+                        _ => js_entries.push(JsCodeBlockEntry::Code(js.clone())),
+                    }
+                },
+                Ok(None) => { },
+                Err(e) => errors.extend(e),
+            }
+        }
+        if !errors.is_empty() {
+            return EResult {
+                v: None,
+                errors: errors,
+            };
+        }
+        if js_entries.is_empty() {
             return EResult::ok(Code {
                 loc: loc,
                 code: Code_::None,
@@ -385,7 +398,7 @@ impl Target for MortarTarget {
             loc: loc,
             code: Code_::Dyn(Rc::new(JsCode {
                 loc: loc,
-                type_: JsCodeType::Block(JsCodeBlock { entries }),
+                type_: JsCodeType::Block(JsCodeBlock { entries: js_entries }),
             })),
         });
     }
@@ -698,20 +711,14 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                             value = eval_half(&child_xx, bind.value.as_ref(), target),
                         });
                         let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_ref()))?;
-                        let binding = erb.must_er(target.bind(&child_xx, sub.loc, base.code, value))?;
-                        entries.extend(binding.0);
+                        entries.push(base.code);
+                        let binding = erb.must_er(target.bind(&child_xx, sub.loc, value))?;
+                        entries.push(binding.0);
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
                         last_val = Some(Box::new(ValueNull) as Box<dyn Value>);
                     } else {
                         let r = erb.must_er(eval_half(&child_xx, sub, target))?;
-                        match r.code.cast::<JsCode>().into_res() {
-                            Ok(Some(js)) => entries.push(JsCodeBlockEntry::Code(js.clone())),
-                            Ok(None) => { },
-                            Err(e) => {
-                                erb.errors.extend(e);
-                                return Err(());
-                            },
-                        }
+                        entries.push(r.code);
                         last_val = Some(r.value);
                     }
                 }

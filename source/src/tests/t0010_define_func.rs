@@ -1,5 +1,5 @@
 use {
-    super::helpers::ModuleBuilder,
+    super::helpers::{ModuleBuilder, sanitize_builtins},
     crate::{
         compile,
         new_gx,
@@ -59,10 +59,10 @@ async fn test_00600define_func() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "hello");
-    let js_sources = gx.js_sources.lock().unwrap();
+    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
@@ -72,7 +72,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1155;
+e6 = BUILTIN;
 e5 = (e6)();
 a0 = e5;
 }
@@ -135,7 +135,7 @@ e0;"#);
     assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
 let e0;
 let e1;
-e1 = b1148;
+e1 = BUILTIN;
 let e2;
 {
 let e3;
@@ -203,10 +203,10 @@ async fn test_00700define_func_arg_ret() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO WORLD");
-    let js_sources = gx.js_sources.lock().unwrap();
+    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
@@ -216,7 +216,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1155;
+e6 = BUILTIN;
 e5 = (e6)();
 a0 = e5;
 }
@@ -289,7 +289,7 @@ let e3;
 {
 let e4;
 let e5;
-e5 = b1148;
+e5 = BUILTIN;
 let e6;
 let e7;
 e7 = d0_0_0;

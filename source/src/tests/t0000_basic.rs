@@ -1,5 +1,5 @@
 use {
-    super::helpers::ModuleBuilder,
+    super::helpers::{ModuleBuilder, sanitize_builtins},
     crate::{
         compile,
         new_gx,
@@ -24,9 +24,9 @@ async fn test_00100_call_lit() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let e1;
-e1 = b1148;
+e1 = BUILTIN;
 let e2;
 {
 let e3;
@@ -67,7 +67,7 @@ async fn test_00200_bind_use() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -81,7 +81,7 @@ a0 = e1;
 {
 let e3;
 let e4;
-e4 = b1148;
+e4 = BUILTIN;
 let e5;
 e5 = a0;
 e3 = (e4)(e5);
@@ -105,9 +105,9 @@ async fn test_00300_stage_lower() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a0;
 let e3;
@@ -117,7 +117,7 @@ e4 = a1;
 e0 = (e1)(e2,e3,e4);
 e0;"#, r#"let e0;
 let e1;
-e1 = b1148;
+e1 = BUILTIN;
 let e2;
 {
 let e3;
@@ -143,9 +143,9 @@ async fn test_00400_lower_nostage() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a0;
 let e3;
@@ -155,7 +155,7 @@ e4 = a1;
 e0 = (e1)(e2,e3,e4);
 e0;"#, r#"let e0;
 let e1;
-e1 = b1148;
+e1 = BUILTIN;
 let e2;
 {
 let e3;
@@ -183,9 +183,9 @@ async fn test_00500_method_call() {
     )
         .await
         .unwrap();
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let e1;
-e1 = b1148;
+e1 = BUILTIN;
 let e2;
 let e3;
 {

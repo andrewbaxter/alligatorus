@@ -1,5 +1,5 @@
 use {
-    super::helpers::ModuleBuilder,
+    super::helpers::{ModuleBuilder, sanitize_builtins},
     crate::{
         compile,
         new_gx,
@@ -47,7 +47,7 @@ async fn test_0000_number_lit() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "11");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -100,7 +100,7 @@ e0 = e3;
 {
 let e15;
 let e16;
-e16 = b1148;
+e16 = BUILTIN;
 let e17;
 let e18;
 e18 = a0;
@@ -202,10 +202,10 @@ async fn test_00100_number_mortar() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "11");
-    let js_sources = gx.js_sources.lock().unwrap();
+    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a5;
 let e3;
@@ -215,7 +215,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1155;
+e6 = BUILTIN;
 e5 = (e6)();
 a0 = e5;
 }
@@ -321,7 +321,7 @@ let e14;
 {
 let e15;
 let e16;
-e16 = b1148;
+e16 = BUILTIN;
 let e17;
 let e18;
 let e19;

@@ -1,5 +1,5 @@
 use {
-    super::helpers::ModuleBuilder,
+    super::helpers::{ModuleBuilder, sanitize_builtins},
     crate::{
         compile,
         new_gx,
@@ -83,10 +83,10 @@ async fn test_0000_tagged_union_match() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "7");
-    let js_sources = gx.js_sources.lock().unwrap();
+    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
@@ -96,7 +96,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1155;
+e6 = BUILTIN;
 e5 = (e6)();
 a0 = e5;
 }
@@ -187,7 +187,7 @@ switch (__tag) {
 case "t0": {
 let e6;
 let e7;
-e7 = b1148;
+e7 = BUILTIN;
 let e8;
 e8 = a1;
 e6 = (e7)(e8);
@@ -196,7 +196,7 @@ break; }
 case "t1": {
 let e9;
 let e10;
-e10 = b1148;
+e10 = BUILTIN;
 let e11;
 let e12;
 e12 = a1;
@@ -275,10 +275,10 @@ async fn test_0010_tagged_union_match_fallback() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "fallback");
-    let js_sources = gx.js_sources.lock().unwrap();
+    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
@@ -288,7 +288,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1155;
+e6 = BUILTIN;
 e5 = (e6)();
 a0 = e5;
 }
@@ -379,7 +379,7 @@ switch (__tag) {
 case "t0": {
 let e6;
 let e7;
-e7 = b1148;
+e7 = BUILTIN;
 let e8;
 e8 = a1;
 e6 = (e7)(e8);
@@ -388,7 +388,7 @@ break; }
 default: {
 let e9;
 let e10;
-e10 = b1148;
+e10 = BUILTIN;
 let e11;
 {
 let e12;

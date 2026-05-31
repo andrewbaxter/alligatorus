@@ -23,6 +23,7 @@ tokio = { version = "1", features = [
     "process",
     "macros",
 ] }
+regex = "1"
 urlencoding = "2"
 v8 = "146"
 

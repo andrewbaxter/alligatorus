@@ -4,7 +4,7 @@ use crate::{
     langhelp::SourceId,
     new_gx,
     syntax::SerialModule,
-    tests::helpers::ModuleBuilder,
+    tests::helpers::{ModuleBuilder, sanitize_builtins},
 };
 
 #[tokio::test]
@@ -33,7 +33,7 @@ async fn test_0000_scope_ok() {
     assert_eq!(logs.len(), 2);
     assert_eq!(logs[0].message, "apple");
     assert_eq!(logs[1].message, "zebra");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -59,7 +59,7 @@ a1 = e4;
 {
 let e6;
 let e7;
-e7 = b1148;
+e7 = BUILTIN;
 let e8;
 e8 = a1;
 e6 = (e7)(e8);
@@ -70,7 +70,7 @@ e0 = e3;
 {
 let e9;
 let e10;
-e10 = b1148;
+e10 = BUILTIN;
 let e11;
 e11 = a0;
 e9 = (e10)(e11);

@@ -7,7 +7,7 @@
 //!
 //! * Tests to confirm the chunks work
 use {
-    super::helpers::ModuleBuilder,
+    super::helpers::{ModuleBuilder, sanitize_builtins},
     crate::{
         compile,
         eval::setup_v8,
@@ -395,11 +395,11 @@ e4 = "Hello world (node)";
 e0 = (e1)(e4);
 }
 e0"#);
-    let js_sources = gx.js_sources.lock().unwrap();
+    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
     assert_eq!(js_sources.len(), 2);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
-e1 = b1113;
+e1 = BUILTIN;
 let e2;
 e2 = a26;
 let e3;
@@ -409,7 +409,7 @@ let a0;
 {
 let e5;
 let e6;
-e6 = b1155;
+e6 = BUILTIN;
 e5 = (e6)();
 a0 = e5;
 }
@@ -567,7 +567,7 @@ let e57;
 e57 = a11;
 let e58;
 let e59;
-e59 = b1113;
+e59 = BUILTIN;
 let e60;
 e60 = a15;
 let e61;
@@ -636,7 +636,7 @@ let e82;
 e82 = a20;
 let e83;
 let e84;
-e84 = b1113;
+e84 = BUILTIN;
 let e85;
 e85 = a24;
 let e86;
@@ -904,7 +904,7 @@ let e78;
 e78 = a3;
 let e79;
 let e80;
-e80 = b1160;
+e80 = BUILTIN;
 let e81;
 e81 = a4;
 e79 = (e80)(e81);
@@ -1109,7 +1109,7 @@ let e144;
 {
 let e145;
 let e146;
-e146 = b1148;
+e146 = BUILTIN;
 let e147;
 let e148;
 e148 = d0_0_1;

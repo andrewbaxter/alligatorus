@@ -1350,6 +1350,7 @@ dependencies = [
  "http",
  "ordered-float",
  "paste",
+ "regex",
  "serde",
  "serde_json",
  "serde_json_canonicalizer",

@@ -1,5 +1,5 @@
 use {
-    super::helpers::ModuleBuilder,
+    super::helpers::{ModuleBuilder, sanitize_builtins},
     crate::{
         compile,
         new_gx,
@@ -50,7 +50,7 @@ async fn test_0000_foreach_list() {
     assert_eq!(logs[0].message, "1");
     assert_eq!(logs[1].message, "2");
     assert_eq!(logs[2].message, "7");
-    assert_eq!(*gx.js_sources.lock().unwrap(), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -84,7 +84,7 @@ let e10;
 {
 let e11;
 let e12;
-e12 = b1148;
+e12 = BUILTIN;
 let e13;
 let e14;
 e14 = a1;
