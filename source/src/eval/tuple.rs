@@ -418,7 +418,7 @@ impl AspectConsumeJs for TypeValueRecord {
                 } else if let Some(bind) = aspect_bind_js_get_maybe(xx, elem_value_type.as_ref()) {
                     match bind.bind_js(xx, loc, elem_cv).into_res() {
                         Ok((Some(js), _)) => js_fields.push((key_str, js)),
-                        Ok((None, _)) => {},
+                        Ok((None, _)) => { },
                         Err(e) => errors.extend(e),
                     }
                 } else {
@@ -486,8 +486,8 @@ impl ScopeEntry for StaticScopeEntry {
     }
 }
 
-/// A scope entry that preserves the actual value (for compile-time values without JS
-/// code).
+/// A scope entry that preserves the actual value (for compile-time values without
+/// JS code).
 pub(crate) struct ValueScopeEntry {
     pub value: Rc<dyn Value>,
 }
@@ -512,73 +512,6 @@ pub(crate) struct SharedValue {
 impl Value for SharedValue {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
         self.inner.type_(xx, loc)
-    }
-}
-
-// --- Record types (for JS object records) ---
-pub(crate) struct TypeRecord {
-    pub entries: Vec<(String, Rc<dyn Type>)>,
-}
-
-impl Value for TypeRecord {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
-    }
-}
-
-impl Type for TypeRecord {
-    fn desc(&self) -> String {
-        format!(
-            "record({})",
-            self.entries.iter().map(|(k, t)| format!("{}: {}", k, t.desc())).collect::<Vec<_>>().join(", ")
-        )
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectConsumeJs>),
-            );
-        }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeRecord { entries: self.entries.clone() }) as Box<dyn AspectBindJs>),
-            );
-        }
-        if *key == aspect_lift_js_aspect_id() {
-            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.entries.iter().map(|(k, t)| {
-                let a =
-                    t
-                        .aspect(_xx, &aspect_lift_js_aspect_id())
-                        .expect(&format!("Record entry '{}' type ({}) missing AspectLiftJs", k, t.desc()));
-                (k.clone(), *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
-            }).collect();
-            return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert record to other type"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to record type"))
-    }
-}
-
-impl Aspect for TypeRecord { }
-
-impl AspectConsumeJs for TypeRecord {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindJs for TypeRecord {
-    fn bind_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Option<JsCode>, CodeValue)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
@@ -687,8 +620,7 @@ impl AspectField for LiftedRecordType {
                 Err(any_value) => {
                     if let Ok(shared) = any_value.downcast::<SharedValue>() {
                         if let Some(record) = (shared.inner.as_ref() as &dyn Any).downcast_ref::<LiftedRecord>() {
-                            if let Some((_, entry_value)) =
-                                record.entries.iter().find(|(k, _)| k == &key_name) {
+                            if let Some((_, entry_value)) = record.entries.iter().find(|(k, _)| k == &key_name) {
                                 return Ok(CodeValue {
                                     code: Code {
                                         loc,

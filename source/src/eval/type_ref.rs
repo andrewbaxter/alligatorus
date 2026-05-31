@@ -27,10 +27,6 @@ use {
     super::expr::StagedExprCell,
 };
 
-pub(crate) struct TypeRefCell {
-    pub type_: Rc<dyn Type>,
-}
-
 pub(crate) struct TypeRefValue {
     pub type_: Rc<dyn Type>,
     /// For record types, maps entry names to their v8 binding IDs so that
