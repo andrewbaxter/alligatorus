@@ -9,7 +9,7 @@ use {
             aspect_lift_js_aspect_id,
         },
         eval::{
-            rc_from_v8,
+            from_v8_ref,
             mortar_js_value::bind_js_some,
         },
         jscode::{
@@ -188,7 +188,7 @@ impl Value for ExprType {
     }
 }
 
-/// Stored in JsCodeExternal during eval_half. Value is taken out via `rc_from_v8`
+/// Stored in JsCodeExternal during eval_half. Value is taken out via `from_v8_ref`
 ///
 /// * `borrow_mut().take()` — a safe take-once pattern that panics on double-consume
 ///   instead of double-freeing.
@@ -286,7 +286,7 @@ impl AspectBindJs for ExprType {
 
 impl AspectLiftJs for ExprType {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = rc_from_v8(&value);
+        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }
@@ -334,7 +334,7 @@ impl Aspect for StagedExprPlaceholderType { }
 
 impl AspectLiftJs for StagedExprPlaceholderType {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = rc_from_v8(&value);
+        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
     }
 }

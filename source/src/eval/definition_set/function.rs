@@ -53,7 +53,7 @@ use {
             bind_js_some,
         },
         mortar_null::TypeMortarNull,
-        rc_from_v8,
+        from_v8_ref,
         typecheck_convert,
     },
     std::{
@@ -139,7 +139,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetFunction {
 
 impl AspectLiftJs for MortarTypeDefinitionSetFunction {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let func_ref: Rc<DefinitionSetFunction> = rc_from_v8(&value);
+        let func_ref: Rc<DefinitionSetFunction> = from_v8_ref::<Rc<DefinitionSetFunction>>(&value).clone();
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
                 set: func_ref.set.clone(),

@@ -30,9 +30,6 @@ use {
 
 pub(crate) struct TypeRefValue {
     pub type_: Rc<dyn Type>,
-    /// For record/tuple types, stores the original JS code for each field/element so
-    /// that to_js can emit references to the actual v8 values (which have complete
-    /// type data, e.g. tagged union refs with variant info).
     pub field_codes: Vec<(crate::langhelp::ConstKey, crate::langhelp::Code)>,
 }
 
@@ -144,7 +141,7 @@ impl AspectConsumeJs for TypeType {
         let type_ref_value =
             (cv.value.as_ref() as &dyn Any)
                 .downcast_ref::<TypeRefValue>()
-                .expect("TypeType value must be TypeRefValue");
+                .expect("TypeType to_js: value must be TypeRefValue");
         let field_code_map: std::collections::BTreeMap<crate::langhelp::ConstKey, crate::langhelp::Code> =
             type_ref_value.field_codes.iter().cloned().collect();
         type_ref_to_js(xx, loc, &type_ref_value.type_, &field_code_map)
@@ -159,7 +156,8 @@ fn type_ref_to_js(
 ) -> EResult<JsCode> {
     let type_any: &dyn Any = type_.as_ref();
 
-    // Tuple types → JS array, recursively
+    // Tuple types → build JS array from field codes, then wrap with __tuple_to_type()
+    // so the v8 result is always an Rc`<dyn Type>` external.
     if let Some(tuple) = type_any.downcast_ref::<super::tuple::Tuple>() {
         let mut elements = Vec::new();
         for (i, elem) in tuple.elements.iter().enumerate() {
@@ -178,13 +176,24 @@ fn type_ref_to_js(
                 },
             }
         }
-        return EResult::ok(JsCode {
+        let array_js = JsCode {
             loc,
             type_: JsCodeType::NewArray(crate::jscode::JsCodeNewArray { elements }),
+        };
+        return EResult::ok(JsCode {
+            loc,
+            type_: JsCodeType::Call(crate::jscode::JsCodeCall {
+                func: Box::new(JsCode {
+                    loc,
+                    type_: JsCodeType::BindingUse(JsCodeBindingUse { id: super::TUPLE_TO_TYPE_FN_SCOPE_ID }),
+                }),
+                args: vec![array_js],
+            }),
         });
     }
 
-    // Record types → JS object, recursively
+    // Record types → build JS object from field codes, then wrap with
+    // __record_to_type() so the v8 result is always an Rc`<dyn Type>` external.
     if let Some(record) = type_any.downcast_ref::<super::record::Record>() {
         let mut fields = Vec::new();
         for (key, field) in &record.fields {
@@ -206,26 +215,33 @@ fn type_ref_to_js(
                 },
             }
         }
-        return EResult::ok(JsCode {
+        let obj_js = JsCode {
             loc,
             type_: JsCodeType::NewObject(crate::jscode::JsCodeNewObject { fields }),
+        };
+        return EResult::ok(JsCode {
+            loc,
+            type_: JsCodeType::Call(crate::jscode::JsCodeCall {
+                func: Box::new(JsCode {
+                    loc,
+                    type_: JsCodeType::BindingUse(JsCodeBindingUse { id: super::RECORD_TO_TYPE_FN_SCOPE_ID }),
+                }),
+                args: vec![obj_js],
+            }),
         });
     }
 
-    // Leaf type at root level (not inside a record/tuple)
+    // Leaf type at root level
     type_ref_to_js_leaf(xx, loc, type_, None)
 }
 
-/// Serialize a single type to JS. If `field_code` is provided, uses the original
-/// JS code (which evaluates to the actual v8 value at runtime with complete data).
-/// Otherwise stores the type as an Rc`<dyn Type>` external.
 fn type_ref_to_js_leaf(
     xx: &ExprContext,
     loc: QExprId,
     type_: &Rc<dyn Type>,
     field_code: Option<&crate::langhelp::Code>,
 ) -> EResult<JsCode> {
-    // If the type is a record/tuple, recurse (no field codes for sub-levels)
+    // If the type is a record/tuple, recurse
     let type_any: &dyn Any = type_.as_ref();
     if type_any.downcast_ref::<super::record::Record>().is_some() ||
         type_any.downcast_ref::<super::tuple::Tuple>().is_some() {

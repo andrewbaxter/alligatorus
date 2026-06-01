@@ -50,7 +50,7 @@ use {
             MortarJsValueSource,
             bind_js_some,
         },
-        rc_from_v8,
+        from_v8_ref,
         typecheck_convert,
     },
     std::{
@@ -141,7 +141,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeConstructor {
 
 impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let ctor_ref: Rc<DefinitionSetDataTypeConstructor> = rc_from_v8(&value);
+        let ctor_ref: Rc<DefinitionSetDataTypeConstructor> = from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
         ctor_ref.set.finish()?;
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,

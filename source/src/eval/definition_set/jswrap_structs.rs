@@ -62,8 +62,6 @@ use {
             MortarJsValue,
             MortarJsValueSource,
         },
-        rc_to_v8,
-        rc_from_v8,
     },
     dumpster::unsync::Gc,
     std::{
@@ -488,11 +486,11 @@ impl JsWrap for Rc<DefinitionSetInterfaceRef> {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        crate::eval::from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        crate::eval::to_v8(scope, self).into()
     }
 }
 
@@ -503,11 +501,23 @@ impl JsWrap for Rc<DefinitionSetDataTypeRef> {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        let type_: &Rc<dyn crate::langhelp::Type> = crate::eval::from_v8_ref(&*value);
+        let dt =
+            (type_.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<super::DefinitionSetDataType>()
+                .expect("DefinitionSetDataTypeRef::from_v8: expected DefinitionSetDataType");
+        Rc::new(DefinitionSetDataTypeRef {
+            set: dt.set.clone(),
+            data_type_index: dt.data_type_index,
+        })
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        let type_: Rc<dyn crate::langhelp::Type> = Rc::new(super::DefinitionSetDataType {
+            set: self.set.clone(),
+            data_type_index: self.data_type_index,
+        });
+        crate::eval::to_v8(scope, type_).into()
     }
 }
 
@@ -518,11 +528,11 @@ impl JsWrap for Rc<DefinitionSetDataTypeConstructor> {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        crate::eval::from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        crate::eval::to_v8(scope, self).into()
     }
 }
 
@@ -533,11 +543,11 @@ impl JsWrap for Rc<DefinitionSetExports> {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        crate::eval::from_v8_ref::<Rc<DefinitionSetExports>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        crate::eval::to_v8(scope, self).into()
     }
 }
 
@@ -548,10 +558,10 @@ impl JsWrap for Rc<DefinitionSetFunction> {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        crate::eval::from_v8_ref::<Rc<DefinitionSetFunction>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        crate::eval::to_v8(scope, self).into()
     }
 }

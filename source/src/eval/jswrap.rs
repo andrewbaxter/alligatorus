@@ -58,7 +58,7 @@ impl JsWrap for StagedExpr {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
+        let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
     }
 
@@ -76,63 +76,11 @@ impl JsWrap for TypeRef {
         Rc::new(super::type_ref::TypeType)
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        // Tuple type: JS array → recursively convert elements
-        if value.is_array() {
-            let arr = v8::Local::<v8::Array>::try_from(value).unwrap();
-            let len = arr.length();
-            let mut elements = Vec::with_capacity(len as usize);
-            for i in 0 .. len {
-                let elem = arr.get_index(scope, i).unwrap();
-                let TypeRef(elem_type) = TypeRef::from_v8(scope, elem);
-                elements.push(super::tuple::TupleElement::Mortar(elem_type));
-            }
-            return TypeRef(Rc::new(super::tuple::Tuple {
-                source: None,
-                elements,
-            }));
-        }
-
-        // Record type: JS object → recursively convert fields
-        if value.is_object() && !value.is_null_or_undefined() && !value.is_external() {
-            let obj = v8::Local::<v8::Object>::try_from(value).unwrap();
-            let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
-            let mut fields = std::collections::BTreeMap::new();
-            for i in 0 .. keys.length() {
-                let key = keys.get_index(scope, i).unwrap();
-                let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
-                let val = obj.get(scope, key).unwrap();
-                let TypeRef(field_type) = TypeRef::from_v8(scope, val);
-                fields.insert(
-                    crate::langhelp::ConstKey::String(key_str),
-                    super::record::RecordField::Mortar(field_type),
-                );
-            }
-            return TypeRef(Rc::new(super::record::Record {
-                source: None,
-                fields,
-            }));
-        }
-
-        // Leaf type: v8 external → extract Rc`<dyn Type>`
-        let any = super::from_v8_any(&*value);
-        if let Some(type_) = any.downcast_ref::<Rc<dyn Type>>() {
-            return TypeRef(type_.clone());
-        }
-        if let Some(ref_) = any.downcast_ref::<Rc<super::definition_set::TaggedUnionRef>>() {
-            return TypeRef(
-                Rc::new(
-                    super::definition_set::tagged_union::MortarTypeTaggedUnionRef { data: Some(ref_.data.clone()) },
-                ),
-            );
-        }
-        if let Some(ref_) = any.downcast_ref::<Rc<super::definition_set::DefinitionSetDataTypeRef>>() {
-            return TypeRef(Rc::new(super::definition_set::DefinitionSetDataType {
-                set: ref_.set.clone(),
-                data_type_index: ref_.data_type_index,
-            }));
-        }
-        panic!("TypeRef::from_v8: unhandled external type")
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        // All type values in v8 are guaranteed to be Rc`<dyn Type>` externals. Compound
+        // types (Record/Tuple) are wrapped by __record_to_type / __tuple_to_type at the
+        // serialization site.
+        TypeRef(super::rc_type_from_v8(&*value))
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
@@ -178,7 +126,7 @@ impl JsWrap for expr::Expr {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
+        let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
         *(inner as Box<dyn std::any::Any>).downcast::<expr::Expr>().expect("Expected Expr in StagedExprCell")
     }
@@ -199,7 +147,7 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         if value.is_external() {
             // Staged record expression: extract the record AST and decompose into entries
-            let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
+            let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
             let inner = cell.value.borrow_mut().take().expect("BTreeMap staged value already consumed");
             let record_expr =
                 (inner.as_ref() as &dyn std::any::Any)
@@ -510,7 +458,7 @@ macro_rules! jswrap{
                 v8:: Value > {
                     let _jw_obj = v8:: Object:: new($scope);
                     let _jw_self_rc = Rc::new(self);
-                    let _jw_data_ext = rc_to_v8($scope, _jw_self_rc.clone());
+                    let _jw_data_ext = crate:: eval:: to_v8($scope, _jw_self_rc.clone());
                     _jw_obj.set($scope, v8:: String:: new($scope, "_d").unwrap().into(), _jw_data_ext.into(),);
                     #[allow(unused_mut, unused_variables)]
                     let mut _jw_idx = 0usize;
@@ -534,7 +482,9 @@ macro_rules! jswrap{
                         ) {
                             let _jw_this = _jw_args.this();
                             let _jw_dk = v8:: String:: new($scope, "_d").unwrap();
-                            let $self_: Rc <$name > = rc_from_v8(&* _jw_this.get($scope, _jw_dk.into()).unwrap(),);
+                            let $self_: Rc <$name > = crate:: eval:: from_v8_ref::< Rc <$name >>(
+                                &* _jw_this.get($scope, _jw_dk.into()).unwrap(),
+                            ).clone();
                             #[allow(unused_mut, unused_variables)]
                             let mut _jw_arg_i = 0i32;
                             $(

@@ -139,8 +139,112 @@ impl Type for Tuple {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert tuple to other type"))
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        (type_ as &dyn Any).downcast_ref::<super::type_ref::TypeType>().is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        let result_type = cv.value.type_(xx, loc);
+        let has_mortar = self.elements.iter().any(|e| matches!(e, TupleElement::Mortar(_)));
+        if has_mortar {
+            // Mortar elements: build tuple with proper JS codes for all elements, consume to
+            // JS, then wrap with __tuple_to_type().
+            let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().expect("Tuple cast_to: expected Tuple value");
+            let mut converted_elements = Vec::new();
+            for elem in tuple.elements {
+                let converted = match elem {
+                    TupleElement::Mortar(t) => TupleElement::Mortar(t),
+                    TupleElement::EvalRes(er) => {
+                        if let Some(entry_cv) = er.v {
+                            if matches!(entry_cv.code.code, Code_::None) {
+                                let elem_type =
+                                    tuple_element_type(xx, loc, &TupleElement::EvalRes(EvalRes::ok(CodeValue {
+                                        code: entry_cv.code.clone(),
+                                        value: entry_cv.value,
+                                    })));
+                                let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
+                                xx.vx.externals.borrow_mut().push((id, Box::new(elem_type.clone())));
+                                TupleElement::EvalRes(EvalRes::ok(CodeValue {
+                                    code: Code {
+                                        loc,
+                                        code: Code_::Dyn(Rc::new(JsCode {
+                                            loc,
+                                            type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
+                                        })),
+                                    },
+                                    value: Box::new(super::type_ref::TypeRefValue {
+                                        type_: elem_type,
+                                        field_codes: vec![],
+                                    }),
+                                }))
+                            } else {
+                                TupleElement::EvalRes(EvalRes::ok(entry_cv))
+                            }
+                        } else {
+                            TupleElement::EvalRes(er)
+                        }
+                    },
+                };
+                converted_elements.push(converted);
+            }
+            let converted_tuple = Tuple {
+                source: tuple.source,
+                elements: converted_elements,
+            };
+            let converted_cv = CodeValue {
+                code: cv.code,
+                value: Box::new(converted_tuple),
+            };
+            match self.to_js(xx, loc, converted_cv).into_res() {
+                Ok(tuple_js) => {
+                    let call_code = JsCode {
+                        loc,
+                        type_: JsCodeType::Call(crate::jscode::JsCodeCall {
+                            func: Box::new(JsCode {
+                                loc,
+                                type_: JsCodeType::BindingUse(
+                                    crate::jscode::JsCodeBindingUse { id: super::TUPLE_TO_TYPE_FN_SCOPE_ID },
+                                ),
+                            }),
+                            args: vec![tuple_js],
+                        }),
+                    };
+                    EvalRes::ok(CodeValue {
+                        code: Code {
+                            loc,
+                            code: Code_::Dyn(Rc::new(call_code)),
+                        },
+                        value: Box::new(super::type_ref::TypeRefValue {
+                            type_: result_type,
+                            field_codes: vec![],
+                        }),
+                    })
+                },
+                Err(errors) => EvalRes {
+                    v: None,
+                    errors: Some(errors),
+                },
+            }
+        } else {
+            // No mortar data: extract field codes and delegate to type_ref_to_js via
+            // TypeType's to_js.
+            let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().expect("Tuple cast_to: expected Tuple value");
+            let mut field_codes = Vec::new();
+            for (i, elem) in tuple.elements.iter().enumerate() {
+                if let TupleElement::EvalRes(entry_res) = elem {
+                    if let Some(entry_cv) = &entry_res.v {
+                        field_codes.push((crate::langhelp::ConstKey::Usize(i), entry_cv.code.clone()));
+                    }
+                }
+            }
+            EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Box::new(super::type_ref::TypeRefValue {
+                    type_: result_type,
+                    field_codes,
+                }),
+            })
+        }
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {

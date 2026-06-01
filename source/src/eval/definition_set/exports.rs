@@ -44,7 +44,7 @@ use {
             MortarJsValueSource,
             bind_js_some,
         },
-        rc_from_v8,
+        from_v8_ref,
     },
     std::{
         any::Any,
@@ -128,7 +128,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetExports {
 
 impl AspectLiftJs for MortarTypeDefinitionSetExports {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let exports: Rc<DefinitionSetExports> = rc_from_v8(&value);
+        let exports: Rc<DefinitionSetExports> = from_v8_ref::<Rc<DefinitionSetExports>>(&value).clone();
         exports.set.finish()?;
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,

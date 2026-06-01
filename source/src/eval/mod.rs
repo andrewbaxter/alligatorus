@@ -198,8 +198,7 @@ pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value:
     ext
 }
 
-/// Get a reference to the `dyn Any` inside a `v8::External` created by `to_v8`.
-pub(crate) fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
+fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
     assert!(value.is_external(), "from_v8_any: expected v8::External");
     let ext = unsafe {
         &*(value as *const v8::Value as *const v8::External)
@@ -215,17 +214,19 @@ pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
     from_v8_any(value).downcast_ref::<T>().expect("from_v8_ref: type mismatch")
 }
 
-/// Convenience: store an `Rc<T>` as a `v8::External`.
-pub(crate) fn rc_to_v8<
-    's,
-    T: 'static,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<T>) -> v8::Local<'s, v8::External> {
+/// Store an `Rc<dyn Type>` as a `v8::External`.
+/// Only operates on `dyn Type` — for concrete `Rc<T>`, use `to_v8` directly.
+pub(crate) fn rc_type_to_v8<'s>(
+    scope: &mut v8::PinScope<'s, '_, ()>,
+    value: Rc<dyn Type>,
+) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
-/// Convenience: extract a clone of `Rc<T>` from a `v8::External`.
-pub(crate) fn rc_from_v8<T: 'static>(value: &v8::Value) -> Rc<T> {
-    from_v8_ref::<Rc<T>>(value).clone()
+/// Extract a clone of `Rc<dyn Type>` from a `v8::External`.
+/// Only operates on `dyn Type` — for concrete `Rc<T>`, use `from_v8_ref` directly.
+pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
+    from_v8_ref::<Rc<dyn Type>>(value).clone()
 }
 
 /// EvalResBuilder
@@ -1121,6 +1122,12 @@ struct EvalResult {
 /// Well-known scope entry ID for the __stage function (not a real scope entry).
 const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for __record_to_type mortar function.
+pub(crate) const RECORD_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// Well-known scope entry ID for __tuple_to_type mortar function.
+pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 fn eval(
     cix: &Rc<CompileImportContext>,
     import_state: ImportStateId,
@@ -1584,7 +1591,7 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            let tree_cell: Rc<expr::StagedExprCell> = rc_from_v8(&*args.get(0));
+            let tree_cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
             let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
             let tree =
                 (tree_value.as_ref() as &dyn Any)
@@ -1599,11 +1606,11 @@ fn eval(
                 i += 2;
                 if lift_arg.is_null_or_undefined() {
                     // Already a StagedExprCell external
-                    let cell: Rc<expr::StagedExprCell> = rc_from_v8(&*val_arg);
+                    let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
                     values.push(cell.value.borrow_mut().take().expect("stage lower value already consumed"));
                 } else {
                     // Lift the raw v8 value
-                    let lift_cell: Rc<StageLiftCell> = rc_from_v8(&*lift_arg);
+                    let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
                     let value = lift_cell.lift.lift(&*scope, val_arg).expect("__stage: lift failed");
                     values.push(value);
                 }
@@ -1767,7 +1774,7 @@ fn eval(
 
             let new_tree = clone_with_lower_substitutions(&tree, 0, 0, &mut values.into_iter());
             let result_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(new_tree))) });
-            let ext = rc_to_v8(scope, result_cell);
+            let ext = to_v8(scope, result_cell);
             rv.set(ext.into());
         }
 
@@ -1782,17 +1789,99 @@ fn eval(
             );
     }
 
+    // Register __record_to_type and __tuple_to_type mortar functions.
+    // These convert JS objects/arrays into Rc<dyn Type> externals at runtime.
+    {
+        /// Recursively convert a v8 value (external, object, or array) to Rc<dyn Type>.
+        fn v8_value_to_type(
+            scope: &mut v8::PinnedRef<v8::HandleScope>,
+            value: v8::Local<v8::Value>,
+        ) -> Rc<dyn Type> {
+            if value.is_external() {
+                return from_v8_ref::<Rc<dyn Type>>(&*value).clone();
+            }
+            if value.is_array() {
+                let arr = v8::Local::<v8::Array>::try_from(value).unwrap();
+                let len = arr.length();
+                let mut elements = Vec::with_capacity(len as usize);
+                for i in 0..len {
+                    let elem = arr.get_index(scope, i).unwrap();
+                    elements.push(tuple::TupleElement::Mortar(v8_value_to_type(scope, elem)));
+                }
+                return Rc::new(tuple::Tuple { source: None, elements });
+            }
+            if value.is_object() && !value.is_null_or_undefined() {
+                let obj = v8::Local::<v8::Object>::try_from(value).unwrap();
+                let keys = obj
+                    .get_own_property_names(scope, v8::GetPropertyNamesArgs::default())
+                    .unwrap();
+                let mut fields = std::collections::BTreeMap::new();
+                for i in 0..keys.length() {
+                    let key = keys.get_index(scope, i).unwrap();
+                    let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+                    let val = obj.get(scope, key).unwrap();
+                    fields.insert(
+                        ConstKey::String(key_str),
+                        record::RecordField::Mortar(v8_value_to_type(scope, val)),
+                    );
+                }
+                return Rc::new(record::Record { source: None, fields });
+            }
+            panic!("v8_value_to_type: unexpected v8 value type");
+        }
+
+        fn record_to_type_callback<'s>(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            let type_ = v8_value_to_type(scope, args.get(0));
+            let ext = rc_type_to_v8(scope, type_);
+            rv.set(ext.into());
+        }
+
+        fn tuple_to_type_callback<'s>(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            let type_ = v8_value_to_type(scope, args.get(0));
+            let ext = rc_type_to_v8(scope, type_);
+            rv.set(ext.into());
+        }
+
+        let record_to_type_fn =
+            v8::Function::builder(record_to_type_callback).build(js_scope).unwrap();
+        js_scope.get_current_context().global(js_scope).set(
+            js_scope,
+            v8::String::new(js_scope, &scope_entry_id_js_key(RECORD_TO_TYPE_FN_SCOPE_ID))
+                .unwrap()
+                .cast(),
+            record_to_type_fn.into(),
+        );
+
+        let tuple_to_type_fn =
+            v8::Function::builder(tuple_to_type_callback).build(js_scope).unwrap();
+        js_scope.get_current_context().global(js_scope).set(
+            js_scope,
+            v8::String::new(js_scope, &scope_entry_id_js_key(TUPLE_TO_TYPE_FN_SCOPE_ID))
+                .unwrap()
+                .cast(),
+            tuple_to_type_fn.into(),
+        );
+    }
+
     // Set externals as globals before running the script
     for (id, value) in ex.externals.borrow().iter() {
         let key = v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast();
         if let Some(cell) = value.downcast_ref::<Rc<expr::StagedExprCell>>() {
-            let ext = rc_to_v8(js_scope, cell.clone());
+            let ext = to_v8(js_scope, cell.clone());
             js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
         } else if let Some(cell) = value.downcast_ref::<Rc<StageLiftCell>>() {
-            let ext = rc_to_v8(js_scope, cell.clone());
+            let ext = to_v8(js_scope, cell.clone());
             js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
         } else if let Some(type_) = value.downcast_ref::<Rc<dyn Type>>() {
-            let ext = to_v8(js_scope, type_.clone());
+            let ext = rc_type_to_v8(js_scope, type_.clone());
             js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
         } else {
             panic!("Unknown external type");

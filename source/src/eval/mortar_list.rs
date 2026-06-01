@@ -117,12 +117,12 @@ impl super::jswrap::JsWrap for TypeMortarList {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeMortarList> = super::rc_from_v8(&*value);
+        let rc: Rc<TypeMortarList> = super::from_v8_ref::<Rc<TypeMortarList>>(&*value).clone();
         (*rc).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        super::rc_to_v8(scope, Rc::new(self)).into()
+        super::to_v8(scope, Rc::new(self)).into()
     }
 }
 

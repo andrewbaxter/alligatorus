@@ -47,7 +47,7 @@ use {
             MortarJsValueSource,
             bind_js_some,
         },
-        rc_from_v8,
+        from_v8_ref,
         typecheck_convert,
     },
     std::{
@@ -226,10 +226,15 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
 
 impl AspectLiftJs for MortarTypeTaggedUnionRef {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let ref_: Rc<TaggedUnionRef> = rc_from_v8(&value);
+        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let mortar =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<MortarTypeTaggedUnionRef>()
+                .expect("MortarTypeTaggedUnionRef::lift: expected MortarTypeTaggedUnionRef");
+        let data = mortar.data.clone().expect("MortarTypeTaggedUnionRef::lift: data must be Some");
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
-            type_: Rc::new(TaggedUnionType { data: ref_.data.clone() }),
+            type_: Rc::new(TaggedUnionType { data }),
         }))
     }
 }
@@ -310,29 +315,42 @@ impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
 
 impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let ref_: Rc<TaggedUnionConstructorRef> = rc_from_v8(&value);
+        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let ctor =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<TaggedUnionConstructor>()
+                .expect("MortarTypeTaggedUnionConstructorRef::lift: expected TaggedUnionConstructor");
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(TaggedUnionConstructor {
-                data: ref_.data.clone(),
-                variant_index: ref_.variant_index,
+                data: ctor.data.clone(),
+                variant_index: ctor.variant_index,
             }),
         }))
     }
 }
 
 // --- JsWrap impls ---
+fn tagged_union_ref_from_v8_type(type_: &Rc<dyn Type>) -> Rc<TaggedUnionRef> {
+    let mortar =
+        (type_.as_ref() as &dyn Any)
+            .downcast_ref::<MortarTypeTaggedUnionRef>()
+            .expect("TaggedUnionRef: expected MortarTypeTaggedUnionRef");
+    Rc::new(TaggedUnionRef { data: mortar.data.clone().expect("TaggedUnionRef: data must be Some") })
+}
+
 impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionRef> {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(MortarTypeTaggedUnionRef { data: None })
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        tagged_union_ref_from_v8_type(crate::eval::from_v8_ref::<Rc<dyn Type>>(&*value))
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        let type_: Rc<dyn Type> = Rc::new(MortarTypeTaggedUnionRef { data: Some(self.data.clone()) });
+        crate::eval::to_v8(scope, type_).into()
     }
 }
 
@@ -342,11 +360,23 @@ impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionConstructorRef> {
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::rc_from_v8(&*value)
+        let type_: &Rc<dyn Type> = crate::eval::from_v8_ref(&*value);
+        let ctor =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<TaggedUnionConstructor>()
+                .expect("TaggedUnionConstructorRef::from_v8: expected TaggedUnionConstructor");
+        Rc::new(TaggedUnionConstructorRef {
+            data: ctor.data.clone(),
+            variant_index: ctor.variant_index,
+        })
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::rc_to_v8(scope, self).into()
+        let type_: Rc<dyn Type> = Rc::new(TaggedUnionConstructor {
+            data: self.data.clone(),
+            variant_index: self.variant_index,
+        });
+        crate::eval::to_v8(scope, type_).into()
     }
 }
 

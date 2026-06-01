@@ -35,7 +35,7 @@ use {
             MortarJsValueSource,
             bind_js_some,
         },
-        rc_from_v8,
+        from_v8_ref,
     },
     std::{
         any::Any,
@@ -118,13 +118,17 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeRef {
 
 impl AspectLiftJs for MortarTypeDefinitionSetDataTypeRef {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let type_ref: Rc<DefinitionSetDataTypeRef> = rc_from_v8(&value);
-        type_ref.set.finish()?;
+        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let dt =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<DefinitionSetDataType>()
+                .expect("MortarTypeDefinitionSetDataTypeRef::lift: expected DefinitionSetDataType");
+        dt.set.finish()?;
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(DefinitionSetDataType {
-                set: type_ref.set.clone(),
-                data_type_index: type_ref.data_type_index,
+                set: dt.set.clone(),
+                data_type_index: dt.data_type_index,
             }),
         }))
     }
