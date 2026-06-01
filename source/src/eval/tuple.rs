@@ -3,30 +3,19 @@ use {
         builtin::{
             AspectBindJs,
             AspectConsumeJs,
-            AspectField,
             AspectLiftJs,
-            AspectRecord,
             AspectTuple,
             aspect_bind_js_aspect_id,
-            aspect_bind_js_get_maybe,
             aspect_consume_js_aspect_id,
             aspect_consume_js_get,
-            aspect_consume_js_get_maybe,
-            aspect_field_aspect_id,
             aspect_lift_js_aspect_id,
-            aspect_field_get_maybe,
-            aspect_record_aspect_id,
-            aspect_record_get_maybe,
-            aspect_string_get,
             aspect_tuple_aspect_id,
-            aspect_type_get_maybe,
         },
         jscode::{
             JsCode,
             JsCodeBlock,
             JsCodeBlockEntry,
             JsCodeNewArray,
-            JsCodeNewObject,
             JsCodeType,
         },
         langhelp::{
@@ -34,7 +23,6 @@ use {
             Code,
             CodeValue,
             Code_,
-            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -47,57 +35,109 @@ use {
     },
     std::{
         any::Any,
-        collections::BTreeMap,
-        mem,
         rc::Rc,
     },
-    super::Erb,
     super::mortar_js_value::bind_js_some,
 };
 
-pub(crate) struct ValueTuple {
-    pub elements: Vec<EvalRes>,
+/// Represents a single element entry in a Tuple.
+pub(crate) enum TupleElement {
+    /// Element available only via the mortar source. Type is known but value is
+    /// deferred to runtime.
+    Mortar(Rc<dyn Type>),
+    /// Element has been fully evaluated and is available immediately.
+    EvalRes(EvalRes),
 }
 
-impl Value for ValueTuple {
+pub(crate) struct Tuple {
+    /// Optional mortar source — a JS array that elements can be accessed from at
+    /// runtime.
+    pub source: Option<super::mortar_js_value::MortarJsValueSource>,
+    /// Ordered list of element entries.
+    pub elements: Vec<TupleElement>,
+}
+
+impl Tuple {
+    /// Returns true if this Tuple represents a type (all Mortar elements, no source).
+    /// An empty tuple is always a value, not a type.
+    pub fn is_type(&self) -> bool {
+        !self.elements.is_empty() && self.source.is_none() &&
+            self.elements.iter().all(|e| matches!(e, TupleElement::Mortar(_)))
+    }
+
+    /// Clone this type-Tuple. Panics if not a type.
+    pub fn clone_as_type(&self) -> Tuple {
+        Tuple {
+            source: None,
+            elements: self.elements.iter().map(|e| {
+                match e {
+                    TupleElement::Mortar(t) => TupleElement::Mortar(t.clone()),
+                    TupleElement::EvalRes(_) => panic!("clone_as_type on non-type tuple"),
+                }
+            }).collect(),
+        }
+    }
+
+    /// Extract element types.
+    pub fn element_types(&self, xx: &ExprContext, loc: QExprId) -> Vec<Rc<dyn Type>> {
+        self.elements.iter().map(|e| tuple_element_type(xx, loc, e)).collect()
+    }
+}
+
+fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
+    match e {
+        TupleElement::Mortar(t) => t.clone(),
+        TupleElement::EvalRes(er) => match &er.v {
+            Some(cv) => cv.value.type_(_xx, loc),
+            None => Rc::new(Tuple {
+                source: None,
+                elements: vec![],
+            }) as Rc<dyn Type>,
+        },
+    }
+}
+
+impl Value for Tuple {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
-            match &e.v {
-                Some(cv) => cv.value.type_(xx, loc),
-                None => Rc::new(TypeTuple { types: vec![] }) as Rc<dyn Type>,
-            }
+        if self.is_type() {
+            return Rc::new(super::type_ref::TypeType);
+        }
+        let elements = self.elements.iter().map(|e| {
+            TupleElement::Mortar(tuple_element_type(xx, loc, e))
         }).collect();
-        Rc::new(TypeTuple { types })
+        Rc::new(Tuple {
+            source: None,
+            elements,
+        })
     }
 }
 
-pub(crate) struct TypeTuple {
-    pub types: Vec<Rc<dyn Type>>,
-}
-
-impl Value for TypeTuple {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
-    }
-}
-
-impl Type for TypeTuple {
+impl Type for Tuple {
     fn desc(&self) -> String {
-        format!("tuple({})", self.types.iter().map(|t| t.desc()).collect::<Vec<_>>().join(", "))
+        format!("tuple({})", self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => t.desc(),
+                TupleElement::EvalRes(_) => "?".to_string(),
+            }
+        }).collect::<Vec<_>>().join(", "))
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_tuple_aspect_id() {
-            return Some(Box::new(Box::new(TypeTuple { types: self.types.clone() }) as Box<dyn AspectTuple>));
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectTuple>));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeTuple { types: self.types.clone() }) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeTuple { types: self.types.clone() }) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.types.iter().map(|t| {
+            let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.elements.iter().map(|e| {
+                let t = match e {
+                    TupleElement::Mortar(t) => t.clone(),
+                    TupleElement::EvalRes(_) => panic!("lift_js on non-type tuple"),
+                };
                 let a =
                     t
                         .aspect(_xx, &aspect_lift_js_aspect_id())
@@ -118,16 +158,26 @@ impl Type for TypeTuple {
     }
 }
 
-impl Aspect for TypeTuple { }
+impl Aspect for Tuple { }
 
-impl AspectTuple for TypeTuple {
+impl AspectTuple for Tuple {
     fn element_types(&self) -> Vec<Rc<dyn Type>> {
-        self.types.clone()
+        self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("element_types on non-type tuple"),
+            }
+        }).collect()
     }
 
     fn take_elements(&self, value: Box<dyn Value>) -> Vec<EvalRes> {
-        let tuple: Box<ValueTuple> = (value as Box<dyn Any>).downcast().unwrap();
-        tuple.elements
+        let tuple: Box<Tuple> = (value as Box<dyn Any>).downcast().unwrap();
+        tuple.elements.into_iter().map(|e| {
+            match e {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Mortar(_) => panic!("take_elements encountered Mortar element"),
+            }
+        }).collect()
     }
 }
 
@@ -144,15 +194,18 @@ impl AspectLiftJs for TupleLiftJs {
         for (i, elem_lift) in self.element_lifts.iter().enumerate() {
             let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lift");
             let lifted = elem_lift.lift(scope, elem_v8)?;
-            elements.push(EvalRes::ok(CodeValue {
+            elements.push(TupleElement::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
                     code: Code_::None,
                 },
                 value: lifted,
-            }));
+            })));
         }
-        Ok(Box::new(ValueTuple { elements }))
+        Ok(Box::new(Tuple {
+            source: None,
+            elements,
+        }))
     }
 }
 
@@ -161,7 +214,7 @@ impl AspectLiftJs for TupleLiftJs {
 /// Code_::None. When consumed to JS, the generated JS references those bindings.
 /// This helper wraps the consumed JS with the carry code so the bindings are in
 /// scope.
-fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
+pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
     if let Some(Some(carry_js)) = carry.cast::<JsCode>().v {
         let mut entries = match &carry_js.type_ {
             JsCodeType::Block(block) => block.entries.clone(),
@@ -176,13 +229,23 @@ fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
     js
 }
 
-impl AspectConsumeJs for TypeTuple {
+impl AspectConsumeJs for Tuple {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         let carry = cv.code;
-        let tuple: Box<ValueTuple> = (cv.value as Box<dyn Any>).downcast().unwrap();
+        let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().unwrap();
+        let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("to_js on non-type tuple"),
+            }
+        }).collect();
         let mut errors = vec![];
         let mut js_elements = Vec::new();
-        for (elem_res, elem_type) in tuple.elements.into_iter().zip(self.types.iter()) {
+        for (elem, elem_type) in tuple.elements.into_iter().zip(types.iter()) {
+            let elem_res = match elem {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Mortar(_) => panic!("to_js on mortar tuple element"),
+            };
             if let Some(errs) = elem_res.errors {
                 errors.extend(errs);
             }
@@ -209,7 +272,7 @@ impl AspectConsumeJs for TypeTuple {
     }
 }
 
-impl AspectBindJs for TypeTuple {
+impl AspectBindJs for Tuple {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -218,503 +281,6 @@ impl AspectBindJs for TypeTuple {
     ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
-    }
-}
-
-/// Represents a single field entry in a RecordValue.
-pub(crate) enum RecordField {
-    /// Field available only via the mortar source (a JS object). Type is known but
-    /// value is deferred to runtime.
-    Mortar(Rc<dyn Type>),
-    /// Field has been fully evaluated and is available immediately.
-    EvalRes(EvalRes),
-}
-
-pub(crate) struct RecordValue {
-    /// Optional mortar source (like MortarJsValue) — a JS object that fields can be
-    /// accessed from at runtime.
-    pub source: Option<super::mortar_js_value::MortarJsValueSource>,
-    /// Mapping from keys to field entries.
-    pub fields: BTreeMap<ConstKey, RecordField>,
-}
-
-impl RecordValue {
-    /// Create a type-RecordValue from entry types (all Mortar fields, no source).
-    pub fn from_entry_types(entry_types: BTreeMap<ConstKey, Rc<dyn Type>>) -> RecordValue {
-        RecordValue {
-            source: None,
-            fields: entry_types.into_iter().map(|(k, t)| (k, RecordField::Mortar(t))).collect(),
-        }
-    }
-
-    /// Returns true if this RecordValue represents a type (all Mortar fields, no
-    /// source).
-    pub fn is_type(&self) -> bool {
-        self.source.is_none() && self.fields.values().all(|f| matches!(f, RecordField::Mortar(_)))
-    }
-
-    /// Clone this type-RecordValue. Panics if not a type.
-    fn clone_as_type(&self) -> RecordValue {
-        RecordValue {
-            source: None,
-            fields: self.fields.iter().map(|(k, f)| {
-                (k.clone(), match f {
-                    RecordField::Mortar(t) => RecordField::Mortar(t.clone()),
-                    RecordField::EvalRes(_) => panic!("clone_as_type on non-type record"),
-                })
-            }).collect(),
-        }
-    }
-
-    /// Return self as Rc`<dyn Type>`.
-    pub fn as_type(&self) -> Rc<dyn Type> {
-        Rc::new(self.clone_as_type())
-    }
-
-    /// Extract entry types. For Mortar fields returns the type directly; for EvalRes
-    /// fields uses AspectType to extract the type from the value.
-    pub fn entry_types(&self, xx: &ExprContext, loc: QExprId) -> BTreeMap<ConstKey, Rc<dyn Type>> {
-        self.fields.iter().map(|(k, f)| {
-            (k.clone(), record_field_type(xx, loc, f))
-        }).collect()
-    }
-}
-
-fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn Type> {
-    match f {
-        RecordField::Mortar(t) => t.clone(),
-        RecordField::EvalRes(er) => match &er.v {
-            Some(cv) => {
-                let vtype = cv.value.type_(xx, loc);
-                match aspect_type_get_maybe(xx, vtype.as_ref()) {
-                    Some(at) => at.type_(cv.value.as_ref()),
-                    None => vtype,
-                }
-            },
-            None => Rc::new(TypeTuple { types: vec![] }) as Rc<dyn Type>,
-        },
-    }
-}
-
-impl Value for RecordValue {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        if self.is_type() {
-            return Rc::new(super::type_ref::TypeType);
-        }
-        let fields = self.fields.iter().map(|(k, f)| {
-            let t = record_field_type(xx, loc, f);
-            (k.clone(), RecordField::Mortar(t))
-        }).collect();
-        Rc::new(RecordValue {
-            source: None,
-            fields,
-        })
-    }
-}
-
-impl Type for RecordValue {
-    fn desc(&self) -> String {
-        format!("record({})", self.fields.iter().map(|(k, f)| {
-            let t_desc = match f {
-                RecordField::Mortar(t) => t.desc(),
-                RecordField::EvalRes(_) => "?".to_string(),
-            };
-            format!("{:?}: {}", k, t_desc)
-        }).collect::<Vec<_>>().join(", "))
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectField>));
-        }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeJs>));
-        }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindJs>));
-        }
-        if *key == aspect_record_aspect_id() {
-            return Some(Box::new(Box::new(RecordAspectImpl) as Box<dyn AspectRecord>));
-        }
-        if *key == aspect_lift_js_aspect_id() {
-            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.fields.iter().map(|(k, f)| {
-                let key_str = match k {
-                    ConstKey::String(s) => s.clone(),
-                    ConstKey::Usize(n) => n.to_string(),
-                };
-                let t = match f {
-                    RecordField::Mortar(t) => t.clone(),
-                    RecordField::EvalRes(_) => panic!("lift_js on non-type record"),
-                };
-                let a =
-                    t
-                        .aspect(_xx, &aspect_lift_js_aspect_id())
-                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftJs", k, t.desc()));
-                (key_str, *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
-            }).collect();
-            return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert record to other type"))
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
-        if aspect_record_get_maybe(xx, source_type.as_ref()).is_none() {
-            return false;
-        }
-        let Some(source_field) = aspect_field_get_maybe(xx, source_type.as_ref()) else {
-            return false;
-        };
-        self.fields.keys().all(|k| source_field.field_opt(xx, &k.to_str()).is_some())
-    }
-
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let code = cv.code;
-        let record: Box<RecordValue> =
-            (cv.value as Box<dyn Any>).downcast().expect("RecordValue type must have RecordValue value");
-        return er_seq_cv!(loc, erb, {
-            let mut converted_fields = BTreeMap::new();
-            for (key, field) in record.fields {
-                let dest_entry_type = match self.fields.get(&key) {
-                    Some(RecordField::Mortar(t)) => t.clone(),
-                    _ => panic!("cast_from: dest missing key {:?}", key.to_str()),
-                };
-                let converted_field = match field {
-                    RecordField::EvalRes(entry_res) => {
-                        if let Some(entry_cv) = entry_res.v {
-                            let conv =
-                                erb.must_er(super::typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv),)?;
-                            RecordField::EvalRes(EvalRes::ok(conv))
-                        } else {
-                            RecordField::EvalRes(EvalRes {
-                                v: None,
-                                errors: entry_res.errors
-                            })
-                        }
-                    },
-                    RecordField::Mortar(_) => RecordField::Mortar(dest_entry_type),
-                };
-                converted_fields.insert(key, converted_field);
-            }
-            return Ok(CodeValue {
-                code: code,
-                value: Box::new(RecordValue {
-                    source: record.source,
-                    fields: converted_fields
-                }),
-            });
-        });
-    }
-}
-struct RecordAspectImpl;
-
-impl Aspect for RecordAspectImpl { }
-
-impl AspectRecord for RecordAspectImpl { }
-
-impl Aspect for RecordValue { }
-
-impl AspectField for RecordValue {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        return super::util::er_seq_cv_inline(loc, |erb| {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let const_key = ConstKey::String(key_name.clone());
-            let entry_type = record_field_type(xx, loc, self.fields.get(&const_key).ok_or_else(|| {
-                erb.errors.push(crate::langhelp::ExprErr {
-                    loc,
-                    errors: vec![
-                        crate::langhelp::ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name),)
-                    ],
-                });
-            })?);
-
-            // If self_ is a RecordValue, extract the field directly
-            let CodeValue { code: self_code_raw, value: self_value } = self_;
-            let is_none = matches!(self_code_raw.code, Code_::None);
-            let any_value: Box<dyn Any> = self_value;
-            if let Ok(mut record) = any_value.downcast::<RecordValue>() {
-                match record.fields.remove(&const_key) {
-                    Some(RecordField::EvalRes(entry)) => {
-                        if let Some(cv) = entry.v {
-                            return Ok(cv);
-                        }
-                        return erb.err_new(format!("Field '{}' evaluated to error", key_name));
-                    },
-                    Some(RecordField::Mortar(mortar_type)) => {
-                        // Field is only available via mortar source — generate JS access
-                        let source = record.source.take();
-                        let self_code = erb.must_er(self_code_raw.cast::<JsCode>())?.unwrap().clone();
-                        let field_code = Code {
-                            loc,
-                            code: Code_::Dyn(Rc::new(JsCode {
-                                loc,
-                                type_: JsCodeType::FieldUse(crate::jscode::JsCodeFieldUse {
-                                    base: Box::new(self_code),
-                                    field: key_name.clone(),
-                                }),
-                            })),
-                        };
-                        let field_source =
-                            super::mortar_js_value::MortarJsValueSource::Field(
-                                super::mortar_js_value::MortarJsValueDataAccess {
-                                    loc,
-                                    base: Box::new(super::mortar_js_value::MortarJsValue {
-                                        source: source.unwrap_or(super::mortar_js_value::MortarJsValueSource::Expr),
-                                        type_: self.as_type(),
-                                    }),
-                                    key: key_name,
-                                },
-                            );
-                        let mortar_type_any: &dyn Any = mortar_type.as_ref();
-                        if let Some(record_type) = mortar_type_any.downcast_ref::<RecordValue>() {
-                            let fields = record_type.fields.iter().map(|(k, f)| {
-                                let t = match f {
-                                    RecordField::Mortar(t) => t.clone(),
-                                    RecordField::EvalRes(_) => {
-                                        panic!("field mortar type RecordValue has non-Mortar field")
-                                    },
-                                };
-                                (k.clone(), RecordField::Mortar(t))
-                            }).collect();
-                            return Ok(CodeValue {
-                                code: field_code,
-                                value: Box::new(RecordValue {
-                                    source: Some(field_source),
-                                    fields,
-                                }),
-                            });
-                        }
-                        return Ok(CodeValue {
-                            code: field_code,
-                            value: Box::new(super::mortar_js_value::MortarJsValue {
-                                source: field_source,
-                                type_: mortar_type,
-                            }),
-                        });
-                    },
-                    None => {
-                        return erb.err_new(format!("Field '{}' not found on record value", key_name));
-                    },
-                }
-            }
-
-            // If self_ is a static value (no JS code), return a static value for the field
-            if is_none {
-                return Ok(CodeValue {
-                    code: Code {
-                        loc,
-                        code: Code_::None,
-                    },
-                    value: Box::new(StaticValue { type_: entry_type }),
-                });
-            }
-            let self_code = erb.must_er(self_code_raw.cast::<JsCode>())?.unwrap().clone();
-            let field_code = Code {
-                loc,
-                code: Code_::Dyn(Rc::new(JsCode {
-                    loc,
-                    type_: JsCodeType::FieldUse(crate::jscode::JsCodeFieldUse {
-                        base: Box::new(self_code),
-                        field: key_name.clone(),
-                    }),
-                })),
-            };
-            let field_source =
-                super::mortar_js_value::MortarJsValueSource::Field(super::mortar_js_value::MortarJsValueDataAccess {
-                    loc,
-                    base: Box::new(super::mortar_js_value::MortarJsValue {
-                        source: super::mortar_js_value::MortarJsValueSource::Expr,
-                        type_: self.as_type(),
-                    }),
-                    key: key_name,
-                });
-            let entry_type_any: &dyn Any = entry_type.as_ref();
-            if let Some(record_type) = entry_type_any.downcast_ref::<RecordValue>() {
-                let fields = record_type.fields.iter().map(|(k, f)| {
-                    let t = match f {
-                        RecordField::Mortar(t) => t.clone(),
-                        RecordField::EvalRes(_) => {
-                            panic!("field mortar type RecordValue has non-Mortar field")
-                        },
-                    };
-                    (k.clone(), RecordField::Mortar(t))
-                }).collect();
-                return Ok(CodeValue {
-                    code: field_code,
-                    value: Box::new(RecordValue {
-                        source: Some(field_source),
-                        fields,
-                    }),
-                });
-            }
-            return Ok(CodeValue {
-                code: field_code,
-                value: Box::new(super::mortar_js_value::MortarJsValue {
-                    source: field_source,
-                    type_: entry_type,
-                }),
-            });
-        });
-    }
-
-    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        let const_key = ConstKey::from_str(key).ok()?;
-        self.fields.get(&const_key).map(|f| record_field_type(xx, loc, f))
-    }
-}
-
-impl AspectConsumeJs for RecordValue {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        let carry = cv.code;
-
-        // If the value is a MortarJsValue (e.g. from cast_from), the JS code already
-        // represents the record object — just pass the code through
-        let record: Box<RecordValue> = match (cv.value as Box<dyn Any>).downcast::<RecordValue>() {
-            Ok(r) => r,
-            Err(_) => {
-                return carry.cast::<JsCode>().map(|x| x.unwrap().clone());
-            },
-        };
-
-        // If the record has a mortar source (it's backed by a JS object), pass through
-        // the code — the fields are accessed at runtime.
-        if record.source.is_some() {
-            return carry.cast::<JsCode>().map(|x| x.unwrap().clone());
-        }
-        let mut errors = vec![];
-        let mut js_fields = Vec::new();
-        for (key, field) in record.fields.into_iter() {
-            let key_str = match &key {
-                ConstKey::String(s) => s.clone(),
-                ConstKey::Usize(n) => n.to_string(),
-            };
-            match field {
-                RecordField::Mortar(_) => {
-                    // Mortar fields are only available via the source object — they shouldn't appear
-                    // in a record being directly consumed to JS (literal records have all EvalRes
-                    // fields)
-                    errors.push(crate::langhelp::ExprErr {
-                        loc,
-                        errors: vec![
-                            crate::langhelp::ExprSubErr::Opaque(
-                                format!("Record entry '{}' is mortar-only, cannot consume directly to JS", key_str),
-                            )
-                        ],
-                    });
-                },
-                RecordField::EvalRes(elem_res) => {
-                    if let Some(errs) = elem_res.errors {
-                        errors.extend(errs);
-                    }
-                    if let Some(elem_cv) = elem_res.v {
-                        let elem_value_type = elem_cv.value.type_(xx, loc);
-                        if let Some(to_js) = aspect_consume_js_get_maybe(xx, elem_value_type.as_ref()) {
-                            match to_js.to_js(xx, loc, elem_cv).into_res() {
-                                Ok(js) => js_fields.push((key_str, js)),
-                                Err(e) => errors.extend(e),
-                            }
-                        } else if let Some(bind) = aspect_bind_js_get_maybe(xx, elem_value_type.as_ref()) {
-                            match bind.bind_js(xx, loc, elem_cv).into_res() {
-                                Ok((Some(js), _)) => js_fields.push((key_str, js)),
-                                Ok((None, _)) => { },
-                                Err(e) => errors.extend(e),
-                            }
-                        } else {
-                            errors.push(crate::langhelp::ExprErr {
-                                loc,
-                                errors: vec![
-                                    crate::langhelp::ExprSubErr::Opaque(
-                                        format!(
-                                            "Record entry '{}' type ({}) cannot be converted to JS",
-                                            key_str,
-                                            elem_value_type.desc()
-                                        ),
-                                    )
-                                ],
-                            });
-                        }
-                    }
-                },
-            }
-        }
-        if !errors.is_empty() {
-            return EResult {
-                v: None,
-                errors: Some(errors),
-            };
-        }
-        EResult::ok(wrap_with_carry(loc, carry, JsCode {
-            loc,
-            type_: JsCodeType::NewObject(JsCodeNewObject { fields: js_fields }),
-        }))
-    }
-}
-
-impl AspectBindJs for RecordValue {
-    fn bind_js(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
-        let record: Box<RecordValue> = (cv.value as Box<dyn Any>).downcast().unwrap();
-
-        // If the record has no source and no JS code (pure compile-time value, e.g. from
-        // a lifted record), bind as a value without producing JS.
-        let is_sourceless =
-            matches!(cv.code.code, Code_::None) && record.source.is_none() &&
-                record.fields.values().all(|f| match f {
-                    RecordField::EvalRes(er) => {
-                        er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
-                    },
-                    RecordField::Mortar(_) => false,
-                });
-        if is_sourceless {
-            let mut scope_fields = BTreeMap::new();
-            for (key, field) in record.fields {
-                match field {
-                    RecordField::EvalRes(er) => {
-                        if let Some(errs) = &er.errors {
-                            scope_fields.insert(key, RecordScopeField::Error(errs.clone()));
-                        } else if let Some(field_cv) = er.v {
-                            scope_fields.insert(
-                                key,
-                                RecordScopeField::Scope(
-                                    Box::new(ValueScopeEntry { value: Rc::from(field_cv.value) }),
-                                ),
-                            );
-                        }
-                    },
-                    RecordField::Mortar(_) => unreachable!(),
-                }
-            }
-            return EResult::ok((None, Box::new(RecordScopeEntryAsMortar { fields: scope_fields })));
-        }
-        let scope_fields: BTreeMap<ConstKey, RecordScopeField> = self.fields.iter().map(|(k, f)| {
-            let t = match f {
-                RecordField::Mortar(t) => t.clone(),
-                RecordField::EvalRes(_) => panic!("bind_js on non-type record"),
-            };
-            (k.clone(), RecordScopeField::Mortar(t))
-        }).collect();
-        let cv = CodeValue {
-            code: cv.code,
-            value: record,
-        };
-        self.to_js(xx, loc, cv).map(|c| {
-            (
-                Some(c),
-                Box::new(RecordScopeEntryAsMortar { fields: scope_fields }) as
-                    Box<dyn super::mortar_scope_entry::MortarScopeEntry>,
-            )
-        })
     }
 }
 
@@ -773,141 +339,5 @@ pub(crate) struct SharedValue {
 impl Value for SharedValue {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
         self.inner.type_(xx, loc)
-    }
-}
-
-struct RecordLiftJs {
-    entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)>,
-}
-
-impl Aspect for RecordLiftJs { }
-
-impl AspectLiftJs for RecordLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
-        let mut fields = BTreeMap::new();
-        for (key, entry_lift) in &self.entry_lifts {
-            let v8_key = v8::String::new(scope, key).unwrap();
-            let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
-            let lifted = entry_lift.lift(scope, v8_val)?;
-            let const_key = ConstKey::String(key.clone());
-            fields.insert(const_key, RecordField::EvalRes(EvalRes::ok(CodeValue {
-                code: Code {
-                    loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
-                    code: Code_::None,
-                },
-                value: lifted,
-            })));
-        }
-        Ok(Box::new(RecordValue {
-            source: None,
-            fields,
-        }))
-    }
-}
-
-/// Scope entry for a bound record. Maps each key to one of: a MortarScopeEntry
-/// (for fields that were mortar-only), a ScopeEntry (for fields that were fully
-/// evaluated), or an error.
-pub(crate) enum RecordScopeField {
-    Mortar(Rc<dyn Type>),
-    Scope(Box<dyn ScopeEntry>),
-    Error(Vec<crate::langhelp::ExprErr>),
-}
-
-pub(crate) struct RecordScopeEntry {
-    pub fields: BTreeMap<ConstKey, RecordScopeField>,
-}
-
-/// MortarScopeEntry adapter for sourceless records (used by bind_js when record
-/// has no JS code). On use_, constructs a RecordValue from the stored scope
-/// entries.
-struct RecordScopeEntryAsMortar {
-    fields: BTreeMap<ConstKey, RecordScopeField>,
-}
-
-impl super::mortar_scope_entry::MortarScopeEntry for RecordScopeEntryAsMortar {
-    fn use_(&self, value: super::mortar_js_value::MortarJsValue) -> EvalRes {
-        let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
-        let (loc, code, source) = if has_mortar {
-            let (loc, key) = match &value.source {
-                super::mortar_js_value::MortarJsValueSource::Binding(b) => (b.loc, b.key),
-                _ => unreachable!("RecordScopeEntryAsMortar with mortar fields called with non-binding source"),
-            };
-            (loc, Code {
-                loc,
-                code: Code_::Dyn(Rc::new(JsCode {
-                    loc,
-                    type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id: key }),
-                })),
-            }, Some(value.source))
-        } else {
-            let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-            (loc, Code {
-                loc,
-                code: Code_::None,
-            }, None)
-        };
-        let mut result_fields = BTreeMap::new();
-        for (key, field) in &self.fields {
-            match field {
-                RecordScopeField::Scope(se) => {
-                    let cv = se.use_(loc, Code {
-                        loc,
-                        code: Code_::None,
-                    });
-                    result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(cv)));
-                },
-                RecordScopeField::Mortar(t) => {
-                    result_fields.insert(key.clone(), RecordField::Mortar(t.clone()));
-                },
-                RecordScopeField::Error(errs) => {
-                    result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes {
-                        v: None,
-                        errors: Some(errs.clone()),
-                    }));
-                },
-            }
-        }
-        EvalRes::ok(CodeValue {
-            code,
-            value: Box::new(RecordValue {
-                source,
-                fields: result_fields,
-            }),
-        })
-    }
-}
-
-impl ScopeEntry for RecordScopeEntry {
-    fn use_(&self, loc: QExprId, code: Code) -> CodeValue {
-        let mut result_fields = BTreeMap::new();
-        for (key, field) in &self.fields {
-            match field {
-                RecordScopeField::Scope(se) => {
-                    let cv = se.use_(loc, code.clone());
-                    result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(cv)));
-                },
-                RecordScopeField::Mortar(t) => {
-                    result_fields.insert(key.clone(), RecordField::Mortar(t.clone()));
-                },
-                RecordScopeField::Error(errs) => {
-                    result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes {
-                        v: None,
-                        errors: Some(errs.clone()),
-                    }));
-                },
-            }
-        }
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Box::new(RecordValue {
-                source: None,
-                fields: result_fields,
-            }),
-        }
     }
 }

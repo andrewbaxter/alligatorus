@@ -94,9 +94,9 @@ impl Type for TypeType {
         // For record values, extract entry binding IDs so TypeRef::from_v8 can look up
         // actual v8 values (needed for tagged union data)
         let mut entry_bindings = std::collections::BTreeMap::new();
-        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<crate::eval::tuple::RecordValue>() {
+        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<crate::eval::record::Record>() {
             for (key, field) in &record.fields {
-                if let crate::eval::tuple::RecordField::EvalRes(entry_res) = field {
+                if let crate::eval::record::RecordField::EvalRes(entry_res) = field {
                     if let Some(entry_cv) = &entry_res.v {
                         if let Some(js) = entry_cv.code.cast::<JsCode>().v.flatten() {
                             if let JsCodeType::BindingUse(b) = &js.type_ {
@@ -130,10 +130,10 @@ impl AspectType for TypeTypeAspectType {
         if let Some(trv) = any.downcast_ref::<TypeRefValue>() {
             return trv.type_.clone();
         }
-        if let Some(tt) = any.downcast_ref::<super::tuple::TypeTuple>() {
-            return Rc::new(super::tuple::TypeTuple { types: tt.types.clone() });
+        if let Some(tt) = any.downcast_ref::<super::tuple::Tuple>() {
+            return Rc::new(tt.clone_as_type());
         }
-        if let Some(rv) = any.downcast_ref::<super::tuple::RecordValue>() {
+        if let Some(rv) = any.downcast_ref::<super::record::Record>() {
             return rv.as_type();
         }
         panic!("TypeTypeAspectType: unknown type value");

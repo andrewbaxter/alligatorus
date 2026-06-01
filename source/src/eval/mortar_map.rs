@@ -369,16 +369,16 @@ impl AspectSet for TypeMortarMap {
 impl AspectIterable for TypeMortarMap {
     fn element_type(&self) -> Rc<dyn Type> {
         // Map iteration yields records with "key" and "value" fields
-        Rc::new(super::tuple::RecordValue {
+        Rc::new(super::record::Record {
             source: None,
             fields: [
                 (
                     crate::langhelp::ConstKey::String("key".to_string()),
-                    super::tuple::RecordField::Mortar(self.key_type.clone()),
+                    super::record::RecordField::Mortar(self.key_type.clone()),
                 ),
                 (
                     crate::langhelp::ConstKey::String("value".to_string()),
-                    super::tuple::RecordField::Mortar(self.value_type.clone()),
+                    super::record::RecordField::Mortar(self.value_type.clone()),
                 ),
             ]
                 .into_iter()

@@ -15,6 +15,7 @@ pub mod mortar_map;
 pub mod mortar_function;
 pub mod expr;
 pub mod tuple;
+pub mod record;
 #[macro_use]
 pub mod jswrap;
 pub mod type_ref;
@@ -145,12 +146,15 @@ use {
         },
     },
     string::ValueString,
-    tuple::{
+    record::{
         RecordField,
-        RecordValue,
+        Record,
+    },
+    tuple::{
+        Tuple,
+        TupleElement,
         StaticScopeEntry,
         ValueScopeEntry,
-        ValueTuple,
     },
     dumpster::unsync::Gc,
     v8::tc_scope,
@@ -855,13 +859,17 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             return eval_half(xx, &e.expr, target);
         },
         Expr_::Tuple(t) => {
-            let elements: Vec<EvalRes> = t.elements.iter().map(|e| eval_half(xx, e, target)).collect();
+            let elements: Vec<TupleElement> =
+                t.elements.iter().map(|e| TupleElement::EvalRes(eval_half(xx, e, target))).collect();
             return EvalRes::ok(CodeValue {
                 code: Code {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: Box::new(ValueTuple { elements }),
+                value: Box::new(Tuple {
+                    source: None,
+                    elements,
+                }),
             });
         },
         Expr_::Record(r) => {
@@ -919,7 +927,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             let fields = entries.into_iter().map(|(k, v)| (k, RecordField::EvalRes(v))).collect();
             return EvalRes::ok(CodeValue {
                 code,
-                value: Box::new(RecordValue {
+                value: Box::new(Record {
                     source: None,
                     fields,
                 }),

@@ -264,7 +264,7 @@ fn enhance_type_with_v8_obj<
     use std::any::Any;
 
     let base_any: &dyn Any = base_type.as_ref();
-    if let Some(record_type) = base_any.downcast_ref::<super::tuple::RecordValue>() {
+    if let Some(record_type) = base_any.downcast_ref::<super::record::Record>() {
         if !record_type.is_type() {
             return base_type;
         }
@@ -272,16 +272,16 @@ fn enhance_type_with_v8_obj<
             return base_type;
         }
         let obj = v8::Local::<v8::Object>::try_from(bindings_obj).unwrap();
-        let mut new_fields: std::collections::BTreeMap<crate::langhelp::ConstKey, super::tuple::RecordField> =
+        let mut new_fields: std::collections::BTreeMap<crate::langhelp::ConstKey, super::record::RecordField> =
             record_type.fields.iter().map(|(k, f)| {
                 (k.clone(), match f {
-                    super::tuple::RecordField::Mortar(t) => super::tuple::RecordField::Mortar(t.clone()),
+                    super::record::RecordField::Mortar(t) => super::record::RecordField::Mortar(t.clone()),
                     _ => panic!("expected type record"),
                 })
             }).collect();
         for (key, field) in &record_type.fields {
             let entry_type = match field {
-                super::tuple::RecordField::Mortar(t) => t,
+                super::record::RecordField::Mortar(t) => t,
                 _ => continue,
             };
             let key_str = match key {
@@ -296,7 +296,7 @@ fn enhance_type_with_v8_obj<
                         let ref_: Rc<super::definition_set::TaggedUnionRef> = super::rc_from_v8(&*v8_val);
                         new_fields.insert(
                             key.clone(),
-                            super::tuple::RecordField::Mortar(
+                            super::record::RecordField::Mortar(
                                 Rc::new(
                                     super::definition_set::tagged_union::MortarTypeTaggedUnionRef {
                                         data: Some(ref_.data.clone()),
@@ -308,7 +308,7 @@ fn enhance_type_with_v8_obj<
                 }
             }
         }
-        return Rc::new(super::tuple::RecordValue {
+        return Rc::new(super::record::Record {
             source: None,
             fields: new_fields,
         });
@@ -592,7 +592,10 @@ macro_rules! jswrap{
     };
     // --- Helpers --- 0 args → empty tuple type
     (@ arg_mortar_type) => {
-        Rc::new(crate::eval::tuple::TypeTuple { types: vec![] }) as Rc<dyn Type>
+        Rc::new(crate::eval::tuple::Tuple {
+            source: None,
+            elements: vec![]
+        }) as Rc<dyn Type>
     };
     // 1 arg → single type
     (@ arg_mortar_type $single: ty) => {
@@ -600,11 +603,13 @@ macro_rules! jswrap{
     };
     // 2+ args → tuple type
     (@ arg_mortar_type $first: ty, $($rest: ty), +) => {
-        Rc::new(
-            crate::eval::tuple::TypeTuple {
-                types: vec![<$first as JsWrap >:: mortar_type(), $(<$rest as JsWrap >:: mortar_type()), +],
-            }
-        ) as
-            Rc<dyn Type>
+        Rc::new(crate::eval::tuple::Tuple {
+            source: None,
+            elements: vec![
+                crate:: eval:: tuple:: TupleElement:: Mortar(<$first as JsWrap >:: mortar_type()),
+                $(crate:: eval:: tuple:: TupleElement:: Mortar(<$rest as JsWrap >:: mortar_type())),
+                +
+            ],
+        }) as Rc<dyn Type>
     };
 }
