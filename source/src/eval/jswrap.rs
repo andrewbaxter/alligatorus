@@ -114,8 +114,25 @@ impl JsWrap for TypeRef {
             }));
         }
 
-        // Leaf type: v8 external → rc_from_v8 to get a Type
-        TypeRef(super::type_from_v8_external(scope, value))
+        // Leaf type: v8 external → extract Rc`<dyn Type>`
+        let any = super::from_v8_any(&*value);
+        if let Some(type_) = any.downcast_ref::<Rc<dyn Type>>() {
+            return TypeRef(type_.clone());
+        }
+        if let Some(ref_) = any.downcast_ref::<Rc<super::definition_set::TaggedUnionRef>>() {
+            return TypeRef(
+                Rc::new(
+                    super::definition_set::tagged_union::MortarTypeTaggedUnionRef { data: Some(ref_.data.clone()) },
+                ),
+            );
+        }
+        if let Some(ref_) = any.downcast_ref::<Rc<super::definition_set::DefinitionSetDataTypeRef>>() {
+            return TypeRef(Rc::new(super::definition_set::DefinitionSetDataType {
+                set: ref_.set.clone(),
+                data_type_index: ref_.data_type_index,
+            }));
+        }
+        panic!("TypeRef::from_v8: unhandled external type")
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {

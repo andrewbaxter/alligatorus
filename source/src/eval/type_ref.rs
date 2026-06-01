@@ -36,12 +36,6 @@ pub(crate) struct TypeRefValue {
     pub field_codes: Vec<(crate::langhelp::ConstKey, crate::langhelp::Code)>,
 }
 
-/// Thin wrapper for storing an Rc`<dyn Type>` as a v8 external. Used for leaf
-/// (non-tuple, non-record) types in TypeType::to_js.
-pub(crate) struct TypeRefCell {
-    pub type_: Rc<dyn Type>,
-}
-
 impl Value for TypeRefValue {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeType)
@@ -224,7 +218,7 @@ fn type_ref_to_js(
 
 /// Serialize a single type to JS. If `field_code` is provided, uses the original
 /// JS code (which evaluates to the actual v8 value at runtime with complete data).
-/// Otherwise stores the type as a TypeRefCell external.
+/// Otherwise stores the type as an Rc`<dyn Type>` external.
 fn type_ref_to_js_leaf(
     xx: &ExprContext,
     loc: QExprId,
@@ -246,10 +240,9 @@ fn type_ref_to_js_leaf(
         }
     }
 
-    // Otherwise store as TypeRefCell external
-    let cell = Rc::new(TypeRefCell { type_: type_.clone() });
+    // Otherwise store as Rc`<dyn Type>` external
     let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-    xx.vx.externals.borrow_mut().push((id, cell));
+    xx.vx.externals.borrow_mut().push((id, Box::new(type_.clone())));
     EResult::ok(JsCode {
         loc,
         type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),

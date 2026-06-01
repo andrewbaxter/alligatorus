@@ -151,7 +151,7 @@ pub(crate) struct EvalContext {
     pub(crate) definition_sets: std
     ::cell
     ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
-    pub(crate) externals: RefCell<Vec<(ScopeEntryId, Rc<dyn Any>)>>,
+    pub(crate) externals: RefCell<Vec<(ScopeEntryId, Box<dyn Any>)>>,
 }
 
 /// Per expression
