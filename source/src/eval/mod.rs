@@ -242,15 +242,6 @@ pub(crate) fn type_from_v8_external<
         let cell: Rc<type_ref::TypeRefCell> = rc_from_v8(&*value);
         return cell.type_.clone();
     }
-    if type_id == std::any::TypeId::of::<expr::StagedExprCell>() {
-        let cell: Rc<expr::StagedExprCell> = rc_from_v8(&*value);
-        let inner = cell.value.borrow_mut().take().expect("type_from_v8_external: StagedExprCell already consumed");
-        let trv =
-            (inner.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<type_ref::TypeRefValue>()
-                .expect("type_from_v8_external: StagedExprCell must contain TypeRefValue");
-        return trv.type_.clone();
-    }
     if type_id == std::any::TypeId::of::<definition_set::TaggedUnionRef>() {
         let ref_: Rc<definition_set::TaggedUnionRef> = rc_from_v8(&*value);
         return Rc::new(definition_set::tagged_union::MortarTypeTaggedUnionRef { data: Some(ref_.data.clone()) });
