@@ -30,7 +30,6 @@ use {
             aspect_consume_js_get,
             aspect_consume_js_get_maybe,
             aspect_field_get,
-            aspect_field_get_maybe,
             aspect_function_get,
             aspect_lift_js_get,
             aspect_iterable_get,
@@ -1073,63 +1072,12 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
             dest = erb.must_er(source_type.cast_to(xx, loc, source, dest_type))?;
         } else if dest_type.can_cast_from(xx, loc, &source) {
             dest = erb.must_er(dest_type.cast_from(xx, loc, source))?;
-        } else if let Some(dest1) = erb.maybe_er(typecheck_convert_record(xx, loc, dest_type, source)) {
-            dest = dest1;
         } else {
             return erb.err_new(
                 format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
             );
         }
         return Ok(dest);
-    });
-}
-
-fn typecheck_convert_record(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
-    return er_seq_cv!(loc, erb, {
-        let dest_field = match aspect_field_get_maybe(xx, dest_type) {
-            Some(f) => f,
-            None => return erb.err_new(format!("Not a record type")),
-        };
-        let any_source: Box<dyn Any> = source.value;
-        let record = match any_source.downcast::<RecordValue>() {
-            Ok(r) => r,
-            Err(_) => return erb.err_new(format!("Source is not a record value")),
-        };
-        let mut converted_fields = std::collections::BTreeMap::new();
-        for (key, field) in record.fields {
-            let key_str = match &key {
-                ConstKey::String(s) => s.clone(),
-                ConstKey::Usize(n) => n.to_string(),
-            };
-            let dest_entry_type = match dest_field.field_opt(xx, &key_str) {
-                Some(t) => t,
-                None => {
-                    return erb.err_new(format!("Dest record missing key {:?}", key_str));
-                },
-            };
-            let converted_field = match field {
-                RecordField::EvalRes(entry_res) => {
-                    if let Some(entry_cv) = entry_res.v {
-                        let conv = erb.must_er(typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv))?;
-                        RecordField::EvalRes(EvalRes::ok(conv))
-                    } else {
-                        RecordField::EvalRes(EvalRes {
-                            v: None,
-                            errors: entry_res.errors,
-                        })
-                    }
-                },
-                RecordField::Mortar(_) => RecordField::Mortar(dest_entry_type),
-            };
-            converted_fields.insert(key, converted_field);
-        }
-        return Ok(CodeValue {
-            code: source.code,
-            value: Box::new(RecordValue {
-                source: record.source,
-                fields: converted_fields
-            }),
-        });
     });
 }
 
