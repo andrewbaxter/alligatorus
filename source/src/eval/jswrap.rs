@@ -145,78 +145,25 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        if value.is_external() {
-            // Staged record expression: extract the record AST and decompose into entries
-            let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
-            let inner = cell.value.borrow_mut().take().expect("BTreeMap staged value already consumed");
-            let record_expr =
-                (inner.as_ref() as &dyn std::any::Any)
-                    .downcast_ref::<expr::Expr>()
-                    .expect("BTreeMap staged value must be an Expr");
-            let entries = match &record_expr.r#type {
-                expr::Expr_::Record(r) => &r.entries,
-                _ => panic!("BTreeMap staged expression must be a Record"),
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
+        let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
+        let len = keys.length();
+        let mut map = std::collections::BTreeMap::new();
+        for i in 0 .. len {
+            let js_key = keys.get_index(scope, i).unwrap();
+            let key_str = js_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+            let key = match K::from_js_key(&key_str) {
+                Ok(k) => k,
+                Err(e) => {
+                    super::v8util::throw_error(scope, &format!("Invalid map key: {}", e));
+                    return std::collections::BTreeMap::new();
+                },
             };
-            let mut map = std::collections::BTreeMap::new();
-            for (k_expr, v_expr) in entries {
-                // Extract the key string from the literal expression
-                let key_str = match &k_expr.r#type {
-                    expr::Expr_::Literal(lit) => {
-                        let val = lit();
-                        let val_any: &dyn std::any::Any = val.as_ref();
-                        if let Some(s) = val_any.downcast_ref::<crate::eval::string::ValueString>() {
-                            // Canonicalize: from_js_key expects canonical ConstKey format
-                            crate::langhelp::ConstKey::String(s.0.clone()).to_str()
-                        } else {
-                            panic!("BTreeMap staged record key must be a string literal")
-                        }
-                    },
-                    _ => panic!("BTreeMap staged record key must be a literal"),
-                };
-                let key = match K::from_js_key(&key_str) {
-                    Ok(k) => k,
-                    Err(e) => {
-                        super::v8util::throw_error(scope, &format!("Invalid map key: {}", e));
-                        return std::collections::BTreeMap::new();
-                    },
-                };
-
-                // Wrap value in a StagedExprCell for V::from_v8
-                let v_cell =
-                    Rc::new(
-                        expr::StagedExprCell {
-                            value: std::cell::RefCell::new(
-                                Some(Box::new(v_expr.clone()) as Box<dyn crate::langhelp::Value>),
-                            ),
-                        },
-                    );
-                let v_ext = v8::External::new(&**scope, Box::into_raw(Box::new(v_cell)) as *mut std::ffi::c_void);
-                let val = V::from_v8(scope, v_ext.into());
-                map.insert(key, val);
-            }
-            map
-        } else {
-            // Regular JS object
-            let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
-            let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
-            let len = keys.length();
-            let mut map = std::collections::BTreeMap::new();
-            for i in 0 .. len {
-                let js_key = keys.get_index(scope, i).unwrap();
-                let key_str = js_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
-                let key = match K::from_js_key(&key_str) {
-                    Ok(k) => k,
-                    Err(e) => {
-                        super::v8util::throw_error(scope, &format!("Invalid map key: {}", e));
-                        return std::collections::BTreeMap::new();
-                    },
-                };
-                let js_val = obj.get(scope, js_key).unwrap();
-                let val = V::from_v8(scope, js_val);
-                map.insert(key, val);
-            }
-            map
+            let js_val = obj.get(scope, js_key).unwrap();
+            let val = V::from_v8(scope, js_val);
+            map.insert(key, val);
         }
+        map
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
