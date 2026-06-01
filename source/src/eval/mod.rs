@@ -1069,25 +1069,16 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
     return er_seq_cv!(loc, erb, {
         let source_type = source.value.type_(xx, loc);
         let dest;
-        if let Some(dest1) = erb.maybe_er(source_type.cast_to(xx, loc, &source, dest_type)) {
-            dest = dest1;
-        } else if let Some(dest1) = erb.maybe_er(dest_type.cast_from(xx, loc, &source)) {
+        if source_type.can_cast_to(xx, loc, dest_type) {
+            dest = erb.must_er(source_type.cast_to(xx, loc, source, dest_type))?;
+        } else if dest_type.can_cast_from(xx, loc, &source) {
+            dest = erb.must_er(dest_type.cast_from(xx, loc, source))?;
+        } else if let Some(dest1) = erb.maybe_er(typecheck_convert_record(xx, loc, dest_type, source)) {
             dest = dest1;
         } else {
-            match dest_type.cast_from_owned(xx, loc, source) {
-                Ok(dest1) => {
-                    dest = dest1;
-                },
-                Err(source) => {
-                    if let Some(dest1) = erb.maybe_er(typecheck_convert_record(xx, loc, dest_type, source)) {
-                        dest = dest1;
-                    } else {
-                        return erb.err_new(
-                            format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
-                        );
-                    }
-                },
-            }
+            return erb.err_new(
+                format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
+            );
         }
         return Ok(dest);
     });

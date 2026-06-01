@@ -95,60 +95,63 @@ impl Type for TypeMortarString {
         return None;
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            erb.must_er(aspect_js_string_get(xx, loc, type_))?;
-            return Ok(CodeValue {
-                code: cv.code.clone(),
-                value: Box::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
-                    type_: Rc::new(TypeMortarString),
-                })
-            });
-        });
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        aspect_js_string_get_maybe(xx, type_).is_some()
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Box::new(MortarJsValue {
+                source: MortarJsValueSource::Expr,
+                type_: Rc::new(TypeMortarString),
+            }),
+        })
+    }
+
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let type_ = cv.value.type_(xx, loc);
+        aspect_string_get_maybe(xx, type_.as_ref()).is_some() ||
+            aspect_js_string_get_maybe(xx, type_.as_ref()).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(xx, loc);
-            return Ok(erb.must_er(er_one!(loc, "searching for string aspects", {
-                aspect_string = aspect_string_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
-                    let CodeValue { code, value } = cv;
-                    let mut seq = vec![];
-                    if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
-                        seq.push(c.clone());
-                    };
-                    seq.push(JsCode {
+            if let Some(aspect_string) = aspect_string_get_maybe(xx, type_.as_ref()) {
+                let CodeValue { code, value } = cv;
+                let mut seq = vec![];
+                if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
+                    seq.push(c.clone());
+                };
+                seq.push(JsCode {
+                    loc: loc,
+                    type_: JsCodeType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
+                });
+                return Ok(CodeValue {
+                    code: Code {
                         loc: loc,
-                        type_: JsCodeType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
-                    });
-                    return Ok(CodeValue {
-                        code: Code {
+                        code: Code_::Dyn(Rc::new(JsCode {
                             loc: loc,
-                            code: Code_::Dyn(Rc::new(JsCode {
-                                loc: loc,
-                                type_: JsCodeType::Block(
-                                    JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
-                                )
-                            }))
-                        },
-                        value: Box::new(MortarJsValue {
-                            source: MortarJsValueSource::Expr,
-                            type_: Rc::new(TypeMortarString),
-                        }),
-                    });
-                }),
-                _x = aspect_js_string_get_maybe(xx, type_.as_ref()) => er_seq_cv !(loc, erb, {
-                    let CodeValue { code, value: _value } = cv;
-                    return Ok(CodeValue {
-                        code: code.clone(),
-                        value: Box::new(MortarJsValue {
-                            source: MortarJsValueSource::Expr,
-                            type_: Rc::new(TypeMortarString),
-                        })
-                    });
-                }),
-            }))?);
+                            type_: JsCodeType::Block(
+                                JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                            )
+                        }))
+                    },
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(TypeMortarString),
+                    }),
+                });
+            } else {
+                return Ok(CodeValue {
+                    code: cv.code,
+                    value: Box::new(MortarJsValue {
+                        source: MortarJsValueSource::Expr,
+                        type_: Rc::new(TypeMortarString),
+                    })
+                });
+            }
         });
     }
 }

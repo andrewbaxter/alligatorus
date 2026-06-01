@@ -285,17 +285,16 @@ pub(crate) trait Aspect: Any { }
 pub(crate) trait Type: Value {
     fn desc(&self) -> String;
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes;
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes;
-    /// Like cast_from but takes ownership of the source. Returns Ok(converted) on
-    /// success or Err(source) on failure (returning the source back). Default
-    /// delegates to cast_from.
-    fn cast_from_owned(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeValue, CodeValue> {
-        match self.cast_from(xx, loc, &cv).v {
-            Some(v) => Ok(v),
-            None => Err(cv),
-        }
+
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        false
     }
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes;
+
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &CodeValue) -> bool {
+        false
+    }
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;
 }
 
 #[derive(Default)]

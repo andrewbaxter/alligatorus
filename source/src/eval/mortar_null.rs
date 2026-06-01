@@ -13,6 +13,7 @@ use {
             aspect_lift_js_aspect_id,
             aspect_null_aspect_id,
             aspect_null_get,
+            aspect_null_get_maybe,
             aspect_serial_aspect_id,
         },
         jscode::{
@@ -86,22 +87,28 @@ impl Type for TypeMortarNull {
         return None;
     }
 
-    fn cast_to(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            erb.must_er(aspect_null_get(ex, loc, type_))?;
-            return Ok(CodeValue {
-                code: cv.code.clone(),
-                value: Box::new(ValueNull),
-            });
-        });
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        aspect_null_get_maybe(xx, type_).is_some()
     }
 
-    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Box::new(ValueNull),
+        })
+    }
+
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let type_ = cv.value.type_(xx, loc);
+        aspect_null_get_maybe(xx, type_.as_ref()).is_some()
+    }
+
+    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(ex, loc);
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
-                code: cv.code.clone(),
+                code: cv.code,
                 value: Box::new(ValueNull),
             });
         });

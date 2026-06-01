@@ -4,6 +4,7 @@ use {
             AspectBool,
             aspect_bool_aspect_id,
             aspect_bool_get,
+            aspect_bool_get_maybe,
         },
         langhelp::{
             Aspect,
@@ -45,24 +46,33 @@ impl Type for TypeBool {
         return None;
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        aspect_bool_get_maybe(xx, type_).is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_))?;
             return Ok(CodeValue {
-                code: code.clone(),
+                code: code,
                 value: Box::new(ValueBool(aspect_bool.get(value.as_ref())))
             });
         });
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let type_ = cv.value.type_(xx, loc);
+        aspect_bool_get_maybe(xx, type_.as_ref()).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let type_ = value.type_(xx, loc);
             let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
-                code: code.clone(),
+                code: code,
                 value: Box::new(ValueBool(aspect_bool.get(value.as_ref())))
             });
         });

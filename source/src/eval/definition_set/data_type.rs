@@ -117,7 +117,31 @@ impl Type for DefinitionSetDataType {
         return None;
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        let (own_identity, iface_data) = {
+            let data_types = self.set.data_types.borrow();
+            let dt = &data_types[self.data_type_index];
+            let own = dt.identity.clone();
+            let interface_impls = dt.interface_impls.borrow();
+            let interfaces = self.set.interfaces.borrow();
+            let ifaces: Vec<crate::langhelp::Unique> = interface_impls.iter().map(|impl_data| {
+                let iface = &interfaces[impl_data.interface_index];
+                iface.identity.clone()
+            }).collect();
+            (own, ifaces)
+        };
+        if type_.aspect(xx, &own_identity).is_some() {
+            return true;
+        }
+        for identity in iface_data {
+            if type_.aspect(xx, &identity).is_some() {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         // Extract own identity + interface identities (drop borrows before calling
         // aspect())
         let (own_identity, iface_data) = {
@@ -136,7 +160,7 @@ impl Type for DefinitionSetDataType {
         // Same data type check
         if type_.aspect(xx, &own_identity).is_some() {
             return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
+                code: cv.code,
                 value: Box::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(DefinitionSetDataType {
@@ -151,7 +175,7 @@ impl Type for DefinitionSetDataType {
         for (interface_index, identity) in iface_data {
             if type_.aspect(xx, &identity).is_some() {
                 return EvalRes::ok(CodeValue {
-                    code: cv.code.clone(),
+                    code: cv.code,
                     value: Box::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(DefinitionSetInterface {
@@ -165,7 +189,7 @@ impl Type for DefinitionSetDataType {
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
     }
 }

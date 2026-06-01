@@ -38,15 +38,22 @@ async fn test_00900define_interface() {
                         mb.field(mb.scope_use("iface"), mb.str("type")),
                         mb.call(
                             mb.field(
-                                mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("null")])),
+                                mb.call(
+                                    mb.scope_use("map"),
+                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("null")])
+                                ),
                                 mb.str("new"),
                             ),
-                            mb.record(vec![
-                                (
-                                    "to_string",
-                                    mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())),
-                                ),
-                            ]),
+                            mb.record(
+                                vec![
+                                    (
+                                        "to_string",
+                                        mb.stage(
+                                            mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())
+                                        ),
+                                    ),
+                                ]
+                            ),
                         ),
                     ]
                 ),
@@ -236,15 +243,22 @@ async fn test_00910interface_cast() {
                         mb.field(mb.scope_use("iface"), mb.str("type")),
                         mb.call(
                             mb.field(
-                                mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("null")])),
+                                mb.call(
+                                    mb.scope_use("map"),
+                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("null")])
+                                ),
                                 mb.str("new"),
                             ),
-                            mb.record(vec![
-                                (
-                                    "to_string",
-                                    mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())),
-                                ),
-                            ]),
+                            mb.record(
+                                vec![
+                                    (
+                                        "to_string",
+                                        mb.stage(
+                                            mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())
+                                        ),
+                                    ),
+                                ]
+                            ),
                         ),
                     ]
                 ),

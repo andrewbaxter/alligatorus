@@ -82,15 +82,20 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert interface_ref"))
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let source_type = cv.value.type_(xx, loc);
+        source_type.aspect(xx, &interface_ref_type_identity()).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &interface_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
+                code: cv.code,
                 value: Box::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),

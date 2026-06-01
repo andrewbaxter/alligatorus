@@ -217,11 +217,15 @@ impl Type for ExprType {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         return EvalRes::err(loc, format!("Cannot convert expr to other type"));
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &CodeValue) -> bool {
+        true
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
             let expr =
@@ -230,7 +234,7 @@ impl Type for ExprType {
                     .expect("ExprType value must be an Expr")
                     .clone();
             return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
+                code: cv.code,
                 value: Box::new(expr),
             });
         }
@@ -244,7 +248,7 @@ impl Type for ExprType {
             })),
         };
         return EvalRes::ok(CodeValue {
-            code: cv.code.clone(),
+            code: cv.code,
             value: Box::new(expr),
         });
     }
@@ -317,11 +321,11 @@ impl Type for StagedExprPlaceholderType {
         None
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert stage result".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, "Cannot convert to stage result".to_string())
     }
 }

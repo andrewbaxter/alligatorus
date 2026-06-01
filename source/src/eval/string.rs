@@ -13,6 +13,7 @@ use {
             aspect_field_aspect_id,
             aspect_string_aspect_id,
             aspect_string_get,
+            aspect_string_get_maybe,
         },
         jscode::JsCode,
         langhelp::{
@@ -60,24 +61,33 @@ impl Type for TypeString {
         return None;
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        aspect_string_get_maybe(xx, type_).is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_))?;
             return Ok(CodeValue {
-                code: code.clone(),
+                code: code,
                 value: Box::new(ValueString(aspect_string.get(value.as_ref())))
             });
         });
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let type_ = cv.value.type_(xx, loc);
+        aspect_string_get_maybe(xx, type_.as_ref()).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let type_ = value.type_(xx, loc);
             let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
-                code: code.clone(),
+                code: code,
                 value: Box::new(ValueString(aspect_string.get(value.as_ref())))
             });
         });
@@ -93,7 +103,7 @@ impl AspectBindJs for TypeString {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
-        TypeMortarString::cast_from(&TypeMortarString, xx, loc, &cv).map(|js| {
+        TypeMortarString::cast_from(&TypeMortarString, xx, loc, cv).map(|js| {
             bind_js_some(
                 loc,
                 js.code.cast::<JsCode>().v.unwrap().unwrap().clone(),
@@ -112,7 +122,7 @@ impl AspectString for TypeString {
 impl AspectField for TypeString {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let converted = erb.must_er(TypeMortarString.cast_from(xx, loc, &self_))?;
+            let converted = erb.must_er(TypeMortarString.cast_from(xx, loc, self_))?;
             let v = erb.must_er(AspectField::field(&TypeMortarString, xx, loc, converted, key))?;
             return Ok(v);
         });

@@ -78,13 +78,17 @@ impl Type for TypeType {
         &self,
         _xx: &ExprContext,
         loc: QExprId,
-        _cv: &crate::langhelp::CodeValue,
+        _cv: crate::langhelp::CodeValue,
         _type_: &dyn Type,
     ) -> crate::langhelp::EvalRes {
         crate::langhelp::EvalRes::err(loc, "Cannot convert type".to_string())
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &crate::langhelp::CodeValue) -> bool {
+        true
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
         let type_ = cv.value.type_(xx, loc);
 
         // For record values, extract entry binding IDs so TypeRef::from_v8 can look up
@@ -106,7 +110,7 @@ impl Type for TypeType {
             }
         }
         crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
-            code: cv.code.clone(),
+            code: cv.code,
             value: Box::new(TypeRefValue {
                 type_,
                 entry_bindings,

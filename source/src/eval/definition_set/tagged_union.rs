@@ -121,37 +121,44 @@ impl Type for MortarTypeTaggedUnionRef {
         return None;
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue, type_: &dyn Type) -> EvalRes {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         if let Some(data) = &self.data {
-            if type_.aspect(xx, &data.identity).is_some() {
-                return EvalRes::ok(CodeValue {
-                    code: cv.code.clone(),
-                    value: Box::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
-                    }),
-                });
-            }
+            type_.aspect(xx, &data.identity).is_some()
         } else {
-            if type_.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
-                return EvalRes::ok(CodeValue {
-                    code: cv.code.clone(),
-                    value: Box::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
-                    }),
-                });
-            }
+            type_.aspect(xx, &tagged_union_ref_type_identity()).is_some()
         }
-        EvalRes::err(loc, format!("Cannot convert tagged_union_ref"))
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Box::new(MortarJsValue {
+                source: MortarJsValueSource::Expr,
+                type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
+            }),
+        })
+    }
+
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let source_type = cv.value.type_(xx, loc);
+        if let Some(data) = &self.data {
+            if source_type.aspect(xx, &data.identity).is_some() {
+                return true;
+            }
+        } else {
+            if source_type.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
+                return true;
+            }
+        }
+        source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if let Some(data) = &self.data {
             if source_type.aspect(xx, &data.identity).is_some() {
                 return EvalRes::ok(CodeValue {
-                    code: cv.code.clone(),
+                    code: cv.code,
                     value: Box::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
@@ -161,7 +168,7 @@ impl Type for MortarTypeTaggedUnionRef {
         } else {
             if source_type.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
                 return EvalRes::ok(CodeValue {
-                    code: cv.code.clone(),
+                    code: cv.code,
                     value: Box::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
@@ -171,7 +178,7 @@ impl Type for MortarTypeTaggedUnionRef {
         }
         if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
             return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
+                code: cv.code,
                 value: Box::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: source_type,
@@ -257,11 +264,11 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tagged_union_constructor_ref"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
     }
 }
@@ -386,11 +393,11 @@ impl Type for TaggedUnionType {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tagged_union"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert to tagged_union"))
     }
 }
@@ -465,11 +472,11 @@ impl Type for TaggedUnionConstructor {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tagged_union_constructor"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor"))
     }
 }

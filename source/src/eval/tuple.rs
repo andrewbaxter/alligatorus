@@ -105,11 +105,11 @@ impl Type for TypeTuple {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tuple to other type"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert to tuple type"))
     }
 }
@@ -353,11 +353,27 @@ impl Type for RecordValue {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert record to other type"))
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let source_type = cv.value.type_(xx, loc);
+        let source_any: &dyn std::any::Any = source_type.as_ref();
+        let source_keys_match = if let Some(source_record) = source_any.downcast_ref::<RecordValue>() {
+            source_record.is_type() && self.fields.keys().all(|k| source_record.fields.contains_key(k))
+        } else {
+            false
+        };
+        if source_keys_match {
+            let value_any: &dyn std::any::Any = cv.value.as_ref();
+            value_any.downcast_ref::<RecordValue>().is_none()
+        } else {
+            false
+        }
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         let source_any: &dyn std::any::Any = source_type.as_ref();
 
@@ -374,7 +390,7 @@ impl Type for RecordValue {
             let value_any: &dyn std::any::Any = cv.value.as_ref();
             if value_any.downcast_ref::<RecordValue>().is_none() {
                 return EvalRes::ok(CodeValue {
-                    code: cv.code.clone(),
+                    code: cv.code,
                     value: Box::new(super::mortar_js_value::MortarJsValue {
                         source: super::mortar_js_value::MortarJsValueSource::Expr,
                         type_: self.as_type(),
@@ -385,7 +401,6 @@ impl Type for RecordValue {
         EvalRes::err(loc, format!("Cannot convert to record type"))
     }
 }
-
 struct RecordAspectImpl;
 
 impl Aspect for RecordAspectImpl { }

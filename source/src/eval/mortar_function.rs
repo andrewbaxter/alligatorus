@@ -9,6 +9,7 @@ use {
             aspect_consume_js_get,
             aspect_function_aspect_id,
             aspect_function_get,
+            aspect_function_get_maybe,
             aspect_js_stack_value_get,
             aspect_tuple_get_maybe,
         },
@@ -75,16 +76,21 @@ impl Type for MortarTypeFunction {
         return None;
     }
 
-    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert mortar function"))
     }
 
-    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let source_type = cv.value.type_(xx, loc);
+        aspect_function_get_maybe(xx, source_type.as_ref()).is_some()
+    }
+
+    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let source_type = cv.value.type_(ex, loc);
             erb.must_er(aspect_function_get(ex, loc, source_type.as_ref()))?;
             return Ok(CodeValue {
-                code: cv.code.clone(),
+                code: cv.code,
                 value: Box::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),

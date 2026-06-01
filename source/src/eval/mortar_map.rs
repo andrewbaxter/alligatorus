@@ -87,11 +87,11 @@ impl Type for TypeMapConstructor {
         None
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert map constructor".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, "Cannot convert to map constructor".to_string())
     }
 }
@@ -185,71 +185,65 @@ impl Type for TypeMortarMap {
         None
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert map type".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(_xx, loc);
-        if aspect_mortar_map_get_maybe(_xx, source_type.as_ref()).is_some() {
-            return EvalRes::ok(CodeValue {
-                code: cv.code.clone(),
-                value: Box::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
-                    type_: Rc::new(self.clone()),
-                }),
-            });
-        }
-        EvalRes::err(loc, "Cannot convert to map type".to_string())
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+        let source_type = cv.value.type_(xx, loc);
+        aspect_mortar_map_get_maybe(xx, source_type.as_ref()).is_some() ||
+            (aspect_record_get_maybe(xx, source_type.as_ref()).is_some() &&
+                aspect_consume_js_get_maybe(xx, source_type.as_ref()).is_some())
     }
 
-    fn cast_from_owned(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeValue, CodeValue> {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
-        // Record source: convert the record to JS via AspectConsumeJs, then transform
-        // the resulting NewObject into a NewMap with canonical keys.
-        if aspect_record_get_maybe(xx, source_type.as_ref()).is_some() {
-            let to_js = match aspect_consume_js_get_maybe(xx, source_type.as_ref()) {
-                Some(t) => t,
-                None => return Err(cv),
-            };
-            let js = match to_js.to_js(xx, loc, cv).into_res() {
-                Ok(js) => js,
-                Err(_) => return Err(CodeValue {
-                    code: Code { loc, code: Code_::None },
-                    value: Box::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(self.clone()),
-                    }),
-                }),
-            };
-            let map_js = match &js.type_ {
-                JsCodeType::NewObject(obj) => JsCode {
-                    loc,
-                    type_: JsCodeType::NewMap(JsCodeNewMap {
-                        fields: obj.fields.iter().map(|(k, v)| {
-                            let canonical = crate::langhelp::ConstKey::String(k.clone()).to_str();
-                            (JsCode {
-                                loc,
-                                type_: JsCodeType::Literal(serde_json::Value::String(canonical)),
-                            }, v.clone())
-                        }).collect(),
-                    }),
-                },
-                _ => js,
-            };
-            return Ok(CodeValue {
-                code: Code { loc, code: Code_::Dyn(Rc::new(map_js)) },
+        if aspect_mortar_map_get_maybe(xx, source_type.as_ref()).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
                 value: Box::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
             });
         }
-        // Default: delegate to cast_from
-        match self.cast_from(xx, loc, &cv).v {
-            Some(v) => Ok(v),
-            None => Err(cv),
-        }
+
+        // Record source: convert the record to JS via AspectConsumeJs, then transform the
+        // resulting NewObject into a NewMap with canonical keys.
+        let to_js = match aspect_consume_js_get_maybe(xx, source_type.as_ref()) {
+            Some(t) => t,
+            None => return EvalRes::err(loc, "Cannot convert to map type".to_string()),
+        };
+        let js = match to_js.to_js(xx, loc, cv).into_res() {
+            Ok(js) => js,
+            Err(errs) => return EvalRes {
+                v: None,
+                errors: Some(errs),
+            },
+        };
+        let map_js = match &js.type_ {
+            JsCodeType::NewObject(obj) => JsCode {
+                loc,
+                type_: JsCodeType::NewMap(JsCodeNewMap { fields: obj.fields.iter().map(|(k, v)| {
+                    let canonical = crate::langhelp::ConstKey::String(k.clone()).to_str();
+                    (JsCode {
+                        loc,
+                        type_: JsCodeType::Literal(serde_json::Value::String(canonical)),
+                    }, v.clone())
+                }).collect() }),
+            },
+            _ => js,
+        };
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(map_js)),
+            },
+            value: Box::new(MortarJsValue {
+                source: MortarJsValueSource::Expr,
+                type_: Rc::new(self.clone()),
+            }),
+        })
     }
 }
 
@@ -454,11 +448,11 @@ impl Type for TypeMapNew {
         None
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert map new".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, "Cannot convert to map new".to_string())
     }
 }
@@ -472,6 +466,7 @@ impl AspectFunction for TypeMapNew {
             value_type: self.value_type.clone(),
         });
         let arg_type = argument.value.type_(xx, loc);
+
         // Empty tuple → empty map
         if let Some(t) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             if t.element_types().is_empty() {
@@ -484,8 +479,9 @@ impl AspectFunction for TypeMapNew {
                 });
             }
         }
-        // Non-empty argument: convert to map type via typecheck_convert (handles
-        // records via cast_from_owned)
+
+        // Non-empty argument: convert to map type via typecheck_convert (handles records
+        // via cast_from)
         super::typecheck_convert(xx, loc, instance_type.as_ref(), argument)
     }
 }

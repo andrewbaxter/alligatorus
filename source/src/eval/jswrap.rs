@@ -391,14 +391,18 @@ macro_rules! jswrap{
                     }
                     None
                 }
-                fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: &CodeValue, _type_: &dyn Type,) -> EvalRes {
+                fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type,) -> EvalRes {
                     EvalRes::err(loc, format!("Cannot convert {}", stringify!($name)))
                 }
-                fn cast_from(&self, xx: & ExprContext, loc: QExprId, cv: & CodeValue,) -> EvalRes {
+                fn can_cast_from(&self, xx: & ExprContext, loc: QExprId, cv: & CodeValue) -> bool {
+                    let source_type = cv.value.type_(xx, loc);
+                    source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some()
+                }
+                fn cast_from(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue,) -> EvalRes {
                     let source_type = cv.value.type_(xx, loc);
                     if source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some() {
                         return EvalRes:: ok(CodeValue {
-                            code: cv.code.clone(),
+                            code: cv.code,
                             value: Box:: new(crate:: eval:: mortar_js_value:: MortarJsValue {
                                 source: crate:: eval:: mortar_js_value:: MortarJsValueSource:: Expr,
                                 type_: std:: rc:: Rc:: new([<$name Type >]),
