@@ -16,7 +16,7 @@ pub(crate) trait JsWrap: Sized + 'static {
 /// Trait for types that can be used as BTreeMap keys in JsWrap. Converts between
 /// Rust keys and JS object property names (strings).
 pub(crate) trait JsWrapKey: Sized + Ord + 'static {
-    fn from_js_key(s: &str) -> Self;
+    fn from_js_key(s: &str) -> Result<Self, String>;
     fn to_js_key(&self) -> String;
 }
 
@@ -116,7 +116,13 @@ impl JsWrap for crate::langhelp::ConstKey {
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        crate::langhelp::ConstKey::from_str(&s).unwrap_or_else(|e| panic!("ConstKey::from_v8: {}", e))
+        match crate::langhelp::ConstKey::from_str(&s) {
+            Ok(k) => k,
+            Err(e) => {
+                super::v8util::throw_error(scope, &format!("Invalid ConstKey: {}", e));
+                crate::langhelp::ConstKey::String(String::new())
+            },
+        }
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
@@ -126,8 +132,8 @@ impl JsWrap for crate::langhelp::ConstKey {
 }
 
 impl JsWrapKey for crate::langhelp::ConstKey {
-    fn from_js_key(s: &str) -> Self {
-        crate::langhelp::ConstKey::from_str(s).unwrap_or_else(|e| panic!("ConstKey::from_js_key: {}", e))
+    fn from_js_key(s: &str) -> Result<Self, String> {
+        crate::langhelp::ConstKey::from_str(s)
     }
 
     fn to_js_key(&self) -> String {
@@ -188,7 +194,13 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
                     },
                     _ => panic!("BTreeMap staged record key must be a literal"),
                 };
-                let key = K::from_js_key(&key_str);
+                let key = match K::from_js_key(&key_str) {
+                    Ok(k) => k,
+                    Err(e) => {
+                        super::v8util::throw_error(scope, &format!("Invalid map key: {}", e));
+                        return std::collections::BTreeMap::new();
+                    },
+                };
 
                 // Wrap value in a StagedExprCell for V::from_v8
                 let v_cell =
@@ -213,7 +225,13 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
             for i in 0 .. len {
                 let js_key = keys.get_index(scope, i).unwrap();
                 let key_str = js_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
-                let key = K::from_js_key(&key_str);
+                let key = match K::from_js_key(&key_str) {
+                    Ok(k) => k,
+                    Err(e) => {
+                        super::v8util::throw_error(scope, &format!("Invalid map key: {}", e));
+                        return std::collections::BTreeMap::new();
+                    },
+                };
                 let js_val = obj.get(scope, js_key).unwrap();
                 let val = V::from_v8(scope, js_val);
                 map.insert(key, val);
