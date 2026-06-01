@@ -58,13 +58,6 @@ pub(crate) struct Tuple {
 }
 
 impl Tuple {
-    /// Returns true if this Tuple represents a type (all Mortar elements, no source).
-    /// An empty tuple is always a value, not a type.
-    pub fn is_type(&self) -> bool {
-        !self.elements.is_empty() && self.source.is_none() &&
-            self.elements.iter().all(|e| matches!(e, TupleElement::Mortar(_)))
-    }
-
     /// Clone this type-Tuple. Panics if not a type.
     pub fn clone_as_type(&self) -> Tuple {
         Tuple {
@@ -99,9 +92,6 @@ fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<d
 
 impl Value for Tuple {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        if self.is_type() {
-            return Rc::new(super::type_ref::TypeType);
-        }
         let elements = self.elements.iter().map(|e| {
             TupleElement::Mortar(tuple_element_type(xx, loc, e))
         }).collect();

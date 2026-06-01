@@ -77,31 +77,45 @@ impl JsWrap for TypeRef {
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        // Array format: [StagedExprCell, {entry_name: v8_value, ...}] Produced by
-        // TypeType::to_js when entry_bindings are present (record types)
+        // Tuple type: JS array → recursively convert elements
         if value.is_array() {
             let arr = v8::Local::<v8::Array>::try_from(value).unwrap();
-            let type_ext = arr.get_index(scope, 0).unwrap();
-            let bindings_obj = arr.get_index(scope, 1).unwrap();
-            let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*type_ext);
-            let inner = cell.value.borrow_mut().take().expect("type ref already consumed");
-            let type_ref_value =
-                (inner.as_ref() as &dyn std::any::Any)
-                    .downcast_ref::<super::type_ref::TypeRefValue>()
-                    .expect("Expected TypeRefValue");
-            let base_type = type_ref_value.type_.clone();
-
-            // Enhance record types using the actual v8 values
-            let enhanced = enhance_type_with_v8_obj(scope, base_type, bindings_obj);
-            return TypeRef(enhanced);
+            let len = arr.length();
+            let mut elements = Vec::with_capacity(len as usize);
+            for i in 0 .. len {
+                let elem = arr.get_index(scope, i).unwrap();
+                let TypeRef(elem_type) = TypeRef::from_v8(scope, elem);
+                elements.push(super::tuple::TupleElement::Mortar(elem_type));
+            }
+            return TypeRef(Rc::new(super::tuple::Tuple {
+                source: None,
+                elements,
+            }));
         }
-        let cell: Rc<expr::StagedExprCell> = super::rc_from_v8(&*value);
-        let inner = cell.value.borrow_mut().take().expect("type ref already consumed (double use)");
-        let type_ref_value =
-            (inner.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<super::type_ref::TypeRefValue>()
-                .expect("Expected TypeRefValue in StagedExprCell");
-        TypeRef(type_ref_value.type_.clone())
+
+        // Record type: JS object → recursively convert fields
+        if value.is_object() && !value.is_null_or_undefined() && !value.is_external() {
+            let obj = v8::Local::<v8::Object>::try_from(value).unwrap();
+            let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
+            let mut fields = std::collections::BTreeMap::new();
+            for i in 0 .. keys.length() {
+                let key = keys.get_index(scope, i).unwrap();
+                let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+                let val = obj.get(scope, key).unwrap();
+                let TypeRef(field_type) = TypeRef::from_v8(scope, val);
+                fields.insert(
+                    crate::langhelp::ConstKey::String(key_str),
+                    super::record::RecordField::Mortar(field_type),
+                );
+            }
+            return TypeRef(Rc::new(super::record::Record {
+                source: None,
+                fields,
+            }));
+        }
+
+        // Leaf type: v8 external → rc_from_v8 to get a Type
+        TypeRef(super::type_from_v8_external(scope, value))
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
@@ -249,71 +263,6 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
         }
         obj.into()
     }
-}
-
-/// Enhance a record type using v8 values from the bindings object. For entries
-/// that are MortarTypeTaggedUnionRef, extracts the TaggedUnionRef from the v8
-/// external to get variant data.
-fn enhance_type_with_v8_obj<
-    's,
->(
-    scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    base_type: Rc<dyn Type>,
-    bindings_obj: v8::Local<'s, v8::Value>,
-) -> Rc<dyn Type> {
-    use std::any::Any;
-
-    let base_any: &dyn Any = base_type.as_ref();
-    if let Some(record_type) = base_any.downcast_ref::<super::record::Record>() {
-        if !record_type.is_type() {
-            return base_type;
-        }
-        if !bindings_obj.is_object() || bindings_obj.is_null_or_undefined() {
-            return base_type;
-        }
-        let obj = v8::Local::<v8::Object>::try_from(bindings_obj).unwrap();
-        let mut new_fields: std::collections::BTreeMap<crate::langhelp::ConstKey, super::record::RecordField> =
-            record_type.fields.iter().map(|(k, f)| {
-                (k.clone(), match f {
-                    super::record::RecordField::Mortar(t) => super::record::RecordField::Mortar(t.clone()),
-                    _ => panic!("expected type record"),
-                })
-            }).collect();
-        for (key, field) in &record_type.fields {
-            let entry_type = match field {
-                super::record::RecordField::Mortar(t) => t,
-                _ => continue,
-            };
-            let key_str = match key {
-                crate::langhelp::ConstKey::String(s) => s.clone(),
-                crate::langhelp::ConstKey::Usize(n) => n.to_string(),
-            };
-            let type_any: &dyn Any = entry_type.as_ref();
-            if type_any.downcast_ref::<super::definition_set::tagged_union::MortarTypeTaggedUnionRef>().is_some() {
-                let v8_key = v8::String::new(scope, &key_str).unwrap();
-                if let Some(v8_val) = obj.get(scope, v8_key.into()) {
-                    if v8_val.is_external() {
-                        let ref_: Rc<super::definition_set::TaggedUnionRef> = super::rc_from_v8(&*v8_val);
-                        new_fields.insert(
-                            key.clone(),
-                            super::record::RecordField::Mortar(
-                                Rc::new(
-                                    super::definition_set::tagged_union::MortarTypeTaggedUnionRef {
-                                        data: Some(ref_.data.clone()),
-                                    },
-                                ),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-        return Rc::new(super::record::Record {
-            source: None,
-            fields: new_fields,
-        });
-    }
-    base_type
 }
 
 pub(crate) fn jswrap_method_name(s: &str) -> &str {

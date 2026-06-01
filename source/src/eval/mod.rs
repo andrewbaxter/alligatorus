@@ -167,6 +167,9 @@ use {
 /// guaranteed finalizer callbacks.
 pub(crate) struct V8RcStore {
     weaks: RefCell<Vec<v8::Weak<v8::External>>>,
+    /// Maps v8::External void-pointer addresses to the TypeId of the Rc`<T>` stored
+    /// there. Used by TypeRef::from_v8 to safely dispatch on external type.
+    pub(crate) type_ids: RefCell<std::collections::HashMap<usize, std::any::TypeId>>,
 }
 
 pub(crate) struct V8LogStore {
@@ -196,7 +199,9 @@ pub(crate) fn rc_to_v8<
     let weak = v8::Weak::with_guaranteed_finalizer(&mut *scope, ext, Box::new(move || unsafe {
         drop(Box::from_raw(ptr as *mut Rc<T>));
     }));
-    scope.get_slot::<V8RcStore>().unwrap().weaks.borrow_mut().push(weak);
+    let store = scope.get_slot::<V8RcStore>().unwrap();
+    store.weaks.borrow_mut().push(weak);
+    store.type_ids.borrow_mut().insert(ptr as usize, std::any::TypeId::of::<T>());
     ext
 }
 
@@ -212,6 +217,52 @@ pub(crate) fn rc_from_v8<T: 'static>(value: &v8::Value) -> Rc<T> {
     unsafe {
         (*ptr).clone()
     }
+}
+
+/// Convert a v8 external to an `Rc<dyn Type>` by looking up its TypeId in the
+/// registry and dispatching to the appropriate extractor.
+pub(crate) fn type_from_v8_external<
+    's,
+>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Rc<dyn Type> {
+    assert!(value.is_external(), "type_from_v8_external: expected v8::External");
+    let ext = unsafe {
+        &*(&*value as *const v8::Value as *const v8::External)
+    };
+    let ptr = ext.value() as usize;
+    let type_id =
+        scope
+            .get_slot::<V8RcStore>()
+            .unwrap()
+            .type_ids
+            .borrow()
+            .get(&ptr)
+            .copied()
+            .expect("type_from_v8_external: unknown external (not registered in type_ids)");
+    if type_id == std::any::TypeId::of::<type_ref::TypeRefCell>() {
+        let cell: Rc<type_ref::TypeRefCell> = rc_from_v8(&*value);
+        return cell.type_.clone();
+    }
+    if type_id == std::any::TypeId::of::<expr::StagedExprCell>() {
+        let cell: Rc<expr::StagedExprCell> = rc_from_v8(&*value);
+        let inner = cell.value.borrow_mut().take().expect("type_from_v8_external: StagedExprCell already consumed");
+        let trv =
+            (inner.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<type_ref::TypeRefValue>()
+                .expect("type_from_v8_external: StagedExprCell must contain TypeRefValue");
+        return trv.type_.clone();
+    }
+    if type_id == std::any::TypeId::of::<definition_set::TaggedUnionRef>() {
+        let ref_: Rc<definition_set::TaggedUnionRef> = rc_from_v8(&*value);
+        return Rc::new(definition_set::tagged_union::MortarTypeTaggedUnionRef { data: Some(ref_.data.clone()) });
+    }
+    if type_id == std::any::TypeId::of::<definition_set::DefinitionSetDataTypeRef>() {
+        let ref_: Rc<definition_set::DefinitionSetDataTypeRef> = rc_from_v8(&*value);
+        return Rc::new(definition_set::DefinitionSetDataType {
+            set: ref_.set.clone(),
+            data_type_index: ref_.data_type_index,
+        });
+    }
+    panic!("type_from_v8_external: unhandled external TypeId {:?}", type_id);
 }
 
 /// EvalResBuilder
@@ -1113,7 +1164,10 @@ fn eval(
     expr: &Expr,
 ) -> Result<EvalResult, Vec<ExprErr>> {
     let mut js_scope_isolate = v8::Isolate::new(Default::default());
-    js_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
+    js_scope_isolate.set_slot(V8RcStore {
+        weaks: RefCell::new(Vec::new()),
+        type_ids: RefCell::new(std::collections::HashMap::new()),
+    });
     js_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
     js_scope_isolate.set_slot(V8UniqueCounter {
         compile_id: cix
@@ -1770,20 +1824,18 @@ fn eval(
 
     // Set externals as globals before running the script
     for (id, value) in ex.externals.borrow().iter() {
+        let key = v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast();
         if let Ok(cell) = value.clone().downcast::<expr::StagedExprCell>() {
             let ext = rc_to_v8(js_scope, cell);
-            js_scope
-                .get_current_context()
-                .global(js_scope)
-                .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
+            js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
         } else if let Ok(cell) = value.clone().downcast::<StageLiftCell>() {
             let ext = rc_to_v8(js_scope, cell);
-            js_scope
-                .get_current_context()
-                .global(js_scope)
-                .set(js_scope, v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast(), ext.into());
+            js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
+        } else if let Ok(cell) = value.clone().downcast::<type_ref::TypeRefCell>() {
+            let ext = rc_to_v8(js_scope, cell);
+            js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
         } else {
-            panic!("External must hold StagedExprCell or StageLiftCell");
+            panic!("External must hold StagedExprCell, StageLiftCell, or TypeRefCell");
         }
     }
     let js_source = code1.lines.join("\n");

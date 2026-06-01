@@ -78,11 +78,6 @@ impl Record {
         }
     }
 
-    /// Returns true if this Record represents a type (all Mortar fields, no source).
-    pub fn is_type(&self) -> bool {
-        self.source.is_none() && self.fields.values().all(|f| matches!(f, RecordField::Mortar(_)))
-    }
-
     /// Clone this type-Record. Panics if not a type.
     fn clone_as_type(&self) -> Record {
         Record {
@@ -131,9 +126,6 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
 
 impl Value for Record {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        if self.is_type() {
-            return Rc::new(super::type_ref::TypeType);
-        }
         let fields = self.fields.iter().map(|(k, f)| {
             let t = record_field_type(xx, loc, f);
             (k.clone(), RecordField::Mortar(t))
