@@ -23,6 +23,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            External,
             QExprId,
             ScopeEntryId,
             Type,
@@ -264,7 +265,7 @@ impl AspectConsumeJs for ExprType {
         }
         let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, Box::new(cell)));
+        xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
         EResult::ok(JsCode {
             loc,
             type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),

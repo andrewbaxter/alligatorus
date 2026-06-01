@@ -34,6 +34,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            External,
             QExprId,
             ScopeEntry,
             ScopeEntryId,
@@ -184,7 +185,7 @@ impl Type for Record {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        (type_ as &dyn Any).downcast_ref::<super::type_ref::TypeType>().is_some()
+        type_.aspect(_xx, &super::type_ref::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -209,7 +210,7 @@ impl Type for Record {
                                     value: entry_cv.value,
                                 })));
                                 let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, Box::new(field_type.clone())));
+                                xx.vx.externals.borrow_mut().push((id, External::Type(field_type.clone())));
                                 RecordField::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
@@ -402,8 +403,11 @@ impl AspectField for Record {
                                     key: key_name,
                                 },
                             );
-                        let mortar_type_any: &dyn Any = mortar_type.as_ref();
-                        if let Some(record_type) = mortar_type_any.downcast_ref::<Record>() {
+                        if aspect_record_get_maybe(xx, mortar_type.as_ref()).is_some() {
+                            let record_type =
+                                (mortar_type.as_ref() as &dyn Any)
+                                    .downcast_ref::<Record>()
+                                    .expect("record aspect present but type is not Record");
                             let fields = record_type.fields.iter().map(|(k, f)| {
                                 let t = match f {
                                     RecordField::Mortar(t) => t.clone(),
@@ -465,8 +469,11 @@ impl AspectField for Record {
                     }),
                     key: key_name,
                 });
-            let entry_type_any: &dyn Any = entry_type.as_ref();
-            if let Some(record_type) = entry_type_any.downcast_ref::<Record>() {
+            if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
+                let record_type =
+                    (entry_type.as_ref() as &dyn Any)
+                        .downcast_ref::<Record>()
+                        .expect("record aspect present but type is not Record");
                 let fields = record_type.fields.iter().map(|(k, f)| {
                     let t = match f {
                         RecordField::Mortar(t) => t.clone(),

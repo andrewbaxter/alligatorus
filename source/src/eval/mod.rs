@@ -74,6 +74,7 @@ use {
             EResult,
             EvalContext,
             EvalRes,
+            External,
             ExprContext,
             ExprErr,
             ExprSubErr,
@@ -574,7 +575,7 @@ impl Target for MortarTarget {
         // Store tree as external
         let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(tree))) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((tree_id, Box::new(tree_cell)));
+        xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
         let tree_js = JsCode {
             loc,
             type_: JsCodeType::BindingUse(JsCodeBindingUse { id: tree_id }),
@@ -595,7 +596,7 @@ impl Target for MortarTarget {
                     Code_::None => {
                         let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                        xx.vx.externals.borrow_mut().push((id, Box::new(cell)));
+                        xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
                         stage_args.push(JsCode {
                             loc,
                             type_: JsCodeType::Literal(serde_json::Value::Null),
@@ -609,7 +610,7 @@ impl Target for MortarTarget {
                         let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
                         let lift_cell = Rc::new(StageLiftCell { lift });
                         let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                        xx.vx.externals.borrow_mut().push((lift_id, Box::new(lift_cell)));
+                        xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
                         let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
                             erb.must_er(consume.to_js(xx, loc, cv))?
                         } else {
@@ -1598,7 +1599,11 @@ fn eval(
                     .downcast_ref::<Expr>()
                     .expect("stage tree must be an Expr")
                     .clone();
-            let mut values: Vec<Box<dyn Value>> = Vec::new();
+            enum StageLowerValue {
+                Expr(Expr),
+                Value(Box<dyn Value>),
+            }
+            let mut values: Vec<StageLowerValue> = Vec::new();
             let mut i = 1;
             while i < args.length() {
                 let lift_arg = args.get(i);
@@ -1607,12 +1612,18 @@ fn eval(
                 if lift_arg.is_null_or_undefined() {
                     // Already a StagedExprCell external
                     let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
-                    values.push(cell.value.borrow_mut().take().expect("stage lower value already consumed"));
+                    let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
+                    if (value.as_ref() as &dyn Any).is::<Expr>() {
+                        let expr = (value as Box<dyn Any>).downcast::<Expr>().unwrap();
+                        values.push(StageLowerValue::Expr(*expr));
+                    } else {
+                        values.push(StageLowerValue::Value(value));
+                    }
                 } else {
                     // Lift the raw v8 value
                     let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
                     let value = lift_cell.lift.lift(&*scope, val_arg).expect("__stage: lift failed");
-                    values.push(value);
+                    values.push(StageLowerValue::Value(value));
                 }
             }
 
@@ -1622,23 +1633,23 @@ fn eval(
                 expr: &Expr,
                 sd: usize,
                 ld: usize,
-                values: &mut dyn Iterator<Item = Box<dyn Value>>,
+                values: &mut dyn Iterator<Item = StageLowerValue>,
             ) -> Expr {
                 match &expr.r#type {
                     Expr_::Lower(e) => {
                         let new_ld = ld + 1;
                         if new_ld - sd == 1 {
-                            let value = values.next().expect("Not enough lower values for substitution");
-                            if let Some(expr_val) = (value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
-                                expr_val.clone()
-                            } else {
-                                let value_cell = Rc::new(RefCell::new(Some(value)));
-                                Expr {
-                                    loc: expr.loc,
-                                    r#type: Expr_::Literal(Rc::new(move || {
-                                        value_cell.borrow_mut().take().expect("Lower literal consumed twice")
-                                    })),
-                                }
+                            match values.next().expect("Not enough lower values for substitution") {
+                                StageLowerValue::Expr(expr_val) => expr_val,
+                                StageLowerValue::Value(value) => {
+                                    let value_cell = Rc::new(RefCell::new(Some(value)));
+                                    Expr {
+                                        loc: expr.loc,
+                                        r#type: Expr_::Literal(Rc::new(move || {
+                                            value_cell.borrow_mut().take().expect("Lower literal consumed twice")
+                                        })),
+                                    }
+                                },
                             }
                         } else {
                             Expr {
@@ -1874,17 +1885,19 @@ fn eval(
     // Set externals as globals before running the script
     for (id, value) in ex.externals.borrow().iter() {
         let key = v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast();
-        if let Some(cell) = value.downcast_ref::<Rc<expr::StagedExprCell>>() {
-            let ext = to_v8(js_scope, cell.clone());
-            js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
-        } else if let Some(cell) = value.downcast_ref::<Rc<StageLiftCell>>() {
-            let ext = to_v8(js_scope, cell.clone());
-            js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
-        } else if let Some(type_) = value.downcast_ref::<Rc<dyn Type>>() {
-            let ext = rc_type_to_v8(js_scope, type_.clone());
-            js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
-        } else {
-            panic!("Unknown external type");
+        match value {
+            External::StagedExprCell(cell) => {
+                let ext = to_v8(js_scope, cell.clone());
+                js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
+            },
+            External::StageLiftCell(cell) => {
+                let ext = to_v8(js_scope, cell.clone());
+                js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
+            },
+            External::Type(type_) => {
+                let ext = rc_type_to_v8(js_scope, type_.clone());
+                js_scope.get_current_context().global(js_scope).set(js_scope, key, ext.into());
+            },
         }
     }
     let js_source = code1.lines.join("\n");
@@ -2262,19 +2275,10 @@ pub async fn compile_importid(
         }
 
         // Result is an Expr (from stage eval) - use it as next expression
-        let next_expr = match (eval_value.as_ref() as &dyn Any).downcast_ref::<Expr>() {
-            Some(expr) => expr.clone(),
-            None => {
-                // Value is not an Expr - this shouldn't happen for stage results
-                return CompileRes {
-                    logs: all_logs,
-                    result: CompileResResult::Err(vec![ExprErr {
-                        loc: root_loc,
-                        errors: vec![ExprSubErr::Opaque("Stage eval produced non-Expr value".to_string(),)],
-                    }]),
-                };
-            },
-        };
+        let next_expr =
+            *(eval_value as Box<dyn Any>)
+                .downcast::<Expr>()
+                .expect("Stage eval must produce an Expr value");
         root_expr = next_expr;
     }
 }

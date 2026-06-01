@@ -4,6 +4,8 @@ use {
             AspectConsumeJs,
             AspectType,
             aspect_consume_js_aspect_id,
+            aspect_record_get_maybe,
+            aspect_tuple_get_maybe,
             aspect_type_aspect_id,
         },
         jscode::{
@@ -40,7 +42,7 @@ impl Value for TypeRefValue {
 }
 pub(crate) struct TypeType;
 
-fn type_type_identity() -> Unique {
+pub(crate) fn type_type_identity() -> Unique {
     Unique::Builtin {
         file: file!(),
         line: line!() as usize,
@@ -88,7 +90,11 @@ impl Type for TypeType {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
         let type_ = cv.value.type_(xx, loc);
         let mut field_codes = Vec::new();
-        if let Some(record) = (cv.value.as_ref() as &dyn Any).downcast_ref::<crate::eval::record::Record>() {
+        if aspect_record_get_maybe(xx, type_.as_ref()).is_some() {
+            let record =
+                (cv.value.as_ref() as &dyn Any)
+                    .downcast_ref::<crate::eval::record::Record>()
+                    .expect("TypeType cast_from: record aspect present but value is not Record");
             for (key, field) in &record.fields {
                 if let crate::eval::record::RecordField::EvalRes(entry_res) = field {
                     if let Some(entry_cv) = &entry_res.v {
@@ -96,7 +102,11 @@ impl Type for TypeType {
                     }
                 }
             }
-        } else if let Some(tuple) = (cv.value.as_ref() as &dyn Any).downcast_ref::<crate::eval::tuple::Tuple>() {
+        } else if aspect_tuple_get_maybe(xx, type_.as_ref()).is_some() {
+            let tuple =
+                (cv.value.as_ref() as &dyn Any)
+                    .downcast_ref::<crate::eval::tuple::Tuple>()
+                    .expect("TypeType cast_from: tuple aspect present but value is not Tuple");
             for (i, elem) in tuple.elements.iter().enumerate() {
                 if let crate::eval::tuple::TupleElement::EvalRes(entry_res) = elem {
                     if let Some(entry_cv) = &entry_res.v {
@@ -123,16 +133,10 @@ impl Aspect for TypeTypeAspectType { }
 impl AspectType for TypeTypeAspectType {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let any: &dyn Any = value;
-        if let Some(trv) = any.downcast_ref::<TypeRefValue>() {
-            return trv.type_.clone();
-        }
-        if let Some(tt) = any.downcast_ref::<super::tuple::Tuple>() {
-            return Rc::new(tt.clone_as_type());
-        }
-        if let Some(rv) = any.downcast_ref::<super::record::Record>() {
-            return rv.as_type();
-        }
-        panic!("TypeTypeAspectType: unknown type value");
+        any.downcast_ref::<TypeRefValue>()
+            .expect("TypeTypeAspectType: value must be TypeRefValue")
+            .type_
+            .clone()
     }
 }
 
@@ -154,11 +158,13 @@ fn type_ref_to_js(
     type_: &Rc<dyn Type>,
     field_codes: &std::collections::BTreeMap<crate::langhelp::ConstKey, crate::langhelp::Code>,
 ) -> EResult<JsCode> {
-    let type_any: &dyn Any = type_.as_ref();
-
     // Tuple types → build JS array from field codes, then wrap with __tuple_to_type()
     // so the v8 result is always an Rc`<dyn Type>` external.
-    if let Some(tuple) = type_any.downcast_ref::<super::tuple::Tuple>() {
+    if aspect_tuple_get_maybe(xx, type_.as_ref()).is_some() {
+        let tuple =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<super::tuple::Tuple>()
+                .expect("type_ref_to_js: tuple aspect present but type is not Tuple");
         let mut elements = Vec::new();
         for (i, elem) in tuple.elements.iter().enumerate() {
             let elem_type = match elem {
@@ -194,7 +200,11 @@ fn type_ref_to_js(
 
     // Record types → build JS object from field codes, then wrap with
     // __record_to_type() so the v8 result is always an Rc`<dyn Type>` external.
-    if let Some(record) = type_any.downcast_ref::<super::record::Record>() {
+    if aspect_record_get_maybe(xx, type_.as_ref()).is_some() {
+        let record =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<super::record::Record>()
+                .expect("type_ref_to_js: record aspect present but type is not Record");
         let mut fields = Vec::new();
         for (key, field) in &record.fields {
             let field_type = match field {
@@ -242,9 +252,8 @@ fn type_ref_to_js_leaf(
     field_code: Option<&crate::langhelp::Code>,
 ) -> EResult<JsCode> {
     // If the type is a record/tuple, recurse
-    let type_any: &dyn Any = type_.as_ref();
-    if type_any.downcast_ref::<super::record::Record>().is_some() ||
-        type_any.downcast_ref::<super::tuple::Tuple>().is_some() {
+    if aspect_record_get_maybe(xx, type_.as_ref()).is_some() ||
+        aspect_tuple_get_maybe(xx, type_.as_ref()).is_some() {
         let empty = std::collections::BTreeMap::new();
         return type_ref_to_js(xx, loc, type_, &empty);
     }
@@ -258,7 +267,7 @@ fn type_ref_to_js_leaf(
 
     // Otherwise store as Rc`<dyn Type>` external
     let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-    xx.vx.externals.borrow_mut().push((id, Box::new(type_.clone())));
+    xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_.clone())));
     EResult::ok(JsCode {
         loc,
         type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),

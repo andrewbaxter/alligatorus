@@ -140,7 +140,7 @@ impl Type for Tuple {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        (type_ as &dyn Any).downcast_ref::<super::type_ref::TypeType>().is_some()
+        type_.aspect(_xx, &super::type_ref::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -163,7 +163,7 @@ impl Type for Tuple {
                                         value: entry_cv.value,
                                     })));
                                 let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, Box::new(elem_type.clone())));
+                                xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type.clone())));
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,

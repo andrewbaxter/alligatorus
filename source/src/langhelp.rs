@@ -144,6 +144,12 @@ pub(crate) struct CompileImportContext {
     pub(crate) next_unique_id: Counter,
 }
 
+pub(crate) enum External {
+    StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
+    StageLiftCell(Rc<crate::eval::StageLiftCell>),
+    Type(Rc<dyn Type>),
+}
+
 /// Multiple evaluations per module.
 pub(crate) struct EvalContext {
     pub(crate) ix: Rc<CompileImportContext>,
@@ -151,7 +157,7 @@ pub(crate) struct EvalContext {
     pub(crate) definition_sets: std
     ::cell
     ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
-    pub(crate) externals: RefCell<Vec<(ScopeEntryId, Box<dyn Any>)>>,
+    pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
 }
 
 /// Per expression
