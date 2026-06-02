@@ -40,6 +40,7 @@ use {
             Type,
             Unique,
             Value,
+            downcast_value,
         },
     },
     std::{
@@ -142,8 +143,8 @@ impl Type for Record {
         }).collect::<Vec<_>>().join(", "))
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(self.clone_as_type())
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(self.clone_as_type())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -186,8 +187,10 @@ impl Type for Record {
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let result_type = cv.value.type_(xx, loc);
-        let record: Box<Record> =
-            (cv.value as Box<dyn Any>).downcast().expect("Record cast_to: expected Record value");
+        let record: Record =
+            Rc::try_unwrap(downcast_value::<Record>(cv.value).expect("Record cast_to: expected Record value"))
+                .ok()
+                .expect("Record cast_to: Rc not unique");
         let needs_runtime = record.fields.values().any(|f| match f {
             RecordField::Mortar(_) => true,
             RecordField::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
@@ -227,7 +230,7 @@ impl Type for Record {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(super::type_ref::TypeType),
+                                    value: Rc::new(super::type_ref::TypeType),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -245,7 +248,7 @@ impl Type for Record {
             };
             let converted_cv = CodeValue {
                 code: cv.code,
-                value: Box::new(converted_record),
+                value: Rc::new(converted_record),
             };
             match converted_type.to_js(xx, loc, converted_cv).into_res() {
                 Ok(record_js) => {
@@ -303,8 +306,10 @@ impl Type for Record {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let code = cv.code;
-        let record: Box<Record> =
-            (cv.value as Box<dyn Any>).downcast().expect("Record type must have Record value");
+        let record: Record =
+            Rc::try_unwrap(downcast_value::<Record>(cv.value).expect("Record type must have Record value"))
+                .ok()
+                .expect("Record cast_from: Rc not unique");
         return er_seq_cv!(loc, erb, {
             let mut converted_fields = BTreeMap::new();
             for (key, field) in record.fields {
@@ -331,7 +336,7 @@ impl Type for Record {
             }
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(Record {
+                value: Rc::new(Record {
                     source: record.source,
                     fields: converted_fields
                 }),
@@ -366,8 +371,7 @@ impl AspectField for Record {
             // If self_ is a Record, extract the field directly
             let CodeValue { code: self_code_raw, value: self_value } = self_;
             let is_none = matches!(self_code_raw.code, Code_::None);
-            let any_value: Box<dyn Any> = self_value;
-            if let Ok(mut record) = any_value.downcast::<Record>() {
+            if let Some(mut record) = downcast_value::<Record>(self_value).and_then(|r| Rc::try_unwrap(r).ok()) {
                 match record.fields.remove(&const_key) {
                     Some(RecordField::EvalRes(entry)) => {
                         if let Some(cv) = entry.v {
@@ -416,7 +420,7 @@ impl AspectField for Record {
                             }).collect();
                             return Ok(CodeValue {
                                 code: field_code,
-                                value: Box::new(Record {
+                                value: Rc::new(Record {
                                     source: Some(field_source),
                                     fields,
                                 }),
@@ -424,7 +428,7 @@ impl AspectField for Record {
                         }
                         return Ok(CodeValue {
                             code: field_code,
-                            value: Box::new(super::mortar_js_value::MortarJsValue {
+                            value: Rc::new(super::mortar_js_value::MortarJsValue {
                                 source: field_source,
                                 type_: mortar_type,
                             }),
@@ -443,7 +447,7 @@ impl AspectField for Record {
                         loc,
                         code: Code_::None,
                     },
-                    value: Box::new(super::tuple::StaticValue { type_: entry_type }),
+                    value: Rc::new(super::tuple::StaticValue { type_: entry_type }),
                 });
             }
             let self_code = erb.must_er(self_code_raw.cast::<JsCode>())?.unwrap().clone();
@@ -482,7 +486,7 @@ impl AspectField for Record {
                 }).collect();
                 return Ok(CodeValue {
                     code: field_code,
-                    value: Box::new(Record {
+                    value: Rc::new(Record {
                         source: Some(field_source),
                         fields,
                     }),
@@ -490,7 +494,7 @@ impl AspectField for Record {
             }
             return Ok(CodeValue {
                 code: field_code,
-                value: Box::new(super::mortar_js_value::MortarJsValue {
+                value: Rc::new(super::mortar_js_value::MortarJsValue {
                     source: field_source,
                     type_: entry_type,
                 }),
@@ -511,9 +515,9 @@ impl AspectConsumeJs for Record {
 
         // If the value is a MortarJsValue (e.g. from cast_from), the JS code already
         // represents the record object — just pass the code through
-        let record: Box<Record> = match (cv.value as Box<dyn Any>).downcast::<Record>() {
-            Ok(r) => r,
-            Err(_) => {
+        let record: Record = match downcast_value::<Record>(cv.value).and_then(|r| Rc::try_unwrap(r).ok()) {
+            Some(r) => r,
+            None => {
                 return carry.cast::<JsCode>().map(|x| x.unwrap().clone());
             },
         };
@@ -599,7 +603,10 @@ impl AspectBindJs for Record {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
-        let record: Box<Record> = (cv.value as Box<dyn Any>).downcast().unwrap();
+        let record: Record =
+            Rc::try_unwrap(downcast_value::<Record>(cv.value).unwrap())
+                .ok()
+                .expect("Record bind_js: Rc not unique");
 
         // If the record has no source and no JS code (pure compile-time value, e.g. from
         // a lifted record), bind as a value without producing JS.
@@ -641,7 +648,7 @@ impl AspectBindJs for Record {
         }).collect();
         let cv = CodeValue {
             code: cv.code,
-            value: record,
+            value: Rc::new(record),
         };
         self.to_js(xx, loc, cv).map(|c| {
             (
@@ -660,7 +667,7 @@ struct RecordLiftJs {
 impl Aspect for RecordLiftJs { }
 
 impl AspectLiftJs for RecordLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
         let mut fields = BTreeMap::new();
         for (key, entry_lift) in &self.entry_lifts {
@@ -676,7 +683,7 @@ impl AspectLiftJs for RecordLiftJs {
                 value: lifted,
             })));
         }
-        Ok(Box::new(Record {
+        Ok(Rc::new(Record {
             source: None,
             fields,
         }))
@@ -747,7 +754,7 @@ impl super::mortar_scope_entry::MortarScopeEntry for RecordScopeEntryAsMortar {
         }
         EvalRes::ok(CodeValue {
             code,
-            value: Box::new(Record {
+            value: Rc::new(Record {
                 source,
                 fields: result_fields,
             }),
@@ -780,7 +787,7 @@ impl ScopeEntry for RecordScopeEntry {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(Record {
+            value: Rc::new(Record {
                 source: None,
                 fields: result_fields,
             }),

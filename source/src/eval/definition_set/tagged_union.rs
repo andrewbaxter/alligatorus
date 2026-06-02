@@ -80,8 +80,8 @@ impl Type for MortarTypeTaggedUnionRef {
         format!("tagged_union_ref")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -136,7 +136,7 @@ impl Type for MortarTypeTaggedUnionRef {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
             }),
@@ -162,7 +162,7 @@ impl Type for MortarTypeTaggedUnionRef {
             if source_type.aspect(xx, &data.identity).is_some() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
                     }),
@@ -172,7 +172,7 @@ impl Type for MortarTypeTaggedUnionRef {
             if source_type.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
                     }),
@@ -182,7 +182,7 @@ impl Type for MortarTypeTaggedUnionRef {
         if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: source_type,
                 }),
@@ -219,7 +219,7 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
             }),
@@ -228,14 +228,14 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
 }
 
 impl AspectLiftJs for MortarTypeTaggedUnionRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let mortar =
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<MortarTypeTaggedUnionRef>()
                 .expect("MortarTypeTaggedUnionRef::lift: expected MortarTypeTaggedUnionRef");
         let data = mortar.data.clone().expect("MortarTypeTaggedUnionRef::lift: data must be Some");
-        Ok(Box::new(MortarJsValue {
+        Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(TaggedUnionType { data }),
         }))
@@ -256,8 +256,8 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
         format!("tagged_union_constructor_ref")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeTaggedUnionConstructorRef)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeTaggedUnionConstructorRef)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -312,7 +312,7 @@ impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionConstructorRef),
             }),
@@ -321,13 +321,13 @@ impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
 }
 
 impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let ctor =
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<TaggedUnionConstructor>()
                 .expect("MortarTypeTaggedUnionConstructorRef::lift: expected TaggedUnionConstructor");
-        Ok(Box::new(MortarJsValue {
+        Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(TaggedUnionConstructor {
                 data: ctor.data.clone(),
@@ -403,8 +403,8 @@ impl Type for TaggedUnionType {
         format!("tagged_union")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TaggedUnionType { data: self.data.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TaggedUnionType { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -476,7 +476,7 @@ impl AspectJsStackValue for TaggedUnionType {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TaggedUnionType { data: self.data.clone() }),
             }),
@@ -503,8 +503,8 @@ impl Type for TaggedUnionConstructor {
         format!("tagged_union_constructor({:?})", tag)
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TaggedUnionConstructor {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TaggedUnionConstructor {
             data: self.data.clone(),
             variant_index: self.variant_index,
         })

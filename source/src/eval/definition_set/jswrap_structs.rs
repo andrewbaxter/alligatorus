@@ -336,7 +336,7 @@ jswrap!(struct NewDataResult(self_, scope) {
                     let entry_id = self_.data_type_ref.set.next_entry_id.next();
                     method_impls.push(DefinitionSetDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
-                        impl_expr: Box::new(expr.clone()),
+                        impl_expr: Rc::new(expr.clone()),
                         scope_entry_id: Cell::new(
                             Some(
                                 crate::langhelp::ScopeEntryId::Def(

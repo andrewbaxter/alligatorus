@@ -76,14 +76,14 @@ aspect!(AspectFunction {
 });
 
 aspect!(AspectSerial {
-    fn to_serial(&self, artifacts: & mut Artifacts, self_: Box < dyn Value >) -> EResult < SerialValue >;
+    fn to_serial(&self, artifacts: & mut Artifacts, self_: Rc < dyn Value >) -> EResult < SerialValue >;
 });
 
 aspect!(AspectLiftJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used after evaluating a target block, for producing a value to serialize.
-    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Result < Box < dyn Value >,
+    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Result < Rc < dyn Value >,
     String >;
 });
 
@@ -131,7 +131,7 @@ aspect!(AspectField {
 
 aspect!(AspectTuple {
     fn element_types(&self) -> Vec < Rc < dyn Type >>;
-    fn take_elements(&self, value: Box < dyn Value >) -> Vec < EvalRes >;
+    fn take_elements(&self, value: Rc < dyn Value >) -> Vec < EvalRes >;
 });
 
 aspect!(AspectNumber {

@@ -121,14 +121,14 @@ async fn compile(
                 loc: (source_id, m.id),
                 r#type: match &m.r#type {
                     SerialExpr_::Literal(lit) => Expr_::Literal(match lit {
-                        SerialLiteral::Null => Rc::new(|| Box::new(ValueNull)),
+                        SerialLiteral::Null => Rc::new(|| Rc::new(ValueNull) as Rc<dyn crate::langhelp::Value>),
                         SerialLiteral::String(l) => {
                             let l = l.clone();
-                            Rc::new(move || Box::new(ValueString(l.clone())))
+                            Rc::new(move || Rc::new(ValueString(l.clone())) as Rc<dyn crate::langhelp::Value>)
                         },
                         SerialLiteral::Number(n) => {
                             let n = n.into_inner();
-                            Rc::new(move || Box::new(ValueNumber(n)))
+                            Rc::new(move || Rc::new(ValueNumber(n)) as Rc<dyn crate::langhelp::Value>)
                         },
                     }),
                     SerialExpr_::ScopeUse(expr) => Expr_::ScopeUse(
@@ -154,7 +154,9 @@ async fn compile(
                             loc: (source_id, m.id),
                             r#type: Expr_::Literal({
                                 let base = expr.base.clone();
-                                Rc::new(move || Box::new(ValueString(base.clone())))
+                                Rc::new(
+                                    move || Rc::new(ValueString(base.clone())) as Rc<dyn crate::langhelp::Value>,
+                                )
                             }),
                         }),
                         value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),

@@ -39,8 +39,8 @@ impl Type for TypeBool {
         return format!("bool");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeBool)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeBool)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -60,7 +60,7 @@ impl Type for TypeBool {
             let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(ValueBool(aspect_bool.get(value.as_ref())))
+                value: Rc::new(ValueBool(aspect_bool.get(value.as_ref())))
             });
         });
     }
@@ -76,7 +76,7 @@ impl Type for TypeBool {
             let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(ValueBool(aspect_bool.get(value.as_ref())))
+                value: Rc::new(ValueBool(aspect_bool.get(value.as_ref())))
             });
         });
     }

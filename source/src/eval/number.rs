@@ -52,8 +52,8 @@ impl Type for TypeNumber {
         return format!("number");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeNumber)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeNumber)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -85,7 +85,7 @@ impl Type for TypeNumber {
             let aspect_number = erb.must_er(aspect_number_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(ValueNumber(aspect_number.get(value.as_ref())))
+                value: Rc::new(ValueNumber(aspect_number.get(value.as_ref())))
             });
         });
     }
@@ -101,7 +101,7 @@ impl Type for TypeNumber {
             let aspect_number = erb.must_er(aspect_number_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(ValueNumber(aspect_number.get(value.as_ref())))
+                value: Rc::new(ValueNumber(aspect_number.get(value.as_ref())))
             });
         });
     }
@@ -157,7 +157,7 @@ impl AspectOperatorLt for TypeNumber {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Box::new(super::bool::ValueBool(base_val < ref_val)),
+                value: Rc::new(super::bool::ValueBool(base_val < ref_val)),
             });
         });
     }
@@ -174,7 +174,7 @@ impl AspectOperatorAdd for TypeNumber {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Box::new(ValueNumber(base_val + ref_val)),
+                value: Rc::new(ValueNumber(base_val + ref_val)),
             });
         });
     }

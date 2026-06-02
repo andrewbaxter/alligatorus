@@ -66,8 +66,8 @@ impl Type for MortarTypeDefinitionSetExports {
         format!("definition_set_exports")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeDefinitionSetExports)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeDefinitionSetExports)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -122,7 +122,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetExports {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetExports),
             }),
@@ -131,10 +131,10 @@ impl AspectJsStackValue for MortarTypeDefinitionSetExports {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetExports {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let exports: Rc<DefinitionSetExports> = from_v8_ref::<Rc<DefinitionSetExports>>(&value).clone();
         exports.set.finish()?;
-        Ok(Box::new(MortarJsValue {
+        Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(DefinitionSetExportsType { set: exports.set.clone() }),
         }))
@@ -157,8 +157,8 @@ impl Type for DefinitionSetExportsType {
         format!("definition_set_exports")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(DefinitionSetExportsType { set: self.set.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(DefinitionSetExportsType { set: self.set.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -211,7 +211,7 @@ impl AspectField for DefinitionSetExportsType {
                                 loc,
                                 code: Code_::None
                             },
-                            value: Box::new(MortarJsValue {
+                            value: Rc::new(MortarJsValue {
                                 source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
                                     set: self.set.clone(),
                                     func_index: i,
@@ -236,7 +236,7 @@ impl AspectField for DefinitionSetExportsType {
                                 loc,
                                 code: Code_::None
                             },
-                            value: Box::new(MortarJsValue {
+                            value: Rc::new(MortarJsValue {
                                 source: MortarJsValueSource::Expr,
                                 type_: Rc::new(DefinitionSetDataTypeConstructor {
                                     set: self.set.clone(),

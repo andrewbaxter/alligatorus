@@ -216,7 +216,7 @@ pub(crate) struct ExprErr {
 /// effects, so even if the value isn't used all code must be kept.
 pub(crate) struct CodeValue {
     pub(crate) code: Code,
-    pub(crate) value: Box<dyn Value>,
+    pub(crate) value: Rc<dyn Value>,
 }
 
 /// State table:
@@ -286,12 +286,28 @@ pub(crate) trait Value: Any {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type>;
 }
 
+/// Downcast an `Rc<dyn Value>` to `Rc<T>`.
+///
+/// This is safe because we verify the concrete type via `Any` before performing
+/// the pointer cast. The type guarantee comes from the type checker (cast_to /
+/// cast_from).
+pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Option<Rc<T>> {
+    if (v.as_ref() as &dyn Any).is::<T>() {
+        let raw = Rc::into_raw(v) as *const T;
+        Some(unsafe {
+            Rc::from_raw(raw)
+        })
+    } else {
+        None
+    }
+}
+
 pub(crate) trait Aspect: Any { }
 
 pub(crate) trait Type: Value {
     fn desc(&self) -> String;
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
-    fn as_value(&self) -> Box<dyn Value>;
+    fn as_value(&self) -> Rc<dyn Value>;
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
         false

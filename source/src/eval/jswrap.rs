@@ -50,7 +50,7 @@ impl JsWrap for () {
 
 /// Wrapper for staged expressions received from JS. Extracts and consumes the
 /// staged value from a StagedExprCell.
-pub(crate) struct StagedExpr(pub Box<dyn Value>);
+pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
 impl JsWrap for StagedExpr {
     fn mortar_type() -> Rc<dyn Type> {
@@ -125,7 +125,11 @@ impl JsWrap for expr::Expr {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
-        *(inner as Box<dyn std::any::Any>).downcast::<expr::Expr>().expect("Expected Expr in StagedExprCell")
+        Rc::try_unwrap(
+            crate::langhelp::downcast_value::<expr::Expr>(inner).expect("Expected Expr in StagedExprCell"),
+        )
+            .ok()
+            .expect("Expr in StagedExprCell: Rc not unique")
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
@@ -249,8 +253,8 @@ macro_rules! jswrap{
                 fn desc(&self) -> String {
                     stringify!($name).to_string()
                 }
-                fn as_value(&self) -> Box<dyn Value> {
-                    Box::new([<$name Type >])
+                fn as_value(&self) -> Rc < dyn Value > {
+                    Rc:: new([<$name Type >])
                 }
                 fn aspect(&self, _xx: & ExprContext, key: & Unique) -> Option < Box < dyn Any >> {
                     if * key ==[<$name: snake _type_identity >]() {
@@ -281,7 +285,7 @@ macro_rules! jswrap{
                     if source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some() {
                         return EvalRes:: ok(CodeValue {
                             code: cv.code,
-                            value: Box:: new(crate:: eval:: mortar_js_value:: MortarJsValue {
+                            value: Rc:: new(crate:: eval:: mortar_js_value:: MortarJsValue {
                                 source: crate:: eval:: mortar_js_value:: MortarJsValueSource:: Expr,
                                 type_: std:: rc:: Rc:: new([<$name Type >]),
                             }),
@@ -315,7 +319,7 @@ macro_rules! jswrap{
                             loc,
                             code: Code_:: Dyn(Rc::new(value))
                         },
-                        value: Box:: new(MortarJsValue {
+                        value: Rc:: new(MortarJsValue {
                             source: MortarJsValueSource:: Expr,
                             type_: Rc:: new([<$name Type >]),
                         }),
@@ -345,7 +349,7 @@ macro_rules! jswrap{
                                             },),
                                         })),
                                     },
-                                    value: Box::new(MortarJsValue {
+                                    value: Rc::new(MortarJsValue {
                                         source: MortarJsValueSource::Expr,
                                         type_: field_type,
                                     }),
@@ -370,7 +374,7 @@ macro_rules! jswrap{
                                             },),
                                         })),
                                     },
-                                    value: Box::new(MortarJsValue {
+                                    value: Rc::new(MortarJsValue {
                                         source: MortarJsValueSource::Expr,
                                         type_: field_type,
                                     }),

@@ -63,8 +63,11 @@ impl Type for MortarTypeFunction {
         return format!("mortar func");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeFunction { arg: self.arg.clone(), ret: self.ret.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeFunction {
+            arg: self.arg.clone(),
+            ret: self.ret.clone(),
+        })
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -94,7 +97,7 @@ impl Type for MortarTypeFunction {
             erb.must_er(aspect_function_get(ex, loc, source_type.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),

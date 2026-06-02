@@ -137,7 +137,7 @@ pub struct ExprMatch {
     pub fallback: Option<Rc<Expr>>,
 }
 
-pub type LitValue = Rc<dyn Fn() -> Box<dyn Value>>;
+pub type LitValue = Rc<dyn Fn() -> Rc<dyn Value>>;
 
 #[derive(Clone)]
 pub enum Expr_ {
@@ -194,7 +194,7 @@ impl Value for ExprType {
 /// * `borrow_mut().take()` — a safe take-once pattern that panics on double-consume
 ///   instead of double-freeing.
 pub(crate) struct StagedExprCell {
-    pub value: RefCell<Option<Box<dyn Value>>>,
+    pub value: RefCell<Option<Rc<dyn Value>>>,
 }
 
 impl Type for ExprType {
@@ -202,8 +202,8 @@ impl Type for ExprType {
         return format!("expr");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(ExprType)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(ExprType)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -240,7 +240,7 @@ impl Type for ExprType {
                     .clone();
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(expr),
+                value: Rc::new(expr),
             });
         }
 
@@ -249,12 +249,12 @@ impl Type for ExprType {
         let expr = Expr {
             loc,
             r#type: Expr_::Literal(Rc::new(move || {
-                Box::new(crate::eval::tuple::StaticValue { type_: type_rc.clone() })
+                Rc::new(crate::eval::tuple::StaticValue { type_: type_rc.clone() }) as Rc<dyn Value>
             })),
         };
         return EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Box::new(expr),
+            value: Rc::new(expr),
         });
     }
 }
@@ -290,7 +290,7 @@ impl AspectBindJs for ExprType {
 }
 
 impl AspectLiftJs for ExprType {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
@@ -319,8 +319,8 @@ impl Type for StagedExprPlaceholderType {
         "stage result".to_string()
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(StagedExprPlaceholderType)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(StagedExprPlaceholderType)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -342,7 +342,7 @@ impl Type for StagedExprPlaceholderType {
 impl Aspect for StagedExprPlaceholderType { }
 
 impl AspectLiftJs for StagedExprPlaceholderType {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
     }

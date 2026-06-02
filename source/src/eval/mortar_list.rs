@@ -80,8 +80,8 @@ impl Type for TypeListConstructor {
         "list constructor".to_string()
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeListConstructor)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeListConstructor)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -110,7 +110,7 @@ impl AspectFunction for TypeListConstructor {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(TypeMortarList { element_type }),
+            value: Rc::new(TypeMortarList { element_type }),
         })
     }
 }
@@ -147,8 +147,8 @@ impl Type for TypeMortarList {
         format!("list({})", self.element_type.desc())
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarList { element_type: self.element_type.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarList { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -186,7 +186,7 @@ impl Type for TypeMortarList {
         if aspect_mortar_list_get_maybe(_xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(super::mortar_js_value::MortarJsValue {
+                value: Rc::new(super::mortar_js_value::MortarJsValue {
                     source: super::mortar_js_value::MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
@@ -221,7 +221,7 @@ impl AspectField for TypeMortarList {
                     loc,
                     code: Code_::None,
                 },
-                value: Box::new(
+                value: Rc::new(
                     StaticValue { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }) },
                 ),
             });
@@ -245,7 +245,7 @@ impl AspectField for TypeMortarList {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Field(MortarJsValueDataAccess {
                         loc,
                         base: Box::new(MortarJsValue {
@@ -289,7 +289,7 @@ impl AspectJsStackValue for TypeMortarList {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(self.clone()),
             }),
@@ -374,8 +374,8 @@ impl Type for TypeListNew {
         format!("list({}).new", self.element_type.desc())
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeListNew { element_type: self.element_type.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeListNew { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

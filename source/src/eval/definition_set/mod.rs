@@ -45,7 +45,7 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
 pub(crate) struct DefinitionSetFunctionData {
     pub name: Option<String>,
     pub description: RefCell<Option<String>>,
-    pub impl_expr: RefCell<Option<Box<dyn Value>>>,
+    pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
@@ -54,7 +54,7 @@ pub(crate) struct DefinitionSetFunctionData {
 
 pub(crate) struct DefinitionSetDataMethodData {
     pub name: String,
-    pub impl_expr: RefCell<Option<Box<dyn Value>>>,
+    pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
@@ -78,7 +78,7 @@ pub(crate) struct DefinitionSetDataTypeInterfaceImplData {
 
 pub(crate) struct DefinitionSetDataTypeInterfaceMethodImplData {
     pub interface_method_index: usize,
-    pub impl_expr: Box<dyn Value>,
+    pub impl_expr: Rc<dyn Value>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }

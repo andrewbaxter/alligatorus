@@ -67,8 +67,8 @@ impl Type for DefinitionSetDataType {
         }
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(DefinitionSetDataType {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(DefinitionSetDataType {
             set: self.set.clone(),
             data_type_index: self.data_type_index,
         })
@@ -168,7 +168,7 @@ impl Type for DefinitionSetDataType {
         if type_.aspect(xx, &own_identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(DefinitionSetDataType {
                         set: self.set.clone(),
@@ -183,7 +183,7 @@ impl Type for DefinitionSetDataType {
             if type_.aspect(xx, &identity).is_some() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(DefinitionSetInterface {
                             set: self.set.clone(),
@@ -228,7 +228,7 @@ impl AspectJsStackValue for DefinitionSetDataType {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(DefinitionSetDataType {
                     set: self.set.clone(),
@@ -298,7 +298,7 @@ impl AspectField for DefinitionSetDataType {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: field_type,
                 }),

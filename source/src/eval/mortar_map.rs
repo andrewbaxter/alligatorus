@@ -46,6 +46,7 @@ use {
             Type,
             Unique,
             Value,
+            downcast_value,
         },
     },
     std::{
@@ -86,8 +87,8 @@ impl Type for TypeMapConstructor {
         "map constructor".to_string()
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMapConstructor)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMapConstructor)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -129,7 +130,7 @@ impl AspectFunction for TypeMapConstructor {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(TypeMortarMap {
+            value: Rc::new(TypeMortarMap {
                 key_type,
                 value_type,
             }),
@@ -170,8 +171,11 @@ impl Type for TypeMortarMap {
         format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarMap { key_type: self.key_type.clone(), value_type: self.value_type.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarMap {
+            key_type: self.key_type.clone(),
+            value_type: self.value_type.clone(),
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -244,7 +248,7 @@ impl Type for TypeMortarMap {
             }
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
@@ -253,10 +257,11 @@ impl Type for TypeMortarMap {
 
         // Record source: decompose, typecheck_convert each value to the map's value type,
         // then convert each to JS individually.
-        let record: Box<super::record::Record> = match (cv.value as Box<dyn Any>).downcast() {
-            Ok(r) => r,
-            Err(_) => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
-        };
+        let record: super::record::Record =
+            match downcast_value::<super::record::Record>(cv.value).and_then(|r| Rc::try_unwrap(r).ok()) {
+                Some(r) => r,
+                None => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
+            };
         return er_seq_cv!(loc, erb, {
             let value_to_js = erb.must_er(aspect_consume_js_get(xx, loc, self.value_type.as_ref()))?;
             let mut js_fields = Vec::new();
@@ -295,7 +300,7 @@ impl Type for TypeMortarMap {
                         type_: JsCodeType::NewMap(JsCodeNewMap { fields: js_fields }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
@@ -333,7 +338,7 @@ impl AspectField for TypeMortarMap {
                     loc,
                     code: Code_::None,
                 },
-                value: Box::new(StaticValue { type_: Rc::new(TypeMapNew {
+                value: Rc::new(StaticValue { type_: Rc::new(TypeMapNew {
                     key_type: self.key_type.clone(),
                     value_type: self.value_type.clone(),
                 }) }),
@@ -358,7 +363,7 @@ impl AspectField for TypeMortarMap {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Field(MortarJsValueDataAccess {
                         loc,
                         base: Box::new(MortarJsValue {
@@ -391,7 +396,7 @@ impl AspectJsStackValue for TypeMortarMap {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(self.clone()),
             }),
@@ -498,8 +503,11 @@ impl Type for TypeMapNew {
         format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMapNew { key_type: self.key_type.clone(), value_type: self.value_type.clone() })
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMapNew {
+            key_type: self.key_type.clone(),
+            value_type: self.value_type.clone(),
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

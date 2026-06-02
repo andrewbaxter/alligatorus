@@ -62,8 +62,8 @@ impl Type for TypeMortarBool {
         return format!("mortar bool");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarBool)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarBool)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -89,7 +89,7 @@ impl Type for TypeMortarBool {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarBool),
             }),
@@ -124,7 +124,7 @@ impl Type for TypeMortarBool {
                             )
                         }))
                     },
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(TypeMortarBool),
                     }),
@@ -132,7 +132,7 @@ impl Type for TypeMortarBool {
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(TypeMortarBool),
                     })

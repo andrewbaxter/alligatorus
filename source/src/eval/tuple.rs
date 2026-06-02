@@ -31,6 +31,7 @@ use {
             Type,
             Unique,
             Value,
+            downcast_value,
         },
     },
     std::{
@@ -112,8 +113,8 @@ impl Type for Tuple {
         }).collect::<Vec<_>>().join(", "))
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(self.clone_as_type())
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(self.clone_as_type())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -149,7 +150,10 @@ impl Type for Tuple {
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let result_type = cv.value.type_(xx, loc);
-        let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().expect("Tuple cast_to: expected Tuple value");
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).expect("Tuple cast_to: expected Tuple value"))
+                .ok()
+                .expect("Tuple cast_to: Rc not unique");
         let needs_runtime = tuple.elements.iter().any(|e| match e {
             TupleElement::Mortar(_) => true,
             TupleElement::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
@@ -182,7 +186,7 @@ impl Type for Tuple {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(super::type_ref::TypeType),
+                                    value: Rc::new(super::type_ref::TypeType),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -200,7 +204,7 @@ impl Type for Tuple {
             };
             let converted_cv = CodeValue {
                 code: cv.code,
-                value: Box::new(converted_tuple),
+                value: Rc::new(converted_tuple),
             };
             match converted_type.to_js(xx, loc, converted_cv).into_res() {
                 Ok(tuple_js) => {
@@ -263,8 +267,9 @@ impl AspectTuple for Tuple {
         }).collect()
     }
 
-    fn take_elements(&self, value: Box<dyn Value>) -> Vec<EvalRes> {
-        let tuple: Box<Tuple> = (value as Box<dyn Any>).downcast().unwrap();
+    fn take_elements(&self, value: Rc<dyn Value>) -> Vec<EvalRes> {
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(value).unwrap()).ok().expect("take_elements: Rc not unique");
         tuple.elements.into_iter().map(|e| {
             match e {
                 TupleElement::EvalRes(er) => er,
@@ -281,7 +286,7 @@ struct TupleLiftJs {
 impl Aspect for TupleLiftJs { }
 
 impl AspectLiftJs for TupleLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lift");
         let mut elements = Vec::new();
         for (i, elem_lift) in self.element_lifts.iter().enumerate() {
@@ -295,7 +300,7 @@ impl AspectLiftJs for TupleLiftJs {
                 value: lifted,
             })));
         }
-        Ok(Box::new(Tuple {
+        Ok(Rc::new(Tuple {
             source: None,
             elements,
         }))
@@ -325,7 +330,8 @@ pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: JsCode) -> JsCode {
 impl AspectConsumeJs for Tuple {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         let carry = cv.code;
-        let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().unwrap();
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap()).ok().expect("Tuple to_js: Rc not unique");
         let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
             match e {
                 TupleElement::Mortar(t) => t.clone(),
@@ -401,7 +407,7 @@ impl ScopeEntry for StaticScopeEntry {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(StaticValue { type_: self.type_.clone() }),
+            value: Rc::new(StaticValue { type_: self.type_.clone() }),
         }
     }
 }
@@ -419,18 +425,7 @@ impl ScopeEntry for ValueScopeEntry {
                 loc,
                 code: Code_::None,
             },
-            value: Box::new(SharedValue { inner: self.value.clone() }),
+            value: self.value.clone(),
         }
-    }
-}
-
-/// Value wrapper for an Rc`<dyn Value>`, allowing shared ownership of a value.
-pub(crate) struct SharedValue {
-    pub inner: Rc<dyn Value>,
-}
-
-impl Value for SharedValue {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        self.inner.type_(xx, loc)
     }
 }

@@ -67,8 +67,8 @@ impl Type for DefinitionSetInterface {
         }
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(DefinitionSetInterface {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(DefinitionSetInterface {
             set: self.set.clone(),
             interface_index: self.interface_index,
         })
@@ -133,7 +133,7 @@ impl Type for DefinitionSetInterface {
         if source_type.aspect(xx, &identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(DefinitionSetInterface {
                         set: self.set.clone(),
@@ -173,7 +173,7 @@ impl AspectJsStackValue for DefinitionSetInterface {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(DefinitionSetInterface {
                     set: self.set.clone(),
@@ -220,7 +220,7 @@ impl AspectField for DefinitionSetInterface {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: field_type,
                 }),

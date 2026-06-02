@@ -63,8 +63,8 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         format!("definition_set_interface_ref")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeDefinitionSetInterfaceRef)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeDefinitionSetInterfaceRef)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -99,7 +99,7 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         if source_type.aspect(xx, &interface_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),
                 }),
@@ -136,7 +136,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),
             }),
@@ -145,11 +145,11 @@ impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let iface_ref: Rc<DefinitionSetInterfaceRef> =
             from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
         iface_ref.set.finish()?;
-        Ok(Box::new(MortarJsValue {
+        Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(DefinitionSetInterface {
                 set: iface_ref.set.clone(),

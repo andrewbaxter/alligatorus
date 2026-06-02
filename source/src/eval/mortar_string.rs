@@ -73,8 +73,8 @@ impl Type for TypeMortarString {
         return format!("mortar string");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarString)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarString)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -106,7 +106,7 @@ impl Type for TypeMortarString {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarString),
             }),
@@ -140,7 +140,7 @@ impl Type for TypeMortarString {
                             )
                         }))
                     },
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(TypeMortarString),
                     }),
@@ -148,7 +148,7 @@ impl Type for TypeMortarString {
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(TypeMortarString),
                     })
@@ -207,7 +207,7 @@ impl AspectField for TypeMortarString {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Field(MortarJsValueDataAccess {
                         loc: loc,
                         base: Box::new(MortarJsValue {

@@ -65,8 +65,8 @@ impl Type for TypeMortarNull {
         return format!("mortar null");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarNull)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarNull)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -98,7 +98,7 @@ impl Type for TypeMortarNull {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Box::new(ValueNull),
+            value: Rc::new(ValueNull),
         })
     }
 
@@ -112,7 +112,7 @@ impl Type for TypeMortarNull {
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Box::new(ValueNull),
+                value: Rc::new(ValueNull),
             });
         });
     }
@@ -127,7 +127,7 @@ impl AspectJsStackValue for TypeMortarNull {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarNull),
             }),
@@ -136,14 +136,14 @@ impl AspectJsStackValue for TypeMortarNull {
 }
 
 impl AspectSerial for TypeMortarNull {
-    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Box<dyn Value>) -> EResult<LangSerialValue> {
+    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<LangSerialValue> {
         EResult::ok(LangSerialValue::Null)
     }
 }
 
 impl AspectLiftJs for TypeMortarNull {
-    fn lift(&self, _scope: &v8::PinScope, _value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        Ok(Box::new(ValueNull))
+    fn lift(&self, _scope: &v8::PinScope, _value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(ValueNull))
     }
 }
 

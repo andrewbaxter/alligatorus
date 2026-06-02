@@ -48,8 +48,8 @@ impl Type for TypeString {
         return format!("string");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeString)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeString)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -75,7 +75,7 @@ impl Type for TypeString {
             let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(ValueString(aspect_string.get(value.as_ref())))
+                value: Rc::new(ValueString(aspect_string.get(value.as_ref())))
             });
         });
     }
@@ -91,7 +91,7 @@ impl Type for TypeString {
             let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Box::new(ValueString(aspect_string.get(value.as_ref())))
+                value: Rc::new(ValueString(aspect_string.get(value.as_ref())))
             });
         });
     }

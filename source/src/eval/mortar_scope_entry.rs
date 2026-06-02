@@ -49,7 +49,7 @@ impl MortarScopeEntry for MortarScopeEntryDirect {
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id: key }),
                 })),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: value.source,
                 type_: self.type_.clone(),
             }),
@@ -70,7 +70,7 @@ impl MortarScopeEntry for MortarScopeEntryValue {
                 loc: self.loc,
                 code: Code_::None,
             },
-            value: Box::new(super::tuple::SharedValue { inner: self.value.clone() }),
+            value: self.value.clone(),
         })
     }
 }
@@ -116,7 +116,7 @@ impl ScopeEntry for MortarScopeEntryBinding {
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id: self.js_key }),
                 })),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Binding(MortarJsValueDataScope {
                     loc: loc,
                     key: self.js_key,

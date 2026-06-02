@@ -53,8 +53,8 @@ impl Type for TypeType {
         "type".to_string()
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeType)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeType)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -150,8 +150,8 @@ impl Type for TypeMortarType {
         "mortar type".to_string()
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarType)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarType)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -193,7 +193,7 @@ impl Type for TypeMortarType {
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
                 })),
             },
-            value: Box::new(super::mortar_js_value::MortarJsValue {
+            value: Rc::new(super::mortar_js_value::MortarJsValue {
                 source: super::mortar_js_value::MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarType),
             }),
@@ -227,7 +227,7 @@ impl AspectJsStackValue for TypeMortarType {
 }
 
 impl AspectLiftJs for TypeMortarType {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let type_ = super::rc_type_from_v8(&*value);
         Ok(type_.as_value())
     }

@@ -56,8 +56,8 @@ impl Type for MortarTypeDefinitionSetDataTypeRef {
         format!("definition_set_data_type_ref")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeDefinitionSetDataTypeRef)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeDefinitionSetDataTypeRef)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -112,7 +112,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeRef {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetDataTypeRef),
             }),
@@ -121,14 +121,14 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeRef {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetDataTypeRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let dt =
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<DefinitionSetDataType>()
                 .expect("MortarTypeDefinitionSetDataTypeRef::lift: expected DefinitionSetDataType");
         dt.set.finish()?;
-        Ok(Box::new(MortarJsValue {
+        Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_: Rc::new(DefinitionSetDataType {
                 set: dt.set.clone(),

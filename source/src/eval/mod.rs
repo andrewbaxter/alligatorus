@@ -88,6 +88,7 @@ use {
             Type,
             Unique,
             Value,
+            downcast_value,
         },
         syntax::{
             ExprId,
@@ -485,7 +486,7 @@ impl Target for MortarTarget {
                         }),
                     })),
                 },
-                value: Box::new(ValueNull),
+                value: Rc::new(ValueNull),
             });
         });
     }
@@ -572,7 +573,7 @@ impl Target for MortarTarget {
 
     fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes {
         // Store tree as external
-        let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(tree))) });
+        let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
         let tree_js = JsCode {
@@ -638,7 +639,7 @@ impl Target for MortarTarget {
                     loc,
                     code: Code_::Dyn(Rc::new(stage_js)),
                 },
-                value: Box::new(expr::StagedExprPlaceholder),
+                value: Rc::new(expr::StagedExprPlaceholder),
             });
         });
     }
@@ -750,7 +751,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                         let binding = erb.must_er(target.bind(&child_xx, sub.loc, value))?;
                         entries.push(binding.0);
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
-                        last_val = Some(Box::new(ValueNull) as Box<dyn Value>);
+                        last_val = Some(Rc::new(ValueNull) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(eval_half(&child_xx, sub, target))?;
                         entries.push(r.code);
@@ -759,7 +760,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                 }
                 return Ok(CodeValue {
                     code: erb.must_er(target.block(expr.loc, entries))?,
-                    value: last_val.unwrap_or_else(|| Box::new(ValueNull))
+                    value: last_val.unwrap_or_else(|| Rc::new(ValueNull) as Rc<dyn Value>)
                 });
             });
         },
@@ -854,7 +855,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                         loc: expr.loc,
                         code: Code_::None,
                     },
-                    value: Box::new(e.expr.as_ref().clone()),
+                    value: Rc::new(e.expr.as_ref().clone()),
                 });
             }
 
@@ -881,7 +882,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: Box::new(Tuple {
+                value: Rc::new(Tuple {
                     source: None,
                     elements,
                 }),
@@ -942,7 +943,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
             let fields = entries.into_iter().map(|(k, v)| (k, RecordField::EvalRes(v))).collect();
             return EvalRes::ok(CodeValue {
                 code,
-                value: Box::new(Record {
+                value: Rc::new(Record {
                     source: None,
                     fields,
                 }),
@@ -1074,7 +1075,7 @@ pub(crate) fn eval_half<T: Target>(xx: &ExprContext, expr: &Expr, target: &T) ->
                         loc: expr.loc,
                         code: Code_::None
                     },
-                    value: Box::new(ValueNull),
+                    value: Rc::new(ValueNull),
                 });
             } else {
                 // Delegate code generation to target
@@ -1115,7 +1116,7 @@ pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
 }
 
 struct EvalResult {
-    value: Box<dyn Value>,
+    value: Rc<dyn Value>,
     logs: Vec<crate::langhelp::LogEntry>,
 }
 
@@ -1286,7 +1287,7 @@ fn eval(
     // the borrow on definition_sets, since eval_half may trigger function calls that
     // re-borrow it.
     struct DefFuncInfo {
-        impl_expr_ast: Box<dyn Value>,
+        impl_expr_ast: Rc<dyn Value>,
         arg_type: Rc<dyn Type>,
         ret_type: Rc<dyn Type>,
         scope_entry_id: ScopeEntryId,
@@ -1610,7 +1611,7 @@ fn eval(
 
             enum StageLowerValue {
                 Expr(Expr),
-                Value(Box<dyn Value>),
+                Value(Rc<dyn Value>),
             }
 
             let mut values: Vec<StageLowerValue> = Vec::new();
@@ -1624,8 +1625,11 @@ fn eval(
                     let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
                     let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
                     if (value.as_ref() as &dyn Any).is::<Expr>() {
-                        let expr = (value as Box<dyn Any>).downcast::<Expr>().unwrap();
-                        values.push(StageLowerValue::Expr(*expr));
+                        let expr =
+                            Rc::try_unwrap(downcast_value::<Expr>(value).unwrap())
+                                .ok()
+                                .expect("Stage lower Expr: Rc not unique");
+                        values.push(StageLowerValue::Expr(expr));
                     } else {
                         values.push(StageLowerValue::Value(value));
                     }
@@ -1652,7 +1656,8 @@ fn eval(
                             match values.next().expect("Not enough lower values for substitution") {
                                 StageLowerValue::Expr(expr_val) => expr_val,
                                 StageLowerValue::Value(value) => {
-                                    let value_cell = Rc::new(RefCell::new(Some(value)));
+                                    let value_cell: Rc<RefCell<Option<Rc<dyn Value>>>> =
+                                        Rc::new(RefCell::new(Some(value)));
                                     Expr {
                                         loc: expr.loc,
                                         r#type: Expr_::Literal(Rc::new(move || {
@@ -1794,7 +1799,8 @@ fn eval(
             }
 
             let new_tree = clone_with_lower_substitutions(&tree, 0, 0, &mut values.into_iter());
-            let result_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Box::new(new_tree))) });
+            let result_cell =
+                Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(new_tree) as Rc<dyn Value>)) });
             let ext = to_v8(scope, result_cell);
             rv.set(ext.into());
         }
@@ -1921,7 +1927,7 @@ fn eval(
     match script.run(js_scope) {
         Some(stage2) => {
             let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let value: Box<dyn Value> = value_from_js.lift(&*js_scope, stage2).map_err(|e| vec![ExprErr {
+            let value: Rc<dyn Value> = value_from_js.lift(&*js_scope, stage2).map_err(|e| vec![ExprErr {
                 loc: root_loc,
                 errors: vec![ExprSubErr::Opaque(e)],
             }])?;
@@ -2289,7 +2295,10 @@ pub async fn compile_importid(
         }
 
         // Result is an Expr (from stage eval) - use it as next expression
-        let next_expr = *(eval_value as Box<dyn Any>).downcast::<Expr>().expect("Stage eval must produce an Expr value");
+        let next_expr =
+            Rc::try_unwrap(downcast_value::<Expr>(eval_value).expect("Stage eval must produce an Expr value"))
+                .ok()
+                .expect("Stage eval Expr: Rc not unique");
         root_expr = next_expr;
     }
 }

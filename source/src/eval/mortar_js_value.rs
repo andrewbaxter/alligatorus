@@ -123,7 +123,7 @@ pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: JsCode, type_: Rc<dy
             loc,
             code: Code_::Dyn(Rc::new(value)),
         },
-        value: Box::new(MortarJsValue {
+        value: Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
             type_,
         }),
@@ -167,7 +167,7 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                             })
                         }))
                     },
-                    value: Box::new(super::null::ValueNull),
+                    value: Rc::new(super::null::ValueNull),
                 })
             },
             MortarJsValueSource::Binding(b) => {
@@ -192,7 +192,7 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                             )
                         }))
                     },
-                    value: Box::new(super::null::ValueNull),
+                    value: Rc::new(super::null::ValueNull),
                 })
             },
             MortarJsValueSource::Expr => {

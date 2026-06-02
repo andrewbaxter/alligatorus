@@ -78,8 +78,8 @@ impl Type for TypeMortarNumber {
         return format!("mortar number");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeMortarNumber)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMortarNumber)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -117,7 +117,7 @@ impl Type for TypeMortarNumber {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(TypeMortarNumber),
             }),
@@ -152,7 +152,7 @@ impl Type for TypeMortarNumber {
                             )
                         }))
                     },
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(TypeMortarNumber),
                     }),
@@ -160,7 +160,7 @@ impl Type for TypeMortarNumber {
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Box::new(MortarJsValue {
+                    value: Rc::new(MortarJsValue {
                         source: MortarJsValueSource::Expr,
                         type_: Rc::new(TypeMortarNumber),
                     })
@@ -227,7 +227,7 @@ impl AspectField for TypeMortarNumber {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Field(MortarJsValueDataAccess {
                         loc: loc,
                         base: Box::new(MortarJsValue {
@@ -276,7 +276,7 @@ impl AspectOperatorLt for TypeMortarNumber {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(super::mortar_bool::TypeMortarBool),
                 }),
@@ -302,7 +302,7 @@ impl AspectOperatorAdd for TypeMortarNumber {
                         }),
                     })),
                 },
-                value: Box::new(MortarJsValue {
+                value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
                     type_: Rc::new(TypeMortarNumber),
                 }),

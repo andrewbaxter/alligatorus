@@ -43,8 +43,8 @@ impl Type for TypeNull {
         return format!("null");
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(TypeNull)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeNull)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -66,7 +66,7 @@ impl Type for TypeNull {
             erb.must_er(aspect_null_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Box::new(ValueNull)
+                value: Rc::new(ValueNull)
             });
         });
     }
@@ -81,7 +81,7 @@ impl Type for TypeNull {
             erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Box::new(ValueNull)
+                value: Rc::new(ValueNull)
             });
         });
     }
@@ -92,7 +92,7 @@ impl Aspect for TypeNull { }
 impl AspectNull for TypeNull { }
 
 impl AspectSerial for TypeNull {
-    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Box<dyn Value>) -> EResult<SerialValue> {
+    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<SerialValue> {
         EResult::ok(SerialValue::Null)
     }
 }

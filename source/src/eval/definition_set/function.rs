@@ -77,8 +77,8 @@ impl Type for MortarTypeDefinitionSetFunction {
         format!("definition_set_function")
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(MortarTypeDefinitionSetFunction)
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(MortarTypeDefinitionSetFunction)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -133,7 +133,7 @@ impl AspectJsStackValue for MortarTypeDefinitionSetFunction {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Box::new(MortarJsValue {
+            value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
                 type_: Rc::new(MortarTypeDefinitionSetFunction),
             }),
@@ -142,9 +142,9 @@ impl AspectJsStackValue for MortarTypeDefinitionSetFunction {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetFunction {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
+    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let func_ref: Rc<DefinitionSetFunction> = from_v8_ref::<Rc<DefinitionSetFunction>>(&value).clone();
-        Ok(Box::new(MortarJsValue {
+        Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
                 set: func_ref.set.clone(),
                 func_index: func_ref.func_index,
@@ -174,8 +174,8 @@ impl Type for DefinitionSetFunction {
         }
     }
 
-    fn as_value(&self) -> Box<dyn Value> {
-        Box::new(DefinitionSetFunction {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(DefinitionSetFunction {
             set: self.set.clone(),
             func_index: self.func_index,
         })
