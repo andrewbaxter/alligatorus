@@ -1220,7 +1220,7 @@ fn eval(
         (
             "list",
             Rc::new(mortar_list::TypeListConstructor) as Rc<dyn Type>,
-            jswrap!(fn list(ex, js_scope, scope)(element_type: jswrap:: TypeRef) -> mortar_list:: TypeMortarList {
+            jswrap!(fn list(ex, js_scope, scope)(element_type: jswrap:: AnyType) -> mortar_list:: TypeMortarList {
                 mortar_list::TypeMortarList { element_type: element_type.0 }
             }),
         ),
@@ -1232,7 +1232,7 @@ fn eval(
                     ex,
                     js_scope,
                     scope
-                )(key_type: jswrap:: TypeRef, value_type: jswrap:: TypeRef) -> mortar_map:: TypeMortarMap {
+                )(key_type: jswrap:: AnyType, value_type: jswrap:: AnyType) -> mortar_map:: TypeMortarMap {
                     mortar_map::TypeMortarMap {
                         key_type: key_type.0,
                         value_type: value_type.0

@@ -54,7 +54,7 @@ use {
         jswrap::{
             JsWrap,
             StagedExpr,
-            TypeRef,
+            AnyType,
             jswrap_method_name,
         },
         mortar_function::MortarTypeFunction,
@@ -189,7 +189,7 @@ jswrap!(struct NewFuncResult(self_, scope) {
         }
         *impl_expr = Some(staged.0);
     }
-    fn arg_(type_ref: TypeRef) -> () {
+    fn arg_(type_ref: AnyType) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
         let mut arg_type = func_data.arg_type.borrow_mut();
@@ -216,7 +216,7 @@ jswrap!(struct NewFuncResult(self_, scope) {
             interface_index: iface_ref.interface_index,
         }) as Rc<dyn crate::langhelp::Type>);
     }
-    fn ret_(type_ref: TypeRef) -> () {
+    fn ret_(type_ref: AnyType) -> () {
         let functions = self_.func_ref.set.functions.borrow();
         let func_data = &functions[self_.func_ref.func_index];
         let mut ret_type = func_data.ret_type.borrow_mut();
@@ -238,7 +238,7 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
     field type_: Rc < TaggedUnionRef > {
         Rc::new(TaggedUnionRef { data: self_.data.clone() })
     }
-    fn variant(tag: String, type_ref: TypeRef) -> Rc<TaggedUnionConstructorRef> {
+    fn variant(tag: String, type_ref: AnyType) -> Rc<TaggedUnionConstructorRef> {
         let variant_index = {
             let mut variants = self_.data.variants.borrow_mut();
             let idx = variants.len();
@@ -276,7 +276,7 @@ jswrap!(struct NewDataResult(self_, scope) {
         let dt = &data_types[self_.data_type_ref.data_type_index];
         *dt.description.borrow_mut() = Some(description);
     }
-    fn set_underlying(type_ref: TypeRef) -> () {
+    fn set_underlying(type_ref: AnyType) -> () {
         let data_types = self_.data_type_ref.set.data_types.borrow();
         let dt = &data_types[self_.data_type_ref.data_type_index];
         let mut underlying = dt.underlying_type.borrow_mut();
@@ -387,7 +387,7 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
         }
         *impl_expr = Some(staged.0);
     }
-    fn ret_(type_ref: TypeRef) -> () {
+    fn ret_(type_ref: AnyType) -> () {
         let data_types = self_.data_type_ref.set.data_types.borrow();
         let dt = &data_types[self_.data_type_ref.data_type_index];
         let methods = dt.methods.borrow();
@@ -445,7 +445,7 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
         interface_ref: Rc < DefinitionSetInterfaceRef >,
         method_index: usize
     }
-    fn arg_(type_ref: TypeRef) -> () {
+    fn arg_(type_ref: AnyType) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];
         let methods = iface.methods.borrow();
@@ -461,7 +461,7 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
         }
         *arg_type = Some(type_ref.0);
     }
-    fn ret_(type_ref: TypeRef) -> () {
+    fn ret_(type_ref: AnyType) -> () {
         let interfaces = self_.interface_ref.set.interfaces.borrow();
         let iface = &interfaces[self_.interface_ref.interface_index];
         let methods = iface.methods.borrow();

@@ -145,11 +145,14 @@ impl Type for Tuple {
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let result_type = cv.value.type_(xx, loc);
-        let has_mortar = self.elements.iter().any(|e| matches!(e, TupleElement::Mortar(_)));
-        if has_mortar {
-            // Mortar elements: build tuple with proper JS codes for all elements, consume to
-            // JS, then wrap with __tuple_to_type().
-            let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().expect("Tuple cast_to: expected Tuple value");
+        let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().expect("Tuple cast_to: expected Tuple value");
+        let needs_runtime = tuple.elements.iter().any(|e| match e {
+            TupleElement::Mortar(_) => true,
+            TupleElement::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
+        });
+        if needs_runtime {
+            // Has mortar or JS-coded elements: build tuple with proper JS codes for all
+            // elements, consume to JS, then wrap with __tuple_to_type().
             let mut converted_elements = Vec::new();
             for elem in tuple.elements {
                 let converted = match elem {
@@ -163,7 +166,11 @@ impl Type for Tuple {
                                         value: entry_cv.value,
                                     })));
                                 let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type.clone())));
+                                xx
+                                    .vx
+                                    .externals
+                                    .borrow_mut()
+                                    .push((id, crate::langhelp::External::Type(elem_type.clone())));
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
@@ -172,10 +179,7 @@ impl Type for Tuple {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(super::type_ref::TypeRefValue {
-                                        type_: elem_type,
-                                        field_codes: vec![],
-                                    }),
+                                    value: Box::new(super::type_ref::ValueType { type_: elem_type }),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -214,10 +218,7 @@ impl Type for Tuple {
                             loc,
                             code: Code_::Dyn(Rc::new(call_code)),
                         },
-                        value: Box::new(super::type_ref::TypeRefValue {
-                            type_: result_type,
-                            field_codes: vec![],
-                        }),
+                        value: Box::new(super::type_ref::ValueType { type_: result_type }),
                     })
                 },
                 Err(errors) => EvalRes {
@@ -226,23 +227,18 @@ impl Type for Tuple {
                 },
             }
         } else {
-            // No mortar data: extract field codes and delegate to type_ref_to_js via
-            // TypeType's to_js.
-            let tuple: Box<Tuple> = (cv.value as Box<dyn Any>).downcast().expect("Tuple cast_to: expected Tuple value");
-            let mut field_codes = Vec::new();
-            for (i, elem) in tuple.elements.iter().enumerate() {
-                if let TupleElement::EvalRes(entry_res) = elem {
-                    if let Some(entry_cv) = &entry_res.v {
-                        field_codes.push((crate::langhelp::ConstKey::Usize(i), entry_cv.code.clone()));
-                    }
-                }
-            }
+            // No mortar data: all compile-time, store type as external.
+            let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
+            xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(result_type.clone())));
             EvalRes::ok(CodeValue {
-                code: cv.code,
-                value: Box::new(super::type_ref::TypeRefValue {
-                    type_: result_type,
-                    field_codes,
-                }),
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc,
+                        type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
+                    })),
+                },
+                value: Box::new(super::type_ref::ValueType { type_: result_type }),
             })
         }
     }

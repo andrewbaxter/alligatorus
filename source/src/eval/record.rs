@@ -192,10 +192,14 @@ impl Type for Record {
         let result_type = cv.value.type_(xx, loc);
         let record: Box<Record> =
             (cv.value as Box<dyn Any>).downcast().expect("Record cast_to: expected Record value");
-        let has_mortar = record.fields.values().any(|f| matches!(f, RecordField::Mortar(_)));
-        if has_mortar {
-            // Has mortar fields: build a JS object with all fields having proper JS code,
-            // then wrap with __record_to_type() to convert to Rc`<dyn Type>` at runtime.
+        let needs_runtime = record.fields.values().any(|f| match f {
+            RecordField::Mortar(_) => true,
+            RecordField::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
+        });
+        if needs_runtime {
+            // Has mortar or JS-coded fields: build a JS object with all fields having proper
+            // JS code, then wrap with __record_to_type() to convert to Rc`<dyn Type>` at
+            // runtime.
             let mut converted_fields = std::collections::BTreeMap::new();
             for (key, field) in record.fields {
                 let field_with_code = match field {
@@ -219,10 +223,7 @@ impl Type for Record {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(super::type_ref::TypeRefValue {
-                                        type_: field_type,
-                                        field_codes: vec![],
-                                    }),
+                                    value: Box::new(super::type_ref::ValueType { type_: field_type }),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -261,10 +262,7 @@ impl Type for Record {
                             loc,
                             code: Code_::Dyn(Rc::new(call_code)),
                         },
-                        value: Box::new(super::type_ref::TypeRefValue {
-                            type_: result_type,
-                            field_codes: vec![],
-                        }),
+                        value: Box::new(super::type_ref::ValueType { type_: result_type }),
                     })
                 },
                 Err(errors) => EvalRes {
@@ -273,22 +271,18 @@ impl Type for Record {
                 },
             }
         } else {
-            // No mortar data: extract field codes and delegate to type_ref_to_js via
-            // TypeType's to_js (same as cast_from but from the source side).
-            let mut field_codes = Vec::new();
-            for (key, field) in &record.fields {
-                if let RecordField::EvalRes(entry_res) = field {
-                    if let Some(entry_cv) = &entry_res.v {
-                        field_codes.push((key.clone(), entry_cv.code.clone()));
-                    }
-                }
-            }
+            // No mortar data: all compile-time, store type as external.
+            let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            xx.vx.externals.borrow_mut().push((id, External::Type(result_type.clone())));
             EvalRes::ok(CodeValue {
-                code: cv.code,
-                value: Box::new(super::type_ref::TypeRefValue {
-                    type_: result_type,
-                    field_codes,
-                }),
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
+                        loc,
+                        type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
+                    })),
+                },
+                value: Box::new(super::type_ref::ValueType { type_: result_type }),
             })
         }
     }

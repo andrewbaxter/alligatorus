@@ -404,9 +404,9 @@ e0"#);
 let e1;
 e1 = BUILTIN;
 let e2;
-e2 = a25;
+e2 = a24;
 let e3;
-e3 = a26;
+e3 = a25;
 let e4;
 let a0;
 {
@@ -453,233 +453,237 @@ let e17;
 let e18;
 e18 = BUILTIN;
 let e19;
+{
 let e20;
-e20 = a2;
 let e21;
 e21 = a2;
-e19 = { arg: e20, func: e21 };
+let e22;
+e22 = a2;
+e20 = { arg: e21, func: e22 };
+e19 = e20;
+}
 e17 = (e18)(e19);
 e13 = e14._1(e15,e17);
 a3 = e13;
 }
 let a5;
 {
-let e22;
 let e23;
-e23 = a1;
 let e24;
-{
+e24 = a1;
 let e25;
-e25 = "lit_str";
-e24 = e25;
-}
+{
 let e26;
-e26 = a4;
-e22 = e23._1(e24,e26);
-a5 = e22;
+e26 = "lit_str";
+e25 = e26;
+}
+let e27;
+e27 = a4;
+e23 = e24._1(e25,e27);
+a5 = e23;
 }
 let a6;
 {
-let e27;
 let e28;
-e28 = a1;
 let e29;
-{
+e29 = a1;
 let e30;
-e30 = "field";
-e29 = e30;
-}
+{
 let e31;
+e31 = "field";
+e30 = e31;
+}
 let e32;
-e32 = BUILTIN;
 let e33;
+e33 = BUILTIN;
 let e34;
-e34 = a2;
+{
 let e35;
-e35 = a2;
-e33 = { base: e34, field: e35 };
-e31 = (e32)(e33);
-e27 = e28._1(e29,e31);
-a6 = e27;
+let e36;
+e36 = a2;
+let e37;
+e37 = a2;
+e35 = { base: e36, field: e37 };
+e34 = e35;
+}
+e32 = (e33)(e34);
+e28 = e29._1(e30,e32);
+a6 = e28;
 }
 let a8;
 {
-let e36;
-let e37;
-e37 = a1;
 let e38;
-{
 let e39;
-e39 = "scope_use";
-e38 = e39;
-}
+e39 = a1;
 let e40;
-e40 = a7;
-e36 = e37._1(e38,e40);
-a8 = e36;
+{
+let e41;
+e41 = "scope_use";
+e40 = e41;
+}
+let e42;
+e42 = a7;
+e38 = e39._1(e40,e42);
+a8 = e38;
 }
 let a9;
 {
-let e41;
-let e42;
-e42 = a0;
 let e43;
-{
 let e44;
-e44 = "Render Node.js code (inner)";
-e43 = e44;
+e44 = a0;
+let e45;
+{
+let e46;
+e46 = "Render Node.js code (inner)";
+e45 = e46;
 }
-e41 = e42._0(e43);
-a9 = e41;
+e43 = e44._0(e45);
+a9 = e43;
 }
 let a10;
-{
-let e45;
-let e46;
-e46 = a9;
-e45 = e46._0;
-a10 = e45;
-}
 {
 let e47;
 let e48;
 e48 = a9;
+e47 = e48._0;
+a10 = e47;
+}
+{
 let e49;
 let e50;
-e50 = BUILTIN;
+e50 = a9;
 let e51;
 let e52;
-e52 = a2;
+e52 = BUILTIN;
 let e53;
+{
 let e54;
-e54 = BUILTIN;
 let e55;
+e55 = a2;
 let e56;
 e56 = a11;
+e54 = { code: e55, context: e56 };
+e53 = e54;
+}
+e51 = (e52)(e53);
+e49 = e50._3(e51);
+e4 = e49;
+}
+{
 let e57;
-e57 = a12;
-e55 = { expr_count: e56, out: e57 };
-e53 = (e54)(e55);
-e51 = { code: e52, context: e53 };
-e49 = (e50)(e51);
-e47 = e48._3(e49);
-e4 = e47;
-}
-{
 let e58;
+e58 = a9;
 let e59;
-e59 = a9;
-let e60;
-e60 = a13;
-e58 = e59._5(e60);
-e4 = e58;
+e59 = a12;
+e57 = e58._5(e59);
+e4 = e57;
 }
 {
+let e60;
 let e61;
+e61 = a9;
 let e62;
-e62 = a9;
 let e63;
+e63 = BUILTIN;
 let e64;
-e64 = BUILTIN;
+e64 = a13;
 let e65;
 e65 = a14;
 let e66;
-e66 = a15;
+e66 = a10;
 let e67;
-e67 = a10;
+e67 = a15;
 let e68;
-e68 = a16;
+e68 = a10;
 let e69;
-e69 = a10;
+e69 = a16;
 let e70;
-e70 = a17;
+e70 = a10;
 let e71;
-e71 = a10;
+e71 = a17;
 let e72;
-e72 = a18;
+e72 = a10;
+e62 = (e63)(e64,e65,e66,e67,e68,e69,e70,e71,e72);
+e60 = e61._2(e62);
+e4 = e60;
+}
+let a18;
+{
 let e73;
-e73 = a10;
-e63 = (e64)(e65,e66,e67,e68,e69,e70,e71,e72,e73);
-e61 = e62._2(e63);
-e4 = e61;
+let e74;
+e74 = a0;
+let e75;
+{
+let e76;
+e76 = "Render Node.js code";
+e75 = e76;
+}
+e73 = e74._0(e75);
+a18 = e73;
 }
 let a19;
 {
-let e74;
-let e75;
-e75 = a0;
-let e76;
-{
 let e77;
-e77 = "Render Node.js code";
-e76 = e77;
-}
-e74 = e75._0(e76);
-a19 = e74;
-}
-let a20;
-{
 let e78;
+e78 = a18;
+e77 = e78._0;
+a19 = e77;
+}
+{
 let e79;
-e79 = a19;
-e78 = e79._0;
-a20 = e78;
-}
-{
 let e80;
+e80 = a18;
 let e81;
-e81 = a19;
+e81 = a20;
+e79 = e80._3(e81);
+e4 = e79;
+}
+{
 let e82;
-e82 = a21;
-e80 = e81._3(e82);
-e4 = e80;
-}
-{
 let e83;
+e83 = a18;
 let e84;
-e84 = a19;
-let e85;
-e85 = a22;
-e83 = e84._5(e85);
-e4 = e83;
+e84 = a21;
+e82 = e83._5(e84);
+e4 = e82;
 }
 {
+let e85;
 let e86;
+e86 = a18;
 let e87;
-e87 = a19;
 let e88;
+e88 = BUILTIN;
 let e89;
-e89 = BUILTIN;
+e89 = a22;
 let e90;
 e90 = a23;
 let e91;
-e91 = a24;
+e91 = a10;
+e87 = (e88)(e89,e90,e91);
+e85 = e86._2(e87);
+e4 = e85;
+}
+{
 let e92;
-e92 = a10;
-e88 = (e89)(e90,e91,e92);
-e86 = e87._2(e88);
-e4 = e86;
+e4 = e92;
 }
 {
 let e93;
-e4 = e93;
-}
-{
 let e94;
+e94 = a3;
 let e95;
-e95 = a3;
+e95 = a6;
 let e96;
-e96 = a6;
+e96 = a5;
 let e97;
-e97 = a5;
+e97 = a19;
 let e98;
-e98 = a20;
+e98 = a8;
 let e99;
-e99 = a8;
-let e100;
-e100 = a2;
-e94 = { call: e95, field: e96, lit_str: e97, render: e98, scope_use: e99, type: e100 };
-e4 = e94;
+e99 = a2;
+e93 = { call: e94, field: e95, lit_str: e96, render: e97, scope_use: e98, type: e99 };
+e4 = e93;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);

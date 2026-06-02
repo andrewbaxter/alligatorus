@@ -67,24 +67,21 @@ impl JsWrap for StagedExpr {
     }
 }
 
-/// Wrapper for type references received from JS. Extracts a TypeRefValue from a
-/// StagedExprCell and returns the Rc`<dyn Type>`.
-pub(crate) struct TypeRef(pub Rc<dyn Type>);
+/// Wrapper for type values received from JS. In v8, types are always
+/// Rc`<dyn Type>` externals.
+pub(crate) struct AnyType(pub Rc<dyn Type>);
 
-impl JsWrap for TypeRef {
+impl JsWrap for AnyType {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeMortarType)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        // All type values in v8 are guaranteed to be Rc`<dyn Type>` externals. Compound
-        // types (Record/Tuple) are wrapped by __record_to_type / __tuple_to_type at the
-        // serialization site.
-        TypeRef(super::rc_type_from_v8(&*value))
+        AnyType(super::rc_type_from_v8(&*value))
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("TypeRef should not be sent back to v8")
+        unimplemented!("AnyType should not be sent back to v8")
     }
 }
 
