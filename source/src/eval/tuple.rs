@@ -179,7 +179,7 @@ impl Type for Tuple {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(super::type_ref::ValueType { type_: elem_type }),
+                                    value: Box::new(SharedValue { inner: elem_type as Rc<dyn Value> }),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -218,7 +218,7 @@ impl Type for Tuple {
                             loc,
                             code: Code_::Dyn(Rc::new(call_code)),
                         },
-                        value: Box::new(super::type_ref::ValueType { type_: result_type }),
+                        value: Box::new(SharedValue { inner: result_type as Rc<dyn Value> }),
                     })
                 },
                 Err(errors) => EvalRes {
@@ -238,7 +238,7 @@ impl Type for Tuple {
                         type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                     })),
                 },
-                value: Box::new(super::type_ref::ValueType { type_: result_type }),
+                value: Box::new(SharedValue { inner: result_type as Rc<dyn Value> }),
             })
         }
     }

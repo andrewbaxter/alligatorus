@@ -5,12 +5,10 @@ use {
             AspectConsumeJs,
             AspectJsStackValue,
             AspectLiftJs,
-            AspectType,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
-            aspect_type_aspect_id,
         },
         jscode::{
             JsCode,
@@ -35,15 +33,6 @@ use {
     },
 };
 
-pub(crate) struct ValueType {
-    pub type_: Rc<dyn Type>,
-}
-
-impl Value for ValueType {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeType)
-    }
-}
 pub(crate) struct TypeType;
 
 pub(crate) fn type_type_identity() -> Unique {
@@ -70,9 +59,6 @@ impl Type for TypeType {
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeType) as Box<dyn AspectConsumeJs>));
-        }
-        if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeAspectType) as Box<dyn AspectType>));
         }
         if *key == aspect_bind_js_aspect_id() {
             return Some(Box::new(Box::new(TypeType) as Box<dyn AspectBindJs>));
@@ -106,22 +92,12 @@ impl Type for TypeType {
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
                 })),
             },
-            value: Box::new(ValueType { type_ }),
+            value: Box::new(super::tuple::SharedValue { inner: type_ as Rc<dyn Value> }),
         })
     }
 }
 
 impl Aspect for TypeType { }
-struct TypeTypeAspectType;
-
-impl Aspect for TypeTypeAspectType { }
-
-impl AspectType for TypeTypeAspectType {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let any: &dyn Any = value;
-        any.downcast_ref::<ValueType>().expect("TypeTypeAspectType: value must be ValueType").type_.clone()
-    }
-}
 
 impl AspectConsumeJs for TypeType {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<JsCode> {
@@ -131,13 +107,10 @@ impl AspectConsumeJs for TypeType {
             return EResult::ok(js.clone());
         }
 
-        // Compile-time: create external from ValueType
-        let value_type =
-            (cv.value.as_ref() as &dyn Any)
-                .downcast_ref::<ValueType>()
-                .expect("TypeType to_js: value must be ValueType");
+        // Compile-time: create external from the value's type
+        let type_ = cv.value.type_(xx, loc);
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(value_type.type_.clone())));
+        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
         EResult::ok(JsCode {
             loc,
             type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
@@ -201,14 +174,7 @@ impl Type for TypeMortarType {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
-        let vtype = cv.value.type_(xx, loc);
-
-        // If source is a type value (AspectType), extract the inner type. Otherwise, use
-        // the source's type directly.
-        let type_ = match crate::builtin::aspect_type_get_maybe(xx, vtype.as_ref()) {
-            Some(at) => at.type_(cv.value.as_ref()),
-            None => vtype,
-        };
+        let type_ = cv.value.type_(xx, loc);
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
         crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
@@ -255,6 +221,6 @@ impl AspectJsStackValue for TypeMortarType {
 impl AspectLiftJs for TypeMortarType {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let type_ = super::rc_type_from_v8(&*value);
-        Ok(Box::new(ValueType { type_ }))
+        Ok(Box::new(super::tuple::SharedValue { inner: type_ as Rc<dyn Value> }))
     }
 }

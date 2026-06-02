@@ -16,7 +16,6 @@ use {
             aspect_record_aspect_id,
             aspect_record_get_maybe,
             aspect_string_get,
-            aspect_type_get_maybe,
         },
         jscode::{
             JsCode,
@@ -98,8 +97,7 @@ impl Record {
         Rc::new(self.clone_as_type())
     }
 
-    /// Extract entry types. For Mortar fields returns the type directly; for EvalRes
-    /// fields uses AspectType to extract the type from the value.
+    /// Extract entry types.
     pub fn entry_types(&self, xx: &ExprContext, loc: QExprId) -> BTreeMap<ConstKey, Rc<dyn Type>> {
         self.fields.iter().map(|(k, f)| {
             (k.clone(), record_field_type(xx, loc, f))
@@ -111,13 +109,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
     match f {
         RecordField::Mortar(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
-            Some(cv) => {
-                let vtype = cv.value.type_(xx, loc);
-                match aspect_type_get_maybe(xx, vtype.as_ref()) {
-                    Some(at) => at.type_(cv.value.as_ref()),
-                    None => vtype,
-                }
-            },
+            Some(cv) => cv.value.type_(xx, loc),
             None => Rc::new(super::tuple::Tuple {
                 source: None,
                 elements: vec![],
@@ -223,7 +215,9 @@ impl Type for Record {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(super::type_ref::ValueType { type_: field_type }),
+                                    value: Box::new(
+                                        super::tuple::SharedValue { inner: field_type as Rc<dyn Value> },
+                                    ),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -262,7 +256,7 @@ impl Type for Record {
                             loc,
                             code: Code_::Dyn(Rc::new(call_code)),
                         },
-                        value: Box::new(super::type_ref::ValueType { type_: result_type }),
+                        value: Box::new(super::tuple::SharedValue { inner: result_type as Rc<dyn Value> }),
                     })
                 },
                 Err(errors) => EvalRes {
@@ -282,7 +276,7 @@ impl Type for Record {
                         type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                     })),
                 },
-                value: Box::new(super::type_ref::ValueType { type_: result_type }),
+                value: Box::new(super::tuple::SharedValue { inner: result_type as Rc<dyn Value> }),
             })
         }
     }
