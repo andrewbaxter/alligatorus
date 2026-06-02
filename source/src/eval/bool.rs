@@ -39,6 +39,10 @@ impl Type for TypeBool {
         return format!("bool");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeBool)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_bool_aspect_id() {
             return Some(Box::new(Box::new(TypeBool) as Box<dyn AspectBool>));

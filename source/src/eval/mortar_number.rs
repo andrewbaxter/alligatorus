@@ -78,6 +78,10 @@ impl Type for TypeMortarNumber {
         return format!("mortar number");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarNumber)
+    }
+
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_js_number_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarNumber) as Box<dyn AspectJsNumber>));

@@ -52,6 +52,10 @@ impl Type for TypeNumber {
         return format!("number");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeNumber)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_number_aspect_id() {
             return Some(Box::new(Box::new(TypeNumber) as Box<dyn AspectNumber>));

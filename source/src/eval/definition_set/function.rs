@@ -77,6 +77,10 @@ impl Type for MortarTypeDefinitionSetFunction {
         format!("definition_set_function")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeDefinitionSetFunction)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetFunction) as Box<dyn AspectConsumeJs>));
@@ -168,6 +172,13 @@ impl Type for DefinitionSetFunction {
             Some(d) => d.to_string(),
             None => format!("definition_set_function"),
         }
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(DefinitionSetFunction {
+            set: self.set.clone(),
+            func_index: self.func_index,
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

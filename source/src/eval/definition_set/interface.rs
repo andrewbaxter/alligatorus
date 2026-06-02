@@ -67,6 +67,13 @@ impl Type for DefinitionSetInterface {
         }
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(DefinitionSetInterface {
+            set: self.set.clone(),
+            interface_index: self.interface_index,
+        })
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         // Check interface identity aspect
         {

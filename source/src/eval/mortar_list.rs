@@ -80,6 +80,10 @@ impl Type for TypeListConstructor {
         "list constructor".to_string()
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeListConstructor)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeListConstructor) as Box<dyn AspectFunction>));
@@ -141,6 +145,10 @@ impl Value for TypeMortarList {
 impl Type for TypeMortarList {
     fn desc(&self) -> String {
         format!("list({})", self.element_type.desc())
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarList { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -364,6 +372,10 @@ impl Value for TypeListNew {
 impl Type for TypeListNew {
     fn desc(&self) -> String {
         format!("list({}).new", self.element_type.desc())
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeListNew { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

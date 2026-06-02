@@ -62,6 +62,10 @@ impl Type for TypeMortarBool {
         return format!("mortar bool");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarBool)
+    }
+
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_js_bool_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarBool) as Box<dyn AspectJsBool>));

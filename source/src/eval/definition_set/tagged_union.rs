@@ -80,6 +80,10 @@ impl Type for MortarTypeTaggedUnionRef {
         format!("tagged_union_ref")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() })
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == tagged_union_ref_type_identity() {
             return Some(Box::new(true));
@@ -252,6 +256,10 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
         format!("tagged_union_constructor_ref")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeTaggedUnionConstructorRef)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectConsumeJs>));
@@ -395,6 +403,10 @@ impl Type for TaggedUnionType {
         format!("tagged_union")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TaggedUnionType { data: self.data.clone() })
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == self.data.identity {
             return Some(Box::new(true));
@@ -489,6 +501,13 @@ impl Type for TaggedUnionConstructor {
         let variants = self.data.variants.borrow();
         let tag = &variants[self.variant_index].tag;
         format!("tagged_union_constructor({:?})", tag)
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TaggedUnionConstructor {
+            data: self.data.clone(),
+            variant_index: self.variant_index,
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

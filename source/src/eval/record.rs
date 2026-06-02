@@ -142,6 +142,10 @@ impl Type for Record {
         }).collect::<Vec<_>>().join(", "))
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(self.clone_as_type())
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectField>));
@@ -193,6 +197,7 @@ impl Type for Record {
             // JS code, then wrap with __record_to_type() to convert to Rc`<dyn Type>` at
             // runtime.
             let mut converted_fields = std::collections::BTreeMap::new();
+            let mut converted_type = self.clone_as_type();
             for (key, field) in record.fields {
                 let field_with_code = match field {
                     RecordField::Mortar(t) => RecordField::Mortar(t),
@@ -200,13 +205,20 @@ impl Type for Record {
                         if let Some(entry_cv) = er.v {
                             if matches!(entry_cv.code.code, Code_::None) {
                                 // Compile-time value without JS code: store its type as Rc`<dyn Type>` external
-                                // and give it a code reference
+                                // and give it a code reference. Use TypeType as the consumer type so to_js passes
+                                // through the BindingUse code.
                                 let field_type = record_field_type(xx, loc, &RecordField::EvalRes(EvalRes::ok(CodeValue {
                                     code: entry_cv.code.clone(),
                                     value: entry_cv.value,
                                 })));
                                 let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, External::Type(field_type.clone())));
+                                xx.vx.externals.borrow_mut().push((id, External::Type(field_type)));
+                                converted_type
+                                    .fields
+                                    .insert(
+                                        key.clone(),
+                                        RecordField::Mortar(Rc::new(super::type_ref::TypeType) as Rc<dyn Type>),
+                                    );
                                 RecordField::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
@@ -215,9 +227,7 @@ impl Type for Record {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(
-                                        super::tuple::SharedValue { inner: field_type as Rc<dyn Value> },
-                                    ),
+                                    value: Box::new(super::type_ref::TypeType),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -237,7 +247,7 @@ impl Type for Record {
                 code: cv.code,
                 value: Box::new(converted_record),
             };
-            match self.to_js(xx, loc, converted_cv).into_res() {
+            match converted_type.to_js(xx, loc, converted_cv).into_res() {
                 Ok(record_js) => {
                     let call_code = JsCode {
                         loc,
@@ -256,7 +266,7 @@ impl Type for Record {
                             loc,
                             code: Code_::Dyn(Rc::new(call_code)),
                         },
-                        value: Box::new(super::tuple::SharedValue { inner: result_type as Rc<dyn Value> }),
+                        value: result_type.as_value(),
                     })
                 },
                 Err(errors) => EvalRes {
@@ -276,7 +286,7 @@ impl Type for Record {
                         type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                     })),
                 },
-                value: Box::new(super::tuple::SharedValue { inner: result_type as Rc<dyn Value> }),
+                value: result_type.as_value(),
             })
         }
     }

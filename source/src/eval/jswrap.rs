@@ -249,6 +249,9 @@ macro_rules! jswrap{
                 fn desc(&self) -> String {
                     stringify!($name).to_string()
                 }
+                fn as_value(&self) -> Box<dyn Value> {
+                    Box::new([<$name Type >])
+                }
                 fn aspect(&self, _xx: & ExprContext, key: & Unique) -> Option < Box < dyn Any >> {
                     if * key ==[<$name: snake _type_identity >]() {
                         return Some(Box::new(true));

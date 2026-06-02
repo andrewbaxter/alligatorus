@@ -75,6 +75,10 @@ impl Type for MortarTypeDefinitionSetDataTypeConstructor {
         format!("definition_set_data_type_constructor")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeDefinitionSetDataTypeConstructor)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(
@@ -168,6 +172,13 @@ impl Type for DefinitionSetDataTypeConstructor {
             Some(d) => d.to_string(),
             None => format!("definition_set_data_type_constructor"),
         }
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(DefinitionSetDataTypeConstructor {
+            set: self.set.clone(),
+            data_type_index: self.data_type_index,
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

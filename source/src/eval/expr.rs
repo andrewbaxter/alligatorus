@@ -202,6 +202,10 @@ impl Type for ExprType {
         return format!("expr");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(ExprType)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == expr_type_identity() {
             return Some(Box::new(true));
@@ -313,6 +317,10 @@ impl Value for StagedExprPlaceholderType {
 impl Type for StagedExprPlaceholderType {
     fn desc(&self) -> String {
         "stage result".to_string()
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(StagedExprPlaceholderType)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

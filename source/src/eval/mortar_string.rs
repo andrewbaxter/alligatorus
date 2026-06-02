@@ -73,6 +73,10 @@ impl Type for TypeMortarString {
         return format!("mortar string");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarString)
+    }
+
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_js_string_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsString>));

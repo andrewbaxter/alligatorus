@@ -66,6 +66,10 @@ impl Type for MortarTypeDefinitionSetExports {
         format!("definition_set_exports")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeDefinitionSetExports)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetExports) as Box<dyn AspectConsumeJs>));
@@ -151,6 +155,10 @@ impl Value for DefinitionSetExportsType {
 impl Type for DefinitionSetExportsType {
     fn desc(&self) -> String {
         format!("definition_set_exports")
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(DefinitionSetExportsType { set: self.set.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

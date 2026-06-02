@@ -63,6 +63,10 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         format!("definition_set_interface_ref")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeDefinitionSetInterfaceRef)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == interface_ref_type_identity() {
             return Some(Box::new(true));

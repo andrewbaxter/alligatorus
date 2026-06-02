@@ -291,6 +291,7 @@ pub(crate) trait Aspect: Any { }
 pub(crate) trait Type: Value {
     fn desc(&self) -> String;
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
+    fn as_value(&self) -> Box<dyn Value>;
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
         false

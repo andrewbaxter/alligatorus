@@ -53,6 +53,10 @@ impl Type for TypeType {
         "type".to_string()
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeType)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == type_type_identity() {
             return Some(Box::new(true));
@@ -92,7 +96,7 @@ impl Type for TypeType {
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
                 })),
             },
-            value: Box::new(super::tuple::SharedValue { inner: type_ as Rc<dyn Value> }),
+            value: type_.as_value(),
         })
     }
 }
@@ -144,6 +148,10 @@ impl Value for TypeMortarType {
 impl Type for TypeMortarType {
     fn desc(&self) -> String {
         "mortar type".to_string()
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarType)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -221,6 +229,6 @@ impl AspectJsStackValue for TypeMortarType {
 impl AspectLiftJs for TypeMortarType {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
         let type_ = super::rc_type_from_v8(&*value);
-        Ok(Box::new(super::tuple::SharedValue { inner: type_ as Rc<dyn Value> }))
+        Ok(type_.as_value())
     }
 }

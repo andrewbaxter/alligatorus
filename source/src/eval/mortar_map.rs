@@ -86,6 +86,10 @@ impl Type for TypeMapConstructor {
         "map constructor".to_string()
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMapConstructor)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeMapConstructor) as Box<dyn AspectFunction>));
@@ -164,6 +168,10 @@ impl Value for TypeMortarMap {
 impl Type for TypeMortarMap {
     fn desc(&self) -> String {
         format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarMap { key_type: self.key_type.clone(), value_type: self.value_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -488,6 +496,10 @@ impl Value for TypeMapNew {
 impl Type for TypeMapNew {
     fn desc(&self) -> String {
         format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
+    }
+
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMapNew { key_type: self.key_type.clone(), value_type: self.value_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

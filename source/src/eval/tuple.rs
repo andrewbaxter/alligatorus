@@ -112,6 +112,10 @@ impl Type for Tuple {
         }).collect::<Vec<_>>().join(", "))
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(self.clone_as_type())
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_tuple_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectTuple>));
@@ -154,7 +158,8 @@ impl Type for Tuple {
             // Has mortar or JS-coded elements: build tuple with proper JS codes for all
             // elements, consume to JS, then wrap with __tuple_to_type().
             let mut converted_elements = Vec::new();
-            for elem in tuple.elements {
+            let mut converted_type = self.clone_as_type();
+            for (i, elem) in tuple.elements.into_iter().enumerate() {
                 let converted = match elem {
                     TupleElement::Mortar(t) => TupleElement::Mortar(t),
                     TupleElement::EvalRes(er) => {
@@ -166,11 +171,9 @@ impl Type for Tuple {
                                         value: entry_cv.value,
                                     })));
                                 let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx
-                                    .vx
-                                    .externals
-                                    .borrow_mut()
-                                    .push((id, crate::langhelp::External::Type(elem_type.clone())));
+                                xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type)));
+                                converted_type.elements[i] =
+                                    TupleElement::Mortar(Rc::new(super::type_ref::TypeType) as Rc<dyn Type>);
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
@@ -179,7 +182,7 @@ impl Type for Tuple {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Box::new(SharedValue { inner: elem_type as Rc<dyn Value> }),
+                                    value: Box::new(super::type_ref::TypeType),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -199,7 +202,7 @@ impl Type for Tuple {
                 code: cv.code,
                 value: Box::new(converted_tuple),
             };
-            match self.to_js(xx, loc, converted_cv).into_res() {
+            match converted_type.to_js(xx, loc, converted_cv).into_res() {
                 Ok(tuple_js) => {
                     let call_code = JsCode {
                         loc,
@@ -218,7 +221,7 @@ impl Type for Tuple {
                             loc,
                             code: Code_::Dyn(Rc::new(call_code)),
                         },
-                        value: Box::new(SharedValue { inner: result_type as Rc<dyn Value> }),
+                        value: result_type.as_value(),
                     })
                 },
                 Err(errors) => EvalRes {
@@ -238,7 +241,7 @@ impl Type for Tuple {
                         type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                     })),
                 },
-                value: Box::new(SharedValue { inner: result_type as Rc<dyn Value> }),
+                value: result_type.as_value(),
             })
         }
     }

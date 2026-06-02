@@ -56,6 +56,10 @@ impl Type for MortarTypeDefinitionSetDataTypeRef {
         format!("definition_set_data_type_ref")
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeDefinitionSetDataTypeRef)
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeRef) as Box<dyn AspectConsumeJs>));

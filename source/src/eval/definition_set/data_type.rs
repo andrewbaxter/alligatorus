@@ -67,6 +67,13 @@ impl Type for DefinitionSetDataType {
         }
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(DefinitionSetDataType {
+            set: self.set.clone(),
+            data_type_index: self.data_type_index,
+        })
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         // Check own data type identity aspect
         {

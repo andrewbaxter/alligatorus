@@ -65,6 +65,10 @@ impl Type for TypeMortarNull {
         return format!("mortar null");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(TypeMortarNull)
+    }
+
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectJsStackValue>));

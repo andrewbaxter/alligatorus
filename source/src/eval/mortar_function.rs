@@ -63,6 +63,10 @@ impl Type for MortarTypeFunction {
         return format!("mortar func");
     }
 
+    fn as_value(&self) -> Box<dyn Value> {
+        Box::new(MortarTypeFunction { arg: self.arg.clone(), ret: self.ret.clone() })
+    }
+
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
