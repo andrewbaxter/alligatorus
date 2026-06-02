@@ -107,13 +107,12 @@ impl Type for DefinitionSetInterface {
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         let identity = {
             let interfaces = self.set.interfaces.borrow();
             let iface = &interfaces[self.interface_index];
             iface.identity.clone()
         };
-        let source_type = cv.value.type_(xx, loc);
         source_type.aspect(xx, &identity).is_some()
     }
 

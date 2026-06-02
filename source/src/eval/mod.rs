@@ -215,17 +215,16 @@ pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
     from_v8_any(value).downcast_ref::<T>().expect("from_v8_ref: type mismatch")
 }
 
-/// Store an `Rc<dyn Type>` as a `v8::External`.
-/// Only operates on `dyn Type` — for concrete `Rc<T>`, use `to_v8` directly.
-pub(crate) fn rc_type_to_v8<'s>(
-    scope: &mut v8::PinScope<'s, '_, ()>,
-    value: Rc<dyn Type>,
-) -> v8::Local<'s, v8::External> {
+/// Store an `Rc<dyn Type>` as a `v8::External`. Only operates on `dyn Type` — for
+/// concrete `Rc<T>`, use `to_v8` directly.
+pub(crate) fn rc_type_to_v8<
+    's,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Type>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
-/// Extract a clone of `Rc<dyn Type>` from a `v8::External`.
-/// Only operates on `dyn Type` — for concrete `Rc<T>`, use `from_v8_ref` directly.
+/// Extract a clone of `Rc<dyn Type>` from a `v8::External`. Only operates on
+/// `dyn Type` — for concrete `Rc<T>`, use `from_v8_ref` directly.
 pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
     from_v8_ref::<Rc<dyn Type>>(value).clone()
 }
@@ -1094,7 +1093,7 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {
             dest = erb.must_er(source_type.cast_to(xx, loc, source, dest_type))?;
-        } else if dest_type.can_cast_from(xx, loc, &source) {
+        } else if dest_type.can_cast_from(xx, loc, source_type.as_ref()) {
             dest = erb.must_er(dest_type.cast_from(xx, loc, source))?;
         } else {
             return erb.err_new(
@@ -1206,6 +1205,10 @@ fn eval(
     s1_scope.insert(
         ConstKey::String("number".to_string()),
         Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
+    );
+    s1_scope.insert(
+        ConstKey::String("expr".to_string()),
+        Box::new(StaticScopeEntry { type_: Rc::new(expr::ExprType) }) as Box<dyn ScopeEntry>,
     );
 
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
@@ -1334,6 +1337,10 @@ fn eval(
         scope_entries.insert(
             ConstKey::String("number".to_string()),
             Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
+        );
+        scope_entries.insert(
+            ConstKey::String("expr".to_string()),
+            Box::new(StaticScopeEntry { type_: Rc::new(expr::ExprType) }) as Box<dyn ScopeEntry>,
         );
         scope_entries
     }
@@ -1592,17 +1599,20 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            let tree_cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
+            let tree_cell: Rc<expr::StagedExprCell> =
+                from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
             let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
             let tree =
                 (tree_value.as_ref() as &dyn Any)
                     .downcast_ref::<Expr>()
                     .expect("stage tree must be an Expr")
                     .clone();
+
             enum StageLowerValue {
                 Expr(Expr),
                 Value(Box<dyn Value>),
             }
+
             let mut values: Vec<StageLowerValue> = Vec::new();
             let mut i = 1;
             while i < args.length() {
@@ -1800,14 +1810,11 @@ fn eval(
             );
     }
 
-    // Register __record_to_type and __tuple_to_type mortar functions.
-    // These convert JS objects/arrays into Rc<dyn Type> externals at runtime.
+    // Register __record_to_type and __tuple_to_type mortar functions. These convert
+    // JS objects/arrays into Rc`<dyn Type>` externals at runtime.
     {
-        /// Recursively convert a v8 value (external, object, or array) to Rc<dyn Type>.
-        fn v8_value_to_type(
-            scope: &mut v8::PinnedRef<v8::HandleScope>,
-            value: v8::Local<v8::Value>,
-        ) -> Rc<dyn Type> {
+        /// Recursively convert a v8 value (external, object, or array) to Rc`<dyn Type>`.
+        fn v8_value_to_type(scope: &mut v8::PinnedRef<v8::HandleScope>, value: v8::Local<v8::Value>) -> Rc<dyn Type> {
             if value.is_external() {
                 return from_v8_ref::<Rc<dyn Type>>(&*value).clone();
             }
@@ -1815,19 +1822,20 @@ fn eval(
                 let arr = v8::Local::<v8::Array>::try_from(value).unwrap();
                 let len = arr.length();
                 let mut elements = Vec::with_capacity(len as usize);
-                for i in 0..len {
+                for i in 0 .. len {
                     let elem = arr.get_index(scope, i).unwrap();
                     elements.push(tuple::TupleElement::Mortar(v8_value_to_type(scope, elem)));
                 }
-                return Rc::new(tuple::Tuple { source: None, elements });
+                return Rc::new(tuple::Tuple {
+                    source: None,
+                    elements,
+                });
             }
             if value.is_object() && !value.is_null_or_undefined() {
                 let obj = v8::Local::<v8::Object>::try_from(value).unwrap();
-                let keys = obj
-                    .get_own_property_names(scope, v8::GetPropertyNamesArgs::default())
-                    .unwrap();
+                let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
                 let mut fields = std::collections::BTreeMap::new();
-                for i in 0..keys.length() {
+                for i in 0 .. keys.length() {
                     let key = keys.get_index(scope, i).unwrap();
                     let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
                     let val = obj.get(scope, key).unwrap();
@@ -1836,12 +1844,17 @@ fn eval(
                         record::RecordField::Mortar(v8_value_to_type(scope, val)),
                     );
                 }
-                return Rc::new(record::Record { source: None, fields });
+                return Rc::new(record::Record {
+                    source: None,
+                    fields,
+                });
             }
             panic!("v8_value_to_type: unexpected v8 value type");
         }
 
-        fn record_to_type_callback<'s>(
+        fn record_to_type_callback<
+            's,
+        >(
             scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
@@ -1851,7 +1864,9 @@ fn eval(
             rv.set(ext.into());
         }
 
-        fn tuple_to_type_callback<'s>(
+        fn tuple_to_type_callback<
+            's,
+        >(
             scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
@@ -1861,25 +1876,24 @@ fn eval(
             rv.set(ext.into());
         }
 
-        let record_to_type_fn =
-            v8::Function::builder(record_to_type_callback).build(js_scope).unwrap();
-        js_scope.get_current_context().global(js_scope).set(
-            js_scope,
-            v8::String::new(js_scope, &scope_entry_id_js_key(RECORD_TO_TYPE_FN_SCOPE_ID))
-                .unwrap()
-                .cast(),
-            record_to_type_fn.into(),
-        );
-
-        let tuple_to_type_fn =
-            v8::Function::builder(tuple_to_type_callback).build(js_scope).unwrap();
-        js_scope.get_current_context().global(js_scope).set(
-            js_scope,
-            v8::String::new(js_scope, &scope_entry_id_js_key(TUPLE_TO_TYPE_FN_SCOPE_ID))
-                .unwrap()
-                .cast(),
-            tuple_to_type_fn.into(),
-        );
+        let record_to_type_fn = v8::Function::builder(record_to_type_callback).build(js_scope).unwrap();
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(RECORD_TO_TYPE_FN_SCOPE_ID)).unwrap().cast(),
+                record_to_type_fn.into(),
+            );
+        let tuple_to_type_fn = v8::Function::builder(tuple_to_type_callback).build(js_scope).unwrap();
+        js_scope
+            .get_current_context()
+            .global(js_scope)
+            .set(
+                js_scope,
+                v8::String::new(js_scope, &scope_entry_id_js_key(TUPLE_TO_TYPE_FN_SCOPE_ID)).unwrap().cast(),
+                tuple_to_type_fn.into(),
+            );
     }
 
     // Set externals as globals before running the script
@@ -2275,10 +2289,7 @@ pub async fn compile_importid(
         }
 
         // Result is an Expr (from stage eval) - use it as next expression
-        let next_expr =
-            *(eval_value as Box<dyn Any>)
-                .downcast::<Expr>()
-                .expect("Stage eval must produce an Expr value");
+        let next_expr = *(eval_value as Box<dyn Any>).downcast::<Expr>().expect("Stage eval must produce an Expr value");
         root_expr = next_expr;
     }
 }

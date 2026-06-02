@@ -67,9 +67,8 @@ impl Type for TypeNull {
         });
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let type_ = cv.value.type_(xx, loc);
-        aspect_null_get_maybe(xx, type_.as_ref()).is_some()
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_null_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

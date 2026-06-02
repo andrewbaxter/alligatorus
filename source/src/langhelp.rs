@@ -297,7 +297,7 @@ pub(crate) trait Type: Value {
     }
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes;
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &CodeValue) -> bool {
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
         false
     }
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;

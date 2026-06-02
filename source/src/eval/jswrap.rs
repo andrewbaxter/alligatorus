@@ -273,8 +273,7 @@ macro_rules! jswrap{
                 fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type,) -> EvalRes {
                     EvalRes::err(loc, format!("Cannot convert {}", stringify!($name)))
                 }
-                fn can_cast_from(&self, xx: & ExprContext, loc: QExprId, cv: & CodeValue) -> bool {
-                    let source_type = cv.value.type_(xx, loc);
+                fn can_cast_from(&self, xx: & ExprContext, _loc: QExprId, source_type: & dyn Type) -> bool {
                     source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some()
                 }
                 fn cast_from(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue,) -> EvalRes {

@@ -139,8 +139,7 @@ impl Type for MortarTypeTaggedUnionRef {
         })
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         if let Some(data) = &self.data {
             if source_type.aspect(xx, &data.identity).is_some() {
                 return true;

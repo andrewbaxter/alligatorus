@@ -86,8 +86,7 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         EvalRes::err(loc, format!("Cannot convert interface_ref"))
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         source_type.aspect(xx, &interface_ref_type_identity()).is_some()
     }
 
@@ -143,7 +142,8 @@ impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
 
 impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Box<dyn Value>, String> {
-        let iface_ref: Rc<DefinitionSetInterfaceRef> = from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
+        let iface_ref: Rc<DefinitionSetInterfaceRef> =
+            from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
         iface_ref.set.finish()?;
         Ok(Box::new(MortarJsValue {
             source: MortarJsValueSource::Expr,

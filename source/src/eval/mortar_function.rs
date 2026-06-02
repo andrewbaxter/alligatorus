@@ -80,9 +80,8 @@ impl Type for MortarTypeFunction {
         EvalRes::err(loc, format!("Cannot convert mortar function"))
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
-        aspect_function_get_maybe(xx, source_type.as_ref()).is_some()
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_function_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

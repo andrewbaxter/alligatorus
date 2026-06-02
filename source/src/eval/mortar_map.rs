@@ -65,6 +65,12 @@ use {
     },
 };
 
+/// Check if `source_type` can be converted to `dest_type` by either direction of
+/// cast.
+fn types_convertible(xx: &ExprContext, loc: QExprId, source_type: &dyn Type, dest_type: &dyn Type) -> bool {
+    source_type.can_cast_to(xx, loc, dest_type) || dest_type.can_cast_from(xx, loc, source_type)
+}
+
 // --- map constructor (the "map" function in scope) ---
 #[derive(Clone)]
 pub(crate) struct TypeMapConstructor;
@@ -189,16 +195,45 @@ impl Type for TypeMortarMap {
         EvalRes::err(loc, "Cannot convert map type".to_string())
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
-        aspect_mortar_map_get_maybe(xx, source_type.as_ref()).is_some() ||
-            (aspect_record_get_maybe(xx, source_type.as_ref()).is_some() &&
-                aspect_consume_js_get_maybe(xx, source_type.as_ref()).is_some())
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
+        if let Some(source_map) = aspect_mortar_map_get_maybe(xx, source_type) {
+            // Map → map: check element types are compatible
+            return types_convertible(xx, loc, source_map.value_type().as_ref(), self.value_type.as_ref());
+        }
+        if aspect_record_get_maybe(xx, source_type).is_some() &&
+            aspect_consume_js_get_maybe(xx, source_type).is_some() {
+            // Record → map: check all field value types are compatible with the map's value
+            // type
+            if let Some(record) = (source_type as &dyn Any).downcast_ref::<super::record::Record>() {
+                return record.fields.values().all(|f| {
+                    let field_type = match f {
+                        super::record::RecordField::Mortar(t) => t.clone(),
+                        super::record::RecordField::EvalRes(er) => match &er.v {
+                            Some(cv) => cv.value.type_(xx, loc),
+                            None => return true,
+                        },
+                    };
+                    types_convertible(xx, loc, field_type.as_ref(), self.value_type.as_ref())
+                });
+            }
+            return true;
+        }
+        false
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
-        if aspect_mortar_map_get_maybe(xx, source_type.as_ref()).is_some() {
+        if let Some(source_map) = aspect_mortar_map_get_maybe(xx, source_type.as_ref()) {
+            if !types_convertible(xx, loc, source_map.value_type().as_ref(), self.value_type.as_ref()) {
+                return EvalRes::err(
+                    loc,
+                    format!(
+                        "Incompatible map value types: {} cannot convert to {}",
+                        source_map.value_type().desc(),
+                        self.value_type.desc()
+                    ),
+                );
+            }
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Box::new(MortarJsValue {
@@ -208,42 +243,56 @@ impl Type for TypeMortarMap {
             });
         }
 
-        // Record source: convert the record to JS via AspectConsumeJs, then transform the
-        // resulting NewObject into a NewMap with canonical keys.
-        let to_js = match aspect_consume_js_get_maybe(xx, source_type.as_ref()) {
-            Some(t) => t,
-            None => return EvalRes::err(loc, "Cannot convert to map type".to_string()),
+        // Record source: decompose, typecheck_convert each value to the map's value type,
+        // then convert each to JS individually.
+        let record: Box<super::record::Record> = match (cv.value as Box<dyn Any>).downcast() {
+            Ok(r) => r,
+            Err(_) => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
         };
-        let js = match to_js.to_js(xx, loc, cv).into_res() {
-            Ok(js) => js,
-            Err(errs) => return EvalRes {
-                v: None,
-                errors: Some(errs),
-            },
-        };
-        let map_js = match &js.type_ {
-            JsCodeType::NewObject(obj) => JsCode {
-                loc,
-                type_: JsCodeType::NewMap(JsCodeNewMap { fields: obj.fields.iter().map(|(k, v)| {
-                    let canonical = crate::langhelp::ConstKey::String(k.clone()).to_str();
-                    (JsCode {
+        return er_seq_cv!(loc, erb, {
+            let value_to_js = erb.must_er(aspect_consume_js_get(xx, loc, self.value_type.as_ref()))?;
+            let mut js_fields = Vec::new();
+            for (key, field) in record.fields.into_iter() {
+                let canonical = key.to_str();
+                let entry_cv = match field {
+                    super::record::RecordField::EvalRes(entry_res) => {
+                        if let Some(errs) = entry_res.errors {
+                            erb.errors.extend(errs);
+                        }
+                        match entry_res.v {
+                            Some(v) => v,
+                            None => {
+                                return erb.err_new(format!("Record entry '{}' failed to evaluate", canonical),);
+                            },
+                        }
+                    },
+                    super::record::RecordField::Mortar(_) => {
+                        return erb.err_new(
+                            format!("Record entry '{}' is mortar-only, cannot consume directly to JS", canonical),
+                        );
+                    },
+                };
+                let converted = erb.must_er(super::typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
+                let js_val = erb.must_er(value_to_js.to_js(xx, loc, converted))?;
+                js_fields.push((JsCode {
+                    loc,
+                    type_: JsCodeType::Literal(serde_json::Value::String(canonical)),
+                }, js_val));
+            }
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(JsCode {
                         loc,
-                        type_: JsCodeType::Literal(serde_json::Value::String(canonical)),
-                    }, v.clone())
-                }).collect() }),
-            },
-            _ => js,
-        };
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(map_js)),
-            },
-            value: Box::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(self.clone()),
-            }),
-        })
+                        type_: JsCodeType::NewMap(JsCodeNewMap { fields: js_fields }),
+                    })),
+                },
+                value: Box::new(MortarJsValue {
+                    source: MortarJsValueSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            });
+        });
     }
 }
 

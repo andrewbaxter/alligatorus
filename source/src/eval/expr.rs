@@ -222,7 +222,7 @@ impl Type for ExprType {
         return EvalRes::err(loc, format!("Cannot convert expr to other type"));
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &CodeValue) -> bool {
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
         true
     }
 

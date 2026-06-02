@@ -169,9 +169,8 @@ impl Type for TypeMortarList {
         EvalRes::err(loc, "Cannot convert list type".to_string())
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
-        aspect_mortar_list_get_maybe(xx, source_type.as_ref()).is_some()
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_mortar_list_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

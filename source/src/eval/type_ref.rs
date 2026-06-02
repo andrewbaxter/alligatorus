@@ -83,7 +83,7 @@ impl Type for TypeType {
         crate::langhelp::EvalRes::err(loc, "Cannot convert type".to_string())
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: &crate::langhelp::CodeValue) -> bool {
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn crate::langhelp::Type) -> bool {
         true
     }
 
@@ -133,10 +133,7 @@ impl Aspect for TypeTypeAspectType { }
 impl AspectType for TypeTypeAspectType {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let any: &dyn Any = value;
-        any.downcast_ref::<TypeRefValue>()
-            .expect("TypeTypeAspectType: value must be TypeRefValue")
-            .type_
-            .clone()
+        any.downcast_ref::<TypeRefValue>().expect("TypeTypeAspectType: value must be TypeRefValue").type_.clone()
     }
 }
 
@@ -252,8 +249,7 @@ fn type_ref_to_js_leaf(
     field_code: Option<&crate::langhelp::Code>,
 ) -> EResult<JsCode> {
     // If the type is a record/tuple, recurse
-    if aspect_record_get_maybe(xx, type_.as_ref()).is_some() ||
-        aspect_tuple_get_maybe(xx, type_.as_ref()).is_some() {
+    if aspect_record_get_maybe(xx, type_.as_ref()).is_some() || aspect_tuple_get_maybe(xx, type_.as_ref()).is_some() {
         let empty = std::collections::BTreeMap::new();
         return type_ref_to_js(xx, loc, type_, &empty);
     }

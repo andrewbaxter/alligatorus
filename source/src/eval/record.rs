@@ -293,12 +293,11 @@ impl Type for Record {
         }
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> bool {
-        let source_type = cv.value.type_(xx, loc);
-        if aspect_record_get_maybe(xx, source_type.as_ref()).is_none() {
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        if aspect_record_get_maybe(xx, source_type).is_none() {
             return false;
         }
-        let Some(source_field) = aspect_field_get_maybe(xx, source_type.as_ref()) else {
+        let Some(source_field) = aspect_field_get_maybe(xx, source_type) else {
             return false;
         };
         self.fields.keys().all(|k| source_field.field_opt(xx, &k.to_str()).is_some())
