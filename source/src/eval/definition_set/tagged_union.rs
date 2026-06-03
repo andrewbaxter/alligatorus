@@ -1,9 +1,4 @@
 use {
-    super::{
-        TaggedUnionConstructorRef,
-        TaggedUnionData,
-        TaggedUnionRef,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -20,6 +15,16 @@ use {
             aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
             aspect_tagged_union_aspect_id,
+        },
+        eval::{
+            Erb,
+            from_v8_ref,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueSource,
+                bind_js_some,
+            },
+            typecheck_convert,
         },
         jscode::{
             JsCode,
@@ -40,20 +45,15 @@ use {
             Value,
         },
     },
-    crate::eval::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        from_v8_ref,
-        typecheck_convert,
-    },
     std::{
         any::Any,
         mem,
         rc::Rc,
+    },
+    super::{
+        TaggedUnionConstructorRef,
+        TaggedUnionData,
+        TaggedUnionRef,
     },
 };
 
@@ -71,7 +71,7 @@ pub(crate) struct MortarTypeTaggedUnionRef {
 
 impl Value for MortarTypeTaggedUnionRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
@@ -247,7 +247,7 @@ pub(crate) struct MortarTypeTaggedUnionConstructorRef;
 
 impl Value for MortarTypeTaggedUnionConstructorRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
@@ -394,7 +394,7 @@ pub(crate) struct TaggedUnionType {
 
 impl Value for TaggedUnionType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
@@ -492,7 +492,7 @@ pub(crate) struct TaggedUnionConstructor {
 
 impl Value for TaggedUnionConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 

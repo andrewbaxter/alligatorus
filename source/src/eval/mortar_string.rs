@@ -1,18 +1,4 @@
 use {
-    super::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueDataAccess,
-            MortarJsValueSource,
-            mortar_bind_js,
-            mortar_consume_js_to_js,
-            mortar_js_stack_to_value,
-            mortar_set,
-        },
-        mortar_function::MortarTypeFunction,
-        mortar_null::TypeMortarNull,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -26,7 +12,6 @@ use {
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_js_string_aspect_id,
-            aspect_js_string_get,
             aspect_js_string_get_maybe,
             aspect_set_aspect_id,
             aspect_string_get,
@@ -34,16 +19,16 @@ use {
         },
         jscode::{
             JsCode,
-            JsCodeFieldUse,
             JsCodeBlock,
             JsCodeBlockEntry,
+            JsCodeFieldUse,
             JsCodeType,
         },
         langhelp::{
             Aspect,
             Code,
-            Code_,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -58,13 +43,27 @@ use {
         mem,
         rc::Rc,
     },
+    super::{
+        Erb,
+        mortar_function::MortarTypeFunction,
+        mortar_js_value::{
+            MortarJsValue,
+            MortarJsValueDataAccess,
+            MortarJsValueSource,
+            mortar_bind_js,
+            mortar_consume_js_to_js,
+            mortar_js_stack_to_value,
+            mortar_set,
+        },
+        mortar_null::TypeMortarNull,
+    },
 };
 
 pub(crate) struct TypeMortarString;
 
 impl Value for TypeMortarString {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

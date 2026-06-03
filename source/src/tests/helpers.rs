@@ -7,7 +7,6 @@ use {
     crate::syntax::{
         ExprId,
         SerialExpr,
-        SerialExpr_,
         SerialExprBind,
         SerialExprBindingUse,
         SerialExprBlock,
@@ -23,6 +22,7 @@ use {
         SerialExprOperatorLt,
         SerialExprSet,
         SerialExprStage,
+        SerialExpr_,
         SerialLiteral,
     },
     std::cell::Cell,

@@ -56,7 +56,7 @@ pub(crate) struct TypeMortarNull;
 
 impl Value for TypeMortarNull {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

@@ -1,24 +1,4 @@
 use {
-    super::{
-        DefinitionSet,
-        DefinitionSetDataMethodData,
-        DefinitionSetDataTypeConstructor,
-        DefinitionSetDataTypeData,
-        DefinitionSetDataTypeInterfaceImplData,
-        DefinitionSetDataTypeInterfaceMethodImplData,
-        DefinitionSetDataTypeRef,
-        DefinitionSetExports,
-        DefinitionSetFunction,
-        DefinitionSetFunctionData,
-        DefinitionSetInterfaceData,
-        DefinitionSetInterfaceMethodData,
-        DefinitionSetInterfaceRef,
-        TaggedUnionConstructorRef,
-        TaggedUnionData,
-        TaggedUnionRef,
-        TaggedUnionVariant,
-        next_interface_method_id,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -30,6 +10,20 @@ use {
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_string_get,
+        },
+        eval::{
+            Erb,
+            jswrap::{
+                AnyType,
+                JsWrap,
+                StagedExpr,
+                jswrap_method_name,
+            },
+            mortar_function::MortarTypeFunction,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueSource,
+            },
         },
         jscode::{
             JsCode,
@@ -49,20 +43,6 @@ use {
             Value,
         },
     },
-    crate::eval::{
-        Erb,
-        jswrap::{
-            JsWrap,
-            StagedExpr,
-            AnyType,
-            jswrap_method_name,
-        },
-        mortar_function::MortarTypeFunction,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-        },
-    },
     dumpster::unsync::Gc,
     std::{
         any::Any,
@@ -72,6 +52,26 @@ use {
         },
         mem,
         rc::Rc,
+    },
+    super::{
+        DefinitionSet,
+        DefinitionSetDataMethodData,
+        DefinitionSetDataTypeConstructor,
+        DefinitionSetDataTypeData,
+        DefinitionSetDataTypeInterfaceImplData,
+        DefinitionSetDataTypeInterfaceMethodImplData,
+        DefinitionSetDataTypeRef,
+        DefinitionSetExports,
+        DefinitionSetFunction,
+        DefinitionSetFunctionData,
+        DefinitionSetInterfaceData,
+        DefinitionSetInterfaceMethodData,
+        DefinitionSetInterfaceRef,
+        TaggedUnionConstructorRef,
+        TaggedUnionData,
+        TaggedUnionRef,
+        TaggedUnionVariant,
+        next_interface_method_id,
     },
 };
 
@@ -94,7 +94,6 @@ jswrap!(struct DefineResult(self_, scope) {
                 scope_entry_id: Cell::new(
                     Some(crate::langhelp::ScopeEntryId::Def(ds.import_id, ds.def_set_id, entry_id,))
                 ),
-                arg_scope_entry_id: Cell::new(None),
             });
             idx
         };

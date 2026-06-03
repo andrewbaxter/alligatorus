@@ -71,11 +71,6 @@ impl Tuple {
             }).collect(),
         }
     }
-
-    /// Extract element types.
-    pub fn element_types(&self, xx: &ExprContext, loc: QExprId) -> Vec<Rc<dyn Type>> {
-        self.elements.iter().map(|e| tuple_element_type(xx, loc, e)).collect()
-    }
 }
 
 fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
@@ -177,7 +172,7 @@ impl Type for Tuple {
                                 let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
                                 xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type)));
                                 converted_type.elements[i] =
-                                    TupleElement::Mortar(Rc::new(super::type_ref::TypeType) as Rc<dyn Type>);
+                                    TupleElement::Mortar(Rc::new(super::type_ref::TypeAny) as Rc<dyn Type>);
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
@@ -186,7 +181,7 @@ impl Type for Tuple {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Rc::new(super::type_ref::TypeType),
+                                    value: Rc::new(super::type_ref::TypeAny),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))

@@ -140,7 +140,7 @@ impl AspectFunction for TypeMapConstructor {
 
 impl super::jswrap::JsWrap for TypeMortarMap {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {

@@ -7,10 +7,6 @@
 //!
 //! * Tests to confirm the chunks work
 use {
-    super::helpers::{
-        ModuleBuilder,
-        sanitize_builtins,
-    },
     crate::{
         compile,
         eval::setup_v8,
@@ -20,6 +16,10 @@ use {
             SerialExpr,
             SerialModule,
         },
+    },
+    super::helpers::{
+        ModuleBuilder,
+        sanitize_builtins,
     },
 };
 

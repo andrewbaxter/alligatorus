@@ -73,7 +73,7 @@ pub(crate) struct AnyType(pub Rc<dyn Type>);
 
 impl JsWrap for AnyType {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeMortarType)
+        Rc::new(super::type_ref::TypeMortarAny)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -246,7 +246,7 @@ macro_rules! jswrap{
             }
             impl Value for[<$name Type >] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-                    Rc::new(crate::eval::type_ref::TypeType)
+                    Rc::new(crate::eval::type_ref::TypeAny)
                 }
             }
             impl Type for[<$name Type >] {

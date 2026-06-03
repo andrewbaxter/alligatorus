@@ -54,7 +54,7 @@ pub(crate) struct MortarTypeFunction {
 
 impl Value for MortarTypeFunction {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 
@@ -107,7 +107,7 @@ impl Type for MortarTypeFunction {
 }
 
 impl AspectConsumeJs for MortarTypeFunction {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         return cv.code.cast::<JsCode>().map(|x| x.unwrap().clone());
     }
 }

@@ -23,6 +23,7 @@ pub mod v8util;
 pub mod definition_set;
 
 use {
+    core::mem,
     crate::{
         builtin::{
             aspect_bind_get_maybe,
@@ -32,8 +33,8 @@ use {
             aspect_consume_js_get_maybe,
             aspect_field_get,
             aspect_function_get,
-            aspect_lift_js_get,
             aspect_iterable_get,
+            aspect_lift_js_get,
             aspect_operator_add_get,
             aspect_operator_lt_get,
             aspect_serial_get,
@@ -46,7 +47,6 @@ use {
             BUILTIN_PREFIX,
             DEF_PREFIX,
             EXPR_PREFIX,
-            TAG_VAR,
             JsCode,
             JsCodeBind,
             JsCodeBindingUse,
@@ -55,10 +55,8 @@ use {
             JsCodeIf,
             JsCodeMatch,
             JsCodeMatchBranch,
-            JsCodeNewObject,
-            JsCodeOperatorAdd,
-            JsCodeOperatorLt,
             JsCodeType,
+            TAG_VAR,
         },
         langhelp::{
             Code,
@@ -66,18 +64,18 @@ use {
             Code_,
             CompileId,
             CompileImportContext,
-            Counter,
-            DefSetId,
             CompileRes,
             CompileResResult,
             ConstKey,
+            Counter,
+            DefSetId,
             EResult,
             EvalContext,
             EvalRes,
-            External,
             ExprContext,
             ExprErr,
             ExprSubErr,
+            External,
             GlobalContext,
             ImportStateId,
             QExprId,
@@ -86,23 +84,16 @@ use {
             ScopeEntryId,
             SourceId,
             Type,
-            Unique,
             Value,
             downcast_value,
         },
-        syntax::{
-            ExprId,
-            SerialExpr,
-            SerialExpr_,
-            SerialLiteral,
-            SerialModule,
-        },
+        syntax::ExprId,
     },
     definition_set::{
         DefineResult,
         DefinitionSet,
     },
-    jswrap::JsWrap,
+    dumpster::unsync::Gc,
     expr::{
         Expr,
         ExprBind,
@@ -113,24 +104,27 @@ use {
         ExprLower,
         ExprMatch,
         ExprMatchBranch,
-        ExprScopeUse,
         ExprSet,
         ExprStage,
         ExprTuple,
         Expr_,
         Module,
     },
-    bool::ValueBool,
     flowcontrol::shed,
+    jswrap::JsWrap,
     mortar_function::MortarTypeFunction,
     mortar_null::TypeMortarNull,
+    mortar_number::TypeMortarNumber,
     mortar_scope_entry::{
         MortarScopeEntryAsScope,
         MortarScopeEntryBinding,
     },
-    mortar_number::TypeMortarNumber,
     mortar_string::TypeMortarString,
     null::ValueNull,
+    record::{
+        Record,
+        RecordField,
+    },
     std::{
         any::Any,
         cell::{
@@ -138,27 +132,17 @@ use {
             RefCell,
         },
         collections::HashMap,
-        env::current_dir,
-        mem,
-        path::PathBuf,
         rc::Rc,
         sync::{
             Arc,
             OnceLock,
         },
     },
-    string::ValueString,
-    record::{
-        RecordField,
-        Record,
-    },
     tuple::{
+        StaticScopeEntry,
         Tuple,
         TupleElement,
-        StaticScopeEntry,
-        ValueScopeEntry,
     },
-    dumpster::unsync::Gc,
     v8::tc_scope,
 };
 
@@ -244,16 +228,6 @@ impl Erb {
         };
     }
 
-    pub(crate) fn maybe_er<T>(&mut self, r: EResult<T>) -> Option<T> {
-        let Some(cv) = r.v else {
-            return None;
-        };
-        if let Some(errs) = r.errors {
-            self.errors.extend(errs);
-        }
-        return Some(cv);
-    }
-
     pub(crate) fn must_er<T>(&mut self, r: EResult<T>) -> Result<T, ()> {
         if let Some(errs) = r.errors {
             self.errors.extend(errs);
@@ -262,17 +236,6 @@ impl Erb {
             return Err(());
         };
         return Ok(cv);
-    }
-
-    pub(crate) fn maybe_res<T>(&mut self, r: Result<T, String>) -> Option<T> {
-        match r {
-            Ok(r) => {
-                return Some(r);
-            },
-            Err(_) => {
-                return None;
-            },
-        }
     }
 
     pub(crate) fn must_res<T>(&mut self, r: Result<T, String>) -> Result<T, ()> {
@@ -302,20 +265,6 @@ impl Erb {
         });
     }
 }
-
-fn path_to_fs_path(path: &Vec<String>) -> PathBuf {
-    let mut at = PathBuf::new();
-    for seg in path {
-        at = at.join(seg);
-    }
-    return at;
-}
-
-fn cerr<T>(e: String) -> Result<T, ExprSubErr> {
-    return Err(ExprSubErr::Opaque(e));
-}
-
-trait Effect { }
 
 pub(crate) trait Target {
     type Effect;
@@ -2150,7 +2099,6 @@ pub async fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
-        next_unique_id: Default::default(),
     });
     let mut root_expr = match source {
         Module::V1(e) => e,

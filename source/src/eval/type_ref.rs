@@ -33,7 +33,7 @@ use {
     },
 };
 
-pub(crate) struct TypeType;
+pub(crate) struct TypeAny;
 
 pub(crate) fn type_type_identity() -> Unique {
     Unique::Builtin {
@@ -42,19 +42,19 @@ pub(crate) fn type_type_identity() -> Unique {
     }
 }
 
-impl Value for TypeType {
+impl Value for TypeAny {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeType)
+        Rc::new(TypeAny)
     }
 }
 
-impl Type for TypeType {
+impl Type for TypeAny {
     fn desc(&self) -> String {
         "type".to_string()
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeType)
+        Rc::new(TypeAny)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -62,10 +62,10 @@ impl Type for TypeType {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeType) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeAny) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeType) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeAny) as Box<dyn AspectBindJs>));
         }
         None
     }
@@ -101,9 +101,9 @@ impl Type for TypeType {
     }
 }
 
-impl Aspect for TypeType { }
+impl Aspect for TypeAny { }
 
-impl AspectConsumeJs for TypeType {
+impl AspectConsumeJs for TypeAny {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<JsCode> {
         // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
         // cast_from), pass through.
@@ -122,7 +122,7 @@ impl AspectConsumeJs for TypeType {
     }
 }
 
-impl AspectBindJs for TypeType {
+impl AspectBindJs for TypeAny {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -130,28 +130,28 @@ impl AspectBindJs for TypeType {
         cv: CodeValue,
     ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
         self.to_js(xx, loc, cv).map(|js| {
-            super::mortar_js_value::bind_js_some(loc, js, Rc::new(TypeMortarType))
+            super::mortar_js_value::bind_js_some(loc, js, Rc::new(TypeMortarAny))
         })
     }
 }
 
 // TypeMortarType — the mortar (v8) representation of a type value. In v8, types
 // are always Rc`<dyn Type>` externals.
-pub(crate) struct TypeMortarType;
+pub(crate) struct TypeMortarAny;
 
-impl Value for TypeMortarType {
+impl Value for TypeMortarAny {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeType)
+        Rc::new(TypeAny)
     }
 }
 
-impl Type for TypeMortarType {
+impl Type for TypeMortarAny {
     fn desc(&self) -> String {
         "mortar type".to_string()
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMortarType)
+        Rc::new(TypeMortarAny)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -159,16 +159,16 @@ impl Type for TypeMortarType {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarType) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeMortarAny) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarType) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeMortarAny) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarType) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(TypeMortarAny) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarType) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TypeMortarAny) as Box<dyn AspectLiftJs>));
         }
         None
     }
@@ -195,21 +195,21 @@ impl Type for TypeMortarType {
             },
             value: Rc::new(super::mortar_js_value::MortarJsValue {
                 source: super::mortar_js_value::MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarType),
+                type_: Rc::new(TypeMortarAny),
             }),
         })
     }
 }
 
-impl Aspect for TypeMortarType { }
+impl Aspect for TypeMortarAny { }
 
-impl AspectConsumeJs for TypeMortarType {
+impl AspectConsumeJs for TypeMortarAny {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
         super::mortar_js_value::mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
-impl AspectBindJs for TypeMortarType {
+impl AspectBindJs for TypeMortarAny {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -220,13 +220,13 @@ impl AspectBindJs for TypeMortarType {
     }
 }
 
-impl AspectJsStackValue for TypeMortarType {
+impl AspectJsStackValue for TypeMortarAny {
     fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
-        super::mortar_js_value::mortar_js_stack_to_value(loc, value, Rc::new(TypeMortarType))
+        super::mortar_js_value::mortar_js_stack_to_value(loc, value, Rc::new(TypeMortarAny))
     }
 }
 
-impl AspectLiftJs for TypeMortarType {
+impl AspectLiftJs for TypeMortarAny {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let type_ = super::rc_type_from_v8(&*value);
         Ok(type_.as_value())

@@ -1,8 +1,5 @@
 use {
-    crate::syntax::{
-        ExprId,
-        SourceSpecAbsolute,
-    },
+    crate::syntax::ExprId,
     futures::future::{
         BoxFuture,
         Shared,
@@ -17,10 +14,7 @@ use {
             Cell,
             RefCell,
         },
-        collections::{
-            HashMap,
-            HashSet,
-        },
+        collections::HashMap,
         rc::Rc,
         sync::{
             Arc,
@@ -28,7 +22,6 @@ use {
             RwLock,
         },
     },
-    v8::Local,
 };
 
 #[derive(Default)]
@@ -89,7 +82,7 @@ pub(crate) enum Unique {
 }
 
 impl Value for Unique {
-    fn type_(&self, ex: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         todo!()
     }
 }
@@ -124,24 +117,15 @@ pub(crate) enum CompileResResult {
 pub(crate) struct GlobalContext {
     pub(crate) artifacts: RwLock<Artifacts>,
     pub(crate) js_sources: Mutex<Vec<String>>,
-    pub(crate) cache_root: Vec<String>,
     // Remote packages/sources, resolved when downloaded (path is deterministic so not
     // returned, use a method to get the path)
     pub(crate) compile_results: Mutex<HashMap<CompileId, Shared<BoxFuture<'static, Result<CompileRes, ExprSubErr>>>>>,
-    pub(crate) const_aspect_unique: Unique,
-    pub(crate) const_aspect_func: Unique,
-    pub(crate) const_aspect_artifact: Unique,
-    pub(crate) const_aspect_mortar_func: Unique,
-    pub(crate) const_aspect_mortar_from_js: Unique,
-    pub(crate) const_aspect_mortar_str: Unique,
-    pub(crate) const_aspect_mortar_null: Unique,
 }
 
 /// One per module (per import env).
 pub(crate) struct CompileImportContext {
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
-    pub(crate) next_unique_id: Counter,
 }
 
 pub(crate) enum External {

@@ -19,8 +19,6 @@ use {
         },
         jscode::{
             JsCode,
-            JsCodeBlock,
-            JsCodeBlockEntry,
             JsCodeNewObject,
             JsCodeType,
         },
@@ -49,9 +47,10 @@ use {
         mem,
         rc::Rc,
     },
-    super::Erb,
-    super::mortar_js_value::bind_js_some,
-    super::tuple::wrap_with_carry,
+    super::{
+        Erb,
+        tuple::wrap_with_carry,
+    },
 };
 
 /// Represents a single field entry in a Record.
@@ -72,14 +71,6 @@ pub(crate) struct Record {
 }
 
 impl Record {
-    /// Create a type-Record from entry types (all Mortar fields, no source).
-    pub fn from_entry_types(entry_types: BTreeMap<ConstKey, Rc<dyn Type>>) -> Record {
-        Record {
-            source: None,
-            fields: entry_types.into_iter().map(|(k, t)| (k, RecordField::Mortar(t))).collect(),
-        }
-    }
-
     /// Clone this type-Record. Panics if not a type.
     fn clone_as_type(&self) -> Record {
         Record {
@@ -96,13 +87,6 @@ impl Record {
     /// Return self as Rc`<dyn Type>`.
     pub fn as_type(&self) -> Rc<dyn Type> {
         Rc::new(self.clone_as_type())
-    }
-
-    /// Extract entry types.
-    pub fn entry_types(&self, xx: &ExprContext, loc: QExprId) -> BTreeMap<ConstKey, Rc<dyn Type>> {
-        self.fields.iter().map(|(k, f)| {
-            (k.clone(), record_field_type(xx, loc, f))
-        }).collect()
     }
 }
 
@@ -220,7 +204,7 @@ impl Type for Record {
                                     .fields
                                     .insert(
                                         key.clone(),
-                                        RecordField::Mortar(Rc::new(super::type_ref::TypeType) as Rc<dyn Type>),
+                                        RecordField::Mortar(Rc::new(super::type_ref::TypeAny) as Rc<dyn Type>),
                                     );
                                 RecordField::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
@@ -230,7 +214,7 @@ impl Type for Record {
                                             type_: JsCodeType::BindingUse(crate::jscode::JsCodeBindingUse { id }),
                                         })),
                                     },
-                                    value: Rc::new(super::type_ref::TypeType),
+                                    value: Rc::new(super::type_ref::TypeAny),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -699,10 +683,6 @@ pub(crate) enum RecordScopeField {
     Error(Vec<crate::langhelp::ExprErr>),
 }
 
-pub(crate) struct RecordScopeEntry {
-    pub fields: BTreeMap<ConstKey, RecordScopeField>,
-}
-
 /// MortarScopeEntry adapter for sourceless records (used by bind_js when record
 /// has no JS code). On use_, constructs a Record from the stored scope entries.
 struct RecordScopeEntryAsMortar {
@@ -759,38 +739,5 @@ impl super::mortar_scope_entry::MortarScopeEntry for RecordScopeEntryAsMortar {
                 fields: result_fields,
             }),
         })
-    }
-}
-
-impl ScopeEntry for RecordScopeEntry {
-    fn use_(&self, loc: QExprId, code: Code) -> CodeValue {
-        let mut result_fields = BTreeMap::new();
-        for (key, field) in &self.fields {
-            match field {
-                RecordScopeField::Scope(se) => {
-                    let cv = se.use_(loc, code.clone());
-                    result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(cv)));
-                },
-                RecordScopeField::Mortar(t) => {
-                    result_fields.insert(key.clone(), RecordField::Mortar(t.clone()));
-                },
-                RecordScopeField::Error(errs) => {
-                    result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes {
-                        v: None,
-                        errors: Some(errs.clone()),
-                    }));
-                },
-            }
-        }
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(Record {
-                source: None,
-                fields: result_fields,
-            }),
-        }
     }
 }

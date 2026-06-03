@@ -1,9 +1,4 @@
 use {
-    super::{
-        DefinitionSet,
-        DefinitionSetDataType,
-        DefinitionSetDataTypeConstructor,
-    },
     crate::{
         builtin::{
             AspectBind,
@@ -21,6 +16,16 @@ use {
             aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
         },
+        eval::{
+            Erb,
+            from_v8_ref,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueSource,
+                bind_js_some,
+            },
+            typecheck_convert,
+        },
         jscode::{
             JsCode,
             JsCodeBindingUse,
@@ -37,26 +42,20 @@ use {
             ExprContext,
             QExprId,
             ScopeEntry,
-            ScopeEntryId,
             Type,
             Unique,
             Value,
         },
     },
-    crate::eval::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        from_v8_ref,
-        typecheck_convert,
-    },
     std::{
         any::Any,
         mem,
         rc::Rc,
+    },
+    super::{
+        DefinitionSet,
+        DefinitionSetDataType,
+        DefinitionSetDataTypeConstructor,
     },
 };
 
@@ -66,7 +65,7 @@ pub(crate) struct MortarTypeDefinitionSetDataTypeConstructor;
 
 impl Value for MortarTypeDefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
@@ -145,7 +144,8 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeConstructor {
 
 impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
-        let ctor_ref: Rc<DefinitionSetDataTypeConstructor> = from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
+        let ctor_ref: Rc<DefinitionSetDataTypeConstructor> =
+            from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
         ctor_ref.set.finish()?;
         Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
@@ -160,7 +160,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
 // --- DefinitionSetDataTypeConstructor as Type: used after lift ---
 impl Value for DefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 

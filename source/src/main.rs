@@ -5,29 +5,34 @@ pub mod builtin;
 pub mod eval;
 
 use {
+    aargvark::{
+        Aargvark,
+        traits_impls::AargvarkJson,
+        vark,
+    },
     crate::{
         eval::{
             compile_importid,
             expr::{
                 Expr,
-                Expr_,
                 ExprBind,
+                ExprBlock,
                 ExprCall,
                 ExprConditionBranch,
                 ExprField,
+                ExprForeach,
                 ExprIf,
                 ExprLower,
-                ExprOperatorAdd,
-                ExprForeach,
                 ExprMatch,
                 ExprMatchBranch,
+                ExprOperatorAdd,
                 ExprOperatorLt,
                 ExprRecord,
-                ExprBlock,
                 ExprScopeUse,
                 ExprSet,
                 ExprStage,
                 ExprTuple,
+                Expr_,
                 Module,
             },
             null::ValueNull,
@@ -39,12 +44,10 @@ use {
             CompileRes,
             CompileResResult,
             ExprErr,
-            ExprSubErr,
             GlobalContext,
             ImportStateId,
             LogEntry,
             SourceId,
-            Unique,
         },
         syntax::{
             SerialExpr,
@@ -53,14 +56,8 @@ use {
             SerialModule,
         },
     },
-    aargvark::{
-        Aargvark,
-        traits_impls::AargvarkJson,
-        vark,
-    },
     std::{
         collections::HashMap,
-        env::current_dir,
         process::exit,
         rc::Rc,
         sync::Arc,
@@ -68,42 +65,10 @@ use {
 };
 
 fn new_gx() -> Arc<GlobalContext> {
-    let mut builtin_unique = {
-        let mut next = 0;
-        move || {
-            let v = next;
-            next += 1;
-            return Unique::Builtin {
-                file: file!(),
-                line: v,
-            };
-        }
-    };
     let gx = Arc::new(GlobalContext {
         artifacts: Default::default(),
-        cache_root: {
-            let fs_cwd = current_dir().unwrap();
-            let fs_cwd = match fs_cwd.to_str() {
-                Some(c) => c,
-                None => {
-                    panic!("Non-string current path [{:?}], required for cache path", fs_cwd);
-                },
-            };
-            let mut out = vec![];
-            for c in fs_cwd.split("/") {
-                out.push(c.to_string());
-            }
-            out
-        },
         js_sources: Default::default(),
         compile_results: Default::default(),
-        const_aspect_mortar_func: builtin_unique(),
-        const_aspect_unique: builtin_unique(),
-        const_aspect_func: builtin_unique(),
-        const_aspect_artifact: builtin_unique(),
-        const_aspect_mortar_from_js: builtin_unique(),
-        const_aspect_mortar_null: builtin_unique(),
-        const_aspect_mortar_str: builtin_unique(),
     });
     return gx;
 }

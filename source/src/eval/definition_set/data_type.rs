@@ -1,8 +1,4 @@
 use {
-    super::{
-        DefinitionSetDataType,
-        DefinitionSetInterface,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -14,6 +10,16 @@ use {
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_string_get,
+        },
+        eval::{
+            Erb,
+            mortar_function::MortarTypeFunction,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueSource,
+                bind_js_some,
+            },
+            mortar_null::TypeMortarNull,
         },
         jscode::{
             JsCode,
@@ -34,26 +40,20 @@ use {
             Value,
         },
     },
-    crate::eval::{
-        Erb,
-        mortar_function::MortarTypeFunction,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        mortar_null::TypeMortarNull,
-    },
     std::{
         any::Any,
         mem,
         rc::Rc,
     },
+    super::{
+        DefinitionSetDataType,
+        DefinitionSetInterface,
+    },
 };
 
 impl Value for DefinitionSetDataType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 

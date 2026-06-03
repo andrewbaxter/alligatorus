@@ -1,19 +1,4 @@
 use {
-    super::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueDataAccess,
-            MortarJsValueSource,
-            mortar_bind_js,
-            mortar_consume_js_to_js,
-            mortar_js_stack_to_value,
-            mortar_set,
-        },
-        mortar_function::MortarTypeFunction,
-        mortar_null::TypeMortarNull,
-        mortar_string::TypeMortarString,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -25,7 +10,6 @@ use {
             AspectOperatorLt,
             AspectSet,
             aspect_bind_js_aspect_id,
-            aspect_set_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_field_aspect_id,
             aspect_js_number_aspect_id,
@@ -34,21 +18,22 @@ use {
             aspect_number_get_maybe,
             aspect_operator_add_aspect_id,
             aspect_operator_lt_aspect_id,
+            aspect_set_aspect_id,
         },
         jscode::{
             JsCode,
+            JsCodeBlock,
+            JsCodeBlockEntry,
             JsCodeFieldUse,
             JsCodeOperatorAdd,
             JsCodeOperatorLt,
-            JsCodeBlock,
-            JsCodeBlockEntry,
             JsCodeType,
         },
         langhelp::{
             Aspect,
             Code,
-            Code_,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -63,13 +48,28 @@ use {
         mem,
         rc::Rc,
     },
+    super::{
+        Erb,
+        mortar_function::MortarTypeFunction,
+        mortar_js_value::{
+            MortarJsValue,
+            MortarJsValueDataAccess,
+            MortarJsValueSource,
+            mortar_bind_js,
+            mortar_consume_js_to_js,
+            mortar_js_stack_to_value,
+            mortar_set,
+        },
+        mortar_null::TypeMortarNull,
+        mortar_string::TypeMortarString,
+    },
 };
 
 pub(crate) struct TypeMortarNumber;
 
 impl Value for TypeMortarNumber {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

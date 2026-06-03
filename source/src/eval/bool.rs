@@ -30,7 +30,7 @@ pub(crate) struct TypeBool;
 
 impl Value for TypeBool {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

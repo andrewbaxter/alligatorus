@@ -1,9 +1,4 @@
 use {
-    super::{
-        DefinitionSetDataTypeConstructor,
-        DefinitionSetExports,
-        DefinitionSetFunction,
-    },
     crate::{
         builtin::{
             AspectBind,
@@ -19,6 +14,16 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
             aspect_string_get,
+        },
+        eval::{
+            Erb,
+            from_v8_ref,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueDataDefinitionSet,
+                MortarJsValueSource,
+                bind_js_some,
+            },
         },
         jscode::JsCode,
         langhelp::{
@@ -36,20 +41,15 @@ use {
             Value,
         },
     },
-    crate::eval::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueDataDefinitionSet,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        from_v8_ref,
-    },
     std::{
         any::Any,
         mem,
         rc::Rc,
+    },
+    super::{
+        DefinitionSetDataTypeConstructor,
+        DefinitionSetExports,
+        DefinitionSetFunction,
     },
 };
 
@@ -57,7 +57,7 @@ pub(crate) struct MortarTypeDefinitionSetExports;
 
 impl Value for MortarTypeDefinitionSetExports {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
@@ -148,7 +148,7 @@ struct DefinitionSetExportsType {
 
 impl Value for DefinitionSetExportsType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 

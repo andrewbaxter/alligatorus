@@ -185,7 +185,7 @@ fn expr_type_identity() -> Unique {
 
 impl Value for ExprType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 
@@ -310,7 +310,7 @@ impl Value for StagedExprPlaceholder {
 
 impl Value for StagedExprPlaceholderType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

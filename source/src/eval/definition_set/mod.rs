@@ -9,24 +9,14 @@ mod interface;
 pub(crate) mod tagged_union;
 
 pub(crate) use {
-    jswrap_structs::DefineResult,
-    data_type_ref::MortarTypeDefinitionSetDataTypeRef,
     data_type_constructor::MortarTypeDefinitionSetDataTypeConstructor,
+    data_type_ref::MortarTypeDefinitionSetDataTypeRef,
     exports::MortarTypeDefinitionSetExports,
     function::MortarTypeDefinitionSetFunction,
     interface_ref::MortarTypeDefinitionSetInterfaceRef,
-    tagged_union::MortarTypeTaggedUnionRef,
-    tagged_union::MortarTypeTaggedUnionConstructorRef,
+    jswrap_structs::DefineResult,
 };
 use {
-    std::{
-        cell::{
-            Cell,
-            RefCell,
-        },
-        rc::Rc,
-    },
-    dumpster::unsync::Gc,
     crate::langhelp::{
         Counter,
         DefSetId,
@@ -34,6 +24,14 @@ use {
         ScopeEntryId,
         Unique,
         Value,
+    },
+    dumpster::unsync::Gc,
+    std::{
+        cell::{
+            Cell,
+            RefCell,
+        },
+        rc::Rc,
     },
 };
 
@@ -49,7 +47,6 @@ pub(crate) struct DefinitionSetFunctionData {
     pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
-    pub arg_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
 pub(crate) struct DefinitionSetDataMethodData {
@@ -134,7 +131,7 @@ impl DefinitionSet {
             return Ok(());
         }
         let functions = self.functions.borrow();
-        for (i, func_data) in functions.iter().enumerate() {
+        for func_data in functions.iter() {
             let name = func_data.name.as_deref().unwrap_or("(unnamed)");
             if func_data.impl_expr.borrow().is_none() {
                 return Err(format!("Definition set function '{}' is missing an implementation", name));
@@ -147,7 +144,7 @@ impl DefinitionSet {
             }
         }
         let data_types = self.data_types.borrow();
-        for (i, dt_data) in data_types.iter().enumerate() {
+        for dt_data in data_types.iter() {
             let name = dt_data.name.as_deref().unwrap_or("(unnamed)");
             if dt_data.underlying_type.borrow().is_none() {
                 return Err(format!("Data type '{}' is missing underlying type", name));

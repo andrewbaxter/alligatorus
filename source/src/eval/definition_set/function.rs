@@ -1,8 +1,4 @@
 use {
-    super::{
-        DefinitionSet,
-        DefinitionSetFunction,
-    },
     crate::{
         builtin::{
             AspectBind,
@@ -22,6 +18,17 @@ use {
             aspect_null_get_maybe,
             aspect_tuple_get_maybe,
         },
+        eval::{
+            Erb,
+            from_v8_ref,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueDataDefinitionSet,
+                MortarJsValueSource,
+                bind_js_some,
+            },
+            typecheck_convert,
+        },
         jscode::{
             JsCode,
             JsCodeBindingUse,
@@ -38,28 +45,19 @@ use {
             ExprContext,
             QExprId,
             ScopeEntry,
-            ScopeEntryId,
             Type,
             Unique,
             Value,
         },
     },
-    crate::eval::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueDataDefinitionSet,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        mortar_null::TypeMortarNull,
-        from_v8_ref,
-        typecheck_convert,
-    },
     std::{
         any::Any,
         mem,
         rc::Rc,
+    },
+    super::{
+        DefinitionSet,
+        DefinitionSetFunction,
     },
 };
 
@@ -68,7 +66,7 @@ pub(crate) struct MortarTypeDefinitionSetFunction;
 
 impl Value for MortarTypeDefinitionSetFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
@@ -160,7 +158,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
 // --- DefinitionSetFunction as Type: used after lift ---
 impl Value for DefinitionSetFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 

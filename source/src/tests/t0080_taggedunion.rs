@@ -1,14 +1,14 @@
 use {
+    crate::{
+        compile,
+        eval::setup_v8,
+        langhelp::SourceId,
+        new_gx,
+        syntax::SerialModule,
+    },
     super::helpers::{
         ModuleBuilder,
         sanitize_builtins,
-    },
-    crate::{
-        compile,
-        new_gx,
-        eval::setup_v8,
-        langhelp::SourceId,
-        syntax::SerialModule,
     },
 };
 

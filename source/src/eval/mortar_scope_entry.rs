@@ -14,7 +14,6 @@ use {
             ScopeEntry,
             ScopeEntryId,
             Type,
-            Value,
         },
     },
     std::rc::Rc,
@@ -53,24 +52,6 @@ impl MortarScopeEntry for MortarScopeEntryDirect {
                 source: value.source,
                 type_: self.type_.clone(),
             }),
-        })
-    }
-}
-
-/// MortarScopeEntry for compile-time values without JS representation.
-pub(crate) struct MortarScopeEntryValue {
-    pub loc: QExprId,
-    pub value: Rc<dyn Value>,
-}
-
-impl MortarScopeEntry for MortarScopeEntryValue {
-    fn use_(&self, _value: MortarJsValue) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc: self.loc,
-                code: Code_::None,
-            },
-            value: self.value.clone(),
         })
     }
 }

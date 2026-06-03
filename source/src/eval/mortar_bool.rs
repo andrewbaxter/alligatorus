@@ -21,8 +21,8 @@ use {
         langhelp::{
             Aspect,
             Code,
-            Code_,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -53,7 +53,7 @@ pub(crate) struct TypeMortarBool;
 
 impl Value for TypeMortarBool {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

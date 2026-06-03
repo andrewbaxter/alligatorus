@@ -1,9 +1,4 @@
 use {
-    super::{
-        Erb,
-        mortar_string::TypeMortarString,
-        mortar_js_value::bind_js_some,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -33,13 +28,18 @@ use {
         mem,
         rc::Rc,
     },
+    super::{
+        Erb,
+        mortar_js_value::bind_js_some,
+        mortar_string::TypeMortarString,
+    },
 };
 
 pub(crate) struct TypeString;
 
 impl Value for TypeString {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeType)
+        Rc::new(super::type_ref::TypeAny)
     }
 }
 

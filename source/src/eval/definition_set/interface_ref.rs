@@ -1,8 +1,4 @@
 use {
-    super::{
-        DefinitionSetInterface,
-        DefinitionSetInterfaceRef,
-    },
     crate::{
         builtin::{
             AspectBindJs,
@@ -13,6 +9,14 @@ use {
             aspect_consume_js_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
+        },
+        eval::{
+            from_v8_ref,
+            mortar_js_value::{
+                MortarJsValue,
+                MortarJsValueSource,
+                bind_js_some,
+            },
         },
         jscode::JsCode,
         langhelp::{
@@ -29,17 +33,13 @@ use {
             Value,
         },
     },
-    crate::eval::{
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        from_v8_ref,
-    },
     std::{
         any::Any,
         rc::Rc,
+    },
+    super::{
+        DefinitionSetInterface,
+        DefinitionSetInterfaceRef,
     },
 };
 
@@ -54,7 +54,7 @@ fn interface_ref_type_identity() -> Unique {
 
 impl Value for MortarTypeDefinitionSetInterfaceRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeType)
+        Rc::new(crate::eval::type_ref::TypeAny)
     }
 }
 
