@@ -147,6 +147,7 @@ pub(crate) struct ExprContext {
     pub(crate) vx: Rc<EvalContext>,
     pub(crate) import_state: Rc<Cell<ImportStateId>>,
     pub(crate) scope: Rc<Scope>,
+    pub(crate) target: Rc<dyn crate::eval::Target>,
 }
 
 pub(crate) trait CodeDyn: Any { }
