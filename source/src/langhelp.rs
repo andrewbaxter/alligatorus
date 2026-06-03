@@ -69,8 +69,6 @@ pub(crate) enum ScopeEntryId {
     Def(ImportStateId, DefSetId, usize),
 }
 
-pub(crate) struct ValueTypeAny {}
-
 /// A value guaranteed to be unique in the world
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum Unique {
@@ -151,12 +149,10 @@ pub(crate) struct ExprContext {
     pub(crate) scope: Rc<Scope>,
 }
 
-pub(crate) trait CodeDyn: Any {
-    fn loc(&self) -> QExprId;
-}
+pub(crate) trait CodeDyn: Any { }
 
 #[derive(Clone)]
-pub enum Code_ {
+pub(crate) enum Code_ {
     None,
     Dyn(Rc<dyn CodeDyn>),
 }
@@ -250,10 +246,6 @@ impl<T> EResult<T> {
         }
     }
 
-    pub(crate) fn is_ok(&self) -> bool {
-        return self.v.is_some();
-    }
-
     pub(crate) fn map<U>(self, f: impl FnOnce(T) -> U) -> EResult<U> {
         return EResult {
             v: self.v.map(f),
@@ -264,7 +256,7 @@ impl<T> EResult<T> {
 
 /// If None, it means that the evaluation failed in a way that affects downstream
 /// meta evaluation, so no Value could be provided.
-pub type EvalRes = EResult<CodeValue>;
+pub(crate) type EvalRes = EResult<CodeValue>;
 
 pub(crate) trait Value: Any {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type>;

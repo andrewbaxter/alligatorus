@@ -39,108 +39,108 @@ use {
 };
 
 #[derive(Clone)]
-pub struct ExprBind {
+pub(crate) struct ExprBind {
     pub base: Rc<Expr>,
     pub value: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprSet {
+pub(crate) struct ExprSet {
     pub base: Rc<Expr>,
     pub value: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprField {
+pub(crate) struct ExprField {
     pub base: Rc<Expr>,
     pub key: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprBlock {
+pub(crate) struct ExprBlock {
     pub exprs: Vec<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprScopeUse {
+pub(crate) struct ExprScopeUse {
     pub key: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprCall {
+pub(crate) struct ExprCall {
     pub func: Rc<Expr>,
     pub arg: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprStage {
+pub(crate) struct ExprStage {
     pub expr: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprLower {
+pub(crate) struct ExprLower {
     pub expr: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprTuple {
+pub(crate) struct ExprTuple {
     pub elements: Vec<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprRecord {
+pub(crate) struct ExprRecord {
     pub entries: Vec<(Expr, Expr)>,
 }
 
 #[derive(Clone)]
-pub struct ExprConditionBranch {
+pub(crate) struct ExprConditionBranch {
     pub condition: Expr,
     pub body: Expr,
 }
 
 #[derive(Clone)]
-pub struct ExprIf {
+pub(crate) struct ExprIf {
     pub conditions: Vec<ExprConditionBranch>,
     pub else_: Option<Rc<Expr>>,
 }
 
 #[derive(Clone)]
-pub struct ExprOperatorLt {
+pub(crate) struct ExprOperatorLt {
     pub base: Rc<Expr>,
     pub reference: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprOperatorAdd {
+pub(crate) struct ExprOperatorAdd {
     pub base: Rc<Expr>,
     pub reference: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprForeach {
+pub(crate) struct ExprForeach {
     pub base: Rc<Expr>,
     pub element_key: Rc<Expr>,
     pub body: Rc<Expr>,
 }
 
 #[derive(Clone)]
-pub struct ExprMatchBranch {
+pub(crate) struct ExprMatchBranch {
     pub condition: Expr,
     pub body: Expr,
 }
 
 #[derive(Clone)]
-pub struct ExprMatch {
+pub(crate) struct ExprMatch {
     pub base: Rc<Expr>,
     pub element_key: Rc<Expr>,
     pub cases: Vec<ExprMatchBranch>,
     pub fallback: Option<Rc<Expr>>,
 }
 
-pub type LitValue = Rc<dyn Fn() -> Rc<dyn Value>>;
+pub(crate) type LitValue = Rc<dyn Fn() -> Rc<dyn Value>>;
 
 #[derive(Clone)]
-pub enum Expr_ {
+pub(crate) enum Expr_ {
     Literal(LitValue),
     Bind(ExprBind),
     Set(ExprSet),
@@ -160,12 +160,12 @@ pub enum Expr_ {
 }
 
 #[derive(Clone)]
-pub struct Expr {
+pub(crate) struct Expr {
     pub loc: QExprId,
     pub r#type: Expr_,
 }
 
-pub enum Module {
+pub(crate) enum Module {
     V1(Expr),
 }
 

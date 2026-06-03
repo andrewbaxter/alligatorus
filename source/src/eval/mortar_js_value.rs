@@ -1,9 +1,6 @@
 use {
     crate::{
-        builtin::{
-            AspectConsumeJs,
-            aspect_consume_js_get,
-        },
+        builtin::aspect_consume_js_get,
         jscode::{
             JsCode,
             JsCodeBindingSet,
@@ -27,7 +24,6 @@ use {
             Value,
         },
     },
-    dumpster::unsync::Gc,
     std::{
         any::Any,
         mem,
@@ -36,32 +32,24 @@ use {
     super::Erb,
 };
 
-pub struct MortarJsValueDataScope {
+pub(crate) struct MortarJsValueDataScope {
     pub loc: QExprId,
     pub key: ScopeEntryId,
 }
 
-pub struct MortarJsValueDataAccess {
-    /// Location of where access occurred
-    pub loc: QExprId,
-    pub base: Box<MortarJsValue>,
+pub(crate) struct MortarJsValueDataAccess {
     pub key: String,
 }
 
-pub struct MortarJsValueDataDefinitionSet {
-    pub set: Gc<super::definition_set::DefinitionSet>,
-    pub func_index: usize,
-}
-
-pub enum MortarJsValueSource {
+pub(crate) enum MortarJsValueSource {
     Binding(MortarJsValueDataScope),
-    DefinitionSet(MortarJsValueDataDefinitionSet),
+    DefinitionSet,
     // Result of effect
     Expr,
     Field(MortarJsValueDataAccess),
 }
 
-pub struct MortarJsValue {
+pub(crate) struct MortarJsValue {
     pub source: MortarJsValueSource,
     pub type_: Rc<dyn Type>,
 }
@@ -198,7 +186,7 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
             MortarJsValueSource::Expr => {
                 return erb.err_new(format!("Cannot modify a temporary value"));
             },
-            MortarJsValueSource::DefinitionSet(_) => {
+            MortarJsValueSource::DefinitionSet => {
                 return erb.err_new(format!("Cannot modify a definition set function"));
             },
         }

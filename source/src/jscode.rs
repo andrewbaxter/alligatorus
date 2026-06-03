@@ -145,8 +145,4 @@ pub(crate) struct JsCode {
     pub(crate) type_: JsCodeType,
 }
 
-impl CodeDyn for JsCode {
-    fn loc(&self) -> QExprId {
-        return self.loc;
-    }
-}
+impl CodeDyn for JsCode { }

@@ -247,11 +247,6 @@ impl AspectField for TypeMortarList {
                 },
                 value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Field(MortarJsValueDataAccess {
-                        loc,
-                        base: Box::new(MortarJsValue {
-                            source: MortarJsValueSource::Expr,
-                            type_: Rc::new(self.clone()),
-                        }),
                         key: key_name,
                     }),
                     type_: field_type,

@@ -6,10 +6,7 @@ use {
         new_gx,
         syntax::SerialModule,
     },
-    super::helpers::{
-        ModuleBuilder,
-        sanitize_builtins,
-    },
+    super::helpers::ModuleBuilder,
 };
 
 #[tokio::test]

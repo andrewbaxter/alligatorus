@@ -21,10 +21,7 @@ use {
         },
     },
     paste::paste,
-    std::{
-        any::Any,
-        rc::Rc,
-    },
+    std::rc::Rc,
 };
 
 macro_rules! unique{
@@ -41,13 +38,17 @@ macro_rules! aspect{
         $($i: item) *
     }) => {
         paste!{
-            pub trait $name: Aspect {
+            #[allow(dead_code)] pub(crate) trait $name: Aspect {
                 $($i) *
             }
-            pub fn[< $name: snake _aspect_id >]() -> Unique {
+            #[allow(dead_code)] pub(crate) fn[< $name: snake _aspect_id >]() -> Unique {
                 return unique!();
             }
-            pub fn[
+            #[
+                allow(dead_code)
+            ] pub(
+                crate
+            ) fn[
                 < $name: snake _get >
             ](xx: & ExprContext, loc: QExprId, v: & dyn Type) -> EResult < Box < dyn $name >> {
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
@@ -57,7 +58,11 @@ macro_rules! aspect{
                 };
                 return EResult:: ok(* out.downcast::< Box < dyn $name >>().unwrap());
             }
-            pub fn[< $name: snake _get_maybe >](xx: & ExprContext, v: & dyn Type) -> Option < Box < dyn $name >> {
+            #[
+                allow(dead_code)
+            ] pub(
+                crate
+            ) fn[< $name: snake _get_maybe >](xx: & ExprContext, v: & dyn Type) -> Option < Box < dyn $name >> {
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
                     return None;
                 };

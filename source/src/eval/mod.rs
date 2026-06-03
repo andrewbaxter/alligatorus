@@ -2090,7 +2090,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
     return out;
 }
 
-pub async fn compile_importid(
+pub(crate) async fn compile_importid(
     fx: &Arc<GlobalContext>,
     import_state: ImportStateId,
     source: Module,

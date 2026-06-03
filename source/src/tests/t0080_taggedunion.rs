@@ -34,7 +34,7 @@ async fn test_0000_tagged_union_match() {
                                             "builder",
                                             mb.call(
                                                 mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                                mb.tuple(vec![mb.str("strnum")])
+                                                mb.tuple(vec![])
                                             )
                                         ),
                                         mb.bind(
@@ -108,63 +108,57 @@ let a1;
 let e7;
 let e8;
 e8 = a0;
-let e9;
-{
-let e10;
-e10 = "strnum";
-e9 = e10;
-}
-e7 = e8._3(e9);
+e7 = e8._3();
 a1 = e7;
 }
 let a3;
 {
+let e9;
+let e10;
+e10 = a1;
 let e11;
-let e12;
-e12 = a1;
-let e13;
 {
-let e14;
-e14 = "strtag";
-e13 = e14;
+let e12;
+e12 = "strtag";
+e11 = e12;
 }
-let e15;
-e15 = a2;
-e11 = e12._1(e13,e15);
-a3 = e11;
+let e13;
+e13 = a2;
+e9 = e10._1(e11,e13);
+a3 = e9;
 }
 let a5;
 {
+let e14;
+let e15;
+e15 = a1;
 let e16;
+{
 let e17;
-e17 = a1;
+e17 = "numtag";
+e16 = e17;
+}
 let e18;
+e18 = a4;
+e14 = e15._1(e16,e18);
+a5 = e14;
+}
 {
 let e19;
-e19 = "numtag";
-e18 = e19;
+e4 = e19;
 }
+{
 let e20;
-e20 = a4;
-e16 = e17._1(e18,e20);
-a5 = e16;
-}
-{
 let e21;
-e4 = e21;
-}
-{
+e21 = a5;
 let e22;
+e22 = a3;
 let e23;
-e23 = a5;
 let e24;
-e24 = a3;
-let e25;
-let e26;
-e26 = a1;
-e25 = e26._0;
-e22 = { num: e23, str: e24, type: e25 };
-e4 = e22;
+e24 = a1;
+e23 = e24._0;
+e20 = { num: e21, str: e22, type: e23 };
+e4 = e20;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
@@ -235,7 +229,7 @@ async fn test_0010_tagged_union_match_fallback() {
                                             "builder",
                                             mb.call(
                                                 mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                                mb.tuple(vec![mb.str("strnum")])
+                                                mb.tuple(vec![])
                                             )
                                         ),
                                         mb.bind(
@@ -300,63 +294,57 @@ let a1;
 let e7;
 let e8;
 e8 = a0;
-let e9;
-{
-let e10;
-e10 = "strnum";
-e9 = e10;
-}
-e7 = e8._3(e9);
+e7 = e8._3();
 a1 = e7;
 }
 let a3;
 {
+let e9;
+let e10;
+e10 = a1;
 let e11;
-let e12;
-e12 = a1;
-let e13;
 {
-let e14;
-e14 = "strtag";
-e13 = e14;
+let e12;
+e12 = "strtag";
+e11 = e12;
 }
-let e15;
-e15 = a2;
-e11 = e12._1(e13,e15);
-a3 = e11;
+let e13;
+e13 = a2;
+e9 = e10._1(e11,e13);
+a3 = e9;
 }
 let a5;
 {
+let e14;
+let e15;
+e15 = a1;
 let e16;
+{
 let e17;
-e17 = a1;
+e17 = "numtag";
+e16 = e17;
+}
 let e18;
+e18 = a4;
+e14 = e15._1(e16,e18);
+a5 = e14;
+}
 {
 let e19;
-e19 = "numtag";
-e18 = e19;
+e4 = e19;
 }
+{
 let e20;
-e20 = a4;
-e16 = e17._1(e18,e20);
-a5 = e16;
-}
-{
 let e21;
-e4 = e21;
-}
-{
+e21 = a5;
 let e22;
+e22 = a3;
 let e23;
-e23 = a5;
 let e24;
-e24 = a3;
-let e25;
-let e26;
-e26 = a1;
-e25 = e26._0;
-e22 = { num: e23, str: e24, type: e25 };
-e4 = e22;
+e24 = a1;
+e23 = e24._0;
+e20 = { num: e21, str: e22, type: e23 };
+e4 = e20;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
@@ -493,7 +481,7 @@ async fn test_0030_tagged_union_exhaustive_with_fallback() {
                             "builder",
                             mb.call(
                                 mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                mb.tuple(vec![mb.str("strnum")])
+                                mb.tuple(vec![])
                             )
                         ),
                         mb.bind(

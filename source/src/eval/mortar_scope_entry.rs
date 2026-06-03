@@ -82,7 +82,7 @@ impl ScopeEntry for MortarScopeEntryAsScope {
 
 /// Direct scope entry for mortar bindings (used by match, foreach, builtins).
 #[derive(Clone)]
-pub struct MortarScopeEntryBinding {
+pub(crate) struct MortarScopeEntryBinding {
     pub js_key: ScopeEntryId,
     pub type_: Rc<dyn Type>,
 }

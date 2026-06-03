@@ -84,10 +84,6 @@ impl Record {
         }
     }
 
-    /// Return self as Rc`<dyn Type>`.
-    pub fn as_type(&self) -> Rc<dyn Type> {
-        Rc::new(self.clone_as_type())
-    }
 }
 
 fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn Type> {
@@ -365,7 +361,6 @@ impl AspectField for Record {
                     },
                     Some(RecordField::Mortar(mortar_type)) => {
                         // Field is only available via mortar source — generate JS access
-                        let source = record.source.take();
                         let self_code = erb.must_er(self_code_raw.cast::<JsCode>())?.unwrap().clone();
                         let field_code = Code {
                             loc,
@@ -380,11 +375,6 @@ impl AspectField for Record {
                         let field_source =
                             super::mortar_js_value::MortarJsValueSource::Field(
                                 super::mortar_js_value::MortarJsValueDataAccess {
-                                    loc,
-                                    base: Box::new(super::mortar_js_value::MortarJsValue {
-                                        source: source.unwrap_or(super::mortar_js_value::MortarJsValueSource::Expr),
-                                        type_: self.as_type(),
-                                    }),
                                     key: key_name,
                                 },
                             );
@@ -447,11 +437,6 @@ impl AspectField for Record {
             };
             let field_source =
                 super::mortar_js_value::MortarJsValueSource::Field(super::mortar_js_value::MortarJsValueDataAccess {
-                    loc,
-                    base: Box::new(super::mortar_js_value::MortarJsValue {
-                        source: super::mortar_js_value::MortarJsValueSource::Expr,
-                        type_: self.as_type(),
-                    }),
                     key: key_name,
                 });
             if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {

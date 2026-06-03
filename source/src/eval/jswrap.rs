@@ -432,7 +432,9 @@ macro_rules! jswrap{
                         ) {
                             let _jw_this = _jw_args.this();
                             let _jw_dk = v8:: String:: new($scope, "_d").unwrap();
-                            let $self_: Rc <$name > = crate:: eval:: from_v8_ref::< Rc <$name >>(
+                            #[
+                                allow(unused_variables)
+                            ] let $self_: Rc <$name > = crate:: eval:: from_v8_ref::< Rc <$name >>(
                                 &* _jw_this.get($scope, _jw_dk.into()).unwrap(),
                             ).clone();
                             #[allow(unused_mut, unused_variables)]

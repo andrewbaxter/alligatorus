@@ -131,11 +131,10 @@ jswrap!(struct DefineResult(self_, scope) {
     fn build() -> Rc<DefinitionSetExports> {
         Rc::new(DefinitionSetExports { set: (*self_.ds).clone(), })
     }
-    fn tagged_union(description: String) -> TaggedUnionBuilder {
+    fn tagged_union() -> TaggedUnionBuilder {
         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
         let identity = Unique::Compile(uc.compile_id.clone(), uc.counter.next());
         let data = Rc::new(TaggedUnionData {
-            description: Some(description),
             variants: RefCell::new(Vec::new()),
             identity,
             next_tag_id: crate::langhelp::Counter::default(),
@@ -453,7 +452,6 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
         if arg_type.is_some() {
             drop(arg_type);
             drop(methods);
-            drop(iface);
             drop(interfaces);
             crate::eval::v8util::throw_error(scope, "Interface method already has an arg type");
             return;
@@ -469,7 +467,6 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
         if ret_type.is_some() {
             drop(ret_type);
             drop(methods);
-            drop(iface);
             drop(interfaces);
             crate::eval::v8util::throw_error(scope, "Interface method already has a ret type");
             return;

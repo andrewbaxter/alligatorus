@@ -20,7 +20,6 @@ use {
             from_v8_ref,
             mortar_js_value::{
                 MortarJsValue,
-                MortarJsValueDataDefinitionSet,
                 MortarJsValueSource,
                 bind_js_some,
             },
@@ -212,10 +211,7 @@ impl AspectField for DefinitionSetExportsType {
                                 code: Code_::None
                             },
                             value: Rc::new(MortarJsValue {
-                                source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
-                                    set: self.set.clone(),
-                                    func_index: i,
-                                }),
+                                source: MortarJsValueSource::DefinitionSet,
                                 type_: Rc::new(DefinitionSetFunction {
                                     set: self.set.clone(),
                                     func_index: i,

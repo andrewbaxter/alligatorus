@@ -23,7 +23,6 @@ use {
             from_v8_ref,
             mortar_js_value::{
                 MortarJsValue,
-                MortarJsValueDataDefinitionSet,
                 MortarJsValueSource,
                 bind_js_some,
             },
@@ -143,10 +142,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
     fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
         let func_ref: Rc<DefinitionSetFunction> = from_v8_ref::<Rc<DefinitionSetFunction>>(&value).clone();
         Ok(Rc::new(MortarJsValue {
-            source: MortarJsValueSource::DefinitionSet(MortarJsValueDataDefinitionSet {
-                set: func_ref.set.clone(),
-                func_index: func_ref.func_index,
-            }),
+            source: MortarJsValueSource::DefinitionSet,
             type_: Rc::new(DefinitionSetFunction {
                 set: func_ref.set.clone(),
                 func_index: func_ref.func_index,
