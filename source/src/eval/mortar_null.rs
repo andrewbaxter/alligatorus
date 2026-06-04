@@ -1,12 +1,12 @@
 use {
     crate::{
         builtin::{
+            AspectArtifact,
             AspectBindJs,
             AspectConsumeJs,
             AspectJsStackValue,
             AspectLiftJs,
             AspectNull,
-            AspectSerial,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_js_stack_value_aspect_id,
@@ -21,6 +21,7 @@ use {
             JsCodeType,
         },
         langhelp::{
+            Artifact as LangSerialValue,
             Artifacts,
             Aspect,
             Code,
@@ -30,7 +31,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            SerialValue as LangSerialValue,
             Type,
             Unique,
             Value,
@@ -74,7 +74,7 @@ impl Type for TypeMortarNull {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_serial_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectSerial>));
+            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_lift_js_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectLiftJs>));
@@ -135,7 +135,7 @@ impl AspectJsStackValue for TypeMortarNull {
     }
 }
 
-impl AspectSerial for TypeMortarNull {
+impl AspectArtifact for TypeMortarNull {
     fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<LangSerialValue> {
         EResult::ok(LangSerialValue::Null)
     }

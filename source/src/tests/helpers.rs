@@ -6,24 +6,24 @@ pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
 use {
     crate::syntax::{
         ExprId,
-        SerialExpr,
-        SerialExprBind,
-        SerialExprBindingUse,
-        SerialExprBlock,
-        SerialExprCall,
-        SerialExprField,
-        SerialExprForeach,
-        SerialExprIf,
         SerialExprIfConditionBranch,
-        SerialExprLower,
-        SerialExprMatch,
         SerialExprMatchTagBranch,
-        SerialExprOperatorAdd,
-        SerialExprOperatorLt,
-        SerialExprSet,
-        SerialExprStage,
-        SerialExpr_,
-        SerialLiteral,
+        SourceExpr,
+        SourceExprBind,
+        SourceExprBindingUse,
+        SourceExprBlock,
+        SourceExprCall,
+        SourceExprField,
+        SourceExprForeach,
+        SourceExprIf,
+        SourceExprLower,
+        SourceExprMatch,
+        SourceExprOperatorAdd,
+        SourceExprOperatorLt,
+        SourceExprSet,
+        SourceExprStage,
+        SourceExpr_,
+        SourceLiteral,
     },
     std::cell::Cell,
 };
@@ -40,38 +40,38 @@ impl ModuleBuilder {
         return ExprId(id);
     }
 
-    pub fn null(&self) -> SerialExpr {
-        return SerialExpr {
+    pub fn null(&self) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Literal(SerialLiteral::Null),
+            r#type: SourceExpr_::Literal(SourceLiteral::Null),
         }
     }
 
-    pub fn num(&self, v: f64) -> SerialExpr {
-        return SerialExpr {
+    pub fn num(&self, v: f64) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Literal(SerialLiteral::Number(v.try_into().unwrap())),
+            r#type: SourceExpr_::Literal(SourceLiteral::Number(v.try_into().unwrap())),
         }
     }
 
-    pub fn str(&self, s: &str) -> SerialExpr {
-        return SerialExpr {
+    pub fn str(&self, s: &str) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Literal(SerialLiteral::String(s.to_string())),
+            r#type: SourceExpr_::Literal(SourceLiteral::String(s.to_string())),
         }
     }
 
-    pub fn tuple(&self, values: Vec<SerialExpr>) -> SerialExpr {
-        return SerialExpr {
+    pub fn tuple(&self, values: Vec<SourceExpr>) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Tuple(values),
+            r#type: SourceExpr_::Tuple(values),
         }
     }
 
-    pub fn foreach(&self, base: SerialExpr, element_key: SerialExpr, body: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn foreach(&self, base: SourceExpr, element_key: SourceExpr, body: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Foreach(SerialExprForeach {
+            r#type: SourceExpr_::Foreach(SourceExprForeach {
                 base: Box::new(base),
                 element_key: Box::new(element_key),
                 body: Box::new(body),
@@ -81,14 +81,14 @@ impl ModuleBuilder {
 
     pub fn match_(
         &self,
-        base: SerialExpr,
-        element_key: SerialExpr,
-        cases: Vec<(SerialExpr, SerialExpr)>,
-        fallback: Option<SerialExpr>,
-    ) -> SerialExpr {
-        return SerialExpr {
+        base: SourceExpr,
+        element_key: SourceExpr,
+        cases: Vec<(SourceExpr, SourceExpr)>,
+        fallback: Option<SourceExpr>,
+    ) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Match(SerialExprMatch {
+            r#type: SourceExpr_::Match(SourceExprMatch {
                 base: Box::new(base),
                 element_key: Box::new(element_key),
                 cases: cases.into_iter().map(|x| SerialExprMatchTagBranch {
@@ -100,57 +100,57 @@ impl ModuleBuilder {
         }
     }
 
-    pub fn scope_use(&self, key: &str) -> SerialExpr {
-        return SerialExpr {
+    pub fn scope_use(&self, key: &str) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::ScopeUse(SerialExprBindingUse { key: Box::new(SerialExpr {
+            r#type: SourceExpr_::ScopeUse(SourceExprBindingUse { key: Box::new(SourceExpr {
                 id: self.id(),
-                r#type: SerialExpr_::Literal(SerialLiteral::String(key.to_string())),
+                r#type: SourceExpr_::Literal(SourceLiteral::String(key.to_string())),
             }) }),
         };
     }
 
-    pub fn field(&self, base: SerialExpr, key: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn field(&self, base: SourceExpr, key: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Field(SerialExprField {
+            r#type: SourceExpr_::Field(SourceExprField {
                 base: Box::new(base),
                 key: Box::new(key),
             }),
         };
     }
 
-    pub fn call(&self, func: SerialExpr, args: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn call(&self, func: SourceExpr, args: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Call(SerialExprCall {
+            r#type: SourceExpr_::Call(SourceExprCall {
                 func: Box::new(func),
                 arg: Box::new(args),
             }),
         };
     }
 
-    pub fn block(&self, exprs: Vec<SerialExpr>) -> SerialExpr {
-        return SerialExpr {
+    pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Block(SerialExprBlock { exprs: exprs }),
+            r#type: SourceExpr_::Block(SourceExprBlock { exprs: exprs }),
         };
     }
 
-    pub fn bind(&self, key: &str, expr: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn bind(&self, key: &str, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Bind(SerialExprBind {
+            r#type: SourceExpr_::Bind(SourceExprBind {
                 base: key.to_string(),
                 value: Box::new(expr),
             }),
         };
     }
 
-    pub fn if_(&self, cases: Vec<(SerialExpr, SerialExpr)>, else_: Option<SerialExpr>) -> SerialExpr {
-        return SerialExpr {
+    pub fn if_(&self, cases: Vec<(SourceExpr, SourceExpr)>, else_: Option<SourceExpr>) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::If(SerialExprIf {
+            r#type: SourceExpr_::If(SourceExprIf {
                 conditions: cases.into_iter().map(|x| SerialExprIfConditionBranch {
                     condition: x.0,
                     body: x.1,
@@ -160,54 +160,54 @@ impl ModuleBuilder {
         };
     }
 
-    pub fn operator_lt(&self, base: SerialExpr, reference: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn operator_lt(&self, base: SourceExpr, reference: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::OperatorLt(SerialExprOperatorLt {
+            r#type: SourceExpr_::OperatorLt(SourceExprOperatorLt {
                 base: Box::new(base),
                 reference: Box::new(reference),
             }),
         };
     }
 
-    pub fn operator_add(&self, base: SerialExpr, reference: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn operator_add(&self, base: SourceExpr, reference: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::OperatorAdd(SerialExprOperatorAdd {
+            r#type: SourceExpr_::OperatorAdd(SourceExprOperatorAdd {
                 base: Box::new(base),
                 reference: Box::new(reference),
             }),
         };
     }
 
-    pub fn set(&self, base: SerialExpr, expr: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn set(&self, base: SourceExpr, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Set(SerialExprSet {
+            r#type: SourceExpr_::Set(SourceExprSet {
                 base: Box::new(base),
                 value: Box::new(expr),
             }),
         };
     }
 
-    pub fn stage(&self, expr: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn stage(&self, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Stage(SerialExprStage { expr: Box::new(expr) }),
+            r#type: SourceExpr_::Stage(SourceExprStage { expr: Box::new(expr) }),
         };
     }
 
-    pub fn lower(&self, expr: SerialExpr) -> SerialExpr {
-        return SerialExpr {
+    pub fn lower(&self, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Lower(SerialExprLower { expr: Box::new(expr) }),
+            r#type: SourceExpr_::Lower(SourceExprLower { expr: Box::new(expr) }),
         };
     }
 
-    pub fn record(&self, entries: Vec<(&str, SerialExpr)>) -> SerialExpr {
-        return SerialExpr {
+    pub fn record(&self, entries: Vec<(&str, SourceExpr)>) -> SourceExpr {
+        return SourceExpr {
             id: self.id(),
-            r#type: SerialExpr_::Record(entries.into_iter().map(|(k, v)| (self.str(k), v)).collect()),
+            r#type: SourceExpr_::Record(entries.into_iter().map(|(k, v)| (self.str(k), v)).collect()),
         };
     }
 }

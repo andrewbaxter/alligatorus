@@ -13,8 +13,8 @@ use {
         langhelp::SourceId,
         new_gx,
         syntax::{
-            SerialExpr,
-            SerialModule,
+            SourceExpr,
+            SourceModule,
         },
     },
     super::helpers::{
@@ -23,7 +23,7 @@ use {
     },
 };
 
-fn build_nodejs_code(mb: &ModuleBuilder) -> SerialExpr {
+fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
     return mb.lower(mb.block(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
         // # Define "code" tagged union type
@@ -333,14 +333,14 @@ async fn test_0000_nodejs_code() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let code = |key: &str, arg: SerialExpr| {
+    let code = |key: &str, arg: SourceExpr| {
         return mb.call(mb.field(mb.scope_use("code"), mb.str(key)), arg);
     };
     let logs =
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind("code", build_nodejs_code(&mb)),
@@ -398,7 +398,7 @@ e4 = "Hello world (node)";
 e0 = (e1)(e4);
 }
 e0"#);
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources.len(), 2);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;

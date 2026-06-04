@@ -3,7 +3,7 @@ use crate::{
     eval::setup_v8,
     langhelp::SourceId,
     new_gx,
-    syntax::SerialModule,
+    syntax::SourceModule,
     tests::helpers::{
         ModuleBuilder,
         sanitize_builtins,
@@ -19,7 +19,7 @@ async fn test_0000_scope_ok() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind("x", mb.str("zebra")),
@@ -36,7 +36,7 @@ async fn test_0000_scope_ok() {
     assert_eq!(logs.len(), 2);
     assert_eq!(logs[0].message, "apple");
     assert_eq!(logs[1].message, "zebra");
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -90,7 +90,7 @@ async fn test_0010_scope_bad() {
     compile(
         gx,
         SourceId(0),
-        SerialModule::V1(
+        SourceModule::V1(
             mb.block(
                 vec![mb.block(vec![mb.bind("x", mb.str("apple")),]), mb.call(mb.scope_use("log"), mb.scope_use("x"),),],
             ),

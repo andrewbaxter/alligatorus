@@ -1,14 +1,15 @@
 use {
     crate::{
         builtin::{
+            AspectArtifact,
             AspectNull,
-            AspectSerial,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
             aspect_serial_aspect_id,
         },
         langhelp::{
+            Artifact,
             Artifacts,
             Aspect,
             CodeValue,
@@ -16,7 +17,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            SerialValue,
             Type,
             Unique,
             Value,
@@ -52,7 +52,7 @@ impl Type for TypeNull {
             return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectNull>));
         }
         if *key == aspect_serial_aspect_id() {
-            return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectSerial>));
+            return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectArtifact>));
         }
         return None;
     }
@@ -91,9 +91,9 @@ impl Aspect for TypeNull { }
 
 impl AspectNull for TypeNull { }
 
-impl AspectSerial for TypeNull {
-    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<SerialValue> {
-        EResult::ok(SerialValue::Null)
+impl AspectArtifact for TypeNull {
+    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<Artifact> {
+        EResult::ok(Artifact::Null)
     }
 }
 pub(crate) struct ValueNull;

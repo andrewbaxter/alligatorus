@@ -4,7 +4,7 @@ use {
         eval::setup_v8,
         langhelp::SourceId,
         new_gx,
-        syntax::SerialModule,
+        syntax::SourceModule,
     },
     super::helpers::{
         ModuleBuilder,
@@ -25,7 +25,7 @@ async fn test_0000_number_lit() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind("x", mb.num(4.)),
@@ -50,7 +50,7 @@ async fn test_0000_number_lit() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "11");
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -126,7 +126,7 @@ async fn test_00100_number_mortar() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind(
@@ -205,7 +205,7 @@ async fn test_00100_number_mortar() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "11");
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;

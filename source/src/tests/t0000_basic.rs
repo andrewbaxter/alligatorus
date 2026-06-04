@@ -4,7 +4,7 @@ use {
         eval::setup_v8,
         langhelp::SourceId,
         new_gx,
-        syntax::SerialModule,
+        syntax::SourceModule,
     },
     super::helpers::{
         ModuleBuilder,
@@ -21,13 +21,13 @@ async fn test_00100_call_lit() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))),
+            SourceModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))),
         )
             .await
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -45,7 +45,7 @@ async fn test_00101_type_error() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(gx, SourceId(0), SerialModule::V1(mb.call(mb.scope_use("log"), mb.null()))).await.unwrap_err();
+    compile(gx, SourceId(0), SourceModule::V1(mb.call(mb.scope_use("log"), mb.null()))).await.unwrap_err();
 }
 
 #[tokio::test]
@@ -57,7 +57,7 @@ async fn test_00200_bind_use() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind("hello", mb.str("Hello world (mortar)")),
@@ -70,7 +70,7 @@ async fn test_00200_bind_use() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -102,13 +102,13 @@ async fn test_00300_stage_lower() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
+            SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
         )
             .await
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -140,13 +140,13 @@ async fn test_00400_lower_nostage() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
+            SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
         )
             .await
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -177,7 +177,7 @@ async fn test_00500_method_call() {
     compile(
         gx.clone(),
         SourceId(0),
-        SerialModule::V1(
+        SourceModule::V1(
             mb.call(
                 mb.scope_use("log"),
                 mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.null()),
@@ -186,7 +186,7 @@ async fn test_00500_method_call() {
     )
         .await
         .unwrap();
-    assert_eq!(sanitize_builtins(&gx.js_sources.lock().unwrap()), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;

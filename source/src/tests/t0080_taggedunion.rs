@@ -4,7 +4,7 @@ use {
         eval::setup_v8,
         langhelp::SourceId,
         new_gx,
-        syntax::SerialModule,
+        syntax::SourceModule,
     },
     super::helpers::{
         ModuleBuilder,
@@ -21,7 +21,7 @@ async fn test_0000_tagged_union_match() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind(
@@ -86,7 +86,7 @@ async fn test_0000_tagged_union_match() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "7");
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -216,7 +216,7 @@ async fn test_0010_tagged_union_match_fallback() {
         compile(
             gx.clone(),
             SourceId(0),
-            SerialModule::V1(
+            SourceModule::V1(
                 mb.block(
                     vec![
                         mb.bind(
@@ -272,7 +272,7 @@ async fn test_0010_tagged_union_match_fallback() {
             .unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "fallback");
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -403,7 +403,7 @@ async fn test_0020_tagged_union_nonexhaustive() {
     compile(
         gx,
         SourceId(0),
-        SerialModule::V1(
+        SourceModule::V1(
             mb.block(
                 vec![
                     mb.bind(
@@ -470,7 +470,7 @@ async fn test_0030_tagged_union_exhaustive_with_fallback() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(gx, SourceId(0), SerialModule::V1(mb.block(vec![
+    compile(gx, SourceId(0), SourceModule::V1(mb.block(vec![
         mb.bind(
             "strnum",
             mb.lower(
@@ -479,10 +479,7 @@ async fn test_0030_tagged_union_exhaustive_with_fallback() {
                         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                         mb.bind(
                             "builder",
-                            mb.call(
-                                mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                mb.tuple(vec![])
-                            )
+                            mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))
                         ),
                         mb.bind(
                             "new_str",

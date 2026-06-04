@@ -4,7 +4,7 @@ use {
         eval::setup_v8,
         langhelp::SourceId,
         new_gx,
-        syntax::SerialModule,
+        syntax::SourceModule,
     },
     super::helpers::{
         ModuleBuilder,
@@ -19,7 +19,7 @@ async fn test_00800define_data() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx.clone(), SourceId(0), SerialModule::V1(mb.block(vec![
+    let logs = compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![
         // Define the data type inside a lower block, return the constructor
         mb.bind("make_upper", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
@@ -42,7 +42,7 @@ async fn test_00800define_data() {
     ]))).await.unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO");
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;

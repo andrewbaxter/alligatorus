@@ -4,7 +4,7 @@ use {
         eval::setup_v8,
         langhelp::SourceId,
         new_gx,
-        syntax::SerialModule,
+        syntax::SourceModule,
     },
     super::helpers::{
         ModuleBuilder,
@@ -19,7 +19,7 @@ async fn test_00900define_interface() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx.clone(), SourceId(0), SerialModule::V1(mb.block(vec![
+    let logs = compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![
         mb.bind("make_upper", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
             // Create interface with a to_string method
@@ -67,7 +67,7 @@ async fn test_00900define_interface() {
     ]))).await.unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO");
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -223,7 +223,7 @@ async fn test_00910interface_cast() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx.clone(), SourceId(0), SerialModule::V1(mb.block(vec![
+    let logs = compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![
         // Lower block defines interface, data type, and function; returns exports
         mb.bind("defs", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
@@ -294,7 +294,7 @@ async fn test_00910interface_cast() {
     ]))).await.unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO");
-    let js_sources = sanitize_builtins(&gx.js_sources.lock().unwrap());
+    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -494,7 +494,7 @@ async fn test_00920interface_wrong_map_value_type() {
     setup_v8();
     let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(gx.clone(), SourceId(0), SerialModule::V1(mb.block(vec![mb.bind("make_upper", mb.lower(mb.block(vec![
+    compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![mb.bind("make_upper", mb.lower(mb.block(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
         mb.bind("iface", mb.call(mb.field(mb.scope_use("d"), mb.str("new_interface")), mb.tuple(vec![]),)),
         mb.bind("iface_meth", mb.call(mb.field(mb.scope_use("iface"), mb.str("new_func")), mb.str("to_string"),)),

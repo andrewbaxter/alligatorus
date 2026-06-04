@@ -1224,16 +1224,10 @@ fn eval(
     }
     let root_loc = expr.loc;
     let target: Rc<dyn Target> = Rc::new(MortarTarget);
-    let (xx, result) = eval_half_root(
-        ex.clone(),
-        Rc::new(Cell::new(import_state)),
-        Rc::new(Scope {
-            values: RefCell::new(s1_scope),
-            parent: None,
-        }),
-        target.clone(),
-        expr,
-    );
+    let (xx, result) = eval_half_root(ex.clone(), Rc::new(Cell::new(import_state)), Rc::new(Scope {
+        values: RefCell::new(s1_scope),
+        parent: None,
+    }), target.clone(), expr);
     if let Some(errs) = result.errors {
         return Err(errs);
     }
@@ -1892,7 +1886,7 @@ fn eval(
     }
     let js_source = code1.lines.join("\n");
     eprintln!("source: [[{}]]", js_source);
-    cix.gx.js_sources.lock().unwrap().push(js_source.clone());
+    cix.gx.generated_mortar_scripts.lock().unwrap().push(js_source.clone());
     let script = v8::Script::compile(js_scope, v8::String::new(js_scope, &js_source).unwrap(), None).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {

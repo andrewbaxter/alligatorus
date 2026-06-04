@@ -50,10 +50,11 @@ use {
             SourceId,
         },
         syntax::{
-            SerialExpr,
-            SerialExpr_,
-            SerialLiteral,
-            SerialModule,
+            SourceExpr,
+            SourceExpr_,
+            SourceLiteral,
+            SourceModule,
+            SourceSpecAbsolute,
         },
     },
     std::{
@@ -67,54 +68,50 @@ use {
 fn new_gx() -> Arc<GlobalContext> {
     let gx = Arc::new(GlobalContext {
         artifacts: Default::default(),
-        js_sources: Default::default(),
+        generated_mortar_scripts: Default::default(),
         compile_results: Default::default(),
     });
     return gx;
 }
 
-async fn compile(
-    gx: Arc<GlobalContext>,
-    source_id: SourceId,
-    source: SerialModule,
-) -> Result<Vec<LogEntry>, Vec<ExprErr>> {
+async fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Result<Vec<LogEntry>, Vec<ExprErr>> {
     eprintln!("code {:#?}", source);
 
-    fn serial_module_to_module(source_id: SourceId, m: &SerialModule) -> Module {
-        fn serial_expr_to_expr(source_id: SourceId, m: &SerialExpr) -> Expr {
+    fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> Module {
+        fn source_expr_to_expr(source_id: SourceId, m: &SourceExpr) -> Expr {
             return Expr {
                 loc: (source_id, m.id),
                 r#type: match &m.r#type {
-                    SerialExpr_::Literal(lit) => Expr_::Literal(match lit {
-                        SerialLiteral::Null => Rc::new(|| Rc::new(ValueNull) as Rc<dyn crate::langhelp::Value>),
-                        SerialLiteral::String(l) => {
+                    SourceExpr_::Literal(lit) => Expr_::Literal(match lit {
+                        SourceLiteral::Null => Rc::new(|| Rc::new(ValueNull) as Rc<dyn crate::langhelp::Value>),
+                        SourceLiteral::String(l) => {
                             let l = l.clone();
                             Rc::new(move || Rc::new(ValueString(l.clone())) as Rc<dyn crate::langhelp::Value>)
                         },
-                        SerialLiteral::Number(n) => {
+                        SourceLiteral::Number(n) => {
                             let n = n.into_inner();
                             Rc::new(move || Rc::new(ValueNumber(n)) as Rc<dyn crate::langhelp::Value>)
                         },
                     }),
-                    SerialExpr_::ScopeUse(expr) => Expr_::ScopeUse(
-                        ExprScopeUse { key: Rc::new(serial_expr_to_expr(source_id, &expr.key)) },
+                    SourceExpr_::ScopeUse(expr) => Expr_::ScopeUse(
+                        ExprScopeUse { key: Rc::new(source_expr_to_expr(source_id, &expr.key)) },
                     ),
-                    SerialExpr_::Call(expr) => Expr_::Call(ExprCall {
-                        func: Rc::new(serial_expr_to_expr(source_id, &expr.func)),
-                        arg: Rc::new(serial_expr_to_expr(source_id, &expr.arg)),
+                    SourceExpr_::Call(expr) => Expr_::Call(ExprCall {
+                        func: Rc::new(source_expr_to_expr(source_id, &expr.func)),
+                        arg: Rc::new(source_expr_to_expr(source_id, &expr.arg)),
                     }),
-                    SerialExpr_::Set(expr) => Expr_::Set(ExprSet {
-                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
-                        value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),
+                    SourceExpr_::Set(expr) => Expr_::Set(ExprSet {
+                        base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                        value: Rc::new(source_expr_to_expr(source_id, &expr.value)),
                     }),
-                    SerialExpr_::Field(expr) => Expr_::Field(ExprField {
-                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
-                        key: Rc::new(serial_expr_to_expr(source_id, &expr.key)),
+                    SourceExpr_::Field(expr) => Expr_::Field(ExprField {
+                        base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                        key: Rc::new(source_expr_to_expr(source_id, &expr.key)),
                     }),
-                    SerialExpr_::Block(expr) => Expr_::Block(
-                        ExprBlock { exprs: expr.exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
+                    SourceExpr_::Block(expr) => Expr_::Block(
+                        ExprBlock { exprs: expr.exprs.iter().map(|e| source_expr_to_expr(source_id, e)).collect() },
                     ),
-                    SerialExpr_::Bind(expr) => Expr_::Bind(ExprBind {
+                    SourceExpr_::Bind(expr) => Expr_::Bind(ExprBind {
                         base: Rc::new(Expr {
                             loc: (source_id, m.id),
                             r#type: Expr_::Literal({
@@ -124,69 +121,69 @@ async fn compile(
                                 )
                             }),
                         }),
-                        value: Rc::new(serial_expr_to_expr(source_id, &expr.value)),
+                        value: Rc::new(source_expr_to_expr(source_id, &expr.value)),
                     }),
-                    SerialExpr_::Stage(expr) => Expr_::Stage(
-                        ExprStage { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
+                    SourceExpr_::Stage(expr) => Expr_::Stage(
+                        ExprStage { expr: Rc::new(source_expr_to_expr(source_id, &expr.expr)) },
                     ),
-                    SerialExpr_::Lower(expr) => Expr_::Lower(
-                        ExprLower { expr: Rc::new(serial_expr_to_expr(source_id, &expr.expr)) },
+                    SourceExpr_::Lower(expr) => Expr_::Lower(
+                        ExprLower { expr: Rc::new(source_expr_to_expr(source_id, &expr.expr)) },
                     ),
-                    SerialExpr_::Tuple(exprs) => Expr_::Tuple(
-                        ExprTuple { elements: exprs.iter().map(|e| serial_expr_to_expr(source_id, e)).collect() },
+                    SourceExpr_::Tuple(exprs) => Expr_::Tuple(
+                        ExprTuple { elements: exprs.iter().map(|e| source_expr_to_expr(source_id, e)).collect() },
                     ),
-                    SerialExpr_::Record(entries) => Expr_::Record(
+                    SourceExpr_::Record(entries) => Expr_::Record(
                         ExprRecord {
                             entries: entries
                                 .iter()
                                 .map(
                                     |(k, e)| (
-                                        serial_expr_to_expr(source_id, k),
-                                        serial_expr_to_expr(source_id, e),
+                                        source_expr_to_expr(source_id, k),
+                                        source_expr_to_expr(source_id, e),
                                     ),
                                 )
                                 .collect(),
                         },
                     ),
-                    SerialExpr_::If(expr) => Expr_::If(ExprIf {
+                    SourceExpr_::If(expr) => Expr_::If(ExprIf {
                         conditions: expr.conditions.iter().map(|b| ExprConditionBranch {
-                            condition: serial_expr_to_expr(source_id, &b.condition),
-                            body: serial_expr_to_expr(source_id, &b.body),
+                            condition: source_expr_to_expr(source_id, &b.condition),
+                            body: source_expr_to_expr(source_id, &b.body),
                         }).collect(),
-                        else_: expr.fallback.as_ref().map(|e| Rc::new(serial_expr_to_expr(source_id, e))),
+                        else_: expr.fallback.as_ref().map(|e| Rc::new(source_expr_to_expr(source_id, e))),
                     }),
-                    SerialExpr_::OperatorLt(expr) => Expr_::OperatorLt(ExprOperatorLt {
-                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
-                        reference: Rc::new(serial_expr_to_expr(source_id, &expr.reference)),
+                    SourceExpr_::OperatorLt(expr) => Expr_::OperatorLt(ExprOperatorLt {
+                        base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                        reference: Rc::new(source_expr_to_expr(source_id, &expr.reference)),
                     }),
-                    SerialExpr_::OperatorAdd(expr) => Expr_::OperatorAdd(ExprOperatorAdd {
-                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
-                        reference: Rc::new(serial_expr_to_expr(source_id, &expr.reference)),
+                    SourceExpr_::OperatorAdd(expr) => Expr_::OperatorAdd(ExprOperatorAdd {
+                        base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                        reference: Rc::new(source_expr_to_expr(source_id, &expr.reference)),
                     }),
-                    SerialExpr_::Foreach(expr) => Expr_::Foreach(ExprForeach {
-                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
-                        element_key: Rc::new(serial_expr_to_expr(source_id, &expr.element_key)),
-                        body: Rc::new(serial_expr_to_expr(source_id, &expr.body)),
+                    SourceExpr_::Foreach(expr) => Expr_::Foreach(ExprForeach {
+                        base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                        element_key: Rc::new(source_expr_to_expr(source_id, &expr.element_key)),
+                        body: Rc::new(source_expr_to_expr(source_id, &expr.body)),
                     }),
-                    SerialExpr_::Match(expr) => Expr_::Match(ExprMatch {
-                        base: Rc::new(serial_expr_to_expr(source_id, &expr.base)),
-                        element_key: Rc::new(serial_expr_to_expr(source_id, &expr.element_key)),
+                    SourceExpr_::Match(expr) => Expr_::Match(ExprMatch {
+                        base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                        element_key: Rc::new(source_expr_to_expr(source_id, &expr.element_key)),
                         cases: expr.cases.iter().map(|c| ExprMatchBranch {
-                            condition: serial_expr_to_expr(source_id, &c.condition),
-                            body: serial_expr_to_expr(source_id, &c.body),
+                            condition: source_expr_to_expr(source_id, &c.condition),
+                            body: source_expr_to_expr(source_id, &c.body),
                         }).collect(),
-                        fallback: expr.fallback.as_ref().map(|e| Rc::new(serial_expr_to_expr(source_id, e))),
+                        fallback: expr.fallback.as_ref().map(|e| Rc::new(source_expr_to_expr(source_id, e))),
                     }),
                 },
             };
         }
 
         match m {
-            SerialModule::V1(m) => Module::V1(serial_expr_to_expr(source_id, m)),
+            SourceModule::V1(m) => Module::V1(source_expr_to_expr(source_id, m)),
         }
     }
 
-    let module = serial_module_to_module(source_id, &source);
+    let module = source_module_to_module(source_id, &source);
     let mut source_names = HashMap::new();
     source_names.insert(source_id, "(virtual)".to_string());
     let res = compile_importid(&gx, ImportStateId(0), module, vec![]).await;
@@ -215,7 +212,7 @@ async fn compile(
 #[derive(Aargvark)]
 struct Args {
     // TODO abs spec instead of source itself
-    root: AargvarkJson<SerialModule>,
+    root: AargvarkJson<SourceModule>,
 }
 
 #[tokio::main(flavor = "multi_thread")]

@@ -3,6 +3,8 @@ use {
         eval::mortar_scope_entry::MortarScopeEntry,
         jscode::JsCode,
         langhelp::{
+            Artifact,
+            ArtifactId,
             Artifacts,
             Aspect,
             Code,
@@ -14,7 +16,6 @@ use {
             QExprId,
             ScopeEntry,
             ScopeEntryId,
-            SerialValue,
             Type,
             Unique,
             Value,
@@ -72,16 +73,13 @@ macro_rules! aspect{
     };
 }
 
-aspect!(AspectDrop {
-    fn drop(&self, v: Box < dyn Value >) -> Code;
-});
-
 aspect!(AspectFunction {
     fn call(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes;
 });
 
-aspect!(AspectSerial {
-    fn to_serial(&self, artifacts: & mut Artifacts, self_: Rc < dyn Value >) -> EResult < SerialValue >;
+aspect!(AspectArtifact {
+    fn to_serial(&self, artifacts: & dyn Artifacts, self_: Rc < dyn Value >) -> EResult < Artifact >;
+    fn from_serial(&self, artifacts: & dyn Artifacts, self_: ArtifactId) -> EResult < Rc < dyn Value > >;
 });
 
 aspect!(AspectLiftJs {

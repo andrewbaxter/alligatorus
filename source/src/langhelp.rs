@@ -1,5 +1,9 @@
 use {
-    crate::syntax::ExprId,
+    crate::syntax::{
+        ExprId,
+        SourceModule,
+        SourceSpecAbsolute,
+    },
     futures::future::{
         BoxFuture,
         Shared,
@@ -14,7 +18,10 @@ use {
             Cell,
             RefCell,
         },
-        collections::HashMap,
+        collections::{
+            BTreeMap,
+            HashMap,
+        },
         rc::Rc,
         sync::{
             Arc,
@@ -46,9 +53,24 @@ pub(crate) struct SourceId(pub usize);
 
 pub(crate) type QExprId = (SourceId, ExprId);
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct ArtifactIdBuiltin(pub usize);
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct ArtifactIdCompile(pub CompileId, pub usize);
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum ArtifactId {
+    Builtin(ArtifactIdBuiltin),
+    Compile(ArtifactIdCompile),
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -87,8 +109,27 @@ impl Value for Unique {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum SerialValue {
+pub(crate) enum ArtifactCompiledData {
     Null,
+    String(String),
+    //.    Option(Option<Box<Artifact>>),
+    //.    List(Vec<Artifact>),
+    //.    Map(BTreeMap<ConstKey, Artifact>),
+    //.    Ref(ArtifactId),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct ArtifactCompiled {
+    type_: ArtifactId,
+    data: ArtifactCompiledData,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) enum Artifact {
+    Builtin(ArtifactIdBuiltin),
+    Compiled(ArtifactCompiled),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -108,16 +149,21 @@ pub(crate) struct CompileRes {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum CompileResResult {
-    Ok(SerialValue),
+    Ok(Artifact),
     Err(Vec<ExprErr>),
 }
 
+pub trait Sources {
+    fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
+}
+
 pub(crate) struct GlobalContext {
-    pub(crate) artifacts: RwLock<Artifacts>,
-    pub(crate) js_sources: Mutex<Vec<String>>,
+    pub(crate) sources: Box<dyn Sources>,
+    pub(crate) artifacts: Box<dyn Artifacts>,
+    pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
     // Remote packages/sources, resolved when downloaded (path is deterministic so not
     // returned, use a method to get the path)
-    pub(crate) compile_results: Mutex<HashMap<CompileId, Shared<BoxFuture<'static, Result<CompileRes, ExprSubErr>>>>>,
+    pub(crate) compile_results: Mutex<HashMap<CompileId, Result<CompileRes, ExprSubErr>>>,
 }
 
 /// One per module (per import env).
@@ -297,8 +343,11 @@ pub(crate) trait Type: Value {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;
 }
 
-#[derive(Default)]
-pub(crate) struct Artifacts {}
+pub(crate) trait Artifacts {
+    fn reserve(&self, compile_id: CompileId) -> ArtifactId;
+    fn set(&self, id: ArtifactId, data: Artifact);
+    fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
+}
 
 pub(crate) trait ScopeEntry {
     fn use_(&self, loc: QExprId, code: Code) -> CodeValue;
