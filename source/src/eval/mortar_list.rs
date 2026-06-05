@@ -246,9 +246,7 @@ impl AspectField for TypeMortarList {
                     })),
                 },
                 value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Field(MortarJsValueDataAccess {
-                        key: key_name,
-                    }),
+                    source: MortarJsValueSource::Field(MortarJsValueDataAccess { key: key_name, }),
                     type_: field_type,
                 }),
             });

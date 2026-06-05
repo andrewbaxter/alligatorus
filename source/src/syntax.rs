@@ -46,7 +46,7 @@ pub struct ExprId(pub usize);
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SourceSpecAbsolute {
-    Virtual(Box<SourceModule>),
+    Virtual(String),
     //. Local(Vec<String>),
     //. Remote(ImportSpecRemote),
 }
@@ -196,6 +196,12 @@ pub struct SourceExprMatch {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprImport {
+    pub spec: Box<SourceExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SourceExpr_ {
     Literal(SourceLiteral),
     Block(SourceExprBlock),
@@ -213,6 +219,7 @@ pub enum SourceExpr_ {
     OperatorAdd(SourceExprOperatorAdd),
     Foreach(SourceExprForeach),
     Match(SourceExprMatch),
+    Import(SourceExprImport),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

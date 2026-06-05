@@ -83,7 +83,6 @@ impl Record {
             }).collect(),
         }
     }
-
 }
 
 fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn Type> {
@@ -374,9 +373,7 @@ impl AspectField for Record {
                         };
                         let field_source =
                             super::mortar_js_value::MortarJsValueSource::Field(
-                                super::mortar_js_value::MortarJsValueDataAccess {
-                                    key: key_name,
-                                },
+                                super::mortar_js_value::MortarJsValueDataAccess { key: key_name },
                             );
                         if aspect_record_get_maybe(xx, mortar_type.as_ref()).is_some() {
                             let record_type =
@@ -436,9 +433,9 @@ impl AspectField for Record {
                 })),
             };
             let field_source =
-                super::mortar_js_value::MortarJsValueSource::Field(super::mortar_js_value::MortarJsValueDataAccess {
-                    key: key_name,
-                });
+                super::mortar_js_value::MortarJsValueSource::Field(
+                    super::mortar_js_value::MortarJsValueDataAccess { key: key_name },
+                );
             if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
                 let record_type =
                     (entry_type.as_ref() as &dyn Any)

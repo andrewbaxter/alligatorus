@@ -1,32 +1,73 @@
 pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
+    redact_builtins(sources)
+}
+
+pub(super) fn redact_builtins(sources: &[String]) -> Vec<String> {
     let re = regex::Regex::new(r"\bb\d+\b").unwrap();
     sources.iter().map(|s| re.replace_all(s, "BUILTIN").into_owned()).collect()
 }
 
 use {
-    crate::syntax::{
-        ExprId,
-        SerialExprIfConditionBranch,
-        SerialExprMatchTagBranch,
-        SourceExpr,
-        SourceExprBind,
-        SourceExprBindingUse,
-        SourceExprBlock,
-        SourceExprCall,
-        SourceExprField,
-        SourceExprForeach,
-        SourceExprIf,
-        SourceExprLower,
-        SourceExprMatch,
-        SourceExprOperatorAdd,
-        SourceExprOperatorLt,
-        SourceExprSet,
-        SourceExprStage,
-        SourceExpr_,
-        SourceLiteral,
+    crate::{
+        langhelp::{
+            GlobalContext,
+            SourceId,
+        },
+        syntax::{
+            ExprId,
+            SerialExprIfConditionBranch,
+            SerialExprMatchTagBranch,
+            SourceExpr,
+            SourceExprBind,
+            SourceExprBindingUse,
+            SourceExprBlock,
+            SourceExprCall,
+            SourceExprField,
+            SourceExprForeach,
+            SourceExprIf,
+            SourceExprImport,
+            SourceExprLower,
+            SourceExprMatch,
+            SourceExprOperatorAdd,
+            SourceExprOperatorLt,
+            SourceExprSet,
+            SourceExprStage,
+            SourceExpr_,
+            SourceLiteral,
+            SourceModule,
+            SourceSpecAbsolute,
+        },
     },
-    std::cell::Cell,
+    std::{
+        cell::Cell,
+        collections::HashMap,
+        sync::Arc,
+    },
 };
+
+struct TestSources {
+    modules: HashMap<String, (SourceId, SourceModule)>,
+}
+
+impl crate::langhelp::Sources for TestSources {
+    fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String> {
+        match spec {
+            SourceSpecAbsolute::Virtual(name) => {
+                self.modules.get(&name).cloned().ok_or_else(|| format!("Module not found: {}", name))
+            },
+        }
+    }
+}
+
+pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext> {
+    let mut sources = HashMap::new();
+    let mut next_id = 0;
+    for (name, module) in modules {
+        sources.insert(name.to_string(), (SourceId(next_id), module));
+        next_id += 1;
+    }
+    GlobalContext::new(Box::new(TestSources { modules: sources }))
+}
 
 #[derive(Default)]
 pub(super) struct ModuleBuilder {
@@ -201,6 +242,13 @@ impl ModuleBuilder {
         return SourceExpr {
             id: self.id(),
             r#type: SourceExpr_::Lower(SourceExprLower { expr: Box::new(expr) }),
+        };
+    }
+
+    pub fn import(&self, spec: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Import(SourceExprImport { spec: Box::new(spec) }),
         };
     }
 

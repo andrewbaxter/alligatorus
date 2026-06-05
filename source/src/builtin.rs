@@ -4,8 +4,7 @@ use {
         jscode::JsCode,
         langhelp::{
             Artifact,
-            ArtifactId,
-            Artifacts,
+            ArtifactCompiledData,
             Aspect,
             Code,
             CodeValue,
@@ -13,6 +12,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            GlobalContext,
             QExprId,
             ScopeEntry,
             ScopeEntryId,
@@ -78,8 +78,8 @@ aspect!(AspectFunction {
 });
 
 aspect!(AspectArtifact {
-    fn to_serial(&self, artifacts: & dyn Artifacts, self_: Rc < dyn Value >) -> EResult < Artifact >;
-    fn from_serial(&self, artifacts: & dyn Artifacts, self_: ArtifactId) -> EResult < Rc < dyn Value > >;
+    fn to_serial(&self, gx: & GlobalContext, self_: Rc < dyn Value >) -> EResult < Artifact >;
+    fn from_serial(&self, gx: & GlobalContext, data: & ArtifactCompiledData) -> Result < Rc < dyn Value >, String >;
 });
 
 aspect!(AspectLiftJs {

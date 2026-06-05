@@ -2,29 +2,29 @@ use {
     crate::{
         compile,
         eval::setup_v8,
-        langhelp::SourceId,
-        new_gx,
-        syntax::SourceModule,
+        syntax::{
+            SourceModule,
+            SourceSpecAbsolute,
+        },
     },
     super::helpers::{
         ModuleBuilder,
+        new_gx,
         sanitize_builtins,
     },
 };
 
-#[tokio::test]
-async fn test_00100_call_lit() {
+#[test]
+fn test_00100_call_lit() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs =
-        compile(
-            gx.clone(),
-            SourceId(0),
-            SourceModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))),
-        )
-            .await
-            .unwrap();
+    let gx =
+        new_gx(
+            [("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))))]
+                .into_iter()
+                .collect(),
+        );
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
     assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
@@ -40,34 +40,37 @@ e0 = (e1)(e2);
 e0;"#]);
 }
 
-#[tokio::test]
-async fn test_00101_type_error() {
+#[test]
+fn test_00101_type_error() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(gx, SourceId(0), SourceModule::V1(mb.call(mb.scope_use("log"), mb.null()))).await.unwrap_err();
+    let gx = new_gx([("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.null())))].into_iter().collect());
+    compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).unwrap_err();
 }
 
-#[tokio::test]
-async fn test_00200_bind_use() {
+#[test]
+fn test_00200_bind_use() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs =
-        compile(
-            gx.clone(),
-            SourceId(0),
-            SourceModule::V1(
-                mb.block(
-                    vec![
-                        mb.bind("hello", mb.str("Hello world (mortar)")),
-                        mb.call(mb.scope_use("log"), mb.scope_use("hello"))
-                    ],
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.block(
+                            vec![
+                                mb.bind("hello", mb.str("Hello world (mortar)")),
+                                mb.call(mb.scope_use("log"), mb.scope_use("hello"))
+                            ],
+                        ),
+                    ),
                 ),
-            ),
-        )
-            .await
-            .unwrap();
+            ]
+                .into_iter()
+                .collect(),
+        );
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
     assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
@@ -93,19 +96,17 @@ e0 = e3;
 e0;"#]);
 }
 
-#[tokio::test]
-async fn test_00300_stage_lower() {
+#[test]
+fn test_00300_stage_lower() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs =
-        compile(
-            gx.clone(),
-            SourceId(0),
-            SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
-        )
-            .await
-            .unwrap();
+    let gx =
+        new_gx(
+            [("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))))]
+                .into_iter()
+                .collect(),
+        );
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
     assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
@@ -131,19 +132,17 @@ e0 = (e1)(e2);
 e0;"#]);
 }
 
-#[tokio::test]
-async fn test_00400_lower_nostage() {
+#[test]
+fn test_00400_lower_nostage() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs =
-        compile(
-            gx.clone(),
-            SourceId(0),
-            SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))),
-        )
-            .await
-            .unwrap();
+    let gx =
+        new_gx(
+            [("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))))]
+                .into_iter()
+                .collect(),
+        );
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "Hello world (mortar)");
     assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
@@ -169,23 +168,27 @@ e0 = (e1)(e2);
 e0;"#]);
 }
 
-#[tokio::test]
-async fn test_00500_method_call() {
+#[test]
+fn test_00500_method_call() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(
-        gx.clone(),
-        SourceId(0),
-        SourceModule::V1(
-            mb.call(
-                mb.scope_use("log"),
-                mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.null()),
-            ),
-        ),
-    )
-        .await
-        .unwrap();
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.call(
+                            mb.scope_use("log"),
+                            mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.null()),
+                        ),
+                    ),
+                ),
+            ]
+                .into_iter()
+                .collect(),
+        );
+    compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;

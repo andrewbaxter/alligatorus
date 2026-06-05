@@ -137,6 +137,11 @@ pub(crate) struct ExprMatch {
     pub fallback: Option<Rc<Expr>>,
 }
 
+#[derive(Clone)]
+pub(crate) struct ExprImport {
+    pub spec: Rc<Expr>,
+}
+
 pub(crate) type LitValue = Rc<dyn Fn() -> Rc<dyn Value>>;
 
 #[derive(Clone)]
@@ -157,6 +162,7 @@ pub(crate) enum Expr_ {
     OperatorAdd(ExprOperatorAdd),
     Foreach(ExprForeach),
     Match(ExprMatch),
+    Import(ExprImport),
 }
 
 #[derive(Clone)]

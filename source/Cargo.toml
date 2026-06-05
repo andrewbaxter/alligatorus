@@ -7,7 +7,6 @@ edition = "2024"
 aargvark = { version = "0.9", features = ["serde_json"] }
 dumpster = "2.1.0"
 flowcontrol = "0.2"
-futures = "0.3"
 http = "1"
 ordered-float = { version = "5.3.0", features = ["serde"] }
 #htwrap = "0.15"
@@ -15,14 +14,6 @@ paste = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_json_canonicalizer = "0.3"
-tokio = { version = "1", features = [
-    "rt-multi-thread",
-    "time",
-    "fs",
-    "net",
-    "process",
-    "macros",
-] }
 regex = "1"
 urlencoding = "2"
 v8 = "146"

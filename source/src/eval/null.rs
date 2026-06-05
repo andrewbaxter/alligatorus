@@ -3,19 +3,22 @@ use {
         builtin::{
             AspectArtifact,
             AspectNull,
+            aspect_artifact_aspect_id,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
-            aspect_serial_aspect_id,
         },
         langhelp::{
             Artifact,
-            Artifacts,
+            ArtifactCompiled,
+            ArtifactCompiledData,
+            ArtifactId,
             Aspect,
             CodeValue,
             EResult,
             EvalRes,
             ExprContext,
+            GlobalContext,
             QExprId,
             Type,
             Unique,
@@ -30,6 +33,12 @@ use {
     super::Erb,
 };
 
+pub(crate) fn null_artifact_identity() -> Unique {
+    Unique::Builtin {
+        file: file!(),
+        line: line!() as usize,
+    }
+}
 pub(crate) struct TypeNull;
 
 impl Value for TypeNull {
@@ -51,7 +60,7 @@ impl Type for TypeNull {
         if *key == aspect_null_aspect_id() {
             return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectNull>));
         }
-        if *key == aspect_serial_aspect_id() {
+        if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectArtifact>));
         }
         return None;
@@ -92,8 +101,19 @@ impl Aspect for TypeNull { }
 impl AspectNull for TypeNull { }
 
 impl AspectArtifact for TypeNull {
-    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<Artifact> {
-        EResult::ok(Artifact::Null)
+    fn to_serial(&self, gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
+        let builtin_id = *gx.builtin_type_ids.get(&null_artifact_identity()).unwrap();
+        EResult::ok(Artifact::Compiled(ArtifactCompiled {
+            type_: ArtifactId::Builtin(builtin_id),
+            data: ArtifactCompiledData::Null,
+        }))
+    }
+
+    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactCompiledData) -> Result<Rc<dyn Value>, String> {
+        match data {
+            ArtifactCompiledData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
+            _ => Err("Expected null data for null type".to_string()),
+        }
     }
 }
 pub(crate) struct ValueNull;

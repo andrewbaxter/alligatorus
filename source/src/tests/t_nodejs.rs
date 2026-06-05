@@ -10,15 +10,15 @@ use {
     crate::{
         compile,
         eval::setup_v8,
-        langhelp::SourceId,
-        new_gx,
         syntax::{
             SourceExpr,
             SourceModule,
+            SourceSpecAbsolute,
         },
     },
     super::helpers::{
         ModuleBuilder,
+        new_gx,
         sanitize_builtins,
     },
 };
@@ -328,54 +328,57 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
     ]));
 }
 
-#[tokio::test]
-async fn test_0000_nodejs_code() {
+#[test]
+fn test_0000_nodejs_code() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
     let code = |key: &str, arg: SourceExpr| {
         return mb.call(mb.field(mb.scope_use("code"), mb.str(key)), arg);
     };
-    let logs =
-        compile(
-            gx.clone(),
-            SourceId(0),
-            SourceModule::V1(
-                mb.block(
-                    vec![
-                        mb.bind("code", build_nodejs_code(&mb)),
-                        mb.call(
-                            mb.scope_use("log"),
-                            code(
-                                "render",
-                                code(
-                                    "call",
-                                    mb.record(
-                                        vec![
-                                            (
-                                                "func",
-                                                code(
-                                                    "field",
-                                                    mb.record(
-                                                        vec![
-                                                            ("base", code("scope_use", mb.str("console"))),
-                                                            ("field", code("lit_str", mb.str("log")))
-                                                        ]
-                                                    )
-                                                ),
-                                            ),
-                                            ("arg", code("lit_str", mb.str("Hello world (node)")))
-                                        ]
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.block(
+                            vec![
+                                mb.bind("code", build_nodejs_code(&mb)),
+                                mb.call(
+                                    mb.scope_use("log"),
+                                    code(
+                                        "render",
+                                        code(
+                                            "call",
+                                            mb.record(
+                                                vec![
+                                                    (
+                                                        "func",
+                                                        code(
+                                                            "field",
+                                                            mb.record(
+                                                                vec![
+                                                                    ("base", code("scope_use", mb.str("console"))),
+                                                                    ("field", code("lit_str", mb.str("log")))
+                                                                ]
+                                                            )
+                                                        ),
+                                                    ),
+                                                    ("arg", code("lit_str", mb.str("Hello world (node)")))
+                                                ]
+                                            )
+                                        )
                                     )
                                 )
-                            )
-                        )
-                    ],
+                            ],
+                        ),
+                    ),
                 ),
-            ),
-        )
-            .await
-            .unwrap();
+            ]
+                .into_iter()
+                .collect(),
+        );
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, r#"let e0;
 {

@@ -26,6 +26,7 @@ use {
     core::mem,
     crate::{
         builtin::{
+            aspect_artifact_get,
             aspect_bind_get_maybe,
             aspect_bind_js_get_maybe,
             aspect_bool_get_maybe,
@@ -37,7 +38,6 @@ use {
             aspect_lift_js_get,
             aspect_operator_add_get,
             aspect_operator_lt_get,
-            aspect_serial_get,
             aspect_set_get,
             aspect_string_get_maybe,
             aspect_tagged_union_get,
@@ -66,6 +66,7 @@ use {
             CompileImportContext,
             CompileRes,
             CompileResResult,
+            CompileResultEntry,
             ConstKey,
             Counter,
             DefSetId,
@@ -87,7 +88,10 @@ use {
             Value,
             downcast_value,
         },
-        syntax::ExprId,
+        syntax::{
+            ExprId,
+            SourceSpecAbsolute,
+        },
     },
     definition_set::{
         DefineResult,
@@ -101,6 +105,7 @@ use {
         ExprCall,
         ExprField,
         ExprForeach,
+        ExprImport,
         ExprLower,
         ExprMatch,
         ExprMatchBranch,
@@ -263,6 +268,164 @@ impl Erb {
             loc: self.loc,
             errors: vec![ExprSubErr::Opaque(message.to_string())],
         });
+    }
+}
+
+struct PendingImportState {
+    entry: Arc<CompileResultEntry>,
+    gx: Arc<GlobalContext>,
+}
+
+impl PendingImportState {
+    fn resolve(&self, xx: &ExprContext) -> Rc<dyn Value> {
+        let guard = self.entry.result.read().unwrap();
+        let compile_res = guard.as_ref().unwrap();
+        let compile_res = compile_res.as_ref().expect("Import compilation error");
+        let artifact = match &compile_res.result {
+            CompileResResult::Ok(a) => a,
+            CompileResResult::Err(_) => panic!("Import compilation failed"),
+        };
+        self.gx.deserialize_artifact(xx, artifact).expect("Artifact deserialization failed")
+    }
+
+    fn resolve_standalone(&self) -> Rc<dyn Value> {
+        let cix = Rc::new(CompileImportContext {
+            gx: self.gx.clone(),
+            compile_path: vec![],
+        });
+        let ex = Rc::new(EvalContext {
+            ix: cix,
+            next_local_id: Default::default(),
+            definition_sets: RefCell::new(Vec::new()),
+            externals: RefCell::new(Vec::new()),
+        });
+        let xx = ExprContext {
+            vx: ex,
+            import_state: Rc::new(Cell::new(ImportStateId(0))),
+            scope: Rc::new(Scope {
+                values: RefCell::new(HashMap::new()),
+                parent: None,
+            }),
+            target: Rc::new(MortarTarget),
+        };
+        self.resolve(&xx)
+    }
+}
+
+struct ValuePendingImport {
+    state: Rc<PendingImportState>,
+    resolved: RefCell<Option<Rc<dyn Value>>>,
+}
+
+impl ValuePendingImport {
+    fn resolve(&self, xx: &ExprContext) -> Rc<dyn Value> {
+        let mut cached = self.resolved.borrow_mut();
+        if let Some(v) = cached.as_ref() {
+            return v.clone();
+        }
+        let v = self.state.resolve(xx);
+        *cached = Some(v.clone());
+        v
+    }
+}
+
+impl Value for ValuePendingImport {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        // Resolve on type_() — this is called when the value is actually used
+        // (call, field, cast, etc.), not just bind/scope_use pass-through.
+        // Return a proxy type that substitutes the resolved value into CodeValues.
+        Rc::new(TypePendingImport {
+            state: self.state.clone(),
+            resolved: self.resolve(xx),
+        })
+    }
+}
+
+struct TypePendingImport {
+    state: Rc<PendingImportState>,
+    resolved: Rc<dyn Value>,
+}
+
+impl TypePendingImport {
+    fn resolved_type(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        self.resolved.type_(xx, loc)
+    }
+
+    fn substitute_cv(&self, cv: CodeValue) -> CodeValue {
+        CodeValue { code: cv.code, value: self.resolved.clone() }
+    }
+}
+
+impl Value for TypePendingImport {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(type_ref::TypeAny)
+    }
+}
+
+impl Type for TypePendingImport {
+    fn desc(&self) -> String {
+        "pending import".to_string()
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        self.resolved.clone()
+    }
+
+    fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
+        if *key == crate::builtin::aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(PendingImportBind {
+                state: self.state.clone(),
+            }) as Box<dyn crate::builtin::AspectBind>));
+        }
+        // For all other aspects, resolve and delegate
+        let loc = (SourceId(0), ExprId(0));
+        self.resolved_type(xx, loc).aspect(xx, key)
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        self.resolved_type(xx, loc).cast_to(xx, loc, self.substitute_cv(cv), type_)
+    }
+
+    fn can_cast_to(&self, xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> bool {
+        self.resolved_type(xx, loc).can_cast_to(xx, loc, type_)
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        self.resolved_type(xx, loc).cast_from(xx, loc, cv)
+    }
+
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
+        self.resolved_type(xx, loc).can_cast_from(xx, loc, source_type)
+    }
+}
+
+struct PendingImportBind {
+    state: Rc<PendingImportState>,
+}
+
+impl crate::langhelp::Aspect for PendingImportBind {}
+
+impl crate::builtin::AspectBind for PendingImportBind {
+    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
+        EResult::ok(Box::new(PendingImportScopeEntry {
+            state: self.state.clone(),
+            code: cv.code,
+        }) as Box<dyn ScopeEntry>)
+    }
+}
+
+struct PendingImportScopeEntry {
+    state: Rc<PendingImportState>,
+    code: Code,
+}
+
+impl ScopeEntry for PendingImportScopeEntry {
+    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+        let value = self.state.resolve_standalone();
+        CodeValue {
+            code: self.code.clone(),
+            value,
+        }
     }
 }
 
@@ -741,7 +904,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         }
                     },
                     Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
-                    Expr_::Literal(_) | Expr_::ScopeUse(_) => { },
+                    Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => { },
                     Expr_::Call(c) => {
                         find_matched_lowers_inner(&c.func, sd, ld, out);
                         find_matched_lowers_inner(&c.arg, sd, ld, out);
@@ -1006,6 +1169,62 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let v = erb.must_er(xx.target.match_(xx, expr.loc, base, element_key, cases, e.fallback.as_deref()))?;
             return Ok(v);
         }),
+        Expr_::Import(e) => return er_seq_cv!(expr.loc, erb, {
+            let spec_cv = erb.must_er(eval_half(xx, &e.spec))?;
+            let spec_str = erb.must_res(extract_const_key(xx, expr.loc, spec_cv.value.as_ref()))?;
+            let spec_name = match spec_str {
+                ConstKey::String(s) => s,
+                _ => return erb.err_new("Import spec must be a string"),
+            };
+            let source_spec = SourceSpecAbsolute::Virtual(spec_name);
+            let (source_id, source_module) = erb.must_res(xx.vx.ix.gx.sources.get(source_spec.clone()))?;
+            let compile_id = CompileId(xx.import_state.get(), source_id);
+
+            // Check if already compiling/compiled; spawn thread if new
+            let entry = {
+                let mut results = xx.vx.ix.gx.compile_results.lock().unwrap();
+                if let Some(entry) = results.get(&compile_id) {
+                    entry.clone()
+                } else {
+                    let entry = Arc::new(CompileResultEntry {
+                        result: std::sync::RwLock::new(None),
+                    });
+                    let started = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+                    let started_clone = started.clone();
+                    let gx = xx.vx.ix.gx.clone();
+                    let import_state = xx.import_state.get();
+                    let entry_clone = entry.clone();
+                    std::thread::spawn(move || {
+                        let mut write_guard = entry_clone.result.write().unwrap();
+                        {
+                            let (lock, cvar) = &*started_clone;
+                            *lock.lock().unwrap() = true;
+                            cvar.notify_one();
+                        }
+                        let module = crate::source_module_to_module(source_id, &source_module);
+                        let result = compile_importid(&gx, import_state, module, vec![]);
+                        *write_guard = Some(Ok(result));
+                    });
+                    let (lock, cvar) = &*started;
+                    let mut started_flag = lock.lock().unwrap();
+                    while !*started_flag {
+                        started_flag = cvar.wait(started_flag).unwrap();
+                    }
+                    results.insert(compile_id, entry.clone());
+                    entry
+                }
+            };
+
+            // Return a lazy proxy value — resolution deferred until use
+            let state = Rc::new(PendingImportState {
+                entry,
+                gx: xx.vx.ix.gx.clone(),
+            });
+            return Ok(CodeValue {
+                code: Code { loc: expr.loc, code: Code_::None },
+                value: Rc::new(ValuePendingImport { state, resolved: RefCell::new(None) }),
+            });
+        }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
             // Try constant folding first: check if all conditions resolve to constant bools
             let mut conditions_evaluated = Vec::new();
@@ -1055,6 +1274,12 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
+        // Resolve pending imports so downstream code sees the real value
+        let source = if let Some(pending) = <dyn Any>::downcast_ref::<ValuePendingImport>(source.value.as_ref()) {
+            CodeValue { code: source.code, value: pending.resolve(xx) }
+        } else {
+            source
+        };
         let source_type = source.value.type_(xx, loc);
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {
@@ -1647,7 +1872,7 @@ fn eval(
                             ExprStage { expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values)) },
                         ),
                     },
-                    Expr_::Literal(_) | Expr_::ScopeUse(_) => expr.clone(),
+                    Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => expr.clone(),
                     Expr_::Call(c) => Expr {
                         loc: expr.loc,
                         r#type: Expr_::Call(ExprCall {
@@ -2105,7 +2330,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
     return out;
 }
 
-pub(crate) async fn compile_importid(
+pub(crate) fn compile_importid(
     fx: &Arc<GlobalContext>,
     import_state: ImportStateId,
     source: Module,
@@ -2134,7 +2359,7 @@ pub(crate) async fn compile_importid(
                     excess.max(max_lower_excess(&e.expr, sd, new_ld))
                 },
                 Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
-                Expr_::Literal(_) | Expr_::ScopeUse(_) => 0,
+                Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
                 Expr_::Call(c) => {
                     max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
                 },
@@ -2213,6 +2438,7 @@ pub(crate) async fn compile_importid(
             Ok(v) => v,
             Err(errors) => return CompileRes {
                 logs: all_logs,
+                generated_mortar_scripts: vec![],
                 result: CompileResResult::Err(errors),
             },
         };
@@ -2237,23 +2463,26 @@ pub(crate) async fn compile_importid(
                 target: Rc::new(MortarTarget),
             });
             let value_type = eval_value.type_(&xx, root_loc);
-            let value_serial = match aspect_serial_get(&xx, root_loc, value_type.as_ref()).into_res() {
+            let value_serial = match aspect_artifact_get(&xx, root_loc, value_type.as_ref()).into_res() {
                 Ok(v) => v,
                 Err(e) => return CompileRes {
                     logs,
+                    generated_mortar_scripts: vec![],
                     result: CompileResResult::Err(e),
                 },
             };
-            let mut artifacts = fx.artifacts.write().unwrap();
-            let value = match value_serial.to_serial(&mut artifacts, eval_value).into_res() {
+            let value = match value_serial.to_serial(&fx, eval_value).into_res() {
                 Ok(v) => v,
                 Err(e) => return CompileRes {
                     logs,
+                    generated_mortar_scripts: vec![],
                     result: CompileResResult::Err(e),
                 },
             };
+            let generated_mortar_scripts = mem::take(&mut *fx.generated_mortar_scripts.lock().unwrap());
             return CompileRes {
                 logs,
+                generated_mortar_scripts,
                 result: CompileResResult::Ok(value),
             };
         }

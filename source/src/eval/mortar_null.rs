@@ -7,6 +7,7 @@ use {
             AspectJsStackValue,
             AspectLiftJs,
             AspectNull,
+            aspect_artifact_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_js_stack_value_aspect_id,
@@ -14,15 +15,16 @@ use {
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
-            aspect_serial_aspect_id,
         },
         jscode::{
             JsCode,
             JsCodeType,
         },
         langhelp::{
-            Artifact as LangSerialValue,
-            Artifacts,
+            Artifact,
+            ArtifactCompiled,
+            ArtifactCompiledData,
+            ArtifactId,
             Aspect,
             Code,
             CodeValue,
@@ -30,6 +32,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            GlobalContext,
             QExprId,
             Type,
             Unique,
@@ -48,7 +51,10 @@ use {
             MortarJsValueSource,
             bind_js_some,
         },
-        null::ValueNull,
+        null::{
+            ValueNull,
+            null_artifact_identity,
+        },
     },
 };
 
@@ -73,7 +79,7 @@ impl Type for TypeMortarNull {
         if *key == aspect_js_stack_value_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectJsStackValue>));
         }
-        if *key == aspect_serial_aspect_id() {
+        if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_lift_js_aspect_id() {
@@ -136,8 +142,19 @@ impl AspectJsStackValue for TypeMortarNull {
 }
 
 impl AspectArtifact for TypeMortarNull {
-    fn to_serial(&self, _artifacts: &mut Artifacts, _value: Rc<dyn Value>) -> EResult<LangSerialValue> {
-        EResult::ok(LangSerialValue::Null)
+    fn to_serial(&self, gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
+        let builtin_id = *gx.builtin_type_ids.get(&null_artifact_identity()).unwrap();
+        EResult::ok(Artifact::Compiled(ArtifactCompiled {
+            type_: ArtifactId::Builtin(builtin_id),
+            data: ArtifactCompiledData::Null,
+        }))
+    }
+
+    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactCompiledData) -> Result<Rc<dyn Value>, String> {
+        match data {
+            ArtifactCompiledData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
+            _ => Err("Expected null data for null type".to_string()),
+        }
     }
 }
 

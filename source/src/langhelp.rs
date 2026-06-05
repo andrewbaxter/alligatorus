@@ -4,10 +4,6 @@ use {
         SourceModule,
         SourceSpecAbsolute,
     },
-    futures::future::{
-        BoxFuture,
-        Shared,
-    },
     serde::{
         Deserialize,
         Serialize,
@@ -18,10 +14,7 @@ use {
             Cell,
             RefCell,
         },
-        collections::{
-            BTreeMap,
-            HashMap,
-        },
+        collections::HashMap,
         rc::Rc,
         sync::{
             Arc,
@@ -121,8 +114,8 @@ pub(crate) enum ArtifactCompiledData {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactCompiled {
-    type_: ArtifactId,
-    data: ArtifactCompiledData,
+    pub(crate) type_: ArtifactId,
+    pub(crate) data: ArtifactCompiledData,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -144,6 +137,7 @@ pub(crate) struct LogEntry {
 pub(crate) struct CompileRes {
     pub(crate) logs: Vec<LogEntry>,
     pub(crate) result: CompileResResult,
+    pub(crate) generated_mortar_scripts: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -153,17 +147,105 @@ pub(crate) enum CompileResResult {
     Err(Vec<ExprErr>),
 }
 
-pub trait Sources {
+pub(crate) struct CompileResultEntry {
+    pub(crate) result: RwLock<Option<Result<CompileRes, ExprSubErr>>>,
+}
+
+pub(crate) struct BuiltinTypeEntry {
+    pub(crate) type_factory: fn() -> Rc<dyn Type>,
+}
+
+pub trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
 }
 
 pub(crate) struct GlobalContext {
     pub(crate) sources: Box<dyn Sources>,
-    pub(crate) artifacts: Box<dyn Artifacts>,
+    pub(crate) builtin_types: Vec<BuiltinTypeEntry>,
+    pub(crate) builtin_type_ids: HashMap<Unique, ArtifactIdBuiltin>,
     pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
-    // Remote packages/sources, resolved when downloaded (path is deterministic so not
-    // returned, use a method to get the path)
-    pub(crate) compile_results: Mutex<HashMap<CompileId, Result<CompileRes, ExprSubErr>>>,
+    pub(crate) compile_results: Mutex<HashMap<CompileId, Arc<CompileResultEntry>>>,
+}
+
+impl GlobalContext {
+    pub(crate) fn new(sources: Box<dyn Sources>) -> Arc<GlobalContext> {
+        use crate::eval::{
+            null::null_artifact_identity,
+            string::string_artifact_identity,
+        };
+
+        let mut builtin_types = Vec::new();
+        let mut builtin_type_ids = HashMap::new();
+
+        fn register(
+            builtin_types: &mut Vec<BuiltinTypeEntry>,
+            builtin_type_ids: &mut HashMap<Unique, ArtifactIdBuiltin>,
+            identity: Unique,
+            entry: BuiltinTypeEntry,
+        ) {
+            let id = ArtifactIdBuiltin(builtin_types.len());
+            builtin_types.push(entry);
+            builtin_type_ids.insert(identity, id);
+        }
+
+        register(
+            &mut builtin_types,
+            &mut builtin_type_ids,
+            null_artifact_identity(),
+            BuiltinTypeEntry {
+                type_factory: || Rc::new(crate::eval::null::TypeNull) as Rc<dyn Type>,
+            },
+        );
+        register(
+            &mut builtin_types,
+            &mut builtin_type_ids,
+            string_artifact_identity(),
+            BuiltinTypeEntry {
+                type_factory: || Rc::new(crate::eval::string::TypeString) as Rc<dyn Type>,
+            },
+        );
+
+        Arc::new(GlobalContext {
+            sources,
+            builtin_types,
+            builtin_type_ids,
+            generated_mortar_scripts: Default::default(),
+            compile_results: Default::default(),
+        })
+    }
+
+    pub(crate) fn deserialize_artifact(
+        &self,
+        xx: &ExprContext,
+        artifact: &Artifact,
+    ) -> Result<Rc<dyn Value>, String> {
+        match artifact {
+            Artifact::Builtin(id) => {
+                let entry =
+                    self.builtin_types.get(id.0).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
+                Ok((entry.type_factory)().as_value())
+            },
+            Artifact::Compiled(compiled) => {
+                match &compiled.type_ {
+                    ArtifactId::Builtin(id) => {
+                        let entry =
+                            self
+                                .builtin_types
+                                .get(id.0)
+                                .ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
+                        let type_ = (entry.type_factory)();
+                        let aspect = crate::builtin::aspect_artifact_get_maybe(xx, type_.as_ref()).ok_or_else(|| {
+                            format!("Type ({}) missing AspectArtifact", type_.desc())
+                        })?;
+                        aspect.from_serial(self, &compiled.data)
+                    },
+                    ArtifactId::Compile(_compile_id) => {
+                        Err("Non-builtin type artifact deserialization not yet supported".to_string())
+                    },
+                }
+            },
+        }
+    }
 }
 
 /// One per module (per import env).
@@ -343,12 +425,6 @@ pub(crate) trait Type: Value {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;
 }
 
-pub(crate) trait Artifacts {
-    fn reserve(&self, compile_id: CompileId) -> ArtifactId;
-    fn set(&self, id: ArtifactId, data: Artifact);
-    fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
-}
-
 pub(crate) trait ScopeEntry {
     fn use_(&self, loc: QExprId, code: Code) -> CodeValue;
 }
@@ -357,6 +433,19 @@ pub(crate) trait ScopeEntry {
 pub(crate) enum ConstKey {
     String(String),
     Usize(usize),
+}
+
+impl Serialize for ConstKey {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ConstKey {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        ConstKey::from_str(&s).map_err(serde::de::Error::custom)
+    }
 }
 
 impl ConstKey {

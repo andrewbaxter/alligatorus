@@ -1,38 +1,48 @@
-use crate::{
-    compile,
-    eval::setup_v8,
-    langhelp::SourceId,
-    new_gx,
-    syntax::SourceModule,
-    tests::helpers::{
+use {
+    crate::{
+        compile,
+        eval::setup_v8,
+        syntax::{
+            SourceModule,
+            SourceSpecAbsolute,
+        },
+    },
+    super::helpers::{
         ModuleBuilder,
+        new_gx,
         sanitize_builtins,
     },
 };
 
-#[tokio::test]
-async fn test_0000_scope_ok() {
+#[test]
+fn test_0000_scope_ok() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs =
-        compile(
-            gx.clone(),
-            SourceId(0),
-            SourceModule::V1(
-                mb.block(
-                    vec![
-                        mb.bind("x", mb.str("zebra")),
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
                         mb.block(
-                            vec![mb.bind("x", mb.str("apple")), mb.call(mb.scope_use("log"), mb.scope_use("x"),),]
+                            vec![
+                                mb.bind("x", mb.str("zebra")),
+                                mb.block(
+                                    vec![
+                                        mb.bind("x", mb.str("apple")),
+                                        mb.call(mb.scope_use("log"), mb.scope_use("x"),),
+                                    ]
+                                ),
+                                mb.call(mb.scope_use("log"), mb.scope_use("x"),),
+                            ],
                         ),
-                        mb.call(mb.scope_use("log"), mb.scope_use("x"),),
-                    ],
+                    ),
                 ),
-            ),
-        )
-            .await
-            .unwrap();
+            ]
+                .into_iter()
+                .collect(),
+        );
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 2);
     assert_eq!(logs[0].message, "apple");
     assert_eq!(logs[1].message, "zebra");
@@ -82,21 +92,27 @@ e0 = e9;
 e0;"#]);
 }
 
-#[tokio::test]
-async fn test_0010_scope_bad() {
+#[test]
+fn test_0010_scope_bad() {
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(
-        gx,
-        SourceId(0),
-        SourceModule::V1(
-            mb.block(
-                vec![mb.block(vec![mb.bind("x", mb.str("apple")),]), mb.call(mb.scope_use("log"), mb.scope_use("x"),),],
-            ),
-        ),
-    )
-        .await
-        .err()
-        .unwrap();
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.block(
+                            vec![
+                                mb.block(vec![mb.bind("x", mb.str("apple")),]),
+                                mb.call(mb.scope_use("log"), mb.scope_use("x"),),
+                            ],
+                        ),
+                    ),
+                ),
+            ]
+                .into_iter()
+                .collect(),
+        );
+    compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).err().unwrap();
 }

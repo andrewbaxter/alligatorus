@@ -2,24 +2,25 @@ use {
     crate::{
         compile,
         eval::setup_v8,
-        langhelp::SourceId,
-        new_gx,
-        syntax::SourceModule,
+        syntax::{
+            SourceModule,
+            SourceSpecAbsolute,
+        },
     },
     super::helpers::{
         ModuleBuilder,
+        new_gx,
         sanitize_builtins,
     },
 };
 
-#[tokio::test]
-async fn test_00900define_interface() {
+#[test]
+fn test_00900define_interface() {
     //! Define a "to_string" interface with a single method, create an "uppercase
     //! string" data type that implements it, construct one, call to_string, and log.
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![
+    let gx = new_gx([("main", SourceModule::V1(mb.block(vec![
         mb.bind("make_upper", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
             // Create interface with a to_string method
@@ -64,7 +65,8 @@ async fn test_00900define_interface() {
         // Create an instance and call to_string
         mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"),)),
         mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null(),),),
-    ]))).await.unwrap();
+    ])))].into_iter().collect());
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO");
     let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
@@ -214,16 +216,15 @@ e3 = e8;
 e3;"#);
 }
 
-#[tokio::test]
-async fn test_00910interface_cast() {
+#[test]
+fn test_00910interface_cast() {
     //! Like test_00900 but also defines a standalone `do_log` function that takes a
     //! `to_string` interface argument, calls `.to_string()` on it, and logs the
     //! result. The data type is passed to `do_log`, requiring an implicit cast from
     //! the data type to the interface.
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    let logs = compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![
+    let gx = new_gx([("main", SourceModule::V1(mb.block(vec![
         // Lower block defines interface, data type, and function; returns exports
         mb.bind("defs", mb.lower(mb.block(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
@@ -291,7 +292,8 @@ async fn test_00910interface_cast() {
         mb.bind("make_upper", mb.field(mb.scope_use("defs"), mb.str("upper"))),
         // Call do_log with a new upper value - requires implicit cast to interface
         mb.call(mb.scope_use("do_log"), mb.tuple(vec![mb.call(mb.scope_use("make_upper"), mb.str("hello"),)]),),
-    ]))).await.unwrap();
+    ])))].into_iter().collect());
+    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(logs.len(), 1);
     assert_eq!(logs[0].message, "HELLO");
     let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
@@ -487,14 +489,13 @@ e8 = e9;
 e8;"#);
 }
 
-#[tokio::test]
-async fn test_00920interface_wrong_map_value_type() {
+#[test]
+fn test_00920interface_wrong_map_value_type() {
     //! Using map(string, null) for impl_interface should be rejected because the
     //! record values are Expr, not null.
     setup_v8();
-    let gx = new_gx();
     let mb = ModuleBuilder::default();
-    compile(gx.clone(), SourceId(0), SourceModule::V1(mb.block(vec![mb.bind("make_upper", mb.lower(mb.block(vec![
+    let gx = new_gx([("main", SourceModule::V1(mb.block(vec![mb.bind("make_upper", mb.lower(mb.block(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
         mb.bind("iface", mb.call(mb.field(mb.scope_use("d"), mb.str("new_interface")), mb.tuple(vec![]),)),
         mb.bind("iface_meth", mb.call(mb.field(mb.scope_use("iface"), mb.str("new_func")), mb.str("to_string"),)),
@@ -528,77 +529,17 @@ async fn test_00920interface_wrong_map_value_type() {
             ),
         ),
         mb.field(mb.scope_use("ndr"), mb.str("new")),
-    ]))),]))).await.unwrap_err();
+    ]))),])))].into_iter().collect());
+    compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap_err();
 }
-//. #[tokio::test]
-//. async fn test_01000_rust_interface() {
+//. #[test]
+//. fn test_01000_rust_interface() {
 //.    setup_v8();
-//.    let gx = new_gx();
 //.    let mb = ModuleBuilder::default();
-//.    let logs = compile(gx.clone(), SourceId(0), SerialModule::V1(mb.block(vec![
-//.        // Lower block defines interface, data type, and function; returns exports
-//.        mb.bind("defs", mb.lower(mb.block(vec![
-//.            mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-//.            // Create data type with string underlying
-//.            mb.bind("upperstr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper string"),)),
-//.            mb.call(mb.field(mb.scope_use("upperstr"), mb.str("set_underlying")), mb.tuple(vec![])),
-//.            // Implement interface on data type
-//.            mb.call(
-//.                mb.field(mb.scope_use("upperstr"), mb.str("impl_interface")),
-//.                mb.tuple(
-//.                    vec![
-//.                        mb.scope_use("type"),
-//.                        mb.call(
-//.                            mb.field(
-//.                                mb.call(
-//.                                    mb.scope_use("map"),
-//.                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("expr")])
-//.                                ),
-//.                                mb.str("new"),
-//.                            ),
-//.                            mb.record(
-//.                                vec![
-//.                                    (
-//.                                        "to_string",
-//.                                        mb.stage(
-//.                                            mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null())
-//.                                        ),
-//.                                    ),
-//.                                ]
-//.                            ),
-//.                        ),
-//.                    ]
-//.                ),
-//.            ),
-//.            // Define do_log: takes a to_string interface arg, calls .to_string(), logs result
-//.            mb.bind("do_log_fn", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("do_log"),)),
-//.            mb.call(
-//.                mb.field(mb.scope_use("do_log_fn"), mb.str("arg_type")),
-//.                mb.field(mb.scope_use("iface"), mb.str("type")),
-//.            ),
-//.            mb.call(mb.field(mb.scope_use("do_log_fn"), mb.str("ret")), mb.tuple(vec![mb.scope_use("null")]),),
-//.            mb.call(
-//.                mb.field(mb.scope_use("do_log_fn"), mb.str("impl")),
-//.                mb.tuple(
-//.                    vec![
-//.                        mb.stage(
-//.                            mb.call(
-//.                                mb.scope_use("log"),
-//.                                mb.call(mb.field(mb.scope_use("arg"), mb.str("to_string")), mb.null(),),
-//.                            ),
-//.                        )
-//.                    ]
-//.                ),
-//.            ),
-//.            // Return exports (contains both "do_log" and "upper")
-//.            mb.call(mb.field(mb.scope_use("d"), mb.str("build")), mb.tuple(vec![]),),
-//.        ]))),
-//.        // Extract do_log function and upper constructor from exports
-//.        mb.bind("do_log", mb.field(mb.scope_use("defs"), mb.str("do_log"))),
-//.        mb.bind("make_upper", mb.field(mb.scope_use("defs"), mb.str("upper"))),
-//.        // Call do_log with a new upper value - requires implicit cast to interface
-//.        mb.call(mb.scope_use("do_log"), mb.tuple(vec![mb.call(mb.scope_use("make_upper"), mb.str("hello"),)]),),
-//.    ]))).await.unwrap();
+//.    let gx = new_gx([("main", SerialModule::V1(mb.block(vec![
+//.        ...
+//.    ])))].into_iter().collect());
+//.    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
 //.    assert_eq!(logs.len(), 1);
 //.    assert_eq!(logs[0].message, "HELLO");
 //. }

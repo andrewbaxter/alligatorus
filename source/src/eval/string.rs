@@ -1,9 +1,11 @@
 use {
     crate::{
         builtin::{
+            AspectArtifact,
             AspectBindJs,
             AspectField,
             AspectString,
+            aspect_artifact_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_field_aspect_id,
             aspect_string_aspect_id,
@@ -12,11 +14,16 @@ use {
         },
         jscode::JsCode,
         langhelp::{
+            Artifact,
+            ArtifactCompiled,
+            ArtifactCompiledData,
+            ArtifactId,
             Aspect,
             CodeValue,
             EResult,
             EvalRes,
             ExprContext,
+            GlobalContext,
             QExprId,
             Type,
             Unique,
@@ -35,6 +42,12 @@ use {
     },
 };
 
+pub(crate) fn string_artifact_identity() -> Unique {
+    Unique::Builtin {
+        file: file!(),
+        line: line!() as usize,
+    }
+}
 pub(crate) struct TypeString;
 
 impl Value for TypeString {
@@ -55,6 +68,9 @@ impl Type for TypeString {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_string_aspect_id() {
             return Some(Box::new(Box::new(TypeString) as Box<dyn AspectString>));
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeString) as Box<dyn AspectField>));
@@ -133,6 +149,24 @@ impl AspectField for TypeString {
 
     fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         TypeMortarString.field_opt(xx, key)
+    }
+}
+
+impl AspectArtifact for TypeString {
+    fn to_serial(&self, gx: &GlobalContext, value: Rc<dyn Value>) -> EResult<Artifact> {
+        let builtin_id = *gx.builtin_type_ids.get(&string_artifact_identity()).unwrap();
+        let s = <dyn Any>::downcast_ref::<ValueString>(value.as_ref()).unwrap().0.clone();
+        EResult::ok(Artifact::Compiled(ArtifactCompiled {
+            type_: ArtifactId::Builtin(builtin_id),
+            data: ArtifactCompiledData::String(s),
+        }))
+    }
+
+    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactCompiledData) -> Result<Rc<dyn Value>, String> {
+        match data {
+            ArtifactCompiledData::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
+            _ => Err("Expected string data for string type".to_string()),
+        }
     }
 }
 
