@@ -14,7 +14,10 @@ use {
             Cell,
             RefCell,
         },
-        collections::HashMap,
+        collections::{
+            BTreeMap,
+            HashMap,
+        },
         rc::Rc,
         sync::{
             Arc,
@@ -102,27 +105,20 @@ impl Value for Unique {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum ArtifactCompiledData {
+pub(crate) enum ArtifactData {
     Null,
     String(String),
-    //.    Option(Option<Box<Artifact>>),
-    //.    List(Vec<Artifact>),
-    //.    Map(BTreeMap<ConstKey, Artifact>),
-    //.    Ref(ArtifactId),
+    Option(Option<Box<Artifact>>),
+    List(Vec<Artifact>),
+    Map(BTreeMap<ConstKey, Artifact>),
+    Ref(ArtifactId),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct ArtifactCompiled {
+pub(crate) struct Artifact {
     pub(crate) type_: ArtifactId,
-    pub(crate) data: ArtifactCompiledData,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum Artifact {
-    Builtin(ArtifactIdBuiltin),
-    Compiled(ArtifactCompiled),
+    pub(crate) data: ArtifactData,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -159,8 +155,15 @@ pub trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
 }
 
+pub trait Artifacts: Send + Sync {
+    fn reserve_id(&self) -> ArtifactId;
+    fn set(&self, id: ArtifactId, data: Artifact);
+    fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
+}
+
 pub(crate) struct GlobalContext {
     pub(crate) sources: Box<dyn Sources>,
+    pub(crate) artifacts: Box<dyn Artifacts>,
     pub(crate) builtin_types: Vec<BuiltinTypeEntry>,
     pub(crate) builtin_type_ids: HashMap<Unique, ArtifactIdBuiltin>,
     pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
@@ -192,19 +195,14 @@ impl GlobalContext {
             &mut builtin_types,
             &mut builtin_type_ids,
             null_artifact_identity(),
-            BuiltinTypeEntry {
-                type_factory: || Rc::new(crate::eval::null::TypeNull) as Rc<dyn Type>,
-            },
+            BuiltinTypeEntry { type_factory: || Rc::new(crate::eval::null::TypeNull) as Rc<dyn Type> },
         );
         register(
             &mut builtin_types,
             &mut builtin_type_ids,
             string_artifact_identity(),
-            BuiltinTypeEntry {
-                type_factory: || Rc::new(crate::eval::string::TypeString) as Rc<dyn Type>,
-            },
+            BuiltinTypeEntry { type_factory: || Rc::new(crate::eval::string::TypeString) as Rc<dyn Type> },
         );
-
         Arc::new(GlobalContext {
             sources,
             builtin_types,

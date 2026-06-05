@@ -15,8 +15,7 @@ use {
         jscode::JsCode,
         langhelp::{
             Artifact,
-            ArtifactCompiled,
-            ArtifactCompiledData,
+            ArtifactData,
             ArtifactId,
             Aspect,
             CodeValue,
@@ -156,15 +155,15 @@ impl AspectArtifact for TypeString {
     fn to_serial(&self, gx: &GlobalContext, value: Rc<dyn Value>) -> EResult<Artifact> {
         let builtin_id = *gx.builtin_type_ids.get(&string_artifact_identity()).unwrap();
         let s = <dyn Any>::downcast_ref::<ValueString>(value.as_ref()).unwrap().0.clone();
-        EResult::ok(Artifact::Compiled(ArtifactCompiled {
+        EResult::ok(Artifact {
             type_: ArtifactId::Builtin(builtin_id),
-            data: ArtifactCompiledData::String(s),
-        }))
+            data: ArtifactData::String(s),
+        })
     }
 
-    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactCompiledData) -> Result<Rc<dyn Value>, String> {
+    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactData) -> Result<Rc<dyn Value>, String> {
         match data {
-            ArtifactCompiledData::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
+            ArtifactData::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
             _ => Err("Expected string data for string type".to_string()),
         }
     }

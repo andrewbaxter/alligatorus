@@ -22,8 +22,7 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactCompiled,
-            ArtifactCompiledData,
+            ArtifactData,
             ArtifactId,
             Aspect,
             Code,
@@ -144,15 +143,15 @@ impl AspectJsStackValue for TypeMortarNull {
 impl AspectArtifact for TypeMortarNull {
     fn to_serial(&self, gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
         let builtin_id = *gx.builtin_type_ids.get(&null_artifact_identity()).unwrap();
-        EResult::ok(Artifact::Compiled(ArtifactCompiled {
+        EResult::ok(Artifact {
             type_: ArtifactId::Builtin(builtin_id),
-            data: ArtifactCompiledData::Null,
-        }))
+            data: ArtifactData::Null,
+        })
     }
 
-    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactCompiledData) -> Result<Rc<dyn Value>, String> {
+    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactData) -> Result<Rc<dyn Value>, String> {
         match data {
-            ArtifactCompiledData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
+            ArtifactData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
             _ => Err("Expected null data for null type".to_string()),
         }
     }
