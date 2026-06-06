@@ -12,7 +12,7 @@ use {
         langhelp::{
             Artifact,
             ArtifactId,
-            ArtifactIdCompile,
+            ArtifactIdSource,
             CompileId,
             GlobalContext,
             ImportStateId,
@@ -86,7 +86,7 @@ impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
         let mut next = self.next_id.lock().unwrap();
         let id = *next;
         *next += 1;
-        ArtifactId::Compile(ArtifactIdCompile(CompileId(ImportStateId(0), SourceId(0)), id))
+        ArtifactId::Source(ArtifactIdSource(CompileId(ImportStateId(0), SourceId(0)), id))
     }
 
     fn set(&self, id: ArtifactId, data: Artifact) {

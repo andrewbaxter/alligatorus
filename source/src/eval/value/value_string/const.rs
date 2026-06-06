@@ -12,7 +12,14 @@ use {
             aspect_string_get,
             aspect_string_get_maybe,
         },
-        jscode::JsCode,
+        dynamic_code::DynamicCode,
+        eval::{
+            Erb,
+            value::{
+                value_dynamic::bind_js_some,
+                value_string::dynamic::TypeStringDynamic,
+            },
+        },
         langhelp::{
             Artifact,
             Aspect,
@@ -32,30 +39,25 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        Erb,
-        mortar_js_value::bind_js_some,
-        mortar_string::TypeMortarString,
-    },
 };
 
-pub(crate) struct TypeString;
+pub(crate) struct TypeStringConst;
 
-generate_builtin_artifact!(TypeString, String);
+generate_builtin_artifact!(TypeStringConst, String);
 
-impl Value for TypeString {
+impl Value for TypeStringConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeString {
+impl Type for TypeStringConst {
     fn desc(&self) -> String {
         return format!("string");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeString)
+        Rc::new(TypeStringConst)
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
@@ -64,16 +66,16 @@ impl Type for TypeString {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_string_aspect_id() {
-            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectString>));
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectString>));
         }
         if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectArtifact>));
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectField>));
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectField>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeString) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBindJs>));
         }
         return None;
     }
@@ -88,7 +90,7 @@ impl Type for TypeString {
             let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueString(aspect_string.get(value.as_ref())))
+                value: Rc::new(ValueConstString(aspect_string.get(value.as_ref())))
             });
         });
     }
@@ -104,52 +106,54 @@ impl Type for TypeString {
             let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueString(aspect_string.get(value.as_ref())))
+                value: Rc::new(ValueConstString(aspect_string.get(value.as_ref())))
             });
         });
     }
 }
 
-impl Aspect for TypeString { }
+impl Aspect for TypeStringConst { }
 
-impl AspectBindJs for TypeString {
+impl AspectBindJs for TypeStringConst {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
-        TypeMortarString::cast_from(&TypeMortarString, xx, loc, cv).map(|js| {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
+        TypeStringDynamic::cast_from(&TypeStringDynamic, xx, loc, cv).map(|js| {
             bind_js_some(
                 loc,
-                js.code.cast::<JsCode>().v.unwrap().unwrap().clone(),
-                Rc::new(TypeMortarString) as Rc<dyn Type>,
+                js.code.cast::<DynamicCode>().v.unwrap().unwrap().clone(),
+                Rc::new(TypeStringDynamic) as Rc<dyn Type>,
             )
         })
     }
 }
 
-impl AspectString for TypeString {
+impl AspectString for TypeStringConst {
     fn get(&self, value: &dyn Value) -> String {
-        return <dyn Any>::downcast_ref::<ValueString>(value).unwrap().0.clone();
+        return <dyn Any>::downcast_ref::<ValueConstString>(value).unwrap().0.clone();
     }
 }
 
-impl AspectField for TypeString {
+impl AspectField for TypeStringConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let converted = erb.must_er(TypeMortarString.cast_from(xx, loc, self_))?;
-            let v = erb.must_er(AspectField::field(&TypeMortarString, xx, loc, converted, key))?;
+            let converted = erb.must_er(TypeStringDynamic.cast_from(xx, loc, self_))?;
+            let v = erb.must_er(AspectField::field(&TypeStringDynamic, xx, loc, converted, key))?;
             return Ok(v);
         });
     }
 
     fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        TypeMortarString.field_opt(xx, key)
+        TypeStringDynamic.field_opt(xx, key)
     }
 }
 
-impl AspectArtifact for TypeString {
+impl AspectArtifact for TypeStringConst {
     fn to_serial(
         &self,
         _xx: &ExprContext,
@@ -157,7 +161,7 @@ impl AspectArtifact for TypeString {
         _loc: QExprId,
         value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
-        let s = <dyn Any>::downcast_ref::<ValueString>(value.as_ref()).unwrap().0.clone();
+        let s = <dyn Any>::downcast_ref::<ValueConstString>(value.as_ref()).unwrap().0.clone();
         EResult::ok(Self::build_artifact(s))
     }
 
@@ -169,16 +173,16 @@ impl AspectArtifact for TypeString {
         data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         match data {
-            serde_json::Value::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
+            serde_json::Value::String(s) => Ok(Rc::new(ValueConstString(s.clone())) as Rc<dyn Value>),
             _ => Err("Expected string data for string type".to_string()),
         }
     }
 }
 
-pub(crate) struct ValueString(pub String);
+pub(crate) struct ValueConstString(pub String);
 
-impl Value for ValueString {
+impl Value for ValueConstString {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeString);
+        return Rc::new(TypeStringConst);
     }
 }

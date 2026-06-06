@@ -16,20 +16,20 @@ use {
             aspect_lift_js_aspect_id,
             aspect_tagged_union_aspect_id,
         },
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeNewObject,
+            DynamicCodeType,
+        },
         eval::{
             Erb,
             from_v8_ref,
-            mortar_js_value::{
-                MortarJsValue,
-                MortarJsValueSource,
+            typecheck_convert,
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
                 bind_js_some,
             },
-            typecheck_convert,
-        },
-        jscode::{
-            JsCode,
-            JsCodeNewObject,
-            JsCodeType,
         },
         langhelp::{
             Aspect,
@@ -71,7 +71,7 @@ pub(crate) struct MortarTypeTaggedUnionRef {
 
 impl Value for MortarTypeTaggedUnionRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
@@ -136,8 +136,8 @@ impl Type for MortarTypeTaggedUnionRef {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
             }),
         })
@@ -162,8 +162,8 @@ impl Type for MortarTypeTaggedUnionRef {
             if source_type.aspect(xx, &data.identity).is_some() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
                         type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
                     }),
                 });
@@ -172,8 +172,8 @@ impl Type for MortarTypeTaggedUnionRef {
             if source_type.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
                         type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
                     }),
                 });
@@ -182,8 +182,8 @@ impl Type for MortarTypeTaggedUnionRef {
         if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
                     type_: source_type,
                 }),
             });
@@ -195,8 +195,8 @@ impl Type for MortarTypeTaggedUnionRef {
 impl Aspect for MortarTypeTaggedUnionRef { }
 
 impl AspectConsumeJs for MortarTypeTaggedUnionRef {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -206,21 +206,23 @@ impl AspectBindJs for MortarTypeTaggedUnionRef {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
 impl AspectJsStackValue for MortarTypeTaggedUnionRef {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionRef { data: self.data.clone() }),
             }),
         }
@@ -240,8 +242,8 @@ impl AspectLiftJs for MortarTypeTaggedUnionRef {
                 .downcast_ref::<MortarTypeTaggedUnionRef>()
                 .expect("MortarTypeTaggedUnionRef::lift: expected MortarTypeTaggedUnionRef");
         let data = mortar.data.clone().expect("MortarTypeTaggedUnionRef::lift: data must be Some");
-        Ok(Rc::new(MortarJsValue {
-            source: MortarJsValueSource::Expr,
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
             type_: Rc::new(TaggedUnionType { data }),
         }))
     }
@@ -252,7 +254,7 @@ pub(crate) struct MortarTypeTaggedUnionConstructorRef;
 
 impl Value for MortarTypeTaggedUnionConstructorRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
@@ -293,8 +295,8 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
 impl Aspect for MortarTypeTaggedUnionConstructorRef { }
 
 impl AspectConsumeJs for MortarTypeTaggedUnionConstructorRef {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -304,21 +306,23 @@ impl AspectBindJs for MortarTypeTaggedUnionConstructorRef {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
 impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: Rc::new(MortarTypeTaggedUnionConstructorRef),
             }),
         }
@@ -337,8 +341,8 @@ impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<TaggedUnionConstructor>()
                 .expect("MortarTypeTaggedUnionConstructorRef::lift: expected TaggedUnionConstructor");
-        Ok(Rc::new(MortarJsValue {
-            source: MortarJsValueSource::Expr,
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
             type_: Rc::new(TaggedUnionConstructor {
                 data: ctor.data.clone(),
                 variant_index: ctor.variant_index,
@@ -347,7 +351,7 @@ impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
     }
 }
 
-// --- JsWrap impls ---
+// --- DynamicWrap impls ---
 fn tagged_union_ref_from_v8_type(type_: &Rc<dyn Type>) -> Rc<TaggedUnionRef> {
     let mortar =
         (type_.as_ref() as &dyn Any)
@@ -356,7 +360,7 @@ fn tagged_union_ref_from_v8_type(type_: &Rc<dyn Type>) -> Rc<TaggedUnionRef> {
     Rc::new(TaggedUnionRef { data: mortar.data.clone().expect("TaggedUnionRef: data must be Some") })
 }
 
-impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionRef> {
+impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TaggedUnionRef> {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(MortarTypeTaggedUnionRef { data: None })
     }
@@ -371,7 +375,7 @@ impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionRef> {
     }
 }
 
-impl crate::eval::jswrap::JsWrap for Rc<TaggedUnionConstructorRef> {
+impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TaggedUnionConstructorRef> {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(MortarTypeTaggedUnionConstructorRef)
     }
@@ -404,7 +408,7 @@ pub(crate) struct TaggedUnionType {
 
 impl Value for TaggedUnionType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
@@ -462,8 +466,8 @@ impl AspectTaggedUnion for TaggedUnionType {
 }
 
 impl AspectConsumeJs for TaggedUnionType {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -473,21 +477,23 @@ impl AspectBindJs for TaggedUnionType {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
 impl AspectJsStackValue for TaggedUnionType {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: Rc::new(TaggedUnionType { data: self.data.clone() }),
             }),
         }
@@ -502,7 +508,7 @@ pub(crate) struct TaggedUnionConstructor {
 
 impl Value for TaggedUnionConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
@@ -554,9 +560,9 @@ impl AspectFunction for TaggedUnionConstructor {
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
             let result_type = Rc::new(TaggedUnionType { data: self.data.clone() });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, JsCode {
+            return Ok(ret_stack.to_value(loc, DynamicCode {
                 loc,
-                type_: JsCodeType::NewObject(JsCodeNewObject { fields: vec![(js_tag, underlying_js)], }),
+                type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: vec![(js_tag, underlying_js)], }),
             }));
         });
     }

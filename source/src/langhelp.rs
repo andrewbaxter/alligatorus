@@ -59,13 +59,13 @@ pub(crate) struct ArtifactIdBuiltin {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct ArtifactIdCompile(pub CompileId, pub usize);
+pub(crate) struct ArtifactIdSource(pub CompileId, pub usize);
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum ArtifactId {
     Builtin(ArtifactIdBuiltin),
-    Compile(ArtifactIdCompile),
+    Source(ArtifactIdSource),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
@@ -179,8 +179,8 @@ impl GlobalContext {
                 })?;
                 aspect.from_serial(xx, self, loc, &artifact.data)
             },
-            ArtifactId::Compile(compile_id) => {
-                let type_artifact = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
+            ArtifactId::Source(compile_id) => {
+                let type_artifact = self.artifacts.get(ArtifactId::Source(*compile_id))?;
                 let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
                     return Err("Type artifact must have builtin type_".to_string());
                 };
@@ -226,8 +226,8 @@ impl GlobalContext {
                     xx.vx.ix.builtin_types.get(id).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
                 Ok(type_.clone())
             },
-            ArtifactId::Compile(compile_id) => {
-                let type_artifact = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
+            ArtifactId::Source(compile_id) => {
+                let type_artifact = self.artifacts.get(ArtifactId::Source(*compile_id))?;
                 let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
                     return Err("Type artifact must have builtin type_".to_string());
                 };
@@ -265,22 +265,22 @@ pub(crate) struct CompileImportContext {
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     use crate::eval::{
         definition_set::{
-            data_type::DefinitionSetDataTypeType,
-            data_type_constructor::DefinitionSetDataTypeConstructorType,
+            data_type::TypeTypeSourceDataTypeDynamic,
+            data_type_constructor::TypeTypeSourceDataTypeConstructorDynamic,
         },
-        mortar_null::TypeMortarNull,
-        mortar_string::TypeMortarString,
-        null::TypeNull,
-        string::TypeString,
+        value::value_null::dynamic::TypeNullDynamic,
+        value::value_string::dynamic::TypeStringDynamic,
+        value::value_null::r#const::TypeNullConst,
+        value::value_string::r#const::TypeStringConst,
     };
 
     let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn Type>> = HashMap::new();
-    TypeNull::register(&mut m);
-    TypeString::register(&mut m);
-    TypeMortarNull::register(&mut m);
-    TypeMortarString::register(&mut m);
-    DefinitionSetDataTypeType::register(&mut m);
-    DefinitionSetDataTypeConstructorType::register(&mut m);
+    TypeNullConst::register(&mut m);
+    TypeStringConst::register(&mut m);
+    TypeNullDynamic::register(&mut m);
+    TypeStringDynamic::register(&mut m);
+    TypeTypeSourceDataTypeDynamic::register(&mut m);
+    TypeTypeSourceDataTypeConstructorDynamic::register(&mut m);
     m
 }
 

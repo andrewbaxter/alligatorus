@@ -12,11 +12,21 @@ use {
             aspect_js_bool_get_maybe,
             aspect_js_stack_value_aspect_id,
         },
-        jscode::{
-            JsCode,
-            JsCodeBlock,
-            JsCodeBlockEntry,
-            JsCodeType,
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeBlock,
+            DynamicCodeBlockEntry,
+            DynamicCodeType,
+        },
+        eval::{
+            Erb,
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+                mortar_bind_js,
+                mortar_consume_js_to_js,
+                mortar_js_stack_to_value,
+            },
         },
         langhelp::{
             Aspect,
@@ -37,47 +47,37 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            mortar_bind_js,
-            mortar_consume_js_to_js,
-            mortar_js_stack_to_value,
-        },
-    },
 };
 
-pub(crate) struct TypeMortarBool;
+pub(crate) struct TypeBoolDynamic;
 
-impl Value for TypeMortarBool {
+impl Value for TypeBoolDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeMortarBool {
+impl Type for TypeBoolDynamic {
     fn desc(&self) -> String {
         return format!("mortar bool");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMortarBool)
+        Rc::new(TypeBoolDynamic)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_js_bool_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarBool) as Box<dyn AspectJsBool>));
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectJsBool>));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarBool) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarBool) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarBool) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectJsStackValue>));
         }
         return None;
     }
@@ -89,9 +89,9 @@ impl Type for TypeMortarBool {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarBool),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeBoolDynamic),
             }),
         })
     }
@@ -106,35 +106,35 @@ impl Type for TypeMortarBool {
             if let Some(aspect_bool) = aspect_bool_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
-                if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
+                if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
                     seq.push(c.clone());
                 };
                 let bool_val = aspect_bool.get(value.as_ref());
-                seq.push(JsCode {
+                seq.push(DynamicCode {
                     loc: loc,
-                    type_: JsCodeType::Literal(serde_json::Value::Bool(bool_val))
+                    type_: DynamicCodeType::Literal(serde_json::Value::Bool(bool_val))
                 });
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
+                        code: Code_::Dyn(Rc::new(DynamicCode {
                             loc: loc,
-                            type_: JsCodeType::Block(
-                                JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                            type_: DynamicCodeType::Block(
+                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
                             )
                         }))
                     },
-                    value: Rc::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(TypeMortarBool),
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(TypeBoolDynamic),
                     }),
                 });
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(TypeMortarBool),
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(TypeBoolDynamic),
                     })
                 });
             }
@@ -142,29 +142,31 @@ impl Type for TypeMortarBool {
     }
 }
 
-impl Aspect for TypeMortarBool { }
+impl Aspect for TypeBoolDynamic { }
 
-impl AspectJsBool for TypeMortarBool { }
+impl AspectJsBool for TypeBoolDynamic { }
 
-impl AspectJsStackValue for TypeMortarBool {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
-        mortar_js_stack_to_value(loc, value, Rc::new(TypeMortarBool))
+impl AspectJsStackValue for TypeBoolDynamic {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+        mortar_js_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
     }
 }
 
-impl AspectConsumeJs for TypeMortarBool {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+impl AspectConsumeJs for TypeBoolDynamic {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
-impl AspectBindJs for TypeMortarBool {
+impl AspectBindJs for TypeBoolDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         mortar_bind_js(xx, loc, cv)
     }
 }

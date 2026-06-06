@@ -11,23 +11,25 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_string_get,
         },
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeType,
+        },
         eval::{
             Erb,
-            jswrap::{
+            dynamic_wrap::{
                 AnyType,
-                JsWrap,
+                DynamicWrap,
                 StagedExpr,
-                jswrap_method_name,
+                dynamic_wrap_method_name,
             },
-            mortar_function::MortarTypeFunction,
-            mortar_js_value::{
-                MortarJsValue,
-                MortarJsValueSource,
+            value::{
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+                value_function::dynamic::TypeFunctionDynamic,
             },
-        },
-        jscode::{
-            JsCode,
-            JsCodeType,
         },
         langhelp::{
             Aspect,
@@ -75,7 +77,7 @@ use {
     },
 };
 
-jswrap!(struct DefineResult(self_, scope) {
+dynamic_wrap!(struct DefineResult(self_, scope) {
     data {
         ds: Rc < Gc < DefinitionSet >>
     }
@@ -146,7 +148,7 @@ jswrap!(struct DefineResult(self_, scope) {
     }
 });
 
-jswrap!(struct NewFuncResult(self_, scope) {
+dynamic_wrap!(struct NewFuncResult(self_, scope) {
     data {
         func_ref: Rc < DefinitionSetFunction >
     }
@@ -198,8 +200,8 @@ jswrap!(struct NewFuncResult(self_, scope) {
     }
 });
 
-// --- Tagged union JsWrap structs ---
-jswrap!(struct TaggedUnionBuilder(self_, scope) {
+// --- Tagged union DynamicWrap structs ---
+dynamic_wrap!(struct TaggedUnionBuilder(self_, scope) {
     data {
         data: Rc < TaggedUnionData >
     }
@@ -210,7 +212,7 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
         let variant_index = {
             let mut variants = self_.data.variants.borrow_mut();
             let idx = variants.len();
-            let js_tag = format!("{}{}", crate::jscode::TAG_PREFIX, self_.data.next_tag_id.next());
+            let js_tag = format!("{}{}", crate::dynamic_code::TAG_PREFIX, self_.data.next_tag_id.next());
             variants.push(TaggedUnionVariant {
                 tag: crate::langhelp::ConstKey::String(tag),
                 js_tag,
@@ -225,8 +227,8 @@ jswrap!(struct TaggedUnionBuilder(self_, scope) {
     }
 });
 
-// --- Data type JsWrap structs ---
-jswrap!(struct NewDataResult(self_, scope) {
+// --- Data type DynamicWrap structs ---
+dynamic_wrap!(struct NewDataResult(self_, scope) {
     data {
         data_type_ref: Rc < DefinitionSetDataTypeRef >
     }
@@ -323,7 +325,7 @@ jswrap!(struct NewDataResult(self_, scope) {
     }
 });
 
-jswrap!(struct NewDataMethodResult(self_, scope) {
+dynamic_wrap!(struct NewDataMethodResult(self_, scope) {
     data {
         data_type_ref: Rc < DefinitionSetDataTypeRef >,
         method_index: usize
@@ -354,8 +356,8 @@ jswrap!(struct NewDataMethodResult(self_, scope) {
     }
 });
 
-// --- Interface JsWrap structs ---
-jswrap!(struct NewInterfaceResult(self_, scope) {
+// --- Interface DynamicWrap structs ---
+dynamic_wrap!(struct NewInterfaceResult(self_, scope) {
     data {
         interface_ref: Rc < DefinitionSetInterfaceRef >
     }
@@ -386,7 +388,7 @@ jswrap!(struct NewInterfaceResult(self_, scope) {
     }
 });
 
-jswrap!(struct NewInterfaceMethodResult(self_, scope) {
+dynamic_wrap!(struct NewInterfaceMethodResult(self_, scope) {
     data {
         interface_ref: Rc < DefinitionSetInterfaceRef >,
         method_index: usize
@@ -417,10 +419,10 @@ jswrap!(struct NewInterfaceMethodResult(self_, scope) {
     }
 });
 
-// --- JsWrap for Rc`<DefinitionSetInterfaceRef>` ---
-impl JsWrap for Rc<DefinitionSetInterfaceRef> {
+// --- DynamicWrap for Rc`<DefinitionSetInterfaceRef>` ---
+impl DynamicWrap for Rc<DefinitionSetInterfaceRef> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(super::MortarTypeDefinitionSetInterfaceRef)
+        Rc::new(super::TypeSourceInterfaceRefDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -432,10 +434,10 @@ impl JsWrap for Rc<DefinitionSetInterfaceRef> {
     }
 }
 
-// --- JsWrap for Rc`<DefinitionSetDataTypeRef>` ---
-impl JsWrap for Rc<DefinitionSetDataTypeRef> {
+// --- DynamicWrap for Rc`<DefinitionSetDataTypeRef>` ---
+impl DynamicWrap for Rc<DefinitionSetDataTypeRef> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(super::MortarTypeDefinitionSetDataTypeRef)
+        Rc::new(super::TypeSourceDataTypeRefDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -454,10 +456,10 @@ impl JsWrap for Rc<DefinitionSetDataTypeRef> {
     }
 }
 
-// --- JsWrap for Rc`<DefinitionSetDataTypeConstructor>` ---
-impl JsWrap for Rc<DefinitionSetDataTypeConstructor> {
+// --- DynamicWrap for Rc`<DefinitionSetDataTypeConstructor>` ---
+impl DynamicWrap for Rc<DefinitionSetDataTypeConstructor> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(super::MortarTypeDefinitionSetDataTypeConstructor)
+        Rc::new(super::TypeSourceDataTypeConstructorDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -469,10 +471,10 @@ impl JsWrap for Rc<DefinitionSetDataTypeConstructor> {
     }
 }
 
-// --- JsWrap for Rc`<DefinitionSetExports>` ---
-impl JsWrap for Rc<DefinitionSetExports> {
+// --- DynamicWrap for Rc`<DefinitionSetExports>` ---
+impl DynamicWrap for Rc<DefinitionSetExports> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(super::MortarTypeDefinitionSetExports)
+        Rc::new(super::TypeSourceExportsDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -484,10 +486,10 @@ impl JsWrap for Rc<DefinitionSetExports> {
     }
 }
 
-// --- JsWrap for Rc`<DefinitionSetFunction>` ---
-impl JsWrap for Rc<DefinitionSetFunction> {
+// --- DynamicWrap for Rc`<DefinitionSetFunction>` ---
+impl DynamicWrap for Rc<DefinitionSetFunction> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(super::MortarTypeDefinitionSetFunction)
+        Rc::new(super::TypeSourceFunctionDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {

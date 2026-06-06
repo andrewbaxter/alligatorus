@@ -14,7 +14,14 @@ use {
             aspect_operator_add_aspect_id,
             aspect_operator_lt_aspect_id,
         },
-        jscode::JsCode,
+        dynamic_code::DynamicCode,
+        eval::{
+            Erb,
+            value::{
+                value_dynamic::bind_js_some,
+                value_number::dynamic::TypeNumberDynamic,
+            },
+        },
         langhelp::{
             Aspect,
             CodeValue,
@@ -32,45 +39,40 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        Erb,
-        mortar_js_value::bind_js_some,
-        mortar_number::TypeMortarNumber,
-    },
 };
 
-pub(crate) struct TypeNumber;
+pub(crate) struct TypeNumberConst;
 
-impl Value for TypeNumber {
+impl Value for TypeNumberConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeNumber {
+impl Type for TypeNumberConst {
     fn desc(&self) -> String {
         return format!("number");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeNumber)
+        Rc::new(TypeNumberConst)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_number_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumber) as Box<dyn AspectNumber>));
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectNumber>));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumber) as Box<dyn AspectField>));
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectField>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumber) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_operator_lt_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumber) as Box<dyn AspectOperatorLt>));
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorLt>));
         }
         if *key == aspect_operator_add_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumber) as Box<dyn AspectOperatorAdd>));
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorAdd>));
         }
         return None;
     }
@@ -85,7 +87,7 @@ impl Type for TypeNumber {
             let aspect_number = erb.must_er(aspect_number_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueNumber(aspect_number.get(value.as_ref())))
+                value: Rc::new(ValueConstNumber(aspect_number.get(value.as_ref())))
             });
         });
     }
@@ -101,52 +103,54 @@ impl Type for TypeNumber {
             let aspect_number = erb.must_er(aspect_number_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueNumber(aspect_number.get(value.as_ref())))
+                value: Rc::new(ValueConstNumber(aspect_number.get(value.as_ref())))
             });
         });
     }
 }
 
-impl Aspect for TypeNumber { }
+impl Aspect for TypeNumberConst { }
 
-impl AspectBindJs for TypeNumber {
+impl AspectBindJs for TypeNumberConst {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
-        TypeMortarNumber::cast_from(&TypeMortarNumber, xx, loc, cv).map(|js| {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
+        TypeNumberDynamic::cast_from(&TypeNumberDynamic, xx, loc, cv).map(|js| {
             bind_js_some(
                 loc,
-                js.code.cast::<JsCode>().v.unwrap().unwrap().clone(),
-                Rc::new(TypeMortarNumber) as Rc<dyn Type>,
+                js.code.cast::<DynamicCode>().v.unwrap().unwrap().clone(),
+                Rc::new(TypeNumberDynamic) as Rc<dyn Type>,
             )
         })
     }
 }
 
-impl AspectNumber for TypeNumber {
+impl AspectNumber for TypeNumberConst {
     fn get(&self, value: &dyn Value) -> f64 {
-        return <dyn Any>::downcast_ref::<ValueNumber>(value).unwrap().0;
+        return <dyn Any>::downcast_ref::<ValueConstNumber>(value).unwrap().0;
     }
 }
 
-impl AspectField for TypeNumber {
+impl AspectField for TypeNumberConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let converted = erb.must_er(TypeMortarNumber.cast_from(xx, loc, self_))?;
-            let v = erb.must_er(AspectField::field(&TypeMortarNumber, xx, loc, converted, key))?;
+            let converted = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, self_))?;
+            let v = erb.must_er(AspectField::field(&TypeNumberDynamic, xx, loc, converted, key))?;
             return Ok(v);
         });
     }
 
     fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        TypeMortarNumber.field_opt(xx, key)
+        TypeNumberDynamic.field_opt(xx, key)
     }
 }
 
-impl AspectOperatorLt for TypeNumber {
+impl AspectOperatorLt for TypeNumberConst {
     fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_type = base.value.type_(xx, loc);
@@ -157,13 +161,13 @@ impl AspectOperatorLt for TypeNumber {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(super::bool::ValueBool(base_val < ref_val)),
+                value: Rc::new(crate::eval::value::value_bool::r#const::ValueConstBool(base_val < ref_val)),
             });
         });
     }
 }
 
-impl AspectOperatorAdd for TypeNumber {
+impl AspectOperatorAdd for TypeNumberConst {
     fn add(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_type = base.value.type_(xx, loc);
@@ -174,16 +178,16 @@ impl AspectOperatorAdd for TypeNumber {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(ValueNumber(base_val + ref_val)),
+                value: Rc::new(ValueConstNumber(base_val + ref_val)),
             });
         });
     }
 }
 
-pub(crate) struct ValueNumber(pub f64);
+pub(crate) struct ValueConstNumber(pub f64);
 
-impl Value for ValueNumber {
+impl Value for ValueConstNumber {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeNumber);
+        return Rc::new(TypeNumberConst);
     }
 }

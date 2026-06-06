@@ -7,22 +7,22 @@ use {
     super::expr,
 };
 
-pub(crate) trait JsWrap: Sized + 'static {
+pub(crate) trait DynamicWrap: Sized + 'static {
     fn mortar_type() -> Rc<dyn Type>;
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self;
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
 }
 
-/// Trait for types that can be used as BTreeMap keys in JsWrap. Converts between
-/// Rust keys and JS object property names (strings).
-pub(crate) trait JsWrapKey: Sized + Ord + 'static {
+/// Trait for types that can be used as BTreeMap keys in DynamicWrap. Converts
+/// between Rust keys and JS object property names (strings).
+pub(crate) trait DynamicWrapKey: Sized + Ord + 'static {
     fn from_js_key(s: &str) -> Result<Self, String>;
     fn to_js_key(&self) -> String;
 }
 
-impl JsWrap for String {
+impl DynamicWrap for String {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::mortar_string::TypeMortarString)
+        Rc::new(super::value::value_string::dynamic::TypeStringDynamic)
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -34,9 +34,9 @@ impl JsWrap for String {
     }
 }
 
-impl JsWrap for () {
+impl DynamicWrap for () {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::mortar_null::TypeMortarNull)
+        Rc::new(super::value::value_null::dynamic::TypeNullDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -52,7 +52,7 @@ impl JsWrap for () {
 /// staged value from a StagedExprCell.
 pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
-impl JsWrap for StagedExpr {
+impl DynamicWrap for StagedExpr {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(expr::ExprType)
     }
@@ -71,9 +71,9 @@ impl JsWrap for StagedExpr {
 /// Rc`<dyn Type>` externals.
 pub(crate) struct AnyType(pub Rc<dyn Type>);
 
-impl JsWrap for AnyType {
+impl DynamicWrap for AnyType {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeMortarAny)
+        Rc::new(super::value::value_any::r#const::TypeAnyDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -85,9 +85,9 @@ impl JsWrap for AnyType {
     }
 }
 
-impl JsWrap for crate::langhelp::ConstKey {
+impl DynamicWrap for crate::langhelp::ConstKey {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::mortar_string::TypeMortarString)
+        Rc::new(super::value::value_string::dynamic::TypeStringDynamic)
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -107,7 +107,7 @@ impl JsWrap for crate::langhelp::ConstKey {
     }
 }
 
-impl JsWrapKey for crate::langhelp::ConstKey {
+impl DynamicWrapKey for crate::langhelp::ConstKey {
     fn from_js_key(s: &str) -> Result<Self, String> {
         crate::langhelp::ConstKey::from_str(s)
     }
@@ -117,7 +117,7 @@ impl JsWrapKey for crate::langhelp::ConstKey {
     }
 }
 
-impl JsWrap for expr::Expr {
+impl DynamicWrap for expr::Expr {
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(expr::ExprType)
     }
@@ -137,9 +137,9 @@ impl JsWrap for expr::Expr {
     }
 }
 
-impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, V> {
+impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::collections::BTreeMap<K, V> {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::mortar_map::TypeMortarMap {
+        Rc::new(super::value::value_map::dynamic::TypeMapDynamic {
             key_type: K::mortar_type(),
             value_type: V::mortar_type(),
         })
@@ -178,12 +178,12 @@ impl<K: JsWrapKey + JsWrap, V: JsWrap> JsWrap for std::collections::BTreeMap<K, 
     }
 }
 
-pub(crate) fn jswrap_method_name(s: &str) -> &str {
+pub(crate) fn dynamic_wrap_method_name(s: &str) -> &str {
     s.strip_suffix('_').unwrap_or(s)
 }
 
-macro_rules! jswrap{
-    // --- Function variant --- Produces a (&str, MortarScopeEntryBinding,
+macro_rules! dynamic_wrap{
+    // --- Function variant --- Produces a (&str, DynamicScopeEntryBinding,
     // v8::Local<v8::Value>) tuple. `$ex` is the EvalContext, `$js_scope` is the v8
     // scope for building. `$scope` is available in the body as the v8 HandleScope.
     (
@@ -194,11 +194,11 @@ macro_rules! jswrap{
         )($($arg: ident: $arg_ty: ty), * $(,) ?) -> $ret_ty: ty $body: block
     ) => {
         {
-            (stringify!($name), MortarScopeEntryBinding {
+            (stringify!($name), DynamicScopeEntryBinding {
                 js_key: ScopeEntryId:: Builtin(line!() as usize),
-                type_: Rc:: new(MortarTypeFunction {
-                    arg: jswrap !(@ arg_mortar_type $($arg_ty), *),
-                    ret: <$ret_ty as JsWrap >:: mortar_type(),
+                type_: Rc:: new(TypeFunctionDynamic {
+                    arg: dynamic_wrap !(@ arg_mortar_type $($arg_ty), *),
+                    ret: <$ret_ty as DynamicWrap >:: mortar_type(),
                 }),
             }, {
                 fn _jw_cb <'s >(
@@ -210,18 +210,18 @@ macro_rules! jswrap{
                     #[allow(unused_mut, unused_variables)]
                     let mut _jw_arg_i = 0i32;
                     $(
-                        let $arg: $arg_ty = <$arg_ty as JsWrap >:: from_v8($scope, _jw_args.get(_jw_arg_i));
+                        let $arg: $arg_ty = <$arg_ty as DynamicWrap >:: from_v8($scope, _jw_args.get(_jw_arg_i));
                         _jw_arg_i += 1;
                     ) * let _jw_result: $ret_ty = $body;
-                    _jw_rv.set(<$ret_ty as JsWrap >:: into_v8(_jw_result, $scope));
+                    _jw_rv.set(<$ret_ty as DynamicWrap >:: into_v8(_jw_result, $scope));
                 }
                 v8:: Function:: builder(_jw_cb).build($js_scope).unwrap().cast::< v8:: Value >()
             })
         }
     };
-    // --- Struct variant --- Generates: struct, JsWrap impl, Type struct with aspects
-    // (Field, ConsumeJs, JsStackValue). Methods use auto-generated JS keys (_0, _1,
-    // ...) to avoid collisions. `$self_` (Rc`<StructName>`) and `$scope` (v8
+    // --- Struct variant --- Generates: struct, DynamicWrap impl, Type struct with
+    // aspects (Field, ConsumeJs, JsStackValue). Methods use auto-generated JS keys
+    // (_0, _1, ...) to avoid collisions. `$self_` (Rc`<StructName>`) and `$scope` (v8
     // HandleScope) are available in field/method bodies. Method names with trailing
     // underscore are stripped for the JS-visible name (e.g. impl_ -> "impl").
     (struct $name: ident($self_: ident, $scope: ident) {
@@ -246,7 +246,7 @@ macro_rules! jswrap{
             }
             impl Value for[<$name Type >] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-                    Rc::new(crate::eval::type_ref::TypeAny)
+                    Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
                 }
             }
             impl Type for[<$name Type >] {
@@ -285,8 +285,8 @@ macro_rules! jswrap{
                     if source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some() {
                         return EvalRes:: ok(CodeValue {
                             code: cv.code,
-                            value: Rc:: new(crate:: eval:: mortar_js_value:: MortarJsValue {
-                                source: crate:: eval:: mortar_js_value:: MortarJsValueSource:: Expr,
+                            value: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
+                                source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new([<$name Type >]),
                             }),
                         });
@@ -297,8 +297,8 @@ macro_rules! jswrap{
             impl Aspect for[<$name Type >] {
             }
             impl AspectConsumeJs for[<$name Type >] {
-                fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<JsCode> {
-                    cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+                fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<DynamicCode> {
+                    cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
                 }
             }
             impl AspectBindJs for[<$name Type >] {
@@ -307,20 +307,22 @@ macro_rules! jswrap{
                     xx: &ExprContext,
                     loc: QExprId,
                     cv: CodeValue,
-                ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+                ) -> EResult<
+                    (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)
+                > {
                     let vtype = cv.value.type_(xx, loc);
-                    self.to_js(xx, loc, cv).map(|c| crate::eval::mortar_js_value::bind_js_some(loc, c, vtype))
+                    self.to_js(xx, loc, cv).map(|c| crate::eval::value::value_dynamic::bind_js_some(loc, c, vtype))
                 }
             }
             impl AspectJsStackValue for[<$name Type >] {
-                fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+                fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
                     CodeValue {
                         code: Code {
                             loc,
                             code: Code_:: Dyn(Rc::new(value))
                         },
-                        value: Rc:: new(MortarJsValue {
-                            source: MortarJsValueSource:: Expr,
+                        value: Rc:: new(ValueDynamic {
+                            source: ValueDynamicSource:: Expr,
                             type_: Rc:: new([<$name Type >]),
                         }),
                     }
@@ -335,47 +337,51 @@ macro_rules! jswrap{
                         #[allow(unused_mut, unused_variables)]
                         let mut _jw_idx = 0usize;
                         $(
-                            if key_name == jswrap_method_name(stringify!($f_name)) {
-                                let field_type: Rc < dyn Type > = <$f_ty as JsWrap >:: mortar_type();
-                                let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+                            if key_name == dynamic_wrap_method_name(stringify!($f_name)) {
+                                let field_type: Rc < dyn Type > = <$f_ty as DynamicWrap >:: mortar_type();
+                                let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
                                 return Ok(CodeValue {
                                     code: Code {
                                         loc,
-                                        code: Code_::Dyn(Rc::new(JsCode {
+                                        code: Code_::Dyn(Rc::new(DynamicCode {
                                             loc,
-                                            type_: JsCodeType::FieldUse(crate::jscode::JsCodeFieldUse {
-                                                base: Box::new(self_code),
-                                                field: format!("_{}", _jw_idx),
-                                            },),
+                                            type_: DynamicCodeType::FieldUse(
+                                                crate::dynamic_code::DynamicCodeFieldUse {
+                                                    base: Box::new(self_code),
+                                                    field: format!("_{}", _jw_idx),
+                                                },
+                                            ),
                                         })),
                                     },
-                                    value: Rc::new(MortarJsValue {
-                                        source: MortarJsValueSource::Expr,
+                                    value: Rc::new(ValueDynamic {
+                                        source: ValueDynamicSource::Expr,
                                         type_: field_type,
                                     }),
                                 });
                             }
                             _jw_idx += 1;
                         ) * $(
-                            if key_name == jswrap_method_name(stringify!($m_name)) {
-                                let field_type: Rc < dyn Type > = Rc:: new(MortarTypeFunction {
-                                    arg: jswrap !(@ arg_mortar_type $($m_arg_ty), *),
-                                    ret: <$m_ret as JsWrap >:: mortar_type(),
+                            if key_name == dynamic_wrap_method_name(stringify!($m_name)) {
+                                let field_type: Rc < dyn Type > = Rc:: new(TypeFunctionDynamic {
+                                    arg: dynamic_wrap !(@ arg_mortar_type $($m_arg_ty), *),
+                                    ret: <$m_ret as DynamicWrap >:: mortar_type(),
                                 });
-                                let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+                                let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
                                 return Ok(CodeValue {
                                     code: Code {
                                         loc,
-                                        code: Code_::Dyn(Rc::new(JsCode {
+                                        code: Code_::Dyn(Rc::new(DynamicCode {
                                             loc,
-                                            type_: JsCodeType::FieldUse(crate::jscode::JsCodeFieldUse {
-                                                base: Box::new(self_code),
-                                                field: format!("_{}", _jw_idx),
-                                            },),
+                                            type_: DynamicCodeType::FieldUse(
+                                                crate::dynamic_code::DynamicCodeFieldUse {
+                                                    base: Box::new(self_code),
+                                                    field: format!("_{}", _jw_idx),
+                                                },
+                                            ),
                                         })),
                                     },
-                                    value: Rc::new(MortarJsValue {
-                                        source: MortarJsValueSource::Expr,
+                                    value: Rc::new(ValueDynamic {
+                                        source: ValueDynamicSource::Expr,
                                         type_: field_type,
                                     }),
                                 });
@@ -385,17 +391,17 @@ macro_rules! jswrap{
                     })
                 }
                 fn field_opt(&self, _xx: & ExprContext, key: & str,) -> Option < Rc < dyn Type >> {
-                    $(if key == jswrap_method_name(stringify!($f_name)) {
-                        return Some(<$f_ty as JsWrap >:: mortar_type());
-                    }) * $(if key == jswrap_method_name(stringify!($m_name)) {
-                        return Some(Rc:: new(MortarTypeFunction {
-                            arg: jswrap !(@ arg_mortar_type $($m_arg_ty), *),
-                            ret: <$m_ret as JsWrap >:: mortar_type(),
+                    $(if key == dynamic_wrap_method_name(stringify!($f_name)) {
+                        return Some(<$f_ty as DynamicWrap >:: mortar_type());
+                    }) * $(if key == dynamic_wrap_method_name(stringify!($m_name)) {
+                        return Some(Rc:: new(TypeFunctionDynamic {
+                            arg: dynamic_wrap !(@ arg_mortar_type $($m_arg_ty), *),
+                            ret: <$m_ret as DynamicWrap >:: mortar_type(),
                         }));
                     }) * None
                 }
             }
-            impl JsWrap for $name {
+            impl DynamicWrap for $name {
                 fn mortar_type() -> Rc < dyn Type > {
                     Rc:: new([<$name Type >])
                 }
@@ -416,7 +422,7 @@ macro_rules! jswrap{
                     $({
                         #[allow(unused_variables)] let $self_ = _jw_self_rc.clone();
                         let _jw_field_val: $f_ty = $f_body;
-                        let _jw_v8_val = <$f_ty as JsWrap >:: into_v8(_jw_field_val, $scope);
+                        let _jw_v8_val = <$f_ty as DynamicWrap >:: into_v8(_jw_field_val, $scope);
                         let _jw_key_str = format!("_{}", _jw_idx);
                         let _jw_key = v8:: String:: new($scope, &_jw_key_str).unwrap();
                         _jw_obj.set($scope, _jw_key.into(), _jw_v8_val);
@@ -440,13 +446,13 @@ macro_rules! jswrap{
                             #[allow(unused_mut, unused_variables)]
                             let mut _jw_arg_i = 0i32;
                             $(
-                                let $m_arg: $m_arg_ty = <$m_arg_ty as JsWrap >:: from_v8(
+                                let $m_arg: $m_arg_ty = <$m_arg_ty as DynamicWrap >:: from_v8(
                                     $scope,
                                     _jw_args.get(_jw_arg_i),
                                 );
                                 _jw_arg_i += 1;
                             ) * let _jw_result: $m_ret = $m_body;
-                            _jw_rv.set(<$m_ret as JsWrap >:: into_v8(_jw_result, $scope,),);
+                            _jw_rv.set(<$m_ret as DynamicWrap >:: into_v8(_jw_result, $scope,),);
                         }
                         let _jw_method_fn = v8:: Function:: builder(_jw_cb).build($scope).unwrap();
                         let _jw_key_str = format!("_{}", _jw_idx);
@@ -467,15 +473,15 @@ macro_rules! jswrap{
     };
     // 1 arg → single type
     (@ arg_mortar_type $single: ty) => {
-        <$single as JsWrap >:: mortar_type()
+        <$single as DynamicWrap >:: mortar_type()
     };
     // 2+ args → tuple type
     (@ arg_mortar_type $first: ty, $($rest: ty), +) => {
         Rc::new(crate::eval::tuple::Tuple {
             source: None,
             elements: vec![
-                crate:: eval:: tuple:: TupleElement:: Mortar(<$first as JsWrap >:: mortar_type()),
-                $(crate:: eval:: tuple:: TupleElement:: Mortar(<$rest as JsWrap >:: mortar_type())),
+                crate:: eval:: tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
+                $(crate:: eval:: tuple:: TupleElement:: Mortar(<$rest as DynamicWrap >:: mortar_type())),
                 +
             ],
         }) as Rc<dyn Type>

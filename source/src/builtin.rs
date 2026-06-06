@@ -1,7 +1,7 @@
 use {
     crate::{
-        eval::mortar_scope_entry::MortarScopeEntry,
-        jscode::JsCode,
+        dynamic_code::DynamicCode,
+        eval::value::value_scope_entry::dynamic::DynamicScopeEntry,
         langhelp::{
             Artifact,
             Aspect,
@@ -156,14 +156,14 @@ aspect!(AspectLiftJs {
 
 aspect!(AspectJsStackValue {
     /// Value is guaranteed to be of the type described by the aspect's type.
-    fn to_value(&self, loc: QExprId, self_: JsCode) -> CodeValue;
+    fn to_value(&self, loc: QExprId, self_: DynamicCode) -> CodeValue;
 });
 
 aspect!(AspectConsumeJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used before interacting with JS: namely, function call arguments.
-    fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < JsCode >;
+    fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < DynamicCode >;
 });
 
 aspect!(AspectBind {
@@ -176,7 +176,7 @@ aspect!(AspectBindJs {
         xx: & ExprContext,
         loc: QExprId,
         cv: CodeValue
-    ) -> EResult <(Option < JsCode >, Box < dyn MortarScopeEntry >) >;
+    ) -> EResult <(Option < DynamicCode >, Box < dyn DynamicScopeEntry >) >;
 });
 
 aspect!(AspectJsString {});

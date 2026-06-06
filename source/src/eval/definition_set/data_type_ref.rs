@@ -10,15 +10,15 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
         },
+        dynamic_code::DynamicCode,
         eval::{
             from_v8_ref,
-            mortar_js_value::{
-                MortarJsValue,
-                MortarJsValueSource,
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
                 bind_js_some,
             },
         },
-        jscode::JsCode,
         langhelp::{
             Aspect,
             Code,
@@ -40,35 +40,35 @@ use {
     super::DefinitionSetDataType,
 };
 
-pub(crate) struct MortarTypeDefinitionSetDataTypeRef;
+pub(crate) struct TypeSourceDataTypeRefDynamic;
 
-impl Value for MortarTypeDefinitionSetDataTypeRef {
+impl Value for TypeSourceDataTypeRefDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for MortarTypeDefinitionSetDataTypeRef {
+impl Type for TypeSourceDataTypeRefDynamic {
     fn desc(&self) -> String {
         format!("definition_set_data_type_ref")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(MortarTypeDefinitionSetDataTypeRef)
+        Rc::new(TypeSourceDataTypeRefDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeRef) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeRef) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeRef) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeRef) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftJs>));
         }
         return None;
     }
@@ -82,42 +82,44 @@ impl Type for MortarTypeDefinitionSetDataTypeRef {
     }
 }
 
-impl Aspect for MortarTypeDefinitionSetDataTypeRef { }
+impl Aspect for TypeSourceDataTypeRefDynamic { }
 
-impl AspectConsumeJs for MortarTypeDefinitionSetDataTypeRef {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+impl AspectConsumeJs for TypeSourceDataTypeRefDynamic {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for MortarTypeDefinitionSetDataTypeRef {
+impl AspectBindJs for TypeSourceDataTypeRefDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
-impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeRef {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+impl AspectJsStackValue for TypeSourceDataTypeRefDynamic {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(MortarTypeDefinitionSetDataTypeRef),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeRefDynamic),
             }),
         }
     }
 }
 
-impl AspectLiftJs for MortarTypeDefinitionSetDataTypeRef {
+impl AspectLiftJs for TypeSourceDataTypeRefDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -128,10 +130,10 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeRef {
         let dt =
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<DefinitionSetDataType>()
-                .expect("MortarTypeDefinitionSetDataTypeRef::lift: expected DefinitionSetDataType");
+                .expect("TypeSourceDataTypeRefDynamic::lift: expected DefinitionSetDataType");
         dt.data.set.finish()?;
-        Ok(Rc::new(MortarJsValue {
-            source: MortarJsValueSource::Expr,
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
             type_: Rc::new(DefinitionSetDataType { data: dt.data.clone() }),
         }))
     }

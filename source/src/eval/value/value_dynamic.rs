@@ -1,14 +1,15 @@
 use {
     crate::{
         builtin::aspect_consume_js_get,
-        jscode::{
-            JsCode,
-            JsCodeBindingSet,
-            JsCodeBlock,
-            JsCodeBlockEntry,
-            JsCodeFieldSet,
-            JsCodeType,
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeBindingSet,
+            DynamicCodeBlock,
+            DynamicCodeBlockEntry,
+            DynamicCodeFieldSet,
+            DynamicCodeType,
         },
+        eval::Erb,
         langhelp::{
             Code,
             CodeValue,
@@ -29,39 +30,38 @@ use {
         mem,
         rc::Rc,
     },
-    super::Erb,
 };
 
-pub(crate) struct MortarJsValueDataScope {
+pub(crate) struct ValueDynamicDataScope {
     pub loc: QExprId,
     pub key: ScopeEntryId,
 }
 
-pub(crate) struct MortarJsValueDataAccess {
+pub(crate) struct ValueDynamicDataAccess {
     pub key: String,
 }
 
-pub(crate) enum MortarJsValueSource {
-    Binding(MortarJsValueDataScope),
+pub(crate) enum ValueDynamicSource {
+    Binding(ValueDynamicDataScope),
     DefinitionSet,
     // Result of effect
     Expr,
-    Field(MortarJsValueDataAccess),
+    Field(ValueDynamicDataAccess),
 }
 
-pub(crate) struct MortarJsValue {
-    pub source: MortarJsValueSource,
+pub(crate) struct ValueDynamic {
+    pub source: ValueDynamicSource,
     pub type_: Rc<dyn Type>,
 }
 
-impl Value for MortarJsValue {
+impl Value for ValueDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         return self.type_.clone();
     }
 }
 
-pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-    let r = cv.code.cast::<JsCode>();
+pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+    let r = cv.code.cast::<DynamicCode>();
     if let Some(c) = r.v {
         if let Some(c) = c {
             return EResult {
@@ -91,7 +91,7 @@ pub(crate) fn mortar_bind_js(
     xx: &ExprContext,
     loc: QExprId,
     cv: CodeValue,
-) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+) -> EResult<(Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)> {
     let vtype = cv.value.type_(xx, loc);
     mortar_consume_js_to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
 }
@@ -99,20 +99,23 @@ pub(crate) fn mortar_bind_js(
 /// Helper to construct the return value for bind_js when JS code is produced.
 pub(crate) fn bind_js_some(
     _loc: QExprId,
-    js: JsCode,
+    js: DynamicCode,
     bound_type: Rc<dyn Type>,
-) -> (Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>) {
-    (Some(js), Box::new(super::mortar_scope_entry::MortarScopeEntryDirect { type_: bound_type }))
+) -> (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>) {
+    (
+        Some(js),
+        Box::new(crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntryDirect { type_: bound_type }),
+    )
 }
 
-pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: JsCode, type_: Rc<dyn Type>) -> CodeValue {
+pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: DynamicCode, type_: Rc<dyn Type>) -> CodeValue {
     CodeValue {
         code: Code {
             loc,
             code: Code_::Dyn(Rc::new(value)),
         },
-        value: Rc::new(MortarJsValue {
-            source: MortarJsValueSource::Expr,
+        value: Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
             type_,
         }),
     }
@@ -121,51 +124,51 @@ pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: JsCode, type_: Rc<dy
 pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let target_type = {
-            let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<MortarJsValue>().unwrap();
+            let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<ValueDynamic>().unwrap();
             v.type_.clone()
         };
-        let value = erb.must_er(super::typecheck_convert(xx, loc, target_type.as_ref(), value))?;
+        let value = erb.must_er(crate::eval::typecheck_convert(xx, loc, target_type.as_ref(), value))?;
         let value_type = value.value.type_(xx, loc);
         er_all!(erb, {
             value_to_js = aspect_consume_js_get(xx, loc, value_type.as_ref()),
-            self_code = self_.code.cast::<JsCode>(),
+            self_code = self_.code.cast::<DynamicCode>(),
         });
         let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;
-        let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<MortarJsValue>().unwrap();
+        let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<ValueDynamic>().unwrap();
         match &v.source {
-            MortarJsValueSource::Field(b) => {
+            ValueDynamicSource::Field(b) => {
                 let Some(self_code) = self_code else {
                     return erb.err_new(format!("TODO assertion set left hand doesn't evaluate to js code (empty)"));
                 };
 
                 // Extract the base from FieldUse so FieldSet targets the parent object
                 let base_code = match &self_code.type_ {
-                    JsCodeType::FieldUse(fu) => *fu.base.clone(),
+                    DynamicCodeType::FieldUse(fu) => *fu.base.clone(),
                     _ => self_code.clone(),
                 };
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
+                        code: Code_::Dyn(Rc::new(DynamicCode {
                             loc: loc,
-                            type_: JsCodeType::FieldSet(JsCodeFieldSet {
+                            type_: DynamicCodeType::FieldSet(DynamicCodeFieldSet {
                                 base: Box::new(base_code),
                                 key: b.key.clone(),
                                 value: Box::new(value_code)
                             })
                         }))
                     },
-                    value: Rc::new(super::null::ValueNull),
+                    value: Rc::new(crate::eval::value::value_null::r#const::ValueConstNull),
                 })
             },
-            MortarJsValueSource::Binding(b) => {
+            ValueDynamicSource::Binding(b) => {
                 let mut seq = vec![];
                 if let Some(self_code) = self_code {
                     seq.push(self_code.clone());
                 }
-                seq.push(JsCode {
+                seq.push(DynamicCode {
                     loc: loc,
-                    type_: JsCodeType::BindingSet(JsCodeBindingSet {
+                    type_: DynamicCodeType::BindingSet(DynamicCodeBindingSet {
                         base: b.key,
                         value: Box::new(value_code),
                     })
@@ -173,20 +176,20 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
+                        code: Code_::Dyn(Rc::new(DynamicCode {
                             loc: loc,
-                            type_: JsCodeType::Block(
-                                JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                            type_: DynamicCodeType::Block(
+                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
                             )
                         }))
                     },
-                    value: Rc::new(super::null::ValueNull),
+                    value: Rc::new(crate::eval::value::value_null::r#const::ValueConstNull),
                 })
             },
-            MortarJsValueSource::Expr => {
+            ValueDynamicSource::Expr => {
                 return erb.err_new(format!("Cannot modify a temporary value"));
             },
-            MortarJsValueSource::DefinitionSet => {
+            ValueDynamicSource::DefinitionSet => {
                 return erb.err_new(format!("Cannot modify a definition set function"));
             },
         }

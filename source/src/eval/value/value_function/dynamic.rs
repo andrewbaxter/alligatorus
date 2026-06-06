@@ -13,10 +13,19 @@ use {
             aspect_js_stack_value_get,
             aspect_tuple_get_maybe,
         },
-        jscode::{
-            JsCode,
-            JsCodeCall,
-            JsCodeType,
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeCall,
+            DynamicCodeType,
+        },
+        eval::{
+            Erb,
+            typecheck_convert,
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_js_some,
+            },
         },
         langhelp::{
             Aspect,
@@ -35,36 +44,27 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        typecheck_convert,
-    },
 };
 
 #[derive(Clone)]
-pub(crate) struct MortarTypeFunction {
+pub(crate) struct TypeFunctionDynamic {
     pub arg: Rc<dyn Type>,
     pub ret: Rc<dyn Type>,
 }
 
-impl Value for MortarTypeFunction {
+impl Value for TypeFunctionDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for MortarTypeFunction {
+impl Type for TypeFunctionDynamic {
     fn desc(&self) -> String {
         return format!("mortar func");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(MortarTypeFunction {
+        Rc::new(TypeFunctionDynamic {
             arg: self.arg.clone(),
             ret: self.ret.clone(),
         })
@@ -97,8 +97,8 @@ impl Type for MortarTypeFunction {
             erb.must_er(aspect_function_get(ex, loc, source_type.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
             });
@@ -106,27 +106,29 @@ impl Type for MortarTypeFunction {
     }
 }
 
-impl AspectConsumeJs for MortarTypeFunction {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        return cv.code.cast::<JsCode>().map(|x| x.unwrap().clone());
+impl AspectConsumeJs for TypeFunctionDynamic {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        return cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone());
     }
 }
 
-impl AspectBindJs for MortarTypeFunction {
+impl AspectBindJs for TypeFunctionDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
-impl Aspect for MortarTypeFunction { }
+impl Aspect for TypeFunctionDynamic { }
 
-impl AspectFunction for MortarTypeFunction {
+impl AspectFunction for TypeFunctionDynamic {
     fn call(
         &self,
         xx: &ExprContext,
@@ -184,9 +186,9 @@ impl AspectFunction for MortarTypeFunction {
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_args.push(js);
                 }
-                return Ok(ret_stack.to_value(loc, JsCode {
+                return Ok(ret_stack.to_value(loc, DynamicCode {
                     loc: loc,
-                    type_: JsCodeType::Call(JsCodeCall {
+                    type_: DynamicCodeType::Call(DynamicCodeCall {
                         func: Box::new(func),
                         args: js_args,
                     })
@@ -204,9 +206,9 @@ impl AspectFunction for MortarTypeFunction {
                 func = func_to_js.to_js(xx, loc, function),
                 arg = arg_to_js.to_js(xx, loc, argument),
             });
-            return Ok(ret_stack.to_value(loc, JsCode {
+            return Ok(ret_stack.to_value(loc, DynamicCode {
                 loc: loc,
-                type_: JsCodeType::Call(JsCodeCall {
+                type_: DynamicCodeType::Call(DynamicCodeCall {
                     func: Box::new(func),
                     args: vec![arg],
                 })

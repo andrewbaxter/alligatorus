@@ -10,15 +10,15 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_lift_js_aspect_id,
         },
+        dynamic_code::DynamicCode,
         eval::{
             from_v8_ref,
-            mortar_js_value::{
-                MortarJsValue,
-                MortarJsValueSource,
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
                 bind_js_some,
             },
         },
-        jscode::JsCode,
         langhelp::{
             Aspect,
             Code,
@@ -43,7 +43,7 @@ use {
     },
 };
 
-pub(crate) struct MortarTypeDefinitionSetInterfaceRef;
+pub(crate) struct TypeSourceInterfaceRefDynamic;
 
 fn interface_ref_type_identity() -> Unique {
     Unique::Builtin {
@@ -52,19 +52,19 @@ fn interface_ref_type_identity() -> Unique {
     }
 }
 
-impl Value for MortarTypeDefinitionSetInterfaceRef {
+impl Value for TypeSourceInterfaceRefDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for MortarTypeDefinitionSetInterfaceRef {
+impl Type for TypeSourceInterfaceRefDynamic {
     fn desc(&self) -> String {
         format!("definition_set_interface_ref")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(MortarTypeDefinitionSetInterfaceRef)
+        Rc::new(TypeSourceInterfaceRefDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -72,16 +72,16 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetInterfaceRef) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetInterfaceRef) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetInterfaceRef) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetInterfaceRef) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectLiftJs>));
         }
         return None;
     }
@@ -99,9 +99,9 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
         if source_type.aspect(xx, &interface_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
-                    type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeSourceInterfaceRefDynamic),
                 }),
             });
         }
@@ -109,42 +109,44 @@ impl Type for MortarTypeDefinitionSetInterfaceRef {
     }
 }
 
-impl Aspect for MortarTypeDefinitionSetInterfaceRef { }
+impl Aspect for TypeSourceInterfaceRefDynamic { }
 
-impl AspectConsumeJs for MortarTypeDefinitionSetInterfaceRef {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+impl AspectConsumeJs for TypeSourceInterfaceRefDynamic {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for MortarTypeDefinitionSetInterfaceRef {
+impl AspectBindJs for TypeSourceInterfaceRefDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
-impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+impl AspectJsStackValue for TypeSourceInterfaceRefDynamic {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(MortarTypeDefinitionSetInterfaceRef),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceInterfaceRefDynamic),
             }),
         }
     }
 }
 
-impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
+impl AspectLiftJs for TypeSourceInterfaceRefDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -154,8 +156,8 @@ impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
         let iface_ref: Rc<DefinitionSetInterfaceRef> =
             from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
         iface_ref.data.set.finish()?;
-        Ok(Rc::new(MortarJsValue {
-            source: MortarJsValueSource::Expr,
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
             type_: Rc::new(DefinitionSetInterface { data: iface_ref.data.clone() }),
         }))
     }

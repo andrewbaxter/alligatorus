@@ -16,9 +16,20 @@ use {
             aspect_null_get,
             aspect_null_get_maybe,
         },
-        jscode::{
-            JsCode,
-            JsCodeType,
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeType,
+        },
+        eval::{
+            Erb,
+            value::{
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                    bind_js_some,
+                },
+                value_null::r#const::ValueConstNull,
+            },
         },
         langhelp::{
             Artifact,
@@ -41,54 +52,45 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        Erb,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueSource,
-            bind_js_some,
-        },
-        null::ValueNull,
-    },
 };
 
-pub(crate) struct TypeMortarNull;
+pub(crate) struct TypeNullDynamic;
 
-generate_builtin_artifact!(TypeMortarNull, ());
+generate_builtin_artifact!(TypeNullDynamic, ());
 
-impl Value for TypeMortarNull {
+impl Value for TypeNullDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeMortarNull {
+impl Type for TypeNullDynamic {
     fn desc(&self) -> String {
         return format!("mortar null");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMortarNull)
+        Rc::new(TypeNullDynamic)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectArtifact>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftJs>));
         }
         if *key == aspect_null_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectNull>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectNull>));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBindJs>));
         }
         return None;
     }
@@ -104,7 +106,7 @@ impl Type for TypeMortarNull {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueNull),
+            value: Rc::new(ValueConstNull),
         })
     }
 
@@ -118,30 +120,30 @@ impl Type for TypeMortarNull {
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNull),
+                value: Rc::new(ValueConstNull),
             });
         });
     }
 }
 
-impl Aspect for TypeMortarNull { }
+impl Aspect for TypeNullDynamic { }
 
-impl AspectJsStackValue for TypeMortarNull {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+impl AspectJsStackValue for TypeNullDynamic {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarNull),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeNullDynamic),
             }),
         }
     }
 }
 
-impl AspectArtifact for TypeMortarNull {
+impl AspectArtifact for TypeNullDynamic {
     fn to_serial(
         &self,
         _xx: &ExprContext,
@@ -159,42 +161,44 @@ impl AspectArtifact for TypeMortarNull {
         _loc: QExprId,
         _data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNull))
+        Ok(Rc::new(ValueConstNull))
     }
 }
 
-impl AspectLiftJs for TypeMortarNull {
+impl AspectLiftJs for TypeNullDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         _value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNull))
+        Ok(Rc::new(ValueConstNull))
     }
 }
 
-impl AspectNull for TypeMortarNull { }
+impl AspectNull for TypeNullDynamic { }
 
-impl AspectConsumeJs for TypeMortarNull {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+impl AspectConsumeJs for TypeNullDynamic {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         match cv.code.code {
-            Code_::Dyn(_) => cv.code.cast::<JsCode>().map(|x| x.unwrap().clone()),
-            Code_::None => EResult::ok(JsCode {
+            Code_::Dyn(_) => cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone()),
+            Code_::None => EResult::ok(DynamicCode {
                 loc,
-                type_: JsCodeType::Literal(serde_json::Value::Null),
+                type_: DynamicCodeType::Literal(serde_json::Value::Null),
             }),
         }
     }
 }
 
-impl AspectBindJs for TypeMortarNull {
+impl AspectBindJs for TypeNullDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }

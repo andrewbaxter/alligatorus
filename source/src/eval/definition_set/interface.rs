@@ -11,20 +11,22 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_string_get,
         },
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeFieldUse,
+            DynamicCodeType,
+        },
         eval::{
             Erb,
-            mortar_function::MortarTypeFunction,
-            mortar_js_value::{
-                MortarJsValue,
-                MortarJsValueSource,
-                bind_js_some,
+            value::{
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                    bind_js_some,
+                },
+                value_function::dynamic::TypeFunctionDynamic,
+                value_null::dynamic::TypeNullDynamic,
             },
-            mortar_null::TypeMortarNull,
-        },
-        jscode::{
-            JsCode,
-            JsCodeFieldUse,
-            JsCodeType,
         },
         langhelp::{
             Aspect,
@@ -111,8 +113,8 @@ impl Type for DefinitionSetInterface {
         if source_type.aspect(xx, &identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
                     type_: Rc::new(DefinitionSetInterface { data: self.data.clone() }),
                 }),
             });
@@ -124,8 +126,8 @@ impl Type for DefinitionSetInterface {
 impl Aspect for DefinitionSetInterface { }
 
 impl AspectConsumeJs for DefinitionSetInterface {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -135,21 +137,23 @@ impl AspectBindJs for DefinitionSetInterface {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
 impl AspectJsStackValue for DefinitionSetInterface {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: Rc::new(DefinitionSetInterface { data: self.data.clone() }),
             }),
         }
@@ -174,24 +178,24 @@ impl AspectField for DefinitionSetInterface {
                     None => return erb.err_new(format!("Field '{}' not found on interface", key_name)),
                 }
             };
-            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
-            let field_type = Rc::new(MortarTypeFunction {
+            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+            let field_type = Rc::new(TypeFunctionDynamic {
                 arg: arg_type,
                 ret: ret_type,
             });
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(JsCode {
+                    code: Code_::Dyn(Rc::new(DynamicCode {
                         loc,
-                        type_: JsCodeType::FieldUse(JsCodeFieldUse {
+                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
                             base: Box::new(self_code),
                             field: field_name,
                         }),
                     })),
                 },
-                value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Expr,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
                     type_: field_type,
                 }),
             });
@@ -202,9 +206,9 @@ impl AspectField for DefinitionSetInterface {
         let methods = self.data.methods.borrow();
         for method in methods.iter() {
             if method.name == key {
-                return Some(Rc::new(MortarTypeFunction {
-                    arg: Rc::new(TypeMortarNull),
-                    ret: Rc::new(TypeMortarNull),
+                return Some(Rc::new(TypeFunctionDynamic {
+                    arg: Rc::new(TypeNullDynamic),
+                    ret: Rc::new(TypeNullDynamic),
                 }));
             }
         }

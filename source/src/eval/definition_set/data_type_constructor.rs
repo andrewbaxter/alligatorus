@@ -20,21 +20,21 @@ use {
             aspect_lift_js_aspect_id,
             aspect_type_aspect_id,
         },
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeBindingUse,
+            DynamicCodeNewObject,
+            DynamicCodeType,
+        },
         eval::{
             Erb,
             from_v8_ref,
-            mortar_js_value::{
-                MortarJsValue,
-                MortarJsValueSource,
+            typecheck_convert,
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
                 bind_js_some,
             },
-            typecheck_convert,
-        },
-        jscode::{
-            JsCode,
-            JsCodeBindingUse,
-            JsCodeNewObject,
-            JsCodeType,
         },
         langhelp::{
             Artifact,
@@ -69,36 +69,36 @@ use {
     },
 };
 
-// --- DefinitionSetDataTypeConstructorType: the type-type for
+// --- TypeTypeSourceDataTypeConstructorDynamic: the type-type for
 // DefinitionSetDataTypeConstructor values ---
-pub(crate) struct DefinitionSetDataTypeConstructorType;
+pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 
-generate_builtin_artifact!(DefinitionSetDataTypeConstructorType, serde_json::Value);
+generate_builtin_artifact!(TypeTypeSourceDataTypeConstructorDynamic, serde_json::Value);
 
-impl Value for DefinitionSetDataTypeConstructorType {
+impl Value for TypeTypeSourceDataTypeConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::super::type_ref::TypeAny)
+        Rc::new(super::super::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for DefinitionSetDataTypeConstructorType {
+impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     fn desc(&self) -> String {
         "definition_set_data_type_constructor_type".to_string()
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetDataTypeConstructorType)
+        Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == super::super::type_ref::type_type_identity() {
+        if *key == super::super::value::value_any::r#const::type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructorType) as Box<dyn AspectArtifact>));
+            return Some(Box::new(Box::new(TypeTypeSourceDataTypeConstructorDynamic) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructorType) as Box<dyn AspectType>));
+            return Some(Box::new(Box::new(TypeTypeSourceDataTypeConstructorDynamic) as Box<dyn AspectType>));
         }
         None
     }
@@ -112,9 +112,9 @@ impl Type for DefinitionSetDataTypeConstructorType {
     }
 }
 
-impl Aspect for DefinitionSetDataTypeConstructorType { }
+impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 
-impl AspectArtifact for DefinitionSetDataTypeConstructorType {
+impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -125,7 +125,9 @@ impl AspectArtifact for DefinitionSetDataTypeConstructorType {
         let ctor =
             (self_.as_ref() as &dyn Any)
                 .downcast_ref::<DefinitionSetDataTypeConstructor>()
-                .expect("DefinitionSetDataTypeConstructorType::to_serial expects DefinitionSetDataTypeConstructor");
+                .expect(
+                    "TypeTypeSourceDataTypeConstructorDynamic::to_serial expects DefinitionSetDataTypeConstructor",
+                );
         let artifact_id = ctor.serialize_ctor(xx, gx, loc);
         EResult::ok(Artifact {
             type_: artifact_id,
@@ -145,48 +147,43 @@ impl AspectArtifact for DefinitionSetDataTypeConstructorType {
     }
 }
 
-impl AspectType for DefinitionSetDataTypeConstructorType {
+impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let ctor = (value as &dyn Any).downcast_ref::<DefinitionSetDataTypeConstructor>().unwrap();
         Rc::new(DefinitionSetDataTypeConstructor { data: ctor.data.clone() })
     }
 }
 
-// --- MortarTypeDefinitionSetDataTypeConstructor: eval_half type during JS
-// execution ---
-pub(crate) struct MortarTypeDefinitionSetDataTypeConstructor;
+// --- TypeSourceDataTypeConstructorDynamic: eval_half type during JS execution ---
+pub(crate) struct TypeSourceDataTypeConstructorDynamic;
 
-impl Value for MortarTypeDefinitionSetDataTypeConstructor {
+impl Value for TypeSourceDataTypeConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for MortarTypeDefinitionSetDataTypeConstructor {
+impl Type for TypeSourceDataTypeConstructorDynamic {
     fn desc(&self) -> String {
         format!("definition_set_data_type_constructor")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(MortarTypeDefinitionSetDataTypeConstructor)
+        Rc::new(TypeSourceDataTypeConstructorDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectConsumeJs>),
-            );
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(
-                Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectJsStackValue>),
-            );
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeDefinitionSetDataTypeConstructor) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftJs>));
         }
         return None;
     }
@@ -200,42 +197,44 @@ impl Type for MortarTypeDefinitionSetDataTypeConstructor {
     }
 }
 
-impl Aspect for MortarTypeDefinitionSetDataTypeConstructor { }
+impl Aspect for TypeSourceDataTypeConstructorDynamic { }
 
-impl AspectConsumeJs for MortarTypeDefinitionSetDataTypeConstructor {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
-        cv.code.cast::<JsCode>().map(|x| x.unwrap().clone())
+impl AspectConsumeJs for TypeSourceDataTypeConstructorDynamic {
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for MortarTypeDefinitionSetDataTypeConstructor {
+impl AspectBindJs for TypeSourceDataTypeConstructorDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn crate::eval::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
-impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeConstructor {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
+impl AspectJsStackValue for TypeSourceDataTypeConstructorDynamic {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(MortarTypeDefinitionSetDataTypeConstructor),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
             }),
         }
     }
 }
 
-impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
+impl AspectLiftJs for TypeSourceDataTypeConstructorDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -245,8 +244,8 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
         let ctor_ref: Rc<DefinitionSetDataTypeConstructor> =
             from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
         ctor_ref.data.set.finish()?;
-        Ok(Rc::new(MortarJsValue {
-            source: MortarJsValueSource::Expr,
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
             type_: Rc::new(DefinitionSetDataTypeConstructor { data: ctor_ref.data.clone() }),
         }))
     }
@@ -255,7 +254,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
 // --- DefinitionSetDataTypeConstructor as Type: used after lift ---
 impl Value for DefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetDataTypeConstructorType)
+        Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
 }
 
@@ -333,9 +332,9 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
             let mut object_fields = vec![(self.data.data_field.clone(), underlying_js),];
             for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push((method.field_name.clone(), JsCode {
+                object_fields.push((method.field_name.clone(), DynamicCode {
                     loc,
-                    type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
+                    type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: method_id }),
                 }));
             }
             for impl_data in self.data.interface_impls.borrow().iter() {
@@ -344,17 +343,17 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
-                    object_fields.push((iface_method.field_name.clone(), JsCode {
+                    object_fields.push((iface_method.field_name.clone(), DynamicCode {
                         loc,
-                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
+                        type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: method_id }),
                     }));
                 }
             }
             let result_type = Rc::new(DefinitionSetDataType { data: self.data.clone(), });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, JsCode {
+            return Ok(ret_stack.to_value(loc, DynamicCode {
                 loc,
-                type_: JsCodeType::NewObject(JsCodeNewObject { fields: object_fields }),
+                type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: object_fields }),
             }));
         });
     }
@@ -400,7 +399,7 @@ impl DefinitionSetDataTypeConstructor {
 
         // Store in artifact store
         gx.artifacts.set(artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(DefinitionSetDataTypeConstructorType::artifact_id()),
+            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
             data: json,
         });
         artifact_id

@@ -1,4 +1,4 @@
-mod jswrap_structs;
+mod dynamic_wrap_structs;
 mod data_type_ref;
 pub(crate) mod data_type_constructor;
 pub(crate) mod data_type;
@@ -9,12 +9,12 @@ mod interface;
 pub(crate) mod tagged_union;
 
 pub(crate) use {
-    data_type_constructor::MortarTypeDefinitionSetDataTypeConstructor,
-    data_type_ref::MortarTypeDefinitionSetDataTypeRef,
-    exports::MortarTypeDefinitionSetExports,
-    function::MortarTypeDefinitionSetFunction,
-    interface_ref::MortarTypeDefinitionSetInterfaceRef,
-    jswrap_structs::DefineResult,
+    data_type_constructor::TypeSourceDataTypeConstructorDynamic,
+    data_type_ref::TypeSourceDataTypeRefDynamic,
+    dynamic_wrap_structs::DefineResult,
+    exports::TypeSourceExportsDynamic,
+    function::TypeSourceFunctionDynamic,
+    interface_ref::TypeSourceInterfaceRefDynamic,
 };
 use {
     crate::langhelp::{

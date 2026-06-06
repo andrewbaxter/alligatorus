@@ -6,6 +6,7 @@ use {
             aspect_bool_get,
             aspect_bool_get_maybe,
         },
+        eval::Erb,
         langhelp::{
             Aspect,
             CodeValue,
@@ -23,29 +24,28 @@ use {
         mem,
         rc::Rc,
     },
-    super::Erb,
 };
 
-pub(crate) struct TypeBool;
+pub(crate) struct TypeBoolConst;
 
-impl Value for TypeBool {
+impl Value for TypeBoolConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeBool {
+impl Type for TypeBoolConst {
     fn desc(&self) -> String {
         return format!("bool");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeBool)
+        Rc::new(TypeBoolConst)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_bool_aspect_id() {
-            return Some(Box::new(Box::new(TypeBool) as Box<dyn AspectBool>));
+            return Some(Box::new(Box::new(TypeBoolConst) as Box<dyn AspectBool>));
         }
         return None;
     }
@@ -60,7 +60,7 @@ impl Type for TypeBool {
             let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBool(aspect_bool.get(value.as_ref())))
+                value: Rc::new(ValueConstBool(aspect_bool.get(value.as_ref())))
             });
         });
     }
@@ -76,24 +76,24 @@ impl Type for TypeBool {
             let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBool(aspect_bool.get(value.as_ref())))
+                value: Rc::new(ValueConstBool(aspect_bool.get(value.as_ref())))
             });
         });
     }
 }
 
-impl Aspect for TypeBool { }
+impl Aspect for TypeBoolConst { }
 
-impl AspectBool for TypeBool {
+impl AspectBool for TypeBoolConst {
     fn get(&self, value: &dyn Value) -> bool {
-        return <dyn Any>::downcast_ref::<ValueBool>(value).unwrap().0;
+        return <dyn Any>::downcast_ref::<ValueConstBool>(value).unwrap().0;
     }
 }
 
-pub(crate) struct ValueBool(pub bool);
+pub(crate) struct ValueConstBool(pub bool);
 
-impl Value for ValueBool {
+impl Value for ValueConstBool {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeBool);
+        return Rc::new(TypeBoolConst);
     }
 }

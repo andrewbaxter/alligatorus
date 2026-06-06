@@ -8,14 +8,14 @@ use {
             aspect_consume_js_aspect_id,
             aspect_lift_js_aspect_id,
         },
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeBindingUse,
+            DynamicCodeType,
+        },
         eval::{
             from_v8_ref,
-            mortar_js_value::bind_js_some,
-        },
-        jscode::{
-            JsCode,
-            JsCodeBindingUse,
-            JsCodeType,
+            value::value_dynamic::bind_js_some,
         },
         langhelp::{
             Aspect,
@@ -191,11 +191,12 @@ fn expr_type_identity() -> Unique {
 
 impl Value for ExprType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(super::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-/// Stored in JsCodeExternal during eval_half. Value is taken out via `from_v8_ref`
+/// Stored in DynamicCodeExternal during eval_half. Value is taken out via
+/// `from_v8_ref`
 ///
 /// * `borrow_mut().take()` — a safe take-once pattern that panics on double-consume
 ///   instead of double-freeing.
@@ -268,17 +269,17 @@ impl Type for ExprType {
 impl Aspect for ExprType { }
 
 impl AspectConsumeJs for ExprType {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         // If there's already JS code (e.g. from a __stage call), use it directly
-        if let Some(js) = cv.code.cast::<JsCode>().v.flatten() {
+        if let Some(js) = cv.code.cast::<DynamicCode>().v.flatten() {
             return EResult::ok(js.clone());
         }
         let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
-        EResult::ok(JsCode {
+        EResult::ok(DynamicCode {
             loc,
-            type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
+            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id }),
         })
     }
 }
@@ -289,7 +290,7 @@ impl AspectBindJs for ExprType {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<(Option<DynamicCode>, Box<dyn super::value::value_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -309,7 +310,7 @@ impl AspectLiftJs for ExprType {
 
 /// Placeholder value for stage results. Its type exposes AspectLiftJs (to extract
 /// the Expr from the v8::External returned by __stage) but NOT AspectConsumeJs (so
-/// eval() preserves the Call JsCode).
+/// eval() preserves the Call DynamicCode).
 pub(crate) struct StagedExprPlaceholder;
 struct StagedExprPlaceholderType;
 
@@ -321,7 +322,7 @@ impl Value for StagedExprPlaceholder {
 
 impl Value for StagedExprPlaceholderType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(super::value::value_any::r#const::TypeAnyConst)
     }
 }
 

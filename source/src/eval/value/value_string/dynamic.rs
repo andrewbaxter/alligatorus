@@ -21,12 +21,28 @@ use {
             aspect_string_get,
             aspect_string_get_maybe,
         },
-        jscode::{
-            JsCode,
-            JsCodeBlock,
-            JsCodeBlockEntry,
-            JsCodeFieldUse,
-            JsCodeType,
+        dynamic_code::{
+            DynamicCode,
+            DynamicCodeBlock,
+            DynamicCodeBlockEntry,
+            DynamicCodeFieldUse,
+            DynamicCodeType,
+        },
+        eval::{
+            Erb,
+            value::{
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                    mortar_bind_js,
+                    mortar_consume_js_to_js,
+                    mortar_js_stack_to_value,
+                    mortar_set,
+                },
+                value_function::dynamic::TypeFunctionDynamic,
+                value_null::dynamic::TypeNullDynamic,
+            },
         },
         langhelp::{
             Artifact,
@@ -49,65 +65,51 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        Erb,
-        mortar_function::MortarTypeFunction,
-        mortar_js_value::{
-            MortarJsValue,
-            MortarJsValueDataAccess,
-            MortarJsValueSource,
-            mortar_bind_js,
-            mortar_consume_js_to_js,
-            mortar_js_stack_to_value,
-            mortar_set,
-        },
-        mortar_null::TypeMortarNull,
-    },
 };
 
-pub(crate) struct TypeMortarString;
+pub(crate) struct TypeStringDynamic;
 
-generate_builtin_artifact!(TypeMortarString, String);
+generate_builtin_artifact!(TypeStringDynamic, String);
 
-impl Value for TypeMortarString {
+impl Value for TypeStringDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeMortarString {
+impl Type for TypeStringDynamic {
     fn desc(&self) -> String {
         return format!("mortar string");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMortarString)
+        Rc::new(TypeStringDynamic)
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectArtifact>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_js_string_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsString>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectJsString>));
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectConsumeJs>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectConsumeJs>));
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectBindJs>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectBindJs>));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectField>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectField>));
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsStackValue>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectJsStackValue>));
         }
         if *key == aspect_set_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectSet>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectSet>));
         }
         if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftJs>));
         }
         return None;
     }
@@ -119,9 +121,9 @@ impl Type for TypeMortarString {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(MortarJsValue {
-                source: MortarJsValueSource::Expr,
-                type_: Rc::new(TypeMortarString),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeStringDynamic),
             }),
         })
     }
@@ -136,34 +138,34 @@ impl Type for TypeMortarString {
             if let Some(aspect_string) = aspect_string_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
-                if let Some(c) = erb.must_er(code.cast::<JsCode>())? {
+                if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
                     seq.push(c.clone());
                 };
-                seq.push(JsCode {
+                seq.push(DynamicCode {
                     loc: loc,
-                    type_: JsCodeType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
+                    type_: DynamicCodeType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
                 });
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
+                        code: Code_::Dyn(Rc::new(DynamicCode {
                             loc: loc,
-                            type_: JsCodeType::Block(
-                                JsCodeBlock { entries: seq.into_iter().map(JsCodeBlockEntry::Code).collect() }
+                            type_: DynamicCodeType::Block(
+                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
                             )
                         }))
                     },
-                    value: Rc::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(TypeMortarString),
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(TypeStringDynamic),
                     }),
                 });
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(MortarJsValue {
-                        source: MortarJsValueSource::Expr,
-                        type_: Rc::new(TypeMortarString),
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(TypeStringDynamic),
                     })
                 });
             }
@@ -175,34 +177,36 @@ impl Type for TypeMortarString {
     }
 }
 
-impl Aspect for TypeMortarString { }
+impl Aspect for TypeStringDynamic { }
 
-impl AspectJsString for TypeMortarString { }
+impl AspectJsString for TypeStringDynamic { }
 
-impl AspectJsStackValue for TypeMortarString {
-    fn to_value(&self, loc: QExprId, value: JsCode) -> CodeValue {
-        mortar_js_stack_to_value(loc, value, Rc::new(TypeMortarString))
+impl AspectJsStackValue for TypeStringDynamic {
+    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+        mortar_js_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
     }
 }
 
-impl AspectConsumeJs for TypeMortarString {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<JsCode> {
+impl AspectConsumeJs for TypeStringDynamic {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
-impl AspectBindJs for TypeMortarString {
+impl AspectBindJs for TypeStringDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<JsCode>, Box<dyn super::mortar_scope_entry::MortarScopeEntry>)> {
+    ) -> EResult<
+        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+    > {
         mortar_bind_js(xx, loc, cv)
     }
 }
 
-impl AspectField for TypeMortarString {
+impl AspectField for TypeStringDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
@@ -212,20 +216,20 @@ impl AspectField for TypeMortarString {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on mortar string", key_name)),
             };
-            let self_code = erb.must_er(self_.code.cast::<JsCode>())?.unwrap().clone();
+            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc: loc,
-                    code: Code_::Dyn(Rc::new(JsCode {
+                    code: Code_::Dyn(Rc::new(DynamicCode {
                         loc: loc,
-                        type_: JsCodeType::FieldUse(JsCodeFieldUse {
+                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
                             base: Box::new(self_code),
                             field: key_name.clone(),
                         }),
                     })),
                 },
-                value: Rc::new(MortarJsValue {
-                    source: MortarJsValueSource::Field(MortarJsValueDataAccess { key: key_name, }),
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
                 }),
             });
@@ -234,20 +238,20 @@ impl AspectField for TypeMortarString {
 
     fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         match key {
-            "toLowerCase" => Some(Rc::new(MortarTypeFunction {
-                arg: Rc::new(TypeMortarNull),
-                ret: Rc::new(TypeMortarString),
+            "toLowerCase" => Some(Rc::new(TypeFunctionDynamic {
+                arg: Rc::new(TypeNullDynamic),
+                ret: Rc::new(TypeStringDynamic),
             })),
-            "toUpperCase" => Some(Rc::new(MortarTypeFunction {
-                arg: Rc::new(TypeMortarNull),
-                ret: Rc::new(TypeMortarString),
+            "toUpperCase" => Some(Rc::new(TypeFunctionDynamic {
+                arg: Rc::new(TypeNullDynamic),
+                ret: Rc::new(TypeStringDynamic),
             })),
             _ => None,
         }
     }
 }
 
-impl AspectLiftJs for TypeMortarString {
+impl AspectLiftJs for TypeStringDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -255,11 +259,11 @@ impl AspectLiftJs for TypeMortarString {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(super::string::ValueString(s)))
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueConstString(s)))
     }
 }
 
-impl AspectArtifact for TypeMortarString {
+impl AspectArtifact for TypeStringDynamic {
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -270,7 +274,7 @@ impl AspectArtifact for TypeMortarString {
         let type_ = value.type_(xx, loc);
         let s =
             aspect_string_get_maybe(xx, type_.as_ref())
-                .expect("TypeMortarString::to_serial expects a string value")
+                .expect("TypeStringDynamic::to_serial expects a string value")
                 .get(value.as_ref());
         EResult::ok(Self::build_artifact(s))
     }
@@ -283,11 +287,11 @@ impl AspectArtifact for TypeMortarString {
         data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
-        Ok(Rc::new(super::string::ValueString(s.to_string())))
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueConstString(s.to_string())))
     }
 }
 
-impl AspectSet for TypeMortarString {
+impl AspectSet for TypeStringDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
         mortar_set(xx, loc, self_, value)
     }

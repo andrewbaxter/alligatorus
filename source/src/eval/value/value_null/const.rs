@@ -8,6 +8,7 @@ use {
             aspect_null_get,
             aspect_null_get_maybe,
         },
+        eval::Erb,
         langhelp::{
             Artifact,
             Aspect,
@@ -27,26 +28,25 @@ use {
         mem,
         rc::Rc,
     },
-    super::Erb,
 };
 
-pub(crate) struct TypeNull;
+pub(crate) struct TypeNullConst;
 
-generate_builtin_artifact!(TypeNull, ());
+generate_builtin_artifact!(TypeNullConst, ());
 
-impl Value for TypeNull {
+impl Value for TypeNullConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_ref::TypeAny)
+        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeNull {
+impl Type for TypeNullConst {
     fn desc(&self) -> String {
         return format!("null");
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeNull)
+        Rc::new(TypeNullConst)
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
@@ -55,10 +55,10 @@ impl Type for TypeNull {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_null_aspect_id() {
-            return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectNull>));
+            return Some(Box::new(Box::new(TypeNullConst) as Box<dyn AspectNull>));
         }
         if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeNull) as Box<dyn AspectArtifact>));
+            return Some(Box::new(Box::new(TypeNullConst) as Box<dyn AspectArtifact>));
         }
         return None;
     }
@@ -72,7 +72,7 @@ impl Type for TypeNull {
             erb.must_er(aspect_null_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNull)
+                value: Rc::new(ValueConstNull)
             });
         });
     }
@@ -87,17 +87,17 @@ impl Type for TypeNull {
             erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNull)
+                value: Rc::new(ValueConstNull)
             });
         });
     }
 }
 
-impl Aspect for TypeNull { }
+impl Aspect for TypeNullConst { }
 
-impl AspectNull for TypeNull { }
+impl AspectNull for TypeNullConst { }
 
-impl AspectArtifact for TypeNull {
+impl AspectArtifact for TypeNullConst {
     fn to_serial(
         &self,
         _xx: &ExprContext,
@@ -116,15 +116,15 @@ impl AspectArtifact for TypeNull {
         data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         match data {
-            serde_json::Value::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
+            serde_json::Value::Null => Ok(Rc::new(ValueConstNull) as Rc<dyn Value>),
             _ => Err("Expected null data for null type".to_string()),
         }
     }
 }
-pub(crate) struct ValueNull;
+pub(crate) struct ValueConstNull;
 
-impl Value for ValueNull {
+impl Value for ValueConstNull {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeNull);
+        return Rc::new(TypeNullConst);
     }
 }

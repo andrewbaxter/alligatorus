@@ -1,24 +1,11 @@
 #[macro_use]
 pub mod util;
-pub mod null;
-pub mod string;
-pub mod number;
-pub mod bool;
-pub mod mortar_js_value;
-pub mod mortar_scope_entry;
-pub mod mortar_null;
-pub mod mortar_string;
-pub mod mortar_number;
-pub mod mortar_bool;
-pub mod mortar_list;
-pub mod mortar_map;
-pub mod mortar_function;
+pub mod value;
 pub mod expr;
 pub mod tuple;
 pub mod record;
 #[macro_use]
-pub mod jswrap;
-pub mod type_ref;
+pub mod dynamic_wrap;
 pub mod v8util;
 pub mod definition_set;
 
@@ -42,20 +29,20 @@ use {
             aspect_string_get_maybe,
             aspect_tagged_union_get,
         },
-        jscode::{
+        dynamic_code::{
             BINDING_PREFIX,
             BUILTIN_PREFIX,
             DEF_PREFIX,
+            DynamicCode,
+            DynamicCodeBind,
+            DynamicCodeBindingUse,
+            DynamicCodeBlock,
+            DynamicCodeBlockEntry,
+            DynamicCodeIf,
+            DynamicCodeMatch,
+            DynamicCodeMatchBranch,
+            DynamicCodeType,
             EXPR_PREFIX,
-            JsCode,
-            JsCodeBind,
-            JsCodeBindingUse,
-            JsCodeBlock,
-            JsCodeBlockEntry,
-            JsCodeIf,
-            JsCodeMatch,
-            JsCodeMatchBranch,
-            JsCodeType,
             TAG_VAR,
         },
         langhelp::{
@@ -98,6 +85,7 @@ use {
         DefinitionSet,
     },
     dumpster::unsync::Gc,
+    dynamic_wrap::DynamicWrap,
     expr::{
         Expr,
         ExprBind,
@@ -116,16 +104,6 @@ use {
         Module,
     },
     flowcontrol::shed,
-    jswrap::JsWrap,
-    mortar_function::MortarTypeFunction,
-    mortar_null::TypeMortarNull,
-    mortar_number::TypeMortarNumber,
-    mortar_scope_entry::{
-        MortarScopeEntryAsScope,
-        MortarScopeEntryBinding,
-    },
-    mortar_string::TypeMortarString,
-    null::ValueNull,
     record::{
         Record,
         RecordField,
@@ -149,6 +127,19 @@ use {
         TupleElement,
     },
     v8::tc_scope,
+    value::{
+        value_function::dynamic::TypeFunctionDynamic,
+        value_null::{
+            dynamic::TypeNullDynamic,
+            r#const::ValueConstNull,
+        },
+        value_number::dynamic::TypeNumberDynamic,
+        value_scope_entry::dynamic::{
+            DynamicScopeEntryAsScope,
+            DynamicScopeEntryBinding,
+        },
+        value_string::dynamic::TypeStringDynamic,
+    },
 };
 
 // --- Rc`<T>` ↔ v8::External helpers ---
@@ -363,7 +354,7 @@ impl TypePendingImport {
 
 impl Value for TypePendingImport {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(type_ref::TypeAny)
+        Rc::new(value::value_any::r#const::TypeAnyConst)
     }
 }
 
@@ -490,22 +481,24 @@ impl Target for MortarTarget {
                     let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
                     let code = Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(JsCode {
+                        code: Code_::Dyn(Rc::new(DynamicCode {
                             loc: loc,
-                            type_: JsCodeType::Block(JsCodeBlock { entries: vec![JsCodeBlockEntry::Bind(JsCodeBind {
-                                base: js_key,
-                                value: Box::new(vcode),
-                            })], }),
+                            type_: DynamicCodeType::Block(
+                                DynamicCodeBlock { entries: vec![DynamicCodeBlockEntry::Bind(DynamicCodeBind {
+                                    base: js_key,
+                                    value: Box::new(vcode),
+                                })], }
+                            ),
                         })),
                     };
-                    return Ok((code, Box::new(MortarScopeEntryAsScope {
+                    return Ok((code, Box::new(DynamicScopeEntryAsScope {
                         js_key: Some(js_key),
                         type_: vtype,
                         inner: mortar_entry,
                     })));
                 },
                 None => {
-                    return Ok((none_code, Box::new(MortarScopeEntryAsScope {
+                    return Ok((none_code, Box::new(DynamicScopeEntryAsScope {
                         js_key: None,
                         type_: vtype,
                         inner: mortar_entry,
@@ -519,15 +512,15 @@ impl Target for MortarTarget {
         let mut js_entries = vec![];
         let mut errors = vec![];
         for entry in &entries {
-            match entry.cast::<JsCode>().into_res() {
+            match entry.cast::<DynamicCode>().into_res() {
                 Ok(Some(js)) => {
                     match &js.type_ {
-                        JsCodeType::Block(block) if
+                        DynamicCodeType::Block(block) if
                             !block.entries.is_empty() &&
-                                block.entries.iter().all(|e| matches!(e, JsCodeBlockEntry::Bind(_))) => {
+                                block.entries.iter().all(|e| matches!(e, DynamicCodeBlockEntry::Bind(_))) => {
                             js_entries.extend(block.entries.clone());
                         },
-                        _ => js_entries.push(JsCodeBlockEntry::Code(js.clone())),
+                        _ => js_entries.push(DynamicCodeBlockEntry::Code(js.clone())),
                     }
                 },
                 Ok(None) => { },
@@ -548,9 +541,9 @@ impl Target for MortarTarget {
         }
         return EResult::ok(Code {
             loc: loc,
-            code: Code_::Dyn(Rc::new(JsCode {
+            code: Code_::Dyn(Rc::new(DynamicCode {
                 loc: loc,
-                type_: JsCodeType::Block(JsCodeBlock { entries: js_entries }),
+                type_: DynamicCodeType::Block(DynamicCodeBlock { entries: js_entries }),
             })),
         });
     }
@@ -562,16 +555,16 @@ impl Target for MortarTarget {
         conditions: Vec<(CodeValue, &Expr)>,
         else_: Option<&Expr>,
     ) -> EvalRes {
-        fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<JsCode, ()> {
+        fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<DynamicCode, ()> {
             let vtype = cv.value.type_(xx, loc);
             if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
                 return erb.must_er(consume.to_js(xx, loc, cv));
             }
-            match erb.must_er(cv.code.cast::<JsCode>())? {
+            match erb.must_er(cv.code.cast::<DynamicCode>())? {
                 Some(c) => Ok(c.clone()),
-                None => Ok(JsCode {
+                None => Ok(DynamicCode {
                     loc,
-                    type_: JsCodeType::Literal(serde_json::Value::Null),
+                    type_: DynamicCodeType::Literal(serde_json::Value::Null),
                 }),
             }
         }
@@ -594,15 +587,15 @@ impl Target for MortarTarget {
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(JsCode {
+                    code: Code_::Dyn(Rc::new(DynamicCode {
                         loc,
-                        type_: JsCodeType::If(JsCodeIf {
+                        type_: DynamicCodeType::If(DynamicCodeIf {
                             conditions: js_conditions,
                             else_: js_else,
                         }),
                     })),
                 },
-                value: Rc::new(ValueNull),
+                value: Rc::new(ValueConstNull),
             });
         });
     }
@@ -627,7 +620,7 @@ impl Target for MortarTarget {
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
                 });
-                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(MortarScopeEntryBinding {
+                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(DynamicScopeEntryBinding {
                     js_key: element_scope_id,
                     type_: variant_type.clone(),
                 }),);
@@ -642,15 +635,15 @@ impl Target for MortarTarget {
                 let body_js = if let Some(consume) = aspect_consume_js_get_maybe(&child_xx, body_type.as_ref()) {
                     erb.must_er(consume.to_js(&child_xx, loc, body_cv))?
                 } else {
-                    match erb.must_er(body_cv.code.cast::<JsCode>())? {
+                    match erb.must_er(body_cv.code.cast::<DynamicCode>())? {
                         Some(c) => c.clone(),
-                        None => JsCode {
+                        None => DynamicCode {
                             loc,
-                            type_: JsCodeType::Literal(serde_json::Value::Null)
+                            type_: DynamicCodeType::Literal(serde_json::Value::Null)
                         },
                     }
                 };
-                js_cases.push(JsCodeMatchBranch {
+                js_cases.push(DynamicCodeMatchBranch {
                     js_tag: tag.clone(),
                     body: body_js,
                 });
@@ -661,11 +654,11 @@ impl Target for MortarTarget {
                 let fb_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, fb_type.as_ref()) {
                     erb.must_er(consume.to_js(xx, loc, fb_cv))?
                 } else {
-                    match erb.must_er(fb_cv.code.cast::<JsCode>())? {
+                    match erb.must_er(fb_cv.code.cast::<DynamicCode>())? {
                         Some(c) => c.clone(),
-                        None => JsCode {
+                        None => DynamicCode {
                             loc,
-                            type_: JsCodeType::Literal(serde_json::Value::Null)
+                            type_: DynamicCodeType::Literal(serde_json::Value::Null)
                         },
                     }
                 };
@@ -673,16 +666,16 @@ impl Target for MortarTarget {
             } else {
                 None
             };
-            let match_js = JsCode {
+            let match_js = DynamicCode {
                 loc,
-                type_: JsCodeType::Match(JsCodeMatch {
+                type_: DynamicCodeType::Match(DynamicCodeMatch {
                     base: Box::new(base_js),
                     element_key: element_scope_id,
                     cases: js_cases,
                     fallback: js_fallback,
                 }),
             };
-            let null_stack = crate::builtin::aspect_js_stack_value_get(xx, loc, &TypeMortarNull as &dyn Type);
+            let null_stack = crate::builtin::aspect_js_stack_value_get(xx, loc, &TypeNullDynamic as &dyn Type);
             let null_stack = erb.must_er(null_stack)?;
             return Ok(null_stack.to_value(loc, match_js));
         });
@@ -693,9 +686,9 @@ impl Target for MortarTarget {
         let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
-        let tree_js = JsCode {
+        let tree_js = DynamicCode {
             loc,
-            type_: JsCodeType::BindingUse(JsCodeBindingUse { id: tree_id }),
+            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: tree_id }),
         };
 
         // Build args for __stage(tree, lift1, val1, lift2, val2, ...). For each lower
@@ -714,13 +707,13 @@ impl Target for MortarTarget {
                         let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
-                        stage_args.push(JsCode {
+                        stage_args.push(DynamicCode {
                             loc,
-                            type_: JsCodeType::Literal(serde_json::Value::Null),
+                            type_: DynamicCodeType::Literal(serde_json::Value::Null),
                         });
-                        stage_args.push(JsCode {
+                        stage_args.push(DynamicCode {
                             loc,
-                            type_: JsCodeType::BindingUse(JsCodeBindingUse { id }),
+                            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id }),
                         });
                     },
                     Code_::Dyn(_) => {
@@ -737,22 +730,22 @@ impl Target for MortarTarget {
                         let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
                             erb.must_er(consume.to_js(xx, loc, cv))?
                         } else {
-                            erb.must_er(cv.code.cast::<JsCode>())?.unwrap().clone()
+                            erb.must_er(cv.code.cast::<DynamicCode>())?.unwrap().clone()
                         };
-                        stage_args.push(JsCode {
+                        stage_args.push(DynamicCode {
                             loc,
-                            type_: JsCodeType::BindingUse(JsCodeBindingUse { id: lift_id }),
+                            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: lift_id }),
                         });
                         stage_args.push(inner_js);
                     },
                 }
             }
-            let stage_js = JsCode {
+            let stage_js = DynamicCode {
                 loc,
-                type_: JsCodeType::Call(crate::jscode::JsCodeCall {
-                    func: Box::new(JsCode {
+                type_: DynamicCodeType::Call(crate::dynamic_code::DynamicCodeCall {
+                    func: Box::new(DynamicCode {
                         loc,
-                        type_: JsCodeType::BindingUse(JsCodeBindingUse { id: STAGE_FN_SCOPE_ID, }),
+                        type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: STAGE_FN_SCOPE_ID, }),
                     }),
                     args: stage_args,
                 }),
@@ -896,7 +889,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         let binding = erb.must_er(xx.target.bind(&child_xx, sub.loc, value))?;
                         entries.push(binding.0);
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
-                        last_val = Some(Rc::new(ValueNull) as Rc<dyn Value>);
+                        last_val = Some(Rc::new(ValueConstNull) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(eval_half(&child_xx, sub))?;
                         entries.push(r.code);
@@ -905,7 +898,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
                 return Ok(CodeValue {
                     code: erb.must_er(xx.target.block(expr.loc, entries))?,
-                    value: last_val.unwrap_or_else(|| Rc::new(ValueNull) as Rc<dyn Value>)
+                    value: last_val.unwrap_or_else(|| Rc::new(ValueConstNull) as Rc<dyn Value>)
                 });
             });
         },
@@ -1045,7 +1038,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 let Some(k_cv) = k_res.v else {
                     continue;
                 };
-                if let Some(js) = k_cv.code.cast::<JsCode>().v.flatten() {
+                if let Some(js) = k_cv.code.cast::<DynamicCode>().v.flatten() {
                     key_codes.push(js.clone());
                 }
                 match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
@@ -1076,12 +1069,12 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     code: Code_::None,
                 }
             } else {
-                let block_entries = key_codes.into_iter().map(JsCodeBlockEntry::Code).collect();
+                let block_entries = key_codes.into_iter().map(DynamicCodeBlockEntry::Code).collect();
                 Code {
                     loc: expr.loc,
-                    code: Code_::Dyn(Rc::new(JsCode {
+                    code: Code_::Dyn(Rc::new(DynamicCode {
                         loc: expr.loc,
-                        type_: JsCodeType::Block(JsCodeBlock { entries: block_entries }),
+                        type_: DynamicCodeType::Block(DynamicCodeBlock { entries: block_entries }),
                     })),
                 }
             };
@@ -1129,7 +1122,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
             });
-            child_scope.values.borrow_mut().insert(element_key, Box::new(MortarScopeEntryBinding {
+            child_scope.values.borrow_mut().insert(element_key, Box::new(DynamicScopeEntryBinding {
                 js_key: element_scope_id,
                 type_: iterable.element_type(),
             }),);
@@ -1281,7 +1274,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None
                     },
-                    value: Rc::new(ValueNull),
+                    value: Rc::new(ValueConstNull),
                 });
             } else {
                 // Delegate code generation to target
@@ -1377,21 +1370,21 @@ fn eval(
     });
     let mut s1_scope = HashMap::new();
     let mut builtin_scope_entries = Vec::new();
-    for (key, eval_value, js_value) in [jswrap!(fn log(ex, js_scope, scope)(message: String) ->() {
+    for (key, eval_value, js_value) in [dynamic_wrap!(fn log(ex, js_scope, scope)(message: String) ->() {
         let timestamp_ms =
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
         scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(crate::langhelp::LogEntry {
             timestamp_ms,
             message
         });
-    }), jswrap!(fn define(ex, js_scope, scope)() -> DefineResult {
+    }), dynamic_wrap!(fn define(ex, js_scope, scope)() -> DefineResult {
         let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
         let def_set_id = DefSetId(dsc.counter.next());
         let import_id = dsc.import_id;
         DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
-    }), jswrap!(fn str_to_json(ex, js_scope, scope)(s: String) -> String {
+    }), dynamic_wrap!(fn str_to_json(ex, js_scope, scope)(s: String) -> String {
         serde_json::to_string(&s).unwrap()
-    }), jswrap!(fn constkey_to_str(ex, js_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
+    }), dynamic_wrap!(fn constkey_to_str(ex, js_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
         key.to_str()
     })] {
         js_scope
@@ -1402,7 +1395,7 @@ fn eval(
                 v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
                 js_value,
             );
-        builtin_scope_entries.push((key.to_string(), MortarScopeEntryBinding {
+        builtin_scope_entries.push((key.to_string(), DynamicScopeEntryBinding {
             js_key: eval_value.js_key,
             type_: eval_value.type_.clone(),
         }));
@@ -1412,15 +1405,15 @@ fn eval(
     // Type references (static scope entries, no JS representation)
     s1_scope.insert(
         ConstKey::String("null".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNull) }) as Box<dyn ScopeEntry>,
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("string".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("number".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
+        Box::new(StaticScopeEntry { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("expr".to_string()),
@@ -1431,25 +1424,34 @@ fn eval(
     for (
         key,
         constructor_type,
-        (_, jswrap_entry, js_value),
+        (_, dynamic_wrap_entry, js_value),
     ) in [
         (
             "list",
-            Rc::new(mortar_list::TypeListConstructor) as Rc<dyn Type>,
-            jswrap!(fn list(ex, js_scope, scope)(element_type: jswrap:: AnyType) -> mortar_list:: TypeMortarList {
-                mortar_list::TypeMortarList { element_type: element_type.0 }
-            }),
+            Rc::new(value::value_list::dynamic::TypeListConstructorConst) as Rc<dyn Type>,
+            dynamic_wrap!(
+                fn list(
+                    ex,
+                    js_scope,
+                    scope
+                )(element_type: dynamic_wrap:: AnyType) -> value:: value_list:: dynamic:: TypeListDynamic {
+                    value::value_list::dynamic::TypeListDynamic { element_type: element_type.0 }
+                }
+            ),
         ),
         (
             "map",
-            Rc::new(mortar_map::TypeMapConstructor) as Rc<dyn Type>,
-            jswrap!(
+            Rc::new(value::value_map::dynamic::TypeMapConstructorConst) as Rc<dyn Type>,
+            dynamic_wrap!(
                 fn map(
                     ex,
                     js_scope,
                     scope
-                )(key_type: jswrap:: AnyType, value_type: jswrap:: AnyType) -> mortar_map:: TypeMortarMap {
-                    mortar_map::TypeMortarMap {
+                )(
+                    key_type: dynamic_wrap:: AnyType,
+                    value_type: dynamic_wrap:: AnyType
+                ) -> value:: value_map:: dynamic:: TypeMapDynamic {
+                    value::value_map::dynamic::TypeMapDynamic {
                         key_type: key_type.0,
                         value_type: value_type.0
                     }
@@ -1462,11 +1464,11 @@ fn eval(
             .global(js_scope)
             .set(
                 js_scope,
-                v8::String::new(js_scope, &scope_entry_id_js_key(jswrap_entry.js_key)).unwrap().cast(),
+                v8::String::new(js_scope, &scope_entry_id_js_key(dynamic_wrap_entry.js_key)).unwrap().cast(),
                 js_value,
             );
-        let entry = MortarScopeEntryBinding {
-            js_key: jswrap_entry.js_key,
+        let entry = DynamicScopeEntryBinding {
+            js_key: dynamic_wrap_entry.js_key,
             type_: constructor_type,
         };
         builtin_scope_entries.push((key.to_string(), entry.clone()));
@@ -1491,7 +1493,7 @@ fn eval(
                 (Some(js), None)
             },
             None => {
-                let code = cv.code.cast::<JsCode>().into_res()?.cloned();
+                let code = cv.code.cast::<DynamicCode>().into_res()?.cloned();
                 (code, Some(cv.value))
             },
         },
@@ -1532,26 +1534,26 @@ fn eval(
     // Build scope for definition set body compilation: only builtins and type
     // references. Definition set members are accessed via lower + to_js.
     fn build_builtin_scope(
-        builtin_scope_entries: &[(String, MortarScopeEntryBinding)],
+        builtin_scope_entries: &[(String, DynamicScopeEntryBinding)],
     ) -> HashMap<ConstKey, Box<dyn ScopeEntry>> {
         let mut scope_entries = HashMap::<ConstKey, Box<dyn ScopeEntry>>::new();
         for (name, entry) in builtin_scope_entries {
-            scope_entries.insert(ConstKey::String(name.clone()), Box::new(MortarScopeEntryBinding {
+            scope_entries.insert(ConstKey::String(name.clone()), Box::new(DynamicScopeEntryBinding {
                 js_key: entry.js_key,
                 type_: entry.type_.clone(),
             }));
         }
         scope_entries.insert(
             ConstKey::String("null".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNull) }) as Box<dyn ScopeEntry>,
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("string".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarString) }) as Box<dyn ScopeEntry>,
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("number".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeMortarNumber) }) as Box<dyn ScopeEntry>,
+            Box::new(StaticScopeEntry { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("expr".to_string()),
@@ -1560,7 +1562,7 @@ fn eval(
         scope_entries
     }
 
-    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, JsCode)> = vec![];
+    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, DynamicCode)> = vec![];
     for info in &def_func_infos {
         let impl_expr_ast =
             (info.impl_expr_ast.as_ref() as &dyn Any)
@@ -1577,7 +1579,7 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(MortarScopeEntryBinding {
+            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(DynamicScopeEntryBinding {
                 js_key: arg_id,
                 type_: info.arg_type.clone(),
             }));
@@ -1608,7 +1610,7 @@ fn eval(
         let impl_code =
             impl_cv
                 .code
-                .cast::<JsCode>()
+                .cast::<DynamicCode>()
                 .into_res()?
                 .expect("Definition set function body must produce JS code")
                 .clone();
@@ -1620,7 +1622,7 @@ fn eval(
         Fresh {
             self_scope_entry_id: ScopeEntryId,
             data_field: String,
-            impl_code: JsCode,
+            impl_code: DynamicCode,
         },
         Precompiled(String),
     }
@@ -1666,7 +1668,7 @@ fn eval(
                 method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntryBinding {
+                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(DynamicScopeEntryBinding {
                         js_key: self_id,
                         type_: underlying_type.clone(),
                     }));
@@ -1695,7 +1697,12 @@ fn eval(
                     r.v.unwrap()
                 };
                 let impl_code =
-                    impl_cv.code.cast::<JsCode>().into_res()?.expect("Method body must produce JS code").clone();
+                    impl_cv
+                        .code
+                        .cast::<DynamicCode>()
+                        .into_res()?
+                        .expect("Method body must produce JS code")
+                        .clone();
                 def_data_methods.push(CompiledDataMethod {
                     scope_entry_id: method_id,
                     body: CompiledDataMethodBody::Fresh {
@@ -1734,7 +1741,7 @@ fn eval(
                     method_impl.self_scope_entry_id.set(Some(self_id));
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(MortarScopeEntryBinding {
+                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(DynamicScopeEntryBinding {
                             js_key: self_id,
                             type_: underlying_type.clone(),
                         }));
@@ -1763,7 +1770,7 @@ fn eval(
                     let impl_code =
                         impl_cv
                             .code
-                            .cast::<JsCode>()
+                            .cast::<DynamicCode>()
                             .into_res()?
                             .expect("Interface method body must produce JS code")
                             .clone();
@@ -2249,14 +2256,14 @@ impl JsSourceBuilder {
     }
 }
 
-fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
+fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
     let out = format!("{}{}", EXPR_PREFIX, lines.next_expr_id());
     lines.push(code.loc, format!("let {};", out));
     match &code.type_ {
-        JsCodeType::Block(c) => {
+        DynamicCodeType::Block(c) => {
             for entry in &c.entries {
                 match entry {
-                    JsCodeBlockEntry::Bind(b) => {
+                    DynamicCodeBlockEntry::Bind(b) => {
                         let bind_key = scope_entry_id_js_key(b.base);
                         lines.push(code.loc, format!("let {};", bind_key));
                         lines.push(code.loc, "{".to_string());
@@ -2264,7 +2271,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
                         lines.push(code.loc, format!("{} = {};", bind_key, val_var));
                         lines.push(code.loc, "}".to_string());
                     },
-                    JsCodeBlockEntry::Code(sub) => {
+                    DynamicCodeBlockEntry::Code(sub) => {
                         lines.push(code.loc, "{".to_string());
                         let sub_var = render_code(lines, sub);
                         lines.push(code.loc, format!("{} = {};", out, sub_var));
@@ -2273,15 +2280,15 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
                 }
             }
         },
-        JsCodeType::Literal(c) => {
+        DynamicCodeType::Literal(c) => {
             lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
         },
-        JsCodeType::BindingUse(c) => {
+        DynamicCodeType::BindingUse(c) => {
             lines.push(code.loc, format!("{} = {};", out, scope_entry_id_js_key(c.id)));
         },
-        JsCodeType::Call(c) => {
+        DynamicCodeType::Call(c) => {
             // Special case: method call preserves `this` binding
-            if let JsCodeType::FieldUse(f) = &c.func.type_ {
+            if let DynamicCodeType::FieldUse(f) = &c.func.type_ {
                 let base_var = render_code(lines, &f.base);
                 let mut arg_vars = vec![];
                 for arg in &c.args {
@@ -2297,22 +2304,22 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
                 lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
             }
         },
-        JsCodeType::FieldUse(js_code_field) => {
+        DynamicCodeType::FieldUse(js_code_field) => {
             let base = render_code(lines, &js_code_field.base);
             lines.push(code.loc, format!("{} = {}.{};", out, base, js_code_field.field));
         },
-        JsCodeType::BindingSet(c) => {
+        DynamicCodeType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);
             lines.push(code.loc, format!("{} = {};", scope_entry_id_js_key(c.base), val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
-        JsCodeType::FieldSet(c) => {
+        DynamicCodeType::FieldSet(c) => {
             let base_var = render_code(lines, &c.base);
             let val_var = render_code(lines, &c.value);
             lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
-        JsCodeType::NewObject(c) => {
+        DynamicCodeType::NewObject(c) => {
             let mut fields_str = vec![];
             for (key, value) in &c.fields {
                 let val_var = render_code(lines, value);
@@ -2320,7 +2327,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
-        JsCodeType::NewMap(c) => {
+        DynamicCodeType::NewMap(c) => {
             let mut fields_str = vec![];
             for (key, value) in &c.fields {
                 let key_var = render_code(lines, key);
@@ -2329,14 +2336,14 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
-        JsCodeType::NewArray(c) => {
+        DynamicCodeType::NewArray(c) => {
             let mut elem_vars = vec![];
             for elem in &c.elements {
                 elem_vars.push(render_code(lines, elem));
             }
             lines.push(code.loc, format!("{} = [{}];", out, elem_vars.join(", ")));
         },
-        JsCodeType::If(c) => {
+        DynamicCodeType::If(c) => {
             for (i, (cond, body)) in c.conditions.iter().enumerate() {
                 let cond_var = render_code(lines, cond);
                 if i == 0 {
@@ -2354,17 +2361,17 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             }
             lines.push(code.loc, "}".to_string());
         },
-        JsCodeType::OperatorLt(c) => {
+        DynamicCodeType::OperatorLt(c) => {
             let base_var = render_code(lines, &c.base);
             let ref_var = render_code(lines, &c.reference);
             lines.push(code.loc, format!("{} = ({} < {});", out, base_var, ref_var));
         },
-        JsCodeType::OperatorAdd(c) => {
+        DynamicCodeType::OperatorAdd(c) => {
             let base_var = render_code(lines, &c.base);
             let ref_var = render_code(lines, &c.reference);
             lines.push(code.loc, format!("{} = ({} + {});", out, base_var, ref_var));
         },
-        JsCodeType::Foreach(c) => {
+        DynamicCodeType::Foreach(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("for (let {} of {}) {{", elem_key, base_var));
@@ -2372,7 +2379,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             lines.push(code.loc, format!("{} = {};", out, body_var));
             lines.push(code.loc, "}".to_string());
         },
-        JsCodeType::ForeachMap(c) => {
+        DynamicCodeType::ForeachMap(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("for (let __entry of Object.entries({})) {{", base_var));
@@ -2381,7 +2388,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &JsCode) -> String {
             lines.push(code.loc, format!("{} = {};", out, body_var));
             lines.push(code.loc, "}".to_string());
         },
-        JsCodeType::Match(c) => {
+        DynamicCodeType::Match(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("{{ let [{}, {}] = Object.entries({})[0];", TAG_VAR, elem_key, base_var));
