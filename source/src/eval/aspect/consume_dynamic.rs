@@ -1,6 +1,6 @@
 use {
     crate::{
-        dynamic_code::DynamicCode,
+        code_dynamic::CodeDynamic,
         langhelp::{
             Aspect,
             CodeValue,
@@ -15,5 +15,5 @@ use {
 };
 
 aspect!(AspectConsumeDynamic {
-    fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < DynamicCode >;
+    fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < CodeDynamic >;
 });

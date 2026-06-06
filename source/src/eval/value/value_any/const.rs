@@ -10,10 +10,10 @@ use {
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBindingUse,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicType,
         },
         langhelp::{
             Aspect,
@@ -91,9 +91,9 @@ impl Type for TypeAnyConst {
         crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
             code: crate::langhelp::Code {
                 loc,
-                code: crate::langhelp::Code_::Dyn(Rc::new(DynamicCode {
+                code: crate::langhelp::Code_::Dyn(Rc::new(CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id }),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
             value: type_.as_value(),
@@ -104,10 +104,10 @@ impl Type for TypeAnyConst {
 impl Aspect for TypeAnyConst { }
 
 impl AspectConsumeDynamic for TypeAnyConst {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<DynamicCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
         // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
         // cast_from), pass through.
-        if let Some(Some(js)) = cv.code.cast::<DynamicCode>().v {
+        if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
             return EResult::ok(js.clone());
         }
 
@@ -115,9 +115,9 @@ impl AspectConsumeDynamic for TypeAnyConst {
         let type_ = cv.value.type_(xx, loc);
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
-        EResult::ok(DynamicCode {
+        EResult::ok(CodeDynamic {
             loc,
-            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id }),
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
         })
     }
 }
@@ -129,7 +129,7 @@ impl AspectBindDynamic for TypeAnyConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         self.to_js(xx, loc, cv).map(|js| {
             crate::eval::value::value_dynamic::bind_js_some(loc, js, Rc::new(TypeAnyDynamic))
@@ -190,9 +190,9 @@ impl Type for TypeAnyDynamic {
         crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
             code: crate::langhelp::Code {
                 loc,
-                code: crate::langhelp::Code_::Dyn(Rc::new(DynamicCode {
+                code: crate::langhelp::Code_::Dyn(Rc::new(CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id }),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
             value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
@@ -206,7 +206,7 @@ impl Type for TypeAnyDynamic {
 impl Aspect for TypeAnyDynamic { }
 
 impl AspectConsumeDynamic for TypeAnyDynamic {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         crate::eval::value::value_dynamic::mortar_consume_js_to_js(xx, loc, cv)
     }
 }
@@ -218,14 +218,14 @@ impl AspectBindDynamic for TypeAnyDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         crate::eval::value::value_dynamic::mortar_bind_js(xx, loc, cv)
     }
 }
 
 impl AspectStackValueDynamic for TypeAnyDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         crate::eval::value::value_dynamic::mortar_js_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }

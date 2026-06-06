@@ -11,9 +11,9 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -212,7 +212,7 @@ dynamic_wrap!(struct TaggedUnionBuilder(self_, scope) {
         let variant_index = {
             let mut variants = self_.data.variants.borrow_mut();
             let idx = variants.len();
-            let js_tag = format!("{}{}", crate::dynamic_code::TAG_PREFIX, self_.data.next_tag_id.next());
+            let js_tag = format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next());
             variants.push(TaggedUnionVariant {
                 tag: crate::langhelp::ConstKey::String(tag),
                 js_tag,

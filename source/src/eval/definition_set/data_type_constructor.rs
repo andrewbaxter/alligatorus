@@ -20,11 +20,11 @@ use {
             aspect_stack_value_dynamic_get,
             aspect_type_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBindingUse,
-            DynamicCodeNewObject,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicNewObject,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -204,8 +204,8 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
 impl Aspect for TypeSourceDataTypeConstructorDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -216,7 +216,7 @@ impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -224,7 +224,7 @@ impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
 }
 
 impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -308,7 +308,7 @@ impl Aspect for DefinitionSetDataTypeConstructor { }
 impl AspectBindConst for DefinitionSetDataTypeConstructor {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
-            Box::new(crate::eval::tuple::ValueScopeEntry { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
+            Box::new(crate::eval::value::value_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
         )
     }
 }
@@ -337,9 +337,9 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
             let mut object_fields = vec![(self.data.data_field.clone(), underlying_js),];
             for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push((method.field_name.clone(), DynamicCode {
+                object_fields.push((method.field_name.clone(), CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: method_id }),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
                 }));
             }
             for impl_data in self.data.interface_impls.borrow().iter() {
@@ -348,17 +348,17 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
-                    object_fields.push((iface_method.field_name.clone(), DynamicCode {
+                    object_fields.push((iface_method.field_name.clone(), CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: method_id }),
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
                     }));
                 }
             }
             let result_type = Rc::new(DefinitionSetDataType { data: self.data.clone(), });
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, DynamicCode {
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: object_fields }),
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
             }));
         });
     }

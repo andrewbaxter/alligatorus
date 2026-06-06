@@ -1,9 +1,9 @@
 use {
     crate::{
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBindingUse,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicType,
         },
         eval::value::value_dynamic::{
             ValueDynamic,
@@ -30,22 +30,22 @@ pub(crate) trait DynamicScopeEntry {
 
 /// Default DynamicScopeEntry for JS-bound values. Generates BindingUse code from
 /// the ValueDynamic's Binding source.
-pub(crate) struct DynamicScopeEntryDirect {
+pub(crate) struct ScopeEntryDynamicDirect {
     pub type_: Rc<dyn Type>,
 }
 
-impl DynamicScopeEntry for DynamicScopeEntryDirect {
+impl DynamicScopeEntry for ScopeEntryDynamicDirect {
     fn use_(&self, value: ValueDynamic) -> EvalRes {
         let (loc, key) = match &value.source {
             ValueDynamicSource::Binding(b) => (b.loc, b.key),
-            _ => unreachable!("DynamicScopeEntryDirect::use_ called with non-binding source"),
+            _ => unreachable!("ScopeEntryDynamicDirect::use_ called with non-binding source"),
         };
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
-                code: Code_::Dyn(Rc::new(DynamicCode {
+                code: Code_::Dyn(Rc::new(CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: key }),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: key }),
                 })),
             },
             value: Rc::new(ValueDynamic {
@@ -57,13 +57,13 @@ impl DynamicScopeEntry for DynamicScopeEntryDirect {
 }
 
 /// Adapter: wraps a DynamicScopeEntry trait object to implement ScopeEntry.
-pub(crate) struct DynamicScopeEntryAsScope {
+pub(crate) struct ScopeEntryDynamicAsScope {
     pub js_key: Option<ScopeEntryId>,
     pub type_: Rc<dyn Type>,
     pub inner: Box<dyn DynamicScopeEntry>,
 }
 
-impl ScopeEntry for DynamicScopeEntryAsScope {
+impl ScopeEntry for ScopeEntryDynamicAsScope {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         let source = match self.js_key {
             Some(key) => ValueDynamicSource::Binding(ValueDynamicDataScope {
@@ -82,19 +82,19 @@ impl ScopeEntry for DynamicScopeEntryAsScope {
 
 /// Direct scope entry for mortar bindings (used by match, foreach, builtins).
 #[derive(Clone)]
-pub(crate) struct DynamicScopeEntryBinding {
+pub(crate) struct ScopeEntryDynamicBinding {
     pub js_key: ScopeEntryId,
     pub type_: Rc<dyn Type>,
 }
 
-impl ScopeEntry for DynamicScopeEntryBinding {
+impl ScopeEntry for ScopeEntryDynamicBinding {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         return CodeValue {
             code: Code {
                 loc: loc,
-                code: Code_::Dyn(Rc::new(DynamicCode {
+                code: Code_::Dyn(Rc::new(CodeDynamic {
                     loc: loc,
-                    type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: self.js_key }),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.js_key }),
                 })),
             },
             value: Rc::new(ValueDynamic {

@@ -12,11 +12,11 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBlock,
-            DynamicCodeBlockEntry,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBlock,
+            CodeDynamicBlockEntry,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -107,21 +107,21 @@ impl Type for TypeBoolDynamic {
             if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
-                if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
+                if let Some(c) = erb.must_er(code.cast::<CodeDynamic>())? {
                     seq.push(c.clone());
                 };
                 let bool_val = aspect_bool.get(value.as_ref());
-                seq.push(DynamicCode {
+                seq.push(CodeDynamic {
                     loc: loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::Bool(bool_val))
+                    type_: CodeDynamicType::Literal(serde_json::Value::Bool(bool_val))
                 });
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(DynamicCode {
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
                             loc: loc,
-                            type_: DynamicCodeType::Block(
-                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
+                            type_: CodeDynamicType::Block(
+                                CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
                             )
                         }))
                     },
@@ -148,13 +148,13 @@ impl Aspect for TypeBoolDynamic { }
 impl AspectBoolDynamic for TypeBoolDynamic { }
 
 impl AspectStackValueDynamic for TypeBoolDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         mortar_js_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
     }
 }
 
 impl AspectConsumeDynamic for TypeBoolDynamic {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
@@ -166,7 +166,7 @@ impl AspectBindDynamic for TypeBoolDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         mortar_bind_js(xx, loc, cv)
     }

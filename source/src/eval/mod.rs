@@ -3,8 +3,6 @@ pub mod util;
 pub mod aspect;
 pub mod value;
 pub mod expr;
-pub mod tuple;
-pub mod record;
 #[macro_use]
 pub mod dynamic_wrap;
 pub mod v8util;
@@ -30,19 +28,19 @@ use {
             aspect_string_const_get_maybe,
             aspect_tagged_union_get,
         },
-        dynamic_code::{
+        code_dynamic::{
             BINDING_PREFIX,
             BUILTIN_PREFIX,
+            CodeDynamic,
+            CodeDynamicBind,
+            CodeDynamicBindingUse,
+            CodeDynamicBlock,
+            CodeDynamicBlockEntry,
+            CodeDynamicIf,
+            CodeDynamicMatch,
+            CodeDynamicMatchBranch,
+            CodeDynamicType,
             DEF_PREFIX,
-            DynamicCode,
-            DynamicCodeBind,
-            DynamicCodeBindingUse,
-            DynamicCodeBlock,
-            DynamicCodeBlockEntry,
-            DynamicCodeIf,
-            DynamicCodeMatch,
-            DynamicCodeMatchBranch,
-            DynamicCodeType,
             EXPR_PREFIX,
             TAG_VAR,
         },
@@ -105,10 +103,6 @@ use {
         Module,
     },
     flowcontrol::shed,
-    record::{
-        Record,
-        RecordField,
-    },
     std::{
         any::Any,
         cell::{
@@ -122,11 +116,6 @@ use {
             OnceLock,
         },
     },
-    tuple::{
-        StaticScopeEntry,
-        Tuple,
-        TupleElement,
-    },
     v8::tc_scope,
     value::{
         value_function::dynamic::TypeFunctionDynamic,
@@ -135,11 +124,20 @@ use {
             r#const::ValueConstNull,
         },
         value_number::dynamic::TypeNumberDynamic,
+        value_record::{
+            Record,
+            RecordField,
+        },
         value_scope_entry::dynamic::{
-            DynamicScopeEntryAsScope,
-            DynamicScopeEntryBinding,
+            ScopeEntryDynamicAsScope,
+            ScopeEntryDynamicBinding,
         },
         value_string::dynamic::TypeStringDynamic,
+        value_tuple::{
+            ScopeEntryStatic,
+            Tuple,
+            TupleElement,
+        },
     },
 };
 
@@ -263,173 +261,6 @@ impl Erb {
     }
 }
 
-struct PendingImportState {
-    entry: Arc<CompileResultEntry>,
-    gx: Arc<GlobalContext>,
-}
-
-impl PendingImportState {
-    fn resolve(&self, xx: &ExprContext) -> Rc<dyn Value> {
-        let guard = self.entry.result.read().unwrap();
-        let compile_res = guard.as_ref().unwrap();
-        let compile_res = compile_res.as_ref().expect("Import compilation error");
-        let artifact = match &compile_res.result {
-            CompileResResult::Ok(a) => a,
-            CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
-        };
-        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        self.gx.deserialize_artifact(xx, loc, artifact).expect("Artifact deserialization failed")
-    }
-
-    fn resolve_standalone(&self) -> Rc<dyn Value> {
-        let cix = Rc::new(CompileImportContext {
-            gx: self.gx.clone(),
-            compile_path: vec![],
-            builtin_types: crate::langhelp::make_builtin_types(),
-        });
-        let ex = Rc::new(EvalContext {
-            ix: cix,
-            next_local_id: Default::default(),
-            definition_sets: RefCell::new(Vec::new()),
-            externals: RefCell::new(Vec::new()),
-        });
-        let xx = ExprContext {
-            vx: ex,
-            import_state: Rc::new(Cell::new(ImportStateId(0))),
-            scope: Rc::new(Scope {
-                values: RefCell::new(HashMap::new()),
-                parent: None,
-            }),
-            target: Rc::new(MortarTarget),
-        };
-        self.resolve(&xx)
-    }
-}
-
-struct ValuePendingImport {
-    state: Rc<PendingImportState>,
-    resolved: RefCell<Option<Rc<dyn Value>>>,
-}
-
-impl ValuePendingImport {
-    fn resolve(&self, xx: &ExprContext) -> Rc<dyn Value> {
-        let mut cached = self.resolved.borrow_mut();
-        if let Some(v) = cached.as_ref() {
-            return v.clone();
-        }
-        let v = self.state.resolve(xx);
-        *cached = Some(v.clone());
-        v
-    }
-}
-
-impl Value for ValuePendingImport {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        // Resolve on type_() — this is called when the value is actually used (call,
-        // field, cast, etc.), not just bind/scope_use pass-through. Return a proxy type
-        // that substitutes the resolved value into CodeValues.
-        Rc::new(TypePendingImport {
-            state: self.state.clone(),
-            resolved: self.resolve(xx),
-        })
-    }
-}
-
-struct TypePendingImport {
-    state: Rc<PendingImportState>,
-    resolved: Rc<dyn Value>,
-}
-
-impl TypePendingImport {
-    fn resolved_type(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        self.resolved.type_(xx, loc)
-    }
-
-    fn substitute_cv(&self, cv: CodeValue) -> CodeValue {
-        CodeValue {
-            code: cv.code,
-            value: self.resolved.clone(),
-        }
-    }
-}
-
-impl Value for TypePendingImport {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(value::value_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypePendingImport {
-    fn desc(&self) -> String {
-        "pending import".to_string()
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        self.resolved.clone()
-    }
-
-    fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::builtin::aspect_bind_const_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as
-                        Box<dyn crate::builtin::AspectBindConst>,
-                ),
-            );
-        }
-
-        // For all other aspects, resolve and delegate
-        let loc = (SourceId(0), ExprId(0));
-        self.resolved_type(xx, loc).aspect(xx, key)
-    }
-
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        self.resolved_type(xx, loc).cast_to(xx, loc, self.substitute_cv(cv), type_)
-    }
-
-    fn can_cast_to(&self, xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> bool {
-        self.resolved_type(xx, loc).can_cast_to(xx, loc, type_)
-    }
-
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        self.resolved_type(xx, loc).cast_from(xx, loc, cv)
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
-        self.resolved_type(xx, loc).can_cast_from(xx, loc, source_type)
-    }
-}
-
-struct PendingImportBind {
-    state: Rc<PendingImportState>,
-}
-
-impl crate::langhelp::Aspect for PendingImportBind { }
-
-impl crate::builtin::AspectBindConst for PendingImportBind {
-    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
-        EResult::ok(Box::new(PendingImportScopeEntry {
-            state: self.state.clone(),
-            code: cv.code,
-        }) as Box<dyn ScopeEntry>)
-    }
-}
-
-struct PendingImportScopeEntry {
-    state: Rc<PendingImportState>,
-    code: Code,
-}
-
-impl ScopeEntry for PendingImportScopeEntry {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
-        let value = self.state.resolve_standalone();
-        CodeValue {
-            code: self.code.clone(),
-            value,
-        }
-    }
-}
-
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)>;
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
@@ -475,7 +306,7 @@ impl Target for MortarTarget {
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
             let bind_result = bind_js.bind_js(xx, loc, cv);
             if bind_result.v.is_none() {
-                return Ok((none_code, Box::new(StaticScopeEntry { type_: vtype }) as Box<dyn ScopeEntry>));
+                return Ok((none_code, Box::new(ScopeEntryStatic { type_: vtype }) as Box<dyn ScopeEntry>));
             }
             let (js_code, mortar_entry) = erb.must_er(bind_result)?;
             match js_code {
@@ -483,24 +314,24 @@ impl Target for MortarTarget {
                     let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
                     let code = Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(DynamicCode {
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
                             loc: loc,
-                            type_: DynamicCodeType::Block(
-                                DynamicCodeBlock { entries: vec![DynamicCodeBlockEntry::Bind(DynamicCodeBind {
+                            type_: CodeDynamicType::Block(
+                                CodeDynamicBlock { entries: vec![CodeDynamicBlockEntry::Bind(CodeDynamicBind {
                                     base: js_key,
                                     value: Box::new(vcode),
                                 })], }
                             ),
                         })),
                     };
-                    return Ok((code, Box::new(DynamicScopeEntryAsScope {
+                    return Ok((code, Box::new(ScopeEntryDynamicAsScope {
                         js_key: Some(js_key),
                         type_: vtype,
                         inner: mortar_entry,
                     })));
                 },
                 None => {
-                    return Ok((none_code, Box::new(DynamicScopeEntryAsScope {
+                    return Ok((none_code, Box::new(ScopeEntryDynamicAsScope {
                         js_key: None,
                         type_: vtype,
                         inner: mortar_entry,
@@ -514,15 +345,15 @@ impl Target for MortarTarget {
         let mut js_entries = vec![];
         let mut errors = vec![];
         for entry in &entries {
-            match entry.cast::<DynamicCode>().into_res() {
+            match entry.cast::<CodeDynamic>().into_res() {
                 Ok(Some(js)) => {
                     match &js.type_ {
-                        DynamicCodeType::Block(block) if
+                        CodeDynamicType::Block(block) if
                             !block.entries.is_empty() &&
-                                block.entries.iter().all(|e| matches!(e, DynamicCodeBlockEntry::Bind(_))) => {
+                                block.entries.iter().all(|e| matches!(e, CodeDynamicBlockEntry::Bind(_))) => {
                             js_entries.extend(block.entries.clone());
                         },
-                        _ => js_entries.push(DynamicCodeBlockEntry::Code(js.clone())),
+                        _ => js_entries.push(CodeDynamicBlockEntry::Code(js.clone())),
                     }
                 },
                 Ok(None) => { },
@@ -543,9 +374,9 @@ impl Target for MortarTarget {
         }
         return EResult::ok(Code {
             loc: loc,
-            code: Code_::Dyn(Rc::new(DynamicCode {
+            code: Code_::Dyn(Rc::new(CodeDynamic {
                 loc: loc,
-                type_: DynamicCodeType::Block(DynamicCodeBlock { entries: js_entries }),
+                type_: CodeDynamicType::Block(CodeDynamicBlock { entries: js_entries }),
             })),
         });
     }
@@ -557,16 +388,16 @@ impl Target for MortarTarget {
         conditions: Vec<(CodeValue, &Expr)>,
         else_: Option<&Expr>,
     ) -> EvalRes {
-        fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<DynamicCode, ()> {
+        fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
             let vtype = cv.value.type_(xx, loc);
             if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, vtype.as_ref()) {
                 return erb.must_er(consume.to_js(xx, loc, cv));
             }
-            match erb.must_er(cv.code.cast::<DynamicCode>())? {
+            match erb.must_er(cv.code.cast::<CodeDynamic>())? {
                 Some(c) => Ok(c.clone()),
-                None => Ok(DynamicCode {
+                None => Ok(CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::Null),
+                    type_: CodeDynamicType::Literal(serde_json::Value::Null),
                 }),
             }
         }
@@ -589,9 +420,9 @@ impl Target for MortarTarget {
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::If(DynamicCodeIf {
+                        type_: CodeDynamicType::If(CodeDynamicIf {
                             conditions: js_conditions,
                             else_: js_else,
                         }),
@@ -622,7 +453,7 @@ impl Target for MortarTarget {
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
                 });
-                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(DynamicScopeEntryBinding {
+                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(ScopeEntryDynamicBinding {
                     js_key: element_scope_id,
                     type_: variant_type.clone(),
                 }),);
@@ -637,15 +468,15 @@ impl Target for MortarTarget {
                 let body_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(&child_xx, body_type.as_ref()) {
                     erb.must_er(consume.to_js(&child_xx, loc, body_cv))?
                 } else {
-                    match erb.must_er(body_cv.code.cast::<DynamicCode>())? {
+                    match erb.must_er(body_cv.code.cast::<CodeDynamic>())? {
                         Some(c) => c.clone(),
-                        None => DynamicCode {
+                        None => CodeDynamic {
                             loc,
-                            type_: DynamicCodeType::Literal(serde_json::Value::Null)
+                            type_: CodeDynamicType::Literal(serde_json::Value::Null)
                         },
                     }
                 };
-                js_cases.push(DynamicCodeMatchBranch {
+                js_cases.push(CodeDynamicMatchBranch {
                     js_tag: tag.clone(),
                     body: body_js,
                 });
@@ -656,11 +487,11 @@ impl Target for MortarTarget {
                 let fb_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, fb_type.as_ref()) {
                     erb.must_er(consume.to_js(xx, loc, fb_cv))?
                 } else {
-                    match erb.must_er(fb_cv.code.cast::<DynamicCode>())? {
+                    match erb.must_er(fb_cv.code.cast::<CodeDynamic>())? {
                         Some(c) => c.clone(),
-                        None => DynamicCode {
+                        None => CodeDynamic {
                             loc,
-                            type_: DynamicCodeType::Literal(serde_json::Value::Null)
+                            type_: CodeDynamicType::Literal(serde_json::Value::Null)
                         },
                     }
                 };
@@ -668,9 +499,9 @@ impl Target for MortarTarget {
             } else {
                 None
             };
-            let match_js = DynamicCode {
+            let match_js = CodeDynamic {
                 loc,
-                type_: DynamicCodeType::Match(DynamicCodeMatch {
+                type_: CodeDynamicType::Match(CodeDynamicMatch {
                     base: Box::new(base_js),
                     element_key: element_scope_id,
                     cases: js_cases,
@@ -688,9 +519,9 @@ impl Target for MortarTarget {
         let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
-        let tree_js = DynamicCode {
+        let tree_js = CodeDynamic {
             loc,
-            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: tree_id }),
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: tree_id }),
         };
 
         // Build args for __stage(tree, lift1, val1, lift2, val2, ...). For each lower
@@ -709,13 +540,13 @@ impl Target for MortarTarget {
                         let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
-                        stage_args.push(DynamicCode {
+                        stage_args.push(CodeDynamic {
                             loc,
-                            type_: DynamicCodeType::Literal(serde_json::Value::Null),
+                            type_: CodeDynamicType::Literal(serde_json::Value::Null),
                         });
-                        stage_args.push(DynamicCode {
+                        stage_args.push(CodeDynamic {
                             loc,
-                            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id }),
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                         });
                     },
                     Code_::Dyn(_) => {
@@ -732,22 +563,22 @@ impl Target for MortarTarget {
                         let inner_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, vtype.as_ref()) {
                             erb.must_er(consume.to_js(xx, loc, cv))?
                         } else {
-                            erb.must_er(cv.code.cast::<DynamicCode>())?.unwrap().clone()
+                            erb.must_er(cv.code.cast::<CodeDynamic>())?.unwrap().clone()
                         };
-                        stage_args.push(DynamicCode {
+                        stage_args.push(CodeDynamic {
                             loc,
-                            type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: lift_id }),
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: lift_id }),
                         });
                         stage_args.push(inner_js);
                     },
                 }
             }
-            let stage_js = DynamicCode {
+            let stage_js = CodeDynamic {
                 loc,
-                type_: DynamicCodeType::Call(crate::dynamic_code::DynamicCodeCall {
-                    func: Box::new(DynamicCode {
+                type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: STAGE_FN_SCOPE_ID, }),
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: STAGE_FN_SCOPE_ID, }),
                     }),
                     args: stage_args,
                 }),
@@ -757,7 +588,7 @@ impl Target for MortarTarget {
                     loc,
                     code: Code_::Dyn(Rc::new(stage_js)),
                 },
-                value: Rc::new(expr::StagedExprPlaceholder),
+                value: Rc::new(value::value_expr::ValueStagedExprPlaceholder),
             });
         });
     }
@@ -1041,7 +872,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 let Some(k_cv) = k_res.v else {
                     continue;
                 };
-                if let Some(js) = k_cv.code.cast::<DynamicCode>().v.flatten() {
+                if let Some(js) = k_cv.code.cast::<CodeDynamic>().v.flatten() {
                     key_codes.push(js.clone());
                 }
                 match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
@@ -1072,12 +903,12 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     code: Code_::None,
                 }
             } else {
-                let block_entries = key_codes.into_iter().map(DynamicCodeBlockEntry::Code).collect();
+                let block_entries = key_codes.into_iter().map(CodeDynamicBlockEntry::Code).collect();
                 Code {
                     loc: expr.loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc: expr.loc,
-                        type_: DynamicCodeType::Block(DynamicCodeBlock { entries: block_entries }),
+                        type_: CodeDynamicType::Block(CodeDynamicBlock { entries: block_entries }),
                     })),
                 }
             };
@@ -1125,7 +956,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
             });
-            child_scope.values.borrow_mut().insert(element_key, Box::new(DynamicScopeEntryBinding {
+            child_scope.values.borrow_mut().insert(element_key, Box::new(ScopeEntryDynamicBinding {
                 js_key: element_scope_id,
                 type_: iterable.element_type(),
             }),);
@@ -1228,7 +1059,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             };
 
             // Return a lazy proxy value — resolution deferred until use
-            let state = Rc::new(PendingImportState {
+            let state = Rc::new(value::value_pending_import::PendingImportState {
                 entry,
                 gx: xx.vx.ix.gx.clone(),
             });
@@ -1237,7 +1068,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     loc: expr.loc,
                     code: Code_::None
                 },
-                value: Rc::new(ValuePendingImport {
+                value: Rc::new(value::value_pending_import::ValuePendingImport {
                     state,
                     resolved: RefCell::new(None)
                 }),
@@ -1293,14 +1124,16 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         // Resolve pending imports so downstream code sees the real value
-        let source = if let Some(pending) = <dyn Any>::downcast_ref::<ValuePendingImport>(source.value.as_ref()) {
-            CodeValue {
-                code: source.code,
-                value: pending.resolve(xx)
-            }
-        } else {
-            source
-        };
+        let source =
+            if let Some(pending) =
+                <dyn Any>::downcast_ref::<value::value_pending_import::ValuePendingImport>(source.value.as_ref()) {
+                CodeValue {
+                    code: source.code,
+                    value: pending.resolve(xx)
+                }
+            } else {
+                source
+            };
         let source_type = source.value.type_(xx, loc);
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {
@@ -1398,7 +1231,7 @@ fn eval(
                 v8::String::new(js_scope, &scope_entry_id_js_key(eval_value.js_key)).unwrap().cast(),
                 js_value,
             );
-        builtin_scope_entries.push((key.to_string(), DynamicScopeEntryBinding {
+        builtin_scope_entries.push((key.to_string(), ScopeEntryDynamicBinding {
             js_key: eval_value.js_key,
             type_: eval_value.type_.clone(),
         }));
@@ -1408,19 +1241,19 @@ fn eval(
     // Type references (static scope entries, no JS representation)
     s1_scope.insert(
         ConstKey::String("null".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryStatic { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("string".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryStatic { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("number".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryStatic { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("expr".to_string()),
-        Box::new(StaticScopeEntry { type_: Rc::new(expr::ExprType) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryStatic { type_: Rc::new(value::value_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
     );
 
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
@@ -1470,7 +1303,7 @@ fn eval(
                 v8::String::new(js_scope, &scope_entry_id_js_key(dynamic_wrap_entry.js_key)).unwrap().cast(),
                 js_value,
             );
-        let entry = DynamicScopeEntryBinding {
+        let entry = ScopeEntryDynamicBinding {
             js_key: dynamic_wrap_entry.js_key,
             type_: constructor_type,
         };
@@ -1496,7 +1329,7 @@ fn eval(
                 (Some(js), None)
             },
             None => {
-                let code = cv.code.cast::<DynamicCode>().into_res()?.cloned();
+                let code = cv.code.cast::<CodeDynamic>().into_res()?.cloned();
                 (code, Some(cv.value))
             },
         },
@@ -1537,35 +1370,35 @@ fn eval(
     // Build scope for definition set body compilation: only builtins and type
     // references. Definition set members are accessed via lower + to_js.
     fn build_builtin_scope(
-        builtin_scope_entries: &[(String, DynamicScopeEntryBinding)],
+        builtin_scope_entries: &[(String, ScopeEntryDynamicBinding)],
     ) -> HashMap<ConstKey, Box<dyn ScopeEntry>> {
         let mut scope_entries = HashMap::<ConstKey, Box<dyn ScopeEntry>>::new();
         for (name, entry) in builtin_scope_entries {
-            scope_entries.insert(ConstKey::String(name.clone()), Box::new(DynamicScopeEntryBinding {
+            scope_entries.insert(ConstKey::String(name.clone()), Box::new(ScopeEntryDynamicBinding {
                 js_key: entry.js_key,
                 type_: entry.type_.clone(),
             }));
         }
         scope_entries.insert(
             ConstKey::String("null".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryStatic { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("string".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryStatic { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("number".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryStatic { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("expr".to_string()),
-            Box::new(StaticScopeEntry { type_: Rc::new(expr::ExprType) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryStatic { type_: Rc::new(value::value_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
         );
         scope_entries
     }
 
-    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, DynamicCode)> = vec![];
+    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic)> = vec![];
     for info in &def_func_infos {
         let impl_expr_ast =
             (info.impl_expr_ast.as_ref() as &dyn Any)
@@ -1582,7 +1415,7 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(DynamicScopeEntryBinding {
+            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(ScopeEntryDynamicBinding {
                 js_key: arg_id,
                 type_: info.arg_type.clone(),
             }));
@@ -1613,7 +1446,7 @@ fn eval(
         let impl_code =
             impl_cv
                 .code
-                .cast::<DynamicCode>()
+                .cast::<CodeDynamic>()
                 .into_res()?
                 .expect("Definition set function body must produce JS code")
                 .clone();
@@ -1625,7 +1458,7 @@ fn eval(
         Fresh {
             self_scope_entry_id: ScopeEntryId,
             data_field: String,
-            impl_code: DynamicCode,
+            impl_code: CodeDynamic,
         },
         Precompiled(String),
     }
@@ -1671,7 +1504,7 @@ fn eval(
                 method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(DynamicScopeEntryBinding {
+                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(ScopeEntryDynamicBinding {
                         js_key: self_id,
                         type_: underlying_type.clone(),
                     }));
@@ -1702,7 +1535,7 @@ fn eval(
                 let impl_code =
                     impl_cv
                         .code
-                        .cast::<DynamicCode>()
+                        .cast::<CodeDynamic>()
                         .into_res()?
                         .expect("Method body must produce JS code")
                         .clone();
@@ -1744,7 +1577,7 @@ fn eval(
                     method_impl.self_scope_entry_id.set(Some(self_id));
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(DynamicScopeEntryBinding {
+                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(ScopeEntryDynamicBinding {
                             js_key: self_id,
                             type_: underlying_type.clone(),
                         }));
@@ -1773,7 +1606,7 @@ fn eval(
                     let impl_code =
                         impl_cv
                             .code
-                            .cast::<DynamicCode>()
+                            .cast::<CodeDynamic>()
                             .into_res()?
                             .expect("Interface method body must produce JS code")
                             .clone();
@@ -2103,9 +1936,9 @@ fn eval(
                 let mut elements = Vec::with_capacity(len as usize);
                 for i in 0 .. len {
                     let elem = arr.get_index(scope, i).unwrap();
-                    elements.push(tuple::TupleElement::Mortar(v8_value_to_type(scope, elem)));
+                    elements.push(TupleElement::Mortar(v8_value_to_type(scope, elem)));
                 }
-                return Rc::new(tuple::Tuple {
+                return Rc::new(Tuple {
                     source: None,
                     elements,
                 });
@@ -2118,12 +1951,9 @@ fn eval(
                     let key = keys.get_index(scope, i).unwrap();
                     let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
                     let val = obj.get(scope, key).unwrap();
-                    fields.insert(
-                        ConstKey::String(key_str),
-                        record::RecordField::Mortar(v8_value_to_type(scope, val)),
-                    );
+                    fields.insert(ConstKey::String(key_str), RecordField::Mortar(v8_value_to_type(scope, val)));
                 }
-                return Rc::new(record::Record {
+                return Rc::new(Record {
                     source: None,
                     fields,
                 });
@@ -2259,14 +2089,14 @@ impl JsSourceBuilder {
     }
 }
 
-fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
+fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
     let out = format!("{}{}", EXPR_PREFIX, lines.next_expr_id());
     lines.push(code.loc, format!("let {};", out));
     match &code.type_ {
-        DynamicCodeType::Block(c) => {
+        CodeDynamicType::Block(c) => {
             for entry in &c.entries {
                 match entry {
-                    DynamicCodeBlockEntry::Bind(b) => {
+                    CodeDynamicBlockEntry::Bind(b) => {
                         let bind_key = scope_entry_id_js_key(b.base);
                         lines.push(code.loc, format!("let {};", bind_key));
                         lines.push(code.loc, "{".to_string());
@@ -2274,7 +2104,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
                         lines.push(code.loc, format!("{} = {};", bind_key, val_var));
                         lines.push(code.loc, "}".to_string());
                     },
-                    DynamicCodeBlockEntry::Code(sub) => {
+                    CodeDynamicBlockEntry::Code(sub) => {
                         lines.push(code.loc, "{".to_string());
                         let sub_var = render_code(lines, sub);
                         lines.push(code.loc, format!("{} = {};", out, sub_var));
@@ -2283,15 +2113,15 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
                 }
             }
         },
-        DynamicCodeType::Literal(c) => {
+        CodeDynamicType::Literal(c) => {
             lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
         },
-        DynamicCodeType::BindingUse(c) => {
+        CodeDynamicType::BindingUse(c) => {
             lines.push(code.loc, format!("{} = {};", out, scope_entry_id_js_key(c.id)));
         },
-        DynamicCodeType::Call(c) => {
+        CodeDynamicType::Call(c) => {
             // Special case: method call preserves `this` binding
-            if let DynamicCodeType::FieldUse(f) = &c.func.type_ {
+            if let CodeDynamicType::FieldUse(f) = &c.func.type_ {
                 let base_var = render_code(lines, &f.base);
                 let mut arg_vars = vec![];
                 for arg in &c.args {
@@ -2307,22 +2137,22 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
                 lines.push(code.loc, format!("{} = ({})({});", out, func_var, arg_vars.join(",")));
             }
         },
-        DynamicCodeType::FieldUse(js_code_field) => {
+        CodeDynamicType::FieldUse(js_code_field) => {
             let base = render_code(lines, &js_code_field.base);
             lines.push(code.loc, format!("{} = {}.{};", out, base, js_code_field.field));
         },
-        DynamicCodeType::BindingSet(c) => {
+        CodeDynamicType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);
             lines.push(code.loc, format!("{} = {};", scope_entry_id_js_key(c.base), val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
-        DynamicCodeType::FieldSet(c) => {
+        CodeDynamicType::FieldSet(c) => {
             let base_var = render_code(lines, &c.base);
             let val_var = render_code(lines, &c.value);
             lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
-        DynamicCodeType::NewObject(c) => {
+        CodeDynamicType::NewObject(c) => {
             let mut fields_str = vec![];
             for (key, value) in &c.fields {
                 let val_var = render_code(lines, value);
@@ -2330,7 +2160,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
-        DynamicCodeType::NewMap(c) => {
+        CodeDynamicType::NewMap(c) => {
             let mut fields_str = vec![];
             for (key, value) in &c.fields {
                 let key_var = render_code(lines, key);
@@ -2339,14 +2169,14 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
-        DynamicCodeType::NewArray(c) => {
+        CodeDynamicType::NewArray(c) => {
             let mut elem_vars = vec![];
             for elem in &c.elements {
                 elem_vars.push(render_code(lines, elem));
             }
             lines.push(code.loc, format!("{} = [{}];", out, elem_vars.join(", ")));
         },
-        DynamicCodeType::If(c) => {
+        CodeDynamicType::If(c) => {
             for (i, (cond, body)) in c.conditions.iter().enumerate() {
                 let cond_var = render_code(lines, cond);
                 if i == 0 {
@@ -2364,17 +2194,17 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
             }
             lines.push(code.loc, "}".to_string());
         },
-        DynamicCodeType::OperatorLt(c) => {
+        CodeDynamicType::OperatorLt(c) => {
             let base_var = render_code(lines, &c.base);
             let ref_var = render_code(lines, &c.reference);
             lines.push(code.loc, format!("{} = ({} < {});", out, base_var, ref_var));
         },
-        DynamicCodeType::OperatorAdd(c) => {
+        CodeDynamicType::OperatorAdd(c) => {
             let base_var = render_code(lines, &c.base);
             let ref_var = render_code(lines, &c.reference);
             lines.push(code.loc, format!("{} = ({} + {});", out, base_var, ref_var));
         },
-        DynamicCodeType::Foreach(c) => {
+        CodeDynamicType::Foreach(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("for (let {} of {}) {{", elem_key, base_var));
@@ -2382,7 +2212,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
             lines.push(code.loc, format!("{} = {};", out, body_var));
             lines.push(code.loc, "}".to_string());
         },
-        DynamicCodeType::ForeachMap(c) => {
+        CodeDynamicType::ForeachMap(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("for (let __entry of Object.entries({})) {{", base_var));
@@ -2391,7 +2221,7 @@ fn render_code(lines: &mut JsSourceBuilder, code: &DynamicCode) -> String {
             lines.push(code.loc, format!("{} = {};", out, body_var));
             lines.push(code.loc, "}".to_string());
         },
-        DynamicCodeType::Match(c) => {
+        CodeDynamicType::Match(c) => {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_js_key(c.element_key);
             lines.push(code.loc, format!("{{ let [{}, {}] = Object.entries({})[0];", TAG_VAR, elem_key, base_var));

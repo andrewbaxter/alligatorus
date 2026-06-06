@@ -22,16 +22,16 @@ use {
             aspect_string_dynamic_get_maybe,
             aspect_tuple_get_maybe,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeFieldUse,
-            DynamicCodeForeach,
-            DynamicCodeNewArray,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicFieldUse,
+            CodeDynamicForeach,
+            CodeDynamicNewArray,
+            CodeDynamicType,
         },
         eval::{
             Erb,
-            tuple::StaticValue,
+            value::value_tuple::ValueStatic,
             typecheck_convert,
             value::{
                 value_dynamic::{
@@ -224,7 +224,7 @@ impl AspectField for TypeListDynamic {
                     code: Code_::None,
                 },
                 value: Rc::new(
-                    StaticValue { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }) },
+                    ValueStatic { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }) },
                 ),
             });
         }
@@ -235,13 +235,13 @@ impl AspectField for TypeListDynamic {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on list", key_name)),
             };
-            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
                             field: key_name.clone(),
                         }),
@@ -278,7 +278,7 @@ impl AspectField for TypeListDynamic {
 }
 
 impl AspectStackValueDynamic for TypeListDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -293,8 +293,8 @@ impl AspectStackValueDynamic for TypeListDynamic {
 }
 
 impl AspectConsumeDynamic for TypeListDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -305,7 +305,7 @@ impl AspectBindDynamic for TypeListDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -328,20 +328,20 @@ impl AspectIterable for TypeListDynamic {
         return er_seq_cv!(loc, erb, {
             let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
             let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
-            let body_js = match body.code.cast::<DynamicCode>().into_res() {
+            let body_js = match body.code.cast::<CodeDynamic>().into_res() {
                 Ok(Some(js)) => js.clone(),
-                Ok(None) => DynamicCode {
+                Ok(None) => CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::Null)
+                    type_: CodeDynamicType::Literal(serde_json::Value::Null)
                 },
                 Err(e) => {
                     erb.errors.extend(e);
                     return Err(());
                 },
             };
-            let foreach_js = DynamicCode {
+            let foreach_js = CodeDynamic {
                 loc,
-                type_: DynamicCodeType::Foreach(DynamicCodeForeach {
+                type_: CodeDynamicType::Foreach(CodeDynamicForeach {
                     base: Box::new(base_js),
                     element_key,
                     body: Box::new(body_js),
@@ -415,9 +415,9 @@ impl AspectFunction for TypeListNew {
             }
             let instance_type = Rc::new(TypeListDynamic { element_type: self.element_type.clone() });
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, instance_type.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, DynamicCode {
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: DynamicCodeType::NewArray(DynamicCodeNewArray { elements: js_elements }),
+                type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
             }));
         });
     }

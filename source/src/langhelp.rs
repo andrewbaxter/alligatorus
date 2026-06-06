@@ -98,12 +98,6 @@ pub(crate) enum Unique {
     Compile(CompileId, usize),
 }
 
-impl Value for Unique {
-    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        todo!()
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct Artifact {

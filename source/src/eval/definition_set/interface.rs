@@ -11,10 +11,10 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeFieldUse,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicFieldUse,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -130,8 +130,8 @@ impl Type for DefinitionSetInterface {
 impl Aspect for DefinitionSetInterface { }
 
 impl AspectConsumeDynamic for DefinitionSetInterface {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -142,7 +142,7 @@ impl AspectBindDynamic for DefinitionSetInterface {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -150,7 +150,7 @@ impl AspectBindDynamic for DefinitionSetInterface {
 }
 
 impl AspectStackValueDynamic for DefinitionSetInterface {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -182,7 +182,7 @@ impl AspectField for DefinitionSetInterface {
                     None => return erb.err_new(format!("Field '{}' not found on interface", key_name)),
                 }
             };
-            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             let field_type = Rc::new(TypeFunctionDynamic {
                 arg: arg_type,
                 ret: ret_type,
@@ -190,9 +190,9 @@ impl AspectField for DefinitionSetInterface {
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
                             field: field_name,
                         }),

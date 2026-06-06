@@ -18,11 +18,11 @@ use {
             aspect_stack_value_dynamic_get,
             aspect_tuple_get_maybe,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBindingUse,
-            DynamicCodeCall,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicCall,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -103,8 +103,8 @@ impl Type for TypeSourceFunctionDynamic {
 impl Aspect for TypeSourceFunctionDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceFunctionDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -115,7 +115,7 @@ impl AspectBindDynamic for TypeSourceFunctionDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -123,7 +123,7 @@ impl AspectBindDynamic for TypeSourceFunctionDynamic {
 }
 
 impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -199,7 +199,7 @@ impl Aspect for DefinitionSetFunction { }
 impl AspectBindConst for DefinitionSetFunction {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
-            Box::new(crate::eval::tuple::ValueScopeEntry { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
+            Box::new(crate::eval::value::value_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
         )
     }
 }
@@ -268,12 +268,12 @@ impl AspectFunction for DefinitionSetFunction {
             }
             let ret_type_rc: Rc<dyn Type> = ret_type;
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, ret_type_rc.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, DynamicCode {
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: DynamicCodeType::Call(DynamicCodeCall {
-                    func: Box::new(DynamicCode {
+                type_: CodeDynamicType::Call(CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: scope_id }),
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: scope_id }),
                     }),
                     args: js_args,
                 }),

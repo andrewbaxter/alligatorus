@@ -14,7 +14,7 @@ use {
             aspect_operator_add_aspect_id,
             aspect_operator_lt_aspect_id,
         },
-        dynamic_code::DynamicCode,
+        code_dynamic::CodeDynamic,
         eval::{
             Erb,
             value::{
@@ -118,12 +118,12 @@ impl AspectBindDynamic for TypeNumberConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         TypeNumberDynamic::cast_from(&TypeNumberDynamic, xx, loc, cv).map(|js| {
             bind_js_some(
                 loc,
-                js.code.cast::<DynamicCode>().v.unwrap().unwrap().clone(),
+                js.code.cast::<CodeDynamic>().v.unwrap().unwrap().clone(),
                 Rc::new(TypeNumberDynamic) as Rc<dyn Type>,
             )
         })

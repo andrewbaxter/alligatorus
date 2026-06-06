@@ -8,3 +8,8 @@ pub mod value_map;
 pub mod value_any;
 pub mod value_dynamic;
 pub mod value_scope_entry;
+pub mod value_record;
+pub mod value_tuple;
+pub mod value_unique;
+pub mod value_expr;
+pub mod value_pending_import;

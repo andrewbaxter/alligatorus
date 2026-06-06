@@ -13,10 +13,10 @@ use {
             aspect_stack_value_dynamic_get,
             aspect_tuple_get_maybe,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeCall,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicCall,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -107,8 +107,8 @@ impl Type for TypeFunctionDynamic {
 }
 
 impl AspectConsumeDynamic for TypeFunctionDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        return cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone());
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
     }
 }
 
@@ -119,7 +119,7 @@ impl AspectBindDynamic for TypeFunctionDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -186,9 +186,9 @@ impl AspectFunction for TypeFunctionDynamic {
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_args.push(js);
                 }
-                return Ok(ret_stack.to_value(loc, DynamicCode {
+                return Ok(ret_stack.to_value(loc, CodeDynamic {
                     loc: loc,
-                    type_: DynamicCodeType::Call(DynamicCodeCall {
+                    type_: CodeDynamicType::Call(CodeDynamicCall {
                         func: Box::new(func),
                         args: js_args,
                     })
@@ -206,9 +206,9 @@ impl AspectFunction for TypeFunctionDynamic {
                 func = func_to_js.to_js(xx, loc, function),
                 arg = arg_to_js.to_js(xx, loc, argument),
             });
-            return Ok(ret_stack.to_value(loc, DynamicCode {
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc: loc,
-                type_: DynamicCodeType::Call(DynamicCodeCall {
+                type_: CodeDynamicType::Call(CodeDynamicCall {
                     func: Box::new(func),
                     args: vec![arg],
                 })

@@ -1,6 +1,6 @@
 use {
     crate::{
-        dynamic_code::DynamicCode,
+        code_dynamic::CodeDynamic,
         eval::value::value_scope_entry::dynamic::DynamicScopeEntry,
         langhelp::{
             Aspect,
@@ -21,5 +21,5 @@ aspect!(AspectBindDynamic {
         xx: & ExprContext,
         loc: QExprId,
         cv: CodeValue
-    ) -> EResult <(Option < DynamicCode >, Box < dyn DynamicScopeEntry >) >;
+    ) -> EResult <(Option < CodeDynamic >, Box < dyn DynamicScopeEntry >) >;
 });

@@ -1,4 +1,4 @@
-pub mod dynamic_code;
+pub mod code_dynamic;
 pub mod langhelp;
 pub mod syntax;
 #[macro_use]

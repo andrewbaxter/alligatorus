@@ -54,7 +54,7 @@ pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
 impl DynamicWrap for StagedExpr {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(expr::ExprType)
+        Rc::new(super::value::value_expr::TypeExpr)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -119,7 +119,7 @@ impl DynamicWrapKey for crate::langhelp::ConstKey {
 
 impl DynamicWrap for expr::Expr {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(expr::ExprType)
+        Rc::new(super::value::value_expr::TypeExpr)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -183,7 +183,7 @@ pub(crate) fn dynamic_wrap_method_name(s: &str) -> &str {
 }
 
 macro_rules! dynamic_wrap{
-    // --- Function variant --- Produces a (&str, DynamicScopeEntryBinding,
+    // --- Function variant --- Produces a (&str, ScopeEntryDynamicBinding,
     // v8::Local<v8::Value>) tuple. `$ex` is the EvalContext, `$js_scope` is the v8
     // scope for building. `$scope` is available in the body as the v8 HandleScope.
     (
@@ -194,7 +194,7 @@ macro_rules! dynamic_wrap{
         )($($arg: ident: $arg_ty: ty), * $(,) ?) -> $ret_ty: ty $body: block
     ) => {
         {
-            (stringify!($name), DynamicScopeEntryBinding {
+            (stringify!($name), ScopeEntryDynamicBinding {
                 js_key: ScopeEntryId:: Builtin(line!() as usize),
                 type_: Rc:: new(TypeFunctionDynamic {
                     arg: dynamic_wrap !(@ arg_mortar_type $($arg_ty), *),
@@ -297,8 +297,8 @@ macro_rules! dynamic_wrap{
             impl Aspect for[<$name Type >] {
             }
             impl AspectConsumeDynamic for[<$name Type >] {
-                fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<DynamicCode> {
-                    cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+                fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<CodeDynamic> {
+                    cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
                 }
             }
             impl AspectBindDynamic for[<$name Type >] {
@@ -308,14 +308,14 @@ macro_rules! dynamic_wrap{
                     loc: QExprId,
                     cv: CodeValue,
                 ) -> EResult<
-                    (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)
+                    (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)
                 > {
                     let vtype = cv.value.type_(xx, loc);
                     self.to_js(xx, loc, cv).map(|c| crate::eval::value::value_dynamic::bind_js_some(loc, c, vtype))
                 }
             }
             impl AspectStackValueDynamic for[<$name Type >] {
-                fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+                fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
                     CodeValue {
                         code: Code {
                             loc,
@@ -339,14 +339,14 @@ macro_rules! dynamic_wrap{
                         $(
                             if key_name == dynamic_wrap_method_name(stringify!($f_name)) {
                                 let field_type: Rc < dyn Type > = <$f_ty as DynamicWrap >:: mortar_type();
-                                let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+                                let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
                                 return Ok(CodeValue {
                                     code: Code {
                                         loc,
-                                        code: Code_::Dyn(Rc::new(DynamicCode {
+                                        code: Code_::Dyn(Rc::new(CodeDynamic {
                                             loc,
-                                            type_: DynamicCodeType::FieldUse(
-                                                crate::dynamic_code::DynamicCodeFieldUse {
+                                            type_: CodeDynamicType::FieldUse(
+                                                crate::code_dynamic::CodeDynamicFieldUse {
                                                     base: Box::new(self_code),
                                                     field: format!("_{}", _jw_idx),
                                                 },
@@ -366,14 +366,14 @@ macro_rules! dynamic_wrap{
                                     arg: dynamic_wrap !(@ arg_mortar_type $($m_arg_ty), *),
                                     ret: <$m_ret as DynamicWrap >:: mortar_type(),
                                 });
-                                let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+                                let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
                                 return Ok(CodeValue {
                                     code: Code {
                                         loc,
-                                        code: Code_::Dyn(Rc::new(DynamicCode {
+                                        code: Code_::Dyn(Rc::new(CodeDynamic {
                                             loc,
-                                            type_: DynamicCodeType::FieldUse(
-                                                crate::dynamic_code::DynamicCodeFieldUse {
+                                            type_: CodeDynamicType::FieldUse(
+                                                crate::code_dynamic::CodeDynamicFieldUse {
                                                     base: Box::new(self_code),
                                                     field: format!("_{}", _jw_idx),
                                                 },
@@ -466,7 +466,7 @@ macro_rules! dynamic_wrap{
     };
     // --- Helpers --- 0 args → empty tuple type
     (@ arg_mortar_type) => {
-        Rc::new(crate::eval::tuple::Tuple {
+        Rc::new(crate::eval::value::value_tuple::Tuple {
             source: None,
             elements: vec![]
         }) as Rc<dyn Type>
@@ -477,11 +477,11 @@ macro_rules! dynamic_wrap{
     };
     // 2+ args → tuple type
     (@ arg_mortar_type $first: ty, $($rest: ty), +) => {
-        Rc::new(crate::eval::tuple::Tuple {
+        Rc::new(crate::eval::value::value_tuple::Tuple {
             source: None,
             elements: vec![
-                crate:: eval:: tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
-                $(crate:: eval:: tuple:: TupleElement:: Mortar(<$rest as DynamicWrap >:: mortar_type())),
+                crate:: eval:: value:: value_tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
+                $(crate:: eval:: value:: value_tuple:: TupleElement:: Mortar(<$rest as DynamicWrap >:: mortar_type())),
                 +
             ],
         }) as Rc<dyn Type>

@@ -25,17 +25,17 @@ use {
             aspect_string_const_get,
             aspect_tuple_get_maybe,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeFieldUse,
-            DynamicCodeForeachMap,
-            DynamicCodeNewMap,
-            DynamicCodeNewObject,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicFieldUse,
+            CodeDynamicForeachMap,
+            CodeDynamicNewMap,
+            CodeDynamicNewObject,
+            CodeDynamicType,
         },
         eval::{
             Erb,
-            tuple::StaticValue,
+            value::value_tuple::ValueStatic,
             value::value_dynamic::{
                 ValueDynamic,
                 ValueDynamicDataAccess,
@@ -216,11 +216,11 @@ impl Type for TypeMapDynamic {
             aspect_consume_dynamic_get_maybe(xx, source_type).is_some() {
             // Record → map: check all field value types are compatible with the map's value
             // type
-            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::record::Record>() {
+            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::value::value_record::Record>() {
                 return record.fields.values().all(|f| {
                     let field_type = match f {
-                        crate::eval::record::RecordField::Mortar(t) => t.clone(),
-                        crate::eval::record::RecordField::EvalRes(er) => match &er.v {
+                        crate::eval::value::value_record::RecordField::Mortar(t) => t.clone(),
+                        crate::eval::value::value_record::RecordField::EvalRes(er) => match &er.v {
                             Some(cv) => cv.value.type_(xx, loc),
                             None => return true,
                         },
@@ -257,8 +257,8 @@ impl Type for TypeMapDynamic {
 
         // Record source: decompose, typecheck_convert each value to the map's value type,
         // then convert each to JS individually.
-        let record: crate::eval::record::Record =
-            match downcast_value::<crate::eval::record::Record>(cv.value).and_then(|r| Rc::try_unwrap(r).ok()) {
+        let record: crate::eval::value::value_record::Record =
+            match downcast_value::<crate::eval::value::value_record::Record>(cv.value).and_then(|r| Rc::try_unwrap(r).ok()) {
                 Some(r) => r,
                 None => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
             };
@@ -268,7 +268,7 @@ impl Type for TypeMapDynamic {
             for (key, field) in record.fields.into_iter() {
                 let canonical = key.to_str();
                 let entry_cv = match field {
-                    crate::eval::record::RecordField::EvalRes(entry_res) => {
+                    crate::eval::value::value_record::RecordField::EvalRes(entry_res) => {
                         if let Some(errs) = entry_res.errors {
                             erb.errors.extend(errs);
                         }
@@ -279,7 +279,7 @@ impl Type for TypeMapDynamic {
                             },
                         }
                     },
-                    crate::eval::record::RecordField::Mortar(_) => {
+                    crate::eval::value::value_record::RecordField::Mortar(_) => {
                         return erb.err_new(
                             format!("Record entry '{}' is mortar-only, cannot consume directly to JS", canonical),
                         );
@@ -288,17 +288,17 @@ impl Type for TypeMapDynamic {
                 let converted =
                     erb.must_er(crate::eval::typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
                 let js_val = erb.must_er(value_to_js.to_js(xx, loc, converted))?;
-                js_fields.push((DynamicCode {
+                js_fields.push((CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::String(canonical)),
+                    type_: CodeDynamicType::Literal(serde_json::Value::String(canonical)),
                 }, js_val));
             }
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::NewMap(DynamicCodeNewMap { fields: js_fields }),
+                        type_: CodeDynamicType::NewMap(CodeDynamicNewMap { fields: js_fields }),
                     })),
                 },
                 value: Rc::new(ValueDynamic {
@@ -339,7 +339,7 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(StaticValue { type_: Rc::new(TypeMapNew {
+                value: Rc::new(ValueStatic { type_: Rc::new(TypeMapNew {
                     key_type: self.key_type.clone(),
                     value_type: self.value_type.clone(),
                 }) }),
@@ -352,13 +352,13 @@ impl AspectField for TypeMapDynamic {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on map", key_name)),
             };
-            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
                             field: key_name.clone(),
                         }),
@@ -384,7 +384,7 @@ impl AspectField for TypeMapDynamic {
 }
 
 impl AspectStackValueDynamic for TypeMapDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -399,8 +399,8 @@ impl AspectStackValueDynamic for TypeMapDynamic {
 }
 
 impl AspectConsumeDynamic for TypeMapDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -411,7 +411,7 @@ impl AspectBindDynamic for TypeMapDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -427,16 +427,16 @@ impl AspectSet for TypeMapDynamic {
 impl AspectIterable for TypeMapDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         // Map iteration yields records with "key" and "value" fields
-        Rc::new(crate::eval::record::Record {
+        Rc::new(crate::eval::value::value_record::Record {
             source: None,
             fields: [
                 (
                     crate::langhelp::ConstKey::String("key".to_string()),
-                    crate::eval::record::RecordField::Mortar(self.key_type.clone()),
+                    crate::eval::value::value_record::RecordField::Mortar(self.key_type.clone()),
                 ),
                 (
                     crate::langhelp::ConstKey::String("value".to_string()),
-                    crate::eval::record::RecordField::Mortar(self.value_type.clone()),
+                    crate::eval::value::value_record::RecordField::Mortar(self.value_type.clone()),
                 ),
             ]
                 .into_iter()
@@ -455,20 +455,20 @@ impl AspectIterable for TypeMapDynamic {
         return er_seq_cv!(loc, erb, {
             let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
             let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
-            let body_js = match body.code.cast::<DynamicCode>().into_res() {
+            let body_js = match body.code.cast::<CodeDynamic>().into_res() {
                 Ok(Some(js)) => js.clone(),
-                Ok(None) => DynamicCode {
+                Ok(None) => CodeDynamic {
                     loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::Null)
+                    type_: CodeDynamicType::Literal(serde_json::Value::Null)
                 },
                 Err(e) => {
                     erb.errors.extend(e);
                     return Err(());
                 },
             };
-            let foreach_js = DynamicCode {
+            let foreach_js = CodeDynamic {
                 loc,
-                type_: DynamicCodeType::ForeachMap(DynamicCodeForeachMap {
+                type_: CodeDynamicType::ForeachMap(CodeDynamicForeachMap {
                     base: Box::new(base_js),
                     element_key,
                     body: Box::new(body_js),
@@ -537,9 +537,9 @@ impl AspectFunction for TypeMapNew {
             if t.element_types().is_empty() {
                 return er_seq_cv!(loc, erb, {
                     let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, instance_type.as_ref()))?;
-                    return Ok(ret_stack.to_value(loc, DynamicCode {
+                    return Ok(ret_stack.to_value(loc, CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: vec![] }),
+                        type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: vec![] }),
                     }));
                 });
             }

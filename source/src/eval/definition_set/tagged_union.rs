@@ -16,10 +16,10 @@ use {
             aspect_stack_value_dynamic_get,
             aspect_tagged_union_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeNewObject,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicNewObject,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -200,8 +200,8 @@ impl Type for MortarTypeTaggedUnionRef {
 impl Aspect for MortarTypeTaggedUnionRef { }
 
 impl AspectConsumeDynamic for MortarTypeTaggedUnionRef {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -212,7 +212,7 @@ impl AspectBindDynamic for MortarTypeTaggedUnionRef {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -220,7 +220,7 @@ impl AspectBindDynamic for MortarTypeTaggedUnionRef {
 }
 
 impl AspectStackValueDynamic for MortarTypeTaggedUnionRef {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -302,8 +302,8 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
 impl Aspect for MortarTypeTaggedUnionConstructorRef { }
 
 impl AspectConsumeDynamic for MortarTypeTaggedUnionConstructorRef {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -314,7 +314,7 @@ impl AspectBindDynamic for MortarTypeTaggedUnionConstructorRef {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -322,7 +322,7 @@ impl AspectBindDynamic for MortarTypeTaggedUnionConstructorRef {
 }
 
 impl AspectStackValueDynamic for MortarTypeTaggedUnionConstructorRef {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -473,8 +473,8 @@ impl AspectTaggedUnion for TaggedUnionType {
 }
 
 impl AspectConsumeDynamic for TaggedUnionType {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -485,7 +485,7 @@ impl AspectBindDynamic for TaggedUnionType {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -493,7 +493,7 @@ impl AspectBindDynamic for TaggedUnionType {
 }
 
 impl AspectStackValueDynamic for TaggedUnionType {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -567,9 +567,9 @@ impl AspectFunction for TaggedUnionConstructor {
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
             let result_type = Rc::new(TaggedUnionType { data: self.data.clone() });
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, DynamicCode {
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: vec![(js_tag, underlying_js)], }),
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: vec![(js_tag, underlying_js)], }),
             }));
         });
     }

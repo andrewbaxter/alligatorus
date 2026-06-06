@@ -18,12 +18,12 @@ use {
             aspect_string_const_get,
             aspect_type_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBindingUse,
-            DynamicCodeFieldUse,
-            DynamicCodeNewObject,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicFieldUse,
+            CodeDynamicNewObject,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -294,8 +294,8 @@ impl Type for DefinitionSetDataType {
 impl Aspect for DefinitionSetDataType { }
 
 impl AspectConsumeDynamic for DefinitionSetDataType {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -306,7 +306,7 @@ impl AspectBindDynamic for DefinitionSetDataType {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -314,7 +314,7 @@ impl AspectBindDynamic for DefinitionSetDataType {
 }
 
 impl AspectStackValueDynamic for DefinitionSetDataType {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,
@@ -366,7 +366,7 @@ impl AspectField for DefinitionSetDataType {
                 Some(r) => r,
                 None => return erb.err_new(format!("Field '{}' not found on data type", key_name)),
             };
-            let self_code = match erb.must_er(self_.code.cast::<DynamicCode>())? {
+            let self_code = match erb.must_er(self_.code.cast::<CodeDynamic>())? {
                 Some(c) => c.clone(),
                 None => {
                     // Constant value (e.g. deserialized import) — materialize as JS object
@@ -380,9 +380,9 @@ impl AspectField for DefinitionSetDataType {
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
                             field: field_name,
                         }),
@@ -546,7 +546,7 @@ impl AspectArtifact for DefinitionSetDataType {
 impl DefinitionSetDataType {
     /// Materialize a constant (lifted/deserialized) data type value as a JS object.
     /// Registers the definition set with the eval context so methods get compiled.
-    fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<DynamicCode, String> {
+    fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<CodeDynamic, String> {
         use crate::builtin::aspect_string_const_get_maybe;
 
         // Register definition set with eval context
@@ -570,9 +570,9 @@ impl DefinitionSetDataType {
         let underlying_type = lifted.underlying.type_(xx, loc);
         let underlying_js = if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_type.as_ref()) {
             let s = aspect_str.get(lifted.underlying.as_ref());
-            DynamicCode {
+            CodeDynamic {
                 loc,
-                type_: DynamicCodeType::Literal(serde_json::Value::String(s)),
+                type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
             }
         } else {
             return Err(
@@ -587,14 +587,14 @@ impl DefinitionSetDataType {
         let mut object_fields = vec![(self.data.data_field.clone(), underlying_js)];
         for method in self.data.methods.borrow().iter() {
             let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-            object_fields.push((method.field_name.clone(), DynamicCode {
+            object_fields.push((method.field_name.clone(), CodeDynamic {
                 loc,
-                type_: DynamicCodeType::BindingUse(DynamicCodeBindingUse { id: method_id }),
+                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
             }));
         }
-        Ok(DynamicCode {
+        Ok(CodeDynamic {
             loc,
-            type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: object_fields }),
+            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
         })
     }
 

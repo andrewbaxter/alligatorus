@@ -21,12 +21,12 @@ use {
             aspect_string_dynamic_aspect_id,
             aspect_string_dynamic_get_maybe,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBlock,
-            DynamicCodeBlockEntry,
-            DynamicCodeFieldUse,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBlock,
+            CodeDynamicBlockEntry,
+            CodeDynamicFieldUse,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -139,20 +139,20 @@ impl Type for TypeStringDynamic {
             if let Some(aspect_string) = aspect_string_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
-                if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
+                if let Some(c) = erb.must_er(code.cast::<CodeDynamic>())? {
                     seq.push(c.clone());
                 };
-                seq.push(DynamicCode {
+                seq.push(CodeDynamic {
                     loc: loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
+                    type_: CodeDynamicType::Literal(serde_json::Value::String(aspect_string.get(value.as_ref())))
                 });
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(DynamicCode {
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
                             loc: loc,
-                            type_: DynamicCodeType::Block(
-                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
+                            type_: CodeDynamicType::Block(
+                                CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
                             )
                         }))
                     },
@@ -183,13 +183,13 @@ impl Aspect for TypeStringDynamic { }
 impl AspectStringDynamic for TypeStringDynamic { }
 
 impl AspectStackValueDynamic for TypeStringDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         mortar_js_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
     }
 }
 
 impl AspectConsumeDynamic for TypeStringDynamic {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
@@ -201,7 +201,7 @@ impl AspectBindDynamic for TypeStringDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         mortar_bind_js(xx, loc, cv)
     }
@@ -217,13 +217,13 @@ impl AspectField for TypeStringDynamic {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on mortar string", key_name)),
             };
-            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc: loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc: loc,
-                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
                             field: key_name.clone(),
                         }),

@@ -12,7 +12,7 @@ use {
             aspect_string_const_get,
             aspect_string_const_get_maybe,
         },
-        dynamic_code::DynamicCode,
+        code_dynamic::CodeDynamic,
         eval::{
             Erb,
             value::{
@@ -121,12 +121,12 @@ impl AspectBindDynamic for TypeStringConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         TypeStringDynamic::cast_from(&TypeStringDynamic, xx, loc, cv).map(|js| {
             bind_js_some(
                 loc,
-                js.code.cast::<DynamicCode>().v.unwrap().unwrap().clone(),
+                js.code.cast::<CodeDynamic>().v.unwrap().unwrap().clone(),
                 Rc::new(TypeStringDynamic) as Rc<dyn Type>,
             )
         })

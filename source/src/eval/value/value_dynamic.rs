@@ -1,13 +1,13 @@
 use {
     crate::{
         builtin::aspect_consume_dynamic_get,
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBindingSet,
-            DynamicCodeBlock,
-            DynamicCodeBlockEntry,
-            DynamicCodeFieldSet,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingSet,
+            CodeDynamicBlock,
+            CodeDynamicBlockEntry,
+            CodeDynamicFieldSet,
+            CodeDynamicType,
         },
         eval::Erb,
         langhelp::{
@@ -60,8 +60,8 @@ impl Value for ValueDynamic {
     }
 }
 
-pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-    let r = cv.code.cast::<DynamicCode>();
+pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    let r = cv.code.cast::<CodeDynamic>();
     if let Some(c) = r.v {
         if let Some(c) = c {
             return EResult {
@@ -91,7 +91,7 @@ pub(crate) fn mortar_bind_js(
     xx: &ExprContext,
     loc: QExprId,
     cv: CodeValue,
-) -> EResult<(Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)> {
+) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)> {
     let vtype = cv.value.type_(xx, loc);
     mortar_consume_js_to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
 }
@@ -99,16 +99,16 @@ pub(crate) fn mortar_bind_js(
 /// Helper to construct the return value for bind_js when JS code is produced.
 pub(crate) fn bind_js_some(
     _loc: QExprId,
-    js: DynamicCode,
+    js: CodeDynamic,
     bound_type: Rc<dyn Type>,
-) -> (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>) {
+) -> (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>) {
     (
         Some(js),
-        Box::new(crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntryDirect { type_: bound_type }),
+        Box::new(crate::eval::value::value_scope_entry::dynamic::ScopeEntryDynamicDirect { type_: bound_type }),
     )
 }
 
-pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: DynamicCode, type_: Rc<dyn Type>) -> CodeValue {
+pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
     CodeValue {
         code: Code {
             loc,
@@ -131,7 +131,7 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
         let value_type = value.value.type_(xx, loc);
         er_all!(erb, {
             value_to_js = aspect_consume_dynamic_get(xx, loc, value_type.as_ref()),
-            self_code = self_.code.cast::<DynamicCode>(),
+            self_code = self_.code.cast::<CodeDynamic>(),
         });
         let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;
         let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<ValueDynamic>().unwrap();
@@ -143,15 +143,15 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
 
                 // Extract the base from FieldUse so FieldSet targets the parent object
                 let base_code = match &self_code.type_ {
-                    DynamicCodeType::FieldUse(fu) => *fu.base.clone(),
+                    CodeDynamicType::FieldUse(fu) => *fu.base.clone(),
                     _ => self_code.clone(),
                 };
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(DynamicCode {
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
                             loc: loc,
-                            type_: DynamicCodeType::FieldSet(DynamicCodeFieldSet {
+                            type_: CodeDynamicType::FieldSet(CodeDynamicFieldSet {
                                 base: Box::new(base_code),
                                 key: b.key.clone(),
                                 value: Box::new(value_code)
@@ -166,9 +166,9 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                 if let Some(self_code) = self_code {
                     seq.push(self_code.clone());
                 }
-                seq.push(DynamicCode {
+                seq.push(CodeDynamic {
                     loc: loc,
-                    type_: DynamicCodeType::BindingSet(DynamicCodeBindingSet {
+                    type_: CodeDynamicType::BindingSet(CodeDynamicBindingSet {
                         base: b.key,
                         value: Box::new(value_code),
                     })
@@ -176,10 +176,10 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(DynamicCode {
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
                             loc: loc,
-                            type_: DynamicCodeType::Block(
-                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
+                            type_: CodeDynamicType::Block(
+                                CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
                             )
                         }))
                     },

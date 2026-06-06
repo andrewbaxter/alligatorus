@@ -10,7 +10,7 @@ use {
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
-        dynamic_code::DynamicCode,
+        code_dynamic::CodeDynamic,
         eval::{
             from_v8_ref,
             value::value_dynamic::{
@@ -85,8 +85,8 @@ impl Type for TypeSourceDataTypeRefDynamic {
 impl Aspect for TypeSourceDataTypeRefDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceDataTypeRefDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
-        cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
+    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -97,7 +97,7 @@ impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
@@ -105,7 +105,7 @@ impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
 }
 
 impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,

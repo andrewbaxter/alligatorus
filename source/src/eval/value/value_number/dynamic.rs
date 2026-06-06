@@ -20,14 +20,14 @@ use {
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBlock,
-            DynamicCodeBlockEntry,
-            DynamicCodeFieldUse,
-            DynamicCodeOperatorAdd,
-            DynamicCodeOperatorLt,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBlock,
+            CodeDynamicBlockEntry,
+            CodeDynamicFieldUse,
+            CodeDynamicOperatorAdd,
+            CodeDynamicOperatorLt,
+            CodeDynamicType,
         },
         eval::{
             Erb,
@@ -137,21 +137,21 @@ impl Type for TypeNumberDynamic {
             if let Some(aspect_number) = aspect_number_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
-                if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
+                if let Some(c) = erb.must_er(code.cast::<CodeDynamic>())? {
                     seq.push(c.clone());
                 };
                 let num_val = aspect_number.get(value.as_ref());
-                seq.push(DynamicCode {
+                seq.push(CodeDynamic {
                     loc: loc,
-                    type_: DynamicCodeType::Literal(serde_json::Value::from(num_val))
+                    type_: CodeDynamicType::Literal(serde_json::Value::from(num_val))
                 });
                 return Ok(CodeValue {
                     code: Code {
                         loc: loc,
-                        code: Code_::Dyn(Rc::new(DynamicCode {
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
                             loc: loc,
-                            type_: DynamicCodeType::Block(
-                                DynamicCodeBlock { entries: seq.into_iter().map(DynamicCodeBlockEntry::Code).collect() }
+                            type_: CodeDynamicType::Block(
+                                CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
                             )
                         }))
                     },
@@ -178,13 +178,13 @@ impl Aspect for TypeNumberDynamic { }
 impl AspectNumberDynamic for TypeNumberDynamic { }
 
 impl AspectStackValueDynamic for TypeNumberDynamic {
-    fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         mortar_js_stack_to_value(loc, value, Rc::new(TypeNumberDynamic))
     }
 }
 
 impl AspectConsumeDynamic for TypeNumberDynamic {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
@@ -196,7 +196,7 @@ impl AspectBindDynamic for TypeNumberDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<
-        (Option<DynamicCode>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
+        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
     > {
         mortar_bind_js(xx, loc, cv)
     }
@@ -220,13 +220,13 @@ impl AspectField for TypeNumberDynamic {
                 None => return erb.err_new(format!("Field '{}' not found on mortar number", key_name)),
             };
             let js_name = js_field_name(&key_name).to_string();
-            let self_code = erb.must_er(self_.code.cast::<DynamicCode>())?.unwrap().clone();
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc: loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc: loc,
-                        type_: DynamicCodeType::FieldUse(DynamicCodeFieldUse {
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
                             field: js_name.clone(),
                         }),
@@ -266,9 +266,9 @@ impl AspectOperatorLt for TypeNumberDynamic {
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::OperatorLt(DynamicCodeOperatorLt {
+                        type_: CodeDynamicType::OperatorLt(CodeDynamicOperatorLt {
                             base: Box::new(base_code),
                             reference: Box::new(ref_code),
                         }),
@@ -292,9 +292,9 @@ impl AspectOperatorAdd for TypeNumberDynamic {
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::OperatorAdd(DynamicCodeOperatorAdd {
+                        type_: CodeDynamicType::OperatorAdd(CodeDynamicOperatorAdd {
                             base: Box::new(base_code),
                             reference: Box::new(ref_code),
                         }),

@@ -1,6 +1,6 @@
 use {
     crate::{
-        dynamic_code::DynamicCode,
+        code_dynamic::CodeDynamic,
         langhelp::{
             Aspect,
             CodeValue,
@@ -15,5 +15,5 @@ use {
 };
 
 aspect!(AspectStackValueDynamic {
-    fn to_value(&self, loc: QExprId, self_: DynamicCode) -> CodeValue;
+    fn to_value(&self, loc: QExprId, self_: CodeDynamic) -> CodeValue;
 });

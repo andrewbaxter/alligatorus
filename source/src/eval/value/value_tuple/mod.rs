@@ -11,12 +11,12 @@ use {
             aspect_lift_dynamic_aspect_id,
             aspect_tuple_aspect_id,
         },
-        dynamic_code::{
-            DynamicCode,
-            DynamicCodeBlock,
-            DynamicCodeBlockEntry,
-            DynamicCodeNewArray,
-            DynamicCodeType,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBlock,
+            CodeDynamicBlockEntry,
+            CodeDynamicNewArray,
+            CodeDynamicType,
         },
         langhelp::{
             Aspect,
@@ -38,7 +38,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::value::value_dynamic::bind_js_some,
+    super::value_dynamic::bind_js_some,
 };
 
 /// Represents a single element entry in a Tuple.
@@ -53,7 +53,7 @@ pub(crate) enum TupleElement {
 pub(crate) struct Tuple {
     /// Optional mortar source — a JS array that elements can be accessed from at
     /// runtime.
-    pub source: Option<super::value::value_dynamic::ValueDynamicSource>,
+    pub source: Option<super::value_dynamic::ValueDynamicSource>,
     /// Ordered list of element entries.
     pub elements: Vec<TupleElement>,
 }
@@ -140,7 +140,7 @@ impl Type for Tuple {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &super::value::value_any::r#const::type_type_identity()).is_some()
+        type_.aspect(_xx, &super::value_any::r#const::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -173,19 +173,19 @@ impl Type for Tuple {
                                 xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type)));
                                 converted_type.elements[i] =
                                     TupleElement::Mortar(
-                                        Rc::new(super::value::value_any::r#const::TypeAnyConst) as Rc<dyn Type>,
+                                        Rc::new(super::value_any::r#const::TypeAnyConst) as Rc<dyn Type>,
                                     );
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
-                                        code: Code_::Dyn(Rc::new(DynamicCode {
+                                        code: Code_::Dyn(Rc::new(CodeDynamic {
                                             loc,
-                                            type_: DynamicCodeType::BindingUse(
-                                                crate::dynamic_code::DynamicCodeBindingUse { id },
+                                            type_: CodeDynamicType::BindingUse(
+                                                crate::code_dynamic::CodeDynamicBindingUse { id },
                                             ),
                                         })),
                                     },
-                                    value: Rc::new(super::value::value_any::r#const::TypeAnyConst),
+                                    value: Rc::new(super::value_any::r#const::TypeAnyConst),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -207,14 +207,14 @@ impl Type for Tuple {
             };
             match converted_type.to_js(xx, loc, converted_cv).into_res() {
                 Ok(tuple_js) => {
-                    let call_code = DynamicCode {
+                    let call_code = CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::Call(crate::dynamic_code::DynamicCodeCall {
-                            func: Box::new(DynamicCode {
+                        type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                            func: Box::new(CodeDynamic {
                                 loc,
-                                type_: DynamicCodeType::BindingUse(
-                                    crate::dynamic_code::DynamicCodeBindingUse {
-                                        id: super::TUPLE_TO_TYPE_FN_SCOPE_ID,
+                                type_: CodeDynamicType::BindingUse(
+                                    crate::code_dynamic::CodeDynamicBindingUse {
+                                        id: crate::eval::TUPLE_TO_TYPE_FN_SCOPE_ID,
                                     },
                                 ),
                             }),
@@ -241,9 +241,9 @@ impl Type for Tuple {
             EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(DynamicCode {
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: DynamicCodeType::BindingUse(crate::dynamic_code::DynamicCodeBindingUse { id }),
+                        type_: CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse { id }),
                     })),
                 },
                 value: result_type.as_value(),
@@ -318,23 +318,23 @@ impl AspectLiftDynamic for TupleLiftJs {
 /// Code_::None. When consumed to JS, the generated JS references those bindings.
 /// This helper wraps the consumed JS with the carry code so the bindings are in
 /// scope.
-pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: DynamicCode) -> DynamicCode {
-    if let Some(Some(carry_js)) = carry.cast::<DynamicCode>().v {
+pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: CodeDynamic) -> CodeDynamic {
+    if let Some(Some(carry_js)) = carry.cast::<CodeDynamic>().v {
         let mut entries = match &carry_js.type_ {
-            DynamicCodeType::Block(block) => block.entries.clone(),
-            _ => vec![DynamicCodeBlockEntry::Code(carry_js.clone())],
+            CodeDynamicType::Block(block) => block.entries.clone(),
+            _ => vec![CodeDynamicBlockEntry::Code(carry_js.clone())],
         };
-        entries.push(DynamicCodeBlockEntry::Code(js));
-        return DynamicCode {
+        entries.push(CodeDynamicBlockEntry::Code(js));
+        return CodeDynamic {
             loc,
-            type_: DynamicCodeType::Block(DynamicCodeBlock { entries }),
+            type_: CodeDynamicType::Block(CodeDynamicBlock { entries }),
         };
     }
     js
 }
 
 impl AspectConsumeDynamic for Tuple {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
+    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap()).ok().expect("Tuple to_js: Rc not unique");
@@ -370,9 +370,9 @@ impl AspectConsumeDynamic for Tuple {
                 errors: Some(errors),
             };
         }
-        EResult::ok(wrap_with_carry(loc, carry, DynamicCode {
+        EResult::ok(wrap_with_carry(loc, carry, CodeDynamic {
             loc,
-            type_: DynamicCodeType::NewArray(DynamicCodeNewArray { elements: js_elements }),
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
         }))
     }
 }
@@ -383,55 +383,25 @@ impl AspectBindDynamic for Tuple {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<DynamicCode>, Box<dyn super::value::value_scope_entry::dynamic::DynamicScopeEntry>)> {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::value_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
 }
 
 /// A value whose data is entirely carried by its type.
-pub(crate) struct StaticValue {
+pub(crate) struct ValueStatic {
     pub type_: Rc<dyn Type>,
 }
 
-impl Value for StaticValue {
+impl Value for ValueStatic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         self.type_.clone()
     }
 }
+pub mod scope_entry;
 
-/// A scope entry for non-JS values. Returns Code_::None and reconstructs the value
-/// from its type.
-pub(crate) struct StaticScopeEntry {
-    pub type_: Rc<dyn Type>,
-}
-
-impl ScopeEntry for StaticScopeEntry {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(StaticValue { type_: self.type_.clone() }),
-        }
-    }
-}
-
-/// A scope entry that preserves the actual value (for compile-time values without
-/// JS code).
-pub(crate) struct ValueScopeEntry {
-    pub value: Rc<dyn Value>,
-}
-
-impl ScopeEntry for ValueScopeEntry {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: self.value.clone(),
-        }
-    }
-}
+pub(crate) use scope_entry::{
+    ScopeEntryStatic,
+    ScopeEntryValue,
+};
