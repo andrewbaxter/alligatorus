@@ -586,7 +586,10 @@ impl Target for MortarTarget {
                     loc,
                     code: Code_::Dyn(Rc::new(stage_js)),
                 },
-                value: Rc::new(value::value_expr::ValueStagedExprPlaceholder),
+                value: Rc::new(value::value_dynamic::ValueDynamic {
+                    source: value::value_dynamic::ValueDynamicSource::Expr,
+                    type_: Rc::new(value::type_expr::TypeStagedExprPlaceholder),
+                }),
             });
         });
     }

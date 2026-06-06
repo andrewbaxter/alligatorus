@@ -19,5 +19,4 @@ pub mod value_null;
 pub mod value_number;
 pub mod value_dynamic;
 pub mod value_static;
-pub mod value_expr;
 pub mod value_pending_import;
