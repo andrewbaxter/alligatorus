@@ -1,29 +1,21 @@
 use {
     crate::{
-        eval::{
-            MortarTarget,
-            value::value_any,
-        },
+        eval::MortarTarget,
         langhelp::{
-            Code,
-            CodeValue,
             CompileImportContext,
             CompileResResult,
             CompileResultEntry,
-            EResult,
             EvalContext,
             ExprContext,
             GlobalContext,
             ImportStateId,
             QExprId,
             Scope,
-            ScopeEntry,
             Type,
             Value,
         },
     },
     std::{
-        any::Any,
         cell::{
             Cell,
             RefCell,
@@ -96,92 +88,9 @@ impl ValuePendingImport {
 
 impl Value for ValuePendingImport {
     fn type_(&self, xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypePendingImport {
+        Rc::new(super::type_pending_import::TypePendingImport {
             state: self.state.clone(),
             resolved: self.resolve(xx),
         })
     }
 }
-
-pub(crate) struct TypePendingImport {
-    state: Rc<PendingImportState>,
-    resolved: Rc<dyn Value>,
-}
-
-impl TypePendingImport {
-    fn resolved_type(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        self.resolved.type_(xx, loc)
-    }
-
-    fn substitute_cv(&self, cv: CodeValue) -> CodeValue {
-        CodeValue {
-            code: cv.code,
-            value: self.resolved.clone(),
-        }
-    }
-}
-
-impl Value for TypePendingImport {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(value_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypePendingImport {
-    fn desc(&self) -> String {
-        "pending import".to_string()
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        self.resolved.clone()
-    }
-
-    fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::builtin::aspect_bind_const_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as
-                        Box<dyn crate::builtin::AspectBindConst>,
-                ),
-            );
-        }
-
-        // For all other aspects, resolve and delegate
-        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        self.resolved_type(xx, loc).aspect(xx, key)
-    }
-
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> crate::langhelp::EvalRes {
-        self.resolved_type(xx, loc).cast_to(xx, loc, self.substitute_cv(cv), type_)
-    }
-
-    fn can_cast_to(&self, xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> bool {
-        self.resolved_type(xx, loc).can_cast_to(xx, loc, type_)
-    }
-
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> crate::langhelp::EvalRes {
-        self.resolved_type(xx, loc).cast_from(xx, loc, cv)
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
-        self.resolved_type(xx, loc).can_cast_from(xx, loc, source_type)
-    }
-}
-
-struct PendingImportBind {
-    state: Rc<PendingImportState>,
-}
-
-impl crate::langhelp::Aspect for PendingImportBind { }
-
-impl crate::builtin::AspectBindConst for PendingImportBind {
-    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
-        EResult::ok(Box::new(ScopeEntryPendingImport {
-            state: self.state.clone(),
-            code: cv.code,
-        }) as Box<dyn ScopeEntry>)
-    }
-}
-pub mod scope_entry;
-
-pub(crate) use scope_entry::ScopeEntryPendingImport;

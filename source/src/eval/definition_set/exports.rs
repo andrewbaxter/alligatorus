@@ -19,7 +19,7 @@ use {
         eval::{
             Erb,
             from_v8_ref,
-            value::value_dynamic::{
+            value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_js_some,
@@ -56,7 +56,7 @@ pub(crate) struct TypeSourceExportsDynamic;
 
 impl Value for TypeSourceExportsDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -108,9 +108,7 @@ impl AspectBindDynamic for TypeSourceExportsDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -154,7 +152,7 @@ struct DefinitionSetExportsType {
 
 impl Value for DefinitionSetExportsType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -195,7 +193,8 @@ impl Aspect for DefinitionSetExportsType { }
 impl AspectBindConst for DefinitionSetExportsType {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
-            Box::new(crate::eval::value::value_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
+            Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
+                Box<dyn ScopeEntry>,
         )
     }
 }

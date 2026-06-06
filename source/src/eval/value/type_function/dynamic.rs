@@ -21,7 +21,7 @@ use {
         eval::{
             Erb,
             typecheck_convert,
-            value::value_dynamic::{
+            value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_js_some,
@@ -54,7 +54,7 @@ pub(crate) struct TypeFunctionDynamic {
 
 impl Value for TypeFunctionDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -118,9 +118,7 @@ impl AspectBindDynamic for TypeFunctionDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }

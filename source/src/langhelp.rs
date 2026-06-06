@@ -262,10 +262,10 @@ pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
             data_type::TypeTypeSourceDataTypeDynamic,
             data_type_constructor::TypeTypeSourceDataTypeConstructorDynamic,
         },
-        value::value_null::dynamic::TypeNullDynamic,
-        value::value_string::dynamic::TypeStringDynamic,
-        value::value_null::r#const::TypeNullConst,
-        value::value_string::r#const::TypeStringConst,
+        value::type_null::dynamic::TypeNullDynamic,
+        value::type_string::dynamic::TypeStringDynamic,
+        value::type_null::r#const::TypeNullConst,
+        value::type_string::r#const::TypeStringConst,
     };
 
     let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn Type>> = HashMap::new();

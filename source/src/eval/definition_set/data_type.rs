@@ -28,13 +28,13 @@ use {
         eval::{
             Erb,
             value::{
-                value_dynamic::{
+                type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
                     bind_js_some,
                 },
-                value_function::dynamic::TypeFunctionDynamic,
-                value_null::dynamic::TypeNullDynamic,
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
             },
         },
         langhelp::{
@@ -77,7 +77,7 @@ generate_builtin_artifact!(TypeTypeSourceDataTypeDynamic, serde_json::Value);
 
 impl Value for TypeTypeSourceDataTypeDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::super::value::value_any::r#const::TypeAnyConst)
+        Rc::new(super::super::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -91,7 +91,7 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == super::super::value::value_any::r#const::type_type_identity() {
+        if *key == super::super::value::type_any::r#const::type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_artifact_aspect_id() {
@@ -305,9 +305,7 @@ impl AspectBindDynamic for DefinitionSetDataType {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }

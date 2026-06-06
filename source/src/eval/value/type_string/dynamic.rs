@@ -31,7 +31,7 @@ use {
         eval::{
             Erb,
             value::{
-                value_dynamic::{
+                type_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
@@ -40,8 +40,8 @@ use {
                     mortar_js_stack_to_value,
                     mortar_set,
                 },
-                value_function::dynamic::TypeFunctionDynamic,
-                value_null::dynamic::TypeNullDynamic,
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
             },
         },
         langhelp::{
@@ -73,7 +73,7 @@ generate_builtin_artifact!(TypeStringDynamic, super::artifact::ArtifactDataStrin
 
 impl Value for TypeStringDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -200,9 +200,7 @@ impl AspectBindDynamic for TypeStringDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         mortar_bind_js(xx, loc, cv)
     }
 }
@@ -260,7 +258,7 @@ impl AspectLiftDynamic for TypeStringDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueConstString(s)))
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
     }
 }
 
@@ -288,7 +286,7 @@ impl AspectArtifact for TypeStringDynamic {
         data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueConstString(s.to_string())))
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())))
     }
 }
 

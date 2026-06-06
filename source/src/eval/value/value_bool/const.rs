@@ -1,99 +1,17 @@
 use {
-    crate::{
-        builtin::{
-            AspectBoolConst,
-            aspect_bool_const_aspect_id,
-            aspect_bool_const_get,
-            aspect_bool_const_get_maybe,
-        },
-        eval::Erb,
-        langhelp::{
-            Aspect,
-            CodeValue,
-            EResult,
-            EvalRes,
-            ExprContext,
-            QExprId,
-            Type,
-            Unique,
-            Value,
-        },
+    crate::langhelp::{
+        ExprContext,
+        QExprId,
+        Type,
+        Value,
     },
-    std::{
-        any::Any,
-        mem,
-        rc::Rc,
-    },
+    std::rc::Rc,
 };
 
-pub(crate) struct TypeBoolConst;
+pub(crate) struct ValueBoolConst(pub bool);
 
-impl Value for TypeBoolConst {
+impl Value for ValueBoolConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeBoolConst {
-    fn desc(&self) -> String {
-        return format!("bool");
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeBoolConst)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_bool_const_aspect_id() {
-            return Some(Box::new(Box::new(TypeBoolConst) as Box<dyn AspectBoolConst>));
-        }
-        return None;
-    }
-
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_bool_const_get_maybe(xx, type_).is_some()
-    }
-
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let CodeValue { code, value } = cv;
-            let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_))?;
-            return Ok(CodeValue {
-                code: code,
-                value: Rc::new(ValueConstBool(aspect_bool.get(value.as_ref())))
-            });
-        });
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_bool_const_get_maybe(xx, source_type).is_some()
-    }
-
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let CodeValue { code, value } = cv;
-            let type_ = value.type_(xx, loc);
-            let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
-            return Ok(CodeValue {
-                code: code,
-                value: Rc::new(ValueConstBool(aspect_bool.get(value.as_ref())))
-            });
-        });
-    }
-}
-
-impl Aspect for TypeBoolConst { }
-
-impl AspectBoolConst for TypeBoolConst {
-    fn get(&self, value: &dyn Value) -> bool {
-        return <dyn Any>::downcast_ref::<ValueConstBool>(value).unwrap().0;
-    }
-}
-
-pub(crate) struct ValueConstBool(pub bool);
-
-impl Value for ValueConstBool {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeBoolConst);
+        return Rc::new(super::super::type_bool::r#const::TypeBoolConst);
     }
 }

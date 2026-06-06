@@ -9,7 +9,7 @@ use {
         Value,
     },
     std::rc::Rc,
-    super::ValueStatic,
+    super::super::value_static::ValueStatic,
 };
 
 /// A scope entry for non-JS values. Returns Code_::None and reconstructs the value

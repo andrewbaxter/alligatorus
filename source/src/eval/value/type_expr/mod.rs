@@ -20,7 +20,7 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
-            value::value_dynamic::bind_js_some,
+            value::type_dynamic::bind_js_some,
         },
         langhelp::{
             Aspect,
@@ -59,7 +59,7 @@ fn expr_type_identity() -> Unique {
 
 impl Value for TypeExpr {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::value_any::r#const::TypeAnyConst)
+        Rc::new(super::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -115,7 +115,7 @@ impl Type for TypeExpr {
         let expr = Expr {
             loc,
             r#type: Expr_::Literal(Rc::new(move || {
-                Rc::new(super::value_tuple::ValueStatic { type_: type_rc.clone() }) as Rc<dyn Value>
+                Rc::new(super::value_static::ValueStatic { type_: type_rc.clone() }) as Rc<dyn Value>
             })),
         };
         return EvalRes::ok(CodeValue {
@@ -149,7 +149,7 @@ impl AspectBindDynamic for TypeExpr {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::value_scope_entry::dynamic::DynamicScopeEntry>)> {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -166,22 +166,11 @@ impl AspectLiftDynamic for TypeExpr {
         Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }
-
-/// Placeholder value for stage results. Its type exposes AspectLiftDynamic (to
-/// extract the Expr from the v8::External returned by __stage) but NOT
-/// AspectConsumeDynamic (so eval() preserves the Call CodeDynamic).
-pub(crate) struct ValueStagedExprPlaceholder;
-struct TypeStagedExprPlaceholder;
-
-impl Value for ValueStagedExprPlaceholder {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeStagedExprPlaceholder)
-    }
-}
+pub(crate) struct TypeStagedExprPlaceholder;
 
 impl Value for TypeStagedExprPlaceholder {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::value_any::r#const::TypeAnyConst)
+        Rc::new(super::type_any::r#const::TypeAnyConst)
     }
 }
 

@@ -20,7 +20,7 @@ use {
         },
         eval::{
             Erb,
-            value::value_dynamic::{
+            value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
                 mortar_bind_js,
@@ -53,7 +53,7 @@ pub(crate) struct TypeBoolDynamic;
 
 impl Value for TypeBoolDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -165,9 +165,7 @@ impl AspectBindDynamic for TypeBoolDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         mortar_bind_js(xx, loc, cv)
     }
 }

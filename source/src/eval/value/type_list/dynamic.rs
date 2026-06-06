@@ -31,18 +31,18 @@ use {
         },
         eval::{
             Erb,
-            value::value_tuple::ValueStatic,
             typecheck_convert,
             value::{
-                value_dynamic::{
+                type_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
                     bind_js_some,
                 },
-                value_function::dynamic::TypeFunctionDynamic,
-                value_null::dynamic::TypeNullDynamic,
-                value_string::dynamic::TypeStringDynamic,
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
+                type_string::dynamic::TypeStringDynamic,
+                value_static::ValueStatic,
             },
         },
         langhelp::{
@@ -119,7 +119,7 @@ impl AspectFunction for TypeListConstructorConst {
 
 impl crate::eval::dynamic_wrap::DynamicWrap for TypeListDynamic {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -188,8 +188,8 @@ impl Type for TypeListDynamic {
         if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
-                    source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                value: Rc::new(crate::eval::value::type_dynamic::ValueDynamic {
+                    source: crate::eval::value::type_dynamic::ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
             });
@@ -304,9 +304,7 @@ impl AspectBindDynamic for TypeListDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -347,7 +345,7 @@ impl AspectIterable for TypeListDynamic {
                     body: Box::new(body_js),
                 }),
             };
-            let null_type = Rc::new(crate::eval::value::value_null::dynamic::TypeNullDynamic);
+            let null_type = Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic);
             let stack_value = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, null_type.as_ref()))?;
             return Ok(stack_value.to_value(loc, foreach_js));
         });

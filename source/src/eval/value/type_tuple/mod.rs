@@ -38,7 +38,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::value_dynamic::bind_js_some,
+    super::type_dynamic::bind_js_some,
 };
 
 /// Represents a single element entry in a Tuple.
@@ -53,7 +53,7 @@ pub(crate) enum TupleElement {
 pub(crate) struct Tuple {
     /// Optional mortar source — a JS array that elements can be accessed from at
     /// runtime.
-    pub source: Option<super::value_dynamic::ValueDynamicSource>,
+    pub source: Option<super::type_dynamic::ValueDynamicSource>,
     /// Ordered list of element entries.
     pub elements: Vec<TupleElement>,
 }
@@ -140,7 +140,7 @@ impl Type for Tuple {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &super::value_any::r#const::type_type_identity()).is_some()
+        type_.aspect(_xx, &super::type_any::r#const::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -173,7 +173,7 @@ impl Type for Tuple {
                                 xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type)));
                                 converted_type.elements[i] =
                                     TupleElement::Mortar(
-                                        Rc::new(super::value_any::r#const::TypeAnyConst) as Rc<dyn Type>,
+                                        Rc::new(super::type_any::r#const::TypeAnyConst) as Rc<dyn Type>,
                                     );
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
@@ -185,7 +185,7 @@ impl Type for Tuple {
                                             ),
                                         })),
                                     },
-                                    value: Rc::new(super::value_any::r#const::TypeAnyConst),
+                                    value: Rc::new(super::type_any::r#const::TypeAnyConst),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -383,20 +383,9 @@ impl AspectBindDynamic for Tuple {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::value_scope_entry::dynamic::DynamicScopeEntry>)> {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
-    }
-}
-
-/// A value whose data is entirely carried by its type.
-pub(crate) struct ValueStatic {
-    pub type_: Rc<dyn Type>,
-}
-
-impl Value for ValueStatic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        self.type_.clone()
     }
 }
 pub mod scope_entry;

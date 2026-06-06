@@ -32,7 +32,7 @@ use {
         eval::{
             Erb,
             value::{
-                value_dynamic::{
+                type_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
@@ -41,9 +41,9 @@ use {
                     mortar_js_stack_to_value,
                     mortar_set,
                 },
-                value_function::dynamic::TypeFunctionDynamic,
-                value_null::dynamic::TypeNullDynamic,
-                value_string::dynamic::TypeStringDynamic,
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
+                type_string::dynamic::TypeStringDynamic,
             },
         },
         langhelp::{
@@ -71,7 +71,7 @@ pub(crate) struct TypeNumberDynamic;
 
 impl Value for TypeNumberDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -195,9 +195,7 @@ impl AspectBindDynamic for TypeNumberDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         mortar_bind_js(xx, loc, cv)
     }
 }
@@ -276,7 +274,7 @@ impl AspectOperatorLt for TypeNumberDynamic {
                 },
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::eval::value::value_bool::dynamic::TypeBoolDynamic),
+                    type_: Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
                 }),
             });
         });

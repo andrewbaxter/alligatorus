@@ -24,11 +24,11 @@ use {
                 dynamic_wrap_method_name,
             },
             value::{
-                value_dynamic::{
+                type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
                 },
-                value_function::dynamic::TypeFunctionDynamic,
+                type_function::dynamic::TypeFunctionDynamic,
             },
         },
         langhelp::{

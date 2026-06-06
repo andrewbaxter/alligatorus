@@ -1,7 +1,7 @@
 use {
     crate::{
         code_dynamic::CodeDynamic,
-        eval::value::value_scope_entry::dynamic::DynamicScopeEntry,
+        eval::value::type_scope_entry::dynamic::DynamicScopeEntry,
         langhelp::{
             Aspect,
             CodeValue,

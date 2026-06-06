@@ -35,12 +35,14 @@ use {
         },
         eval::{
             Erb,
-            value::value_tuple::ValueStatic,
-            value::value_dynamic::{
-                ValueDynamic,
-                ValueDynamicDataAccess,
-                ValueDynamicSource,
-                bind_js_some,
+            value::{
+                type_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                    bind_js_some,
+                },
+                value_static::ValueStatic,
             },
         },
         langhelp::{
@@ -140,7 +142,7 @@ impl AspectFunction for TypeMapConstructorConst {
 
 impl crate::eval::dynamic_wrap::DynamicWrap for TypeMapDynamic {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -216,11 +218,11 @@ impl Type for TypeMapDynamic {
             aspect_consume_dynamic_get_maybe(xx, source_type).is_some() {
             // Record → map: check all field value types are compatible with the map's value
             // type
-            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::value::value_record::Record>() {
+            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::value::type_record::Record>() {
                 return record.fields.values().all(|f| {
                     let field_type = match f {
-                        crate::eval::value::value_record::RecordField::Mortar(t) => t.clone(),
-                        crate::eval::value::value_record::RecordField::EvalRes(er) => match &er.v {
+                        crate::eval::value::type_record::RecordField::Mortar(t) => t.clone(),
+                        crate::eval::value::type_record::RecordField::EvalRes(er) => match &er.v {
                             Some(cv) => cv.value.type_(xx, loc),
                             None => return true,
                         },
@@ -257,8 +259,10 @@ impl Type for TypeMapDynamic {
 
         // Record source: decompose, typecheck_convert each value to the map's value type,
         // then convert each to JS individually.
-        let record: crate::eval::value::value_record::Record =
-            match downcast_value::<crate::eval::value::value_record::Record>(cv.value).and_then(|r| Rc::try_unwrap(r).ok()) {
+        let record: crate::eval::value::type_record::Record =
+            match downcast_value::<crate::eval::value::type_record::Record>(
+                cv.value,
+            ).and_then(|r| Rc::try_unwrap(r).ok()) {
                 Some(r) => r,
                 None => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
             };
@@ -268,7 +272,7 @@ impl Type for TypeMapDynamic {
             for (key, field) in record.fields.into_iter() {
                 let canonical = key.to_str();
                 let entry_cv = match field {
-                    crate::eval::value::value_record::RecordField::EvalRes(entry_res) => {
+                    crate::eval::value::type_record::RecordField::EvalRes(entry_res) => {
                         if let Some(errs) = entry_res.errors {
                             erb.errors.extend(errs);
                         }
@@ -279,7 +283,7 @@ impl Type for TypeMapDynamic {
                             },
                         }
                     },
-                    crate::eval::value::value_record::RecordField::Mortar(_) => {
+                    crate::eval::value::type_record::RecordField::Mortar(_) => {
                         return erb.err_new(
                             format!("Record entry '{}' is mortar-only, cannot consume directly to JS", canonical),
                         );
@@ -410,9 +414,7 @@ impl AspectBindDynamic for TypeMapDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }
@@ -420,23 +422,23 @@ impl AspectBindDynamic for TypeMapDynamic {
 
 impl AspectSet for TypeMapDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        crate::eval::value::value_dynamic::mortar_set(xx, loc, self_, value)
+        crate::eval::value::type_dynamic::mortar_set(xx, loc, self_, value)
     }
 }
 
 impl AspectIterable for TypeMapDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         // Map iteration yields records with "key" and "value" fields
-        Rc::new(crate::eval::value::value_record::Record {
+        Rc::new(crate::eval::value::type_record::Record {
             source: None,
             fields: [
                 (
                     crate::langhelp::ConstKey::String("key".to_string()),
-                    crate::eval::value::value_record::RecordField::Mortar(self.key_type.clone()),
+                    crate::eval::value::type_record::RecordField::Mortar(self.key_type.clone()),
                 ),
                 (
                     crate::langhelp::ConstKey::String("value".to_string()),
-                    crate::eval::value::value_record::RecordField::Mortar(self.value_type.clone()),
+                    crate::eval::value::type_record::RecordField::Mortar(self.value_type.clone()),
                 ),
             ]
                 .into_iter()
@@ -474,7 +476,7 @@ impl AspectIterable for TypeMapDynamic {
                     body: Box::new(body_js),
                 }),
             };
-            let null_type = Rc::new(crate::eval::value::value_null::dynamic::TypeNullDynamic);
+            let null_type = Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic);
             let stack_value = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, null_type.as_ref()))?;
             return Ok(stack_value.to_value(loc, foreach_js));
         });

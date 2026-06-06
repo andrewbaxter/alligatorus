@@ -48,7 +48,7 @@ use {
         mem,
         rc::Rc,
     },
-    super::value_tuple::wrap_with_carry,
+    super::type_tuple::wrap_with_carry,
 };
 
 /// Represents a single field entry in a Record.
@@ -63,7 +63,7 @@ pub(crate) enum RecordField {
 pub(crate) struct Record {
     /// Optional mortar source (like ValueDynamic) — a JS object that fields can be
     /// accessed from at runtime.
-    pub source: Option<super::value_dynamic::ValueDynamicSource>,
+    pub source: Option<super::type_dynamic::ValueDynamicSource>,
     /// Mapping from keys to field entries.
     pub fields: BTreeMap<ConstKey, RecordField>,
 }
@@ -88,7 +88,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
         RecordField::Mortar(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
             Some(cv) => cv.value.type_(xx, loc),
-            None => Rc::new(super::value_tuple::Tuple {
+            None => Rc::new(super::type_tuple::Tuple {
                 source: None,
                 elements: vec![],
             }) as Rc<dyn Type>,
@@ -159,7 +159,7 @@ impl Type for Record {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &super::value_any::r#const::type_type_identity()).is_some()
+        type_.aspect(_xx, &super::type_any::r#const::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -198,7 +198,7 @@ impl Type for Record {
                                     .insert(
                                         key.clone(),
                                         RecordField::Mortar(
-                                            Rc::new(super::value_any::r#const::TypeAnyConst) as Rc<dyn Type>,
+                                            Rc::new(super::type_any::r#const::TypeAnyConst) as Rc<dyn Type>,
                                         ),
                                     );
                                 RecordField::EvalRes(EvalRes::ok(CodeValue {
@@ -211,7 +211,7 @@ impl Type for Record {
                                             ),
                                         })),
                                     },
-                                    value: Rc::new(super::value_any::r#const::TypeAnyConst),
+                                    value: Rc::new(super::type_any::r#const::TypeAnyConst),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -378,8 +378,8 @@ impl AspectField for Record {
                             })),
                         };
                         let field_source =
-                            super::value_dynamic::ValueDynamicSource::Field(
-                                super::value_dynamic::ValueDynamicDataAccess { key: key_name },
+                            super::type_dynamic::ValueDynamicSource::Field(
+                                super::type_dynamic::ValueDynamicDataAccess { key: key_name },
                             );
                         if aspect_record_get_maybe(xx, mortar_type.as_ref()).is_some() {
                             let record_type =
@@ -405,7 +405,7 @@ impl AspectField for Record {
                         }
                         return Ok(CodeValue {
                             code: field_code,
-                            value: Rc::new(super::value_dynamic::ValueDynamic {
+                            value: Rc::new(super::type_dynamic::ValueDynamic {
                                 source: field_source,
                                 type_: mortar_type,
                             }),
@@ -424,7 +424,7 @@ impl AspectField for Record {
                         loc,
                         code: Code_::None,
                     },
-                    value: Rc::new(super::value_tuple::ValueStatic { type_: entry_type }),
+                    value: Rc::new(super::value_static::ValueStatic { type_: entry_type }),
                 });
             }
             let self_code = erb.must_er(self_code_raw.cast::<CodeDynamic>())?.unwrap().clone();
@@ -439,8 +439,8 @@ impl AspectField for Record {
                 })),
             };
             let field_source =
-                super::value_dynamic::ValueDynamicSource::Field(
-                    super::value_dynamic::ValueDynamicDataAccess { key: key_name },
+                super::type_dynamic::ValueDynamicSource::Field(
+                    super::type_dynamic::ValueDynamicDataAccess { key: key_name },
                 );
             if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
                 let record_type =
@@ -466,7 +466,7 @@ impl AspectField for Record {
             }
             return Ok(CodeValue {
                 code: field_code,
-                value: Rc::new(super::value_dynamic::ValueDynamic {
+                value: Rc::new(super::type_dynamic::ValueDynamic {
                     source: field_source,
                     type_: entry_type,
                 }),
@@ -574,7 +574,7 @@ impl AspectBindDynamic for Record {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::value_scope_entry::dynamic::DynamicScopeEntry>)> {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let record: Record =
             Rc::try_unwrap(downcast_value::<Record>(cv.value).unwrap())
                 .ok()
@@ -601,9 +601,7 @@ impl AspectBindDynamic for Record {
                             scope_fields.insert(
                                 key,
                                 RecordScopeField::Scope(
-                                    Box::new(
-                                        super::value_tuple::ScopeEntryValue { value: Rc::from(field_cv.value) },
-                                    ),
+                                    Box::new(super::type_tuple::ScopeEntryValue { value: Rc::from(field_cv.value) }),
                                 ),
                             );
                         }
@@ -628,7 +626,7 @@ impl AspectBindDynamic for Record {
             (
                 Some(c),
                 Box::new(ScopeEntryRecordMortar { fields: scope_fields }) as
-                    Box<dyn super::value_scope_entry::dynamic::DynamicScopeEntry>,
+                    Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>,
             )
         })
     }

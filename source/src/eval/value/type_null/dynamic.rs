@@ -23,12 +23,12 @@ use {
         eval::{
             Erb,
             value::{
-                value_dynamic::{
+                type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
                     bind_js_some,
                 },
-                value_null::r#const::ValueConstNull,
+                value_null::r#const::ValueNullConst,
             },
         },
         langhelp::{
@@ -60,7 +60,7 @@ generate_builtin_artifact!(TypeNullDynamic, super::artifact::ArtifactDataNull);
 
 impl Value for TypeNullDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -106,7 +106,7 @@ impl Type for TypeNullDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueConstNull),
+            value: Rc::new(ValueNullConst),
         })
     }
 
@@ -120,7 +120,7 @@ impl Type for TypeNullDynamic {
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueConstNull),
+                value: Rc::new(ValueNullConst),
             });
         });
     }
@@ -161,7 +161,7 @@ impl AspectArtifact for TypeNullDynamic {
         _loc: QExprId,
         _data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueConstNull))
+        Ok(Rc::new(ValueNullConst))
     }
 }
 
@@ -172,7 +172,7 @@ impl AspectLiftDynamic for TypeNullDynamic {
         _scope: &v8::PinScope,
         _value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueConstNull))
+        Ok(Rc::new(ValueNullConst))
     }
 }
 
@@ -196,9 +196,7 @@ impl AspectBindDynamic for TypeNullDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<
-        (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>),
-    > {
+    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
         self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
     }

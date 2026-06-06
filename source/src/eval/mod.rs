@@ -118,26 +118,24 @@ use {
     },
     v8::tc_scope,
     value::{
-        value_function::dynamic::TypeFunctionDynamic,
-        value_null::{
-            dynamic::TypeNullDynamic,
-            r#const::ValueConstNull,
-        },
-        value_number::dynamic::TypeNumberDynamic,
-        value_record::{
+        type_function::dynamic::TypeFunctionDynamic,
+        type_null::dynamic::TypeNullDynamic,
+        type_number::dynamic::TypeNumberDynamic,
+        type_record::{
             Record,
             RecordField,
         },
-        value_scope_entry::dynamic::{
+        type_scope_entry::dynamic::{
             ScopeEntryDynamicAsScope,
             ScopeEntryDynamicBinding,
         },
-        value_string::dynamic::TypeStringDynamic,
-        value_tuple::{
+        type_string::dynamic::TypeStringDynamic,
+        type_tuple::{
             ScopeEntryStatic,
             Tuple,
             TupleElement,
         },
+        value_null::r#const::ValueNullConst,
     },
 };
 
@@ -428,7 +426,7 @@ impl Target for MortarTarget {
                         }),
                     })),
                 },
-                value: Rc::new(ValueConstNull),
+                value: Rc::new(ValueNullConst),
             });
         });
     }
@@ -723,7 +721,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         let binding = erb.must_er(xx.target.bind(&child_xx, sub.loc, value))?;
                         entries.push(binding.0);
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
-                        last_val = Some(Rc::new(ValueConstNull) as Rc<dyn Value>);
+                        last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(eval_half(&child_xx, sub))?;
                         entries.push(r.code);
@@ -732,7 +730,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
                 return Ok(CodeValue {
                     code: erb.must_er(xx.target.block(expr.loc, entries))?,
-                    value: last_val.unwrap_or_else(|| Rc::new(ValueConstNull) as Rc<dyn Value>)
+                    value: last_val.unwrap_or_else(|| Rc::new(ValueNullConst) as Rc<dyn Value>)
                 });
             });
         },
@@ -1108,7 +1106,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None
                     },
-                    value: Rc::new(ValueConstNull),
+                    value: Rc::new(ValueNullConst),
                 });
             } else {
                 // Delegate code generation to target
@@ -1253,7 +1251,7 @@ fn eval(
     );
     s1_scope.insert(
         ConstKey::String("expr".to_string()),
-        Box::new(ScopeEntryStatic { type_: Rc::new(value::value_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryStatic { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
     );
 
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
@@ -1264,20 +1262,20 @@ fn eval(
     ) in [
         (
             "list",
-            Rc::new(value::value_list::dynamic::TypeListConstructorConst) as Rc<dyn Type>,
+            Rc::new(value::type_list::dynamic::TypeListConstructorConst) as Rc<dyn Type>,
             dynamic_wrap!(
                 fn list(
                     ex,
                     js_scope,
                     scope
-                )(element_type: dynamic_wrap:: AnyType) -> value:: value_list:: dynamic:: TypeListDynamic {
-                    value::value_list::dynamic::TypeListDynamic { element_type: element_type.0 }
+                )(element_type: dynamic_wrap:: AnyType) -> value:: type_list:: dynamic:: TypeListDynamic {
+                    value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
                 }
             ),
         ),
         (
             "map",
-            Rc::new(value::value_map::dynamic::TypeMapConstructorConst) as Rc<dyn Type>,
+            Rc::new(value::type_map::dynamic::TypeMapConstructorConst) as Rc<dyn Type>,
             dynamic_wrap!(
                 fn map(
                     ex,
@@ -1286,8 +1284,8 @@ fn eval(
                 )(
                     key_type: dynamic_wrap:: AnyType,
                     value_type: dynamic_wrap:: AnyType
-                ) -> value:: value_map:: dynamic:: TypeMapDynamic {
-                    value::value_map::dynamic::TypeMapDynamic {
+                ) -> value:: type_map:: dynamic:: TypeMapDynamic {
+                    value::type_map::dynamic::TypeMapDynamic {
                         key_type: key_type.0,
                         value_type: value_type.0
                     }
@@ -1393,7 +1391,7 @@ fn eval(
         );
         scope_entries.insert(
             ConstKey::String("expr".to_string()),
-            Box::new(ScopeEntryStatic { type_: Rc::new(value::value_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryStatic { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
         );
         scope_entries
     }

@@ -40,12 +40,12 @@ pub(crate) struct ScopeEntryRecordMortar {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
 }
 
-impl super::super::value_scope_entry::dynamic::DynamicScopeEntry for ScopeEntryRecordMortar {
-    fn use_(&self, value: super::super::value_dynamic::ValueDynamic) -> EvalRes {
+impl super::super::type_scope_entry::dynamic::DynamicScopeEntry for ScopeEntryRecordMortar {
+    fn use_(&self, value: super::super::type_dynamic::ValueDynamic) -> EvalRes {
         let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
         let (loc, code, source) = if has_mortar {
             let (loc, key) = match &value.source {
-                super::super::value_dynamic::ValueDynamicSource::Binding(b) => (b.loc, b.key),
+                super::super::type_dynamic::ValueDynamicSource::Binding(b) => (b.loc, b.key),
                 _ => unreachable!("ScopeEntryRecordMortar with mortar fields called with non-binding source"),
             };
             (loc, Code {

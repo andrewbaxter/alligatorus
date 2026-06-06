@@ -33,9 +33,9 @@ use {
                 Module,
             },
             value::{
-                value_null::r#const::ValueConstNull,
-                value_number::r#const::ValueConstNumber,
-                value_string::r#const::ValueConstString,
+                value_null::r#const::ValueNullConst,
+                value_number::r#const::ValueNumberConst,
+                value_string::r#const::ValueStringConst,
             },
         },
         langhelp::{
@@ -67,14 +67,14 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
             loc: (source_id, m.id),
             r#type: match &m.r#type {
                 SourceExpr_::Literal(lit) => Expr_::Literal(match lit {
-                    SourceLiteral::Null => Rc::new(|| Rc::new(ValueConstNull) as Rc<dyn crate::langhelp::Value>),
+                    SourceLiteral::Null => Rc::new(|| Rc::new(ValueNullConst) as Rc<dyn crate::langhelp::Value>),
                     SourceLiteral::String(l) => {
                         let l = l.clone();
-                        Rc::new(move || Rc::new(ValueConstString(l.clone())) as Rc<dyn crate::langhelp::Value>)
+                        Rc::new(move || Rc::new(ValueStringConst(l.clone())) as Rc<dyn crate::langhelp::Value>)
                     },
                     SourceLiteral::Number(n) => {
                         let n = n.into_inner();
-                        Rc::new(move || Rc::new(ValueConstNumber(n)) as Rc<dyn crate::langhelp::Value>)
+                        Rc::new(move || Rc::new(ValueNumberConst(n)) as Rc<dyn crate::langhelp::Value>)
                     },
                 }),
                 SourceExpr_::ScopeUse(expr) => Expr_::ScopeUse(
@@ -101,7 +101,7 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                         r#type: Expr_::Literal({
                             let base = expr.base.clone();
                             Rc::new(
-                                move || Rc::new(ValueConstString(base.clone())) as Rc<dyn crate::langhelp::Value>,
+                                move || Rc::new(ValueStringConst(base.clone())) as Rc<dyn crate::langhelp::Value>,
                             )
                         }),
                     }),

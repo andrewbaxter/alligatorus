@@ -22,7 +22,7 @@ pub(crate) trait DynamicWrapKey: Sized + Ord + 'static {
 
 impl DynamicWrap for String {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_string::dynamic::TypeStringDynamic)
+        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -36,7 +36,7 @@ impl DynamicWrap for String {
 
 impl DynamicWrap for () {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_null::dynamic::TypeNullDynamic)
+        Rc::new(super::value::type_null::dynamic::TypeNullDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -54,7 +54,7 @@ pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
 impl DynamicWrap for StagedExpr {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_expr::TypeExpr)
+        Rc::new(super::value::type_expr::TypeExpr)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -73,7 +73,7 @@ pub(crate) struct AnyType(pub Rc<dyn Type>);
 
 impl DynamicWrap for AnyType {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_any::r#const::TypeAnyDynamic)
+        Rc::new(super::value::type_any::dynamic::TypeAnyDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -87,7 +87,7 @@ impl DynamicWrap for AnyType {
 
 impl DynamicWrap for crate::langhelp::ConstKey {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_string::dynamic::TypeStringDynamic)
+        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
     }
 
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -119,7 +119,7 @@ impl DynamicWrapKey for crate::langhelp::ConstKey {
 
 impl DynamicWrap for expr::Expr {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_expr::TypeExpr)
+        Rc::new(super::value::type_expr::TypeExpr)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
@@ -139,7 +139,7 @@ impl DynamicWrap for expr::Expr {
 
 impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::collections::BTreeMap<K, V> {
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::value_map::dynamic::TypeMapDynamic {
+        Rc::new(super::value::type_map::dynamic::TypeMapDynamic {
             key_type: K::mortar_type(),
             value_type: V::mortar_type(),
         })
@@ -246,7 +246,7 @@ macro_rules! dynamic_wrap{
             }
             impl Value for[<$name Type >] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-                    Rc::new(crate::eval::value::value_any::r#const::TypeAnyConst)
+                    Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
                 }
             }
             impl Type for[<$name Type >] {
@@ -285,8 +285,8 @@ macro_rules! dynamic_wrap{
                     if source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some() {
                         return EvalRes:: ok(CodeValue {
                             code: cv.code,
-                            value: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
-                                source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
+                            value: Rc:: new(crate:: eval:: value:: type_dynamic:: ValueDynamic {
+                                source: crate:: eval:: value:: type_dynamic:: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new([<$name Type >]),
                             }),
                         });
@@ -308,10 +308,10 @@ macro_rules! dynamic_wrap{
                     loc: QExprId,
                     cv: CodeValue,
                 ) -> EResult<
-                    (Option<CodeDynamic>, Box<dyn crate::eval::value::value_scope_entry::dynamic::DynamicScopeEntry>)
+                    (Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)
                 > {
                     let vtype = cv.value.type_(xx, loc);
-                    self.to_js(xx, loc, cv).map(|c| crate::eval::value::value_dynamic::bind_js_some(loc, c, vtype))
+                    self.to_js(xx, loc, cv).map(|c| crate::eval::value::type_dynamic::bind_js_some(loc, c, vtype))
                 }
             }
             impl AspectStackValueDynamic for[<$name Type >] {
@@ -466,7 +466,7 @@ macro_rules! dynamic_wrap{
     };
     // --- Helpers --- 0 args → empty tuple type
     (@ arg_mortar_type) => {
-        Rc::new(crate::eval::value::value_tuple::Tuple {
+        Rc::new(crate::eval::value::type_tuple::Tuple {
             source: None,
             elements: vec![]
         }) as Rc<dyn Type>
@@ -477,11 +477,11 @@ macro_rules! dynamic_wrap{
     };
     // 2+ args → tuple type
     (@ arg_mortar_type $first: ty, $($rest: ty), +) => {
-        Rc::new(crate::eval::value::value_tuple::Tuple {
+        Rc::new(crate::eval::value::type_tuple::Tuple {
             source: None,
             elements: vec![
-                crate:: eval:: value:: value_tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
-                $(crate:: eval:: value:: value_tuple:: TupleElement:: Mortar(<$rest as DynamicWrap >:: mortar_type())),
+                crate:: eval:: value:: type_tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
+                $(crate:: eval:: value:: type_tuple:: TupleElement:: Mortar(<$rest as DynamicWrap >:: mortar_type())),
                 +
             ],
         }) as Rc<dyn Type>
