@@ -17,7 +17,6 @@ use {
             aspect_bind_dynamic_get_maybe,
             aspect_bool_const_get_maybe,
             aspect_consume_dynamic_get,
-            aspect_consume_dynamic_get_maybe,
             aspect_field_get,
             aspect_function_get,
             aspect_iterable_get,
@@ -388,16 +387,8 @@ impl Target for MortarTarget {
     ) -> EvalRes {
         fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
             let vtype = cv.value.type_(xx, loc);
-            if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, vtype.as_ref()) {
-                return erb.must_er(consume.to_js(xx, loc, cv));
-            }
-            match erb.must_er(cv.code.cast::<CodeDynamic>())? {
-                Some(c) => Ok(c.clone()),
-                None => Ok(CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::Literal(serde_json::Value::Null),
-                }),
-            }
+            let consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
+            erb.must_er(consume.to_js(xx, loc, cv))
         }
 
         return er_seq_cv!(loc, erb, {
@@ -415,19 +406,16 @@ impl Target for MortarTarget {
             } else {
                 None
             };
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::If(CodeDynamicIf {
-                            conditions: js_conditions,
-                            else_: js_else,
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueNullConst),
-            });
+            let if_js = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::If(CodeDynamicIf {
+                    conditions: js_conditions,
+                    else_: js_else,
+                }),
+            };
+            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
+            let null_stack = erb.must_er(null_stack)?;
+            return Ok(null_stack.to_value(loc, if_js));
         });
     }
 
@@ -463,17 +451,8 @@ impl Target for MortarTarget {
                 };
                 let body_cv = erb.must_er(eval_half(&child_xx, body_expr))?;
                 let body_type = body_cv.value.type_(&child_xx, loc);
-                let body_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(&child_xx, body_type.as_ref()) {
-                    erb.must_er(consume.to_js(&child_xx, loc, body_cv))?
-                } else {
-                    match erb.must_er(body_cv.code.cast::<CodeDynamic>())? {
-                        Some(c) => c.clone(),
-                        None => CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::Literal(serde_json::Value::Null)
-                        },
-                    }
-                };
+                let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
+                let body_js = erb.must_er(body_consume.to_js(&child_xx, loc, body_cv))?;
                 js_cases.push(CodeDynamicMatchBranch {
                     js_tag: tag.clone(),
                     body: body_js,
@@ -482,17 +461,8 @@ impl Target for MortarTarget {
             let js_fallback = if let Some(fallback_expr) = fallback {
                 let fb_cv = erb.must_er(eval_half(xx, fallback_expr))?;
                 let fb_type = fb_cv.value.type_(xx, loc);
-                let fb_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, fb_type.as_ref()) {
-                    erb.must_er(consume.to_js(xx, loc, fb_cv))?
-                } else {
-                    match erb.must_er(fb_cv.code.cast::<CodeDynamic>())? {
-                        Some(c) => c.clone(),
-                        None => CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::Literal(serde_json::Value::Null)
-                        },
-                    }
-                };
+                let fb_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, fb_type.as_ref()))?;
+                let fb_js = erb.must_er(fb_consume.to_js(xx, loc, fb_cv))?;
                 Some(Box::new(fb_js))
             } else {
                 None
@@ -558,11 +528,8 @@ impl Target for MortarTarget {
                         });
                         let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
-                        let inner_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, vtype.as_ref()) {
-                            erb.must_er(consume.to_js(xx, loc, cv))?
-                        } else {
-                            erb.must_er(cv.code.cast::<CodeDynamic>())?.unwrap().clone()
-                        };
+                        let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
+                        let inner_js = erb.must_er(inner_consume.to_js(xx, loc, cv))?;
                         stage_args.push(CodeDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: lift_id }),
@@ -1324,15 +1291,10 @@ fn eval(
     let value_type = cv.value.type_(&xx, root_loc);
     let (stage1_code, fallback_value) = match &cv.code.code {
         Code_::None => (None, Some(cv.value)),
-        _ => match aspect_consume_dynamic_get_maybe(&xx, value_type.as_ref()) {
-            Some(to_js) => {
-                let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
-                (Some(js), None)
-            },
-            None => {
-                let code = cv.code.cast::<CodeDynamic>().into_res()?.cloned();
-                (code, Some(cv.value))
-            },
+        _ => {
+            let to_js = aspect_consume_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+            let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
+            (Some(js), None)
         },
     };
 

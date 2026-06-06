@@ -184,6 +184,9 @@ impl Type for TypeStagedExprPlaceholder {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStagedExprPlaceholder) as Box<dyn AspectConsumeDynamic>));
+        }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeStagedExprPlaceholder) as Box<dyn AspectLiftDynamic>));
         }
@@ -200,6 +203,12 @@ impl Type for TypeStagedExprPlaceholder {
 }
 
 impl Aspect for TypeStagedExprPlaceholder { }
+
+impl AspectConsumeDynamic for TypeStagedExprPlaceholder {
+    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        super::type_dynamic::mortar_consume_js_to_js(_xx, loc, cv)
+    }
+}
 
 impl AspectLiftDynamic for TypeStagedExprPlaceholder {
     fn lift(

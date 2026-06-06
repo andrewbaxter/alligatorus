@@ -106,7 +106,10 @@ impl Type for TypeNullDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueNullConst),
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeNullDynamic),
+            }),
         })
     }
 
@@ -120,7 +123,10 @@ impl Type for TypeNullDynamic {
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst),
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeNullDynamic),
+                }),
             });
         });
     }

@@ -122,20 +122,16 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                     CodeDynamicType::FieldUse(fu) => *fu.base.clone(),
                     _ => self_code.clone(),
                 };
-                return Ok(CodeValue {
-                    code: Code {
-                        loc: loc,
-                        code: Code_::Dyn(Rc::new(CodeDynamic {
-                            loc: loc,
-                            type_: CodeDynamicType::FieldSet(CodeDynamicFieldSet {
-                                base: Box::new(base_code),
-                                key: b.key.clone(),
-                                value: Box::new(value_code)
-                            })
-                        }))
-                    },
-                    value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
-                })
+                let set_js = CodeDynamic {
+                    loc: loc,
+                    type_: CodeDynamicType::FieldSet(CodeDynamicFieldSet {
+                        base: Box::new(base_code),
+                        key: b.key.clone(),
+                        value: Box::new(value_code)
+                    })
+                };
+                let null_stack = erb.must_er(crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &super::type_null::dynamic::TypeNullDynamic as &dyn Type))?;
+                return Ok(null_stack.to_value(loc, set_js))
             },
             ValueDynamicSource::Binding(b) => {
                 let mut seq = vec![];
@@ -149,18 +145,14 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                         value: Box::new(value_code),
                     })
                 });
-                return Ok(CodeValue {
-                    code: Code {
-                        loc: loc,
-                        code: Code_::Dyn(Rc::new(CodeDynamic {
-                            loc: loc,
-                            type_: CodeDynamicType::Block(
-                                CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
-                            )
-                        }))
-                    },
-                    value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
-                })
+                let set_js = CodeDynamic {
+                    loc: loc,
+                    type_: CodeDynamicType::Block(
+                        CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
+                    )
+                };
+                let null_stack = erb.must_er(crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &super::type_null::dynamic::TypeNullDynamic as &dyn Type))?;
+                return Ok(null_stack.to_value(loc, set_js))
             },
             ValueDynamicSource::Expr => {
                 return erb.err_new(format!("Cannot modify a temporary value"));
