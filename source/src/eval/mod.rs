@@ -393,12 +393,12 @@ impl Target for MortarTarget {
             let mut js_conditions = Vec::new();
             for (cond, body) in conditions {
                 let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
-                let body_cv = erb.must_er(eval_half(xx, body))?;
+                let body_cv = erb.must_er(const_eval(xx, body))?;
                 let body_js = cv_to_dynamic(&mut erb, xx, loc, body_cv)?;
                 js_conditions.push((cond_js, body_js));
             }
             let js_else = if let Some(else_expr) = else_ {
-                let else_cv = erb.must_er(eval_half(xx, else_expr))?;
+                let else_cv = erb.must_er(const_eval(xx, else_expr))?;
                 let else_js = cv_to_dynamic(&mut erb, xx, loc, else_cv)?;
                 Some(Box::new(else_js))
             } else {
@@ -447,7 +447,7 @@ impl Target for MortarTarget {
                     scope: child_scope,
                     target: xx.target.clone(),
                 };
-                let body_cv = erb.must_er(eval_half(&child_xx, body_expr))?;
+                let body_cv = erb.must_er(const_eval(&child_xx, body_expr))?;
                 let body_type = body_cv.value.type_(&child_xx, loc);
                 let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
                 let body_js = erb.must_er(body_consume.to_dynamic(&child_xx, loc, body_cv))?;
@@ -457,7 +457,7 @@ impl Target for MortarTarget {
                 });
             }
             let js_fallback = if let Some(fallback_expr) = fallback {
-                let fb_cv = erb.must_er(eval_half(xx, fallback_expr))?;
+                let fb_cv = erb.must_er(const_eval(xx, fallback_expr))?;
                 let fb_type = fb_cv.value.type_(xx, loc);
                 let fb_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, fb_type.as_ref()))?;
                 let fb_js = erb.must_er(fb_consume.to_dynamic(xx, loc, fb_cv))?;
@@ -578,7 +578,7 @@ fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<Co
     return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
 }
 
-pub(crate) fn eval_half_root(
+pub(crate) fn const_eval_root(
     vx: Rc<EvalContext>,
     import_state: Rc<Cell<ImportStateId>>,
     scope: Rc<Scope>,
@@ -591,11 +591,11 @@ pub(crate) fn eval_half_root(
         scope,
         target,
     });
-    let result = eval_half(&xx, expr);
+    let result = const_eval(&xx, expr);
     (xx, result)
 }
 
-pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
+pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
     match &expr.r#type {
         Expr_::Literal(p) => {
             return EvalRes {
@@ -610,7 +610,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             };
         },
         Expr_::ScopeUse(p) => return er_seq_cv!(expr.loc, erb, {
-            let key = erb.must_er(eval_half(xx, p.key.as_ref()))?;
+            let key = erb.must_er(const_eval(xx, p.key.as_ref()))?;
             let constkey = erb.must_res(extract_const_key(xx, expr.loc, key.value.as_ref()))?;
             let scope = shed!{
                 'found _;
@@ -633,8 +633,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         }),
         Expr_::Call(p) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                func = eval_half(xx, p.func.as_ref()),
-                arg = eval_half(xx, p.arg.as_ref()),
+                func = const_eval(xx, p.func.as_ref()),
+                arg = const_eval(xx, p.arg.as_ref()),
             });
             let func_type = func.value.type_(xx, expr.loc);
             let aspect_func = erb.must_er(aspect_function_get(xx, expr.loc, func_type.as_ref()))?;
@@ -643,8 +643,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         }),
         Expr_::Set(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref()),
-                value = eval_half(xx, e.value.as_ref()),
+                base = const_eval(xx, e.base.as_ref()),
+                value = const_eval(xx, e.value.as_ref()),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let base_set = erb.must_er(aspect_set_get(xx, expr.loc, base_type.as_ref()))?;
@@ -653,8 +653,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         }),
         Expr_::Field(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref()),
-                field = eval_half(xx, e.key.as_ref()),
+                base = const_eval(xx, e.base.as_ref()),
+                field = const_eval(xx, e.key.as_ref()),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
@@ -681,8 +681,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 for sub in &e.exprs {
                     if let Expr_::Bind(bind) = &sub.r#type {
                         er_all!(erb, {
-                            base = eval_half(&child_xx, bind.base.as_ref()),
-                            value = eval_half(&child_xx, bind.value.as_ref()),
+                            base = const_eval(&child_xx, bind.base.as_ref()),
+                            value = const_eval(&child_xx, bind.value.as_ref()),
                         });
                         let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_ref()))?;
                         entries.push(base.code);
@@ -691,7 +691,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
                         last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
                     } else {
-                        let r = erb.must_er(eval_half(&child_xx, sub))?;
+                        let r = erb.must_er(const_eval(&child_xx, sub))?;
                         entries.push(r.code);
                         last_val = Some(r.value);
                     }
@@ -801,7 +801,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             return er_seq_cv!(expr.loc, erb, {
                 let mut lower_values = Vec::new();
                 for lower_inner in &matched_lower_exprs {
-                    let cv = erb.must_er(eval_half(xx, lower_inner))?;
+                    let cv = erb.must_er(const_eval(xx, lower_inner))?;
                     lower_values.push(cv);
                 }
                 let v = erb.must_er(xx.target.stage(xx, expr.loc, e.expr.as_ref().clone(), lower_values))?;
@@ -810,11 +810,11 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         },
         Expr_::Lower(e) => {
             // Transparently evaluate inner expression
-            return eval_half(xx, &e.expr);
+            return const_eval(xx, &e.expr);
         },
         Expr_::Tuple(t) => {
             let elements: Vec<TupleElement> =
-                t.elements.iter().map(|e| TupleElement::EvalRes(eval_half(xx, e))).collect();
+                t.elements.iter().map(|e| TupleElement::EvalRes(const_eval(xx, e))).collect();
             return EvalRes::ok(CodeValue {
                 code: Code {
                     loc: expr.loc,
@@ -831,7 +831,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let mut key_codes = vec![];
             let mut errors = vec![];
             for (k_expr, v_expr) in &r.entries {
-                let k_res = eval_half(xx, k_expr);
+                let k_res = const_eval(xx, k_expr);
                 if let Some(errs) = k_res.errors {
                     errors.extend(errs);
                 }
@@ -843,7 +843,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
                 match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
                     Ok(key) => {
-                        entries.insert(key, eval_half(xx, v_expr));
+                        entries.insert(key, const_eval(xx, v_expr));
                     },
                     Err(e) => errors.push(ExprErr {
                         loc: expr.loc,
@@ -889,8 +889,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         },
         Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref()),
-                reference = eval_half(xx, e.reference.as_ref()),
+                base = const_eval(xx, e.base.as_ref()),
+                reference = const_eval(xx, e.reference.as_ref()),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let aspect_lt = erb.must_er(aspect_operator_lt_get(xx, expr.loc, base_type.as_ref()))?;
@@ -899,8 +899,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         }),
         Expr_::OperatorAdd(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref()),
-                reference = eval_half(xx, e.reference.as_ref()),
+                base = const_eval(xx, e.base.as_ref()),
+                reference = const_eval(xx, e.reference.as_ref()),
             });
             let base_type = base.value.type_(xx, expr.loc);
             let aspect_add = erb.must_er(aspect_operator_add_get(xx, expr.loc, base_type.as_ref()))?;
@@ -909,8 +909,8 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
         }),
         Expr_::Foreach(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref()),
-                element_key_cv = eval_half(xx, e.element_key.as_ref()),
+                base = const_eval(xx, e.base.as_ref()),
+                element_key_cv = const_eval(xx, e.element_key.as_ref()),
             });
             let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
             let base_type = base.value.type_(xx, expr.loc);
@@ -932,14 +932,14 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 scope: child_scope,
                 target: xx.target.clone(),
             };
-            let body = erb.must_er(eval_half(&child_xx, e.body.as_ref()))?;
+            let body = erb.must_er(const_eval(&child_xx, e.body.as_ref()))?;
             let v = erb.must_er(iterable.foreach(xx, expr.loc, base, element_scope_id, body))?;
             return Ok(v);
         }),
         Expr_::Match(e) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
-                base = eval_half(xx, e.base.as_ref()),
-                element_key_cv = eval_half(xx, e.element_key.as_ref()),
+                base = const_eval(xx, e.base.as_ref()),
+                element_key_cv = const_eval(xx, e.element_key.as_ref()),
             });
             let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
             let base_type = base.value.type_(xx, expr.loc);
@@ -949,7 +949,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             // Validate case tags against variant tags
             let mut case_tags: Vec<ConstKey> = Vec::new();
             for case in &e.cases {
-                let cond_cv = erb.must_er(eval_half(xx, &case.condition))?;
+                let cond_cv = erb.must_er(const_eval(xx, &case.condition))?;
                 let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_ref()))?;
                 if !variants.iter().any(|(t, _, _)| t == &tag) {
                     return erb.err_new(format!("Match case tag '{:?}' not found in tagged union", tag));
@@ -981,7 +981,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             return Ok(v);
         }),
         Expr_::Import(e) => return er_seq_cv!(expr.loc, erb, {
-            let spec_cv = erb.must_er(eval_half(xx, &e.spec))?;
+            let spec_cv = erb.must_er(const_eval(xx, &e.spec))?;
             let spec_str = erb.must_res(extract_const_key(xx, expr.loc, spec_cv.value.as_ref()))?;
             let spec_name = match spec_str {
                 ConstKey::String(s) => s,
@@ -1045,7 +1045,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let mut conditions_evaluated = Vec::new();
             let mut all_const = true;
             for branch in &e.conditions {
-                let cond = erb.must_er(eval_half(xx, &branch.condition))?;
+                let cond = erb.must_er(const_eval(xx, &branch.condition))?;
                 let cond_type = cond.value.type_(xx, expr.loc);
                 if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, cond_type.as_ref()) {
                     let val = aspect_bool.get(cond.value.as_ref());
@@ -1059,14 +1059,14 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 // Constant folding: find the first true branch
                 for (val, _cond, body) in &conditions_evaluated {
                     if *val {
-                        let body_cv = erb.must_er(eval_half(xx, body))?;
+                        let body_cv = erb.must_er(const_eval(xx, body))?;
                         return Ok(body_cv);
                     }
                 }
 
                 // No true branch; use else or null
                 if let Some(else_expr) = &e.else_ {
-                    let else_cv = erb.must_er(eval_half(xx, else_expr))?;
+                    let else_cv = erb.must_er(const_eval(xx, else_expr))?;
                     return Ok(else_cv);
                 }
                 return Ok(CodeValue {
@@ -1278,7 +1278,7 @@ fn eval(
     }
     let root_loc = expr.loc;
     let target: Rc<dyn Target> = Rc::new(MortarTarget);
-    let (xx, result) = eval_half_root(ex.clone(), Rc::new(Cell::new(import_state)), Rc::new(Scope {
+    let (xx, result) = const_eval_root(ex.clone(), Rc::new(Cell::new(import_state)), Rc::new(Scope {
         values: RefCell::new(s1_scope),
         parent: None,
     }), target.clone(), expr);
@@ -1390,7 +1390,7 @@ fn eval(
                 target: target.clone(),
             })
         };
-        let impl_result = eval_half(&func_xx, impl_expr_ast);
+        let impl_result = const_eval(&func_xx, impl_expr_ast);
         if let Some(errs) = impl_result.errors {
             return Err(errs);
         }
@@ -1479,7 +1479,7 @@ fn eval(
                         target: target.clone(),
                     })
                 };
-                let impl_result = eval_half(&method_xx, impl_expr_ast);
+                let impl_result = const_eval(&method_xx, impl_expr_ast);
                 if let Some(errs) = impl_result.errors {
                     return Err(errs);
                 }
@@ -1552,7 +1552,7 @@ fn eval(
                             target: target.clone(),
                         })
                     };
-                    let impl_result = eval_half(&method_xx, impl_expr_ast);
+                    let impl_result = const_eval(&method_xx, impl_expr_ast);
                     if let Some(errs) = impl_result.errors {
                         return Err(errs);
                     }
