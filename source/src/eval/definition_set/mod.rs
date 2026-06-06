@@ -1,5 +1,7 @@
 mod dynamic_wrap_structs;
 mod data_type_ref;
+pub(crate) mod artifact_data_type;
+pub(crate) mod artifact_data_type_constructor;
 pub(crate) mod data_type_constructor;
 pub(crate) mod data_type;
 mod exports;

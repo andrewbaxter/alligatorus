@@ -374,18 +374,18 @@ impl DefinitionSetDataTypeConstructor {
         let serial_data = {
             let underlying_type = self.data.underlying_type.borrow();
             let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-            let methods: Vec<SerialMethod> = self.data.methods.borrow().iter().map(|m| {
+            let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
                 let compiled_js = m.compiled_js.borrow();
                 let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
                 let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-                SerialMethod {
+                ArtifactDataDefSetCtorMethod {
                     name: m.name.clone(),
                     field_name: m.field_name.clone(),
                     ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
                     compiled_js: compiled_js.clone(),
                 }
             }).collect();
-            SerialDefSetCtorData {
+            ArtifactDataDefSetCtorData {
                 name: self.data.name.clone(),
                 data_field: self.data.data_field.clone(),
                 underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
@@ -418,7 +418,7 @@ fn deserialize_defset_ctor_as_type(
             data.clone(),
         ).map_err(|e| format!("Failed to parse defset ctor artifact ref: {}", e))?;
     let stored = gx.artifacts.get(artifact_id)?;
-    let serial: SerialDefSetCtorData =
+    let serial: ArtifactDataDefSetCtorData =
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
     let identity = serial_to_unique(&serial.identity);
     let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
@@ -461,28 +461,13 @@ fn deserialize_defset_ctor_as_type(
     Ok(Rc::new(DefinitionSetDataTypeConstructor { data: dt_data }))
 }
 
-// --- Serializable data structures ---
-#[derive(serde::Serialize, serde::Deserialize)]
-struct SerialDefSetCtorData {
-    name: Option<String>,
-    data_field: String,
-    underlying_type: Artifact,
-    identity: SerialUnique,
-    methods: Vec<SerialMethod>,
-    import_id: crate::langhelp::ImportStateId,
-    def_set_id: crate::langhelp::DefSetId,
-}
+use super::artifact_data_type_constructor::{
+    ArtifactDataDefSetCtorData,
+    ArtifactDataDefSetCtorMethod,
+};
 
 #[derive(serde::Serialize, serde::Deserialize)]
-struct SerialMethod {
-    name: String,
-    field_name: String,
-    ret_type: Artifact,
-    compiled_js: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) enum SerialUnique {
+pub(crate) enum ArtifactDataUnique {
     Builtin {
         file: String,
         line: usize,
@@ -510,13 +495,13 @@ pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, loc: QExp
     })
 }
 
-pub(crate) fn unique_to_serial(u: &Unique) -> SerialUnique {
+pub(crate) fn unique_to_serial(u: &Unique) -> ArtifactDataUnique {
     match u {
-        Unique::Builtin { file, line } => SerialUnique::Builtin {
+        Unique::Builtin { file, line } => ArtifactDataUnique::Builtin {
             file: file.to_string(),
             line: *line,
         },
-        Unique::Compile(compile_id, counter) => SerialUnique::Compile {
+        Unique::Compile(compile_id, counter) => ArtifactDataUnique::Compile {
             import_state: compile_id.0.0,
             source: compile_id.1.0,
             counter: *counter,
@@ -524,9 +509,9 @@ pub(crate) fn unique_to_serial(u: &Unique) -> SerialUnique {
     }
 }
 
-pub(crate) fn serial_to_unique(s: &SerialUnique) -> Unique {
+pub(crate) fn serial_to_unique(s: &ArtifactDataUnique) -> Unique {
     match s {
-        SerialUnique::Builtin { file, line } => {
+        ArtifactDataUnique::Builtin { file, line } => {
             // For deserialized builtins, use Compile with a deterministic id since we can't
             // reconstruct &'static str
             Unique::Compile(
@@ -534,7 +519,7 @@ pub(crate) fn serial_to_unique(s: &SerialUnique) -> Unique {
                 *line,
             )
         },
-        SerialUnique::Compile { import_state, source, counter } => Unique::Compile(
+        ArtifactDataUnique::Compile { import_state, source, counter } => Unique::Compile(
             crate::langhelp::CompileId(
                 crate::langhelp::ImportStateId(*import_state),
                 crate::langhelp::SourceId(*source),

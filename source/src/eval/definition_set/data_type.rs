@@ -140,7 +140,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
         loc: QExprId,
         data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
-        let serial: SerialDefSetDataType =
+        let serial: ArtifactDataDefSetDataType =
             serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
         let def_set_artifact = gx.artifacts.get(serial.def_set)?;
         let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
@@ -622,7 +622,7 @@ impl DefinitionSetDataType {
                 )
                 .expect("Data type not found in its definition set")
         };
-        let serial = SerialDefSetDataType {
+        let serial = ArtifactDataDefSetDataType {
             def_set: def_set_artifact_id,
             type_index,
         };
@@ -635,36 +635,12 @@ impl DefinitionSetDataType {
     }
 }
 
-// --- Serializable data structures ---
-#[derive(serde::Serialize, serde::Deserialize)]
-struct SerialDefSetDataType {
-    def_set: ArtifactId,
-    type_index: usize,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct SerialDefSet {
-    data_types: Vec<SerialDefSetDataTypeEntry>,
-    import_id: crate::langhelp::ImportStateId,
-    def_set_id: crate::langhelp::DefSetId,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct SerialDefSetDataTypeEntry {
-    name: Option<String>,
-    underlying_type: Artifact,
-    identity: super::data_type_constructor::SerialUnique,
-    data_field: String,
-    methods: Vec<SerialDefSetMethod>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct SerialDefSetMethod {
-    name: String,
-    field_name: String,
-    ret_type: Artifact,
-    compiled_js: String,
-}
+use super::artifact_data_type::{
+    ArtifactDataDefSet,
+    ArtifactDataDefSetDataType,
+    ArtifactDataDefSetDataTypeEntry,
+    ArtifactDataDefSetMethod,
+};
 
 // --- Definition set serialization ---
 pub(crate) fn defset_artifact_identity() -> ArtifactIdBuiltin {
@@ -683,21 +659,21 @@ fn serialize_definition_set(
     };
 
     let data_types = set.data_types.borrow();
-    let serial_data_types: Vec<SerialDefSetDataTypeEntry> = data_types.iter().map(|dt| {
+    let serial_data_types: Vec<ArtifactDataDefSetDataTypeEntry> = data_types.iter().map(|dt| {
         let underlying_type = dt.underlying_type.borrow();
         let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-        let methods: Vec<SerialDefSetMethod> = dt.methods.borrow().iter().map(|m| {
+        let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
             let compiled_js = m.compiled_js.borrow();
             let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
             let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-            SerialDefSetMethod {
+            ArtifactDataDefSetMethod {
                 name: m.name.clone(),
                 field_name: m.field_name.clone(),
                 ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
                 compiled_js: compiled_js.clone(),
             }
         }).collect();
-        SerialDefSetDataTypeEntry {
+        ArtifactDataDefSetDataTypeEntry {
             name: dt.name.clone(),
             underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
             identity: unique_to_serial(&dt.identity),
@@ -705,7 +681,7 @@ fn serialize_definition_set(
             methods,
         }
     }).collect();
-    let serial = SerialDefSet {
+    let serial = ArtifactDataDefSet {
         data_types: serial_data_types,
         import_id: set.import_id,
         def_set_id: set.def_set_id,
@@ -730,7 +706,7 @@ fn deserialize_definition_set(
         data_type_constructor::serial_to_unique,
     };
 
-    let serial: SerialDefSet =
+    let serial: ArtifactDataDefSet =
         serde_json::from_value(
             artifact.data.clone(),
         ).map_err(|e| format!("Failed to parse definition set: {}", e))?;

@@ -69,7 +69,7 @@ use {
 
 pub(crate) struct TypeStringDynamic;
 
-generate_builtin_artifact!(TypeStringDynamic, String);
+generate_builtin_artifact!(TypeStringDynamic, super::artifact::ArtifactDataString);
 
 impl Value for TypeStringDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

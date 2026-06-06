@@ -32,7 +32,7 @@ use {
 
 pub(crate) struct TypeNullConst;
 
-generate_builtin_artifact!(TypeNullConst, ());
+generate_builtin_artifact!(TypeNullConst, super::artifact::ArtifactDataNull);
 
 impl Value for TypeNullConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

@@ -43,7 +43,7 @@ use {
 
 pub(crate) struct TypeStringConst;
 
-generate_builtin_artifact!(TypeStringConst, String);
+generate_builtin_artifact!(TypeStringConst, super::artifact::ArtifactDataString);
 
 impl Value for TypeStringConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

@@ -56,7 +56,7 @@ use {
 
 pub(crate) struct TypeNullDynamic;
 
-generate_builtin_artifact!(TypeNullDynamic, ());
+generate_builtin_artifact!(TypeNullDynamic, super::artifact::ArtifactDataNull);
 
 impl Value for TypeNullDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

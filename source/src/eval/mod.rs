@@ -1,5 +1,6 @@
 #[macro_use]
 pub mod util;
+pub mod aspect;
 pub mod value;
 pub mod expr;
 pub mod tuple;
