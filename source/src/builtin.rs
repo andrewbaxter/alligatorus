@@ -5,7 +5,6 @@ use {
         langhelp::{
             Artifact,
             Aspect,
-            Code,
             CodeValue,
             ConstKey,
             EResult,
@@ -29,6 +28,54 @@ macro_rules! unique{
         Unique::Builtin {
             file: file!(),
             line: line!() as usize
+        }
+    };
+}
+
+macro_rules! builtin_artifact_id{
+    () => {
+        crate::langhelp::ArtifactIdBuiltin {
+            file: file!().to_string(),
+            line: line!() as usize,
+        }
+    };
+}
+
+/// Generates methods on a type for artifact serialization and registration.
+///
+/// Expands to
+/// `impl $type { artifact_id(), build_artifact(data), type_ref_artifact(), register(m) }`.
+/// `$data` constrains the data shape so you can't accidentally serialize the wrong
+/// data for a type.
+macro_rules! generate_builtin_artifact{
+    ($type: ty, $data: ty) => {
+        impl $type {
+            pub(crate) fn artifact_id() -> crate::langhelp::ArtifactIdBuiltin {
+                crate::langhelp::ArtifactIdBuiltin {
+                    file: file!().to_string(),
+                    line: line!() as usize,
+                }
+            }
+            pub(crate) fn build_artifact(data: $data) -> crate:: langhelp:: Artifact {
+                crate::langhelp::Artifact {
+                    type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
+                    data: serde_json::to_value(data).unwrap(),
+                }
+            }
+            pub(crate) fn type_ref_artifact() -> crate::langhelp::Artifact {
+                crate::langhelp::Artifact {
+                    type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
+                    data: serde_json::Value::Null,
+                }
+            }
+            pub(crate) fn register(
+                m:
+                    &mut std
+                    ::collections
+                    ::HashMap<crate::langhelp::ArtifactIdBuiltin, std::rc::Rc<dyn crate::langhelp::Type>,>,
+            ) {
+                m.insert(Self::artifact_id(), std::rc::Rc::new(Self));
+            }
         }
     };
 }

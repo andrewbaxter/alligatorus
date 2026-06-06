@@ -67,9 +67,9 @@ impl crate::langhelp::Sources for TestSources {
     }
 }
 
-struct TestArtifacts {
+pub(super) struct TestArtifacts {
     next_id: Mutex<usize>,
-    data: Mutex<HashMap<ArtifactId, Artifact>>,
+    pub data: Mutex<HashMap<ArtifactId, Artifact>>,
 }
 
 impl TestArtifacts {
@@ -81,7 +81,7 @@ impl TestArtifacts {
     }
 }
 
-impl crate::langhelp::Artifacts for TestArtifacts {
+impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
     fn reserve_id(&self) -> ArtifactId {
         let mut next = self.next_id.lock().unwrap();
         let id = *next;
@@ -99,13 +99,21 @@ impl crate::langhelp::Artifacts for TestArtifacts {
 }
 
 pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext> {
+    new_gx_with_artifacts(modules).0
+}
+
+pub(super) fn new_gx_with_artifacts(
+    modules: HashMap<&str, SourceModule>,
+) -> (Arc<GlobalContext>, Arc<TestArtifacts>) {
     let mut sources = HashMap::new();
     let mut next_id = 0;
     for (name, module) in modules {
         sources.insert(name.to_string(), (SourceId(next_id), module));
         next_id += 1;
     }
-    GlobalContext::new(Box::new(TestSources { modules: sources }), Box::new(TestArtifacts::new()))
+    let artifacts = Arc::new(TestArtifacts::new());
+    let gx = GlobalContext::new(Box::new(TestSources { modules: sources }), Box::new(artifacts.clone()));
+    (gx, artifacts)
 }
 
 #[derive(Default)]

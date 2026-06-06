@@ -15,8 +15,6 @@ use {
         jscode::JsCode,
         langhelp::{
             Artifact,
-            ArtifactId,
-            ArtifactIdBuiltin,
             Aspect,
             CodeValue,
             EResult,
@@ -41,13 +39,9 @@ use {
     },
 };
 
-pub(crate) fn string_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
-}
 pub(crate) struct TypeString;
+
+generate_builtin_artifact!(TypeString, String);
 
 impl Value for TypeString {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -65,10 +59,7 @@ impl Type for TypeString {
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Artifact {
-            type_: ArtifactId::Builtin(string_artifact_identity()),
-            data: serde_json::Value::Null,
-        })
+        Some(Self::type_ref_artifact())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -167,10 +158,7 @@ impl AspectArtifact for TypeString {
         value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
         let s = <dyn Any>::downcast_ref::<ValueString>(value.as_ref()).unwrap().0.clone();
-        EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(string_artifact_identity()),
-            data: serde_json::Value::String(s),
-        })
+        EResult::ok(Self::build_artifact(s))
     }
 
     fn from_serial(

@@ -22,8 +22,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactId,
-            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,
@@ -54,13 +52,9 @@ use {
     },
 };
 
-pub(crate) fn mortar_null_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
-}
 pub(crate) struct TypeMortarNull;
+
+generate_builtin_artifact!(TypeMortarNull, ());
 
 impl Value for TypeMortarNull {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -100,10 +94,7 @@ impl Type for TypeMortarNull {
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Artifact {
-            type_: ArtifactId::Builtin(mortar_null_artifact_identity()),
-            data: serde_json::Value::Null,
-        })
+        Some(Self::build_artifact(()))
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
@@ -158,10 +149,7 @@ impl AspectArtifact for TypeMortarNull {
         _loc: QExprId,
         _value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
-        EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(mortar_null_artifact_identity()),
-            data: serde_json::Value::Null,
-        })
+        EResult::ok(Self::build_artifact(()))
     }
 
     fn from_serial(

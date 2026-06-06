@@ -279,17 +279,17 @@ pub(crate) struct CompileImportContext {
 
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     use crate::eval::{
-        mortar_null::mortar_null_artifact_identity,
-        mortar_string::mortar_string_artifact_identity,
-        null::null_artifact_identity,
-        string::string_artifact_identity,
+        mortar_null::TypeMortarNull,
+        mortar_string::TypeMortarString,
+        null::TypeNull,
+        string::TypeString,
     };
 
     let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn Type>> = HashMap::new();
-    m.insert(null_artifact_identity(), Rc::new(crate::eval::null::TypeNull));
-    m.insert(string_artifact_identity(), Rc::new(crate::eval::string::TypeString));
-    m.insert(mortar_null_artifact_identity(), Rc::new(crate::eval::mortar_null::TypeMortarNull));
-    m.insert(mortar_string_artifact_identity(), Rc::new(crate::eval::mortar_string::TypeMortarString));
+    TypeNull::register(&mut m);
+    TypeString::register(&mut m);
+    TypeMortarNull::register(&mut m);
+    TypeMortarString::register(&mut m);
     m
 }
 

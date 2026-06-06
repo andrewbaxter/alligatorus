@@ -437,10 +437,7 @@ impl Value for LiftedDefSetDataTypeValue {
 
 // --- AspectArtifact: serialize/deserialize data type instances ---
 pub(crate) fn defset_data_type_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    builtin_artifact_id!()
 }
 
 impl AspectArtifact for DefinitionSetDataType {
@@ -651,10 +648,7 @@ struct SerialDefSetMethod {
 
 // --- Definition set serialization ---
 pub(crate) fn defset_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    builtin_artifact_id!()
 }
 
 fn serialize_definition_set(

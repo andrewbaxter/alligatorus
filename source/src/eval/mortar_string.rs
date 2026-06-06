@@ -30,8 +30,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactId,
-            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,
@@ -67,13 +65,9 @@ use {
     },
 };
 
-pub(crate) fn mortar_string_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
-}
 pub(crate) struct TypeMortarString;
+
+generate_builtin_artifact!(TypeMortarString, String);
 
 impl Value for TypeMortarString {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -177,10 +171,7 @@ impl Type for TypeMortarString {
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Artifact {
-            type_: ArtifactId::Builtin(mortar_string_artifact_identity()),
-            data: serde_json::Value::Null,
-        })
+        Some(Self::type_ref_artifact())
     }
 }
 
@@ -281,10 +272,7 @@ impl AspectArtifact for TypeMortarString {
             aspect_string_get_maybe(xx, type_.as_ref())
                 .expect("TypeMortarString::to_serial expects a string value")
                 .get(value.as_ref());
-        EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(mortar_string_artifact_identity()),
-            data: serde_json::Value::String(s),
-        })
+        EResult::ok(Self::build_artifact(s))
     }
 
     fn from_serial(

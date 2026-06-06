@@ -10,8 +10,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactId,
-            ArtifactIdBuiltin,
             Aspect,
             CodeValue,
             EResult,
@@ -32,13 +30,9 @@ use {
     super::Erb,
 };
 
-pub(crate) fn null_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
-}
 pub(crate) struct TypeNull;
+
+generate_builtin_artifact!(TypeNull, ());
 
 impl Value for TypeNull {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -56,10 +50,7 @@ impl Type for TypeNull {
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Artifact {
-            type_: ArtifactId::Builtin(null_artifact_identity()),
-            data: serde_json::Value::Null,
-        })
+        Some(Self::build_artifact(()))
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -114,10 +105,7 @@ impl AspectArtifact for TypeNull {
         _loc: QExprId,
         _value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
-        EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(null_artifact_identity()),
-            data: serde_json::Value::Null,
-        })
+        EResult::ok(Self::build_artifact(()))
     }
 
     fn from_serial(

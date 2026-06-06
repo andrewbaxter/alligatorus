@@ -307,10 +307,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
 }
 
 pub(crate) fn defset_ctor_artifact_identity() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    builtin_artifact_id!()
 }
 
 impl DefinitionSetDataTypeConstructor {
