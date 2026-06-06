@@ -36,9 +36,9 @@ use {
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    mortar_bind_js,
-                    mortar_consume_js_to_js,
-                    mortar_js_stack_to_value,
+                    mortar_bind_dynamic,
+                    mortar_consume_to_dynamic,
+                    mortar_dynamic_stack_to_value,
                     mortar_set,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
@@ -179,24 +179,24 @@ impl AspectNumberDynamic for TypeNumberDynamic { }
 
 impl AspectStackValueDynamic for TypeNumberDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_js_stack_to_value(loc, value, Rc::new(TypeNumberDynamic))
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeNumberDynamic))
     }
 }
 
 impl AspectConsumeDynamic for TypeNumberDynamic {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_js_to_js(xx, loc, cv)
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        mortar_consume_to_dynamic(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeNumberDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        mortar_bind_js(xx, loc, cv)
+        mortar_bind_dynamic(xx, loc, cv)
     }
 }
 
@@ -258,9 +258,9 @@ impl AspectSet for TypeNumberDynamic {
 impl AspectOperatorLt for TypeNumberDynamic {
     fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let base_code = erb.must_er(AspectConsumeDynamic::to_js(&TypeNumberDynamic, xx, loc, base))?;
+            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
             let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
-            let ref_code = erb.must_er(AspectConsumeDynamic::to_js(&TypeNumberDynamic, xx, loc, ref_cv))?;
+            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
             return Ok(CodeValue {
                 code: Code {
                     loc,
@@ -284,9 +284,9 @@ impl AspectOperatorLt for TypeNumberDynamic {
 impl AspectOperatorAdd for TypeNumberDynamic {
     fn add(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let base_code = erb.must_er(AspectConsumeDynamic::to_js(&TypeNumberDynamic, xx, loc, base))?;
+            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
             let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
-            let ref_code = erb.must_er(AspectConsumeDynamic::to_js(&TypeNumberDynamic, xx, loc, ref_cv))?;
+            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
             return Ok(CodeValue {
                 code: Code {
                     loc,

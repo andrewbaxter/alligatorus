@@ -26,7 +26,7 @@ use {
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
-                    bind_js_some,
+                    bind_dynamic_some,
                 },
                 value_null::r#const::ValueNullConst,
             },
@@ -185,7 +185,7 @@ impl AspectLiftDynamic for TypeNullDynamic {
 impl AspectNull for TypeNullDynamic { }
 
 impl AspectConsumeDynamic for TypeNullDynamic {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         match cv.code.code {
             Code_::Dyn(_) => cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone()),
             Code_::None => EResult::ok(CodeDynamic {
@@ -197,13 +197,13 @@ impl AspectConsumeDynamic for TypeNullDynamic {
 }
 
 impl AspectBindDynamic for TypeNullDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }

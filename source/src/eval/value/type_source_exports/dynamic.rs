@@ -18,11 +18,16 @@ use {
         code_dynamic::CodeDynamic,
         eval::{
             Erb,
+            definition_set::DefinitionSetExports,
             from_v8_ref,
-            value::type_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
-                bind_js_some,
+            value::{
+                type_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                    bind_dynamic_some,
+                },
+                type_source_data_constructor::SourceDataTypeConstructor,
+                type_source_function::SourceFunction,
             },
         },
         langhelp::{
@@ -44,11 +49,6 @@ use {
         any::Any,
         mem,
         rc::Rc,
-    },
-    super::{
-        DefinitionSetDataTypeConstructor,
-        DefinitionSetExports,
-        DefinitionSetFunction,
     },
 };
 
@@ -97,20 +97,20 @@ impl Type for TypeSourceExportsDynamic {
 impl Aspect for TypeSourceExportsDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceExportsDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeSourceExportsDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -147,7 +147,7 @@ impl AspectLiftDynamic for TypeSourceExportsDynamic {
 
 // --- Post-lift type with field access ---
 struct DefinitionSetExportsType {
-    set: dumpster::unsync::Gc<super::DefinitionSet>,
+    set: dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>,
 }
 
 impl Value for DefinitionSetExportsType {
@@ -218,7 +218,7 @@ impl AspectField for DefinitionSetExportsType {
                             },
                             value: Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::DefinitionSet,
-                                type_: Rc::new(DefinitionSetFunction { data: func_data.clone(), }),
+                                type_: Rc::new(SourceFunction { data: func_data.clone(), }),
                             }),
                         });
                     }
@@ -237,7 +237,7 @@ impl AspectField for DefinitionSetExportsType {
                             },
                             value: Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::Expr,
-                                type_: Rc::new(DefinitionSetDataTypeConstructor { data: dt_data.clone(), }),
+                                type_: Rc::new(SourceDataTypeConstructor { data: dt_data.clone(), }),
                             }),
                         });
                     }
@@ -252,7 +252,7 @@ impl AspectField for DefinitionSetExportsType {
             let functions = self.set.functions.borrow();
             for func_data in functions.iter() {
                 if func_data.name.as_deref() == Some(key) {
-                    return Some(Rc::new(DefinitionSetFunction { data: func_data.clone() }));
+                    return Some(Rc::new(SourceFunction { data: func_data.clone() }));
                 }
             }
         }
@@ -260,7 +260,7 @@ impl AspectField for DefinitionSetExportsType {
             let data_types = self.set.data_types.borrow();
             for dt_data in data_types.iter() {
                 if dt_data.name.as_deref() == Some(key) {
-                    return Some(Rc::new(DefinitionSetDataTypeConstructor { data: dt_data.clone() }));
+                    return Some(Rc::new(SourceDataTypeConstructor { data: dt_data.clone() }));
                 }
             }
         }

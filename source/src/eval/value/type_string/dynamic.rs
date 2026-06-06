@@ -35,9 +35,9 @@ use {
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    mortar_bind_js,
-                    mortar_consume_js_to_js,
-                    mortar_js_stack_to_value,
+                    mortar_bind_dynamic,
+                    mortar_consume_to_dynamic,
+                    mortar_dynamic_stack_to_value,
                     mortar_set,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
@@ -184,24 +184,24 @@ impl AspectStringDynamic for TypeStringDynamic { }
 
 impl AspectStackValueDynamic for TypeStringDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_js_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
     }
 }
 
 impl AspectConsumeDynamic for TypeStringDynamic {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_js_to_js(xx, loc, cv)
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        mortar_consume_to_dynamic(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeStringDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        mortar_bind_js(xx, loc, cv)
+        mortar_bind_dynamic(xx, loc, cv)
     }
 }
 

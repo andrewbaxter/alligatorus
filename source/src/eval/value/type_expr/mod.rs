@@ -20,7 +20,7 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
-            value::type_dynamic::bind_js_some,
+            value::type_dynamic::bind_dynamic_some,
         },
         langhelp::{
             Aspect,
@@ -128,7 +128,7 @@ impl Type for TypeExpr {
 impl Aspect for TypeExpr { }
 
 impl AspectConsumeDynamic for TypeExpr {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         // If there's already JS code (e.g. from a __stage call), use it directly
         if let Some(js) = cv.code.cast::<CodeDynamic>().v.flatten() {
             return EResult::ok(js.clone());
@@ -144,14 +144,14 @@ impl AspectConsumeDynamic for TypeExpr {
 }
 
 impl AspectBindDynamic for TypeExpr {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -205,8 +205,8 @@ impl Type for TypeStagedExprPlaceholder {
 impl Aspect for TypeStagedExprPlaceholder { }
 
 impl AspectConsumeDynamic for TypeStagedExprPlaceholder {
-    fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        super::type_dynamic::mortar_consume_js_to_js(_xx, loc, cv)
+    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        super::type_dynamic::mortar_consume_to_dynamic(_xx, loc, cv)
     }
 }
 

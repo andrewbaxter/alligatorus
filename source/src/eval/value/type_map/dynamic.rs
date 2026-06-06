@@ -40,7 +40,7 @@ use {
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    bind_js_some,
+                    bind_dynamic_some,
                 },
                 value_static::ValueStatic,
             },
@@ -267,7 +267,7 @@ impl Type for TypeMapDynamic {
                 None => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
             };
         return er_seq_cv!(loc, erb, {
-            let value_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
+            let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let mut js_fields = Vec::new();
             for (key, field) in record.fields.into_iter() {
                 let canonical = key.to_str();
@@ -291,7 +291,7 @@ impl Type for TypeMapDynamic {
                 };
                 let converted =
                     erb.must_er(crate::eval::typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
-                let js_val = erb.must_er(value_to_js.to_js(xx, loc, converted))?;
+                let js_val = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, converted))?;
                 js_fields.push((CodeDynamic {
                     loc,
                     type_: CodeDynamicType::Literal(serde_json::Value::String(canonical)),
@@ -403,20 +403,20 @@ impl AspectStackValueDynamic for TypeMapDynamic {
 }
 
 impl AspectConsumeDynamic for TypeMapDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeMapDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -456,7 +456,7 @@ impl AspectIterable for TypeMapDynamic {
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
-            let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
+            let base_js = erb.must_er(base_consume.to_dynamic(xx, loc, base))?;
             let body_js = match body.code.cast::<CodeDynamic>().into_res() {
                 Ok(Some(js)) => js.clone(),
                 Ok(None) => CodeDynamic {

@@ -28,12 +28,20 @@ use {
         },
         eval::{
             Erb,
+            definition_set::DefinitionSet,
             from_v8_ref,
             typecheck_convert,
-            value::type_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
-                bind_js_some,
+            value::{
+                type_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                    bind_dynamic_some,
+                },
+                type_source_data::{
+                    SourceDataMethodData,
+                    SourceDataType,
+                    SourceDataTypeData,
+                },
             },
         },
         langhelp::{
@@ -60,24 +68,18 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        DefinitionSet,
-        DefinitionSetDataMethodData,
-        DefinitionSetDataType,
-        DefinitionSetDataTypeConstructor,
-        DefinitionSetDataTypeData,
-    },
+    super::SourceDataTypeConstructor,
 };
 
 // --- TypeTypeSourceDataTypeConstructorDynamic: the type-type for
-// DefinitionSetDataTypeConstructor values ---
+// SourceDataTypeConstructor values ---
 pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 
 generate_builtin_artifact!(TypeTypeSourceDataTypeConstructorDynamic, serde_json::Value);
 
 impl Value for TypeTypeSourceDataTypeConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::super::value::type_any::r#const::TypeAnyConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -91,7 +93,7 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == super::super::value::type_any::r#const::type_type_identity() {
+        if *key == crate::eval::value::type_any::r#const::type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_artifact_aspect_id() {
@@ -124,10 +126,8 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
     ) -> EResult<Artifact> {
         let ctor =
             (self_.as_ref() as &dyn Any)
-                .downcast_ref::<DefinitionSetDataTypeConstructor>()
-                .expect(
-                    "TypeTypeSourceDataTypeConstructorDynamic::to_serial expects DefinitionSetDataTypeConstructor",
-                );
+                .downcast_ref::<SourceDataTypeConstructor>()
+                .expect("TypeTypeSourceDataTypeConstructorDynamic::to_serial expects SourceDataTypeConstructor");
         let artifact_id = ctor.serialize_ctor(xx, gx, loc);
         EResult::ok(Artifact {
             type_: artifact_id,
@@ -149,8 +149,8 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
 
 impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let ctor = (value as &dyn Any).downcast_ref::<DefinitionSetDataTypeConstructor>().unwrap();
-        Rc::new(DefinitionSetDataTypeConstructor { data: ctor.data.clone() })
+        let ctor = (value as &dyn Any).downcast_ref::<SourceDataTypeConstructor>().unwrap();
+        Rc::new(SourceDataTypeConstructor { data: ctor.data.clone() })
     }
 }
 
@@ -204,20 +204,20 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
 impl Aspect for TypeSourceDataTypeConstructorDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -243,24 +243,24 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let ctor_ref: Rc<DefinitionSetDataTypeConstructor> =
-            from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
+        let ctor_ref: Rc<SourceDataTypeConstructor> =
+            from_v8_ref::<Rc<SourceDataTypeConstructor>>(&value).clone();
         ctor_ref.data.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
-            type_: Rc::new(DefinitionSetDataTypeConstructor { data: ctor_ref.data.clone() }),
+            type_: Rc::new(SourceDataTypeConstructor { data: ctor_ref.data.clone() }),
         }))
     }
 }
 
-// --- DefinitionSetDataTypeConstructor as Type: used after lift ---
-impl Value for DefinitionSetDataTypeConstructor {
+// --- SourceDataTypeConstructor as Type: used after lift ---
+impl Value for SourceDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
 }
 
-impl Type for DefinitionSetDataTypeConstructor {
+impl Type for SourceDataTypeConstructor {
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -269,23 +269,21 @@ impl Type for DefinitionSetDataTypeConstructor {
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetDataTypeConstructor { data: self.data.clone() })
+        Rc::new(SourceDataTypeConstructor { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(DefinitionSetDataTypeConstructor { data: self.data.clone() }) as
-                        Box<dyn AspectFunction>,
+                    Box::new(SourceDataTypeConstructor { data: self.data.clone() }) as Box<dyn AspectFunction>,
                 ),
             );
         }
         if *key == aspect_bind_const_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(DefinitionSetDataTypeConstructor { data: self.data.clone() }) as
-                        Box<dyn AspectBindConst>,
+                    Box::new(SourceDataTypeConstructor { data: self.data.clone() }) as Box<dyn AspectBindConst>,
                 ),
             );
         }
@@ -301,9 +299,9 @@ impl Type for DefinitionSetDataTypeConstructor {
     }
 }
 
-impl Aspect for DefinitionSetDataTypeConstructor { }
+impl Aspect for SourceDataTypeConstructor { }
 
-impl AspectBindConst for DefinitionSetDataTypeConstructor {
+impl AspectBindConst for SourceDataTypeConstructor {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
             Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
@@ -312,7 +310,7 @@ impl AspectBindConst for DefinitionSetDataTypeConstructor {
     }
 }
 
-impl AspectFunction for DefinitionSetDataTypeConstructor {
+impl AspectFunction for SourceDataTypeConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Register with eval context (dedup)
         {
@@ -329,8 +327,8 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
         return er_seq_cv!(loc, erb, {
             // Convert argument to underlying type
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
-            let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
-            let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+            let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
+            let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
 
             // Build wrapper object fields
             let mut object_fields = vec![(self.data.data_field.clone(), underlying_js),];
@@ -353,7 +351,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                     }));
                 }
             }
-            let result_type = Rc::new(DefinitionSetDataType { data: self.data.clone(), });
+            let result_type = Rc::new(SourceDataType { data: self.data.clone(), });
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
@@ -363,7 +361,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
     }
 }
 
-impl DefinitionSetDataTypeConstructor {
+impl SourceDataTypeConstructor {
     pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         // Check if already serialized
         if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
@@ -426,10 +424,10 @@ fn deserialize_defset_ctor_as_type(
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
     let identity = serial_to_unique(&serial.identity);
     let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
-    let methods: Vec<DefinitionSetDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
+    let methods: Vec<SourceDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
         let ret_type = gx.deserialize_type_ref(xx, loc, &m.ret_type).expect("Failed to resolve method ret type");
         let entry_id = serial.def_set_id;
-        DefinitionSetDataMethodData {
+        SourceDataMethodData {
             name: m.name.clone(),
             impl_expr: std::cell::RefCell::new(None),
             ret_type: std::cell::RefCell::new(Some(ret_type)),
@@ -450,7 +448,7 @@ fn deserialize_defset_ctor_as_type(
         next_entry_id: crate::langhelp::Counter::default(),
         next_interface_method_id: crate::langhelp::Counter::default(),
     });
-    let dt_data = dumpster::unsync::Gc::new(DefinitionSetDataTypeData {
+    let dt_data = dumpster::unsync::Gc::new(SourceDataTypeData {
         set: set.clone(),
         name: serial.name,
         description: std::cell::RefCell::new(None),
@@ -462,10 +460,10 @@ fn deserialize_defset_ctor_as_type(
         artifact_id: std::cell::RefCell::new(None),
     });
     set.data_types.borrow_mut().push(dt_data.clone());
-    Ok(Rc::new(DefinitionSetDataTypeConstructor { data: dt_data }))
+    Ok(Rc::new(SourceDataTypeConstructor { data: dt_data }))
 }
 
-use super::artifact_data_type_constructor::{
+use super::artifact::{
     ArtifactDataDefSetCtorData,
     ArtifactDataDefSetCtorMethod,
 };
@@ -476,7 +474,7 @@ pub(crate) enum ArtifactDataUnique {
         file: String,
         line: usize,
     },
-    Compile {
+    Source {
         import_state: usize,
         source: usize,
         counter: usize,
@@ -505,7 +503,7 @@ pub(crate) fn unique_to_serial(u: &Unique) -> ArtifactDataUnique {
             file: file.to_string(),
             line: *line,
         },
-        Unique::Compile(compile_id, counter) => ArtifactDataUnique::Compile {
+        Unique::Source(compile_id, counter) => ArtifactDataUnique::Source {
             import_state: compile_id.0.0,
             source: compile_id.1.0,
             counter: *counter,
@@ -518,12 +516,12 @@ pub(crate) fn serial_to_unique(s: &ArtifactDataUnique) -> Unique {
         ArtifactDataUnique::Builtin { file, line } => {
             // For deserialized builtins, use Compile with a deterministic id since we can't
             // reconstruct &'static str
-            Unique::Compile(
+            Unique::Source(
                 crate::langhelp::CompileId(crate::langhelp::ImportStateId(usize::MAX), crate::langhelp::SourceId(0)),
                 *line,
             )
         },
-        ArtifactDataUnique::Compile { import_state, source, counter } => Unique::Compile(
+        ArtifactDataUnique::Source { import_state, source, counter } => Unique::Source(
             crate::langhelp::CompileId(
                 crate::langhelp::ImportStateId(*import_state),
                 crate::langhelp::SourceId(*source),

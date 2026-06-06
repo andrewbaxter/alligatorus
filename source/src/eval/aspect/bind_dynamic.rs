@@ -16,7 +16,7 @@ use {
 };
 
 aspect!(AspectBindDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: & ExprContext,
         loc: QExprId,

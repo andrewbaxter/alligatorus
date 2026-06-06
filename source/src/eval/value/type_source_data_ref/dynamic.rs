@@ -13,10 +13,13 @@ use {
         code_dynamic::CodeDynamic,
         eval::{
             from_v8_ref,
-            value::type_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
-                bind_js_some,
+            value::{
+                type_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                    bind_dynamic_some,
+                },
+                type_source_data::SourceDataType,
             },
         },
         langhelp::{
@@ -37,7 +40,6 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::DefinitionSetDataType,
 };
 
 pub(crate) struct TypeSourceDataTypeRefDynamic;
@@ -85,20 +87,20 @@ impl Type for TypeSourceDataTypeRefDynamic {
 impl Aspect for TypeSourceDataTypeRefDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceDataTypeRefDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -127,12 +129,12 @@ impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let dt =
             (type_.as_ref() as &dyn Any)
-                .downcast_ref::<DefinitionSetDataType>()
-                .expect("TypeSourceDataTypeRefDynamic::lift: expected DefinitionSetDataType");
+                .downcast_ref::<SourceDataType>()
+                .expect("TypeSourceDataTypeRefDynamic::lift: expected SourceDataType");
         dt.data.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
-            type_: Rc::new(DefinitionSetDataType { data: dt.data.clone() }),
+            type_: Rc::new(SourceDataType { data: dt.data.clone() }),
         }))
     }
 }

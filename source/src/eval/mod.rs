@@ -1,11 +1,11 @@
 #[macro_use]
 pub mod util;
 pub mod aspect;
-pub mod value;
 pub mod expr;
 #[macro_use]
 pub mod dynamic_wrap;
-pub mod v8util;
+pub mod value;
+pub mod dynamic_util;
 pub mod definition_set;
 
 use {
@@ -43,6 +43,7 @@ use {
             EXPR_PREFIX,
             TAG_VAR,
         },
+        eval::value::type_source_define_result::dynamic::SourceDefineResult,
         langhelp::{
             Code,
             CodeValue,
@@ -78,10 +79,7 @@ use {
             SourceSpecAbsolute,
         },
     },
-    definition_set::{
-        DefineResult,
-        DefinitionSet,
-    },
+    definition_set::DefinitionSet,
     dumpster::unsync::Gc,
     dynamic_wrap::DynamicWrap,
     expr::{
@@ -294,14 +292,14 @@ impl Target for MortarTarget {
                 return Ok((none_code, scope_entry));
             });
         }
-        let Some(bind_js) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
+        let Some(bind_dynamic) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
             return EResult::err(
                 loc,
                 format!("Type ({}) is missing aspect AspectBindConst and AspectBindDynamic", vtype.desc()),
             );
         };
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
-            let bind_result = bind_js.bind_js(xx, loc, cv);
+            let bind_result = bind_dynamic.bind_dynamic(xx, loc, cv);
             if bind_result.v.is_none() {
                 return Ok((none_code, Box::new(ScopeEntryStatic { type_: vtype }) as Box<dyn ScopeEntry>));
             }
@@ -385,23 +383,23 @@ impl Target for MortarTarget {
         conditions: Vec<(CodeValue, &Expr)>,
         else_: Option<&Expr>,
     ) -> EvalRes {
-        fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
+        fn cv_to_dynamic(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
             let vtype = cv.value.type_(xx, loc);
             let consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
-            erb.must_er(consume.to_js(xx, loc, cv))
+            erb.must_er(consume.to_dynamic(xx, loc, cv))
         }
 
         return er_seq_cv!(loc, erb, {
             let mut js_conditions = Vec::new();
             for (cond, body) in conditions {
-                let cond_js = cv_to_js(&mut erb, xx, loc, cond)?;
+                let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
                 let body_cv = erb.must_er(eval_half(xx, body))?;
-                let body_js = cv_to_js(&mut erb, xx, loc, body_cv)?;
+                let body_js = cv_to_dynamic(&mut erb, xx, loc, body_cv)?;
                 js_conditions.push((cond_js, body_js));
             }
             let js_else = if let Some(else_expr) = else_ {
                 let else_cv = erb.must_er(eval_half(xx, else_expr))?;
-                let else_js = cv_to_js(&mut erb, xx, loc, else_cv)?;
+                let else_js = cv_to_dynamic(&mut erb, xx, loc, else_cv)?;
                 Some(Box::new(else_js))
             } else {
                 None
@@ -430,8 +428,8 @@ impl Target for MortarTarget {
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_type = base.value.type_(xx, loc);
-            let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
-            let base_js = erb.must_er(to_js.to_js(xx, loc, base))?;
+            let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
+            let base_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, base))?;
             let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let mut js_cases = Vec::new();
             for (tag, variant_type, body_expr) in &cases {
@@ -452,7 +450,7 @@ impl Target for MortarTarget {
                 let body_cv = erb.must_er(eval_half(&child_xx, body_expr))?;
                 let body_type = body_cv.value.type_(&child_xx, loc);
                 let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
-                let body_js = erb.must_er(body_consume.to_js(&child_xx, loc, body_cv))?;
+                let body_js = erb.must_er(body_consume.to_dynamic(&child_xx, loc, body_cv))?;
                 js_cases.push(CodeDynamicMatchBranch {
                     js_tag: tag.clone(),
                     body: body_js,
@@ -462,7 +460,7 @@ impl Target for MortarTarget {
                 let fb_cv = erb.must_er(eval_half(xx, fallback_expr))?;
                 let fb_type = fb_cv.value.type_(xx, loc);
                 let fb_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, fb_type.as_ref()))?;
-                let fb_js = erb.must_er(fb_consume.to_js(xx, loc, fb_cv))?;
+                let fb_js = erb.must_er(fb_consume.to_dynamic(xx, loc, fb_cv))?;
                 Some(Box::new(fb_js))
             } else {
                 None
@@ -529,7 +527,7 @@ impl Target for MortarTarget {
                         let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
                         let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
-                        let inner_js = erb.must_er(inner_consume.to_js(xx, loc, cv))?;
+                        let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
                         stage_args.push(CodeDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: lift_id }),
@@ -1181,11 +1179,11 @@ fn eval(
             timestamp_ms,
             message
         });
-    }), dynamic_wrap!(fn define(ex, js_scope, scope)() -> DefineResult {
+    }), dynamic_wrap!(fn define(ex, js_scope, scope)() -> SourceDefineResult {
         let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
         let def_set_id = DefSetId(dsc.counter.next());
         let import_id = dsc.import_id;
-        DefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
+        SourceDefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
     }), dynamic_wrap!(fn str_to_json(ex, js_scope, scope)(s: String) -> String {
         serde_json::to_string(&s).unwrap()
     }), dynamic_wrap!(fn constkey_to_str(ex, js_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
@@ -1292,8 +1290,8 @@ fn eval(
     let (stage1_code, fallback_value) = match &cv.code.code {
         Code_::None => (None, Some(cv.value)),
         _ => {
-            let to_js = aspect_consume_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
+            let to_dynamic = aspect_consume_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+            let js = to_dynamic.to_dynamic(&xx, root_loc, cv).into_res()?;
             (Some(js), None)
         },
     };
@@ -1331,7 +1329,7 @@ fn eval(
     };
 
     // Build scope for definition set body compilation: only builtins and type
-    // references. Definition set members are accessed via lower + to_js.
+    // references. Definition set members are accessed via lower + to_dynamic.
     fn build_builtin_scope(
         builtin_scope_entries: &[(String, ScopeEntryDynamicBinding)],
     ) -> HashMap<ConstKey, Box<dyn ScopeEntry>> {

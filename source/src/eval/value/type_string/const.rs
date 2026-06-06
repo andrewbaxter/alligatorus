@@ -16,7 +16,7 @@ use {
         eval::{
             Erb,
             value::{
-                type_dynamic::bind_js_some,
+                type_dynamic::bind_dynamic_some,
                 type_string::dynamic::TypeStringDynamic,
                 value_string::r#const::ValueStringConst,
             },
@@ -116,14 +116,14 @@ impl Type for TypeStringConst {
 impl Aspect for TypeStringConst { }
 
 impl AspectBindDynamic for TypeStringConst {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         TypeStringDynamic::cast_from(&TypeStringDynamic, xx, loc, cv).map(|js| {
-            bind_js_some(
+            bind_dynamic_some(
                 loc,
                 js.code.cast::<CodeDynamic>().v.unwrap().unwrap().clone(),
                 Rc::new(TypeStringDynamic) as Rc<dyn Type>,

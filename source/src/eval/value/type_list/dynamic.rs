@@ -37,7 +37,7 @@ use {
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    bind_js_some,
+                    bind_dynamic_some,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
@@ -293,20 +293,20 @@ impl AspectStackValueDynamic for TypeListDynamic {
 }
 
 impl AspectConsumeDynamic for TypeListDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeListDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -325,7 +325,7 @@ impl AspectIterable for TypeListDynamic {
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
-            let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
+            let base_js = erb.must_er(base_consume.to_dynamic(xx, loc, base))?;
             let body_js = match body.code.cast::<CodeDynamic>().into_res() {
                 Ok(Some(js)) => js.clone(),
                 Ok(None) => CodeDynamic {
@@ -401,14 +401,15 @@ impl AspectFunction for TypeListNew {
                 for elem_res in elements {
                     let elem_cv = erb.must_er(elem_res)?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
-                    let elem_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
-                    let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
+                    let elem_to_dynamic =
+                        erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
+                    let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
                     js_elements.push(js);
                 }
             } else {
                 let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), argument))?;
-                let elem_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
-                let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
+                let elem_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
+                let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
                 js_elements.push(js);
             }
             let instance_type = Rc::new(TypeListDynamic { element_type: self.element_type.clone() });

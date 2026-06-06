@@ -95,7 +95,7 @@ pub(crate) enum Unique {
         file: &'static str,
         line: usize,
     },
-    Compile(CompileId, usize),
+    Source(CompileId, usize),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -258,10 +258,8 @@ pub(crate) struct CompileImportContext {
 
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     use crate::eval::{
-        definition_set::{
-            data_type::TypeTypeSourceDataTypeDynamic,
-            data_type_constructor::TypeTypeSourceDataTypeConstructorDynamic,
-        },
+        value::type_source_data::dynamic::TypeTypeSourceDataTypeDynamic,
+        value::type_source_data_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
         value::type_null::dynamic::TypeNullDynamic,
         value::type_string::dynamic::TypeStringDynamic,
         value::type_null::r#const::TypeNullConst,

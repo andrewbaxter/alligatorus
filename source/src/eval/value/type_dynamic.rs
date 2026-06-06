@@ -36,7 +36,7 @@ use {
     },
 };
 
-pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+pub(crate) fn mortar_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
     let r = cv.code.cast::<CodeDynamic>();
     if let Some(c) = r.v {
         if let Some(c) = c {
@@ -63,17 +63,17 @@ pub(crate) fn mortar_consume_js_to_js(_xx: &ExprContext, loc: QExprId, cv: CodeV
     }
 }
 
-pub(crate) fn mortar_bind_js(
+pub(crate) fn mortar_bind_dynamic(
     xx: &ExprContext,
     loc: QExprId,
     cv: CodeValue,
 ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
     let vtype = cv.value.type_(xx, loc);
-    mortar_consume_js_to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+    mortar_consume_to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
 }
 
-/// Helper to construct the return value for bind_js when JS code is produced.
-pub(crate) fn bind_js_some(
+/// Helper to construct the return value for bind_dynamic when JS code is produced.
+pub(crate) fn bind_dynamic_some(
     _loc: QExprId,
     js: CodeDynamic,
     bound_type: Rc<dyn Type>,
@@ -84,7 +84,7 @@ pub(crate) fn bind_js_some(
     )
 }
 
-pub(crate) fn mortar_js_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
+pub(crate) fn mortar_dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
     CodeValue {
         code: Code {
             loc,
@@ -106,10 +106,10 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
         let value = erb.must_er(crate::eval::typecheck_convert(xx, loc, target_type.as_ref(), value))?;
         let value_type = value.value.type_(xx, loc);
         er_all!(erb, {
-            value_to_js = aspect_consume_dynamic_get(xx, loc, value_type.as_ref()),
+            value_to_dynamic = aspect_consume_dynamic_get(xx, loc, value_type.as_ref()),
             self_code = self_.code.cast::<CodeDynamic>(),
         });
-        let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;
+        let value_code = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, value))?;
         let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<ValueDynamic>().unwrap();
         match &v.source {
             ValueDynamicSource::Field(b) => {
@@ -130,7 +130,14 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                         value: Box::new(value_code)
                     })
                 };
-                let null_stack = erb.must_er(crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &super::type_null::dynamic::TypeNullDynamic as &dyn Type))?;
+                let null_stack =
+                    erb.must_er(
+                        crate::builtin::aspect_stack_value_dynamic_get(
+                            xx,
+                            loc,
+                            &super::type_null::dynamic::TypeNullDynamic as &dyn Type
+                        )
+                    )?;
                 return Ok(null_stack.to_value(loc, set_js))
             },
             ValueDynamicSource::Binding(b) => {
@@ -151,7 +158,14 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
                         CodeDynamicBlock { entries: seq.into_iter().map(CodeDynamicBlockEntry::Code).collect() }
                     )
                 };
-                let null_stack = erb.must_er(crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &super::type_null::dynamic::TypeNullDynamic as &dyn Type))?;
+                let null_stack =
+                    erb.must_er(
+                        crate::builtin::aspect_stack_value_dynamic_get(
+                            xx,
+                            loc,
+                            &super::type_null::dynamic::TypeNullDynamic as &dyn Type
+                        )
+                    )?;
                 return Ok(null_stack.to_value(loc, set_js))
             },
             ValueDynamicSource::Expr => {

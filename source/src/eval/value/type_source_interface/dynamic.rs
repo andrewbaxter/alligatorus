@@ -22,7 +22,7 @@ use {
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
-                    bind_js_some,
+                    bind_dynamic_some,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
@@ -47,16 +47,16 @@ use {
         mem,
         rc::Rc,
     },
-    super::DefinitionSetInterface,
+    super::SourceInterface,
 };
 
-impl Value for DefinitionSetInterface {
+impl Value for SourceInterface {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetInterface { data: self.data.clone() })
+        Rc::new(SourceInterface { data: self.data.clone() })
     }
 }
 
-impl Type for DefinitionSetInterface {
+impl Type for SourceInterface {
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -65,7 +65,7 @@ impl Type for DefinitionSetInterface {
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetInterface { data: self.data.clone() })
+        Rc::new(SourceInterface { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -74,29 +74,21 @@ impl Type for DefinitionSetInterface {
             return Some(Box::new(true));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(
-                Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectField>),
-            );
+            return Some(Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectField>));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
-                ),
+                Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
             );
         }
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
-                ),
+                Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
             );
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>,
-                ),
+                Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
             );
         }
         return None;
@@ -119,7 +111,7 @@ impl Type for DefinitionSetInterface {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(DefinitionSetInterface { data: self.data.clone() }),
+                    type_: Rc::new(SourceInterface { data: self.data.clone() }),
                 }),
             });
         }
@@ -127,27 +119,27 @@ impl Type for DefinitionSetInterface {
     }
 }
 
-impl Aspect for DefinitionSetInterface { }
+impl Aspect for SourceInterface { }
 
-impl AspectConsumeDynamic for DefinitionSetInterface {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+impl AspectConsumeDynamic for SourceInterface {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for DefinitionSetInterface {
-    fn bind_js(
+impl AspectBindDynamic for SourceInterface {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
-impl AspectStackValueDynamic for DefinitionSetInterface {
+impl AspectStackValueDynamic for SourceInterface {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -156,13 +148,13 @@ impl AspectStackValueDynamic for DefinitionSetInterface {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(DefinitionSetInterface { data: self.data.clone() }),
+                type_: Rc::new(SourceInterface { data: self.data.clone() }),
             }),
         }
     }
 }
 
-impl AspectField for DefinitionSetInterface {
+impl AspectField for SourceInterface {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);

@@ -95,7 +95,7 @@ impl DynamicWrap for crate::langhelp::ConstKey {
         match crate::langhelp::ConstKey::from_str(&s) {
             Ok(k) => k,
             Err(e) => {
-                super::v8util::throw_error(scope, &format!("Invalid ConstKey: {}", e));
+                super::dynamic_util::throw_error(scope, &format!("Invalid ConstKey: {}", e));
                 crate::langhelp::ConstKey::String(String::new())
             },
         }
@@ -156,7 +156,7 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
             let key = match K::from_js_key(&key_str) {
                 Ok(k) => k,
                 Err(e) => {
-                    super::v8util::throw_error(scope, &format!("Invalid map key: {}", e));
+                    super::dynamic_util::throw_error(scope, &format!("Invalid map key: {}", e));
                     return std::collections::BTreeMap::new();
                 },
             };
@@ -237,40 +237,40 @@ macro_rules! dynamic_wrap{
             pub(crate) struct $name {
                 $(pub $d_name: $d_ty,) *
             }
-            pub(crate) struct[<$name Type >];
+            pub(crate) struct[< Type $name >];
             fn[<$name: snake _type_identity >]() -> Unique {
                 Unique::Builtin {
                     file: file!(),
                     line: line!() as usize
                 }
             }
-            impl Value for[<$name Type >] {
+            impl Value for[< Type $name >] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
                     Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
                 }
             }
-            impl Type for[<$name Type >] {
+            impl Type for[< Type $name >] {
                 fn desc(&self) -> String {
                     stringify!($name).to_string()
                 }
                 fn as_value(&self) -> Rc < dyn Value > {
-                    Rc:: new([<$name Type >])
+                    Rc:: new([< Type $name >])
                 }
                 fn aspect(&self, _xx: & ExprContext, key: & Unique) -> Option < Box < dyn Any >> {
                     if * key ==[<$name: snake _type_identity >]() {
                         return Some(Box::new(true));
                     }
                     if * key == aspect_field_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectField >));
+                        return Some(Box:: new(Box:: new([< Type $name >]) as Box < dyn AspectField >));
                     }
                     if * key == aspect_consume_dynamic_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectConsumeDynamic >));
+                        return Some(Box:: new(Box:: new([< Type $name >]) as Box < dyn AspectConsumeDynamic >));
                     }
                     if * key == aspect_bind_dynamic_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectBindDynamic >));
+                        return Some(Box:: new(Box:: new([< Type $name >]) as Box < dyn AspectBindDynamic >));
                     }
                     if * key == aspect_stack_value_dynamic_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectStackValueDynamic >));
+                        return Some(Box:: new(Box:: new([< Type $name >]) as Box < dyn AspectStackValueDynamic >));
                     }
                     None
                 }
@@ -287,22 +287,22 @@ macro_rules! dynamic_wrap{
                             code: cv.code,
                             value: Rc:: new(crate:: eval:: value:: type_dynamic:: ValueDynamic {
                                 source: crate:: eval:: value:: type_dynamic:: ValueDynamicSource:: Expr,
-                                type_: std:: rc:: Rc:: new([<$name Type >]),
+                                type_: std:: rc:: Rc:: new([< Type $name >]),
                             }),
                         });
                     }
                     EvalRes::err(loc, format!("Cannot convert to {}", stringify!($name)))
                 }
             }
-            impl Aspect for[<$name Type >] {
+            impl Aspect for[< Type $name >] {
             }
-            impl AspectConsumeDynamic for[<$name Type >] {
-                fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<CodeDynamic> {
+            impl AspectConsumeDynamic for[< Type $name >] {
+                fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<CodeDynamic> {
                     cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
                 }
             }
-            impl AspectBindDynamic for[<$name Type >] {
-                fn bind_js(
+            impl AspectBindDynamic for[< Type $name >] {
+                fn bind_dynamic(
                     &self,
                     xx: &ExprContext,
                     loc: QExprId,
@@ -311,10 +311,12 @@ macro_rules! dynamic_wrap{
                     (Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)
                 > {
                     let vtype = cv.value.type_(xx, loc);
-                    self.to_js(xx, loc, cv).map(|c| crate::eval::value::type_dynamic::bind_js_some(loc, c, vtype))
+                    self
+                        .to_dynamic(xx, loc, cv)
+                        .map(|c| crate::eval::value::type_dynamic::bind_dynamic_some(loc, c, vtype))
                 }
             }
-            impl AspectStackValueDynamic for[<$name Type >] {
+            impl AspectStackValueDynamic for[< Type $name >] {
                 fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
                     CodeValue {
                         code: Code {
@@ -323,12 +325,12 @@ macro_rules! dynamic_wrap{
                         },
                         value: Rc:: new(ValueDynamic {
                             source: ValueDynamicSource:: Expr,
-                            type_: Rc:: new([<$name Type >]),
+                            type_: Rc:: new([< Type $name >]),
                         }),
                     }
                 }
             }
-            impl AspectField for[<$name Type >] {
+            impl AspectField for[< Type $name >] {
                 fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue,) -> EvalRes {
                     er_seq_cv!(loc, erb, {
                         let key_type = key.value.type_(xx, loc);
@@ -403,7 +405,7 @@ macro_rules! dynamic_wrap{
             }
             impl DynamicWrap for $name {
                 fn mortar_type() -> Rc < dyn Type > {
-                    Rc:: new([<$name Type >])
+                    Rc:: new([< Type $name >])
                 }
                 fn from_v8<
                     's

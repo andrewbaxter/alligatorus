@@ -26,12 +26,13 @@ use {
         },
         eval::{
             Erb,
+            definition_set::DefinitionSet,
             from_v8_ref,
             typecheck_convert,
             value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_js_some,
+                bind_dynamic_some,
             },
         },
         langhelp::{
@@ -54,7 +55,7 @@ use {
         mem,
         rc::Rc,
     },
-    super::DefinitionSetFunction,
+    super::SourceFunction,
 };
 
 // --- TypeSourceFunctionDynamic: eval_half type of a function ref ---
@@ -103,20 +104,20 @@ impl Type for TypeSourceFunctionDynamic {
 impl Aspect for TypeSourceFunctionDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceFunctionDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeSourceFunctionDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -142,22 +143,22 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let func_ref: Rc<DefinitionSetFunction> = from_v8_ref::<Rc<DefinitionSetFunction>>(&value).clone();
+        let func_ref: Rc<SourceFunction> = from_v8_ref::<Rc<SourceFunction>>(&value).clone();
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::DefinitionSet,
-            type_: Rc::new(DefinitionSetFunction { data: func_ref.data.clone() }),
+            type_: Rc::new(SourceFunction { data: func_ref.data.clone() }),
         }))
     }
 }
 
-// --- DefinitionSetFunction as Type: used after lift ---
-impl Value for DefinitionSetFunction {
+// --- SourceFunction as Type: used after lift ---
+impl Value for SourceFunction {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for DefinitionSetFunction {
+impl Type for SourceFunction {
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -166,18 +167,18 @@ impl Type for DefinitionSetFunction {
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetFunction { data: self.data.clone() })
+        Rc::new(SourceFunction { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(
-                Box::new(Box::new(DefinitionSetFunction { data: self.data.clone() }) as Box<dyn AspectFunction>),
+                Box::new(Box::new(SourceFunction { data: self.data.clone() }) as Box<dyn AspectFunction>),
             );
         }
         if *key == aspect_bind_const_aspect_id() {
             return Some(
-                Box::new(Box::new(DefinitionSetFunction { data: self.data.clone() }) as Box<dyn AspectBindConst>),
+                Box::new(Box::new(SourceFunction { data: self.data.clone() }) as Box<dyn AspectBindConst>),
             );
         }
         return None;
@@ -192,9 +193,9 @@ impl Type for DefinitionSetFunction {
     }
 }
 
-impl Aspect for DefinitionSetFunction { }
+impl Aspect for SourceFunction { }
 
-impl AspectBindConst for DefinitionSetFunction {
+impl AspectBindConst for SourceFunction {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
             Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
@@ -203,7 +204,7 @@ impl AspectBindConst for DefinitionSetFunction {
     }
 }
 
-impl AspectFunction for DefinitionSetFunction {
+impl AspectFunction for SourceFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Register with eval context (dedup)
         {
@@ -213,7 +214,10 @@ impl AspectFunction for DefinitionSetFunction {
                 sets
                     .iter()
                     .any(
-                        |s| std::ptr::eq(&**s as *const super::DefinitionSet, &**set as *const super::DefinitionSet),
+                        |s| std::ptr::eq(
+                            &**s as *const crate::eval::definition_set::DefinitionSet,
+                            &**set as *const crate::eval::definition_set::DefinitionSet,
+                        ),
                     );
             if !already {
                 sets.push(set.clone());
@@ -255,14 +259,14 @@ impl AspectFunction for DefinitionSetFunction {
                         erb.errors.extend(errs);
                     }
                     let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), cv))?;
-                    let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
-                    let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+                    let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
+                    let js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
                     js_args.push(js);
                 }
             } else {
                 let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), argument))?;
-                let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
-                let js = erb.must_er(to_js.to_js(xx, loc, converted))?;
+                let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
+                let js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
                 js_args.push(js);
             }
             let ret_type_rc: Rc<dyn Type> = ret_type;

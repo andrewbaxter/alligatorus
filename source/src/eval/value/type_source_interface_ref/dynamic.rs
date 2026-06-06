@@ -13,10 +13,13 @@ use {
         code_dynamic::CodeDynamic,
         eval::{
             from_v8_ref,
-            value::type_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
-                bind_js_some,
+            value::{
+                type_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                    bind_dynamic_some,
+                },
+                type_source_interface::SourceInterface,
             },
         },
         langhelp::{
@@ -37,10 +40,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::{
-        DefinitionSetInterface,
-        DefinitionSetInterfaceRef,
-    },
+    super::SourceInterfaceRef,
 };
 
 pub(crate) struct TypeSourceInterfaceRefDynamic;
@@ -112,20 +112,20 @@ impl Type for TypeSourceInterfaceRefDynamic {
 impl Aspect for TypeSourceInterfaceRefDynamic { }
 
 impl AspectConsumeDynamic for TypeSourceInterfaceRefDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
 impl AspectBindDynamic for TypeSourceInterfaceRefDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -151,12 +151,11 @@ impl AspectLiftDynamic for TypeSourceInterfaceRefDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let iface_ref: Rc<DefinitionSetInterfaceRef> =
-            from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
+        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
         iface_ref.data.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
-            type_: Rc::new(DefinitionSetInterface { data: iface_ref.data.clone() }),
+            type_: Rc::new(SourceInterface { data: iface_ref.data.clone() }),
         }))
     }
 }

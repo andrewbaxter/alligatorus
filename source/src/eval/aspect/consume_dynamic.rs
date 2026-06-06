@@ -15,5 +15,5 @@ use {
 };
 
 aspect!(AspectConsumeDynamic {
-    fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < CodeDynamic >;
+    fn to_dynamic(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < CodeDynamic >;
 });

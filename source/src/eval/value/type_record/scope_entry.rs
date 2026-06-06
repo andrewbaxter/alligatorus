@@ -34,8 +34,9 @@ pub(crate) enum RecordScopeField {
     Error(Vec<crate::langhelp::ExprErr>),
 }
 
-/// DynamicScopeEntry adapter for sourceless records (used by bind_js when record
-/// has no JS code). On use_, constructs a Record from the stored scope entries.
+/// DynamicScopeEntry adapter for sourceless records (used by bind_dynamic when
+/// record has no JS code). On use_, constructs a Record from the stored scope
+/// entries.
 pub(crate) struct ScopeEntryRecordMortar {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
 }

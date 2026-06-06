@@ -100,7 +100,7 @@ impl Type for TypeAnyConst {
 impl Aspect for TypeAnyConst { }
 
 impl AspectConsumeDynamic for TypeAnyConst {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
         // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
         // cast_from), pass through.
         if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
@@ -119,14 +119,14 @@ impl AspectConsumeDynamic for TypeAnyConst {
 }
 
 impl AspectBindDynamic for TypeAnyConst {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        self.to_js(xx, loc, cv).map(|js| {
-            crate::eval::value::type_dynamic::bind_js_some(loc, js, Rc::new(super::dynamic::TypeAnyDynamic))
+        self.to_dynamic(xx, loc, cv).map(|js| {
+            crate::eval::value::type_dynamic::bind_dynamic_some(loc, js, Rc::new(super::dynamic::TypeAnyDynamic))
         })
     }
 }

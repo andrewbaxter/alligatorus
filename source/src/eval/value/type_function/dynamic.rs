@@ -24,7 +24,7 @@ use {
             value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_js_some,
+                bind_dynamic_some,
             },
         },
         langhelp::{
@@ -107,20 +107,20 @@ impl Type for TypeFunctionDynamic {
 }
 
 impl AspectConsumeDynamic for TypeFunctionDynamic {
-    fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
     }
 }
 
 impl AspectBindDynamic for TypeFunctionDynamic {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 
@@ -140,9 +140,9 @@ impl AspectFunction for TypeFunctionDynamic {
 
             // Check if argument is a tuple
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
-                let func_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
+                let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
                 let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.ret.as_ref()))?;
-                let func = erb.must_er(func_to_js.to_js(xx, loc, function))?;
+                let func = erb.must_er(func_to_dynamic.to_dynamic(xx, loc, function))?;
 
                 // Get parameter types from function arg type
                 let param_types = if let Some(param_tuple) = aspect_tuple_get_maybe(xx, self.arg.as_ref()) {
@@ -180,8 +180,8 @@ impl AspectFunction for TypeFunctionDynamic {
                         erb.errors.extend(errs);
                     }
                     let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
-                    let elem_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, param_type.as_ref()))?;
-                    let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
+                    let elem_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, param_type.as_ref()))?;
+                    let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
                     js_args.push(js);
                 }
                 return Ok(ret_stack.to_value(loc, CodeDynamic {
@@ -195,14 +195,14 @@ impl AspectFunction for TypeFunctionDynamic {
 
             // Non-tuple argument path (original behavior)
             er_all!(erb, {
-                func_to_js = aspect_consume_dynamic_get(xx, loc, func_type.as_ref()),
-                arg_to_js = aspect_consume_dynamic_get(xx, loc, self.arg.as_ref()),
+                func_to_dynamic = aspect_consume_dynamic_get(xx, loc, func_type.as_ref()),
+                arg_to_dynamic = aspect_consume_dynamic_get(xx, loc, self.arg.as_ref()),
                 ret_stack = aspect_stack_value_dynamic_get(xx, loc, self.ret.as_ref()),
                 argument = typecheck_convert(xx, loc, self.arg.as_ref(), argument),
             });
             er_all!(erb, {
-                func = func_to_js.to_js(xx, loc, function),
-                arg = arg_to_js.to_js(xx, loc, argument),
+                func = func_to_dynamic.to_dynamic(xx, loc, function),
+                arg = arg_to_dynamic.to_dynamic(xx, loc, argument),
             });
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc: loc,

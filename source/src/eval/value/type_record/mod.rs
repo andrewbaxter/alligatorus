@@ -185,8 +185,8 @@ impl Type for Record {
                         if let Some(entry_cv) = er.v {
                             if matches!(entry_cv.code.code, Code_::None) {
                                 // Compile-time value without JS code: store its type as Rc`<dyn Type>` external
-                                // and give it a code reference. Use TypeType as the consumer type so to_js passes
-                                // through the BindingUse code.
+                                // and give it a code reference. Use TypeType as the consumer type so to_dynamic
+                                // passes through the BindingUse code.
                                 let field_type = record_field_type(xx, loc, &RecordField::EvalRes(EvalRes::ok(CodeValue {
                                     code: entry_cv.code.clone(),
                                     value: entry_cv.value,
@@ -231,7 +231,7 @@ impl Type for Record {
                 code: cv.code,
                 value: Rc::new(converted_record),
             };
-            match converted_type.to_js(xx, loc, converted_cv).into_res() {
+            match converted_type.to_dynamic(xx, loc, converted_cv).into_res() {
                 Ok(record_js) => {
                     let call_code = CodeDynamic {
                         loc,
@@ -482,7 +482,7 @@ impl AspectField for Record {
 }
 
 impl AspectConsumeDynamic for Record {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
 
         // If the value is a ValueDynamic (e.g. from cast_from), the JS code already
@@ -526,13 +526,13 @@ impl AspectConsumeDynamic for Record {
                     }
                     if let Some(elem_cv) = elem_res.v {
                         let elem_value_type = elem_cv.value.type_(xx, loc);
-                        if let Some(to_js) = aspect_consume_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
-                            match to_js.to_js(xx, loc, elem_cv).into_res() {
+                        if let Some(to_dynamic) = aspect_consume_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
+                            match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
                                 Ok(js) => js_fields.push((key_str, js)),
                                 Err(e) => errors.extend(e),
                             }
                         } else if let Some(bind) = aspect_bind_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
-                            match bind.bind_js(xx, loc, elem_cv).into_res() {
+                            match bind.bind_dynamic(xx, loc, elem_cv).into_res() {
                                 Ok((Some(js), _)) => js_fields.push((key_str, js)),
                                 Ok((None, _)) => { },
                                 Err(e) => errors.extend(e),
@@ -569,7 +569,7 @@ impl AspectConsumeDynamic for Record {
 }
 
 impl AspectBindDynamic for Record {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
@@ -578,7 +578,7 @@ impl AspectBindDynamic for Record {
         let record: Record =
             Rc::try_unwrap(downcast_value::<Record>(cv.value).unwrap())
                 .ok()
-                .expect("Record bind_js: Rc not unique");
+                .expect("Record bind_dynamic: Rc not unique");
 
         // If the record has no source and no JS code (pure compile-time value, e.g. from
         // a lifted record), bind as a value without producing JS.
@@ -614,7 +614,7 @@ impl AspectBindDynamic for Record {
         let scope_fields: BTreeMap<ConstKey, RecordScopeField> = self.fields.iter().map(|(k, f)| {
             let t = match f {
                 RecordField::Mortar(t) => t.clone(),
-                RecordField::EvalRes(_) => panic!("bind_js on non-type record"),
+                RecordField::EvalRes(_) => panic!("bind_dynamic on non-type record"),
             };
             (k.clone(), RecordScopeField::Mortar(t))
         }).collect();
@@ -622,7 +622,7 @@ impl AspectBindDynamic for Record {
             code: cv.code,
             value: Rc::new(record),
         };
-        self.to_js(xx, loc, cv).map(|c| {
+        self.to_dynamic(xx, loc, cv).map(|c| {
             (
                 Some(c),
                 Box::new(ScopeEntryRecordMortar { fields: scope_fields }) as

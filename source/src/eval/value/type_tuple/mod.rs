@@ -38,7 +38,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::type_dynamic::bind_js_some,
+    super::type_dynamic::bind_dynamic_some,
 };
 
 /// Represents a single element entry in a Tuple.
@@ -205,7 +205,7 @@ impl Type for Tuple {
                 code: cv.code,
                 value: Rc::new(converted_tuple),
             };
-            match converted_type.to_js(xx, loc, converted_cv).into_res() {
+            match converted_type.to_dynamic(xx, loc, converted_cv).into_res() {
                 Ok(tuple_js) => {
                     let call_code = CodeDynamic {
                         loc,
@@ -334,14 +334,16 @@ pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: CodeDynamic) -> Cod
 }
 
 impl AspectConsumeDynamic for Tuple {
-    fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap()).ok().expect("Tuple to_js: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
+                .ok()
+                .expect("Tuple to_dynamic: Rc not unique");
         let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
             match e {
                 TupleElement::Mortar(t) => t.clone(),
-                TupleElement::EvalRes(_) => panic!("to_js on non-type tuple"),
+                TupleElement::EvalRes(_) => panic!("to_dynamic on non-type tuple"),
             }
         }).collect();
         let mut errors = vec![];
@@ -349,14 +351,14 @@ impl AspectConsumeDynamic for Tuple {
         for (elem, elem_type) in tuple.elements.into_iter().zip(types.iter()) {
             let elem_res = match elem {
                 TupleElement::EvalRes(er) => er,
-                TupleElement::Mortar(_) => panic!("to_js on mortar tuple element"),
+                TupleElement::Mortar(_) => panic!("to_dynamic on mortar tuple element"),
             };
             if let Some(errs) = elem_res.errors {
                 errors.extend(errs);
             }
             if let Some(elem_cv) = elem_res.v {
                 match aspect_consume_dynamic_get(xx, loc, elem_type.as_ref()).into_res() {
-                    Ok(to_js) => match to_js.to_js(xx, loc, elem_cv).into_res() {
+                    Ok(to_dynamic) => match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
                         Ok(js) => js_elements.push(js),
                         Err(e) => errors.extend(e),
                     },
@@ -378,14 +380,14 @@ impl AspectConsumeDynamic for Tuple {
 }
 
 impl AspectBindDynamic for Tuple {
-    fn bind_js(
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        self.to_js(xx, loc, cv).map(|c| bind_js_some(loc, c, vtype))
+        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
     }
 }
 pub mod scope_entry;
