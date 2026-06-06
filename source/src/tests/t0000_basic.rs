@@ -24,10 +24,10 @@ fn test_00100_call_lit() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "Hello world (mortar)");
+    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -70,10 +70,10 @@ fn test_00200_bind_use() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "Hello world (mortar)");
+    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -106,10 +106,10 @@ fn test_00300_stage_lower() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "Hello world (mortar)");
+    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -142,10 +142,10 @@ fn test_00400_lower_nostage() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "Hello world (mortar)");
+    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -188,8 +188,8 @@ fn test_00500_method_call() {
                 .into_iter()
                 .collect(),
         );
-    compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;

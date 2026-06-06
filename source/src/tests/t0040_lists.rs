@@ -46,7 +46,7 @@ fn test_0000_list() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "c_d_a_b");
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "c_d_a_b");
 }

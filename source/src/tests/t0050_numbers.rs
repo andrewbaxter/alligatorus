@@ -52,10 +52,10 @@ fn test_0000_number_lit() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "11");
-    assert_eq!(sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "11");
+    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -210,10 +210,10 @@ fn test_00100_number_mortar() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "11");
-    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "11");
+    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;

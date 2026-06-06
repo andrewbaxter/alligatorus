@@ -41,10 +41,10 @@ fn test_00800define_data() {
         mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"),)),
         mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null(),),),
     ])))].into_iter().collect());
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "HELLO");
-    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "HELLO");
+    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;

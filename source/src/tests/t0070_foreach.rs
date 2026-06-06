@@ -55,9 +55,9 @@ fn test_0000_foreach_list() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 3);
-    assert_eq!(logs[0].message, "1");
-    assert_eq!(logs[1].message, "2");
-    assert_eq!(logs[2].message, "7");
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 3);
+    assert_eq!(res.logs[0].message, "1");
+    assert_eq!(res.logs[1].message, "2");
+    assert_eq!(res.logs[2].message, "7");
 }

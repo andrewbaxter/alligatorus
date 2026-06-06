@@ -70,12 +70,12 @@ fn test_0000_map_string_keys() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 4);
-    assert_eq!(logs[0].message, "a");
-    assert_eq!(logs[1].message, "10");
-    assert_eq!(logs[2].message, "b");
-    assert_eq!(logs[3].message, "20");
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 4);
+    assert_eq!(res.logs[0].message, "a");
+    assert_eq!(res.logs[1].message, "10");
+    assert_eq!(res.logs[2].message, "b");
+    assert_eq!(res.logs[3].message, "20");
 }
 
 #[test]
@@ -129,10 +129,10 @@ fn test_0010_map_string_string() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 4);
-    assert_eq!(logs[0].message, "x");
-    assert_eq!(logs[1].message, "hello");
-    assert_eq!(logs[2].message, "y");
-    assert_eq!(logs[3].message, "world");
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 4);
+    assert_eq!(res.logs[0].message, "x");
+    assert_eq!(res.logs[1].message, "hello");
+    assert_eq!(res.logs[2].message, "y");
+    assert_eq!(res.logs[3].message, "world");
 }

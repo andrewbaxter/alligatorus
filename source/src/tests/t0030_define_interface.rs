@@ -66,10 +66,10 @@ fn test_00900define_interface() {
         mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"),)),
         mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null(),),),
     ])))].into_iter().collect());
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "HELLO");
-    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "HELLO");
+    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -293,10 +293,10 @@ fn test_00910interface_cast() {
         // Call do_log with a new upper value - requires implicit cast to interface
         mb.call(mb.scope_use("do_log"), mb.tuple(vec![mb.call(mb.scope_use("make_upper"), mb.str("hello"),)]),),
     ])))].into_iter().collect());
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "HELLO");
-    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "HELLO");
+    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -539,7 +539,7 @@ fn test_00920interface_wrong_map_value_type() {
 //.    let gx = new_gx([("main", SerialModule::V1(mb.block(vec![
 //.        ...
 //.    ])))].into_iter().collect());
-//.    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-//.    assert_eq!(logs.len(), 1);
-//.    assert_eq!(logs[0].message, "HELLO");
+//.    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+//.    assert_eq!(res.logs.len(), 1);
+//.    assert_eq!(res.logs[0].message, "HELLO");
 //. }

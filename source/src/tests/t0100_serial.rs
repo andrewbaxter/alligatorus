@@ -24,10 +24,10 @@ fn test_00100_import_literal() {
         let mb = ModuleBuilder::default();
         SourceModule::V1(mb.call(mb.scope_use("log"), mb.import(mb.str("other"))))
     })].into_iter().collect());
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "Hello world (mortar)");
-    assert_eq!(redact_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "Hello world (mortar)");
+    assert_eq!(redact_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -86,10 +86,10 @@ fn test_00200_import_definitionset() {
             )
         }),
     ].into_iter().collect());
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, "HELLO");
-    assert_eq!(redact_builtins(&gx.generated_mortar_scripts.lock().unwrap()), vec![r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "HELLO");
+    assert_eq!(redact_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;

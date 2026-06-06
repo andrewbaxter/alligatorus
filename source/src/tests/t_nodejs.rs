@@ -378,9 +378,9 @@ fn test_0000_nodejs_code() {
                 .into_iter()
                 .collect(),
         );
-    let logs = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(logs.len(), 1);
-    assert_eq!(logs[0].message, r#"let e0;
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, r#"let e0;
 {
 let e1;
 {
@@ -401,7 +401,7 @@ e4 = "Hello world (node)";
 e0 = (e1)(e4);
 }
 e0"#);
-    let js_sources = sanitize_builtins(&gx.generated_mortar_scripts.lock().unwrap());
+    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources.len(), 2);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
