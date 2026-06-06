@@ -1,18 +1,22 @@
 use {
     crate::{
         builtin::{
+            AspectArtifact,
             AspectBindJs,
             AspectConsumeJs,
             AspectField,
             AspectJsStackValue,
             AspectJsString,
+            AspectLiftJs,
             AspectSet,
+            aspect_artifact_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_field_aspect_id,
             aspect_js_stack_value_aspect_id,
             aspect_js_string_aspect_id,
             aspect_js_string_get_maybe,
+            aspect_lift_js_aspect_id,
             aspect_set_aspect_id,
             aspect_string_get,
             aspect_string_get_maybe,
@@ -25,6 +29,10 @@ use {
             JsCodeType,
         },
         langhelp::{
+            Artifact,
+            ArtifactData,
+            ArtifactId,
+            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,
@@ -32,6 +40,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            GlobalContext,
             QExprId,
             Type,
             Unique,
@@ -77,6 +86,9 @@ impl Type for TypeMortarString {
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectArtifact>));
+        }
         if *key == aspect_js_string_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectJsString>));
         }
@@ -94,6 +106,9 @@ impl Type for TypeMortarString {
         }
         if *key == aspect_set_aspect_id() {
             return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectSet>));
+        }
+        if *key == aspect_lift_js_aspect_id() {
+            return Some(Box::new(Box::new(TypeMortarString) as Box<dyn AspectLiftJs>));
         }
         return None;
     }
@@ -226,6 +241,31 @@ impl AspectField for TypeMortarString {
             })),
             _ => None,
         }
+    }
+}
+
+impl AspectLiftJs for TypeMortarString {
+    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+        Ok(Rc::new(super::string::ValueString(s)))
+    }
+}
+
+impl AspectArtifact for TypeMortarString {
+    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
+        EResult::ok(Artifact {
+            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&super::string::string_artifact_identity())),
+            data: ArtifactData::Null,
+        })
+    }
+
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _data: &ArtifactData,
+    ) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(TypeMortarString) as Rc<dyn Value>)
     }
 }
 

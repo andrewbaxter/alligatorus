@@ -119,6 +119,7 @@ jswrap!(struct DefineResult(self_, scope) {
                 interface_impls: RefCell::new(Vec::new()),
                 identity,
                 data_field,
+                artifact_id: RefCell::new(None),
             });
             idx
         };
@@ -304,6 +305,7 @@ jswrap!(struct NewDataResult(self_, scope) {
                 ),
                 self_scope_entry_id: Cell::new(None),
                 field_name,
+                compiled_js: RefCell::new(None),
             });
             idx
         };

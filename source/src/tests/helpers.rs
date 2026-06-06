@@ -10,7 +10,12 @@ pub(super) fn redact_builtins(sources: &[String]) -> Vec<String> {
 use {
     crate::{
         langhelp::{
+            Artifact,
+            ArtifactId,
+            ArtifactIdCompile,
+            CompileId,
             GlobalContext,
+            ImportStateId,
             SourceId,
         },
         syntax::{
@@ -41,7 +46,10 @@ use {
     std::{
         cell::Cell,
         collections::HashMap,
-        sync::Arc,
+        sync::{
+            Arc,
+            Mutex,
+        },
     },
 };
 
@@ -59,6 +67,37 @@ impl crate::langhelp::Sources for TestSources {
     }
 }
 
+struct TestArtifacts {
+    next_id: Mutex<usize>,
+    data: Mutex<HashMap<ArtifactId, Artifact>>,
+}
+
+impl TestArtifacts {
+    fn new() -> Self {
+        TestArtifacts {
+            next_id: Mutex::new(0),
+            data: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl crate::langhelp::Artifacts for TestArtifacts {
+    fn reserve_id(&self) -> ArtifactId {
+        let mut next = self.next_id.lock().unwrap();
+        let id = *next;
+        *next += 1;
+        ArtifactId::Compile(ArtifactIdCompile(CompileId(ImportStateId(0), SourceId(0)), id))
+    }
+
+    fn set(&self, id: ArtifactId, data: Artifact) {
+        self.data.lock().unwrap().insert(id, data);
+    }
+
+    fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
+        self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
+    }
+}
+
 pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext> {
     let mut sources = HashMap::new();
     let mut next_id = 0;
@@ -66,7 +105,7 @@ pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext>
         sources.insert(name.to_string(), (SourceId(next_id), module));
         next_id += 1;
     }
-    GlobalContext::new(Box::new(TestSources { modules: sources }))
+    GlobalContext::new(Box::new(TestSources { modules: sources }), Box::new(TestArtifacts::new()))
 }
 
 #[derive(Default)]

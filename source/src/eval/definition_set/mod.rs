@@ -1,7 +1,7 @@
 mod jswrap_structs;
 mod data_type_ref;
-mod data_type_constructor;
-mod data_type;
+pub(crate) mod data_type_constructor;
+pub(crate) mod data_type;
 mod exports;
 mod function;
 mod interface_ref;
@@ -56,6 +56,9 @@ pub(crate) struct DefinitionSetDataMethodData {
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub field_name: String,
+    /// Pre-compiled JS function body, set after method compilation in eval(). Format:
+    /// complete function definition string (e.g. "function d0_0_0() { ... }")
+    pub compiled_js: RefCell<Option<String>>,
 }
 
 pub(crate) struct DefinitionSetDataTypeData {
@@ -66,6 +69,7 @@ pub(crate) struct DefinitionSetDataTypeData {
     pub interface_impls: RefCell<Vec<DefinitionSetDataTypeInterfaceImplData>>,
     pub identity: Unique,
     pub data_field: String,
+    pub artifact_id: RefCell<Option<crate::langhelp::ArtifactId>>,
 }
 
 pub(crate) struct DefinitionSetDataTypeInterfaceImplData {

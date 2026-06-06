@@ -17,6 +17,7 @@ use {
             Artifact,
             ArtifactData,
             ArtifactId,
+            ArtifactIdBuiltin,
             Aspect,
             CodeValue,
             EResult,
@@ -152,16 +153,20 @@ impl AspectField for TypeString {
 }
 
 impl AspectArtifact for TypeString {
-    fn to_serial(&self, gx: &GlobalContext, value: Rc<dyn Value>) -> EResult<Artifact> {
-        let builtin_id = *gx.builtin_type_ids.get(&string_artifact_identity()).unwrap();
+    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, value: Rc<dyn Value>) -> EResult<Artifact> {
         let s = <dyn Any>::downcast_ref::<ValueString>(value.as_ref()).unwrap().0.clone();
         EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(builtin_id),
+            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&string_artifact_identity())),
             data: ArtifactData::String(s),
         })
     }
 
-    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactData) -> Result<Rc<dyn Value>, String> {
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        data: &ArtifactData,
+    ) -> Result<Rc<dyn Value>, String> {
         match data {
             ArtifactData::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
             _ => Err("Expected string data for string type".to_string()),

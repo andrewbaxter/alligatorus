@@ -12,6 +12,7 @@ use {
             Artifact,
             ArtifactData,
             ArtifactId,
+            ArtifactIdBuiltin,
             Aspect,
             CodeValue,
             EResult,
@@ -100,15 +101,19 @@ impl Aspect for TypeNull { }
 impl AspectNull for TypeNull { }
 
 impl AspectArtifact for TypeNull {
-    fn to_serial(&self, gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
-        let builtin_id = *gx.builtin_type_ids.get(&null_artifact_identity()).unwrap();
+    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
         EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(builtin_id),
+            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&null_artifact_identity())),
             data: ArtifactData::Null,
         })
     }
 
-    fn from_serial(&self, _gx: &GlobalContext, data: &ArtifactData) -> Result<Rc<dyn Value>, String> {
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        data: &ArtifactData,
+    ) -> Result<Rc<dyn Value>, String> {
         match data {
             ArtifactData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
             _ => Err("Expected null data for null type".to_string()),

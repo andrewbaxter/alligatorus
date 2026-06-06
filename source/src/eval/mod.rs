@@ -283,7 +283,7 @@ impl PendingImportState {
         let compile_res = compile_res.as_ref().expect("Import compilation error");
         let artifact = match &compile_res.result {
             CompileResResult::Ok(a) => a,
-            CompileResResult::Err(_) => panic!("Import compilation failed"),
+            CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         self.gx.deserialize_artifact(xx, artifact).expect("Artifact deserialization failed")
     }
@@ -331,9 +331,9 @@ impl ValuePendingImport {
 
 impl Value for ValuePendingImport {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        // Resolve on type_() — this is called when the value is actually used
-        // (call, field, cast, etc.), not just bind/scope_use pass-through.
-        // Return a proxy type that substitutes the resolved value into CodeValues.
+        // Resolve on type_() — this is called when the value is actually used (call,
+        // field, cast, etc.), not just bind/scope_use pass-through. Return a proxy type
+        // that substitutes the resolved value into CodeValues.
         Rc::new(TypePendingImport {
             state: self.state.clone(),
             resolved: self.resolve(xx),
@@ -352,7 +352,10 @@ impl TypePendingImport {
     }
 
     fn substitute_cv(&self, cv: CodeValue) -> CodeValue {
-        CodeValue { code: cv.code, value: self.resolved.clone() }
+        CodeValue {
+            code: cv.code,
+            value: self.resolved.clone(),
+        }
     }
 }
 
@@ -373,10 +376,13 @@ impl Type for TypePendingImport {
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
         if *key == crate::builtin::aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(PendingImportBind {
-                state: self.state.clone(),
-            }) as Box<dyn crate::builtin::AspectBind>));
+            return Some(
+                Box::new(
+                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn crate::builtin::AspectBind>,
+                ),
+            );
         }
+
         // For all other aspects, resolve and delegate
         let loc = (SourceId(0), ExprId(0));
         self.resolved_type(xx, loc).aspect(xx, key)
@@ -403,7 +409,7 @@ struct PendingImportBind {
     state: Rc<PendingImportState>,
 }
 
-impl crate::langhelp::Aspect for PendingImportBind {}
+impl crate::langhelp::Aspect for PendingImportBind { }
 
 impl crate::builtin::AspectBind for PendingImportBind {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
@@ -1186,9 +1192,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 if let Some(entry) = results.get(&compile_id) {
                     entry.clone()
                 } else {
-                    let entry = Arc::new(CompileResultEntry {
-                        result: std::sync::RwLock::new(None),
-                    });
+                    let entry = Arc::new(CompileResultEntry { result: std::sync::RwLock::new(None), });
                     let started = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
                     let started_clone = started.clone();
                     let gx = xx.vx.ix.gx.clone();
@@ -1221,8 +1225,14 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 gx: xx.vx.ix.gx.clone(),
             });
             return Ok(CodeValue {
-                code: Code { loc: expr.loc, code: Code_::None },
-                value: Rc::new(ValuePendingImport { state, resolved: RefCell::new(None) }),
+                code: Code {
+                    loc: expr.loc,
+                    code: Code_::None
+                },
+                value: Rc::new(ValuePendingImport {
+                    state,
+                    resolved: RefCell::new(None)
+                }),
             });
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
@@ -1276,7 +1286,10 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
     return er_seq_cv!(loc, erb, {
         // Resolve pending imports so downstream code sees the real value
         let source = if let Some(pending) = <dyn Any>::downcast_ref::<ValuePendingImport>(source.value.as_ref()) {
-            CodeValue { code: source.code, value: pending.resolve(xx) }
+            CodeValue {
+                code: source.code,
+                value: pending.resolve(xx)
+            }
         } else {
             source
         };
@@ -1458,14 +1471,17 @@ fn eval(
     }
     let cv = result.v.unwrap();
     let value_type = cv.value.type_(&xx, root_loc);
-    let (stage1_code, fallback_value) = match aspect_consume_js_get_maybe(&xx, value_type.as_ref()) {
-        Some(to_js) => {
-            let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
-            (Some(js), None)
-        },
-        None => {
-            let code = cv.code.cast::<JsCode>().into_res()?.cloned();
-            (code, Some(cv.value))
+    let (stage1_code, fallback_value) = match &cv.code.code {
+        Code_::None => (None, Some(cv.value)),
+        _ => match aspect_consume_js_get_maybe(&xx, value_type.as_ref()) {
+            Some(to_js) => {
+                let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
+                (Some(js), None)
+            },
+            None => {
+                let code = cv.code.cast::<JsCode>().into_res()?.cloned();
+                (code, Some(cv.value))
+            },
         },
     };
 
@@ -1588,11 +1604,18 @@ fn eval(
     }
 
     // Compile data type method implementations
+    enum CompiledDataMethodBody {
+        Fresh {
+            self_scope_entry_id: ScopeEntryId,
+            data_field: String,
+            impl_code: JsCode,
+        },
+        Precompiled(String),
+    }
+
     struct CompiledDataMethod {
         scope_entry_id: ScopeEntryId,
-        self_scope_entry_id: ScopeEntryId,
-        data_field: String,
-        impl_code: JsCode,
+        body: CompiledDataMethodBody,
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
@@ -1602,12 +1625,21 @@ fn eval(
                 dt_data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
             let data_field = dt_data.data_field.clone();
             for method in dt_data.methods.borrow().iter() {
+                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
+
+                // Check for pre-compiled JS first
+                if let Some(compiled_js) = method.compiled_js.borrow().clone() {
+                    def_data_methods.push(CompiledDataMethod {
+                        scope_entry_id: method_id,
+                        body: CompiledDataMethodBody::Precompiled(compiled_js),
+                    });
+                    continue;
+                }
                 let impl_expr = method.impl_expr.borrow();
                 let impl_expr_ast =
                     (impl_expr.as_ref().unwrap().as_ref() as &dyn Any)
                         .downcast_ref::<expr::Expr>()
                         .expect("Method impl must be an Expr");
-                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
                 let ret_type: Rc<dyn Type> =
                     method.ret_type.borrow().clone().expect("Data type method missing return type");
 
@@ -1654,9 +1686,11 @@ fn eval(
                     impl_cv.code.cast::<JsCode>().into_res()?.expect("Method body must produce JS code").clone();
                 def_data_methods.push(CompiledDataMethod {
                     scope_entry_id: method_id,
-                    self_scope_entry_id: self_id,
-                    data_field: data_field.clone(),
-                    impl_code,
+                    body: CompiledDataMethodBody::Fresh {
+                        self_scope_entry_id: self_id,
+                        data_field: data_field.clone(),
+                        impl_code,
+                    },
                 });
             }
 
@@ -1725,9 +1759,11 @@ fn eval(
                             .clone();
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
-                        self_scope_entry_id: self_id,
-                        data_field: data_field.clone(),
-                        impl_code,
+                        body: CompiledDataMethodBody::Fresh {
+                            self_scope_entry_id: self_id,
+                            data_field: data_field.clone(),
+                            impl_code,
+                        },
                     });
                 }
             }
@@ -1759,15 +1795,37 @@ fn eval(
     // Render data type method implementations as JS functions Methods use `this` to
     // access the wrapper object; self = this.<data_field>
     for method in &def_data_methods {
-        let func_name = scope_entry_id_js_key(method.scope_entry_id);
-        code1.push(root_loc, format!("function {}() {{", func_name));
-        code1.push(
-            root_loc,
-            format!("let {} = this.{};", scope_entry_id_js_key(method.self_scope_entry_id), method.data_field,),
-        );
-        let body_var = render_code(&mut code1, &method.impl_code);
-        code1.push(root_loc, format!("return {};", body_var));
-        code1.push(root_loc, "}".to_string());
+        match &method.body {
+            CompiledDataMethodBody::Fresh { self_scope_entry_id, data_field, impl_code } => {
+                let start_line = code1.lines.len();
+                let func_name = scope_entry_id_js_key(method.scope_entry_id);
+                code1.push(root_loc, format!("function {}() {{", func_name));
+                code1.push(
+                    root_loc,
+                    format!("let {} = this.{};", scope_entry_id_js_key(*self_scope_entry_id), data_field),
+                );
+                let body_var = render_code(&mut code1, impl_code);
+                code1.push(root_loc, format!("return {};", body_var));
+                code1.push(root_loc, "}".to_string());
+
+                // Store compiled JS for later serialization
+                let compiled = code1.lines[start_line..].join("\n");
+                for ds in ex.definition_sets.borrow().iter() {
+                    for dt_data in ds.data_types.borrow().iter() {
+                        for m in dt_data.methods.borrow().iter() {
+                            if m.scope_entry_id.get() == Some(method.scope_entry_id) {
+                                *m.compiled_js.borrow_mut() = Some(compiled.clone());
+                            }
+                        }
+                    }
+                }
+            },
+            CompiledDataMethodBody::Precompiled(js) => {
+                for line in js.lines() {
+                    code1.push(root_loc, line.to_string());
+                }
+            },
+        }
     }
 
     // Render main code
@@ -2471,7 +2529,7 @@ pub(crate) fn compile_importid(
                     result: CompileResResult::Err(e),
                 },
             };
-            let value = match value_serial.to_serial(&fx, eval_value).into_res() {
+            let value = match value_serial.to_serial(&xx, &fx, eval_value).into_res() {
                 Ok(v) => v,
                 Err(e) => return CompileRes {
                     logs,

@@ -78,8 +78,9 @@ aspect!(AspectFunction {
 });
 
 aspect!(AspectArtifact {
-    fn to_serial(&self, gx: & GlobalContext, self_: Rc < dyn Value >) -> EResult < Artifact >;
-    fn from_serial(&self, gx: & GlobalContext, data: & ArtifactData) -> Result < Rc < dyn Value >, String >;
+    fn to_serial(&self, xx: & ExprContext, gx: & GlobalContext, self_: Rc < dyn Value >) -> EResult < Artifact >;
+    fn from_serial(&self, xx: & ExprContext, gx: & GlobalContext, data: & ArtifactData) -> Result < Rc < dyn Value >,
+    String >;
 });
 
 aspect!(AspectLiftJs {
