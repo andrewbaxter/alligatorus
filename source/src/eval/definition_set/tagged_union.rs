@@ -228,7 +228,12 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
 }
 
 impl AspectLiftJs for MortarTypeTaggedUnionRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let mortar =
             (type_.as_ref() as &dyn Any)
@@ -321,7 +326,12 @@ impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
 }
 
 impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let ctor =
             (type_.as_ref() as &dyn Any)

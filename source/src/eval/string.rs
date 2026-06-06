@@ -15,7 +15,6 @@ use {
         jscode::JsCode,
         langhelp::{
             Artifact,
-            ArtifactData,
             ArtifactId,
             ArtifactIdBuiltin,
             Aspect,
@@ -42,9 +41,9 @@ use {
     },
 };
 
-pub(crate) fn string_artifact_identity() -> Unique {
-    Unique::Builtin {
-        file: file!(),
+pub(crate) fn string_artifact_identity() -> ArtifactIdBuiltin {
+    ArtifactIdBuiltin {
+        file: file!().to_string(),
         line: line!() as usize,
     }
 }
@@ -63,6 +62,13 @@ impl Type for TypeString {
 
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeString)
+    }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Artifact {
+            type_: ArtifactId::Builtin(string_artifact_identity()),
+            data: serde_json::Value::Null,
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -153,11 +159,17 @@ impl AspectField for TypeString {
 }
 
 impl AspectArtifact for TypeString {
-    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, value: Rc<dyn Value>) -> EResult<Artifact> {
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
         let s = <dyn Any>::downcast_ref::<ValueString>(value.as_ref()).unwrap().0.clone();
         EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&string_artifact_identity())),
-            data: ArtifactData::String(s),
+            type_: ArtifactId::Builtin(string_artifact_identity()),
+            data: serde_json::Value::String(s),
         })
     }
 
@@ -165,10 +177,11 @@ impl AspectArtifact for TypeString {
         &self,
         _xx: &ExprContext,
         _gx: &GlobalContext,
-        data: &ArtifactData,
+        _loc: QExprId,
+        data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         match data {
-            ArtifactData::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
+            serde_json::Value::String(s) => Ok(Rc::new(ValueString(s.clone())) as Rc<dyn Value>),
             _ => Err("Expected string data for string type".to_string()),
         }
     }

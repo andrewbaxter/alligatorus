@@ -281,12 +281,17 @@ struct TupleLiftJs {
 impl Aspect for TupleLiftJs { }
 
 impl AspectLiftJs for TupleLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lift");
         let mut elements = Vec::new();
         for (i, elem_lift) in self.element_lifts.iter().enumerate() {
             let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lift");
-            let lifted = elem_lift.lift(scope, elem_v8)?;
+            let lifted = elem_lift.lift(xx, scope, elem_v8)?;
             elements.push(TupleElement::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),

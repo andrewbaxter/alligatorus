@@ -285,13 +285,15 @@ impl PendingImportState {
             CompileResResult::Ok(a) => a,
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
-        self.gx.deserialize_artifact(xx, artifact).expect("Artifact deserialization failed")
+        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        self.gx.deserialize_artifact(xx, loc, artifact).expect("Artifact deserialization failed")
     }
 
     fn resolve_standalone(&self) -> Rc<dyn Value> {
         let cix = Rc::new(CompileImportContext {
             gx: self.gx.clone(),
             compile_path: vec![],
+            builtin_types: crate::langhelp::make_builtin_types(),
         });
         let ex = Rc::new(EvalContext {
             ix: cix,
@@ -723,7 +725,13 @@ impl Target for MortarTarget {
                     },
                     Code_::Dyn(_) => {
                         let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
-                        let lift_cell = Rc::new(StageLiftCell { lift });
+                        let lift_cell = Rc::new(StageLiftCell {
+                            lift,
+                            vx: xx.vx.clone(),
+                            import_state: xx.import_state.clone(),
+                            scope: xx.scope.clone(),
+                            target: xx.target.clone(),
+                        });
                         let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
                         let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
@@ -763,6 +771,10 @@ impl Target for MortarTarget {
 /// Holds an AspectLiftJs, stored as a v8::External so __stage can lift raw values.
 pub(crate) struct StageLiftCell {
     pub lift: Box<dyn crate::builtin::AspectLiftJs>,
+    pub vx: Rc<EvalContext>,
+    pub import_state: Rc<Cell<ImportStateId>>,
+    pub scope: Rc<Scope>,
+    pub target: Rc<dyn Target>,
 }
 
 fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
@@ -1883,7 +1895,13 @@ fn eval(
                 } else {
                     // Lift the raw v8 value
                     let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
-                    let value = lift_cell.lift.lift(&*scope, val_arg).expect("__stage: lift failed");
+                    let lift_xx = ExprContext {
+                        vx: lift_cell.vx.clone(),
+                        import_state: lift_cell.import_state.clone(),
+                        scope: lift_cell.scope.clone(),
+                        target: lift_cell.target.clone(),
+                    };
+                    let value = lift_cell.lift.lift(&lift_xx, &*scope, val_arg).expect("__stage: lift failed");
                     values.push(StageLowerValue::Value(value));
                 }
             }
@@ -2174,7 +2192,7 @@ fn eval(
     match script.run(js_scope) {
         Some(stage2) => {
             let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let value: Rc<dyn Value> = value_from_js.lift(&*js_scope, stage2).map_err(|e| vec![ExprErr {
+            let value: Rc<dyn Value> = value_from_js.lift(&xx, &*js_scope, stage2).map_err(|e| vec![ExprErr {
                 loc: root_loc,
                 errors: vec![ExprSubErr::Opaque(e)],
             }])?;
@@ -2397,6 +2415,7 @@ pub(crate) fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
+        builtin_types: crate::langhelp::make_builtin_types(),
     });
     let mut root_expr = match source {
         Module::V1(e) => e,
@@ -2529,7 +2548,7 @@ pub(crate) fn compile_importid(
                     result: CompileResResult::Err(e),
                 },
             };
-            let value = match value_serial.to_serial(&xx, &fx, eval_value).into_res() {
+            let value = match value_serial.to_serial(&xx, &fx, root_loc, eval_value).into_res() {
                 Ok(v) => v,
                 Err(e) => return CompileRes {
                     logs,

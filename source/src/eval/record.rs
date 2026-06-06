@@ -633,13 +633,18 @@ struct RecordLiftJs {
 impl Aspect for RecordLiftJs { }
 
 impl AspectLiftJs for RecordLiftJs {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
         let mut fields = BTreeMap::new();
         for (key, entry_lift) in &self.entry_lifts {
             let v8_key = v8::String::new(scope, key).unwrap();
             let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
-            let lifted = entry_lift.lift(scope, v8_val)?;
+            let lifted = entry_lift.lift(xx, scope, v8_val)?;
             let const_key = ConstKey::String(key.clone());
             fields.insert(const_key, RecordField::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {

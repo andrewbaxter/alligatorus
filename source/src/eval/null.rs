@@ -10,7 +10,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactData,
             ArtifactId,
             ArtifactIdBuiltin,
             Aspect,
@@ -33,9 +32,9 @@ use {
     super::Erb,
 };
 
-pub(crate) fn null_artifact_identity() -> Unique {
-    Unique::Builtin {
-        file: file!(),
+pub(crate) fn null_artifact_identity() -> ArtifactIdBuiltin {
+    ArtifactIdBuiltin {
+        file: file!().to_string(),
         line: line!() as usize,
     }
 }
@@ -54,6 +53,13 @@ impl Type for TypeNull {
 
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNull)
+    }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Artifact {
+            type_: ArtifactId::Builtin(null_artifact_identity()),
+            data: serde_json::Value::Null,
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -101,10 +107,16 @@ impl Aspect for TypeNull { }
 impl AspectNull for TypeNull { }
 
 impl AspectArtifact for TypeNull {
-    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
         EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&null_artifact_identity())),
-            data: ArtifactData::Null,
+            type_: ArtifactId::Builtin(null_artifact_identity()),
+            data: serde_json::Value::Null,
         })
     }
 
@@ -112,10 +124,11 @@ impl AspectArtifact for TypeNull {
         &self,
         _xx: &ExprContext,
         _gx: &GlobalContext,
-        data: &ArtifactData,
+        _loc: QExprId,
+        data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         match data {
-            ArtifactData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
+            serde_json::Value::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
             _ => Err("Expected null data for null type".to_string()),
         }
     }

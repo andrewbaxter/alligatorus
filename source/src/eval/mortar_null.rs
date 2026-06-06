@@ -22,7 +22,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactData,
             ArtifactId,
             ArtifactIdBuiltin,
             Aspect,
@@ -51,13 +50,16 @@ use {
             MortarJsValueSource,
             bind_js_some,
         },
-        null::{
-            ValueNull,
-            null_artifact_identity,
-        },
+        null::ValueNull,
     },
 };
 
+pub(crate) fn mortar_null_artifact_identity() -> ArtifactIdBuiltin {
+    ArtifactIdBuiltin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
 pub(crate) struct TypeMortarNull;
 
 impl Value for TypeMortarNull {
@@ -95,6 +97,13 @@ impl Type for TypeMortarNull {
             return Some(Box::new(Box::new(TypeMortarNull) as Box<dyn AspectBindJs>));
         }
         return None;
+    }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Artifact {
+            type_: ArtifactId::Builtin(mortar_null_artifact_identity()),
+            data: serde_json::Value::Null,
+        })
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
@@ -142,10 +151,16 @@ impl AspectJsStackValue for TypeMortarNull {
 }
 
 impl AspectArtifact for TypeMortarNull {
-    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
         EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&null_artifact_identity())),
-            data: ArtifactData::Null,
+            type_: ArtifactId::Builtin(mortar_null_artifact_identity()),
+            data: serde_json::Value::Null,
         })
     }
 
@@ -153,17 +168,20 @@ impl AspectArtifact for TypeMortarNull {
         &self,
         _xx: &ExprContext,
         _gx: &GlobalContext,
-        data: &ArtifactData,
+        _loc: QExprId,
+        _data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
-        match data {
-            ArtifactData::Null => Ok(Rc::new(ValueNull) as Rc<dyn Value>),
-            _ => Err("Expected null data for null type".to_string()),
-        }
+        Ok(Rc::new(ValueNull))
     }
 }
 
 impl AspectLiftJs for TypeMortarNull {
-    fn lift(&self, _scope: &v8::PinScope, _value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        _value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         Ok(Rc::new(ValueNull))
     }
 }

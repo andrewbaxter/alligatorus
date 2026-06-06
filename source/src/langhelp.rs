@@ -14,10 +14,7 @@ use {
             Cell,
             RefCell,
         },
-        collections::{
-            BTreeMap,
-            HashMap,
-        },
+        collections::HashMap,
         rc::Rc,
         sync::{
             Arc,
@@ -58,18 +55,6 @@ pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 pub(crate) struct ArtifactIdBuiltin {
     pub file: String,
     pub line: usize,
-}
-
-impl ArtifactIdBuiltin {
-    pub(crate) fn from_unique(u: &Unique) -> Self {
-        let Unique::Builtin { file, line } = u else {
-            panic!("ArtifactIdBuiltin::from_unique requires Unique::Builtin")
-        };
-        ArtifactIdBuiltin {
-            file: file.to_string(),
-            line: *line,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
@@ -121,20 +106,9 @@ impl Value for Unique {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum ArtifactData {
-    Null,
-    String(String),
-    Option(Option<Box<Artifact>>),
-    List(Vec<Artifact>),
-    Map(BTreeMap<ConstKey, Artifact>),
-    Ref(ArtifactId),
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct Artifact {
     pub(crate) type_: ArtifactId,
-    pub(crate) data: ArtifactData,
+    pub(crate) data: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -163,11 +137,6 @@ pub(crate) struct CompileResultEntry {
     pub(crate) result: RwLock<Option<Result<CompileRes, ExprSubErr>>>,
 }
 
-pub(crate) struct BuiltinTypeEntry {
-    pub(crate) type_factory: fn() -> Rc<dyn Type>,
-    pub(crate) type_ref_factory: fn() -> Rc<dyn Type>,
-}
-
 pub trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
 }
@@ -181,70 +150,15 @@ pub trait Artifacts: Send + Sync {
 pub(crate) struct GlobalContext {
     pub(crate) sources: Box<dyn Sources>,
     pub(crate) artifacts: Box<dyn Artifacts>,
-    pub(crate) builtin_types: HashMap<ArtifactIdBuiltin, BuiltinTypeEntry>,
     pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
     pub(crate) compile_results: Mutex<HashMap<CompileId, Arc<CompileResultEntry>>>,
 }
 
 impl GlobalContext {
     pub(crate) fn new(sources: Box<dyn Sources>, artifacts: Box<dyn Artifacts>) -> Arc<GlobalContext> {
-        use crate::eval::{
-            definition_set::{
-                data_type::defset_data_type_artifact_identity,
-                data_type::defset_artifact_identity,
-                data_type_constructor::defset_ctor_artifact_identity,
-            },
-            null::null_artifact_identity,
-            string::string_artifact_identity,
-        };
-
-        let mut builtin_types = HashMap::new();
-
-        fn register(
-            builtin_types: &mut HashMap<ArtifactIdBuiltin, BuiltinTypeEntry>,
-            identity: Unique,
-            entry: BuiltinTypeEntry,
-        ) {
-            let id = ArtifactIdBuiltin::from_unique(&identity);
-            builtin_types.insert(id, entry);
-        }
-
-        register(&mut builtin_types, null_artifact_identity(), BuiltinTypeEntry {
-            type_factory: || Rc::new(crate::eval::null::TypeNull) as Rc<dyn Type>,
-            type_ref_factory: || Rc::new(crate::eval::mortar_null::TypeMortarNull) as Rc<dyn Type>,
-        });
-        register(&mut builtin_types, string_artifact_identity(), BuiltinTypeEntry {
-            type_factory: || Rc::new(crate::eval::string::TypeString) as Rc<dyn Type>,
-            type_ref_factory: || Rc::new(crate::eval::mortar_string::TypeMortarString) as Rc<dyn Type>,
-        });
-        register(&mut builtin_types, defset_data_type_artifact_identity(), BuiltinTypeEntry {
-            type_factory: || {
-                Rc::new(crate::eval::definition_set::data_type::TypeDefSetDataTypeArtifact) as Rc<dyn Type>
-            },
-            type_ref_factory: || {
-                Rc::new(crate::eval::definition_set::data_type::TypeDefSetDataTypeArtifact) as Rc<dyn Type>
-            },
-        });
-        register(&mut builtin_types, defset_artifact_identity(), BuiltinTypeEntry {
-            type_factory: || {
-                Rc::new(crate::eval::definition_set::data_type::TypeDefSetArtifact) as Rc<dyn Type>
-            },
-            type_ref_factory: || {
-                Rc::new(crate::eval::definition_set::data_type::TypeDefSetArtifact) as Rc<dyn Type>
-            },
-        });
-        register(&mut builtin_types, defset_ctor_artifact_identity(), BuiltinTypeEntry {
-            type_factory: || {
-                Rc::new(crate::eval::definition_set::data_type_constructor::TypeDefSetCtorArtifact) as Rc<dyn Type>
-            },
-            type_ref_factory: || {
-                Rc::new(crate::eval::definition_set::data_type_constructor::TypeDefSetCtorArtifact) as Rc<dyn Type>
-            },
-        });
         Arc::new(GlobalContext {
             sources,
             artifacts,
-            builtin_types,
             generated_mortar_scripts: Default::default(),
             compile_results: Default::default(),
         })
@@ -253,74 +167,104 @@ impl GlobalContext {
     pub(crate) fn deserialize_artifact(
         &self,
         xx: &ExprContext,
+        loc: QExprId,
         artifact: &Artifact,
     ) -> Result<Rc<dyn Value>, String> {
         match &artifact.type_ {
             ArtifactId::Builtin(id) => {
-                let entry = self.builtin_types.get(id).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
-                let type_ = (entry.type_factory)();
+                let type_ =
+                    xx.vx.ix.builtin_types.get(id).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
                 let aspect = crate::builtin::aspect_artifact_get_maybe(xx, type_.as_ref()).ok_or_else(|| {
                     format!("Type ({}) missing AspectArtifact", type_.desc())
                 })?;
-                aspect.from_serial(xx, self, &artifact.data)
+                aspect.from_serial(xx, self, loc, &artifact.data)
             },
             ArtifactId::Compile(compile_id) => {
-                // The compile_id refers to a TYPE artifact (dynamically created type).
-                // Reconstruct the type from the type artifact, then use it to deserialize the
-                // instance data.
+                // The compile_id refers to a TYPE artifact (dynamically created type). Load the
+                // type artifact (which must have a Builtin type_), reconstruct the type, then use
+                // it to deserialize the instance data.
                 let type_artifact = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
-                let reconstructed_type = self.reconstruct_type_from_artifact(xx, &type_artifact)?;
-                let aspect = crate::builtin::aspect_artifact_get_maybe(xx, reconstructed_type.as_ref()).ok_or_else(|| {
-                    format!("Reconstructed type ({}) missing AspectArtifact", reconstructed_type.desc())
+                let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
+                    return Err("Type artifact must have builtin type_".to_string());
+                };
+
+                use crate::eval::definition_set::{
+                    data_type::defset_data_type_artifact_identity,
+                    data_type_constructor::defset_ctor_artifact_identity,
+                };
+
+                let defset_dt_id = defset_data_type_artifact_identity();
+                let defset_ctor_id = defset_ctor_artifact_identity();
+                let actual_type: Rc<dyn Type> = if *tid == defset_dt_id {
+                    crate::eval::definition_set::data_type::deserialize_defset_data_type(
+                        xx,
+                        self,
+                        loc,
+                        &type_artifact.data,
+                    )?
+                } else if *tid == defset_ctor_id {
+                    crate::eval::definition_set::data_type_constructor::deserialize_defset_ctor(
+                        xx,
+                        self,
+                        loc,
+                        &type_artifact.data,
+                    )?
+                } else {
+                    return Err(format!("Unknown type artifact builtin ID: {:?}", tid));
+                };
+                let aspect = crate::builtin::aspect_artifact_get_maybe(xx, actual_type.as_ref()).ok_or_else(|| {
+                    format!("Reconstructed type ({}) missing AspectArtifact", actual_type.desc())
                 })?;
-                aspect.from_serial(xx, self, &artifact.data)
+                aspect.from_serial(xx, self, loc, &artifact.data)
             },
         }
     }
 
-    /// Reconstruct a dynamic type from its stored type artifact. The type artifact's
-    /// from_serial returns a wrapper value whose type_() is the reconstructed type.
-    pub(crate) fn reconstruct_type_from_artifact(
-        &self,
-        xx: &ExprContext,
-        type_artifact: &Artifact,
-    ) -> Result<Rc<dyn Type>, String> {
-        match &type_artifact.type_ {
-            ArtifactId::Builtin(id) => {
-                let entry = self.builtin_types.get(id).ok_or_else(|| {
-                    format!("Unknown builtin type ID for type reconstruction: {:?}", id)
-                })?;
-                let factory_type = (entry.type_factory)();
-                let aspect = crate::builtin::aspect_artifact_get_maybe(xx, factory_type.as_ref()).ok_or_else(|| {
-                    format!("Type ({}) missing AspectArtifact for type reconstruction", factory_type.desc())
-                })?;
-                let type_value = aspect.from_serial(xx, self, &type_artifact.data)?;
-
-                // Convention: from_serial for type artifacts returns a value whose type_() is the
-                // reconstructed type
-                let loc = (SourceId(0), crate::syntax::ExprId(0));
-                Ok(type_value.type_(xx, loc))
-            },
-            ArtifactId::Compile(compile_id) => {
-                let stored = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
-                self.reconstruct_type_from_artifact(xx, &stored)
-            },
-        }
-    }
-
+    /// Deserialize a type reference artifact into an Rc`<dyn Type>`. For builtins,
+    /// looks up the type directly in builtin_types. For compiled types, reconstructs
+    /// from the artifact store.
     pub(crate) fn deserialize_type_ref(
         &self,
         xx: &ExprContext,
+        loc: QExprId,
         artifact: &Artifact,
     ) -> Result<Rc<dyn Type>, String> {
         match &artifact.type_ {
             ArtifactId::Builtin(id) => {
-                let entry = self.builtin_types.get(id).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
-                Ok((entry.type_ref_factory)())
+                let type_ =
+                    xx.vx.ix.builtin_types.get(id).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
+                Ok(type_.clone())
             },
             ArtifactId::Compile(compile_id) => {
-                let stored = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
-                self.deserialize_type_ref(xx, &stored)
+                let type_artifact = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
+                let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
+                    return Err("Type artifact must have builtin type_".to_string());
+                };
+
+                use crate::eval::definition_set::{
+                    data_type::defset_data_type_artifact_identity,
+                    data_type_constructor::defset_ctor_artifact_identity,
+                };
+
+                let defset_dt_id = defset_data_type_artifact_identity();
+                let defset_ctor_id = defset_ctor_artifact_identity();
+                if *tid == defset_dt_id {
+                    crate::eval::definition_set::data_type::deserialize_defset_data_type(
+                        xx,
+                        self,
+                        loc,
+                        &type_artifact.data,
+                    )
+                } else if *tid == defset_ctor_id {
+                    crate::eval::definition_set::data_type_constructor::deserialize_defset_ctor(
+                        xx,
+                        self,
+                        loc,
+                        &type_artifact.data,
+                    )
+                } else {
+                    Err(format!("Unknown type artifact builtin ID: {:?}", tid))
+                }
             },
         }
     }
@@ -330,6 +274,23 @@ impl GlobalContext {
 pub(crate) struct CompileImportContext {
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
+    pub(crate) builtin_types: HashMap<ArtifactIdBuiltin, Rc<dyn Type>>,
+}
+
+pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
+    use crate::eval::{
+        mortar_null::mortar_null_artifact_identity,
+        mortar_string::mortar_string_artifact_identity,
+        null::null_artifact_identity,
+        string::string_artifact_identity,
+    };
+
+    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn Type>> = HashMap::new();
+    m.insert(null_artifact_identity(), Rc::new(crate::eval::null::TypeNull));
+    m.insert(string_artifact_identity(), Rc::new(crate::eval::string::TypeString));
+    m.insert(mortar_null_artifact_identity(), Rc::new(crate::eval::mortar_null::TypeMortarNull));
+    m.insert(mortar_string_artifact_identity(), Rc::new(crate::eval::mortar_string::TypeMortarString));
+    m
 }
 
 pub(crate) enum External {
@@ -501,6 +462,11 @@ pub(crate) trait Type: Value {
         false
     }
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;
+
+    /// Serialize this type itself as an artifact (for type references).
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        None
+    }
 }
 
 pub(crate) trait ScopeEntry {

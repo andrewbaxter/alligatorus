@@ -36,7 +36,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactData,
             ArtifactId,
             ArtifactIdBuiltin,
             Aspect,
@@ -153,7 +152,12 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeConstructor {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let ctor_ref: Rc<DefinitionSetDataTypeConstructor> =
             from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
         ctor_ref.set.finish()?;
@@ -170,7 +174,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
 // --- DefinitionSetDataTypeConstructor as Type: used after lift ---
 impl Value for DefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
+        Rc::new(super::super::type_ref::TypeAny)
     }
 }
 
@@ -188,6 +192,14 @@ impl Type for DefinitionSetDataTypeConstructor {
         Rc::new(DefinitionSetDataTypeConstructor {
             set: self.set.clone(),
             data_type_index: self.data_type_index,
+        })
+    }
+
+    fn type_to_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> Option<Artifact> {
+        let artifact_id = self.serialize_ctor(xx, gx, loc);
+        Some(Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
         })
     }
 
@@ -294,19 +306,21 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
     }
 }
 
-impl AspectArtifact for DefinitionSetDataTypeConstructor {
-    fn to_serial(&self, xx: &ExprContext, gx: &GlobalContext, _self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let builtin_id = ArtifactIdBuiltin::from_unique(&defset_ctor_artifact_identity());
+pub(crate) fn defset_ctor_artifact_identity() -> ArtifactIdBuiltin {
+    ArtifactIdBuiltin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
 
+impl DefinitionSetDataTypeConstructor {
+    pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         // Check if already serialized
         {
             let data_types = self.set.data_types.borrow();
             let dt = &data_types[self.data_type_index];
             if let Some(existing_id) = dt.artifact_id.borrow().clone() {
-                return EResult::ok(Artifact {
-                    type_: ArtifactId::Builtin(builtin_id),
-                    data: ArtifactData::Ref(existing_id),
-                });
+                return existing_id;
             }
         }
 
@@ -331,130 +345,135 @@ impl AspectArtifact for DefinitionSetDataTypeConstructor {
                 SerialMethod {
                     name: m.name.clone(),
                     field_name: m.field_name.clone(),
-                    ret_type: serialize_type_ref(xx, gx, ret_type.as_ref()),
+                    ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
                     compiled_js: compiled_js.clone(),
                 }
             }).collect();
             SerialDefSetCtorData {
                 name: dt.name.clone(),
                 data_field: dt.data_field.clone(),
-                underlying_type: serialize_type_ref(xx, gx, underlying_type.as_ref()),
+                underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
                 identity: unique_to_serial(&dt.identity),
                 methods,
                 import_id: self.set.import_id,
                 def_set_id: self.set.def_set_id,
             }
         };
-        let json = serde_json::to_string(&serial_data).expect("Failed to serialize defset ctor data");
+        let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
+        let builtin_id = defset_ctor_artifact_identity();
 
         // Store in artifact store
         gx.artifacts.set(artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(builtin_id.clone()),
-            data: ArtifactData::String(json),
+            type_: ArtifactId::Builtin(builtin_id),
+            data: json,
         });
+        artifact_id
+    }
+}
+
+impl AspectArtifact for DefinitionSetDataTypeConstructor {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        _self_: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let artifact_id = self.serialize_ctor(xx, gx, loc);
+        let builtin_id = defset_ctor_artifact_identity();
         EResult::ok(Artifact {
             type_: ArtifactId::Builtin(builtin_id),
-            data: ArtifactData::Ref(artifact_id),
+            data: serde_json::to_value(&artifact_id).unwrap(),
         })
     }
 
     fn from_serial(
         &self,
-        xx: &ExprContext,
+        _xx: &ExprContext,
         gx: &GlobalContext,
-        data: &ArtifactData,
+        loc: QExprId,
+        data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
-        defset_ctor_from_serial(xx, gx, data)
+        defset_ctor_from_serial(_xx, gx, loc, data)
     }
 }
 
-// --- Serialization data structures ---
-pub(crate) fn defset_ctor_artifact_identity() -> Unique {
-    Unique::Builtin {
-        file: file!(),
-        line: line!() as usize,
-    }
-}
-
-/// Builtin type for deserializing definition set data type constructors.
-pub(crate) struct TypeDefSetCtorArtifact;
-
-impl Value for TypeDefSetCtorArtifact {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::type_ref::TypeAny)
-    }
-}
-
-impl Type for TypeDefSetCtorArtifact {
-    fn desc(&self) -> String {
-        "defset_ctor_artifact".to_string()
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeDefSetCtorArtifact)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeDefSetCtorArtifact) as Box<dyn AspectArtifact>));
+/// Deserialize a definition set data type constructor from artifact data.
+pub(crate) fn deserialize_defset_ctor(
+    xx: &ExprContext,
+    gx: &GlobalContext,
+    loc: QExprId,
+    data: &serde_json::Value,
+) -> Result<Rc<dyn Type>, String> {
+    // data contains a serialized ArtifactId reference
+    let artifact_id: ArtifactId =
+        serde_json::from_value(
+            data.clone(),
+        ).map_err(|e| format!("Failed to parse defset ctor artifact ref: {}", e))?;
+    let stored = gx.artifacts.get(artifact_id)?;
+    let serial: SerialDefSetCtorData =
+        serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
+    let identity = serial_to_unique(&serial.identity);
+    let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
+    let methods: Vec<DefinitionSetDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
+        let ret_type = gx.deserialize_type_ref(xx, loc, &m.ret_type).expect("Failed to resolve method ret type");
+        let entry_id = serial.def_set_id;
+        DefinitionSetDataMethodData {
+            name: m.name.clone(),
+            impl_expr: std::cell::RefCell::new(None),
+            ret_type: std::cell::RefCell::new(Some(ret_type)),
+            scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, entry_id, i))),
+            self_scope_entry_id: Cell::new(None),
+            field_name: m.field_name.clone(),
+            compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
         }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert defset_ctor_artifact".to_string())
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to defset_ctor_artifact".to_string())
-    }
-}
-
-impl Aspect for TypeDefSetCtorArtifact { }
-
-impl AspectArtifact for TypeDefSetCtorArtifact {
-    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _self_: Rc<dyn Value>) -> EResult<Artifact> {
-        EResult::err(
-            (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
-            "TypeDefSetCtorArtifact::to_serial should not be called directly".to_string(),
-        )
-    }
-
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        data: &ArtifactData,
-    ) -> Result<Rc<dyn Value>, String> {
-        defset_ctor_from_serial(xx, gx, data)
-    }
+    }).collect();
+    let set = dumpster::unsync::Gc::new(DefinitionSet {
+        import_id: serial.import_id,
+        def_set_id: serial.def_set_id,
+        functions: std::cell::RefCell::new(Vec::new()),
+        data_types: std::cell::RefCell::new(vec![DefinitionSetDataTypeData {
+            name: serial.name,
+            description: std::cell::RefCell::new(None),
+            underlying_type: std::cell::RefCell::new(Some(underlying_type)),
+            methods: std::cell::RefCell::new(methods),
+            interface_impls: std::cell::RefCell::new(Vec::new()),
+            identity,
+            data_field: serial.data_field,
+            artifact_id: std::cell::RefCell::new(None),
+        }]),
+        interfaces: std::cell::RefCell::new(Vec::new()),
+        finished: Cell::new(true),
+        next_field_id: crate::langhelp::Counter::default(),
+        next_entry_id: crate::langhelp::Counter::default(),
+        next_interface_method_id: crate::langhelp::Counter::default(),
+    });
+    Ok(Rc::new(DefinitionSetDataTypeConstructor {
+        set,
+        data_type_index: 0,
+    }))
 }
 
 fn defset_ctor_from_serial(
-    _xx: &ExprContext,
+    xx: &ExprContext,
     gx: &GlobalContext,
-    data: &ArtifactData,
+    loc: QExprId,
+    data: &serde_json::Value,
 ) -> Result<Rc<dyn Value>, String> {
-    // If data is a Ref, resolve it
-    let resolved_data = match data {
-        ArtifactData::Ref(id) => {
-            let stored = gx.artifacts.get(id.clone())?;
-            match stored.data {
-                ArtifactData::String(s) => s,
-                _ => return Err("Expected string data in defset ctor artifact".to_string()),
-            }
-        },
-        ArtifactData::String(s) => s.clone(),
-        _ => return Err("Expected string or ref data for defset ctor".to_string()),
-    };
+    // data contains a serialized ArtifactId reference
+    let artifact_id: ArtifactId =
+        serde_json::from_value(
+            data.clone(),
+        ).map_err(|e| format!("Failed to parse defset ctor artifact ref: {}", e))?;
+    let stored = gx.artifacts.get(artifact_id)?;
     let serial: SerialDefSetCtorData =
-        serde_json::from_str(&resolved_data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
+        serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
 
     // Reconstruct DefinitionSet
     let identity = serial_to_unique(&serial.identity);
-    let underlying_type = gx.deserialize_type_ref(_xx, &serial.underlying_type)?;
+    let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
     let methods: Vec<DefinitionSetDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
-        let ret_type = gx.deserialize_type_ref(_xx, &m.ret_type).expect("Failed to resolve method ret type");
+        let ret_type = gx.deserialize_type_ref(xx, loc, &m.ret_type).expect("Failed to resolve method ret type");
         let entry_id = serial.def_set_id;
         DefinitionSetDataMethodData {
             name: m.name.clone(),
@@ -530,16 +549,10 @@ pub(crate) enum SerialUnique {
 }
 
 // --- Conversion helpers ---
-pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, type_: &dyn Type) -> Artifact {
-    use crate::builtin::aspect_artifact_get_maybe;
-
-    let aspect = aspect_artifact_get_maybe(xx, type_).unwrap_or_else(|| {
-        panic!("Type ({}) missing AspectArtifact for type ref serialization", type_.desc())
-    });
-    aspect
-        .to_serial(xx, gx, type_.as_value())
-        .into_res()
-        .unwrap_or_else(|e| panic!("Failed to serialize type ref ({}): {:?}", type_.desc(), e))
+pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, loc: QExprId, type_: &dyn Type) -> Artifact {
+    type_.type_to_serial(xx, gx, loc).unwrap_or_else(|| {
+        panic!("Type ({}) does not support type_to_serial", type_.desc())
+    })
 }
 
 pub(crate) fn unique_to_serial(u: &Unique) -> SerialUnique {

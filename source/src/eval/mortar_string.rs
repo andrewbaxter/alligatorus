@@ -30,7 +30,6 @@ use {
         },
         langhelp::{
             Artifact,
-            ArtifactData,
             ArtifactId,
             ArtifactIdBuiltin,
             Aspect,
@@ -68,6 +67,12 @@ use {
     },
 };
 
+pub(crate) fn mortar_string_artifact_identity() -> ArtifactIdBuiltin {
+    ArtifactIdBuiltin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
 pub(crate) struct TypeMortarString;
 
 impl Value for TypeMortarString {
@@ -170,6 +175,13 @@ impl Type for TypeMortarString {
             }
         });
     }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Artifact {
+            type_: ArtifactId::Builtin(mortar_string_artifact_identity()),
+            data: serde_json::Value::Null,
+        })
+    }
 }
 
 impl Aspect for TypeMortarString { }
@@ -245,17 +257,33 @@ impl AspectField for TypeMortarString {
 }
 
 impl AspectLiftJs for TypeMortarString {
-    fn lift(&self, scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
         Ok(Rc::new(super::string::ValueString(s)))
     }
 }
 
 impl AspectArtifact for TypeMortarString {
-    fn to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _value: Rc<dyn Value>) -> EResult<Artifact> {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        _gx: &GlobalContext,
+        loc: QExprId,
+        value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let type_ = value.type_(xx, loc);
+        let s =
+            aspect_string_get_maybe(xx, type_.as_ref())
+                .expect("TypeMortarString::to_serial expects a string value")
+                .get(value.as_ref());
         EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(ArtifactIdBuiltin::from_unique(&super::string::string_artifact_identity())),
-            data: ArtifactData::Null,
+            type_: ArtifactId::Builtin(mortar_string_artifact_identity()),
+            data: serde_json::Value::String(s),
         })
     }
 
@@ -263,9 +291,11 @@ impl AspectArtifact for TypeMortarString {
         &self,
         _xx: &ExprContext,
         _gx: &GlobalContext,
-        _data: &ArtifactData,
+        _loc: QExprId,
+        data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(TypeMortarString) as Rc<dyn Value>)
+        let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
+        Ok(Rc::new(super::string::ValueString(s.to_string())))
     }
 }
 

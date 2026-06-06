@@ -42,7 +42,7 @@ fn test_00200_import_definitionset() {
         //. .
         ("other", {
             let mb = ModuleBuilder::default();
-            SourceModule::V1(mb.lower(mb.block(vec![
+            SourceModule::V1(mb.block(vec![
                 // First lower: create the definition set and get the constructor
                 mb.bind("ctor", mb.lower(mb.block(vec![
                     mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
@@ -61,9 +61,9 @@ fn test_00200_import_definitionset() {
                     // Return the constructor
                     mb.field(mb.scope_use("ndr"), mb.str("new")),
                 ]))),
-                // Second lower: call the constructor to create an instance
+                // Call the constructor to create an instance
                 mb.call(mb.scope_use("ctor"), mb.str("hello")),
-            ])))
+            ]))
         }),
         ("main", {
             let mb = ModuleBuilder::default();

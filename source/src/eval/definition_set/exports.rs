@@ -130,7 +130,12 @@ impl AspectJsStackValue for MortarTypeDefinitionSetExports {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetExports {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let exports: Rc<DefinitionSetExports> = from_v8_ref::<Rc<DefinitionSetExports>>(&value).clone();
         exports.set.finish()?;
         Ok(Rc::new(MortarJsValue {

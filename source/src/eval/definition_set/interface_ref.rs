@@ -145,7 +145,12 @@ impl AspectJsStackValue for MortarTypeDefinitionSetInterfaceRef {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let iface_ref: Rc<DefinitionSetInterfaceRef> =
             from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
         iface_ref.set.finish()?;

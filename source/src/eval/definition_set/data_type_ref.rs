@@ -118,7 +118,12 @@ impl AspectJsStackValue for MortarTypeDefinitionSetDataTypeRef {
 }
 
 impl AspectLiftJs for MortarTypeDefinitionSetDataTypeRef {
-    fn lift(&self, _scope: &v8::PinScope, value: v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String> {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let dt =
             (type_.as_ref() as &dyn Any)

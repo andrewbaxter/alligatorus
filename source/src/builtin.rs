@@ -4,7 +4,6 @@ use {
         jscode::JsCode,
         langhelp::{
             Artifact,
-            ArtifactData,
             Aspect,
             Code,
             CodeValue,
@@ -78,8 +77,20 @@ aspect!(AspectFunction {
 });
 
 aspect!(AspectArtifact {
-    fn to_serial(&self, xx: & ExprContext, gx: & GlobalContext, self_: Rc < dyn Value >) -> EResult < Artifact >;
-    fn from_serial(&self, xx: & ExprContext, gx: & GlobalContext, data: & ArtifactData) -> Result < Rc < dyn Value >,
+    fn to_serial(
+        &self,
+        xx: & ExprContext,
+        gx: & GlobalContext,
+        loc: QExprId,
+        self_: Rc < dyn Value >,
+    ) -> EResult < Artifact >;
+    fn from_serial(
+        &self,
+        xx: & ExprContext,
+        gx: & GlobalContext,
+        loc: QExprId,
+        data: & serde_json:: Value,
+    ) -> Result < Rc < dyn Value >,
     String >;
 });
 
@@ -87,7 +98,12 @@ aspect!(AspectLiftJs {
     /// Value is guaranteed to be of the type described by the aspect's type.
     ///
     /// Used after evaluating a target block, for producing a value to serialize.
-    fn lift(&self, scope: & v8:: PinScope, self_: v8:: Local < v8:: Value >) -> Result < Rc < dyn Value >,
+    fn lift(
+        &self,
+        xx: & ExprContext,
+        scope: & v8:: PinScope,
+        self_: v8:: Local < v8:: Value >,
+    ) -> Result < Rc < dyn Value >,
     String >;
 });
 
