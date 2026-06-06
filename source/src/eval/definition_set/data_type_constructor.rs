@@ -2,22 +2,22 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBind,
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindConst,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectFunction,
-            AspectJsStackValue,
-            AspectLiftJs,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
             AspectType,
             aspect_artifact_aspect_id,
-            aspect_bind_aspect_id,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_consume_js_get,
+            aspect_bind_const_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
             aspect_function_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_js_stack_value_get,
-            aspect_lift_js_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_stack_value_dynamic_get,
             aspect_type_aspect_id,
         },
         dynamic_code::{
@@ -173,17 +173,21 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
+            );
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectStackValueDynamic>),
+            );
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -199,13 +203,13 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
 
 impl Aspect for TypeSourceDataTypeConstructorDynamic { }
 
-impl AspectConsumeJs for TypeSourceDataTypeConstructorDynamic {
+impl AspectConsumeDynamic for TypeSourceDataTypeConstructorDynamic {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for TypeSourceDataTypeConstructorDynamic {
+impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -219,7 +223,7 @@ impl AspectBindJs for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl AspectJsStackValue for TypeSourceDataTypeConstructorDynamic {
+impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -234,7 +238,7 @@ impl AspectJsStackValue for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl AspectLiftJs for TypeSourceDataTypeConstructorDynamic {
+impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -279,10 +283,11 @@ impl Type for DefinitionSetDataTypeConstructor {
                 ),
             );
         }
-        if *key == aspect_bind_aspect_id() {
+        if *key == aspect_bind_const_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(DefinitionSetDataTypeConstructor { data: self.data.clone() }) as Box<dyn AspectBind>,
+                    Box::new(DefinitionSetDataTypeConstructor { data: self.data.clone() }) as
+                        Box<dyn AspectBindConst>,
                 ),
             );
         }
@@ -300,7 +305,7 @@ impl Type for DefinitionSetDataTypeConstructor {
 
 impl Aspect for DefinitionSetDataTypeConstructor { }
 
-impl AspectBind for DefinitionSetDataTypeConstructor {
+impl AspectBindConst for DefinitionSetDataTypeConstructor {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
             Box::new(crate::eval::tuple::ValueScopeEntry { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>,
@@ -325,7 +330,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
         return er_seq_cv!(loc, erb, {
             // Convert argument to underlying type
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
-            let to_js = erb.must_er(aspect_consume_js_get(xx, loc, underlying_type.as_ref()))?;
+            let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
 
             // Build wrapper object fields
@@ -350,7 +355,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                 }
             }
             let result_type = Rc::new(DefinitionSetDataType { data: self.data.clone(), });
-            let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
+            let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, DynamicCode {
                 loc,
                 type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: object_fields }),

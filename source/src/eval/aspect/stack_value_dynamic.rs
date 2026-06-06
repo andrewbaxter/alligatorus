@@ -14,6 +14,6 @@ use {
     paste::paste,
 };
 
-aspect!(AspectJsStackValue {
+aspect!(AspectStackValueDynamic {
     fn to_value(&self, loc: QExprId, self_: DynamicCode) -> CodeValue;
 });

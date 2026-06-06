@@ -11,6 +11,6 @@ use {
     paste::paste,
 };
 
-aspect!(AspectString {
-    fn get(&self, value: & dyn Value) -> String;
+aspect!(AspectNumberConst {
+    fn get(&self, value: & dyn Value) -> f64;
 });

@@ -8,6 +8,10 @@ use {
         Unique,
     },
     paste::paste,
+    std::rc::Rc,
 };
 
-aspect!(AspectJsNumber {});
+aspect!(AspectMapDynamic {
+    fn key_type(&self) -> Rc < dyn Type >;
+    fn value_type(&self) -> Rc < dyn Type >;
+});

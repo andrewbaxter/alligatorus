@@ -2,15 +2,15 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBindJs,
+            AspectBindDynamic,
             AspectField,
-            AspectString,
+            AspectStringConst,
             aspect_artifact_aspect_id,
-            aspect_bind_js_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_string_aspect_id,
-            aspect_string_get,
-            aspect_string_get_maybe,
+            aspect_string_const_aspect_id,
+            aspect_string_const_get,
+            aspect_string_const_get_maybe,
         },
         dynamic_code::DynamicCode,
         eval::{
@@ -65,8 +65,8 @@ impl Type for TypeStringConst {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_string_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectString>));
+        if *key == aspect_string_const_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectStringConst>));
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectArtifact>));
@@ -74,20 +74,20 @@ impl Type for TypeStringConst {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectField>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBindDynamic>));
         }
         return None;
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_string_get_maybe(xx, type_).is_some()
+        aspect_string_const_get_maybe(xx, type_).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
-            let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_))?;
+            let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
                 value: Rc::new(ValueConstString(aspect_string.get(value.as_ref())))
@@ -96,14 +96,14 @@ impl Type for TypeStringConst {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_string_get_maybe(xx, source_type).is_some()
+        aspect_string_const_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let type_ = value.type_(xx, loc);
-            let aspect_string = erb.must_er(aspect_string_get(xx, loc, type_.as_ref()))?;
+            let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
                 value: Rc::new(ValueConstString(aspect_string.get(value.as_ref())))
@@ -114,7 +114,7 @@ impl Type for TypeStringConst {
 
 impl Aspect for TypeStringConst { }
 
-impl AspectBindJs for TypeStringConst {
+impl AspectBindDynamic for TypeStringConst {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -133,7 +133,7 @@ impl AspectBindJs for TypeStringConst {
     }
 }
 
-impl AspectString for TypeStringConst {
+impl AspectStringConst for TypeStringConst {
     fn get(&self, value: &dyn Value) -> String {
         return <dyn Any>::downcast_ref::<ValueConstString>(value).unwrap().0.clone();
     }

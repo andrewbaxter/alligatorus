@@ -2,19 +2,19 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBindJs,
-            AspectConsumeJs,
-            AspectJsStackValue,
-            AspectLiftJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectLiftDynamic,
             AspectNull,
+            AspectStackValueDynamic,
             aspect_artifact_aspect_id,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_lift_js_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_lift_dynamic_aspect_id,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
         },
         dynamic_code::{
             DynamicCode,
@@ -74,23 +74,23 @@ impl Type for TypeNullDynamic {
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectArtifact>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_null_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectNull>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBindDynamic>));
         }
         return None;
     }
@@ -128,7 +128,7 @@ impl Type for TypeNullDynamic {
 
 impl Aspect for TypeNullDynamic { }
 
-impl AspectJsStackValue for TypeNullDynamic {
+impl AspectStackValueDynamic for TypeNullDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -165,7 +165,7 @@ impl AspectArtifact for TypeNullDynamic {
     }
 }
 
-impl AspectLiftJs for TypeNullDynamic {
+impl AspectLiftDynamic for TypeNullDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -178,7 +178,7 @@ impl AspectLiftJs for TypeNullDynamic {
 
 impl AspectNull for TypeNullDynamic { }
 
-impl AspectConsumeJs for TypeNullDynamic {
+impl AspectConsumeDynamic for TypeNullDynamic {
     fn to_js(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         match cv.code.code {
             Code_::Dyn(_) => cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone()),
@@ -190,7 +190,7 @@ impl AspectConsumeJs for TypeNullDynamic {
     }
 }
 
-impl AspectBindJs for TypeNullDynamic {
+impl AspectBindDynamic for TypeNullDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,

@@ -1,19 +1,19 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectFunction,
-            AspectJsStackValue,
-            AspectLiftJs,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
             AspectTaggedUnion,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_consume_js_get,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
             aspect_function_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_js_stack_value_get,
-            aspect_lift_js_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_stack_value_dynamic_get,
             aspect_tagged_union_aspect_id,
         },
         dynamic_code::{
@@ -88,28 +88,33 @@ impl Type for MortarTypeTaggedUnionRef {
         if *key == tagged_union_ref_type_identity() {
             return Some(Box::new(true));
         }
-        if *key == aspect_consume_js_aspect_id() {
+        if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectConsumeJs>,
+                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
                 ),
             );
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectBindJs>),
-            );
-        }
-        if *key == aspect_js_stack_value_aspect_id() {
+        if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectJsStackValue>,
+                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
                 ),
             );
         }
-        if *key == aspect_lift_js_aspect_id() {
+        if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectLiftJs>),
+                Box::new(
+                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as
+                        Box<dyn AspectStackValueDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(MortarTypeTaggedUnionRef { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                ),
             );
         }
         if let Some(data) = &self.data {
@@ -194,13 +199,13 @@ impl Type for MortarTypeTaggedUnionRef {
 
 impl Aspect for MortarTypeTaggedUnionRef { }
 
-impl AspectConsumeJs for MortarTypeTaggedUnionRef {
+impl AspectConsumeDynamic for MortarTypeTaggedUnionRef {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for MortarTypeTaggedUnionRef {
+impl AspectBindDynamic for MortarTypeTaggedUnionRef {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -214,7 +219,7 @@ impl AspectBindJs for MortarTypeTaggedUnionRef {
     }
 }
 
-impl AspectJsStackValue for MortarTypeTaggedUnionRef {
+impl AspectStackValueDynamic for MortarTypeTaggedUnionRef {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -229,7 +234,7 @@ impl AspectJsStackValue for MortarTypeTaggedUnionRef {
     }
 }
 
-impl AspectLiftJs for MortarTypeTaggedUnionRef {
+impl AspectLiftDynamic for MortarTypeTaggedUnionRef {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -268,17 +273,19 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectStackValueDynamic>),
+            );
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(MortarTypeTaggedUnionConstructorRef) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -294,13 +301,13 @@ impl Type for MortarTypeTaggedUnionConstructorRef {
 
 impl Aspect for MortarTypeTaggedUnionConstructorRef { }
 
-impl AspectConsumeJs for MortarTypeTaggedUnionConstructorRef {
+impl AspectConsumeDynamic for MortarTypeTaggedUnionConstructorRef {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for MortarTypeTaggedUnionConstructorRef {
+impl AspectBindDynamic for MortarTypeTaggedUnionConstructorRef {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -314,7 +321,7 @@ impl AspectBindJs for MortarTypeTaggedUnionConstructorRef {
     }
 }
 
-impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
+impl AspectStackValueDynamic for MortarTypeTaggedUnionConstructorRef {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -329,7 +336,7 @@ impl AspectJsStackValue for MortarTypeTaggedUnionConstructorRef {
     }
 }
 
-impl AspectLiftJs for MortarTypeTaggedUnionConstructorRef {
+impl AspectLiftDynamic for MortarTypeTaggedUnionConstructorRef {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -430,19 +437,19 @@ impl Type for TaggedUnionType {
                 Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>),
             );
         }
-        if *key == aspect_consume_js_aspect_id() {
+        if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectConsumeJs>),
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
             );
         }
-        if *key == aspect_bind_js_aspect_id() {
+        if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectBindJs>),
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
             );
         }
-        if *key == aspect_js_stack_value_aspect_id() {
+        if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectJsStackValue>),
+                Box::new(Box::new(TaggedUnionType { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
             );
         }
         return None;
@@ -465,13 +472,13 @@ impl AspectTaggedUnion for TaggedUnionType {
     }
 }
 
-impl AspectConsumeJs for TaggedUnionType {
+impl AspectConsumeDynamic for TaggedUnionType {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for TaggedUnionType {
+impl AspectBindDynamic for TaggedUnionType {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -485,7 +492,7 @@ impl AspectBindJs for TaggedUnionType {
     }
 }
 
-impl AspectJsStackValue for TaggedUnionType {
+impl AspectStackValueDynamic for TaggedUnionType {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -556,10 +563,10 @@ impl AspectFunction for TaggedUnionConstructor {
         drop(variants);
         return er_seq_cv!(loc, erb, {
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
-            let to_js = erb.must_er(aspect_consume_js_get(xx, loc, underlying_type.as_ref()))?;
+            let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
             let result_type = Rc::new(TaggedUnionType { data: self.data.clone() });
-            let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
+            let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, DynamicCode {
                 loc,
                 type_: DynamicCodeType::NewObject(DynamicCodeNewObject { fields: vec![(js_tag, underlying_js)], }),

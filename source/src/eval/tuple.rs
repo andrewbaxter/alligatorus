@@ -1,14 +1,14 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
-            AspectLiftJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectLiftDynamic,
             AspectTuple,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_consume_js_get,
-            aspect_lift_js_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
+            aspect_lift_dynamic_aspect_id,
             aspect_tuple_aspect_id,
         },
         dynamic_code::{
@@ -116,25 +116,25 @@ impl Type for Tuple {
         if *key == aspect_tuple_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectTuple>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            let element_lifts: Vec<Box<dyn AspectLiftJs>> = self.elements.iter().map(|e| {
+        if *key == aspect_lift_dynamic_aspect_id() {
+            let element_lifts: Vec<Box<dyn AspectLiftDynamic>> = self.elements.iter().map(|e| {
                 let t = match e {
                     TupleElement::Mortar(t) => t.clone(),
                     TupleElement::EvalRes(_) => panic!("lift_js on non-type tuple"),
                 };
                 let a =
                     t
-                        .aspect(_xx, &aspect_lift_js_aspect_id())
-                        .expect(&format!("Tuple element type ({}) missing AspectLiftJs", t.desc()));
-                *a.downcast::<Box<dyn AspectLiftJs>>().unwrap()
+                        .aspect(_xx, &aspect_lift_dynamic_aspect_id())
+                        .expect(&format!("Tuple element type ({}) missing AspectLiftDynamic", t.desc()));
+                *a.downcast::<Box<dyn AspectLiftDynamic>>().unwrap()
             }).collect();
-            return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -281,12 +281,12 @@ impl AspectTuple for Tuple {
 }
 
 struct TupleLiftJs {
-    element_lifts: Vec<Box<dyn AspectLiftJs>>,
+    element_lifts: Vec<Box<dyn AspectLiftDynamic>>,
 }
 
 impl Aspect for TupleLiftJs { }
 
-impl AspectLiftJs for TupleLiftJs {
+impl AspectLiftDynamic for TupleLiftJs {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -333,7 +333,7 @@ pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: DynamicCode) -> Dyn
     js
 }
 
-impl AspectConsumeJs for Tuple {
+impl AspectConsumeDynamic for Tuple {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         let carry = cv.code;
         let tuple: Tuple =
@@ -355,7 +355,7 @@ impl AspectConsumeJs for Tuple {
                 errors.extend(errs);
             }
             if let Some(elem_cv) = elem_res.v {
-                match aspect_consume_js_get(xx, loc, elem_type.as_ref()).into_res() {
+                match aspect_consume_dynamic_get(xx, loc, elem_type.as_ref()).into_res() {
                     Ok(to_js) => match to_js.to_js(xx, loc, elem_cv).into_res() {
                         Ok(js) => js_elements.push(js),
                         Err(e) => errors.extend(e),
@@ -377,7 +377,7 @@ impl AspectConsumeJs for Tuple {
     }
 }
 
-impl AspectBindJs for Tuple {
+impl AspectBindDynamic for Tuple {
     fn bind_js(
         &self,
         xx: &ExprContext,

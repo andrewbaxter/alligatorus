@@ -12,6 +12,6 @@ use {
     paste::paste,
 };
 
-aspect!(AspectBind {
+aspect!(AspectBindConst {
     fn bind(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < Box < dyn ScopeEntry > >;
 });

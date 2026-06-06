@@ -2,20 +2,20 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectField,
-            AspectJsStackValue,
-            AspectLiftJs,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
             AspectType,
             aspect_artifact_aspect_id,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_lift_js_aspect_id,
-            aspect_lift_js_get_maybe,
-            aspect_string_get,
+            aspect_lift_dynamic_aspect_id,
+            aspect_lift_dynamic_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
             aspect_type_aspect_id,
         },
         dynamic_code::{
@@ -186,26 +186,28 @@ impl Type for DefinitionSetDataType {
                 Box::new(Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectField>),
             );
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectConsumeJs>),
-            );
-        }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectBindJs>),
-            );
-        }
-        if *key == aspect_js_stack_value_aspect_id() {
+        if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectJsStackValue>,
+                    Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
                 ),
             );
         }
-        if *key == aspect_lift_js_aspect_id() {
+        if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectLiftJs>),
+                Box::new(Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
+            );
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(
+                Box::new(Box::new(DefinitionSetDataType { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>),
             );
         }
         if *key == aspect_artifact_aspect_id() {
@@ -291,13 +293,13 @@ impl Type for DefinitionSetDataType {
 
 impl Aspect for DefinitionSetDataType { }
 
-impl AspectConsumeJs for DefinitionSetDataType {
+impl AspectConsumeDynamic for DefinitionSetDataType {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for DefinitionSetDataType {
+impl AspectBindDynamic for DefinitionSetDataType {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -311,7 +313,7 @@ impl AspectBindJs for DefinitionSetDataType {
     }
 }
 
-impl AspectJsStackValue for DefinitionSetDataType {
+impl AspectStackValueDynamic for DefinitionSetDataType {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -330,7 +332,7 @@ impl AspectField for DefinitionSetDataType {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
 
             // Look up method by name - get types directly
@@ -424,8 +426,8 @@ impl AspectField for DefinitionSetDataType {
     }
 }
 
-// --- AspectLiftJs: lift a data type instance from v8 ---
-impl AspectLiftJs for DefinitionSetDataType {
+// --- AspectLiftDynamic: lift a data type instance from v8 ---
+impl AspectLiftDynamic for DefinitionSetDataType {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -435,10 +437,10 @@ impl AspectLiftJs for DefinitionSetDataType {
         let underlying_type =
             self.data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
         let underlying_lift =
-            aspect_lift_js_get_maybe(
+            aspect_lift_dynamic_get_maybe(
                 xx,
                 underlying_type.as_ref(),
-            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLiftJs", underlying_type.desc()))?;
+            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc()))?;
         let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lift")?;
         let data_field = self.data.data_field.clone();
         let key = v8::String::new(scope, &data_field).unwrap();
@@ -545,7 +547,7 @@ impl DefinitionSetDataType {
     /// Materialize a constant (lifted/deserialized) data type value as a JS object.
     /// Registers the definition set with the eval context so methods get compiled.
     fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<DynamicCode, String> {
-        use crate::builtin::aspect_string_get_maybe;
+        use crate::builtin::aspect_string_const_get_maybe;
 
         // Register definition set with eval context
         {
@@ -566,7 +568,7 @@ impl DefinitionSetDataType {
 
         // Build the underlying value as a JS literal
         let underlying_type = lifted.underlying.type_(xx, loc);
-        let underlying_js = if let Some(aspect_str) = aspect_string_get_maybe(xx, underlying_type.as_ref()) {
+        let underlying_js = if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_type.as_ref()) {
             let s = aspect_str.get(lifted.underlying.as_ref());
             DynamicCode {
                 loc,

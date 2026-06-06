@@ -1,14 +1,14 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
-            AspectJsStackValue,
-            AspectLiftJs,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_lift_js_aspect_id,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
         dynamic_code::{
             DynamicCode,
@@ -61,11 +61,11 @@ impl Type for TypeAnyConst {
         if *key == type_type_identity() {
             return Some(Box::new(true));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectBindDynamic>));
         }
         None
     }
@@ -103,7 +103,7 @@ impl Type for TypeAnyConst {
 
 impl Aspect for TypeAnyConst { }
 
-impl AspectConsumeJs for TypeAnyConst {
+impl AspectConsumeDynamic for TypeAnyConst {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<DynamicCode> {
         // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
         // cast_from), pass through.
@@ -122,7 +122,7 @@ impl AspectConsumeJs for TypeAnyConst {
     }
 }
 
-impl AspectBindJs for TypeAnyConst {
+impl AspectBindDynamic for TypeAnyConst {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -160,17 +160,17 @@ impl Type for TypeAnyDynamic {
         if *key == type_type_identity() {
             return Some(Box::new(true));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectLiftDynamic>));
         }
         None
     }
@@ -205,13 +205,13 @@ impl Type for TypeAnyDynamic {
 
 impl Aspect for TypeAnyDynamic { }
 
-impl AspectConsumeJs for TypeAnyDynamic {
+impl AspectConsumeDynamic for TypeAnyDynamic {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         crate::eval::value::value_dynamic::mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
-impl AspectBindJs for TypeAnyDynamic {
+impl AspectBindDynamic for TypeAnyDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -224,13 +224,13 @@ impl AspectBindJs for TypeAnyDynamic {
     }
 }
 
-impl AspectJsStackValue for TypeAnyDynamic {
+impl AspectStackValueDynamic for TypeAnyDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         crate::eval::value::value_dynamic::mortar_js_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }
 
-impl AspectLiftJs for TypeAnyDynamic {
+impl AspectLiftDynamic for TypeAnyDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,

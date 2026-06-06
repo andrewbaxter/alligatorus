@@ -1,25 +1,25 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectField,
             AspectFunction,
             AspectIterable,
-            AspectJsStackValue,
-            AspectMortarList,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_consume_js_get,
+            AspectListDynamic,
+            AspectStackValueDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
             aspect_iterable_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_js_stack_value_get,
-            aspect_js_string_get_maybe,
-            aspect_mortar_list_aspect_id,
-            aspect_mortar_list_get_maybe,
-            aspect_string_get,
+            aspect_list_dynamic_aspect_id,
+            aspect_list_dynamic_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_stack_value_dynamic_get,
+            aspect_string_const_get,
+            aspect_string_dynamic_get_maybe,
             aspect_tuple_get_maybe,
         },
         dynamic_code::{
@@ -157,20 +157,20 @@ impl Type for TypeListDynamic {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_iterable_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
         }
-        if *key == aspect_mortar_list_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectMortarList>));
+        if *key == aspect_list_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectListDynamic>));
         }
         None
     }
@@ -180,12 +180,12 @@ impl Type for TypeListDynamic {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_mortar_list_get_maybe(xx, source_type).is_some()
+        aspect_list_dynamic_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(_xx, loc);
-        if aspect_mortar_list_get_maybe(_xx, source_type.as_ref()).is_some() {
+        if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
@@ -200,7 +200,7 @@ impl Type for TypeListDynamic {
 
 impl Aspect for TypeListDynamic { }
 
-impl AspectMortarList for TypeListDynamic {
+impl AspectListDynamic for TypeListDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         self.element_type.clone()
     }
@@ -209,7 +209,7 @@ impl AspectMortarList for TypeListDynamic {
 impl AspectField for TypeListDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let key_type = key.value.type_(xx, loc);
-        let key_string = match aspect_string_get(xx, loc, key_type.as_ref()).into_res() {
+        let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -263,7 +263,7 @@ impl AspectField for TypeListDynamic {
                 ret: Rc::new(TypeNullDynamic),
             })),
             "join" => {
-                if aspect_js_string_get_maybe(xx, self.element_type.as_ref()).is_some() {
+                if aspect_string_dynamic_get_maybe(xx, self.element_type.as_ref()).is_some() {
                     Some(Rc::new(TypeFunctionDynamic {
                         arg: Rc::new(TypeStringDynamic),
                         ret: Rc::new(TypeStringDynamic),
@@ -277,7 +277,7 @@ impl AspectField for TypeListDynamic {
     }
 }
 
-impl AspectJsStackValue for TypeListDynamic {
+impl AspectStackValueDynamic for TypeListDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -292,13 +292,13 @@ impl AspectJsStackValue for TypeListDynamic {
     }
 }
 
-impl AspectConsumeJs for TypeListDynamic {
+impl AspectConsumeDynamic for TypeListDynamic {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for TypeListDynamic {
+impl AspectBindDynamic for TypeListDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -326,7 +326,7 @@ impl AspectIterable for TypeListDynamic {
         body: CodeValue,
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let base_consume = erb.must_er(aspect_consume_js_get(xx, loc, &*Rc::new(self.clone())))?;
+            let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
             let base_js = erb.must_er(base_consume.to_js(xx, loc, base))?;
             let body_js = match body.code.cast::<DynamicCode>().into_res() {
                 Ok(Some(js)) => js.clone(),
@@ -348,7 +348,7 @@ impl AspectIterable for TypeListDynamic {
                 }),
             };
             let null_type = Rc::new(crate::eval::value::value_null::dynamic::TypeNullDynamic);
-            let stack_value = erb.must_er(aspect_js_stack_value_get(xx, loc, null_type.as_ref()))?;
+            let stack_value = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, null_type.as_ref()))?;
             return Ok(stack_value.to_value(loc, foreach_js));
         });
     }
@@ -403,18 +403,18 @@ impl AspectFunction for TypeListNew {
                 for elem_res in elements {
                     let elem_cv = erb.must_er(elem_res)?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
-                    let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, self.element_type.as_ref()))?;
+                    let elem_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_elements.push(js);
                 }
             } else {
                 let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), argument))?;
-                let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, self.element_type.as_ref()))?;
+                let elem_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
                 let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                 js_elements.push(js);
             }
             let instance_type = Rc::new(TypeListDynamic { element_type: self.element_type.clone() });
-            let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, instance_type.as_ref()))?;
+            let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, instance_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, DynamicCode {
                 loc,
                 type_: DynamicCodeType::NewArray(DynamicCodeNewArray { elements: js_elements }),

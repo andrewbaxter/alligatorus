@@ -263,14 +263,14 @@ macro_rules! dynamic_wrap{
                     if * key == aspect_field_aspect_id() {
                         return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectField >));
                     }
-                    if * key == aspect_consume_js_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectConsumeJs >));
+                    if * key == aspect_consume_dynamic_aspect_id() {
+                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectConsumeDynamic >));
                     }
-                    if * key == aspect_bind_js_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectBindJs >));
+                    if * key == aspect_bind_dynamic_aspect_id() {
+                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectBindDynamic >));
                     }
-                    if * key == aspect_js_stack_value_aspect_id() {
-                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectJsStackValue >));
+                    if * key == aspect_stack_value_dynamic_aspect_id() {
+                        return Some(Box:: new(Box:: new([<$name Type >]) as Box < dyn AspectStackValueDynamic >));
                     }
                     None
                 }
@@ -296,12 +296,12 @@ macro_rules! dynamic_wrap{
             }
             impl Aspect for[<$name Type >] {
             }
-            impl AspectConsumeJs for[<$name Type >] {
+            impl AspectConsumeDynamic for[<$name Type >] {
                 fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue,) -> EResult<DynamicCode> {
                     cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
                 }
             }
-            impl AspectBindJs for[<$name Type >] {
+            impl AspectBindDynamic for[<$name Type >] {
                 fn bind_js(
                     &self,
                     xx: &ExprContext,
@@ -314,7 +314,7 @@ macro_rules! dynamic_wrap{
                     self.to_js(xx, loc, cv).map(|c| crate::eval::value::value_dynamic::bind_js_some(loc, c, vtype))
                 }
             }
-            impl AspectJsStackValue for[<$name Type >] {
+            impl AspectStackValueDynamic for[<$name Type >] {
                 fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
                     CodeValue {
                         code: Code {
@@ -332,7 +332,7 @@ macro_rules! dynamic_wrap{
                 fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue,) -> EvalRes {
                     er_seq_cv!(loc, erb, {
                         let key_type = key.value.type_(xx, loc);
-                        let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+                        let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
                         let key_name = key_string.get(key.value.as_ref());
                         #[allow(unused_mut, unused_variables)]
                         let mut _jw_idx = 0usize;

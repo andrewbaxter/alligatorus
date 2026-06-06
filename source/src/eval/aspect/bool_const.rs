@@ -6,12 +6,11 @@ use {
         QExprId,
         Type,
         Unique,
+        Value,
     },
     paste::paste,
-    std::rc::Rc,
 };
 
-aspect!(AspectMortarMap {
-    fn key_type(&self) -> Rc < dyn Type >;
-    fn value_type(&self) -> Rc < dyn Type >;
+aspect!(AspectBoolConst {
+    fn get(&self, value: & dyn Value) -> bool;
 });

@@ -1,6 +1,6 @@
 use {
     crate::{
-        builtin::aspect_consume_js_get,
+        builtin::aspect_consume_dynamic_get,
         dynamic_code::{
             DynamicCode,
             DynamicCodeBindingSet,
@@ -130,7 +130,7 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
         let value = erb.must_er(crate::eval::typecheck_convert(xx, loc, target_type.as_ref(), value))?;
         let value_type = value.value.type_(xx, loc);
         er_all!(erb, {
-            value_to_js = aspect_consume_js_get(xx, loc, value_type.as_ref()),
+            value_to_js = aspect_consume_dynamic_get(xx, loc, value_type.as_ref()),
             self_code = self_.code.cast::<DynamicCode>(),
         });
         let value_code = erb.must_er(value_to_js.to_js(xx, loc, value))?;

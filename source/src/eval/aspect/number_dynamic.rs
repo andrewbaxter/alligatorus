@@ -10,4 +10,4 @@ use {
     paste::paste,
 };
 
-aspect!(AspectJsBool {});
+aspect!(AspectNumberDynamic {});

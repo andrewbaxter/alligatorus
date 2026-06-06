@@ -234,7 +234,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/definition_set/data_type.rs",
-      "line": 647
+      "line": 649
     }
   },
   "data": {

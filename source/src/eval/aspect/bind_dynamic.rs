@@ -15,7 +15,7 @@ use {
     paste::paste,
 };
 
-aspect!(AspectBindJs {
+aspect!(AspectBindDynamic {
     fn bind_js(
         &self,
         xx: & ExprContext,

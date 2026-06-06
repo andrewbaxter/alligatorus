@@ -1,21 +1,21 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectField,
-            AspectLiftJs,
+            AspectLiftDynamic,
             AspectRecord,
-            aspect_bind_js_aspect_id,
-            aspect_bind_js_get_maybe,
-            aspect_consume_js_aspect_id,
-            aspect_consume_js_get_maybe,
+            aspect_bind_dynamic_aspect_id,
+            aspect_bind_dynamic_get_maybe,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get_maybe,
             aspect_field_aspect_id,
             aspect_field_get_maybe,
-            aspect_lift_js_aspect_id,
+            aspect_lift_dynamic_aspect_id,
             aspect_record_aspect_id,
             aspect_record_get_maybe,
-            aspect_string_get,
+            aspect_string_const_get,
         },
         dynamic_code::{
             DynamicCode,
@@ -130,17 +130,17 @@ impl Type for Record {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectField>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_record_aspect_id() {
             return Some(Box::new(Box::new(RecordAspectImpl) as Box<dyn AspectRecord>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            let entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)> = self.fields.iter().map(|(k, f)| {
+        if *key == aspect_lift_dynamic_aspect_id() {
+            let entry_lifts: Vec<(String, Box<dyn AspectLiftDynamic>)> = self.fields.iter().map(|(k, f)| {
                 let key_str = match k {
                     ConstKey::String(s) => s.clone(),
                     ConstKey::Usize(n) => n.to_string(),
@@ -151,11 +151,11 @@ impl Type for Record {
                 };
                 let a =
                     t
-                        .aspect(_xx, &aspect_lift_js_aspect_id())
-                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftJs", k, t.desc()));
-                (key_str, *a.downcast::<Box<dyn AspectLiftJs>>().unwrap())
+                        .aspect(_xx, &aspect_lift_dynamic_aspect_id())
+                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftDynamic", k, t.desc()));
+                (key_str, *a.downcast::<Box<dyn AspectLiftDynamic>>().unwrap())
             }).collect();
-            return Some(Box::new(Box::new(RecordLiftJs { entry_lifts }) as Box<dyn AspectLiftJs>));
+            return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -341,7 +341,7 @@ impl AspectField for Record {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return super::util::er_seq_cv_inline(loc, |erb| {
             let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let const_key = ConstKey::String(key_name.clone());
             let entry_type = record_field_type(xx, loc, self.fields.get(&const_key).ok_or_else(|| {
@@ -481,7 +481,7 @@ impl AspectField for Record {
     }
 }
 
-impl AspectConsumeJs for Record {
+impl AspectConsumeDynamic for Record {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         let carry = cv.code;
 
@@ -526,12 +526,12 @@ impl AspectConsumeJs for Record {
                     }
                     if let Some(elem_cv) = elem_res.v {
                         let elem_value_type = elem_cv.value.type_(xx, loc);
-                        if let Some(to_js) = aspect_consume_js_get_maybe(xx, elem_value_type.as_ref()) {
+                        if let Some(to_js) = aspect_consume_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
                             match to_js.to_js(xx, loc, elem_cv).into_res() {
                                 Ok(js) => js_fields.push((key_str, js)),
                                 Err(e) => errors.extend(e),
                             }
-                        } else if let Some(bind) = aspect_bind_js_get_maybe(xx, elem_value_type.as_ref()) {
+                        } else if let Some(bind) = aspect_bind_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
                             match bind.bind_js(xx, loc, elem_cv).into_res() {
                                 Ok((Some(js), _)) => js_fields.push((key_str, js)),
                                 Ok((None, _)) => { },
@@ -568,7 +568,7 @@ impl AspectConsumeJs for Record {
     }
 }
 
-impl AspectBindJs for Record {
+impl AspectBindDynamic for Record {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -632,13 +632,13 @@ impl AspectBindJs for Record {
     }
 }
 
-struct RecordLiftJs {
-    entry_lifts: Vec<(String, Box<dyn AspectLiftJs>)>,
+struct RecordLiftDynamic {
+    entry_lifts: Vec<(String, Box<dyn AspectLiftDynamic>)>,
 }
 
-impl Aspect for RecordLiftJs { }
+impl Aspect for RecordLiftDynamic { }
 
-impl AspectLiftJs for RecordLiftJs {
+impl AspectLiftDynamic for RecordLiftDynamic {
     fn lift(
         &self,
         xx: &ExprContext,

@@ -1,52 +1,52 @@
 mod function;
 mod artifact;
-mod lift_js;
-mod js_stack_value;
-mod consume_js;
-mod bind;
-mod bind_js;
-mod js_string;
+mod lift_dynamic;
+mod stack_value_dynamic;
+mod consume_dynamic;
+mod bind_const;
+mod bind_dynamic;
+mod string_dynamic;
 mod null;
-mod string;
+mod string_const;
 mod set;
 mod field;
 mod tuple;
-mod number;
-mod bool;
-mod js_number;
-mod js_bool;
+mod number_const;
+mod bool_const;
+mod number_dynamic;
+mod bool_dynamic;
 mod operator_lt;
 mod operator_add;
 mod iterable;
 mod type_;
 mod tagged_union;
-mod mortar_list;
-mod mortar_map;
+mod list_dynamic;
+mod map_dynamic;
 mod record;
 
 pub(crate) use {
     artifact::*,
-    bind::*,
-    bind_js::*,
-    bool::*,
-    consume_js::*,
+    bind_const::*,
+    bind_dynamic::*,
+    bool_const::*,
+    bool_dynamic::*,
+    consume_dynamic::*,
     field::*,
     function::*,
     iterable::*,
-    js_bool::*,
-    js_number::*,
-    js_stack_value::*,
-    js_string::*,
-    lift_js::*,
-    mortar_list::*,
-    mortar_map::*,
+    lift_dynamic::*,
+    list_dynamic::*,
+    map_dynamic::*,
     null::*,
-    number::*,
+    number_const::*,
+    number_dynamic::*,
     operator_add::*,
     operator_lt::*,
     record::*,
     set::*,
-    string::*,
+    stack_value_dynamic::*,
+    string_const::*,
+    string_dynamic::*,
     tagged_union::*,
     tuple::*,
     type_::*,

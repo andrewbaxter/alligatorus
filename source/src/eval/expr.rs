@@ -1,12 +1,12 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
-            AspectLiftJs,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_lift_js_aspect_id,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectLiftDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_lift_dynamic_aspect_id,
         },
         dynamic_code::{
             DynamicCode,
@@ -217,14 +217,14 @@ impl Type for ExprType {
         if *key == expr_type_identity() {
             return Some(Box::new(true));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(ExprType) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -268,7 +268,7 @@ impl Type for ExprType {
 
 impl Aspect for ExprType { }
 
-impl AspectConsumeJs for ExprType {
+impl AspectConsumeDynamic for ExprType {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         // If there's already JS code (e.g. from a __stage call), use it directly
         if let Some(js) = cv.code.cast::<DynamicCode>().v.flatten() {
@@ -284,7 +284,7 @@ impl AspectConsumeJs for ExprType {
     }
 }
 
-impl AspectBindJs for ExprType {
+impl AspectBindDynamic for ExprType {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -296,7 +296,7 @@ impl AspectBindJs for ExprType {
     }
 }
 
-impl AspectLiftJs for ExprType {
+impl AspectLiftDynamic for ExprType {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -308,9 +308,9 @@ impl AspectLiftJs for ExprType {
     }
 }
 
-/// Placeholder value for stage results. Its type exposes AspectLiftJs (to extract
-/// the Expr from the v8::External returned by __stage) but NOT AspectConsumeJs (so
-/// eval() preserves the Call DynamicCode).
+/// Placeholder value for stage results. Its type exposes AspectLiftDynamic (to
+/// extract the Expr from the v8::External returned by __stage) but NOT
+/// AspectConsumeDynamic (so eval() preserves the Call DynamicCode).
 pub(crate) struct StagedExprPlaceholder;
 struct StagedExprPlaceholderType;
 
@@ -336,8 +336,8 @@ impl Type for StagedExprPlaceholderType {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(StagedExprPlaceholderType) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(StagedExprPlaceholderType) as Box<dyn AspectLiftDynamic>));
         }
         None
     }
@@ -353,7 +353,7 @@ impl Type for StagedExprPlaceholderType {
 
 impl Aspect for StagedExprPlaceholderType { }
 
-impl AspectLiftJs for StagedExprPlaceholderType {
+impl AspectLiftDynamic for StagedExprPlaceholderType {
     fn lift(
         &self,
         _xx: &ExprContext,

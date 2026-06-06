@@ -1,15 +1,15 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectField,
-            AspectJsStackValue,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
+            AspectStackValueDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_string_get,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
         },
         dynamic_code::{
             DynamicCode,

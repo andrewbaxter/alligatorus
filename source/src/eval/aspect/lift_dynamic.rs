@@ -12,7 +12,7 @@ use {
     std::rc::Rc,
 };
 
-aspect!(AspectLiftJs {
+aspect!(AspectLiftDynamic {
     fn lift(
         &self,
         xx: & ExprContext,

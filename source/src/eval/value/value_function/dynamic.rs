@@ -1,16 +1,16 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectFunction,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_consume_js_get,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
             aspect_function_aspect_id,
             aspect_function_get,
             aspect_function_get_maybe,
-            aspect_js_stack_value_get,
+            aspect_stack_value_dynamic_get,
             aspect_tuple_get_maybe,
         },
         dynamic_code::{
@@ -74,11 +74,11 @@ impl Type for TypeFunctionDynamic {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamic>));
         }
         return None;
     }
@@ -106,13 +106,13 @@ impl Type for TypeFunctionDynamic {
     }
 }
 
-impl AspectConsumeJs for TypeFunctionDynamic {
+impl AspectConsumeDynamic for TypeFunctionDynamic {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         return cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone());
     }
 }
 
-impl AspectBindJs for TypeFunctionDynamic {
+impl AspectBindDynamic for TypeFunctionDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -142,8 +142,8 @@ impl AspectFunction for TypeFunctionDynamic {
 
             // Check if argument is a tuple
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
-                let func_to_js = erb.must_er(aspect_consume_js_get(xx, loc, func_type.as_ref()))?;
-                let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, self.ret.as_ref()))?;
+                let func_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
+                let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.ret.as_ref()))?;
                 let func = erb.must_er(func_to_js.to_js(xx, loc, function))?;
 
                 // Get parameter types from function arg type
@@ -182,7 +182,7 @@ impl AspectFunction for TypeFunctionDynamic {
                         erb.errors.extend(errs);
                     }
                     let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
-                    let elem_to_js = erb.must_er(aspect_consume_js_get(xx, loc, param_type.as_ref()))?;
+                    let elem_to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, param_type.as_ref()))?;
                     let js = erb.must_er(elem_to_js.to_js(xx, loc, converted))?;
                     js_args.push(js);
                 }
@@ -197,9 +197,9 @@ impl AspectFunction for TypeFunctionDynamic {
 
             // Non-tuple argument path (original behavior)
             er_all!(erb, {
-                func_to_js = aspect_consume_js_get(xx, loc, func_type.as_ref()),
-                arg_to_js = aspect_consume_js_get(xx, loc, self.arg.as_ref()),
-                ret_stack = aspect_js_stack_value_get(xx, loc, self.ret.as_ref()),
+                func_to_js = aspect_consume_dynamic_get(xx, loc, func_type.as_ref()),
+                arg_to_js = aspect_consume_dynamic_get(xx, loc, self.arg.as_ref()),
+                ret_stack = aspect_stack_value_dynamic_get(xx, loc, self.ret.as_ref()),
                 argument = typecheck_convert(xx, loc, self.arg.as_ref(), argument),
             });
             er_all!(erb, {

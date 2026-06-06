@@ -1,14 +1,14 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
-            AspectJsStackValue,
-            AspectLiftJs,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_lift_js_aspect_id,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
         dynamic_code::DynamicCode,
         eval::{
@@ -58,17 +58,17 @@ impl Type for TypeSourceDataTypeRefDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -84,13 +84,13 @@ impl Type for TypeSourceDataTypeRefDynamic {
 
 impl Aspect for TypeSourceDataTypeRefDynamic { }
 
-impl AspectConsumeJs for TypeSourceDataTypeRefDynamic {
+impl AspectConsumeDynamic for TypeSourceDataTypeRefDynamic {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for TypeSourceDataTypeRefDynamic {
+impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -104,7 +104,7 @@ impl AspectBindJs for TypeSourceDataTypeRefDynamic {
     }
 }
 
-impl AspectJsStackValue for TypeSourceDataTypeRefDynamic {
+impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -119,7 +119,7 @@ impl AspectJsStackValue for TypeSourceDataTypeRefDynamic {
     }
 }
 
-impl AspectLiftJs for TypeSourceDataTypeRefDynamic {
+impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,

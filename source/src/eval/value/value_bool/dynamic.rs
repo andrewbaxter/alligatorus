@@ -1,16 +1,16 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
-            AspectJsBool,
-            AspectJsStackValue,
-            aspect_bind_js_aspect_id,
-            aspect_bool_get_maybe,
-            aspect_consume_js_aspect_id,
-            aspect_js_bool_aspect_id,
-            aspect_js_bool_get_maybe,
-            aspect_js_stack_value_aspect_id,
+            AspectBindDynamic,
+            AspectBoolDynamic,
+            AspectConsumeDynamic,
+            AspectStackValueDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_bool_const_get_maybe,
+            aspect_bool_dynamic_aspect_id,
+            aspect_bool_dynamic_get_maybe,
+            aspect_consume_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
         dynamic_code::{
             DynamicCode,
@@ -67,23 +67,23 @@ impl Type for TypeBoolDynamic {
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_js_bool_aspect_id() {
-            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectJsBool>));
+        if *key == aspect_bool_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectBoolDynamic>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectBindDynamic>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         return None;
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_js_bool_get_maybe(xx, type_).is_some()
+        aspect_bool_dynamic_get_maybe(xx, type_).is_some()
     }
 
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -97,13 +97,14 @@ impl Type for TypeBoolDynamic {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_bool_get_maybe(xx, source_type).is_some() || aspect_js_bool_get_maybe(xx, source_type).is_some()
+        aspect_bool_const_get_maybe(xx, source_type).is_some() ||
+            aspect_bool_dynamic_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(xx, loc);
-            if let Some(aspect_bool) = aspect_bool_get_maybe(xx, type_.as_ref()) {
+            if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
                 if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
@@ -144,21 +145,21 @@ impl Type for TypeBoolDynamic {
 
 impl Aspect for TypeBoolDynamic { }
 
-impl AspectJsBool for TypeBoolDynamic { }
+impl AspectBoolDynamic for TypeBoolDynamic { }
 
-impl AspectJsStackValue for TypeBoolDynamic {
+impl AspectStackValueDynamic for TypeBoolDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         mortar_js_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
     }
 }
 
-impl AspectConsumeJs for TypeBoolDynamic {
+impl AspectConsumeDynamic for TypeBoolDynamic {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
-impl AspectBindJs for TypeBoolDynamic {
+impl AspectBindDynamic for TypeBoolDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,

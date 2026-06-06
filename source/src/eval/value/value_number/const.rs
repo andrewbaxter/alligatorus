@@ -1,16 +1,16 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
+            AspectBindDynamic,
             AspectField,
-            AspectNumber,
+            AspectNumberConst,
             AspectOperatorAdd,
             AspectOperatorLt,
-            aspect_bind_js_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_number_aspect_id,
-            aspect_number_get,
-            aspect_number_get_maybe,
+            aspect_number_const_aspect_id,
+            aspect_number_const_get,
+            aspect_number_const_get_maybe,
             aspect_operator_add_aspect_id,
             aspect_operator_lt_aspect_id,
         },
@@ -59,14 +59,14 @@ impl Type for TypeNumberConst {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_number_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectNumber>));
+        if *key == aspect_number_const_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectNumberConst>));
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectField>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_operator_lt_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorLt>));
@@ -78,13 +78,13 @@ impl Type for TypeNumberConst {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_number_get_maybe(xx, type_).is_some()
+        aspect_number_const_get_maybe(xx, type_).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
-            let aspect_number = erb.must_er(aspect_number_get(xx, loc, type_))?;
+            let aspect_number = erb.must_er(aspect_number_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
                 value: Rc::new(ValueConstNumber(aspect_number.get(value.as_ref())))
@@ -93,14 +93,14 @@ impl Type for TypeNumberConst {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_number_get_maybe(xx, source_type).is_some()
+        aspect_number_const_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let type_ = value.type_(xx, loc);
-            let aspect_number = erb.must_er(aspect_number_get(xx, loc, type_.as_ref()))?;
+            let aspect_number = erb.must_er(aspect_number_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
                 value: Rc::new(ValueConstNumber(aspect_number.get(value.as_ref())))
@@ -111,7 +111,7 @@ impl Type for TypeNumberConst {
 
 impl Aspect for TypeNumberConst { }
 
-impl AspectBindJs for TypeNumberConst {
+impl AspectBindDynamic for TypeNumberConst {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -130,7 +130,7 @@ impl AspectBindJs for TypeNumberConst {
     }
 }
 
-impl AspectNumber for TypeNumberConst {
+impl AspectNumberConst for TypeNumberConst {
     fn get(&self, value: &dyn Value) -> f64 {
         return <dyn Any>::downcast_ref::<ValueConstNumber>(value).unwrap().0;
     }
@@ -154,10 +154,10 @@ impl AspectOperatorLt for TypeNumberConst {
     fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_type = base.value.type_(xx, loc);
-            let base_num = erb.must_er(aspect_number_get(xx, loc, base_type.as_ref()))?;
+            let base_num = erb.must_er(aspect_number_const_get(xx, loc, base_type.as_ref()))?;
             let base_val = base_num.get(base.value.as_ref());
             let ref_type = reference.value.type_(xx, loc);
-            let ref_num = erb.must_er(aspect_number_get(xx, loc, ref_type.as_ref()))?;
+            let ref_num = erb.must_er(aspect_number_const_get(xx, loc, ref_type.as_ref()))?;
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
@@ -171,10 +171,10 @@ impl AspectOperatorAdd for TypeNumberConst {
     fn add(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_type = base.value.type_(xx, loc);
-            let base_num = erb.must_er(aspect_number_get(xx, loc, base_type.as_ref()))?;
+            let base_num = erb.must_er(aspect_number_const_get(xx, loc, base_type.as_ref()))?;
             let base_val = base_num.get(base.value.as_ref());
             let ref_type = reference.value.type_(xx, loc);
-            let ref_num = erb.must_er(aspect_number_get(xx, loc, ref_type.as_ref()))?;
+            let ref_num = erb.must_er(aspect_number_const_get(xx, loc, ref_type.as_ref()))?;
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),

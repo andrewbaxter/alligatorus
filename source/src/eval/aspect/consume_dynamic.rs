@@ -14,6 +14,6 @@ use {
     paste::paste,
 };
 
-aspect!(AspectConsumeJs {
+aspect!(AspectConsumeDynamic {
     fn to_js(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < DynamicCode >;
 });

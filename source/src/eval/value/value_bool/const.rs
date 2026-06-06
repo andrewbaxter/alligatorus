@@ -1,10 +1,10 @@
 use {
     crate::{
         builtin::{
-            AspectBool,
-            aspect_bool_aspect_id,
-            aspect_bool_get,
-            aspect_bool_get_maybe,
+            AspectBoolConst,
+            aspect_bool_const_aspect_id,
+            aspect_bool_const_get,
+            aspect_bool_const_get_maybe,
         },
         eval::Erb,
         langhelp::{
@@ -44,20 +44,20 @@ impl Type for TypeBoolConst {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_bool_aspect_id() {
-            return Some(Box::new(Box::new(TypeBoolConst) as Box<dyn AspectBool>));
+        if *key == aspect_bool_const_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolConst) as Box<dyn AspectBoolConst>));
         }
         return None;
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_bool_get_maybe(xx, type_).is_some()
+        aspect_bool_const_get_maybe(xx, type_).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
-            let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_))?;
+            let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
                 value: Rc::new(ValueConstBool(aspect_bool.get(value.as_ref())))
@@ -66,14 +66,14 @@ impl Type for TypeBoolConst {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_bool_get_maybe(xx, source_type).is_some()
+        aspect_bool_const_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
             let type_ = value.type_(xx, loc);
-            let aspect_bool = erb.must_er(aspect_bool_get(xx, loc, type_.as_ref()))?;
+            let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
                 value: Rc::new(ValueConstBool(aspect_bool.get(value.as_ref())))
@@ -84,7 +84,7 @@ impl Type for TypeBoolConst {
 
 impl Aspect for TypeBoolConst { }
 
-impl AspectBool for TypeBoolConst {
+impl AspectBoolConst for TypeBoolConst {
     fn get(&self, value: &dyn Value) -> bool {
         return <dyn Any>::downcast_ref::<ValueConstBool>(value).unwrap().0;
     }

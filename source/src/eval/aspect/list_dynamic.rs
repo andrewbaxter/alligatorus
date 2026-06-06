@@ -6,11 +6,11 @@ use {
         QExprId,
         Type,
         Unique,
-        Value,
     },
     paste::paste,
+    std::rc::Rc,
 };
 
-aspect!(AspectBool {
-    fn get(&self, value: & dyn Value) -> bool;
+aspect!(AspectListDynamic {
+    fn element_type(&self) -> Rc < dyn Type >;
 });

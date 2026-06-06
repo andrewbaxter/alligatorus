@@ -1,15 +1,15 @@
 use {
     crate::{
         builtin::{
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectField,
-            AspectJsStackValue,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
+            AspectStackValueDynamic,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_string_get,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
         },
         dynamic_code::{
             DynamicCode,
@@ -78,20 +78,24 @@ impl Type for DefinitionSetInterface {
                 Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectField>),
             );
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectConsumeJs>),
-            );
-        }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(
-                Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectBindJs>),
-            );
-        }
-        if *key == aspect_js_stack_value_aspect_id() {
+        if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectJsStackValue>,
+                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>,
                 ),
             );
         }
@@ -125,13 +129,13 @@ impl Type for DefinitionSetInterface {
 
 impl Aspect for DefinitionSetInterface { }
 
-impl AspectConsumeJs for DefinitionSetInterface {
+impl AspectConsumeDynamic for DefinitionSetInterface {
     fn to_js(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         cv.code.cast::<DynamicCode>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindJs for DefinitionSetInterface {
+impl AspectBindDynamic for DefinitionSetInterface {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -145,7 +149,7 @@ impl AspectBindJs for DefinitionSetInterface {
     }
 }
 
-impl AspectJsStackValue for DefinitionSetInterface {
+impl AspectStackValueDynamic for DefinitionSetInterface {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         CodeValue {
             code: Code {
@@ -164,7 +168,7 @@ impl AspectField for DefinitionSetInterface {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let (field_name, arg_type, ret_type) = {
                 let methods = self.data.methods.borrow();

@@ -15,19 +15,19 @@ use {
     crate::{
         builtin::{
             aspect_artifact_get,
-            aspect_bind_get_maybe,
-            aspect_bind_js_get_maybe,
-            aspect_bool_get_maybe,
-            aspect_consume_js_get,
-            aspect_consume_js_get_maybe,
+            aspect_bind_const_get_maybe,
+            aspect_bind_dynamic_get_maybe,
+            aspect_bool_const_get_maybe,
+            aspect_consume_dynamic_get,
+            aspect_consume_dynamic_get_maybe,
             aspect_field_get,
             aspect_function_get,
             aspect_iterable_get,
-            aspect_lift_js_get,
+            aspect_lift_dynamic_get,
             aspect_operator_add_get,
             aspect_operator_lt_get,
             aspect_set_get,
-            aspect_string_get_maybe,
+            aspect_string_const_get_maybe,
             aspect_tagged_union_get,
         },
         dynamic_code::{
@@ -369,10 +369,11 @@ impl Type for TypePendingImport {
     }
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::builtin::aspect_bind_aspect_id() {
+        if *key == crate::builtin::aspect_bind_const_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn crate::builtin::AspectBind>,
+                    Box::new(PendingImportBind { state: self.state.clone() }) as
+                        Box<dyn crate::builtin::AspectBindConst>,
                 ),
             );
         }
@@ -405,7 +406,7 @@ struct PendingImportBind {
 
 impl crate::langhelp::Aspect for PendingImportBind { }
 
-impl crate::builtin::AspectBind for PendingImportBind {
+impl crate::builtin::AspectBindConst for PendingImportBind {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(Box::new(PendingImportScopeEntry {
             state: self.state.clone(),
@@ -459,16 +460,16 @@ impl Target for MortarTarget {
             loc: loc,
             code: Code_::None,
         };
-        if let Some(bind) = aspect_bind_get_maybe(xx, vtype.as_ref()) {
+        if let Some(bind) = aspect_bind_const_get_maybe(xx, vtype.as_ref()) {
             return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
                 let scope_entry = erb.must_er(bind.bind(xx, loc, cv))?;
                 return Ok((none_code, scope_entry));
             });
         }
-        let Some(bind_js) = aspect_bind_js_get_maybe(xx, vtype.as_ref()) else {
+        let Some(bind_js) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
             return EResult::err(
                 loc,
-                format!("Type ({}) is missing aspect AspectBind and AspectBindJs", vtype.desc()),
+                format!("Type ({}) is missing aspect AspectBindConst and AspectBindDynamic", vtype.desc()),
             );
         };
         return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
@@ -558,7 +559,7 @@ impl Target for MortarTarget {
     ) -> EvalRes {
         fn cv_to_js(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<DynamicCode, ()> {
             let vtype = cv.value.type_(xx, loc);
-            if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+            if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, vtype.as_ref()) {
                 return erb.must_er(consume.to_js(xx, loc, cv));
             }
             match erb.must_er(cv.code.cast::<DynamicCode>())? {
@@ -612,7 +613,7 @@ impl Target for MortarTarget {
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_type = base.value.type_(xx, loc);
-            let to_js = erb.must_er(aspect_consume_js_get(xx, loc, base_type.as_ref()))?;
+            let to_js = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
             let base_js = erb.must_er(to_js.to_js(xx, loc, base))?;
             let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let mut js_cases = Vec::new();
@@ -633,7 +634,7 @@ impl Target for MortarTarget {
                 };
                 let body_cv = erb.must_er(eval_half(&child_xx, body_expr))?;
                 let body_type = body_cv.value.type_(&child_xx, loc);
-                let body_js = if let Some(consume) = aspect_consume_js_get_maybe(&child_xx, body_type.as_ref()) {
+                let body_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(&child_xx, body_type.as_ref()) {
                     erb.must_er(consume.to_js(&child_xx, loc, body_cv))?
                 } else {
                     match erb.must_er(body_cv.code.cast::<DynamicCode>())? {
@@ -652,7 +653,7 @@ impl Target for MortarTarget {
             let js_fallback = if let Some(fallback_expr) = fallback {
                 let fb_cv = erb.must_er(eval_half(xx, fallback_expr))?;
                 let fb_type = fb_cv.value.type_(xx, loc);
-                let fb_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, fb_type.as_ref()) {
+                let fb_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, fb_type.as_ref()) {
                     erb.must_er(consume.to_js(xx, loc, fb_cv))?
                 } else {
                     match erb.must_er(fb_cv.code.cast::<DynamicCode>())? {
@@ -676,7 +677,7 @@ impl Target for MortarTarget {
                     fallback: js_fallback,
                 }),
             };
-            let null_stack = crate::builtin::aspect_js_stack_value_get(xx, loc, &TypeNullDynamic as &dyn Type);
+            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
             let null_stack = erb.must_er(null_stack)?;
             return Ok(null_stack.to_value(loc, match_js));
         });
@@ -718,7 +719,7 @@ impl Target for MortarTarget {
                         });
                     },
                     Code_::Dyn(_) => {
-                        let lift = erb.must_er(aspect_lift_js_get(xx, loc, vtype.as_ref()))?;
+                        let lift = erb.must_er(aspect_lift_dynamic_get(xx, loc, vtype.as_ref()))?;
                         let lift_cell = Rc::new(StageLiftCell {
                             lift,
                             vx: xx.vx.clone(),
@@ -728,7 +729,7 @@ impl Target for MortarTarget {
                         });
                         let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
-                        let inner_js = if let Some(consume) = aspect_consume_js_get_maybe(xx, vtype.as_ref()) {
+                        let inner_js = if let Some(consume) = aspect_consume_dynamic_get_maybe(xx, vtype.as_ref()) {
                             erb.must_er(consume.to_js(xx, loc, cv))?
                         } else {
                             erb.must_er(cv.code.cast::<DynamicCode>())?.unwrap().clone()
@@ -762,9 +763,10 @@ impl Target for MortarTarget {
     }
 }
 
-/// Holds an AspectLiftJs, stored as a v8::External so __stage can lift raw values.
+/// Holds an AspectLiftDynamic, stored as a v8::External so __stage can lift raw
+/// values.
 pub(crate) struct StageLiftCell {
-    pub lift: Box<dyn crate::builtin::AspectLiftJs>,
+    pub lift: Box<dyn crate::builtin::AspectLiftDynamic>,
     pub vx: Rc<EvalContext>,
     pub import_state: Rc<Cell<ImportStateId>>,
     pub scope: Rc<Scope>,
@@ -773,7 +775,7 @@ pub(crate) struct StageLiftCell {
 
 fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
     let vtype = v.type_(xx, loc);
-    if let Some(a) = aspect_string_get_maybe(xx, vtype.as_ref()) {
+    if let Some(a) = aspect_string_const_get_maybe(xx, vtype.as_ref()) {
         return Ok(ConstKey::String(a.get(v)));
     }
     return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
@@ -1248,7 +1250,7 @@ pub(crate) fn eval_half(xx: &ExprContext, expr: &Expr) -> EvalRes {
             for branch in &e.conditions {
                 let cond = erb.must_er(eval_half(xx, &branch.condition))?;
                 let cond_type = cond.value.type_(xx, expr.loc);
-                if let Some(aspect_bool) = aspect_bool_get_maybe(xx, cond_type.as_ref()) {
+                if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, cond_type.as_ref()) {
                     let val = aspect_bool.get(cond.value.as_ref());
                     conditions_evaluated.push((val, cond, &branch.body));
                 } else {
@@ -1488,7 +1490,7 @@ fn eval(
     let value_type = cv.value.type_(&xx, root_loc);
     let (stage1_code, fallback_value) = match &cv.code.code {
         Code_::None => (None, Some(cv.value)),
-        _ => match aspect_consume_js_get_maybe(&xx, value_type.as_ref()) {
+        _ => match aspect_consume_dynamic_get_maybe(&xx, value_type.as_ref()) {
             Some(to_js) => {
                 let js = to_js.to_js(&xx, root_loc, cv).into_res()?;
                 (Some(js), None)
@@ -2197,7 +2199,7 @@ fn eval(
     let script = v8::Script::compile(js_scope, v8::String::new(js_scope, &js_source).unwrap(), None).unwrap();
     match script.run(js_scope) {
         Some(stage2) => {
-            let value_from_js = aspect_lift_js_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+            let value_from_js = aspect_lift_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
             let value: Rc<dyn Value> = value_from_js.lift(&xx, &*js_scope, stage2).map_err(|e| vec![ExprErr {
                 loc: root_loc,
                 errors: vec![ExprSubErr::Opaque(e)],

@@ -2,24 +2,24 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBindJs,
-            AspectConsumeJs,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
             AspectField,
-            AspectJsStackValue,
-            AspectJsString,
-            AspectLiftJs,
+            AspectLiftDynamic,
             AspectSet,
+            AspectStackValueDynamic,
+            AspectStringDynamic,
             aspect_artifact_aspect_id,
-            aspect_bind_js_aspect_id,
-            aspect_consume_js_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_js_stack_value_aspect_id,
-            aspect_js_string_aspect_id,
-            aspect_js_string_get_maybe,
-            aspect_lift_js_aspect_id,
+            aspect_lift_dynamic_aspect_id,
             aspect_set_aspect_id,
-            aspect_string_get,
-            aspect_string_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
+            aspect_string_const_get_maybe,
+            aspect_string_dynamic_aspect_id,
+            aspect_string_dynamic_get_maybe,
         },
         dynamic_code::{
             DynamicCode,
@@ -90,32 +90,32 @@ impl Type for TypeStringDynamic {
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectArtifact>));
         }
-        if *key == aspect_js_string_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectJsString>));
+        if *key == aspect_string_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectStringDynamic>));
         }
-        if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectConsumeJs>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectBindJs>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectField>));
         }
-        if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectJsStackValue>));
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_set_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectSet>));
         }
-        if *key == aspect_lift_js_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftJs>));
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_js_string_get_maybe(xx, type_).is_some()
+        aspect_string_dynamic_get_maybe(xx, type_).is_some()
     }
 
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -129,13 +129,14 @@ impl Type for TypeStringDynamic {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_string_get_maybe(xx, source_type).is_some() || aspect_js_string_get_maybe(xx, source_type).is_some()
+        aspect_string_const_get_maybe(xx, source_type).is_some() ||
+            aspect_string_dynamic_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let type_ = cv.value.type_(xx, loc);
-            if let Some(aspect_string) = aspect_string_get_maybe(xx, type_.as_ref()) {
+            if let Some(aspect_string) = aspect_string_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];
                 if let Some(c) = erb.must_er(code.cast::<DynamicCode>())? {
@@ -179,21 +180,21 @@ impl Type for TypeStringDynamic {
 
 impl Aspect for TypeStringDynamic { }
 
-impl AspectJsString for TypeStringDynamic { }
+impl AspectStringDynamic for TypeStringDynamic { }
 
-impl AspectJsStackValue for TypeStringDynamic {
+impl AspectStackValueDynamic for TypeStringDynamic {
     fn to_value(&self, loc: QExprId, value: DynamicCode) -> CodeValue {
         mortar_js_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
     }
 }
 
-impl AspectConsumeJs for TypeStringDynamic {
+impl AspectConsumeDynamic for TypeStringDynamic {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<DynamicCode> {
         mortar_consume_js_to_js(xx, loc, cv)
     }
 }
 
-impl AspectBindJs for TypeStringDynamic {
+impl AspectBindDynamic for TypeStringDynamic {
     fn bind_js(
         &self,
         xx: &ExprContext,
@@ -210,7 +211,7 @@ impl AspectField for TypeStringDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
+            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let field_type = match self.field_opt(xx, &key_name) {
                 Some(t) => t,
@@ -251,7 +252,7 @@ impl AspectField for TypeStringDynamic {
     }
 }
 
-impl AspectLiftJs for TypeStringDynamic {
+impl AspectLiftDynamic for TypeStringDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -273,7 +274,7 @@ impl AspectArtifact for TypeStringDynamic {
     ) -> EResult<Artifact> {
         let type_ = value.type_(xx, loc);
         let s =
-            aspect_string_get_maybe(xx, type_.as_ref())
+            aspect_string_const_get_maybe(xx, type_.as_ref())
                 .expect("TypeStringDynamic::to_serial expects a string value")
                 .get(value.as_ref());
         EResult::ok(Self::build_artifact(s))

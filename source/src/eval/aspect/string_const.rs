@@ -6,8 +6,11 @@ use {
         QExprId,
         Type,
         Unique,
+        Value,
     },
     paste::paste,
 };
 
-aspect!(AspectJsString {});
+aspect!(AspectStringConst {
+    fn get(&self, value: & dyn Value) -> String;
+});
