@@ -7,6 +7,7 @@ use {
             AspectField,
             AspectJsStackValue,
             AspectLiftJs,
+            AspectType,
             aspect_artifact_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
@@ -15,6 +16,7 @@ use {
             aspect_lift_js_aspect_id,
             aspect_lift_js_get_maybe,
             aspect_string_get,
+            aspect_type_aspect_id,
         },
         eval::{
             Erb,
@@ -65,9 +67,101 @@ use {
     },
 };
 
-impl Value for DefinitionSetDataType {
+// --- DefinitionSetDataTypeType: the type-type for DefinitionSetDataType values
+// ---
+pub(crate) struct DefinitionSetDataTypeType;
+
+generate_builtin_artifact!(DefinitionSetDataTypeType, serde_json::Value);
+
+impl Value for DefinitionSetDataTypeType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(super::super::type_ref::TypeAny)
+    }
+}
+
+impl Type for DefinitionSetDataTypeType {
+    fn desc(&self) -> String {
+        "definition_set_data_type_type".to_string()
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(DefinitionSetDataTypeType)
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == super::super::type_ref::type_type_identity() {
+            return Some(Box::new(true));
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(DefinitionSetDataTypeType) as Box<dyn AspectArtifact>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(DefinitionSetDataTypeType) as Box<dyn AspectType>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert definition_set_data_type_type".to_string())
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to definition_set_data_type_type".to_string())
+    }
+}
+
+impl Aspect for DefinitionSetDataTypeType { }
+
+impl AspectArtifact for DefinitionSetDataTypeType {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        self_: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let dt =
+            (self_.as_ref() as &dyn Any)
+                .downcast_ref::<DefinitionSetDataType>()
+                .expect("DefinitionSetDataTypeType::to_serial expects DefinitionSetDataType");
+        let artifact_id = dt.serialize_data_type(xx, gx, loc);
+        EResult::ok(Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        })
+    }
+
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        let serial: SerialDefSetDataType =
+            serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
+        let def_set_artifact = gx.artifacts.get(serial.def_set)?;
+        let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
+        Ok(Rc::new(DefinitionSetDataType {
+            set: def_set,
+            data_type_index: serial.type_index,
+        }))
+    }
+}
+
+impl AspectType for DefinitionSetDataTypeType {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let dt = (value as &dyn Any).downcast_ref::<DefinitionSetDataType>().unwrap();
+        Rc::new(DefinitionSetDataType {
+            set: dt.set.clone(),
+            data_type_index: dt.data_type_index,
+        })
+    }
+}
+
+impl Value for DefinitionSetDataType {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(DefinitionSetDataTypeType)
     }
 }
 
@@ -85,14 +179,6 @@ impl Type for DefinitionSetDataType {
         Rc::new(DefinitionSetDataType {
             set: self.set.clone(),
             data_type_index: self.data_type_index,
-        })
-    }
-
-    fn type_to_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> Option<Artifact> {
-        let artifact_id = self.serialize_data_type(xx, gx, loc);
-        Some(Artifact {
-            type_: artifact_id,
-            data: serde_json::Value::Null,
         })
     }
 
@@ -435,11 +521,6 @@ impl Value for LiftedDefSetDataTypeValue {
     }
 }
 
-// --- AspectArtifact: serialize/deserialize data type instances ---
-pub(crate) fn defset_data_type_artifact_identity() -> ArtifactIdBuiltin {
-    builtin_artifact_id!()
-}
-
 impl AspectArtifact for DefinitionSetDataType {
     fn to_serial(
         &self,
@@ -501,13 +582,8 @@ impl AspectArtifact for DefinitionSetDataType {
         let underlying_type =
             underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
 
-        // Get the artifact identity from the underlying type's type_to_serial
-        let type_ref_artifact =
-            underlying_type
-                .type_to_serial(xx, gx, loc)
-                .ok_or_else(
-                    || format!("Underlying type ({}) does not support type_to_serial", underlying_type.desc()),
-                )?;
+        // Use serialize_type_ref to get the underlying type's artifact identity
+        let type_ref_artifact = super::data_type_constructor::serialize_type_ref(xx, gx, loc, underlying_type.as_ref());
 
         // Reconstruct the full underlying artifact and deserialize via the value type
         let underlying_artifact = Artifact {
@@ -608,7 +684,7 @@ impl DefinitionSetDataType {
         };
         let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
         gx.artifacts.set(dt_artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(defset_data_type_artifact_identity()),
+            type_: ArtifactId::Builtin(DefinitionSetDataTypeType::artifact_id()),
             data: json,
         });
         dt_artifact_id
@@ -697,25 +773,6 @@ fn serialize_definition_set(
         data: json,
     });
     artifact_id
-}
-
-/// Deserialize a definition set from its stored artifact data.
-pub(crate) fn deserialize_defset_data_type(
-    xx: &ExprContext,
-    gx: &GlobalContext,
-    loc: QExprId,
-    data: &serde_json::Value,
-) -> Result<Rc<dyn Type>, String> {
-    let serial: SerialDefSetDataType =
-        serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
-
-    // Reconstruct the definition set from its artifact
-    let def_set_artifact = gx.artifacts.get(serial.def_set)?;
-    let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
-    Ok(Rc::new(DefinitionSetDataType {
-        set: def_set,
-        data_type_index: serial.type_index,
-    }))
 }
 
 fn deserialize_definition_set(

@@ -1,12 +1,10 @@
 use {
     crate::{
         builtin::{
-            AspectArtifact,
             AspectBindJs,
             AspectConsumeJs,
             AspectJsStackValue,
             AspectLiftJs,
-            aspect_artifact_aspect_id,
             aspect_bind_js_aspect_id,
             aspect_consume_js_aspect_id,
             aspect_js_stack_value_aspect_id,
@@ -18,12 +16,10 @@ use {
             JsCodeType,
         },
         langhelp::{
-            Artifact,
             Aspect,
             CodeValue,
             EResult,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntryId,
             Type,
@@ -64,9 +60,6 @@ impl Type for TypeAny {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == type_type_identity() {
             return Some(Box::new(true));
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeAny) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_consume_js_aspect_id() {
             return Some(Box::new(Box::new(TypeAny) as Box<dyn AspectConsumeJs>));
@@ -109,32 +102,6 @@ impl Type for TypeAny {
 }
 
 impl Aspect for TypeAny { }
-
-impl AspectArtifact for TypeAny {
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let type_ = self_.type_(xx, loc);
-        match type_.type_to_serial(xx, gx, loc) {
-            Some(artifact) => EResult::ok(artifact),
-            None => EResult::err(loc, format!("Type ({}) does not support serialization", type_.desc())),
-        }
-    }
-
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        Err("TypeAny::from_serial should not be called directly".to_string())
-    }
-}
 
 impl AspectConsumeJs for TypeAny {
     fn to_js(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<JsCode> {

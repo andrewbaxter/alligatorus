@@ -234,27 +234,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/definition_set/data_type.rs",
-      "line": 440
-    }
-  },
-  "data": {
-    "def_set": {
-      "compile": [
-        [
-          0,
-          0
-        ],
-        0
-      ]
-    },
-    "type_index": 0
-  }
-}"#,
-            r#"{
-  "type_": {
-    "builtin": {
-      "file": "src/eval/definition_set/data_type.rs",
-      "line": 651
+      "line": 727
     }
   },
   "data": {
@@ -298,6 +278,26 @@ e0;"#]);
     ],
     "def_set_id": 0,
     "import_id": 0
+  }
+}"#,
+            r#"{
+  "type_": {
+    "builtin": {
+      "file": "src/eval/definition_set/data_type.rs",
+      "line": 74
+    }
+  },
+  "data": {
+    "def_set": {
+      "compile": [
+        [
+          0,
+          0
+        ],
+        0
+      ]
+    },
+    "type_index": 0
   }
 }"#
         ]

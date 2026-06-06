@@ -8,6 +8,7 @@ use {
             AspectFunction,
             AspectJsStackValue,
             AspectLiftJs,
+            AspectType,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_bind_js_aspect_id,
@@ -17,6 +18,7 @@ use {
             aspect_js_stack_value_aspect_id,
             aspect_js_stack_value_get,
             aspect_lift_js_aspect_id,
+            aspect_type_aspect_id,
         },
         eval::{
             Erb,
@@ -37,7 +39,6 @@ use {
         langhelp::{
             Artifact,
             ArtifactId,
-            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,
@@ -67,6 +68,92 @@ use {
         DefinitionSetDataTypeData,
     },
 };
+
+// --- DefinitionSetDataTypeConstructorType: the type-type for
+// DefinitionSetDataTypeConstructor values ---
+pub(crate) struct DefinitionSetDataTypeConstructorType;
+
+generate_builtin_artifact!(DefinitionSetDataTypeConstructorType, serde_json::Value);
+
+impl Value for DefinitionSetDataTypeConstructorType {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::super::type_ref::TypeAny)
+    }
+}
+
+impl Type for DefinitionSetDataTypeConstructorType {
+    fn desc(&self) -> String {
+        "definition_set_data_type_constructor_type".to_string()
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(DefinitionSetDataTypeConstructorType)
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == super::super::type_ref::type_type_identity() {
+            return Some(Box::new(true));
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructorType) as Box<dyn AspectArtifact>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructorType) as Box<dyn AspectType>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert definition_set_data_type_constructor_type".to_string())
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to definition_set_data_type_constructor_type".to_string())
+    }
+}
+
+impl Aspect for DefinitionSetDataTypeConstructorType { }
+
+impl AspectArtifact for DefinitionSetDataTypeConstructorType {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        self_: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let ctor =
+            (self_.as_ref() as &dyn Any)
+                .downcast_ref::<DefinitionSetDataTypeConstructor>()
+                .expect("DefinitionSetDataTypeConstructorType::to_serial expects DefinitionSetDataTypeConstructor");
+        let artifact_id = ctor.serialize_ctor(xx, gx, loc);
+        EResult::ok(Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        })
+    }
+
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_ = deserialize_defset_ctor_as_type(xx, gx, loc, data)?;
+        Ok(type_.as_value())
+    }
+}
+
+impl AspectType for DefinitionSetDataTypeConstructorType {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let ctor = (value as &dyn Any).downcast_ref::<DefinitionSetDataTypeConstructor>().unwrap();
+        Rc::new(DefinitionSetDataTypeConstructor {
+            set: ctor.set.clone(),
+            data_type_index: ctor.data_type_index,
+        })
+    }
+}
 
 // --- MortarTypeDefinitionSetDataTypeConstructor: eval_half type during JS
 // execution ---
@@ -174,7 +261,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
 // --- DefinitionSetDataTypeConstructor as Type: used after lift ---
 impl Value for DefinitionSetDataTypeConstructor {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::super::type_ref::TypeAny)
+        Rc::new(DefinitionSetDataTypeConstructorType)
     }
 }
 
@@ -195,14 +282,6 @@ impl Type for DefinitionSetDataTypeConstructor {
         })
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> Option<Artifact> {
-        let artifact_id = self.serialize_ctor(xx, gx, loc);
-        Some(Artifact {
-            type_: artifact_id,
-            data: serde_json::Value::Null,
-        })
-    }
-
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(DefinitionSetDataTypeConstructor {
@@ -215,12 +294,6 @@ impl Type for DefinitionSetDataTypeConstructor {
                 set: self.set.clone(),
                 data_type_index: self.data_type_index,
             }) as Box<dyn AspectBind>));
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructor {
-                set: self.set.clone(),
-                data_type_index: self.data_type_index,
-            }) as Box<dyn AspectArtifact>));
         }
         return None;
     }
@@ -306,10 +379,6 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
     }
 }
 
-pub(crate) fn defset_ctor_artifact_identity() -> ArtifactIdBuiltin {
-    builtin_artifact_id!()
-}
-
 impl DefinitionSetDataTypeConstructor {
     pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         // Check if already serialized
@@ -357,46 +426,17 @@ impl DefinitionSetDataTypeConstructor {
             }
         };
         let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
-        let builtin_id = defset_ctor_artifact_identity();
 
         // Store in artifact store
         gx.artifacts.set(artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(builtin_id),
+            type_: ArtifactId::Builtin(DefinitionSetDataTypeConstructorType::artifact_id()),
             data: json,
         });
         artifact_id
     }
 }
 
-impl AspectArtifact for DefinitionSetDataTypeConstructor {
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        _self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let artifact_id = self.serialize_ctor(xx, gx, loc);
-        let builtin_id = defset_ctor_artifact_identity();
-        EResult::ok(Artifact {
-            type_: ArtifactId::Builtin(builtin_id),
-            data: serde_json::to_value(&artifact_id).unwrap(),
-        })
-    }
-
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        defset_ctor_from_serial(_xx, gx, loc, data)
-    }
-}
-
-/// Deserialize a definition set data type constructor from artifact data.
-pub(crate) fn deserialize_defset_ctor(
+fn deserialize_defset_ctor_as_type(
     xx: &ExprContext,
     gx: &GlobalContext,
     loc: QExprId,
@@ -451,67 +491,6 @@ pub(crate) fn deserialize_defset_ctor(
     }))
 }
 
-fn defset_ctor_from_serial(
-    xx: &ExprContext,
-    gx: &GlobalContext,
-    loc: QExprId,
-    data: &serde_json::Value,
-) -> Result<Rc<dyn Value>, String> {
-    // data contains a serialized ArtifactId reference
-    let artifact_id: ArtifactId =
-        serde_json::from_value(
-            data.clone(),
-        ).map_err(|e| format!("Failed to parse defset ctor artifact ref: {}", e))?;
-    let stored = gx.artifacts.get(artifact_id)?;
-    let serial: SerialDefSetCtorData =
-        serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
-
-    // Reconstruct DefinitionSet
-    let identity = serial_to_unique(&serial.identity);
-    let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
-    let methods: Vec<DefinitionSetDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
-        let ret_type = gx.deserialize_type_ref(xx, loc, &m.ret_type).expect("Failed to resolve method ret type");
-        let entry_id = serial.def_set_id;
-        DefinitionSetDataMethodData {
-            name: m.name.clone(),
-            impl_expr: std::cell::RefCell::new(None),
-            ret_type: std::cell::RefCell::new(Some(ret_type)),
-            scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, entry_id, i))),
-            self_scope_entry_id: Cell::new(None),
-            field_name: m.field_name.clone(),
-            compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
-        }
-    }).collect();
-    let set = dumpster::unsync::Gc::new(DefinitionSet {
-        import_id: serial.import_id,
-        def_set_id: serial.def_set_id,
-        functions: std::cell::RefCell::new(Vec::new()),
-        data_types: std::cell::RefCell::new(vec![DefinitionSetDataTypeData {
-            name: serial.name,
-            description: std::cell::RefCell::new(None),
-            underlying_type: std::cell::RefCell::new(Some(underlying_type)),
-            methods: std::cell::RefCell::new(methods),
-            interface_impls: std::cell::RefCell::new(Vec::new()),
-            identity,
-            data_field: serial.data_field,
-            artifact_id: std::cell::RefCell::new(None),
-        }]),
-        interfaces: std::cell::RefCell::new(Vec::new()),
-        finished: Cell::new(true),
-        next_field_id: crate::langhelp::Counter::default(),
-        next_entry_id: crate::langhelp::Counter::default(),
-        next_interface_method_id: crate::langhelp::Counter::default(),
-    });
-    let ctor = DefinitionSetDataTypeConstructor {
-        set,
-        data_type_index: 0,
-    };
-    Ok(Rc::new(MortarJsValue {
-        source: MortarJsValueSource::Expr,
-        type_: Rc::new(ctor),
-    }))
-}
-
 // --- Serializable data structures ---
 #[derive(serde::Serialize, serde::Deserialize)]
 struct SerialDefSetCtorData {
@@ -547,8 +526,17 @@ pub(crate) enum SerialUnique {
 
 // --- Conversion helpers ---
 pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, loc: QExprId, type_: &dyn Type) -> Artifact {
-    type_.type_to_serial(xx, gx, loc).unwrap_or_else(|| {
-        panic!("Type ({}) does not support type_to_serial", type_.desc())
+    if let Some(artifact) = type_.type_to_serial(xx, gx, loc) {
+        return artifact;
+    }
+    let type_type = type_.type_(xx, loc);
+    let aspect =
+        crate::builtin::aspect_artifact_get_maybe(
+            xx,
+            type_type.as_ref(),
+        ).unwrap_or_else(|| panic!("Type ({}) type-type missing AspectArtifact", type_.desc()));
+    aspect.to_serial(xx, gx, loc, type_.as_value()).into_res().unwrap_or_else(|e| {
+        panic!("Failed to serialize type ref for {}: {:?}", type_.desc(), e)
     })
 }
 

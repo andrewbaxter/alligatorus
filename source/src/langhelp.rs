@@ -180,38 +180,29 @@ impl GlobalContext {
                 aspect.from_serial(xx, self, loc, &artifact.data)
             },
             ArtifactId::Compile(compile_id) => {
-                // The compile_id refers to a TYPE artifact (dynamically created type). Load the
-                // type artifact (which must have a Builtin type_), reconstruct the type, then use
-                // it to deserialize the instance data.
                 let type_artifact = self.artifacts.get(ArtifactId::Compile(*compile_id))?;
                 let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
                     return Err("Type artifact must have builtin type_".to_string());
                 };
-
-                use crate::eval::definition_set::{
-                    data_type::defset_data_type_artifact_identity,
-                    data_type_constructor::defset_ctor_artifact_identity,
-                };
-
-                let defset_dt_id = defset_data_type_artifact_identity();
-                let defset_ctor_id = defset_ctor_artifact_identity();
-                let actual_type: Rc<dyn Type> = if *tid == defset_dt_id {
-                    crate::eval::definition_set::data_type::deserialize_defset_data_type(
+                let type_type =
+                    xx
+                        .vx
+                        .ix
+                        .builtin_types
+                        .get(tid)
+                        .ok_or_else(|| format!("Unknown type artifact builtin ID: {:?}", tid))?;
+                let aspect_type =
+                    crate::builtin::aspect_type_get_maybe(
                         xx,
-                        self,
-                        loc,
-                        &type_artifact.data,
-                    )?
-                } else if *tid == defset_ctor_id {
-                    crate::eval::definition_set::data_type_constructor::deserialize_defset_ctor(
+                        type_type.as_ref(),
+                    ).ok_or_else(|| format!("Type type ({}) missing AspectType", type_type.desc()))?;
+                let aspect_artifact =
+                    crate::builtin::aspect_artifact_get_maybe(
                         xx,
-                        self,
-                        loc,
-                        &type_artifact.data,
-                    )?
-                } else {
-                    return Err(format!("Unknown type artifact builtin ID: {:?}", tid));
-                };
+                        type_type.as_ref(),
+                    ).ok_or_else(|| format!("Type type ({}) missing AspectArtifact", type_type.desc()))?;
+                let type_value = aspect_artifact.from_serial(xx, self, loc, &type_artifact.data)?;
+                let actual_type = aspect_type.type_(type_value.as_ref());
                 let aspect = crate::builtin::aspect_artifact_get_maybe(xx, actual_type.as_ref()).ok_or_else(|| {
                     format!("Reconstructed type ({}) missing AspectArtifact", actual_type.desc())
                 })?;
@@ -240,31 +231,25 @@ impl GlobalContext {
                 let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
                     return Err("Type artifact must have builtin type_".to_string());
                 };
-
-                use crate::eval::definition_set::{
-                    data_type::defset_data_type_artifact_identity,
-                    data_type_constructor::defset_ctor_artifact_identity,
-                };
-
-                let defset_dt_id = defset_data_type_artifact_identity();
-                let defset_ctor_id = defset_ctor_artifact_identity();
-                if *tid == defset_dt_id {
-                    crate::eval::definition_set::data_type::deserialize_defset_data_type(
+                let type_type =
+                    xx
+                        .vx
+                        .ix
+                        .builtin_types
+                        .get(tid)
+                        .ok_or_else(|| format!("Unknown type artifact builtin ID: {:?}", tid))?;
+                let aspect_type =
+                    crate::builtin::aspect_type_get_maybe(
                         xx,
-                        self,
-                        loc,
-                        &type_artifact.data,
-                    )
-                } else if *tid == defset_ctor_id {
-                    crate::eval::definition_set::data_type_constructor::deserialize_defset_ctor(
+                        type_type.as_ref(),
+                    ).ok_or_else(|| format!("Type type ({}) missing AspectType", type_type.desc()))?;
+                let aspect_artifact =
+                    crate::builtin::aspect_artifact_get_maybe(
                         xx,
-                        self,
-                        loc,
-                        &type_artifact.data,
-                    )
-                } else {
-                    Err(format!("Unknown type artifact builtin ID: {:?}", tid))
-                }
+                        type_type.as_ref(),
+                    ).ok_or_else(|| format!("Type type ({}) missing AspectArtifact", type_type.desc()))?;
+                let type_value = aspect_artifact.from_serial(xx, self, loc, &type_artifact.data)?;
+                Ok(aspect_type.type_(type_value.as_ref()))
             },
         }
     }
@@ -279,6 +264,10 @@ pub(crate) struct CompileImportContext {
 
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     use crate::eval::{
+        definition_set::{
+            data_type::DefinitionSetDataTypeType,
+            data_type_constructor::DefinitionSetDataTypeConstructorType,
+        },
         mortar_null::TypeMortarNull,
         mortar_string::TypeMortarString,
         null::TypeNull,
@@ -290,6 +279,8 @@ pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     TypeString::register(&mut m);
     TypeMortarNull::register(&mut m);
     TypeMortarString::register(&mut m);
+    DefinitionSetDataTypeType::register(&mut m);
+    DefinitionSetDataTypeConstructorType::register(&mut m);
     m
 }
 
