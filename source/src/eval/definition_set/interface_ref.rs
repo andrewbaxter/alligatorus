@@ -153,13 +153,10 @@ impl AspectLiftJs for MortarTypeDefinitionSetInterfaceRef {
     ) -> Result<Rc<dyn Value>, String> {
         let iface_ref: Rc<DefinitionSetInterfaceRef> =
             from_v8_ref::<Rc<DefinitionSetInterfaceRef>>(&value).clone();
-        iface_ref.set.finish()?;
+        iface_ref.data.set.finish()?;
         Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
-            type_: Rc::new(DefinitionSetInterface {
-                set: iface_ref.set.clone(),
-                interface_index: iface_ref.interface_index,
-            }),
+            type_: Rc::new(DefinitionSetInterface { data: iface_ref.data.clone() }),
         }))
     }
 }

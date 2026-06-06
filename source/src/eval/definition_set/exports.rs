@@ -208,7 +208,7 @@ impl AspectField for DefinitionSetExportsType {
             // Look up named functions
             {
                 let functions = self.set.functions.borrow();
-                for (i, func_data) in functions.iter().enumerate() {
+                for func_data in functions.iter() {
                     if func_data.name.as_deref() == Some(&key_name) {
                         return Ok(CodeValue {
                             code: Code {
@@ -217,10 +217,7 @@ impl AspectField for DefinitionSetExportsType {
                             },
                             value: Rc::new(MortarJsValue {
                                 source: MortarJsValueSource::DefinitionSet,
-                                type_: Rc::new(DefinitionSetFunction {
-                                    set: self.set.clone(),
-                                    func_index: i,
-                                }),
+                                type_: Rc::new(DefinitionSetFunction { data: func_data.clone(), }),
                             }),
                         });
                     }
@@ -230,7 +227,7 @@ impl AspectField for DefinitionSetExportsType {
             // Look up named data type constructors
             {
                 let data_types = self.set.data_types.borrow();
-                for (i, dt_data) in data_types.iter().enumerate() {
+                for dt_data in data_types.iter() {
                     if dt_data.name.as_deref() == Some(&key_name) {
                         return Ok(CodeValue {
                             code: Code {
@@ -239,10 +236,7 @@ impl AspectField for DefinitionSetExportsType {
                             },
                             value: Rc::new(MortarJsValue {
                                 source: MortarJsValueSource::Expr,
-                                type_: Rc::new(DefinitionSetDataTypeConstructor {
-                                    set: self.set.clone(),
-                                    data_type_index: i,
-                                }),
+                                type_: Rc::new(DefinitionSetDataTypeConstructor { data: dt_data.clone(), }),
                             }),
                         });
                     }
@@ -255,23 +249,17 @@ impl AspectField for DefinitionSetExportsType {
     fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         {
             let functions = self.set.functions.borrow();
-            for (i, func_data) in functions.iter().enumerate() {
+            for func_data in functions.iter() {
                 if func_data.name.as_deref() == Some(key) {
-                    return Some(Rc::new(DefinitionSetFunction {
-                        set: self.set.clone(),
-                        func_index: i,
-                    }));
+                    return Some(Rc::new(DefinitionSetFunction { data: func_data.clone() }));
                 }
             }
         }
         {
             let data_types = self.set.data_types.borrow();
-            for (i, dt_data) in data_types.iter().enumerate() {
+            for dt_data in data_types.iter() {
                 if dt_data.name.as_deref() == Some(key) {
-                    return Some(Rc::new(DefinitionSetDataTypeConstructor {
-                        set: self.set.clone(),
-                        data_type_index: i,
-                    }));
+                    return Some(Rc::new(DefinitionSetDataTypeConstructor { data: dt_data.clone() }));
                 }
             }
         }

@@ -41,12 +41,20 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
 
 // --- DefinitionSet data ---
 pub(crate) struct DefinitionSetFunctionData {
+    pub set: Gc<DefinitionSet>,
     pub name: Option<String>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+}
+
+unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSetFunctionData {
+    fn accept(&self, visitor: &mut V) -> Result<(), ()> {
+        visitor.visit_unsync(&self.set);
+        Ok(())
+    }
 }
 
 pub(crate) struct DefinitionSetDataMethodData {
@@ -62,6 +70,7 @@ pub(crate) struct DefinitionSetDataMethodData {
 }
 
 pub(crate) struct DefinitionSetDataTypeData {
+    pub set: Gc<DefinitionSet>,
     pub name: Option<String>,
     pub description: RefCell<Option<String>>,
     pub underlying_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
@@ -72,8 +81,19 @@ pub(crate) struct DefinitionSetDataTypeData {
     pub artifact_id: RefCell<Option<crate::langhelp::ArtifactId>>,
 }
 
+unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSetDataTypeData {
+    fn accept(&self, visitor: &mut V) -> Result<(), ()> {
+        visitor.visit_unsync(&self.set);
+        let impls = self.interface_impls.try_borrow().map_err(|_| ())?;
+        for impl_data in impls.iter() {
+            visitor.visit_unsync(&impl_data.interface);
+        }
+        Ok(())
+    }
+}
+
 pub(crate) struct DefinitionSetDataTypeInterfaceImplData {
-    pub interface_index: usize,
+    pub interface: Gc<DefinitionSetInterfaceData>,
     pub method_impls: Vec<DefinitionSetDataTypeInterfaceMethodImplData>,
 }
 
@@ -92,17 +112,25 @@ pub(crate) struct DefinitionSetInterfaceMethodData {
 }
 
 pub(crate) struct DefinitionSetInterfaceData {
+    pub set: Gc<DefinitionSet>,
     pub description: RefCell<Option<String>>,
     pub methods: RefCell<Vec<DefinitionSetInterfaceMethodData>>,
     pub identity: Unique,
 }
 
+unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSetInterfaceData {
+    fn accept(&self, visitor: &mut V) -> Result<(), ()> {
+        visitor.visit_unsync(&self.set);
+        Ok(())
+    }
+}
+
 pub(crate) struct DefinitionSet {
     pub import_id: ImportStateId,
     pub def_set_id: DefSetId,
-    pub functions: RefCell<Vec<DefinitionSetFunctionData>>,
-    pub data_types: RefCell<Vec<DefinitionSetDataTypeData>>,
-    pub interfaces: RefCell<Vec<DefinitionSetInterfaceData>>,
+    pub functions: RefCell<Vec<Gc<DefinitionSetFunctionData>>>,
+    pub data_types: RefCell<Vec<Gc<DefinitionSetDataTypeData>>>,
+    pub interfaces: RefCell<Vec<Gc<DefinitionSetInterfaceData>>>,
     pub finished: Cell<bool>,
     pub next_field_id: Counter,
     pub next_entry_id: Counter,
@@ -110,7 +138,21 @@ pub(crate) struct DefinitionSet {
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
-    fn accept(&self, _visitor: &mut V) -> Result<(), ()> {
+    fn accept(&self, visitor: &mut V) -> Result<(), ()> {
+        let functions = self.functions.try_borrow().map_err(|_| ())?;
+        for f in functions.iter() {
+            visitor.visit_unsync(f);
+        }
+        drop(functions);
+        let data_types = self.data_types.try_borrow().map_err(|_| ())?;
+        for dt in data_types.iter() {
+            visitor.visit_unsync(dt);
+        }
+        drop(data_types);
+        let interfaces = self.interfaces.try_borrow().map_err(|_| ())?;
+        for i in interfaces.iter() {
+            visitor.visit_unsync(i);
+        }
         Ok(())
     }
 }
@@ -185,28 +227,23 @@ impl DefinitionSet {
 }
 
 pub(crate) struct DefinitionSetFunction {
-    pub set: Gc<DefinitionSet>,
-    pub func_index: usize,
+    pub data: Gc<DefinitionSetFunctionData>,
 }
 
 pub(crate) struct DefinitionSetDataTypeRef {
-    pub set: Gc<DefinitionSet>,
-    pub data_type_index: usize,
+    pub data: Gc<DefinitionSetDataTypeData>,
 }
 
 pub(crate) struct DefinitionSetDataTypeConstructor {
-    pub set: Gc<DefinitionSet>,
-    pub data_type_index: usize,
+    pub data: Gc<DefinitionSetDataTypeData>,
 }
 
 pub(crate) struct DefinitionSetInterfaceRef {
-    pub set: Gc<DefinitionSet>,
-    pub interface_index: usize,
+    pub data: Gc<DefinitionSetInterfaceData>,
 }
 
 pub(crate) struct DefinitionSetInterface {
-    pub set: Gc<DefinitionSet>,
-    pub interface_index: usize,
+    pub data: Gc<DefinitionSetInterfaceData>,
 }
 
 pub(crate) struct DefinitionSetExports {
@@ -214,8 +251,7 @@ pub(crate) struct DefinitionSetExports {
 }
 
 pub(crate) struct DefinitionSetDataType {
-    pub set: Gc<DefinitionSet>,
-    pub data_type_index: usize,
+    pub data: Gc<DefinitionSetDataTypeData>,
 }
 
 // --- Tagged union data ---

@@ -54,10 +54,7 @@ use {
         mem,
         rc::Rc,
     },
-    super::{
-        DefinitionSet,
-        DefinitionSetFunction,
-    },
+    super::DefinitionSetFunction,
 };
 
 // --- MortarTypeDefinitionSetFunction: eval_half type of a function ref ---
@@ -148,10 +145,7 @@ impl AspectLiftJs for MortarTypeDefinitionSetFunction {
         let func_ref: Rc<DefinitionSetFunction> = from_v8_ref::<Rc<DefinitionSetFunction>>(&value).clone();
         Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::DefinitionSet,
-            type_: Rc::new(DefinitionSetFunction {
-                set: func_ref.set.clone(),
-                func_index: func_ref.func_index,
-            }),
+            type_: Rc::new(DefinitionSetFunction { data: func_ref.data.clone() }),
         }))
     }
 }
@@ -165,33 +159,26 @@ impl Value for DefinitionSetFunction {
 
 impl Type for DefinitionSetFunction {
     fn desc(&self) -> String {
-        let functions = self.set.functions.borrow();
-        let func_data = &functions[self.func_index];
-        match func_data.description.borrow().as_deref() {
+        match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
             None => format!("definition_set_function"),
         }
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetFunction {
-            set: self.set.clone(),
-            func_index: self.func_index,
-        })
+        Rc::new(DefinitionSetFunction { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetFunction {
-                set: self.set.clone(),
-                func_index: self.func_index,
-            }) as Box<dyn AspectFunction>));
+            return Some(
+                Box::new(Box::new(DefinitionSetFunction { data: self.data.clone() }) as Box<dyn AspectFunction>),
+            );
         }
         if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetFunction {
-                set: self.set.clone(),
-                func_index: self.func_index,
-            }) as Box<dyn AspectBind>));
+            return Some(
+                Box::new(Box::new(DefinitionSetFunction { data: self.data.clone() }) as Box<dyn AspectBind>),
+            );
         }
         return None;
     }
@@ -219,23 +206,24 @@ impl AspectFunction for DefinitionSetFunction {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Register with eval context (dedup)
         {
+            let set = &self.data.set;
             let mut sets = xx.vx.definition_sets.borrow_mut();
             let already =
                 sets
                     .iter()
-                    .any(|s| std::ptr::eq(&**s as *const DefinitionSet, &*self.set as *const DefinitionSet));
+                    .any(
+                        |s| std::ptr::eq(&**s as *const super::DefinitionSet, &**set as *const super::DefinitionSet),
+                    );
             if !already {
-                sets.push(self.set.clone());
+                sets.push(set.clone());
             }
         }
 
         // Get arg/ret types directly
         let (scope_id, arg_type, ret_type) = {
-            let functions = self.set.functions.borrow();
-            let fd = &functions[self.func_index];
-            let sid = fd.scope_entry_id.get().expect("Definition set function not registered");
-            let arg_type = fd.arg_type.borrow().clone().expect("Definition set function missing arg type");
-            let ret_type = fd.ret_type.borrow().clone().expect("Definition set function missing return type");
+            let sid = self.data.scope_entry_id.get().expect("Definition set function not registered");
+            let arg_type = self.data.arg_type.borrow().clone().expect("Definition set function missing arg type");
+            let ret_type = self.data.ret_type.borrow().clone().expect("Definition set function missing return type");
             (sid, arg_type, ret_type)
         };
         return er_seq_cv!(loc, erb, {

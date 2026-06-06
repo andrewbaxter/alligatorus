@@ -129,13 +129,10 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeRef {
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<DefinitionSetDataType>()
                 .expect("MortarTypeDefinitionSetDataTypeRef::lift: expected DefinitionSetDataType");
-        dt.set.finish()?;
+        dt.data.set.finish()?;
         Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
-            type_: Rc::new(DefinitionSetDataType {
-                set: dt.set.clone(),
-                data_type_index: dt.data_type_index,
-            }),
+            type_: Rc::new(DefinitionSetDataType { data: dt.data.clone() }),
         }))
     }
 }

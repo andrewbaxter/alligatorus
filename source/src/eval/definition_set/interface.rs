@@ -50,62 +50,48 @@ use {
 
 impl Value for DefinitionSetInterface {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(DefinitionSetInterface {
-            set: self.set.clone(),
-            interface_index: self.interface_index,
-        })
+        Rc::new(DefinitionSetInterface { data: self.data.clone() })
     }
 }
 
 impl Type for DefinitionSetInterface {
     fn desc(&self) -> String {
-        let interfaces = self.set.interfaces.borrow();
-        let iface = &interfaces[self.interface_index];
-        match iface.description.borrow().as_deref() {
+        match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
-            None => format!("interface(index={})", self.interface_index),
+            None => format!("interface"),
         }
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetInterface {
-            set: self.set.clone(),
-            interface_index: self.interface_index,
-        })
+        Rc::new(DefinitionSetInterface { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         // Check interface identity aspect
-        {
-            let interfaces = self.set.interfaces.borrow();
-            let iface = &interfaces[self.interface_index];
-            if *key == iface.identity {
-                return Some(Box::new(true));
-            }
+        if *key == self.data.identity {
+            return Some(Box::new(true));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetInterface {
-                set: self.set.clone(),
-                interface_index: self.interface_index,
-            }) as Box<dyn AspectField>));
+            return Some(
+                Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectField>),
+            );
         }
         if *key == aspect_consume_js_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetInterface {
-                set: self.set.clone(),
-                interface_index: self.interface_index,
-            }) as Box<dyn AspectConsumeJs>));
+            return Some(
+                Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectConsumeJs>),
+            );
         }
         if *key == aspect_bind_js_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetInterface {
-                set: self.set.clone(),
-                interface_index: self.interface_index,
-            }) as Box<dyn AspectBindJs>));
+            return Some(
+                Box::new(Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectBindJs>),
+            );
         }
         if *key == aspect_js_stack_value_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetInterface {
-                set: self.set.clone(),
-                interface_index: self.interface_index,
-            }) as Box<dyn AspectJsStackValue>));
+            return Some(
+                Box::new(
+                    Box::new(DefinitionSetInterface { data: self.data.clone() }) as Box<dyn AspectJsStackValue>,
+                ),
+            );
         }
         return None;
     }
@@ -115,30 +101,19 @@ impl Type for DefinitionSetInterface {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        let identity = {
-            let interfaces = self.set.interfaces.borrow();
-            let iface = &interfaces[self.interface_index];
-            iface.identity.clone()
-        };
+        let identity = self.data.identity.clone();
         source_type.aspect(xx, &identity).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let identity = {
-            let interfaces = self.set.interfaces.borrow();
-            let iface = &interfaces[self.interface_index];
-            iface.identity.clone()
-        };
+        let identity = self.data.identity.clone();
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(MortarJsValue {
                     source: MortarJsValueSource::Expr,
-                    type_: Rc::new(DefinitionSetInterface {
-                        set: self.set.clone(),
-                        interface_index: self.interface_index,
-                    }),
+                    type_: Rc::new(DefinitionSetInterface { data: self.data.clone() }),
                 }),
             });
         }
@@ -175,10 +150,7 @@ impl AspectJsStackValue for DefinitionSetInterface {
             },
             value: Rc::new(MortarJsValue {
                 source: MortarJsValueSource::Expr,
-                type_: Rc::new(DefinitionSetInterface {
-                    set: self.set.clone(),
-                    interface_index: self.interface_index,
-                }),
+                type_: Rc::new(DefinitionSetInterface { data: self.data.clone() }),
             }),
         }
     }
@@ -191,9 +163,7 @@ impl AspectField for DefinitionSetInterface {
             let key_string = erb.must_er(aspect_string_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let (field_name, arg_type, ret_type) = {
-                let interfaces = self.set.interfaces.borrow();
-                let iface = &interfaces[self.interface_index];
-                let methods = iface.methods.borrow();
+                let methods = self.data.methods.borrow();
                 let method = methods.iter().find(|m| m.name == key_name);
                 match method {
                     Some(m) => {
@@ -229,9 +199,7 @@ impl AspectField for DefinitionSetInterface {
     }
 
     fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        let interfaces = self.set.interfaces.borrow();
-        let iface = &interfaces[self.interface_index];
-        let methods = iface.methods.borrow();
+        let methods = self.data.methods.borrow();
         for method in methods.iter() {
             if method.name == key {
                 return Some(Rc::new(MortarTypeFunction {

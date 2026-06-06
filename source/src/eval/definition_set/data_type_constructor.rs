@@ -148,10 +148,7 @@ impl AspectArtifact for DefinitionSetDataTypeConstructorType {
 impl AspectType for DefinitionSetDataTypeConstructorType {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let ctor = (value as &dyn Any).downcast_ref::<DefinitionSetDataTypeConstructor>().unwrap();
-        Rc::new(DefinitionSetDataTypeConstructor {
-            set: ctor.set.clone(),
-            data_type_index: ctor.data_type_index,
-        })
+        Rc::new(DefinitionSetDataTypeConstructor { data: ctor.data.clone() })
     }
 }
 
@@ -247,13 +244,10 @@ impl AspectLiftJs for MortarTypeDefinitionSetDataTypeConstructor {
     ) -> Result<Rc<dyn Value>, String> {
         let ctor_ref: Rc<DefinitionSetDataTypeConstructor> =
             from_v8_ref::<Rc<DefinitionSetDataTypeConstructor>>(&value).clone();
-        ctor_ref.set.finish()?;
+        ctor_ref.data.set.finish()?;
         Ok(Rc::new(MortarJsValue {
             source: MortarJsValueSource::Expr,
-            type_: Rc::new(DefinitionSetDataTypeConstructor {
-                set: ctor_ref.set.clone(),
-                data_type_index: ctor_ref.data_type_index,
-            }),
+            type_: Rc::new(DefinitionSetDataTypeConstructor { data: ctor_ref.data.clone() }),
         }))
     }
 }
@@ -267,33 +261,31 @@ impl Value for DefinitionSetDataTypeConstructor {
 
 impl Type for DefinitionSetDataTypeConstructor {
     fn desc(&self) -> String {
-        let data_types = self.set.data_types.borrow();
-        let dt = &data_types[self.data_type_index];
-        match dt.description.borrow().as_deref() {
+        match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
             None => format!("definition_set_data_type_constructor"),
         }
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetDataTypeConstructor {
-            set: self.set.clone(),
-            data_type_index: self.data_type_index,
-        })
+        Rc::new(DefinitionSetDataTypeConstructor { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructor {
-                set: self.set.clone(),
-                data_type_index: self.data_type_index,
-            }) as Box<dyn AspectFunction>));
+            return Some(
+                Box::new(
+                    Box::new(DefinitionSetDataTypeConstructor { data: self.data.clone() }) as
+                        Box<dyn AspectFunction>,
+                ),
+            );
         }
         if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(DefinitionSetDataTypeConstructor {
-                set: self.set.clone(),
-                data_type_index: self.data_type_index,
-            }) as Box<dyn AspectBind>));
+            return Some(
+                Box::new(
+                    Box::new(DefinitionSetDataTypeConstructor { data: self.data.clone() }) as Box<dyn AspectBind>,
+                ),
+            );
         }
         return None;
     }
@@ -321,20 +313,16 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Register with eval context (dedup)
         {
+            let set = &self.data.set;
             let mut sets = xx.vx.definition_sets.borrow_mut();
             let already =
-                sets
-                    .iter()
-                    .any(|s| std::ptr::eq(&**s as *const DefinitionSet, &*self.set as *const DefinitionSet));
+                sets.iter().any(|s| std::ptr::eq(&**s as *const DefinitionSet, &**set as *const DefinitionSet));
             if !already {
-                sets.push(self.set.clone());
+                sets.push(set.clone());
             }
         }
-        let underlying_type = {
-            let data_types = self.set.data_types.borrow();
-            let dt = &data_types[self.data_type_index];
-            dt.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone()
-        };
+        let underlying_type =
+            self.data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
         return er_seq_cv!(loc, erb, {
             // Convert argument to underlying type
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
@@ -342,20 +330,16 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
             let underlying_js = erb.must_er(to_js.to_js(xx, loc, converted))?;
 
             // Build wrapper object fields
-            let data_types = self.set.data_types.borrow();
-            let dt = &data_types[self.data_type_index];
-            let mut object_fields = vec![(dt.data_field.clone(), underlying_js),];
-            for method in dt.methods.borrow().iter() {
+            let mut object_fields = vec![(self.data.data_field.clone(), underlying_js),];
+            for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
                 object_fields.push((method.field_name.clone(), JsCode {
                     loc,
                     type_: JsCodeType::BindingUse(JsCodeBindingUse { id: method_id }),
                 }));
             }
-            for impl_data in dt.interface_impls.borrow().iter() {
-                let interfaces = self.set.interfaces.borrow();
-                let iface = &interfaces[impl_data.interface_index];
-                let iface_methods = iface.methods.borrow();
+            for impl_data in self.data.interface_impls.borrow().iter() {
+                let iface_methods = impl_data.interface.methods.borrow();
                 for method_impl in &impl_data.method_impls {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
                     let method_id =
@@ -366,10 +350,7 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
                     }));
                 }
             }
-            let result_type = Rc::new(DefinitionSetDataType {
-                set: self.set.clone(),
-                data_type_index: self.data_type_index,
-            });
+            let result_type = Rc::new(DefinitionSetDataType { data: self.data.clone(), });
             let ret_stack = erb.must_er(aspect_js_stack_value_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, JsCode {
                 loc,
@@ -382,29 +363,19 @@ impl AspectFunction for DefinitionSetDataTypeConstructor {
 impl DefinitionSetDataTypeConstructor {
     pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         // Check if already serialized
-        {
-            let data_types = self.set.data_types.borrow();
-            let dt = &data_types[self.data_type_index];
-            if let Some(existing_id) = dt.artifact_id.borrow().clone() {
-                return existing_id;
-            }
+        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
+            return existing_id;
         }
 
         // Reserve an artifact ID
         let artifact_id = gx.artifacts.reserve_id();
-        {
-            let data_types = self.set.data_types.borrow();
-            let dt = &data_types[self.data_type_index];
-            *dt.artifact_id.borrow_mut() = Some(artifact_id.clone());
-        }
+        *self.data.artifact_id.borrow_mut() = Some(artifact_id.clone());
 
         // Serialize the definition set data type info
         let serial_data = {
-            let data_types = self.set.data_types.borrow();
-            let dt = &data_types[self.data_type_index];
-            let underlying_type = dt.underlying_type.borrow();
+            let underlying_type = self.data.underlying_type.borrow();
             let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-            let methods: Vec<SerialMethod> = dt.methods.borrow().iter().map(|m| {
+            let methods: Vec<SerialMethod> = self.data.methods.borrow().iter().map(|m| {
                 let compiled_js = m.compiled_js.borrow();
                 let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
                 let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
@@ -416,13 +387,13 @@ impl DefinitionSetDataTypeConstructor {
                 }
             }).collect();
             SerialDefSetCtorData {
-                name: dt.name.clone(),
-                data_field: dt.data_field.clone(),
+                name: self.data.name.clone(),
+                data_field: self.data.data_field.clone(),
                 underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-                identity: unique_to_serial(&dt.identity),
+                identity: unique_to_serial(&self.data.identity),
                 methods,
-                import_id: self.set.import_id,
-                def_set_id: self.set.def_set_id,
+                import_id: self.data.set.import_id,
+                def_set_id: self.data.set.def_set_id,
             }
         };
         let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
@@ -469,26 +440,26 @@ fn deserialize_defset_ctor_as_type(
         import_id: serial.import_id,
         def_set_id: serial.def_set_id,
         functions: std::cell::RefCell::new(Vec::new()),
-        data_types: std::cell::RefCell::new(vec![DefinitionSetDataTypeData {
-            name: serial.name,
-            description: std::cell::RefCell::new(None),
-            underlying_type: std::cell::RefCell::new(Some(underlying_type)),
-            methods: std::cell::RefCell::new(methods),
-            interface_impls: std::cell::RefCell::new(Vec::new()),
-            identity,
-            data_field: serial.data_field,
-            artifact_id: std::cell::RefCell::new(None),
-        }]),
+        data_types: std::cell::RefCell::new(Vec::new()),
         interfaces: std::cell::RefCell::new(Vec::new()),
         finished: Cell::new(true),
         next_field_id: crate::langhelp::Counter::default(),
         next_entry_id: crate::langhelp::Counter::default(),
         next_interface_method_id: crate::langhelp::Counter::default(),
     });
-    Ok(Rc::new(DefinitionSetDataTypeConstructor {
-        set,
-        data_type_index: 0,
-    }))
+    let dt_data = dumpster::unsync::Gc::new(DefinitionSetDataTypeData {
+        set: set.clone(),
+        name: serial.name,
+        description: std::cell::RefCell::new(None),
+        underlying_type: std::cell::RefCell::new(Some(underlying_type)),
+        methods: std::cell::RefCell::new(methods),
+        interface_impls: std::cell::RefCell::new(Vec::new()),
+        identity,
+        data_field: serial.data_field,
+        artifact_id: std::cell::RefCell::new(None),
+    });
+    set.data_types.borrow_mut().push(dt_data.clone());
+    Ok(Rc::new(DefinitionSetDataTypeConstructor { data: dt_data }))
 }
 
 // --- Serializable data structures ---

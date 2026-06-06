@@ -1718,9 +1718,7 @@ fn eval(
 
                     // Resolve ret type from interface method
                     let ret_type: Rc<dyn Type> = {
-                        let interfaces = ds.interfaces.borrow();
-                        let iface = &interfaces[impl_data.interface_index];
-                        let iface_methods = iface.methods.borrow();
+                        let iface_methods = impl_data.interface.methods.borrow();
                         let iface_method = &iface_methods[method_impl.interface_method_index];
                         iface_method.ret_type.borrow().clone().expect("Interface method missing return type")
                     };
