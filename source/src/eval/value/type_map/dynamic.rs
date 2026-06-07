@@ -166,16 +166,16 @@ impl AspectField for TypeMapDynamic {
 impl AspectIterable for TypeMapDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         // Map iteration yields records with "key" and "value" fields
-        Rc::new(crate::eval::value::type_record::Record {
+        Rc::new(crate::eval::value::record::Record {
             source: None,
             fields: [
                 (
                     crate::langhelp::ConstKey::String("key".to_string()),
-                    crate::eval::value::type_record::RecordField::Mortar(self.key_type.clone()),
+                    crate::eval::value::record::RecordField::Mortar(self.key_type.clone()),
                 ),
                 (
                     crate::langhelp::ConstKey::String("value".to_string()),
-                    crate::eval::value::type_record::RecordField::Mortar(self.value_type.clone()),
+                    crate::eval::value::record::RecordField::Mortar(self.value_type.clone()),
                 ),
             ]
                 .into_iter()
@@ -319,11 +319,11 @@ impl Type for TypeMapDynamic {
             aspect_consume_dynamic_get_maybe(xx, source_type).is_some() {
             // Record → map: check all field value types are compatible with the map's value
             // type
-            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::value::type_record::Record>() {
+            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::value::record::Record>() {
                 return record.fields.values().all(|f| {
                     let field_type = match f {
-                        crate::eval::value::type_record::RecordField::Mortar(t) => t.clone(),
-                        crate::eval::value::type_record::RecordField::EvalRes(er) => match &er.v {
+                        crate::eval::value::record::RecordField::Mortar(t) => t.clone(),
+                        crate::eval::value::record::RecordField::EvalRes(er) => match &er.v {
                             Some(cv) => cv.value.type_(xx, loc),
                             None => return true,
                         },
@@ -360,8 +360,8 @@ impl Type for TypeMapDynamic {
 
         // Record source: decompose, typecheck_convert each value to the map's value type,
         // then convert each to JS individually.
-        let record: crate::eval::value::type_record::Record =
-            match downcast_value::<crate::eval::value::type_record::Record>(
+        let record: crate::eval::value::record::Record =
+            match downcast_value::<crate::eval::value::record::Record>(
                 cv.value,
             ).and_then(|r| Rc::try_unwrap(r).ok()) {
                 Some(r) => r,
@@ -373,7 +373,7 @@ impl Type for TypeMapDynamic {
             for (key, field) in record.fields.into_iter() {
                 let canonical = key.to_str();
                 let entry_cv = match field {
-                    crate::eval::value::type_record::RecordField::EvalRes(entry_res) => {
+                    crate::eval::value::record::RecordField::EvalRes(entry_res) => {
                         if let Some(errs) = entry_res.errors {
                             erb.errors.extend(errs);
                         }
@@ -384,7 +384,7 @@ impl Type for TypeMapDynamic {
                             },
                         }
                     },
-                    crate::eval::value::type_record::RecordField::Mortar(_) => {
+                    crate::eval::value::record::RecordField::Mortar(_) => {
                         return erb.err_new(
                             format!("Record entry '{}' is mortar-only, cannot consume directly to JS", canonical),
                         );

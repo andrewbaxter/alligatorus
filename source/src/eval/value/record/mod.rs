@@ -59,7 +59,7 @@ use {
         mem,
         rc::Rc,
     },
-    super::type_tuple::wrap_with_carry,
+    super::tuple::wrap_with_carry,
 };
 
 pub(crate) struct Record {
@@ -110,7 +110,7 @@ impl AspectBind for Record {
                             scope_fields.insert(
                                 key,
                                 RecordScopeField::Scope(
-                                    Box::new(super::type_tuple::ScopeEntryValue { value: Rc::from(field_cv.value) }),
+                                    Box::new(super::tuple::ScopeEntryValue { value: Rc::from(field_cv.value) }),
                                 ),
                             );
                         }
@@ -713,7 +713,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
         RecordField::Mortar(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
             Some(cv) => cv.value.type_(xx, loc),
-            None => Rc::new(super::type_tuple::Tuple {
+            None => Rc::new(super::tuple::Tuple {
                 source: None,
                 elements: vec![],
             }) as Rc<dyn Type>,

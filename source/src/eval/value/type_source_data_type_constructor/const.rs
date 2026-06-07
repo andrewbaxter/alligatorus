@@ -109,7 +109,7 @@ impl AspectBind for TypeSourceDataTypeConstructorConst {
                     loc: loc,
                     code: Code_::None,
                 },
-                Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
+                Box::new(crate::eval::value::tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
                     Box<dyn ScopeEntry>,
             ),
         )

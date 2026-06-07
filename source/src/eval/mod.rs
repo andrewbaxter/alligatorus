@@ -118,13 +118,13 @@ use {
         type_function::dynamic::TypeFunctionDynamic,
         type_null::dynamic::TypeNullDynamic,
         type_number::dynamic::TypeNumberDynamic,
-        type_record::{
+        record::{
             Record,
             RecordField,
         },
         type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         type_string::dynamic::TypeStringDynamic,
-        type_tuple::{
+        tuple::{
             ScopeEntryStatic,
             Tuple,
             TupleElement,

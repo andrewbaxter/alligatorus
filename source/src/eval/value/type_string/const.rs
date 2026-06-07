@@ -84,7 +84,7 @@ impl AspectBind for TypeStringConst {
         EResult::ok((Code {
             loc: loc,
             code: crate::langhelp::Code_::None,
-        }, Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
+        }, Box::new(crate::eval::value::tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
     }
 }
 
