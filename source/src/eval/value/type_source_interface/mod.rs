@@ -27,6 +27,6 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceInterfaceData
     }
 }
 
-pub(crate) struct SourceInterface {
+pub(crate) struct TypeSourceInterfaceConst {
     pub data: Gc<SourceInterfaceData>,
 }

@@ -64,6 +64,6 @@ pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
-pub(crate) struct SourceDataType {
+pub(crate) struct TypeSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
 }

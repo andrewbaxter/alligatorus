@@ -258,8 +258,8 @@ pub(crate) struct CompileImportContext {
 
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     use crate::eval::{
-        value::type_source_data::dynamic::TypeTypeSourceDataTypeDynamic,
-        value::type_source_data_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
+        value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
+        value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
         value::type_null::dynamic::TypeNullDynamic,
         value::type_string::dynamic::TypeStringDynamic,
         value::type_null::r#const::TypeNullConst,

@@ -19,7 +19,7 @@ use {
                     ValueDynamicSource,
                     bind_dynamic_some,
                 },
-                type_source_interface::SourceInterface,
+                type_source_interface::TypeSourceInterfaceConst,
             },
         },
         langhelp::{
@@ -43,7 +43,7 @@ use {
     super::SourceInterfaceRef,
 };
 
-pub(crate) struct TypeSourceInterfaceRefDynamic;
+pub(crate) struct TypeSourceInterfaceDynamic;
 
 fn interface_ref_type_identity() -> Unique {
     Unique::Builtin {
@@ -52,19 +52,19 @@ fn interface_ref_type_identity() -> Unique {
     }
 }
 
-impl Value for TypeSourceInterfaceRefDynamic {
+impl Value for TypeSourceInterfaceDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeSourceInterfaceRefDynamic {
+impl Type for TypeSourceInterfaceDynamic {
     fn desc(&self) -> String {
         format!("definition_set_interface_ref")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceInterfaceRefDynamic)
+        Rc::new(TypeSourceInterfaceDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -72,16 +72,16 @@ impl Type for TypeSourceInterfaceRefDynamic {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectConsumeDynamic>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectBindDynamic>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectStackValueDynamic>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceRefDynamic) as Box<dyn AspectLiftDynamic>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -101,7 +101,7 @@ impl Type for TypeSourceInterfaceRefDynamic {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeSourceInterfaceRefDynamic),
+                    type_: Rc::new(TypeSourceInterfaceDynamic),
                 }),
             });
         }
@@ -109,15 +109,15 @@ impl Type for TypeSourceInterfaceRefDynamic {
     }
 }
 
-impl Aspect for TypeSourceInterfaceRefDynamic { }
+impl Aspect for TypeSourceInterfaceDynamic { }
 
-impl AspectConsumeDynamic for TypeSourceInterfaceRefDynamic {
+impl AspectConsumeDynamic for TypeSourceInterfaceDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for TypeSourceInterfaceRefDynamic {
+impl AspectBindDynamic for TypeSourceInterfaceDynamic {
     fn bind_dynamic(
         &self,
         xx: &ExprContext,
@@ -129,7 +129,7 @@ impl AspectBindDynamic for TypeSourceInterfaceRefDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceInterfaceRefDynamic {
+impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -138,13 +138,13 @@ impl AspectStackValueDynamic for TypeSourceInterfaceRefDynamic {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceInterfaceRefDynamic),
+                type_: Rc::new(TypeSourceInterfaceDynamic),
             }),
         }
     }
 }
 
-impl AspectLiftDynamic for TypeSourceInterfaceRefDynamic {
+impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -155,7 +155,7 @@ impl AspectLiftDynamic for TypeSourceInterfaceRefDynamic {
         iface_ref.data.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
-            type_: Rc::new(SourceInterface { data: iface_ref.data.clone() }),
+            type_: Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }),
         }))
     }
 }

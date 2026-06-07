@@ -32,17 +32,17 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData 
     }
 }
 
-pub(crate) struct SourceFunction {
+pub(crate) struct TypeSourceFunctionConst {
     pub data: Gc<SourceFunctionData>,
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceFunction> {
+impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TypeSourceFunctionConst> {
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(dynamic::TypeSourceFunctionDynamic)
     }
 
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::from_v8_ref::<Rc<SourceFunction>>(&*value).clone()
+        crate::eval::from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {

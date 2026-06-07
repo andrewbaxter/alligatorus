@@ -1230,7 +1230,7 @@ fn eval(
     ) in [
         (
             "list",
-            Rc::new(value::type_list::dynamic::TypeListConstructorConst) as Rc<dyn Type>,
+            Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst) as Rc<dyn Type>,
             dynamic_wrap!(
                 fn list(
                     ex,
@@ -1243,7 +1243,7 @@ fn eval(
         ),
         (
             "map",
-            Rc::new(value::type_map::dynamic::TypeMapConstructorConst) as Rc<dyn Type>,
+            Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst) as Rc<dyn Type>,
             dynamic_wrap!(
                 fn map(
                     ex,

@@ -34,7 +34,7 @@ use {
                     SourceDataTypeInterfaceImplData,
                     SourceDataTypeInterfaceMethodImplData,
                 },
-                type_source_data_constructor::SourceDataTypeConstructor,
+                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_data_ref::SourceDataTypeRef,
                 type_source_interface_ref::SourceInterfaceRef,
                 type_source_new_data_method_result::dynamic::SourceNewDataMethodResult,
@@ -72,8 +72,8 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
     field type_: Rc < SourceDataTypeRef > {
         self_.data_type_ref.clone()
     }
-    field new_: Rc < SourceDataTypeConstructor > {
-        Rc::new(SourceDataTypeConstructor { data: self_.data_type_ref.data.clone(), })
+    field new_: Rc < TypeSourceDataTypeConstructorConst > {
+        Rc::new(TypeSourceDataTypeConstructorConst { data: self_.data_type_ref.data.clone(), })
     }
     fn set_description(description: String) -> () {
         *self_.data_type_ref.data.description.borrow_mut() = Some(description);

@@ -55,7 +55,7 @@ use {
         mem,
         rc::Rc,
     },
-    super::SourceFunction,
+    super::TypeSourceFunctionConst,
 };
 
 // --- TypeSourceFunctionDynamic: eval_half type of a function ref ---
@@ -143,22 +143,22 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let func_ref: Rc<SourceFunction> = from_v8_ref::<Rc<SourceFunction>>(&value).clone();
+        let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::DefinitionSet,
-            type_: Rc::new(SourceFunction { data: func_ref.data.clone() }),
+            type_: Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() }),
         }))
     }
 }
 
-// --- SourceFunction as Type: used after lift ---
-impl Value for SourceFunction {
+// --- TypeSourceFunctionConst as Type: used after lift ---
+impl Value for TypeSourceFunctionConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for SourceFunction {
+impl Type for TypeSourceFunctionConst {
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -167,18 +167,18 @@ impl Type for SourceFunction {
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(SourceFunction { data: self.data.clone() })
+        Rc::new(TypeSourceFunctionConst { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceFunction { data: self.data.clone() }) as Box<dyn AspectFunction>),
+                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectFunction>),
             );
         }
         if *key == aspect_bind_const_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceFunction { data: self.data.clone() }) as Box<dyn AspectBindConst>),
+                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectBindConst>),
             );
         }
         return None;
@@ -193,9 +193,9 @@ impl Type for SourceFunction {
     }
 }
 
-impl Aspect for SourceFunction { }
+impl Aspect for TypeSourceFunctionConst { }
 
-impl AspectBindConst for SourceFunction {
+impl AspectBindConst for TypeSourceFunctionConst {
     fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
         EResult::ok(
             Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
@@ -204,7 +204,7 @@ impl AspectBindConst for SourceFunction {
     }
 }
 
-impl AspectFunction for SourceFunction {
+impl AspectFunction for TypeSourceFunctionConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         // Register with eval context (dedup)
         {

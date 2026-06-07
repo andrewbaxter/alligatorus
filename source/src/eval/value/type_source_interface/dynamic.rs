@@ -47,16 +47,16 @@ use {
         mem,
         rc::Rc,
     },
-    super::SourceInterface,
+    super::TypeSourceInterfaceConst,
 };
 
-impl Value for SourceInterface {
+impl Value for TypeSourceInterfaceConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(SourceInterface { data: self.data.clone() })
+        Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
     }
 }
 
-impl Type for SourceInterface {
+impl Type for TypeSourceInterfaceConst {
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -65,7 +65,7 @@ impl Type for SourceInterface {
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(SourceInterface { data: self.data.clone() })
+        Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -74,21 +74,21 @@ impl Type for SourceInterface {
             return Some(Box::new(true));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectField>));
+            return Some(Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectField>));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
+                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
             );
         }
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
+                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
             );
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceInterface { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
+                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
             );
         }
         return None;
@@ -111,7 +111,7 @@ impl Type for SourceInterface {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(SourceInterface { data: self.data.clone() }),
+                    type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
                 }),
             });
         }
@@ -119,15 +119,15 @@ impl Type for SourceInterface {
     }
 }
 
-impl Aspect for SourceInterface { }
+impl Aspect for TypeSourceInterfaceConst { }
 
-impl AspectConsumeDynamic for SourceInterface {
+impl AspectConsumeDynamic for TypeSourceInterfaceConst {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for SourceInterface {
+impl AspectBindDynamic for TypeSourceInterfaceConst {
     fn bind_dynamic(
         &self,
         xx: &ExprContext,
@@ -139,7 +139,7 @@ impl AspectBindDynamic for SourceInterface {
     }
 }
 
-impl AspectStackValueDynamic for SourceInterface {
+impl AspectStackValueDynamic for TypeSourceInterfaceConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -148,13 +148,13 @@ impl AspectStackValueDynamic for SourceInterface {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(SourceInterface { data: self.data.clone() }),
+                type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
             }),
         }
     }
 }
 
-impl AspectField for SourceInterface {
+impl AspectField for TypeSourceInterfaceConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);

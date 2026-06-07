@@ -7,7 +7,6 @@ use {
             AspectField,
             AspectLiftDynamic,
             AspectStackValueDynamic,
-            AspectType,
             aspect_artifact_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -16,7 +15,6 @@ use {
             aspect_lift_dynamic_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
-            aspect_type_aspect_id,
         },
         code_dynamic::{
             CodeDynamic,
@@ -37,7 +35,7 @@ use {
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_source_interface::{
-                    SourceInterface,
+                    TypeSourceInterfaceConst,
                     SourceInterfaceData,
                 },
             },
@@ -69,106 +67,20 @@ use {
     },
     super::{
         SourceDataMethodData,
-        SourceDataType,
+        TypeSourceDataTypeConst,
         SourceDataTypeData,
     },
 };
 
-// ## --- TypeTypeSourceDataTypeDynamic: the type-type for SourceDataType values
-pub(crate) struct TypeTypeSourceDataTypeDynamic;
+use crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic;
 
-generate_builtin_artifact!(TypeTypeSourceDataTypeDynamic, serde_json::Value);
-
-impl Value for TypeTypeSourceDataTypeDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeTypeSourceDataTypeDynamic {
-    fn desc(&self) -> String {
-        "definition_set_data_type_type".to_string()
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeTypeSourceDataTypeDynamic)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::eval::value::type_any::r#const::type_type_identity() {
-            return Some(Box::new(true));
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectArtifact>));
-        }
-        if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectType>));
-        }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert definition_set_data_type_type".to_string())
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to definition_set_data_type_type".to_string())
-    }
-}
-
-impl Aspect for TypeTypeSourceDataTypeDynamic { }
-
-impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let dt =
-            (self_.as_ref() as &dyn Any)
-                .downcast_ref::<SourceDataType>()
-                .expect("TypeTypeSourceDataTypeDynamic::to_serial expects SourceDataType");
-        let artifact_id = dt.serialize_data_type(xx, gx, loc);
-        EResult::ok(Artifact {
-            type_: artifact_id,
-            data: serde_json::Value::Null,
-        })
-    }
-
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let serial: ArtifactDataDefSetDataType =
-            serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
-        let def_set_artifact = gx.artifacts.get(serial.def_set)?;
-        let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
-        let data_types = def_set.data_types.borrow();
-        let dt_data = data_types[serial.type_index].clone();
-        drop(data_types);
-        Ok(Rc::new(SourceDataType { data: dt_data }))
-    }
-}
-
-impl AspectType for TypeTypeSourceDataTypeDynamic {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let dt = (value as &dyn Any).downcast_ref::<SourceDataType>().unwrap();
-        Rc::new(SourceDataType { data: dt.data.clone() })
-    }
-}
-
-impl Value for SourceDataType {
+impl Value for TypeSourceDataTypeConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
     }
 }
 
-impl Type for SourceDataType {
+impl Type for TypeSourceDataTypeConst {
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -177,7 +89,7 @@ impl Type for SourceDataType {
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(SourceDataType { data: self.data.clone() })
+        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -186,31 +98,31 @@ impl Type for SourceDataType {
             return Some(Box::new(true));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(SourceDataType { data: self.data.clone() }) as Box<dyn AspectField>));
+            return Some(Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceDataType { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
             );
         }
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceDataType { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
             );
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceDataType { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
             );
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceDataType { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>),
             );
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(
-                Box::new(Box::new(SourceDataType { data: self.data.clone() }) as Box<dyn AspectArtifact>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
             );
         }
 
@@ -264,7 +176,7 @@ impl Type for SourceDataType {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(SourceDataType { data: self.data.clone() }),
+                    type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
                 }),
             });
         }
@@ -276,7 +188,7 @@ impl Type for SourceDataType {
                     code: cv.code,
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
-                        type_: Rc::new(SourceInterface { data: iface_data }),
+                        type_: Rc::new(TypeSourceInterfaceConst { data: iface_data }),
                     }),
                 });
             }
@@ -289,15 +201,15 @@ impl Type for SourceDataType {
     }
 }
 
-impl Aspect for SourceDataType { }
+impl Aspect for TypeSourceDataTypeConst { }
 
-impl AspectConsumeDynamic for SourceDataType {
+impl AspectConsumeDynamic for TypeSourceDataTypeConst {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for SourceDataType {
+impl AspectBindDynamic for TypeSourceDataTypeConst {
     fn bind_dynamic(
         &self,
         xx: &ExprContext,
@@ -309,7 +221,7 @@ impl AspectBindDynamic for SourceDataType {
     }
 }
 
-impl AspectStackValueDynamic for SourceDataType {
+impl AspectStackValueDynamic for TypeSourceDataTypeConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -318,13 +230,13 @@ impl AspectStackValueDynamic for SourceDataType {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(SourceDataType { data: self.data.clone() }),
+                type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
             }),
         }
     }
 }
 
-impl AspectField for SourceDataType {
+impl AspectField for TypeSourceDataTypeConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
@@ -423,7 +335,7 @@ impl AspectField for SourceDataType {
 }
 
 // --- AspectLiftDynamic: lift a data type instance from v8 ---
-impl AspectLiftDynamic for SourceDataType {
+impl AspectLiftDynamic for TypeSourceDataTypeConst {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -460,11 +372,11 @@ pub(crate) struct LiftedDefSetDataTypeValue {
 
 impl Value for LiftedDefSetDataTypeValue {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(SourceDataType { data: self.data.clone() })
+        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
 }
 
-impl AspectArtifact for SourceDataType {
+impl AspectArtifact for TypeSourceDataTypeConst {
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -475,7 +387,7 @@ impl AspectArtifact for SourceDataType {
         let lifted =
             (self_.as_ref() as &dyn Any)
                 .downcast_ref::<LiftedDefSetDataTypeValue>()
-                .expect("SourceDataType::to_serial expects LiftedDefSetDataTypeValue");
+                .expect("TypeSourceDataTypeConst::to_serial expects LiftedDefSetDataTypeValue");
 
         // Get the underlying type from the definition set (mortar type)
         let underlying_type = self.data.underlying_type.borrow();
@@ -524,7 +436,7 @@ impl AspectArtifact for SourceDataType {
 
         // Use serialize_type_ref to get the underlying type's artifact identity
         let type_ref_artifact =
-            crate::eval::value::type_source_data_constructor::dynamic::serialize_type_ref(
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
                 xx,
                 gx,
                 loc,
@@ -545,7 +457,7 @@ impl AspectArtifact for SourceDataType {
     }
 }
 
-impl SourceDataType {
+impl TypeSourceDataTypeConst {
     /// Materialize a constant (lifted/deserialized) data type value as a JS object.
     /// Registers the definition set with the eval context so methods get compiled.
     fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<CodeDynamic, String> {
@@ -600,7 +512,7 @@ impl SourceDataType {
         })
     }
 
-    fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
+    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         // Check if already serialized
         if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
             return existing_id;
@@ -654,7 +566,7 @@ fn serialize_definition_set(
     loc: QExprId,
     set: &Gc<DefinitionSet>,
 ) -> ArtifactId {
-    use crate::eval::value::type_source_data_constructor::dynamic::{
+    use crate::eval::value::type_source_data_type_constructor::dynamic::{
         serialize_type_ref,
         unique_to_serial,
     };
@@ -696,7 +608,7 @@ fn serialize_definition_set(
     artifact_id
 }
 
-fn deserialize_definition_set(
+pub(crate) fn deserialize_definition_set(
     xx: &ExprContext,
     gx: &GlobalContext,
     loc: QExprId,
@@ -704,7 +616,7 @@ fn deserialize_definition_set(
 ) -> Result<Gc<DefinitionSet>, String> {
     use crate::eval::{
         value::type_source_data::SourceDataMethodData,
-        value::type_source_data_constructor::dynamic::serial_to_unique,
+        value::type_source_data_type_constructor::dynamic::serial_to_unique,
     };
 
     let serial: ArtifactDataDefSet =

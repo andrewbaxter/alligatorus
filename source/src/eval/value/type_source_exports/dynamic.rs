@@ -26,8 +26,8 @@ use {
                     ValueDynamicSource,
                     bind_dynamic_some,
                 },
-                type_source_data_constructor::SourceDataTypeConstructor,
-                type_source_function::SourceFunction,
+                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+                type_source_function::TypeSourceFunctionConst,
             },
         },
         langhelp::{
@@ -218,7 +218,7 @@ impl AspectField for DefinitionSetExportsType {
                             },
                             value: Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::DefinitionSet,
-                                type_: Rc::new(SourceFunction { data: func_data.clone(), }),
+                                type_: Rc::new(TypeSourceFunctionConst { data: func_data.clone(), }),
                             }),
                         });
                     }
@@ -237,7 +237,7 @@ impl AspectField for DefinitionSetExportsType {
                             },
                             value: Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::Expr,
-                                type_: Rc::new(SourceDataTypeConstructor { data: dt_data.clone(), }),
+                                type_: Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone(), }),
                             }),
                         });
                     }
@@ -252,7 +252,7 @@ impl AspectField for DefinitionSetExportsType {
             let functions = self.set.functions.borrow();
             for func_data in functions.iter() {
                 if func_data.name.as_deref() == Some(key) {
-                    return Some(Rc::new(SourceFunction { data: func_data.clone() }));
+                    return Some(Rc::new(TypeSourceFunctionConst { data: func_data.clone() }));
                 }
             }
         }
@@ -260,7 +260,7 @@ impl AspectField for DefinitionSetExportsType {
             let data_types = self.set.data_types.borrow();
             for dt_data in data_types.iter() {
                 if dt_data.name.as_deref() == Some(key) {
-                    return Some(Rc::new(SourceDataTypeConstructor { data: dt_data.clone() }));
+                    return Some(Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() }));
                 }
             }
         }

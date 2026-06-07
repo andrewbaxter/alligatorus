@@ -29,8 +29,8 @@ use {
                     ValueDynamicSource,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_source_function::SourceFunction,
-                type_source_interface::SourceInterface,
+                type_source_function::TypeSourceFunctionConst,
+                type_source_interface::TypeSourceInterfaceConst,
                 type_source_interface_ref::SourceInterfaceRef,
             },
         },
@@ -57,9 +57,9 @@ use {
 
 dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
     data {
-        func_ref: Rc < SourceFunction >
+        func_ref: Rc < TypeSourceFunctionConst >
     }
-    field func: Rc < SourceFunction > {
+    field func: Rc < TypeSourceFunctionConst > {
         self_.func_ref.clone()
     }
     fn set_description(description: String) -> () {
@@ -90,7 +90,7 @@ dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
             crate::eval::dynamic_util::throw_error(scope, "Function already has an arg type");
             return;
         }
-        *arg_type = Some(Rc::new(SourceInterface { data: iface_ref.data.clone(), }) as Rc<dyn crate::langhelp::Type>);
+        *arg_type = Some(Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone(), }) as Rc<dyn crate::langhelp::Type>);
     }
     fn ret_(type_ref: AnyType) -> () {
         let mut ret_type = self_.func_ref.data.ret_type.borrow_mut();

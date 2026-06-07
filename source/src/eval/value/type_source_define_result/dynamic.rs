@@ -31,7 +31,7 @@ use {
                 type_source_data::SourceDataTypeData,
                 type_source_data_ref::SourceDataTypeRef,
                 type_source_function::{
-                    SourceFunction,
+                    TypeSourceFunctionConst,
                     SourceFunctionData,
                 },
                 type_source_interface::SourceInterfaceData,
@@ -88,7 +88,7 @@ dynamic_wrap!(struct SourceDefineResult(self_, scope) {
             ),
         });
         ds.functions.borrow_mut().push(func_data.clone());
-        let func_ref = Rc::new(SourceFunction { data: func_data, });
+        let func_ref = Rc::new(TypeSourceFunctionConst { data: func_data, });
         SourceNewFuncResult { func_ref }
     }
     fn new_data(name: String) -> SourceNewDataResult {

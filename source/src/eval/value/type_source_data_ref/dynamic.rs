@@ -19,7 +19,7 @@ use {
                     ValueDynamicSource,
                     bind_dynamic_some,
                 },
-                type_source_data::SourceDataType,
+                type_source_data::TypeSourceDataTypeConst,
             },
         },
         langhelp::{
@@ -42,35 +42,35 @@ use {
     },
 };
 
-pub(crate) struct TypeSourceDataTypeRefDynamic;
+pub(crate) struct TypeSourceDataDynamic;
 
-impl Value for TypeSourceDataTypeRefDynamic {
+impl Value for TypeSourceDataDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeSourceDataTypeRefDynamic {
+impl Type for TypeSourceDataDynamic {
     fn desc(&self) -> String {
         format!("definition_set_data_type_ref")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceDataTypeRefDynamic)
+        Rc::new(TypeSourceDataDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectConsumeDynamic>));
+            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectBindDynamic>));
+            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectStackValueDynamic>));
+            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftDynamic>));
+            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
@@ -84,15 +84,15 @@ impl Type for TypeSourceDataTypeRefDynamic {
     }
 }
 
-impl Aspect for TypeSourceDataTypeRefDynamic { }
+impl Aspect for TypeSourceDataDynamic { }
 
-impl AspectConsumeDynamic for TypeSourceDataTypeRefDynamic {
+impl AspectConsumeDynamic for TypeSourceDataDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
+impl AspectBindDynamic for TypeSourceDataDynamic {
     fn bind_dynamic(
         &self,
         xx: &ExprContext,
@@ -104,7 +104,7 @@ impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
+impl AspectStackValueDynamic for TypeSourceDataDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -113,13 +113,13 @@ impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeRefDynamic),
+                type_: Rc::new(TypeSourceDataDynamic),
             }),
         }
     }
 }
 
-impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
+impl AspectLiftDynamic for TypeSourceDataDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -129,12 +129,12 @@ impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let dt =
             (type_.as_ref() as &dyn Any)
-                .downcast_ref::<SourceDataType>()
-                .expect("TypeSourceDataTypeRefDynamic::lift: expected SourceDataType");
+                .downcast_ref::<TypeSourceDataTypeConst>()
+                .expect("TypeSourceDataDynamic::lift: expected TypeSourceDataTypeConst");
         dt.data.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
-            type_: Rc::new(SourceDataType { data: dt.data.clone() }),
+            type_: Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }),
         }))
     }
 }

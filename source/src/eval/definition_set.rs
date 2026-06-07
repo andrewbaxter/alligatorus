@@ -5,19 +5,19 @@ use {
             value::{
                 type_source_data::{
                     SourceDataMethodData,
-                    SourceDataType,
+                    TypeSourceDataTypeConst,
                     SourceDataTypeData,
                     SourceDataTypeInterfaceImplData,
                     SourceDataTypeInterfaceMethodImplData,
                 },
-                type_source_data_constructor::SourceDataTypeConstructor,
+                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_data_ref::SourceDataTypeRef,
                 type_source_function::{
-                    SourceFunction,
+                    TypeSourceFunctionConst,
                     SourceFunctionData,
                 },
                 type_source_interface::{
-                    SourceInterface,
+                    TypeSourceInterfaceConst,
                     SourceInterfaceData,
                     SourceInterfaceMethodData,
                 },
