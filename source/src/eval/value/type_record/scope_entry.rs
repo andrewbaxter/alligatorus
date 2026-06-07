@@ -40,20 +40,25 @@ impl ScopeEntry for ScopeEntryRecordMortar {
         let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
         let (use_code, source) = if has_mortar {
             let js_key = self.js_key.expect("ScopeEntryRecordMortar with mortar fields must have js_key");
-            (Code {
-                loc: loc,
-                code: Code_::Dyn(Rc::new(crate::code_dynamic::CodeDynamic {
+            (
+                Code {
                     loc: loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
-                        crate::code_dynamic::CodeDynamicBindingUse { id: js_key },
-                    ),
-                })),
-            }, Some(super::super::type_dynamic::ValueDynamicSource::Binding(
-                super::super::type_dynamic::ValueDynamicDataScope {
-                    loc: loc,
-                    key: js_key,
+                    code: Code_::Dyn(Rc::new(crate::code_dynamic::CodeDynamic {
+                        loc: loc,
+                        type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                            crate::code_dynamic::CodeDynamicBindingUse { id: js_key },
+                        ),
+                    })),
                 },
-            )))
+                Some(
+                    super::super::type_dynamic::ValueDynamicSource::Binding(
+                        super::super::type_dynamic::ValueDynamicDataScope {
+                            loc: loc,
+                            key: js_key,
+                        },
+                    ),
+                ),
+            )
         } else {
             (Code {
                 loc: loc,

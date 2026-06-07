@@ -266,11 +266,16 @@ macro_rules! dynamic_wrap{
                     if * key == aspect_consume_dynamic_aspect_id() {
                         return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectConsumeDynamic >));
                     }
+                    if * key == aspect_bind_dynamic_sub_aspect_id() {
+                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectBindDynamicSub >));
+                    }
                     if * key == aspect_bind_aspect_id() {
                         return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectBind >));
                     }
                     if * key == aspect_stack_value_dynamic_aspect_id() {
-                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectStackValueDynamic >));
+                        return Some(
+                            Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectStackValueDynamic >)
+                        );
                     }
                     None
                 }
@@ -301,6 +306,16 @@ macro_rules! dynamic_wrap{
                     cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
                 }
             }
+            impl AspectBindDynamicSub for[< Type $name Dynamic >] {
+                fn bind_dynamic_sub(
+                    &self,
+                    xx: &ExprContext,
+                    loc: QExprId,
+                    cv: CodeValue,
+                ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+                    crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+                }
+            }
             impl AspectBind for[< Type $name Dynamic >] {
                 fn bind(
                     &self,
@@ -308,7 +323,7 @@ macro_rules! dynamic_wrap{
                     loc: QExprId,
                     cv: CodeValue,
                 ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-                    crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
+                    crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {

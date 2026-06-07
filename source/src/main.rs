@@ -11,6 +11,7 @@ use {
             compile_importid,
             expr::{
                 Expr,
+                ExprAs,
                 ExprBind,
                 ExprBlock,
                 ExprCall,
@@ -18,7 +19,6 @@ use {
                 ExprField,
                 ExprForeach,
                 ExprIf,
-                ExprAs,
                 ExprImport,
                 ExprLower,
                 ExprMatch,

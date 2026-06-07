@@ -27,4 +27,3 @@ pub(crate) struct SourceTaggedUnionData {
 pub(crate) struct SourceTaggedUnionRef {
     pub data: Rc<SourceTaggedUnionData>,
 }
-

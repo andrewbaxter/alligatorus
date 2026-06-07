@@ -2,21 +2,25 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
         code_dynamic::CodeDynamic,
         eval::{
+            aspect::ScopeEntryDynamicSub,
             from_v8_ref,
             value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
-                mortar_bind_to_scope,
+                bind_dynamic,
+                bind_dynamic_sub_default,
             },
         },
         langhelp::{
@@ -37,10 +41,11 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::SourceTaggedUnionConstructorRef,
+    super::{
+        SourceTaggedUnionConstructorRef,
+        r#const::TypeSourceTaggedUnionConstructorConst,
+    },
 };
-
-use super::r#const::TypeSourceTaggedUnionConstructorConst;
 
 pub(crate) struct TypeSourceTaggedUnionConstructorDynamic;
 
@@ -65,10 +70,11 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
                 Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
             );
         }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectBindDynamicSub>));
+        }
         if *key == aspect_bind_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectBind>),
-            );
+            return Some(Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectBind>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
@@ -100,6 +106,12 @@ impl AspectConsumeDynamic for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
+impl AspectBindDynamicSub for TypeSourceTaggedUnionConstructorDynamic {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
 impl AspectBind for TypeSourceTaggedUnionConstructorDynamic {
     fn bind(
         &self,
@@ -107,7 +119,7 @@ impl AspectBind for TypeSourceTaggedUnionConstructorDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        mortar_bind_to_scope(xx, loc, cv)
+        bind_dynamic(xx, loc, cv)
     }
 }
 
@@ -137,7 +149,9 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
         let ctor =
             (type_.as_ref() as &dyn Any)
                 .downcast_ref::<TypeSourceTaggedUnionConstructorConst>()
-                .expect("TypeSourceTaggedUnionConstructorDynamic::lift: expected TypeSourceTaggedUnionConstructorConst");
+                .expect(
+                    "TypeSourceTaggedUnionConstructorDynamic::lift: expected TypeSourceTaggedUnionConstructorConst",
+                );
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
             type_: Rc::new(TypeSourceTaggedUnionConstructorConst {

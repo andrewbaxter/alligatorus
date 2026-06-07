@@ -2,9 +2,11 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
         },
@@ -20,7 +22,10 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
-            value::type_dynamic::mortar_bind_to_scope,
+            value::type_dynamic::{
+                bind_dynamic,
+                bind_dynamic_sub_default,
+            },
         },
         langhelp::{
             Aspect,
@@ -80,6 +85,9 @@ impl Type for TypeExpr {
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectBindDynamicSub>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectBind>));
@@ -145,14 +153,15 @@ impl AspectConsumeDynamic for TypeExpr {
     }
 }
 
+impl AspectBindDynamicSub for TypeExpr {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
 impl AspectBind for TypeExpr {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        mortar_bind_to_scope(xx, loc, cv)
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
     }
 }
 

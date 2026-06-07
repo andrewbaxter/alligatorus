@@ -2,6 +2,7 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectField,
             AspectFunction,
@@ -9,6 +10,7 @@ use {
             AspectListDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
             aspect_field_aspect_id,
@@ -109,6 +111,9 @@ impl Type for TypeListDynamic {
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamicSub>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBind>));
@@ -248,14 +253,15 @@ impl AspectConsumeDynamic for TypeListDynamic {
     }
 }
 
+impl AspectBindDynamicSub for TypeListDynamic {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
 impl AspectBind for TypeListDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
     }
 }
 

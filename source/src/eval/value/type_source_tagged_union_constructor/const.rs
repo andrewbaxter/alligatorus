@@ -15,6 +15,7 @@ use {
             EResult,
             Erb,
             typecheck_convert,
+            value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
         },
         langhelp::{
             Aspect,
@@ -34,8 +35,6 @@ use {
     },
     super::SourceTaggedUnionConstructorRef,
 };
-
-use crate::eval::value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst;
 
 pub(crate) struct TypeSourceTaggedUnionConstructorConst {
     pub data: Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionData>,

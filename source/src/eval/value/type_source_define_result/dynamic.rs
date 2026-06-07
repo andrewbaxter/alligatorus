@@ -2,10 +2,12 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectField,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -28,14 +30,18 @@ use {
                     ValueDynamicSource,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_source_data::SourceDataTypeData,
-                type_source_data::SourceDataTypeRef,
-                type_source_function::{
-                    TypeSourceFunctionConst,
-                    SourceFunctionData,
+                type_source_data::{
+                    SourceDataTypeData,
+                    SourceDataTypeRef,
                 },
-                type_source_interface::SourceInterfaceData,
-                type_source_interface::SourceInterfaceRef,
+                type_source_function::{
+                    SourceFunctionData,
+                    TypeSourceFunctionConst,
+                },
+                type_source_interface::{
+                    SourceInterfaceData,
+                    SourceInterfaceRef,
+                },
                 type_source_new_data_result::dynamic::SourceNewDataResult,
                 type_source_new_func_result::dynamic::SourceNewFuncResult,
                 type_source_new_interface_result::dynamic::SourceNewInterfaceResult,

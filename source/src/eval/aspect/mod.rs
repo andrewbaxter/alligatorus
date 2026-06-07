@@ -4,6 +4,7 @@ mod lift_dynamic;
 mod stack_value_dynamic;
 mod consume_dynamic;
 mod bind;
+mod bind_dynamic_sub;
 mod string_dynamic;
 mod null;
 mod string_const;
@@ -26,6 +27,7 @@ mod record;
 pub(crate) use {
     artifact::*,
     bind::*,
+    bind_dynamic_sub::*,
     bool_const::*,
     bool_dynamic::*,
     consume_dynamic::*,

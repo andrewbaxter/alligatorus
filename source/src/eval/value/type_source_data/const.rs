@@ -3,12 +3,14 @@ use {
         builtin::{
             AspectArtifact,
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectField,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_lift_dynamic_aspect_id,
@@ -25,18 +27,22 @@ use {
         },
         eval::{
             Erb,
+            aspect::ScopeEntryDynamicSub,
             definition_set::DefinitionSet,
             value::{
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
+                    bind_dynamic,
+                    bind_dynamic_sub_default,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_source_interface::{
-                    TypeSourceInterfaceConst,
                     SourceInterfaceData,
+                    TypeSourceInterfaceConst,
                 },
+                type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
             },
         },
         langhelp::{
@@ -66,12 +72,10 @@ use {
     },
     super::{
         SourceDataMethodData,
-        TypeSourceDataTypeConst,
         SourceDataTypeData,
+        TypeSourceDataTypeConst,
     },
 };
-
-use crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic;
 
 impl Value for TypeSourceDataTypeConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -97,11 +101,20 @@ impl Type for TypeSourceDataTypeConst {
             return Some(Box::new(true));
         }
         if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>));
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
+            );
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBindDynamicSub>),
             );
         }
         if *key == aspect_bind_aspect_id() {
@@ -111,12 +124,17 @@ impl Type for TypeSourceDataTypeConst {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as
+                        Box<dyn AspectStackValueDynamic>,
+                ),
             );
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>),
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                ),
             );
         }
         if *key == aspect_artifact_aspect_id() {
@@ -208,6 +226,12 @@ impl AspectConsumeDynamic for TypeSourceDataTypeConst {
     }
 }
 
+impl AspectBindDynamicSub for TypeSourceDataTypeConst {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
 impl AspectBind for TypeSourceDataTypeConst {
     fn bind(
         &self,
@@ -215,7 +239,7 @@ impl AspectBind for TypeSourceDataTypeConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
+        bind_dynamic(xx, loc, cv)
     }
 }
 

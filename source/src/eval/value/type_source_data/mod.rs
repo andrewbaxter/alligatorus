@@ -88,8 +88,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        let type_: Rc<dyn crate::langhelp::Type> =
-            Rc::new(TypeSourceDataTypeConst { data: self.data.clone() });
+        let type_: Rc<dyn crate::langhelp::Type> = Rc::new(TypeSourceDataTypeConst { data: self.data.clone() });
         crate::eval::to_v8(scope, type_).into()
     }
 }

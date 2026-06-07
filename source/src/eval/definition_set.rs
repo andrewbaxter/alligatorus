@@ -5,23 +5,23 @@ use {
             value::{
                 type_source_data::{
                     SourceDataMethodData,
-                    TypeSourceDataTypeConst,
                     SourceDataTypeData,
                     SourceDataTypeInterfaceImplData,
                     SourceDataTypeInterfaceMethodImplData,
+                    SourceDataTypeRef,
+                    TypeSourceDataTypeConst,
                 },
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
-                type_source_data::SourceDataTypeRef,
                 type_source_function::{
-                    TypeSourceFunctionConst,
                     SourceFunctionData,
+                    TypeSourceFunctionConst,
                 },
                 type_source_interface::{
-                    TypeSourceInterfaceConst,
                     SourceInterfaceData,
                     SourceInterfaceMethodData,
+                    SourceInterfaceRef,
+                    TypeSourceInterfaceConst,
                 },
-                type_source_interface::SourceInterfaceRef,
                 type_source_tagged_union::{
                     SourceTaggedUnionData,
                     SourceTaggedUnionRef,

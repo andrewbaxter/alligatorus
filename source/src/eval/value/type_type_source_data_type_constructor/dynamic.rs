@@ -84,7 +84,9 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
         let ctor =
             (self_.as_ref() as &dyn Any)
                 .downcast_ref::<TypeSourceDataTypeConstructorConst>()
-                .expect("TypeTypeSourceDataTypeConstructorDynamic::to_serial expects TypeSourceDataTypeConstructorConst");
+                .expect(
+                    "TypeTypeSourceDataTypeConstructorDynamic::to_serial expects TypeSourceDataTypeConstructorConst",
+                );
         let artifact_id = ctor.serialize_ctor(xx, gx, loc);
         EResult::ok(Artifact {
             type_: artifact_id,

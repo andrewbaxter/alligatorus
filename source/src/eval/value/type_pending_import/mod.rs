@@ -55,8 +55,7 @@ impl Type for TypePendingImport {
         if *key == crate::builtin::aspect_bind_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as
-                        Box<dyn crate::builtin::AspectBind>,
+                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn crate::builtin::AspectBind>,
                 ),
             );
         }
@@ -90,17 +89,19 @@ struct PendingImportBind {
 impl crate::langhelp::Aspect for PendingImportBind { }
 
 impl crate::builtin::AspectBind for PendingImportBind {
-    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((
-            crate::langhelp::Code {
-                loc: loc,
-                code: crate::langhelp::Code_::None,
-            },
-            Box::new(ScopeEntryPendingImport {
-                state: self.state.clone(),
-                code: cv.code,
-            }) as Box<dyn ScopeEntry>,
-        ))
+    fn bind(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((crate::langhelp::Code {
+            loc: loc,
+            code: crate::langhelp::Code_::None,
+        }, Box::new(ScopeEntryPendingImport {
+            state: self.state.clone(),
+            code: cv.code,
+        }) as Box<dyn ScopeEntry>))
     }
 }
 pub mod scope_entry;

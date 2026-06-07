@@ -2,10 +2,12 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectField,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -30,8 +32,10 @@ use {
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_function::TypeSourceFunctionConst,
-                type_source_interface::TypeSourceInterfaceConst,
-                type_source_interface::SourceInterfaceRef,
+                type_source_interface::{
+                    SourceInterfaceRef,
+                    TypeSourceInterfaceConst,
+                },
             },
         },
         langhelp::{
@@ -90,7 +94,10 @@ dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
             crate::eval::dynamic_util::throw_error(scope, "Function already has an arg type");
             return;
         }
-        *arg_type = Some(Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone(), }) as Rc<dyn crate::langhelp::Type>);
+        *arg_type =
+            Some(
+                Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone(), }) as Rc<dyn crate::langhelp::Type>
+            );
     }
     fn ret_(type_ref: AnyType) -> () {
         let mut ret_type = self_.func_ref.data.ret_type.borrow_mut();

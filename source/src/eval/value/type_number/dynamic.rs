@@ -2,6 +2,7 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectField,
             AspectNumberDynamic,
@@ -10,6 +11,7 @@ use {
             AspectSet,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_number_const_get_maybe,
@@ -31,12 +33,14 @@ use {
         },
         eval::{
             Erb,
+            aspect::ScopeEntryDynamicSub,
             value::{
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    mortar_bind_to_scope,
+                    bind_dynamic,
+                    bind_dynamic_sub_default,
                     mortar_consume_to_dynamic,
                     mortar_dynamic_stack_to_value,
                     mortar_set,
@@ -91,6 +95,9 @@ impl Type for TypeNumberDynamic {
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectBindDynamicSub>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectBind>));
@@ -190,14 +197,20 @@ impl AspectConsumeDynamic for TypeNumberDynamic {
     }
 }
 
-impl AspectBind for TypeNumberDynamic {
-    fn bind(
+impl AspectBindDynamicSub for TypeNumberDynamic {
+    fn bind_dynamic_sub(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        mortar_bind_to_scope(xx, loc, cv)
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectBind for TypeNumberDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
     }
 }
 

@@ -2,15 +2,19 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectTuple,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
+            aspect_bind_dynamic_sub_get,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
             aspect_lift_dynamic_aspect_id,
             aspect_tuple_aspect_id,
         },
+        eval::aspect::ScopeEntryDynamicSub,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,
@@ -38,7 +42,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::type_dynamic::mortar_bind_to_scope,
+    super::type_dynamic::bind_dynamic,
 };
 
 /// Represents a single element entry in a Tuple.
@@ -118,6 +122,9 @@ impl Type for Tuple {
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindDynamicSub>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBind>));
@@ -379,14 +386,61 @@ impl AspectConsumeDynamic for Tuple {
     }
 }
 
+impl AspectBindDynamicSub for Tuple {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        let carry = cv.code;
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
+                .ok()
+                .expect("Tuple bind_dynamic_sub: Rc not unique");
+        let mut errors = vec![];
+        let mut js_elements = Vec::new();
+        let mut element_types = Vec::new();
+        for (elem, self_elem) in tuple.elements.into_iter().zip(self.elements.iter()) {
+            let elem_type = match self_elem {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("bind_dynamic_sub on non-type tuple"),
+            };
+            let elem_res = match elem {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Mortar(_) => panic!("bind_dynamic_sub on mortar tuple element"),
+            };
+            if let Some(errs) = elem_res.errors {
+                errors.extend(errs);
+            }
+            if let Some(elem_cv) = elem_res.v {
+                match aspect_bind_dynamic_sub_get(xx, loc, elem_type.as_ref()).into_res() {
+                    Ok(bind_sub) => match bind_sub.bind_dynamic_sub(xx, loc, elem_cv).into_res() {
+                        Ok((js, sub)) => {
+                            js_elements.push(js);
+                            element_types.push(TupleElement::Mortar(sub.type_));
+                        },
+                        Err(e) => errors.extend(e),
+                    },
+                    Err(e) => errors.extend(e),
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return EResult {
+                v: None,
+                errors: Some(errors),
+            };
+        }
+        let tuple_type = Rc::new(Tuple {
+            source: None,
+            elements: element_types,
+        }) as Rc<dyn Type>;
+        EResult::ok((wrap_with_carry(loc, carry, CodeDynamic {
+            loc,
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
+        }), ScopeEntryDynamicSub { type_: tuple_type }))
+    }
+}
+
 impl AspectBind for Tuple {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        mortar_bind_to_scope(xx, loc, cv)
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
     }
 }
 pub mod scope_entry;

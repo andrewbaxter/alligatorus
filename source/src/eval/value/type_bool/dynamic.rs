@@ -2,10 +2,12 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectBoolDynamic,
             AspectConsumeDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_bool_const_get_maybe,
             aspect_bool_dynamic_aspect_id,
             aspect_bool_dynamic_get_maybe,
@@ -20,9 +22,12 @@ use {
         },
         eval::{
             Erb,
+            aspect::ScopeEntryDynamicSub,
             value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
+                bind_dynamic,
+                bind_dynamic_sub_default,
                 mortar_consume_to_dynamic,
                 mortar_dynamic_stack_to_value,
             },
@@ -72,6 +77,9 @@ impl Type for TypeBoolDynamic {
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectBindDynamicSub>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectBind>));
@@ -159,13 +167,19 @@ impl AspectConsumeDynamic for TypeBoolDynamic {
     }
 }
 
-impl AspectBind for TypeBoolDynamic {
-    fn bind(
+impl AspectBindDynamicSub for TypeBoolDynamic {
+    fn bind_dynamic_sub(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectBind for TypeBoolDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
     }
 }

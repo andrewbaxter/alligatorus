@@ -13,7 +13,7 @@ use {
     crate::{
         builtin::{
             aspect_artifact_get,
-            aspect_bind_get_maybe,
+            aspect_bind_get,
             aspect_bool_const_get_maybe,
             aspect_consume_dynamic_get,
             aspect_field_get,
@@ -254,7 +254,6 @@ impl Erb {
 }
 
 pub(crate) trait Target {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)>;
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
     fn if_(
         &self,
@@ -277,17 +276,6 @@ pub(crate) trait Target {
 pub(crate) struct MortarTarget;
 
 impl Target for MortarTarget {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        let Some(bind) = aspect_bind_get_maybe(xx, vtype.as_ref()) else {
-            return EResult::err(
-                loc,
-                format!("Type ({}) is missing aspect AspectBind", vtype.desc()),
-            );
-        };
-        bind.bind(xx, loc, cv)
-    }
-
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
         let mut js_entries = vec![];
         let mut errors = vec![];
@@ -638,7 +626,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         });
                         let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_ref()))?;
                         entries.push(base.code);
-                        let binding = erb.must_er(xx.target.bind(&child_xx, sub.loc, value))?;
+                        let value_type = value.value.type_(&child_xx, sub.loc);
+                        let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
+                        let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
                         entries.push(binding.0);
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
                         last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
@@ -1944,7 +1934,10 @@ fn eval(
         let ext_type = match value {
             External::StagedExprCell(_) => "StagedExprCell",
             External::StageLiftCell(_) => "StageLiftCell",
-            External::Type(t) => { eprintln!("  external {:?} = Type({})", id, t.desc()); "Type" },
+            External::Type(t) => {
+                eprintln!("  external {:?} = Type({})", id, t.desc());
+                "Type"
+            },
         };
         let _ = ext_type;
         let key = v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast();

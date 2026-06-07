@@ -3,12 +3,14 @@ use {
         builtin::{
             AspectArtifact,
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectNull,
             AspectStackValueDynamic,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_null_aspect_id,
@@ -87,6 +89,9 @@ impl Type for TypeNullDynamic {
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBindDynamicSub>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBind>));
@@ -195,6 +200,12 @@ impl AspectConsumeDynamic for TypeNullDynamic {
     }
 }
 
+impl AspectBindDynamicSub for TypeNullDynamic {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
 impl AspectBind for TypeNullDynamic {
     fn bind(
         &self,
@@ -202,6 +213,6 @@ impl AspectBind for TypeNullDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
     }
 }

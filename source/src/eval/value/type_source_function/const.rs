@@ -89,14 +89,16 @@ impl Aspect for TypeSourceFunctionConst { }
 
 impl AspectBind for TypeSourceFunctionConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((
-            Code {
-                loc: loc,
-                code: Code_::None,
-            },
-            Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
-                Box<dyn ScopeEntry>,
-        ))
+        EResult::ok(
+            (
+                Code {
+                    loc: loc,
+                    code: Code_::None,
+                },
+                Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
+                    Box<dyn ScopeEntry>,
+            ),
+        )
     }
 }
 
@@ -118,7 +120,6 @@ impl AspectFunction for TypeSourceFunctionConst {
                 sets.push(set.clone());
             }
         }
-
         let (scope_id, arg_type, ret_type) = {
             let sid = self.data.scope_entry_id.get().expect("Definition set function not registered");
             let arg_type = self.data.arg_type.borrow().clone().expect("Definition set function missing arg type");
@@ -130,10 +131,8 @@ impl AspectFunction for TypeSourceFunctionConst {
             let arg_value_type = argument.value.type_(xx, loc);
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
                 let elements = arg_tuple.take_elements(argument.value);
-
                 let is_null_arg = aspect_null_get_maybe(xx, arg_type.as_ref()).is_some();
-                if elements.is_empty() && is_null_arg {
-                } else if elements.len() != 1 {
+                if elements.is_empty() && is_null_arg { } else if elements.len() != 1 {
                     return erb.err_new(format!("Function expects 1 argument, got {}", elements.len()));
                 } else {
                     let elem = elements.into_iter().next().unwrap();

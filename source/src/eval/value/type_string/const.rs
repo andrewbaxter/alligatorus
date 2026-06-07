@@ -3,11 +3,13 @@ use {
         builtin::{
             AspectArtifact,
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectField,
             AspectStringConst,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_string_const_aspect_id,
@@ -15,10 +17,10 @@ use {
             aspect_string_const_get_maybe,
         },
         code_dynamic::CodeDynamic,
+        eval::aspect::ScopeEntryDynamicSub,
         eval::{
             Erb,
             value::{
-                type_dynamic::mortar_bind_to_scope,
                 type_string::dynamic::TypeStringDynamic,
                 value_string::r#const::ValueStringConst,
             },
@@ -82,6 +84,9 @@ impl Type for TypeStringConst {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectField>));
         }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBindDynamicSub>));
+        }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBind>));
         }
@@ -131,20 +136,19 @@ impl AspectConsumeDynamic for TypeStringConst {
     }
 }
 
+impl AspectBindDynamicSub for TypeStringConst {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        let vtype = cv.value.type_(xx, loc);
+        self.to_dynamic(xx, loc, cv).map(|c| (c, ScopeEntryDynamicSub { type_: vtype }))
+    }
+}
+
 impl AspectBind for TypeStringConst {
-    fn bind(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((
-            Code {
-                loc: loc,
-                code: crate::langhelp::Code_::None,
-            },
-            Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>,
-        ))
+    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((Code {
+            loc: loc,
+            code: crate::langhelp::Code_::None,
+        }, Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
     }
 }
 

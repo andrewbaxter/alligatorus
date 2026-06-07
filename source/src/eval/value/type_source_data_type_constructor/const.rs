@@ -18,7 +18,10 @@ use {
             Erb,
             definition_set::DefinitionSet,
             typecheck_convert,
-            value::type_source_data::TypeSourceDataTypeConst,
+            value::{
+                type_source_data::TypeSourceDataTypeConst,
+                type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
+            },
         },
         langhelp::{
             Artifact,
@@ -56,8 +59,6 @@ use {
     },
 };
 
-use crate::eval::value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic;
-
 impl Value for TypeSourceDataTypeConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
@@ -80,7 +81,8 @@ impl Type for TypeSourceDataTypeConstructorConst {
         if *key == aspect_function_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as Box<dyn AspectFunction>,
+                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as
+                        Box<dyn AspectFunction>,
                 ),
             );
         }
@@ -107,14 +109,16 @@ impl Aspect for TypeSourceDataTypeConstructorConst { }
 
 impl AspectBind for TypeSourceDataTypeConstructorConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((
-            Code {
-                loc: loc,
-                code: Code_::None,
-            },
-            Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
-                Box<dyn ScopeEntry>,
-        ))
+        EResult::ok(
+            (
+                Code {
+                    loc: loc,
+                    code: Code_::None,
+                },
+                Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
+                    Box<dyn ScopeEntry>,
+            ),
+        )
     }
 }
 
@@ -135,7 +139,6 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
-
             let mut object_fields = vec![(self.data.data_field.clone(), underlying_js),];
             for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
@@ -171,10 +174,8 @@ impl TypeSourceDataTypeConstructorConst {
         if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
             return existing_id;
         }
-
         let artifact_id = gx.artifacts.reserve_id();
         *self.data.artifact_id.borrow_mut() = Some(artifact_id.clone());
-
         let serial_data = {
             let underlying_type = self.data.underlying_type.borrow();
             let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
@@ -200,7 +201,6 @@ impl TypeSourceDataTypeConstructorConst {
             }
         };
         let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
-
         gx.artifacts.set(artifact_id.clone(), Artifact {
             type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
             data: json,

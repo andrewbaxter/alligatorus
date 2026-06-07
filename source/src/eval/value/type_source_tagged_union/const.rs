@@ -2,19 +2,25 @@ use {
     crate::{
         builtin::{
             AspectBind,
+            AspectBindDynamicSub,
             AspectConsumeDynamic,
             AspectStackValueDynamic,
             AspectTaggedUnion,
             aspect_bind_aspect_id,
+            aspect_bind_dynamic_sub_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
         },
         code_dynamic::CodeDynamic,
-        eval::value::type_dynamic::{
-            ValueDynamic,
-            ValueDynamicSource,
-            mortar_bind_to_scope,
+        eval::{
+            aspect::ScopeEntryDynamicSub,
+            value::type_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic,
+                bind_dynamic_sub_default,
+            },
         },
         langhelp::{
             Aspect,
@@ -62,12 +68,22 @@ impl Type for TypeSourceTaggedUnionConst {
         }
         if *key == aspect_tagged_union_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>),
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>,
+                ),
             );
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
+                        Box<dyn AspectConsumeDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamicSub>),
             );
         }
         if *key == aspect_bind_aspect_id() {
@@ -77,7 +93,10 @@ impl Type for TypeSourceTaggedUnionConst {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
+                        Box<dyn AspectStackValueDynamic>,
+                ),
             );
         }
         return None;
@@ -106,6 +125,12 @@ impl AspectConsumeDynamic for TypeSourceTaggedUnionConst {
     }
 }
 
+impl AspectBindDynamicSub for TypeSourceTaggedUnionConst {
+    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
 impl AspectBind for TypeSourceTaggedUnionConst {
     fn bind(
         &self,
@@ -113,7 +138,7 @@ impl AspectBind for TypeSourceTaggedUnionConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        mortar_bind_to_scope(xx, loc, cv)
+        bind_dynamic(xx, loc, cv)
     }
 }
 

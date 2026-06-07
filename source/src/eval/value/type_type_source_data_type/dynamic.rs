@@ -6,12 +6,10 @@ use {
             aspect_artifact_aspect_id,
             aspect_type_aspect_id,
         },
-        eval::value::{
-            type_source_data::{
-                TypeSourceDataTypeConst,
-                artifact::ArtifactDataDefSetDataType,
-                r#const::deserialize_definition_set,
-            },
+        eval::value::type_source_data::{
+            TypeSourceDataTypeConst,
+            artifact::ArtifactDataDefSetDataType,
+            r#const::deserialize_definition_set,
         },
         langhelp::{
             Artifact,
