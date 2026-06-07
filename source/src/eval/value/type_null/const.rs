@@ -33,15 +33,37 @@ use {
     },
 };
 
+generate_builtin_artifact!(TypeNullConst, super::artifact::ArtifactDataNull);
 pub(crate) struct TypeNullConst;
 
-generate_builtin_artifact!(TypeNullConst, super::artifact::ArtifactDataNull);
+impl Aspect for TypeNullConst { }
 
-impl Value for TypeNullConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl AspectArtifact for TypeNullConst {
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        EResult::ok(Self::build_artifact(()))
+    }
+
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        match data {
+            serde_json::Value::Null => Ok(Rc::new(ValueNullConst) as Rc<dyn Value>),
+            _ => Err("Expected null data for null type".to_string()),
+        }
     }
 }
+
+impl AspectNull for TypeNullConst { }
 
 impl Type for TypeNullConst {
     fn desc(&self) -> String {
@@ -96,31 +118,8 @@ impl Type for TypeNullConst {
     }
 }
 
-impl Aspect for TypeNullConst { }
-
-impl AspectNull for TypeNullConst { }
-
-impl AspectArtifact for TypeNullConst {
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        EResult::ok(Self::build_artifact(()))
-    }
-
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        match data {
-            serde_json::Value::Null => Ok(Rc::new(ValueNullConst) as Rc<dyn Value>),
-            _ => Err("Expected null data for null type".to_string()),
-        }
+impl Value for TypeNullConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

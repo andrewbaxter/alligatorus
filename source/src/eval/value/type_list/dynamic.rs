@@ -69,95 +69,34 @@ use {
     },
 };
 
-impl crate::eval::dynamic_wrap::DynamicWrap for TypeListDynamic {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeListDynamic> = crate::eval::from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
-        (*rc).clone()
-    }
-
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::to_v8(scope, Rc::new(self)).into()
-    }
-}
-
 // --- list type (result of list(string), and also type of list instances) ---
 #[derive(Clone)]
 pub(crate) struct TypeListDynamic {
     pub(crate) element_type: Rc<dyn Type>,
 }
 
-impl Value for TypeListDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(self.clone())
-    }
-}
-
-impl Type for TypeListDynamic {
-    fn desc(&self) -> String {
-        format!("list({})", self.element_type.desc())
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeListDynamic { element_type: self.element_type.clone() })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
-        }
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
-        }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamicSub>));
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBind>));
-        }
-        if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectStackValueDynamic>));
-        }
-        if *key == aspect_iterable_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
-        }
-        if *key == aspect_list_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectListDynamic>));
-        }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert list type".to_string())
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_list_dynamic_get_maybe(xx, source_type).is_some()
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(_xx, loc);
-        if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
-            return EvalRes::ok(CodeValue {
-                code: cv.code,
-                value: Rc::new(crate::eval::value::type_dynamic::ValueDynamic {
-                    source: crate::eval::value::type_dynamic::ValueDynamicSource::Expr,
-                    type_: Rc::new(self.clone()),
-                }),
-            });
-        }
-        EvalRes::err(loc, "Cannot convert to list type".to_string())
-    }
-}
-
 impl Aspect for TypeListDynamic { }
 
-impl AspectListDynamic for TypeListDynamic {
-    fn element_type(&self) -> Rc<dyn Type> {
-        self.element_type.clone()
+impl AspectBind for TypeListDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeListDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeListDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -232,39 +171,6 @@ impl AspectField for TypeListDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeListDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(self.clone()),
-            }),
-        }
-    }
-}
-
-impl AspectConsumeDynamic for TypeListDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamicSub for TypeListDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeListDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
-    }
-}
-
 impl AspectIterable for TypeListDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         self.element_type.clone()
@@ -307,41 +213,109 @@ impl AspectIterable for TypeListDynamic {
     }
 }
 
-// --- list new function ---
-#[derive(Clone)]
-struct TypeListNew {
-    element_type: Rc<dyn Type>,
-}
-
-impl Value for TypeListNew {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(self.clone())
+impl AspectListDynamic for TypeListDynamic {
+    fn element_type(&self) -> Rc<dyn Type> {
+        self.element_type.clone()
     }
 }
 
-impl Type for TypeListNew {
+impl AspectStackValueDynamic for TypeListDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(self.clone()),
+            }),
+        }
+    }
+}
+
+impl crate::eval::dynamic_wrap::DynamicWrap for TypeListDynamic {
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeListDynamic> = crate::eval::from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
+        (*rc).clone()
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        crate::eval::to_v8(scope, Rc::new(self)).into()
+    }
+}
+
+impl Type for TypeListDynamic {
     fn desc(&self) -> String {
-        format!("list({}).new", self.element_type.desc())
+        format!("list({})", self.element_type.desc())
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeListNew { element_type: self.element_type.clone() })
+        Rc::new(TypeListDynamic { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
+        }
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamicSub>));
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBind>));
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectStackValueDynamic>));
+        }
+        if *key == aspect_iterable_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectIterable>));
+        }
+        if *key == aspect_list_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectListDynamic>));
         }
         None
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert list new".to_string())
+        EvalRes::err(loc, "Cannot convert list type".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to list new".to_string())
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_list_dynamic_get_maybe(xx, source_type).is_some()
     }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(_xx, loc);
+        if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(crate::eval::value::type_dynamic::ValueDynamic {
+                    source: crate::eval::value::type_dynamic::ValueDynamicSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            });
+        }
+        EvalRes::err(loc, "Cannot convert to list type".to_string())
+    }
+}
+
+impl Value for TypeListDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(self.clone())
+    }
+}
+
+// --- list new function ---
+#[derive(Clone)]
+struct TypeListNew {
+    element_type: Rc<dyn Type>,
 }
 
 impl Aspect for TypeListNew { }
@@ -374,5 +348,36 @@ impl AspectFunction for TypeListNew {
                 type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
             }));
         });
+    }
+}
+
+impl Type for TypeListNew {
+    fn desc(&self) -> String {
+        format!("list({}).new", self.element_type.desc())
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeListNew { element_type: self.element_type.clone() })
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert list new".to_string())
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to list new".to_string())
+    }
+}
+
+impl Value for TypeListNew {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(self.clone())
     }
 }

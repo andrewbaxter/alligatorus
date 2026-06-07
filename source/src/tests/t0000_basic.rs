@@ -61,7 +61,7 @@ fn test_00200_bind_use() {
                         mb.block(
                             vec![
                                 mb.bind("hello", mb.str("Hello world (mortar)")),
-                                mb.call(mb.scope_use("log"), mb.scope_use("hello"))
+                                mb.call(mb.scope_use("log"), mb.scope_use("hello")),
                             ],
                         ),
                     ),

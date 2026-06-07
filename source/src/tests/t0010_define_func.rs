@@ -37,8 +37,8 @@ fn test_00600define_func() {
                                                     "nfr",
                                                     mb.call(
                                                         mb.field(mb.scope_use("d"), mb.str("new_func")),
-                                                        mb.str("f")
-                                                    )
+                                                        mb.str("f"),
+                                                    ),
                                                 ),
                                                 mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
                                                 mb.call(
@@ -52,13 +52,15 @@ fn test_00600define_func() {
                                                 mb.call(
                                                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                                     mb.tuple(
-                                                        vec![mb.stage(mb.call(mb.scope_use("log"), mb.str("hello")))]
-                                                    )
+                                                        vec![
+                                                            mb.stage(mb.call(mb.scope_use("log"), mb.str("hello"))),
+                                                        ],
+                                                    ),
                                                 ),
-                                                mb.scope_use("f")
-                                            ]
-                                        )
-                                    )
+                                                mb.scope_use("f"),
+                                            ],
+                                        ),
+                                    ),
                                 ),
                                 mb.call(mb.scope_use("hello"), mb.tuple(vec![])),
                             ],
@@ -187,13 +189,13 @@ fn test_00700define_func_arg_ret() {
                                     mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                     mb.bind(
                                         "nfr",
-                                        mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("f"))
+                                        mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("f")),
                                     ),
                                     mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
                                     // Set arg type to string
-                                    mb.call(mb.field(mb.scope_use("nfr"), mb.str("arg")), mb.tuple(vec![mb.scope_use("string")]),),
+                                    mb.call(mb.field(mb.scope_use("nfr"), mb.str("arg")), mb.tuple(vec![mb.scope_use("string")])),
                                     // Set ret type to string
-                                    mb.call(mb.field(mb.scope_use("nfr"), mb.str("ret")), mb.tuple(vec![mb.scope_use("string")]),),
+                                    mb.call(mb.field(mb.scope_use("nfr"), mb.str("ret")), mb.tuple(vec![mb.scope_use("string")])),
                                     // Impl: call toUpperCase on arg and return
                                     mb.call(
                                         mb.field(mb.scope_use("nfr"), mb.str("impl")),
@@ -204,8 +206,8 @@ fn test_00700define_func_arg_ret() {
                                                         mb.field(mb.scope_use("arg"), mb.str("toUpperCase")),
                                                         mb.null(),
                                                     ),
-                                                )
-                                            ]
+                                                ),
+                                            ],
                                         ),
                                     ),
                                     mb.scope_use("f"),

@@ -1,3 +1,9 @@
+pub mod scope_entry;
+
+pub(crate) use scope_entry::{
+    ScopeEntryStatic,
+    ScopeEntryValue,
+};
 use {
     crate::{
         builtin::{
@@ -14,7 +20,6 @@ use {
             aspect_lift_dynamic_aspect_id,
             aspect_tuple_aspect_id,
         },
-        eval::aspect::ScopeEntryDynamicSub,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,
@@ -22,6 +27,7 @@ use {
             CodeDynamicNewArray,
             CodeDynamicType,
         },
+        eval::aspect::ScopeEntryDynamicSub,
         langhelp::{
             Aspect,
             Code,
@@ -44,15 +50,6 @@ use {
     },
     super::type_dynamic::bind_dynamic,
 };
-
-/// Represents a single element entry in a Tuple.
-pub(crate) enum TupleElement {
-    /// Element available only via the mortar source. Type is known but value is
-    /// deferred to runtime.
-    Mortar(Rc<dyn Type>),
-    /// Element has been fully evaluated and is available immediately.
-    EvalRes(EvalRes),
-}
 
 pub(crate) struct Tuple {
     /// Optional mortar source — a JS array that elements can be accessed from at
@@ -77,28 +74,136 @@ impl Tuple {
     }
 }
 
-fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
-    match e {
-        TupleElement::Mortar(t) => t.clone(),
-        TupleElement::EvalRes(er) => match &er.v {
-            Some(cv) => cv.value.type_(_xx, loc),
-            None => Rc::new(Tuple {
-                source: None,
-                elements: vec![],
-            }) as Rc<dyn Type>,
-        },
+impl Aspect for Tuple { }
+
+impl AspectBind for Tuple {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
     }
 }
 
-impl Value for Tuple {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        let elements = self.elements.iter().map(|e| {
-            TupleElement::Mortar(tuple_element_type(xx, loc, e))
-        }).collect();
-        Rc::new(Tuple {
+impl AspectBindDynamicSub for Tuple {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        let carry = cv.code;
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
+                .ok()
+                .expect("Tuple bind_dynamic_sub: Rc not unique");
+        let mut errors = vec![];
+        let mut js_elements = Vec::new();
+        let mut element_types = Vec::new();
+        for (elem, self_elem) in tuple.elements.into_iter().zip(self.elements.iter()) {
+            let elem_type = match self_elem {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("bind_dynamic_sub on non-type tuple"),
+            };
+            let elem_res = match elem {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Mortar(_) => panic!("bind_dynamic_sub on mortar tuple element"),
+            };
+            if let Some(errs) = elem_res.errors {
+                errors.extend(errs);
+            }
+            if let Some(elem_cv) = elem_res.v {
+                match aspect_bind_dynamic_sub_get(xx, loc, elem_type.as_ref()).into_res() {
+                    Ok(bind_sub) => match bind_sub.bind_dynamic_sub(xx, loc, elem_cv).into_res() {
+                        Ok((js, sub)) => {
+                            js_elements.push(js);
+                            element_types.push(TupleElement::Mortar(sub.type_));
+                        },
+                        Err(e) => errors.extend(e),
+                    },
+                    Err(e) => errors.extend(e),
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return EResult {
+                v: None,
+                errors: Some(errors),
+            };
+        }
+        let tuple_type = Rc::new(Tuple {
             source: None,
-            elements,
-        })
+            elements: element_types,
+        }) as Rc<dyn Type>;
+        EResult::ok((wrap_with_carry(loc, carry, CodeDynamic {
+            loc,
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
+        }), ScopeEntryDynamicSub { type_: tuple_type }))
+    }
+}
+
+impl AspectConsumeDynamic for Tuple {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        let carry = cv.code;
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
+                .ok()
+                .expect("Tuple to_dynamic: Rc not unique");
+        let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("to_dynamic on non-type tuple"),
+            }
+        }).collect();
+        let mut errors = vec![];
+        let mut js_elements = Vec::new();
+        for (elem, elem_type) in tuple.elements.into_iter().zip(types.iter()) {
+            let elem_res = match elem {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Mortar(_) => panic!("to_dynamic on mortar tuple element"),
+            };
+            if let Some(errs) = elem_res.errors {
+                errors.extend(errs);
+            }
+            if let Some(elem_cv) = elem_res.v {
+                match aspect_consume_dynamic_get(xx, loc, elem_type.as_ref()).into_res() {
+                    Ok(to_dynamic) => match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
+                        Ok(js) => js_elements.push(js),
+                        Err(e) => errors.extend(e),
+                    },
+                    Err(e) => errors.extend(e),
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return EResult {
+                v: None,
+                errors: Some(errors),
+            };
+        }
+        EResult::ok(wrap_with_carry(loc, carry, CodeDynamic {
+            loc,
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
+        }))
+    }
+}
+
+impl AspectTuple for Tuple {
+    fn element_types(&self) -> Vec<Rc<dyn Type>> {
+        self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("element_types on non-type tuple"),
+            }
+        }).collect()
+    }
+
+    fn take_elements(&self, value: Rc<dyn Value>) -> Vec<EvalRes> {
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(value).unwrap()).ok().expect("take_elements: Rc not unique");
+        tuple.elements.into_iter().map(|e| {
+            match e {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Mortar(_) => panic!("take_elements encountered Mortar element"),
+            }
+        }).collect()
     }
 }
 
@@ -263,28 +368,38 @@ impl Type for Tuple {
     }
 }
 
-impl Aspect for Tuple { }
-
-impl AspectTuple for Tuple {
-    fn element_types(&self) -> Vec<Rc<dyn Type>> {
-        self.elements.iter().map(|e| {
-            match e {
-                TupleElement::Mortar(t) => t.clone(),
-                TupleElement::EvalRes(_) => panic!("element_types on non-type tuple"),
-            }
-        }).collect()
+impl Value for Tuple {
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+        let elements = self.elements.iter().map(|e| {
+            TupleElement::Mortar(tuple_element_type(xx, loc, e))
+        }).collect();
+        Rc::new(Tuple {
+            source: None,
+            elements,
+        })
     }
+}
 
-    fn take_elements(&self, value: Rc<dyn Value>) -> Vec<EvalRes> {
-        let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(value).unwrap()).ok().expect("take_elements: Rc not unique");
-        tuple.elements.into_iter().map(|e| {
-            match e {
-                TupleElement::EvalRes(er) => er,
-                TupleElement::Mortar(_) => panic!("take_elements encountered Mortar element"),
-            }
-        }).collect()
+fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
+    match e {
+        TupleElement::Mortar(t) => t.clone(),
+        TupleElement::EvalRes(er) => match &er.v {
+            Some(cv) => cv.value.type_(_xx, loc),
+            None => Rc::new(Tuple {
+                source: None,
+                elements: vec![],
+            }) as Rc<dyn Type>,
+        },
     }
+}
+
+/// Represents a single element entry in a Tuple.
+pub(crate) enum TupleElement {
+    /// Element available only via the mortar source. Type is known but value is
+    /// deferred to runtime.
+    Mortar(Rc<dyn Type>),
+    /// Element has been fully evaluated and is available immediately.
+    EvalRes(EvalRes),
 }
 
 struct TupleLiftJs {
@@ -339,113 +454,3 @@ pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: CodeDynamic) -> Cod
     }
     js
 }
-
-impl AspectConsumeDynamic for Tuple {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        let carry = cv.code;
-        let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
-                .ok()
-                .expect("Tuple to_dynamic: Rc not unique");
-        let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
-            match e {
-                TupleElement::Mortar(t) => t.clone(),
-                TupleElement::EvalRes(_) => panic!("to_dynamic on non-type tuple"),
-            }
-        }).collect();
-        let mut errors = vec![];
-        let mut js_elements = Vec::new();
-        for (elem, elem_type) in tuple.elements.into_iter().zip(types.iter()) {
-            let elem_res = match elem {
-                TupleElement::EvalRes(er) => er,
-                TupleElement::Mortar(_) => panic!("to_dynamic on mortar tuple element"),
-            };
-            if let Some(errs) = elem_res.errors {
-                errors.extend(errs);
-            }
-            if let Some(elem_cv) = elem_res.v {
-                match aspect_consume_dynamic_get(xx, loc, elem_type.as_ref()).into_res() {
-                    Ok(to_dynamic) => match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
-                        Ok(js) => js_elements.push(js),
-                        Err(e) => errors.extend(e),
-                    },
-                    Err(e) => errors.extend(e),
-                }
-            }
-        }
-        if !errors.is_empty() {
-            return EResult {
-                v: None,
-                errors: Some(errors),
-            };
-        }
-        EResult::ok(wrap_with_carry(loc, carry, CodeDynamic {
-            loc,
-            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
-        }))
-    }
-}
-
-impl AspectBindDynamicSub for Tuple {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        let carry = cv.code;
-        let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
-                .ok()
-                .expect("Tuple bind_dynamic_sub: Rc not unique");
-        let mut errors = vec![];
-        let mut js_elements = Vec::new();
-        let mut element_types = Vec::new();
-        for (elem, self_elem) in tuple.elements.into_iter().zip(self.elements.iter()) {
-            let elem_type = match self_elem {
-                TupleElement::Mortar(t) => t.clone(),
-                TupleElement::EvalRes(_) => panic!("bind_dynamic_sub on non-type tuple"),
-            };
-            let elem_res = match elem {
-                TupleElement::EvalRes(er) => er,
-                TupleElement::Mortar(_) => panic!("bind_dynamic_sub on mortar tuple element"),
-            };
-            if let Some(errs) = elem_res.errors {
-                errors.extend(errs);
-            }
-            if let Some(elem_cv) = elem_res.v {
-                match aspect_bind_dynamic_sub_get(xx, loc, elem_type.as_ref()).into_res() {
-                    Ok(bind_sub) => match bind_sub.bind_dynamic_sub(xx, loc, elem_cv).into_res() {
-                        Ok((js, sub)) => {
-                            js_elements.push(js);
-                            element_types.push(TupleElement::Mortar(sub.type_));
-                        },
-                        Err(e) => errors.extend(e),
-                    },
-                    Err(e) => errors.extend(e),
-                }
-            }
-        }
-        if !errors.is_empty() {
-            return EResult {
-                v: None,
-                errors: Some(errors),
-            };
-        }
-        let tuple_type = Rc::new(Tuple {
-            source: None,
-            elements: element_types,
-        }) as Rc<dyn Type>;
-        EResult::ok((wrap_with_carry(loc, carry, CodeDynamic {
-            loc,
-            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
-        }), ScopeEntryDynamicSub { type_: tuple_type }))
-    }
-}
-
-impl AspectBind for Tuple {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-pub mod scope_entry;
-
-pub(crate) use scope_entry::{
-    ScopeEntryStatic,
-    ScopeEntryValue,
-};

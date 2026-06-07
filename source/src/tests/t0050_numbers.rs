@@ -35,14 +35,17 @@ fn test_0000_number_lit() {
                                     vec![
                                         (
                                             mb.operator_lt(mb.scope_use("x"), mb.num(5.)),
-                                            mb.set(mb.scope_use("x"), mb.operator_add(mb.scope_use("x"), mb.num(7.))),
-                                        )
+                                            mb.set(
+                                                mb.scope_use("x"),
+                                                mb.operator_add(mb.scope_use("x"), mb.num(7.)),
+                                            ),
+                                        ),
                                     ],
-                                    None
+                                    None,
                                 ),
                                 mb.call(
                                     mb.scope_use("log"),
-                                    mb.call(mb.field(mb.scope_use("x"), mb.str("to_string")), mb.tuple(vec![]))
+                                    mb.call(mb.field(mb.scope_use("x"), mb.str("to_string")), mb.tuple(vec![])),
                                 ),
                             ],
                         ),
@@ -144,8 +147,8 @@ fn test_00100_number_mortar() {
                                                     "builder",
                                                     mb.call(
                                                         mb.field(mb.scope_use("d"), mb.str("new_func")),
-                                                        mb.str("maybe add 7")
-                                                    )
+                                                        mb.str("maybe add 7"),
+                                                    ),
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("builder"), mb.str("arg")),
@@ -167,40 +170,40 @@ fn test_00100_number_mortar() {
                                                                                 (
                                                                                     mb.operator_lt(
                                                                                         mb.scope_use("arg"),
-                                                                                        mb.num(5.)
+                                                                                        mb.num(5.),
                                                                                     ),
                                                                                     mb.set(
                                                                                         mb.scope_use("arg"),
                                                                                         mb.operator_add(
                                                                                             mb.scope_use("arg"),
-                                                                                            mb.num(7.)
-                                                                                        )
+                                                                                            mb.num(7.),
+                                                                                        ),
                                                                                     ),
-                                                                                )
+                                                                                ),
                                                                             ],
-                                                                            None
+                                                                            None,
                                                                         ),
                                                                         mb.scope_use("arg"),
-                                                                    ]
-                                                                )
-                                                            )
-                                                        ]
-                                                    )
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
                                                 ),
-                                                mb.field(mb.scope_use("builder"), mb.str("func"))
-                                            ]
-                                        )
-                                    )
+                                                mb.field(mb.scope_use("builder"), mb.str("func")),
+                                            ],
+                                        ),
+                                    ),
                                 ),
                                 mb.call(
-                                    mb.scope_use("log",),
+                                    mb.scope_use("log"),
                                     mb.call(
                                         mb.field(
                                             mb.call(mb.scope_use("maybe_add"), mb.tuple(vec![mb.num(4.)])),
-                                            mb.str("to_string")
+                                            mb.str("to_string"),
                                         ),
-                                        mb.tuple(vec![])
-                                    )
+                                        mb.tuple(vec![]),
+                                    ),
                                 ),
                             ],
                         ),

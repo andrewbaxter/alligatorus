@@ -1,12 +1,12 @@
-#[macro_use]
-pub mod util;
 pub mod aspect;
-pub mod expr;
+pub mod definition_set;
+pub mod dynamic_util;
 #[macro_use]
 pub mod dynamic_wrap;
+pub mod expr;
+#[macro_use]
+pub mod util;
 pub mod value;
-pub mod dynamic_util;
-pub mod definition_set;
 
 use {
     core::mem,
@@ -133,125 +133,14 @@ use {
     },
 };
 
-// --- Rc`<T>` ↔ v8::External helpers ---
-/// Weak handle storage, set as an isolate slot. During dispose_annex(), slots are
-/// cleared first (Weak handles dropped — but isolate ptr is already null so
-/// finalizers can't be cancelled), then finalizer_map is drained, running our
-/// guaranteed finalizer callbacks.
-pub(crate) struct V8RcStore {
-    weaks: RefCell<Vec<v8::Weak<v8::External>>>,
-}
+/// Well-known scope entry ID for __record_to_type mortar function.
+pub(crate) const RECORD_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
-pub(crate) struct V8LogStore {
-    pub(crate) logs: RefCell<Vec<crate::langhelp::LogEntry>>,
-}
+/// Well-known scope entry ID for the __stage function (not a real scope entry).
+const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
-pub(crate) struct V8UniqueCounter {
-    pub(crate) compile_id: CompileId,
-    pub(crate) counter: Counter,
-}
-
-pub(crate) struct V8DefSetCounter {
-    pub(crate) import_id: ImportStateId,
-    pub(crate) counter: Counter,
-}
-
-/// Store a value as a `v8::External`. The value is boxed as `dyn Any` so that
-/// `from_v8_ref` can safely downcast to any type, including trait object wrappers
-/// like `Rc<dyn Type>`. A guaranteed finalizer drops the value when the isolate is
-/// disposed.
-pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
-    let any: Box<dyn std::any::Any> = Box::new(value);
-    let ptr = Box::into_raw(Box::new(any)) as *mut std::ffi::c_void;
-    let ext = v8::External::new(&*scope, ptr);
-    let weak = v8::Weak::with_guaranteed_finalizer(&mut *scope, ext, Box::new(move || unsafe {
-        drop(Box::from_raw(ptr as *mut Box<dyn std::any::Any>));
-    }));
-    scope.get_slot::<V8RcStore>().unwrap().weaks.borrow_mut().push(weak);
-    ext
-}
-
-fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
-    assert!(value.is_external(), "from_v8_any: expected v8::External");
-    let ext = unsafe {
-        &*(value as *const v8::Value as *const v8::External)
-    };
-    let ptr = ext.value() as *const Box<dyn std::any::Any>;
-    unsafe {
-        &**ptr
-    }
-}
-
-/// Get a reference to the value inside a `v8::External` created by `to_v8`.
-pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
-    from_v8_any(value).downcast_ref::<T>().expect("from_v8_ref: type mismatch")
-}
-
-/// Store an `Rc<dyn Type>` as a `v8::External`. Only operates on `dyn Type` — for
-/// concrete `Rc<T>`, use `to_v8` directly.
-pub(crate) fn rc_type_to_v8<
-    's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Type>) -> v8::Local<'s, v8::External> {
-    to_v8(scope, value)
-}
-
-/// Extract a clone of `Rc<dyn Type>` from a `v8::External`. Only operates on
-/// `dyn Type` — for concrete `Rc<T>`, use `from_v8_ref` directly.
-pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
-    from_v8_ref::<Rc<dyn Type>>(value).clone()
-}
-
-/// EvalResBuilder
-pub(crate) struct Erb {
-    loc: QExprId,
-    errors: Vec<ExprErr>,
-}
-
-impl Erb {
-    pub(crate) fn new(loc: QExprId) -> Self {
-        return Self {
-            loc: loc,
-            errors: Default::default(),
-        };
-    }
-
-    pub(crate) fn must_er<T>(&mut self, r: EResult<T>) -> Result<T, ()> {
-        if let Some(errs) = r.errors {
-            self.errors.extend(errs);
-        }
-        let Some(cv) = r.v else {
-            return Err(());
-        };
-        return Ok(cv);
-    }
-
-    pub(crate) fn must_res<T>(&mut self, r: Result<T, String>) -> Result<T, ()> {
-        match r {
-            Ok(r) => {
-                return Ok(r);
-            },
-            Err(e) => {
-                self.err_push(e);
-                return Err(());
-            },
-        }
-    }
-
-    pub(crate) fn err_new(&mut self, message: impl ToString) -> Result<CodeValue, ()> {
-        self.errors.push(ExprErr {
-            loc: self.loc,
-            errors: vec![ExprSubErr::Opaque(message.to_string())],
-        });
-        return Err(());
-    }
-
-    pub(crate) fn err_push(&mut self, message: impl ToString) {
-        self.errors.push(ExprErr {
-            loc: self.loc,
-            errors: vec![ExprSubErr::Opaque(message.to_string())],
-        });
-    }
-}
+/// Well-known scope entry ID for __tuple_to_type mortar function.
+pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
 pub(crate) trait Target {
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
@@ -273,266 +162,175 @@ pub(crate) trait Target {
     ) -> EvalRes;
     fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes;
 }
-pub(crate) struct MortarTarget;
 
-impl Target for MortarTarget {
-    fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
-        let mut js_entries = vec![];
-        let mut errors = vec![];
-        for entry in &entries {
-            match entry.cast::<CodeDynamic>().into_res() {
-                Ok(Some(js)) => {
-                    match &js.type_ {
-                        CodeDynamicType::Block(block) if
-                            !block.entries.is_empty() &&
-                                block.entries.iter().all(|e| matches!(e, CodeDynamicBlockEntry::Bind(_))) => {
-                            js_entries.extend(block.entries.clone());
-                        },
-                        _ => js_entries.push(CodeDynamicBlockEntry::Code(js.clone())),
-                    }
-                },
-                Ok(None) => { },
-                Err(e) => errors.extend(e),
-            }
-        }
-        if !errors.is_empty() {
-            return EResult {
-                v: None,
-                errors: Some(errors),
-            };
-        }
-        if js_entries.is_empty() {
-            return EResult::ok(Code {
-                loc: loc,
-                code: Code_::None,
-            });
-        }
-        return EResult::ok(Code {
-            loc: loc,
-            code: Code_::Dyn(Rc::new(CodeDynamic {
-                loc: loc,
-                type_: CodeDynamicType::Block(CodeDynamicBlock { entries: js_entries }),
-            })),
-        });
-    }
-
-    fn if_(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        conditions: Vec<(CodeValue, &Expr)>,
-        else_: Option<&Expr>,
-    ) -> EvalRes {
-        fn cv_to_dynamic(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
-            let vtype = cv.value.type_(xx, loc);
-            let consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
-            erb.must_er(consume.to_dynamic(xx, loc, cv))
-        }
-
-        return er_seq_cv!(loc, erb, {
-            let mut js_conditions = Vec::new();
-            for (cond, body) in conditions {
-                let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
-                let body_cv = erb.must_er(const_eval(xx, body))?;
-                let body_js = cv_to_dynamic(&mut erb, xx, loc, body_cv)?;
-                js_conditions.push((cond_js, body_js));
-            }
-            let js_else = if let Some(else_expr) = else_ {
-                let else_cv = erb.must_er(const_eval(xx, else_expr))?;
-                let else_js = cv_to_dynamic(&mut erb, xx, loc, else_cv)?;
-                Some(Box::new(else_js))
-            } else {
-                None
-            };
-            let if_js = CodeDynamic {
-                loc,
-                type_: CodeDynamicType::If(CodeDynamicIf {
-                    conditions: js_conditions,
-                    else_: js_else,
-                }),
-            };
-            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
-            let null_stack = erb.must_er(null_stack)?;
-            return Ok(null_stack.to_value(loc, if_js));
-        });
-    }
-
-    fn match_(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        base: CodeValue,
-        element_key: ConstKey,
-        cases: Vec<(String, Rc<dyn Type>, &Expr)>,
-        fallback: Option<&Expr>,
-    ) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let base_type = base.value.type_(xx, loc);
-            let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
-            let base_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, base))?;
-            let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-            let mut js_cases = Vec::new();
-            for (tag, variant_type, body_expr) in &cases {
-                let child_scope = Rc::new(Scope {
-                    values: RefCell::new(HashMap::new()),
-                    parent: Some(xx.scope.clone()),
-                });
-                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(ScopeEntryDynamicBinding {
-                    js_key: element_scope_id,
-                    type_: variant_type.clone(),
-                }),);
-                let child_xx = ExprContext {
-                    vx: xx.vx.clone(),
-                    import_state: xx.import_state.clone(),
-                    scope: child_scope,
-                    target: xx.target.clone(),
-                };
-                let body_cv = erb.must_er(const_eval(&child_xx, body_expr))?;
-                let body_type = body_cv.value.type_(&child_xx, loc);
-                let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
-                let body_js = erb.must_er(body_consume.to_dynamic(&child_xx, loc, body_cv))?;
-                js_cases.push(CodeDynamicMatchBranch {
-                    js_tag: tag.clone(),
-                    body: body_js,
-                });
-            }
-            let js_fallback = if let Some(fallback_expr) = fallback {
-                let fb_cv = erb.must_er(const_eval(xx, fallback_expr))?;
-                let fb_type = fb_cv.value.type_(xx, loc);
-                let fb_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, fb_type.as_ref()))?;
-                let fb_js = erb.must_er(fb_consume.to_dynamic(xx, loc, fb_cv))?;
-                Some(Box::new(fb_js))
-            } else {
-                None
-            };
-            let match_js = CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Match(CodeDynamicMatch {
-                    base: Box::new(base_js),
-                    element_key: element_scope_id,
-                    cases: js_cases,
-                    fallback: js_fallback,
-                }),
-            };
-            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
-            let null_stack = erb.must_er(null_stack)?;
-            return Ok(null_stack.to_value(loc, match_js));
-        });
-    }
-
-    fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes {
-        // Store tree as external
-        let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
-        let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
-        let tree_js = CodeDynamic {
-            loc,
-            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: tree_id }),
-        };
-
-        // Build args for __stage(tree, lift1, val1, lift2, val2, ...). For each lower
-        // value, pass a (lift, value) pair:
-        //
-        // * Code_::None: lift=null, value=StagedExprCell external
-        //
-        // * Code_::Dyn:  lift=StageLiftCell external, value=raw v8 result __stage handles the
-        //   lifting internally.
-        let mut stage_args = vec![tree_js];
-        return er_seq_cv!(loc, erb, {
-            for cv in lower_values {
-                let vtype = cv.value.type_(xx, loc);
-                match cv.code.code {
-                    Code_::None => {
-                        let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
-                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                        xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
-                        stage_args.push(CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::Literal(serde_json::Value::Null),
-                        });
-                        stage_args.push(CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
-                        });
-                    },
-                    Code_::Dyn(_) => {
-                        let lift = erb.must_er(aspect_lift_dynamic_get(xx, loc, vtype.as_ref()))?;
-                        let lift_cell = Rc::new(StageLiftCell {
-                            lift,
-                            vx: xx.vx.clone(),
-                            import_state: xx.import_state.clone(),
-                            scope: xx.scope.clone(),
-                            target: xx.target.clone(),
-                        });
-                        let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                        xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
-                        let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
-                        let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
-                        stage_args.push(CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: lift_id }),
-                        });
-                        stage_args.push(inner_js);
-                    },
-                }
-            }
-            let stage_js = CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
-                    func: Box::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: STAGE_FN_SCOPE_ID, }),
-                    }),
-                    args: stage_args,
-                }),
-            };
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(stage_js)),
-                },
-                value: Rc::new(value::value_dynamic::ValueDynamic {
-                    source: value::value_dynamic::ValueDynamicSource::Expr,
-                    type_: Rc::new(value::type_expr::TypeStagedExprPlaceholder),
-                }),
-            });
-        });
-    }
-}
-
-/// Holds an AspectLiftDynamic, stored as a v8::External so __stage can lift raw
-/// values.
-pub(crate) struct StageLiftCell {
-    pub lift: Box<dyn crate::builtin::AspectLiftDynamic>,
-    pub vx: Rc<EvalContext>,
-    pub import_state: Rc<Cell<ImportStateId>>,
-    pub scope: Rc<Scope>,
-    pub target: Rc<dyn Target>,
-}
-
-fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
-    let vtype = v.type_(xx, loc);
-    if let Some(a) = aspect_string_const_get_maybe(xx, vtype.as_ref()) {
-        return Ok(ConstKey::String(a.get(v)));
-    }
-    return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
-}
-
-pub(crate) fn const_eval_root(
-    vx: Rc<EvalContext>,
-    import_state: Rc<Cell<ImportStateId>>,
-    scope: Rc<Scope>,
-    target: Rc<dyn Target>,
-    expr: &Expr,
-) -> (Rc<ExprContext>, EvalRes) {
-    let xx = Rc::new(ExprContext {
-        vx,
-        import_state,
-        scope,
-        target,
+pub(crate) fn compile_importid(
+    fx: &Arc<GlobalContext>,
+    import_state: ImportStateId,
+    source: Module,
+    compile_path: Vec<(CompileId, ExprId)>,
+) -> CompileRes {
+    let cix = Rc::new(CompileImportContext {
+        gx: fx.clone(),
+        compile_path: compile_path,
+        builtin_types: crate::langhelp::make_builtin_types(),
     });
-    let result = const_eval(&xx, expr);
-    (xx, result)
+    let mut root_expr = match source {
+        Module::V1(e) => e,
+    };
+    let root_loc = root_expr.loc;
+
+    // Step 1: Count lower excess and wrap root in stage layers Root is treated as
+    // implicit stage (stage_depth=1)
+    fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
+        //! Walk the expression tree counting stage/lower nesting depths. Returns the max
+        //! (lower_depth - stage_depth) where lower_depth > stage_depth. This tells us how
+        //! many extra `stage` wrappers are needed at the root.
+        fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
+            match &expr.r#type {
+                Expr_::Lower(e) => {
+                    let new_ld = ld + 1;
+                    let excess = new_ld.saturating_sub(sd);
+                    excess.max(max_lower_excess(&e.expr, sd, new_ld))
+                },
+                Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
+                Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
+                Expr_::As(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
+                },
+                Expr_::Call(c) => {
+                    max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
+                },
+                Expr_::Bind(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
+                },
+                Expr_::Set(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
+                },
+                Expr_::Field(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.key, sd, ld))
+                },
+                Expr_::Block(e) => {
+                    e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
+                },
+                Expr_::Tuple(t) => {
+                    t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
+                },
+                Expr_::Record(r) => {
+                    r.entries.iter().map(|(k, v)| {
+                        max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
+                    }).max().unwrap_or(0)
+                },
+                Expr_::If(e) => {
+                    let mut m = 0;
+                    for b in &e.conditions {
+                        m = m.max(max_lower_excess(&b.condition, sd, ld));
+                        m = m.max(max_lower_excess(&b.body, sd, ld));
+                    }
+                    if let Some(el) = &e.else_ {
+                        m = m.max(max_lower_excess(el, sd, ld));
+                    }
+                    m
+                },
+                Expr_::OperatorLt(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+                },
+                Expr_::OperatorAdd(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+                },
+                Expr_::Foreach(e) => {
+                    max_lower_excess(&e.base, sd, ld)
+                        .max(max_lower_excess(&e.element_key, sd, ld))
+                        .max(max_lower_excess(&e.body, sd, ld))
+                },
+                Expr_::Match(e) => {
+                    let mut m = max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.element_key, sd, ld));
+                    for c in &e.cases {
+                        m = m.max(max_lower_excess(&c.condition, sd, ld));
+                        m = m.max(max_lower_excess(&c.body, sd, ld));
+                    }
+                    if let Some(f) = &e.fallback {
+                        m = m.max(max_lower_excess(f, sd, ld));
+                    }
+                    m
+                },
+            }
+        }
+
+        recurse_children(expr, stage_depth, lower_depth)
+    }
+
+    let excess = max_lower_excess(&root_expr, 0, 0);
+    for _ in 0 .. excess {
+        root_expr = Expr {
+            loc: root_loc,
+            r#type: Expr_::Stage(ExprStage { expr: Rc::new(root_expr) }),
+        };
+    }
+
+    // Step 2: Repeatedly eval until root is no longer a Stage, then once more
+    let mut all_logs = Vec::new();
+    loop {
+        let is_stage = matches!(&root_expr.r#type, Expr_::Stage(_));
+        let eval_result = match eval(&cix, import_state, &root_expr) {
+            Ok(v) => v,
+            Err(errors) => return CompileRes {
+                logs: all_logs,
+                generated_mortar_scripts: vec![],
+                result: CompileResResult::Err(errors),
+            },
+        };
+        let eval_value = eval_result.value;
+        all_logs.extend(eval_result.logs);
+        if !is_stage {
+            // This was the final eval (root was not a stage) Serialize result
+            let logs = all_logs;
+            let ex = Rc::new(EvalContext {
+                ix: cix.clone(),
+                next_local_id: Default::default(),
+                definition_sets: RefCell::new(Vec::new()),
+                externals: RefCell::new(Vec::new()),
+            });
+            let xx = Rc::new(ExprContext {
+                vx: ex,
+                import_state: Rc::new(Cell::new(import_state)),
+                scope: Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: None,
+                }),
+                target: Rc::new(MortarTarget),
+            });
+            let value_type = eval_value.type_(&xx, root_loc);
+            let value_serial = match aspect_artifact_get(&xx, root_loc, value_type.as_ref()).into_res() {
+                Ok(v) => v,
+                Err(e) => return CompileRes {
+                    logs,
+                    generated_mortar_scripts: vec![],
+                    result: CompileResResult::Err(e),
+                },
+            };
+            let value = match value_serial.to_serial(&xx, &fx, root_loc, eval_value).into_res() {
+                Ok(v) => v,
+                Err(e) => return CompileRes {
+                    logs,
+                    generated_mortar_scripts: vec![],
+                    result: CompileResResult::Err(e),
+                },
+            };
+            let generated_mortar_scripts = mem::take(&mut *fx.generated_mortar_scripts.lock().unwrap());
+            return CompileRes {
+                logs,
+                generated_mortar_scripts,
+                result: CompileResResult::Ok(value),
+            };
+        }
+
+        // Result is an Expr (from stage eval) - use it as next expression
+        let next_expr =
+            Rc::try_unwrap(downcast_value::<Expr>(eval_value).expect("Stage eval must produce an Expr value"))
+                .ok()
+                .expect("Stage eval Expr: Rc not unique");
+        root_expr = next_expr;
+    }
 }
 
 pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
@@ -1042,57 +840,74 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
     }
 }
 
-pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
-    return er_seq_cv!(loc, erb, {
-        // Resolve pending imports so downstream code sees the real value
-        let source =
-            if let Some(pending) =
-                <dyn Any>::downcast_ref::<value::value_pending_import::ValuePendingImport>(source.value.as_ref()) {
-                CodeValue {
-                    code: source.code,
-                    value: pending.resolve(xx)
-                }
-            } else {
-                source
-            };
-        let source_type = source.value.type_(xx, loc);
-        let dest;
-        if source_type.can_cast_to(xx, loc, dest_type) {
-            dest = erb.must_er(source_type.cast_to(xx, loc, source, dest_type))?;
-        } else if dest_type.can_cast_from(xx, loc, source_type.as_ref()) {
-            dest = erb.must_er(dest_type.cast_from(xx, loc, source))?;
-        } else {
-            return erb.err_new(
-                format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
-            );
-        }
-        return Ok(dest);
+pub(crate) fn const_eval_root(
+    vx: Rc<EvalContext>,
+    import_state: Rc<Cell<ImportStateId>>,
+    scope: Rc<Scope>,
+    target: Rc<dyn Target>,
+    expr: &Expr,
+) -> (Rc<ExprContext>, EvalRes) {
+    let xx = Rc::new(ExprContext {
+        vx,
+        import_state,
+        scope,
+        target,
     });
+    let result = const_eval(&xx, expr);
+    (xx, result)
 }
 
-pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
-    match e {
-        ScopeEntryId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
-        ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
-        ScopeEntryId::Def(import_id, def_set_id, entry_id) => {
-            format!("{}{}_{}_{}", DEF_PREFIX, import_id.0, def_set_id.0, entry_id)
-        },
+/// EvalResBuilder
+pub(crate) struct Erb {
+    loc: QExprId,
+    errors: Vec<ExprErr>,
+}
+
+impl Erb {
+    pub(crate) fn new(loc: QExprId) -> Self {
+        return Self {
+            loc: loc,
+            errors: Default::default(),
+        };
+    }
+
+    pub(crate) fn must_er<T>(&mut self, r: EResult<T>) -> Result<T, ()> {
+        if let Some(errs) = r.errors {
+            self.errors.extend(errs);
+        }
+        let Some(cv) = r.v else {
+            return Err(());
+        };
+        return Ok(cv);
+    }
+
+    pub(crate) fn must_res<T>(&mut self, r: Result<T, String>) -> Result<T, ()> {
+        match r {
+            Ok(r) => {
+                return Ok(r);
+            },
+            Err(e) => {
+                self.err_push(e);
+                return Err(());
+            },
+        }
+    }
+
+    pub(crate) fn err_new(&mut self, message: impl ToString) -> Result<CodeValue, ()> {
+        self.errors.push(ExprErr {
+            loc: self.loc,
+            errors: vec![ExprSubErr::Opaque(message.to_string())],
+        });
+        return Err(());
+    }
+
+    pub(crate) fn err_push(&mut self, message: impl ToString) {
+        self.errors.push(ExprErr {
+            loc: self.loc,
+            errors: vec![ExprSubErr::Opaque(message.to_string())],
+        });
     }
 }
-
-struct EvalResult {
-    value: Rc<dyn Value>,
-    logs: Vec<crate::langhelp::LogEntry>,
-}
-
-/// Well-known scope entry ID for the __stage function (not a real scope entry).
-const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
-
-/// Well-known scope entry ID for __record_to_type mortar function.
-pub(crate) const RECORD_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
-
-/// Well-known scope entry ID for __tuple_to_type mortar function.
-pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
 fn eval(
     cix: &Rc<CompileImportContext>,
@@ -1987,18 +1802,47 @@ fn eval(
                 Some(js_line) => {
                     Err(vec![ExprErr {
                         loc: *code1.mapping.get(&(js_line as usize)).unwrap_or(&root_loc),
-                        errors: vec![ExprSubErr::Opaque(text)]
+                        errors: vec![ExprSubErr::Opaque(text)],
                     }])
                 },
                 None => {
                     Err(vec![ExprErr {
                         loc: root_loc,
-                        errors: vec![ExprSubErr::Opaque(text)]
+                        errors: vec![ExprSubErr::Opaque(text)],
                     }])
                 },
             }
         },
     }
+}
+
+struct EvalResult {
+    value: Rc<dyn Value>,
+    logs: Vec<crate::langhelp::LogEntry>,
+}
+
+fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
+    let vtype = v.type_(xx, loc);
+    if let Some(a) = aspect_string_const_get_maybe(xx, vtype.as_ref()) {
+        return Ok(ConstKey::String(a.get(v)));
+    }
+    return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
+}
+
+fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
+    assert!(value.is_external(), "from_v8_any: expected v8::External");
+    let ext = unsafe {
+        &*(value as *const v8::Value as *const v8::External)
+    };
+    let ptr = ext.value() as *const Box<dyn std::any::Any>;
+    unsafe {
+        &**ptr
+    }
+}
+
+/// Get a reference to the value inside a `v8::External` created by `to_v8`.
+pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
+    from_v8_any(value).downcast_ref::<T>().expect("from_v8_ref: type mismatch")
 }
 
 #[derive(Default)]
@@ -2020,6 +1864,246 @@ impl JsSourceBuilder {
         self.next_expr_id += 1;
         id
     }
+}
+pub(crate) struct MortarTarget;
+
+impl Target for MortarTarget {
+    fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
+        let mut js_entries = vec![];
+        let mut errors = vec![];
+        for entry in &entries {
+            match entry.cast::<CodeDynamic>().into_res() {
+                Ok(Some(js)) => {
+                    match &js.type_ {
+                        CodeDynamicType::Block(block) if
+                            !block.entries.is_empty() &&
+                                block.entries.iter().all(|e| matches!(e, CodeDynamicBlockEntry::Bind(_))) => {
+                            js_entries.extend(block.entries.clone());
+                        },
+                        _ => js_entries.push(CodeDynamicBlockEntry::Code(js.clone())),
+                    }
+                },
+                Ok(None) => { },
+                Err(e) => errors.extend(e),
+            }
+        }
+        if !errors.is_empty() {
+            return EResult {
+                v: None,
+                errors: Some(errors),
+            };
+        }
+        if js_entries.is_empty() {
+            return EResult::ok(Code {
+                loc: loc,
+                code: Code_::None,
+            });
+        }
+        return EResult::ok(Code {
+            loc: loc,
+            code: Code_::Dyn(Rc::new(CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::Block(CodeDynamicBlock { entries: js_entries }),
+            })),
+        });
+    }
+
+    fn if_(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        conditions: Vec<(CodeValue, &Expr)>,
+        else_: Option<&Expr>,
+    ) -> EvalRes {
+        fn cv_to_dynamic(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
+            let vtype = cv.value.type_(xx, loc);
+            let consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
+            erb.must_er(consume.to_dynamic(xx, loc, cv))
+        }
+
+        return er_seq_cv!(loc, erb, {
+            let mut js_conditions = Vec::new();
+            for (cond, body) in conditions {
+                let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
+                let body_cv = erb.must_er(const_eval(xx, body))?;
+                let body_js = cv_to_dynamic(&mut erb, xx, loc, body_cv)?;
+                js_conditions.push((cond_js, body_js));
+            }
+            let js_else = if let Some(else_expr) = else_ {
+                let else_cv = erb.must_er(const_eval(xx, else_expr))?;
+                let else_js = cv_to_dynamic(&mut erb, xx, loc, else_cv)?;
+                Some(Box::new(else_js))
+            } else {
+                None
+            };
+            let if_js = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::If(CodeDynamicIf {
+                    conditions: js_conditions,
+                    else_: js_else,
+                }),
+            };
+            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
+            let null_stack = erb.must_er(null_stack)?;
+            return Ok(null_stack.to_value(loc, if_js));
+        });
+    }
+
+    fn match_(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        base: CodeValue,
+        element_key: ConstKey,
+        cases: Vec<(String, Rc<dyn Type>, &Expr)>,
+        fallback: Option<&Expr>,
+    ) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_type = base.value.type_(xx, loc);
+            let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
+            let base_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, base))?;
+            let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            let mut js_cases = Vec::new();
+            for (tag, variant_type, body_expr) in &cases {
+                let child_scope = Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: Some(xx.scope.clone()),
+                });
+                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(ScopeEntryDynamicBinding {
+                    js_key: element_scope_id,
+                    type_: variant_type.clone(),
+                }),);
+                let child_xx = ExprContext {
+                    vx: xx.vx.clone(),
+                    import_state: xx.import_state.clone(),
+                    scope: child_scope,
+                    target: xx.target.clone(),
+                };
+                let body_cv = erb.must_er(const_eval(&child_xx, body_expr))?;
+                let body_type = body_cv.value.type_(&child_xx, loc);
+                let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
+                let body_js = erb.must_er(body_consume.to_dynamic(&child_xx, loc, body_cv))?;
+                js_cases.push(CodeDynamicMatchBranch {
+                    js_tag: tag.clone(),
+                    body: body_js,
+                });
+            }
+            let js_fallback = if let Some(fallback_expr) = fallback {
+                let fb_cv = erb.must_er(const_eval(xx, fallback_expr))?;
+                let fb_type = fb_cv.value.type_(xx, loc);
+                let fb_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, fb_type.as_ref()))?;
+                let fb_js = erb.must_er(fb_consume.to_dynamic(xx, loc, fb_cv))?;
+                Some(Box::new(fb_js))
+            } else {
+                None
+            };
+            let match_js = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Match(CodeDynamicMatch {
+                    base: Box::new(base_js),
+                    element_key: element_scope_id,
+                    cases: js_cases,
+                    fallback: js_fallback,
+                }),
+            };
+            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
+            let null_stack = erb.must_er(null_stack)?;
+            return Ok(null_stack.to_value(loc, match_js));
+        });
+    }
+
+    fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes {
+        // Store tree as external
+        let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
+        let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
+        let tree_js = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: tree_id }),
+        };
+
+        // Build args for __stage(tree, lift1, val1, lift2, val2, ...). For each lower
+        // value, pass a (lift, value) pair:
+        //
+        // * Code_::None: lift=null, value=StagedExprCell external
+        //
+        // * Code_::Dyn:  lift=StageLiftCell external, value=raw v8 result __stage handles the
+        //   lifting internally.
+        let mut stage_args = vec![tree_js];
+        return er_seq_cv!(loc, erb, {
+            for cv in lower_values {
+                let vtype = cv.value.type_(xx, loc);
+                match cv.code.code {
+                    Code_::None => {
+                        let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
+                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
+                        stage_args.push(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::Literal(serde_json::Value::Null),
+                        });
+                        stage_args.push(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+                        });
+                    },
+                    Code_::Dyn(_) => {
+                        let lift = erb.must_er(aspect_lift_dynamic_get(xx, loc, vtype.as_ref()))?;
+                        let lift_cell = Rc::new(StageLiftCell {
+                            lift,
+                            vx: xx.vx.clone(),
+                            import_state: xx.import_state.clone(),
+                            scope: xx.scope.clone(),
+                            target: xx.target.clone(),
+                        });
+                        let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
+                        let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
+                        let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
+                        stage_args.push(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: lift_id }),
+                        });
+                        stage_args.push(inner_js);
+                    },
+                }
+            }
+            let stage_js = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: STAGE_FN_SCOPE_ID, }),
+                    }),
+                    args: stage_args,
+                }),
+            };
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(stage_js)),
+                },
+                value: Rc::new(value::value_dynamic::ValueDynamic {
+                    source: value::value_dynamic::ValueDynamicSource::Expr,
+                    type_: Rc::new(value::type_expr::TypeStagedExprPlaceholder),
+                }),
+            });
+        });
+    }
+}
+
+/// Extract a clone of `Rc<dyn Type>` from a `v8::External`. Only operates on
+/// `dyn Type` — for concrete `Rc<T>`, use `from_v8_ref` directly.
+pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
+    from_v8_ref::<Rc<dyn Type>>(value).clone()
+}
+
+/// Store an `Rc<dyn Type>` as a `v8::External`. Only operates on `dyn Type` — for
+/// concrete `Rc<T>`, use `to_v8` directly.
+pub(crate) fn rc_type_to_v8<
+    's,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Type>) -> v8::Local<'s, v8::External> {
+    to_v8(scope, value)
 }
 
 fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
@@ -2177,173 +2261,13 @@ fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
     return out;
 }
 
-pub(crate) fn compile_importid(
-    fx: &Arc<GlobalContext>,
-    import_state: ImportStateId,
-    source: Module,
-    compile_path: Vec<(CompileId, ExprId)>,
-) -> CompileRes {
-    let cix = Rc::new(CompileImportContext {
-        gx: fx.clone(),
-        compile_path: compile_path,
-        builtin_types: crate::langhelp::make_builtin_types(),
-    });
-    let mut root_expr = match source {
-        Module::V1(e) => e,
-    };
-    let root_loc = root_expr.loc;
-
-    // Step 1: Count lower excess and wrap root in stage layers Root is treated as
-    // implicit stage (stage_depth=1)
-    fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
-        //! Walk the expression tree counting stage/lower nesting depths. Returns the max
-        //! (lower_depth - stage_depth) where lower_depth > stage_depth. This tells us how
-        //! many extra `stage` wrappers are needed at the root.
-        fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
-            match &expr.r#type {
-                Expr_::Lower(e) => {
-                    let new_ld = ld + 1;
-                    let excess = new_ld.saturating_sub(sd);
-                    excess.max(max_lower_excess(&e.expr, sd, new_ld))
-                },
-                Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
-                Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
-                Expr_::As(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
-                },
-                Expr_::Call(c) => {
-                    max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
-                },
-                Expr_::Bind(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
-                },
-                Expr_::Set(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
-                },
-                Expr_::Field(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.key, sd, ld))
-                },
-                Expr_::Block(e) => {
-                    e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
-                },
-                Expr_::Tuple(t) => {
-                    t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
-                },
-                Expr_::Record(r) => {
-                    r.entries.iter().map(|(k, v)| {
-                        max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
-                    }).max().unwrap_or(0)
-                },
-                Expr_::If(e) => {
-                    let mut m = 0;
-                    for b in &e.conditions {
-                        m = m.max(max_lower_excess(&b.condition, sd, ld));
-                        m = m.max(max_lower_excess(&b.body, sd, ld));
-                    }
-                    if let Some(el) = &e.else_ {
-                        m = m.max(max_lower_excess(el, sd, ld));
-                    }
-                    m
-                },
-                Expr_::OperatorLt(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
-                },
-                Expr_::OperatorAdd(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
-                },
-                Expr_::Foreach(e) => {
-                    max_lower_excess(&e.base, sd, ld)
-                        .max(max_lower_excess(&e.element_key, sd, ld))
-                        .max(max_lower_excess(&e.body, sd, ld))
-                },
-                Expr_::Match(e) => {
-                    let mut m = max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.element_key, sd, ld));
-                    for c in &e.cases {
-                        m = m.max(max_lower_excess(&c.condition, sd, ld));
-                        m = m.max(max_lower_excess(&c.body, sd, ld));
-                    }
-                    if let Some(f) = &e.fallback {
-                        m = m.max(max_lower_excess(f, sd, ld));
-                    }
-                    m
-                },
-            }
-        }
-
-        recurse_children(expr, stage_depth, lower_depth)
-    }
-
-    let excess = max_lower_excess(&root_expr, 0, 0);
-    for _ in 0 .. excess {
-        root_expr = Expr {
-            loc: root_loc,
-            r#type: Expr_::Stage(ExprStage { expr: Rc::new(root_expr) }),
-        };
-    }
-
-    // Step 2: Repeatedly eval until root is no longer a Stage, then once more
-    let mut all_logs = Vec::new();
-    loop {
-        let is_stage = matches!(&root_expr.r#type, Expr_::Stage(_));
-        let eval_result = match eval(&cix, import_state, &root_expr) {
-            Ok(v) => v,
-            Err(errors) => return CompileRes {
-                logs: all_logs,
-                generated_mortar_scripts: vec![],
-                result: CompileResResult::Err(errors),
-            },
-        };
-        let eval_value = eval_result.value;
-        all_logs.extend(eval_result.logs);
-        if !is_stage {
-            // This was the final eval (root was not a stage) Serialize result
-            let logs = all_logs;
-            let ex = Rc::new(EvalContext {
-                ix: cix.clone(),
-                next_local_id: Default::default(),
-                definition_sets: RefCell::new(Vec::new()),
-                externals: RefCell::new(Vec::new()),
-            });
-            let xx = Rc::new(ExprContext {
-                vx: ex,
-                import_state: Rc::new(Cell::new(import_state)),
-                scope: Rc::new(Scope {
-                    values: RefCell::new(HashMap::new()),
-                    parent: None,
-                }),
-                target: Rc::new(MortarTarget),
-            });
-            let value_type = eval_value.type_(&xx, root_loc);
-            let value_serial = match aspect_artifact_get(&xx, root_loc, value_type.as_ref()).into_res() {
-                Ok(v) => v,
-                Err(e) => return CompileRes {
-                    logs,
-                    generated_mortar_scripts: vec![],
-                    result: CompileResResult::Err(e),
-                },
-            };
-            let value = match value_serial.to_serial(&xx, &fx, root_loc, eval_value).into_res() {
-                Ok(v) => v,
-                Err(e) => return CompileRes {
-                    logs,
-                    generated_mortar_scripts: vec![],
-                    result: CompileResResult::Err(e),
-                },
-            };
-            let generated_mortar_scripts = mem::take(&mut *fx.generated_mortar_scripts.lock().unwrap());
-            return CompileRes {
-                logs,
-                generated_mortar_scripts,
-                result: CompileResResult::Ok(value),
-            };
-        }
-
-        // Result is an Expr (from stage eval) - use it as next expression
-        let next_expr =
-            Rc::try_unwrap(downcast_value::<Expr>(eval_value).expect("Stage eval must produce an Expr value"))
-                .ok()
-                .expect("Stage eval Expr: Rc not unique");
-        root_expr = next_expr;
+pub(crate) fn scope_entry_id_js_key(e: ScopeEntryId) -> String {
+    match e {
+        ScopeEntryId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
+        ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
+        ScopeEntryId::Def(import_id, def_set_id, entry_id) => {
+            format!("{}{}_{}_{}", DEF_PREFIX, import_id.0, def_set_id.0, entry_id)
+        },
     }
 }
 
@@ -2355,4 +2279,80 @@ pub fn setup_v8() {
         v8::V8::initialize();
         return ();
     });
+}
+
+/// Holds an AspectLiftDynamic, stored as a v8::External so __stage can lift raw
+/// values.
+pub(crate) struct StageLiftCell {
+    pub lift: Box<dyn crate::builtin::AspectLiftDynamic>,
+    pub vx: Rc<EvalContext>,
+    pub import_state: Rc<Cell<ImportStateId>>,
+    pub scope: Rc<Scope>,
+    pub target: Rc<dyn Target>,
+}
+
+/// Store a value as a `v8::External`. The value is boxed as `dyn Any` so that
+/// `from_v8_ref` can safely downcast to any type, including trait object wrappers
+/// like `Rc<dyn Type>`. A guaranteed finalizer drops the value when the isolate is
+/// disposed.
+pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
+    let any: Box<dyn std::any::Any> = Box::new(value);
+    let ptr = Box::into_raw(Box::new(any)) as *mut std::ffi::c_void;
+    let ext = v8::External::new(&*scope, ptr);
+    let weak = v8::Weak::with_guaranteed_finalizer(&mut *scope, ext, Box::new(move || unsafe {
+        drop(Box::from_raw(ptr as *mut Box<dyn std::any::Any>));
+    }));
+    scope.get_slot::<V8RcStore>().unwrap().weaks.borrow_mut().push(weak);
+    ext
+}
+
+pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
+    return er_seq_cv!(loc, erb, {
+        // Resolve pending imports so downstream code sees the real value
+        let source =
+            if let Some(pending) =
+                <dyn Any>::downcast_ref::<value::value_pending_import::ValuePendingImport>(source.value.as_ref()) {
+                CodeValue {
+                    code: source.code,
+                    value: pending.resolve(xx)
+                }
+            } else {
+                source
+            };
+        let source_type = source.value.type_(xx, loc);
+        let dest;
+        if source_type.can_cast_to(xx, loc, dest_type) {
+            dest = erb.must_er(source_type.cast_to(xx, loc, source, dest_type))?;
+        } else if dest_type.can_cast_from(xx, loc, source_type.as_ref()) {
+            dest = erb.must_er(dest_type.cast_from(xx, loc, source))?;
+        } else {
+            return erb.err_new(
+                format!("Incompatible types: source {} cannot convert to dest {}", source_type.desc(), dest_type.desc())
+            );
+        }
+        return Ok(dest);
+    });
+}
+
+pub(crate) struct V8DefSetCounter {
+    pub(crate) import_id: ImportStateId,
+    pub(crate) counter: Counter,
+}
+
+pub(crate) struct V8LogStore {
+    pub(crate) logs: RefCell<Vec<crate::langhelp::LogEntry>>,
+}
+
+// --- Rc`<T>` ↔ v8::External helpers ---
+/// Weak handle storage, set as an isolate slot. During dispose_annex(), slots are
+/// cleared first (Weak handles dropped — but isolate ptr is already null so
+/// finalizers can't be cancelled), then finalizer_map is drained, running our
+/// guaranteed finalizer callbacks.
+pub(crate) struct V8RcStore {
+    weaks: RefCell<Vec<v8::Weak<v8::External>>>,
+}
+
+pub(crate) struct V8UniqueCounter {
+    pub(crate) compile_id: CompileId,
+    pub(crate) counter: Counter,
 }

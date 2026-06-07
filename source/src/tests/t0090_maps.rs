@@ -31,12 +31,12 @@ fn test_0000_map_string_keys() {
                                         mb.field(
                                             mb.call(
                                                 mb.scope_use("map"),
-                                                mb.tuple(vec![mb.scope_use("string"), mb.scope_use("number")])
+                                                mb.tuple(vec![mb.scope_use("string"), mb.scope_use("number")]),
                                             ),
                                             mb.str("new"),
                                         ),
-                                        mb.tuple(vec![])
-                                    )
+                                        mb.tuple(vec![]),
+                                    ),
                                 ),
                                 mb.set(mb.field(mb.scope_use("my_map"), mb.str("a")), mb.num(10.)),
                                 mb.set(mb.field(mb.scope_use("my_map"), mb.str("b")), mb.num(20.)),
@@ -47,20 +47,20 @@ fn test_0000_map_string_keys() {
                                         vec![
                                             mb.call(
                                                 mb.scope_use("log"),
-                                                mb.field(mb.scope_use("entry"), mb.str("key"))
+                                                mb.field(mb.scope_use("entry"), mb.str("key")),
                                             ),
                                             mb.call(
                                                 mb.scope_use("log"),
                                                 mb.call(
                                                     mb.field(
                                                         mb.field(mb.scope_use("entry"), mb.str("value")),
-                                                        mb.str("to_string")
+                                                        mb.str("to_string"),
                                                     ),
-                                                    mb.tuple(vec![])
-                                                )
+                                                    mb.tuple(vec![]),
+                                                ),
                                             ),
-                                        ]
-                                    )
+                                        ],
+                                    ),
                                 ),
                             ],
                         ),
@@ -96,12 +96,12 @@ fn test_0010_map_string_string() {
                                         mb.field(
                                             mb.call(
                                                 mb.scope_use("map"),
-                                                mb.tuple(vec![mb.scope_use("string"), mb.scope_use("string")])
+                                                mb.tuple(vec![mb.scope_use("string"), mb.scope_use("string")]),
                                             ),
                                             mb.str("new"),
                                         ),
-                                        mb.tuple(vec![])
-                                    )
+                                        mb.tuple(vec![]),
+                                    ),
                                 ),
                                 mb.set(mb.field(mb.scope_use("my_map"), mb.str("x")), mb.str("hello")),
                                 mb.set(mb.field(mb.scope_use("my_map"), mb.str("y")), mb.str("world")),
@@ -112,14 +112,14 @@ fn test_0010_map_string_string() {
                                         vec![
                                             mb.call(
                                                 mb.scope_use("log"),
-                                                mb.field(mb.scope_use("entry"), mb.str("key"))
+                                                mb.field(mb.scope_use("entry"), mb.str("key")),
                                             ),
                                             mb.call(
                                                 mb.scope_use("log"),
-                                                mb.field(mb.scope_use("entry"), mb.str("value"))
+                                                mb.field(mb.scope_use("entry"), mb.str("value")),
                                             ),
-                                        ]
-                                    )
+                                        ],
+                                    ),
                                 ),
                             ],
                         ),

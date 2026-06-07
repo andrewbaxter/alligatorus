@@ -46,9 +46,68 @@ use {
 
 pub(crate) struct TypeSourceDataTypeDynamic;
 
-impl Value for TypeSourceDataTypeDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeSourceDataTypeDynamic { }
+
+impl AspectBind for TypeSourceDataTypeDynamic {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeSourceDataTypeDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeSourceDataTypeDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let dt =
+            (type_.as_ref() as &dyn Any)
+                .downcast_ref::<TypeSourceDataTypeConst>()
+                .expect("TypeSourceDataTypeDynamic::lift: expected TypeSourceDataTypeConst");
+        dt.data.set.finish()?;
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
+            type_: Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }),
+        }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeDynamic),
+            }),
+        }
     }
 }
 
@@ -89,62 +148,8 @@ impl Type for TypeSourceDataTypeDynamic {
     }
 }
 
-impl Aspect for TypeSourceDataTypeDynamic { }
-
-impl AspectConsumeDynamic for TypeSourceDataTypeDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamicSub for TypeSourceDataTypeDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeSourceDataTypeDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeDynamic),
-            }),
-        }
-    }
-}
-
-impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let dt =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceDataTypeConst>()
-                .expect("TypeSourceDataTypeDynamic::lift: expected TypeSourceDataTypeConst");
-        dt.data.set.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }),
-        }))
+impl Value for TypeSourceDataTypeDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

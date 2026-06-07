@@ -4,30 +4,20 @@ use crate::langhelp::{
     ScopeEntryId,
 };
 
-pub(crate) const EXPR_PREFIX: &str = "e";
 pub(crate) const BINDING_PREFIX: &str = "a";
 pub(crate) const BUILTIN_PREFIX: &str = "b";
 pub(crate) const DEF_PREFIX: &str = "d";
+pub(crate) const EXPR_PREFIX: &str = "e";
 pub(crate) const TAG_PREFIX: &str = "t";
 pub(crate) const TAG_VAR: &str = "__tag";
 
 #[derive(Clone)]
-pub(crate) enum CodeDynamicBlockEntry {
-    Bind(CodeDynamicBind),
-    Code(CodeDynamic),
+pub(crate) struct CodeDynamic {
+    pub(crate) loc: QExprId,
+    pub(crate) type_: CodeDynamicType,
 }
 
-#[derive(Clone)]
-pub(crate) struct CodeDynamicBlock {
-    pub(crate) entries: Vec<CodeDynamicBlockEntry>,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicFieldSet {
-    pub(crate) base: Box<CodeDynamic>,
-    pub(crate) key: String,
-    pub(crate) value: Box<CodeDynamic>,
-}
+impl CodeDyn for CodeDynamic { }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicBind {
@@ -47,9 +37,14 @@ pub(crate) struct CodeDynamicBindingUse {
 }
 
 #[derive(Clone)]
-pub(crate) struct CodeDynamicFieldUse {
-    pub(crate) base: Box<CodeDynamic>,
-    pub(crate) field: String,
+pub(crate) struct CodeDynamicBlock {
+    pub(crate) entries: Vec<CodeDynamicBlockEntry>,
+}
+
+#[derive(Clone)]
+pub(crate) enum CodeDynamicBlockEntry {
+    Bind(CodeDynamicBind),
+    Code(CodeDynamic),
 }
 
 #[derive(Clone)]
@@ -59,36 +54,16 @@ pub(crate) struct CodeDynamicCall {
 }
 
 #[derive(Clone)]
-pub(crate) struct CodeDynamicNewObject {
-    pub(crate) fields: Vec<(String, CodeDynamic)>,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicNewMap {
-    pub(crate) fields: Vec<(CodeDynamic, CodeDynamic)>,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicNewArray {
-    pub(crate) elements: Vec<CodeDynamic>,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicIf {
-    pub(crate) conditions: Vec<(CodeDynamic, CodeDynamic)>,
-    pub(crate) else_: Option<Box<CodeDynamic>>,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicOperatorLt {
+pub(crate) struct CodeDynamicFieldSet {
     pub(crate) base: Box<CodeDynamic>,
-    pub(crate) reference: Box<CodeDynamic>,
+    pub(crate) key: String,
+    pub(crate) value: Box<CodeDynamic>,
 }
 
 #[derive(Clone)]
-pub(crate) struct CodeDynamicOperatorAdd {
+pub(crate) struct CodeDynamicFieldUse {
     pub(crate) base: Box<CodeDynamic>,
-    pub(crate) reference: Box<CodeDynamic>,
+    pub(crate) field: String,
 }
 
 #[derive(Clone)]
@@ -103,6 +78,53 @@ pub(crate) struct CodeDynamicForeachMap {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) element_key: ScopeEntryId,
     pub(crate) body: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicIf {
+    pub(crate) conditions: Vec<(CodeDynamic, CodeDynamic)>,
+    pub(crate) else_: Option<Box<CodeDynamic>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicMatch {
+    pub(crate) base: Box<CodeDynamic>,
+    pub(crate) element_key: ScopeEntryId,
+    pub(crate) cases: Vec<CodeDynamicMatchBranch>,
+    pub(crate) fallback: Option<Box<CodeDynamic>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicMatchBranch {
+    pub(crate) js_tag: String,
+    pub(crate) body: CodeDynamic,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicNewArray {
+    pub(crate) elements: Vec<CodeDynamic>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicNewMap {
+    pub(crate) fields: Vec<(CodeDynamic, CodeDynamic)>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicNewObject {
+    pub(crate) fields: Vec<(String, CodeDynamic)>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicOperatorAdd {
+    pub(crate) base: Box<CodeDynamic>,
+    pub(crate) reference: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicOperatorLt {
+    pub(crate) base: Box<CodeDynamic>,
+    pub(crate) reference: Box<CodeDynamic>,
 }
 
 #[derive(Clone)]
@@ -124,25 +146,3 @@ pub(crate) enum CodeDynamicType {
     ForeachMap(CodeDynamicForeachMap),
     Match(CodeDynamicMatch),
 }
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicMatchBranch {
-    pub(crate) js_tag: String,
-    pub(crate) body: CodeDynamic,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamicMatch {
-    pub(crate) base: Box<CodeDynamic>,
-    pub(crate) element_key: ScopeEntryId,
-    pub(crate) cases: Vec<CodeDynamicMatchBranch>,
-    pub(crate) fallback: Option<Box<CodeDynamic>>,
-}
-
-#[derive(Clone)]
-pub(crate) struct CodeDynamic {
-    pub(crate) loc: QExprId,
-    pub(crate) type_: CodeDynamicType,
-}
-
-impl CodeDyn for CodeDynamic { }

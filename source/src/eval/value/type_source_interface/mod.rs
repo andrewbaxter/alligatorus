@@ -7,13 +7,6 @@ use {
     std::cell::RefCell,
 };
 
-pub(crate) struct SourceInterfaceMethodData {
-    pub name: String,
-    pub arg_type: RefCell<Option<std::rc::Rc<dyn crate::langhelp::Type>>>,
-    pub ret_type: RefCell<Option<std::rc::Rc<dyn crate::langhelp::Type>>>,
-    pub field_name: String,
-}
-
 pub(crate) struct SourceInterfaceData {
     pub set: Gc<crate::eval::definition_set::DefinitionSet>,
     pub description: RefCell<Option<String>>,
@@ -28,11 +21,18 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceInterfaceData
     }
 }
 
-pub(crate) struct TypeSourceInterfaceConst {
-    pub data: Gc<SourceInterfaceData>,
+pub(crate) struct SourceInterfaceMethodData {
+    pub name: String,
+    pub arg_type: RefCell<Option<std::rc::Rc<dyn crate::langhelp::Type>>>,
+    pub ret_type: RefCell<Option<std::rc::Rc<dyn crate::langhelp::Type>>>,
+    pub field_name: String,
 }
 
 pub(crate) struct SourceInterfaceRef {
+    pub data: Gc<SourceInterfaceData>,
+}
+
+pub(crate) struct TypeSourceInterfaceConst {
     pub data: Gc<SourceInterfaceData>,
 }
 

@@ -1,3 +1,6 @@
+pub mod scope_entry;
+
+pub(crate) use scope_entry::ScopeEntryPendingImport;
 pub(crate) use super::value_pending_import::PendingImportState;
 use {
     crate::{
@@ -18,6 +21,29 @@ use {
     },
 };
 
+struct PendingImportBind {
+    state: Rc<PendingImportState>,
+}
+
+impl crate::builtin::AspectBind for PendingImportBind {
+    fn bind(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((crate::langhelp::Code {
+            loc: loc,
+            code: crate::langhelp::Code_::None,
+        }, Box::new(ScopeEntryPendingImport {
+            state: self.state.clone(),
+            code: cv.code,
+        }) as Box<dyn ScopeEntry>))
+    }
+}
+
+impl crate::langhelp::Aspect for PendingImportBind { }
+
 pub(crate) struct TypePendingImport {
     pub(crate) state: Rc<PendingImportState>,
     pub(crate) resolved: Rc<dyn Value>,
@@ -33,12 +59,6 @@ impl TypePendingImport {
             code: cv.code,
             value: self.resolved.clone(),
         }
-    }
-}
-
-impl Value for TypePendingImport {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -82,28 +102,8 @@ impl Type for TypePendingImport {
     }
 }
 
-struct PendingImportBind {
-    state: Rc<PendingImportState>,
-}
-
-impl crate::langhelp::Aspect for PendingImportBind { }
-
-impl crate::builtin::AspectBind for PendingImportBind {
-    fn bind(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((crate::langhelp::Code {
-            loc: loc,
-            code: crate::langhelp::Code_::None,
-        }, Box::new(ScopeEntryPendingImport {
-            state: self.state.clone(),
-            code: cv.code,
-        }) as Box<dyn ScopeEntry>))
+impl Value for TypePendingImport {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(type_any::r#const::TypeAnyConst)
     }
 }
-pub mod scope_entry;
-
-pub(crate) use scope_entry::ScopeEntryPendingImport;

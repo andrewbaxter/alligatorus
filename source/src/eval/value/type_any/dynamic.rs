@@ -39,9 +39,51 @@ use {
 // are always Rc`<dyn Type>` externals.
 pub(crate) struct TypeAnyDynamic;
 
-impl Value for TypeAnyDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::r#const::TypeAnyConst)
+impl Aspect for TypeAnyDynamic { }
+
+impl AspectBind for TypeAnyDynamic {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeAnyDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::code_dynamic::CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeAnyDynamic {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        crate::eval::value::type_dynamic::mortar_consume_to_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectLiftDynamic for TypeAnyDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_ = crate::eval::rc_type_from_v8(&*value);
+        Ok(type_.as_value())
+    }
+}
+
+impl AspectStackValueDynamic for TypeAnyDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        crate::eval::value::type_dynamic::mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }
 
@@ -104,45 +146,8 @@ impl Type for TypeAnyDynamic {
     }
 }
 
-impl Aspect for TypeAnyDynamic { }
-
-impl AspectConsumeDynamic for TypeAnyDynamic {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        crate::eval::value::type_dynamic::mortar_consume_to_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectBindDynamicSub for TypeAnyDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(crate::code_dynamic::CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeAnyDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectStackValueDynamic for TypeAnyDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        crate::eval::value::type_dynamic::mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
-    }
-}
-
-impl AspectLiftDynamic for TypeAnyDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_ = crate::eval::rc_type_from_v8(&*value);
-        Ok(type_.as_value())
+impl Value for TypeAnyDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::r#const::TypeAnyConst)
     }
 }

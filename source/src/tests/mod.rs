@@ -9,6 +9,6 @@ mod t0060_scope;
 mod t0070_foreach;
 mod t0080_taggedunion;
 mod t0090_maps;
-mod t_nodejs;
 mod t0100_serial;
 mod t0110_const_folding;
+mod t_nodejs;

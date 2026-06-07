@@ -59,49 +59,43 @@ use {
     },
 };
 
-impl Value for TypeSourceDataTypeConstructorConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
-    }
-}
-
-impl Type for TypeSourceDataTypeConstructorConst {
-    fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("definition_set_data_type_constructor"),
+impl TypeSourceDataTypeConstructorConst {
+    pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
+        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
+            return existing_id;
         }
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as
-                        Box<dyn AspectFunction>,
-                ),
-            );
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as Box<dyn AspectBind>,
-                ),
-            );
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
+        let artifact_id = gx.artifacts.reserve_id();
+        *self.data.artifact_id.borrow_mut() = Some(artifact_id.clone());
+        let serial_data = {
+            let underlying_type = self.data.underlying_type.borrow();
+            let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
+            let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
+                let compiled_js = m.compiled_js.borrow();
+                let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
+                let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
+                ArtifactDataDefSetCtorMethod {
+                    name: m.name.clone(),
+                    field_name: m.field_name.clone(),
+                    ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
+                    compiled_js: compiled_js.clone(),
+                }
+            }).collect();
+            ArtifactDataDefSetCtorData {
+                name: self.data.name.clone(),
+                data_field: self.data.data_field.clone(),
+                underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
+                identity: unique_to_serial(&self.data.identity),
+                methods,
+                import_id: self.data.set.import_id,
+                def_set_id: self.data.set.def_set_id,
+            }
+        };
+        let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
+        gx.artifacts.set(artifact_id.clone(), Artifact {
+            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
+            data: json,
+        });
+        artifact_id
     }
 }
 
@@ -169,42 +163,48 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
     }
 }
 
-impl TypeSourceDataTypeConstructorConst {
-    pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
-            return existing_id;
+impl Type for TypeSourceDataTypeConstructorConst {
+    fn desc(&self) -> String {
+        match self.data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("definition_set_data_type_constructor"),
         }
-        let artifact_id = gx.artifacts.reserve_id();
-        *self.data.artifact_id.borrow_mut() = Some(artifact_id.clone());
-        let serial_data = {
-            let underlying_type = self.data.underlying_type.borrow();
-            let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-            let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
-                let compiled_js = m.compiled_js.borrow();
-                let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
-                let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-                ArtifactDataDefSetCtorMethod {
-                    name: m.name.clone(),
-                    field_name: m.field_name.clone(),
-                    ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
-                    compiled_js: compiled_js.clone(),
-                }
-            }).collect();
-            ArtifactDataDefSetCtorData {
-                name: self.data.name.clone(),
-                data_field: self.data.data_field.clone(),
-                underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-                identity: unique_to_serial(&self.data.identity),
-                methods,
-                import_id: self.data.set.import_id,
-                def_set_id: self.data.set.def_set_id,
-            }
-        };
-        let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
-        gx.artifacts.set(artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
-            data: json,
-        });
-        artifact_id
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() })
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as
+                        Box<dyn AspectFunction>,
+                ),
+            );
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as Box<dyn AspectBind>,
+                ),
+            );
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
+    }
+}
+
+impl Value for TypeSourceDataTypeConstructorConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
 }

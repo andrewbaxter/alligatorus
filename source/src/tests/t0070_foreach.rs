@@ -28,9 +28,12 @@ fn test_0000_foreach_list() {
                                 mb.bind(
                                     "my_list",
                                     mb.call(
-                                        mb.field(mb.call(mb.scope_use("list"), mb.scope_use("number")), mb.str("new"),),
-                                        mb.tuple(vec![mb.num(1.), mb.num(2.), mb.num(7.)])
-                                    )
+                                        mb.field(
+                                            mb.call(mb.scope_use("list"), mb.scope_use("number")),
+                                            mb.str("new"),
+                                        ),
+                                        mb.tuple(vec![mb.num(1.), mb.num(2.), mb.num(7.)]),
+                                    ),
                                 ),
                                 mb.foreach(
                                     mb.scope_use("my_list"),
@@ -41,11 +44,11 @@ fn test_0000_foreach_list() {
                                                 mb.scope_use("log"),
                                                 mb.call(
                                                     mb.field(mb.scope_use("e"), mb.str("to_string")),
-                                                    mb.tuple(vec![])
-                                                )
+                                                    mb.tuple(vec![]),
+                                                ),
                                             ),
-                                        ]
-                                    )
+                                        ],
+                                    ),
                                 ),
                             ],
                         ),

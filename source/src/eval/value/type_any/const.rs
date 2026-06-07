@@ -31,18 +31,54 @@ use {
     },
 };
 
-pub(crate) struct TypeAnyConst;
-
 pub(crate) fn type_type_identity() -> Unique {
     Unique::Builtin {
         file: file!(),
         line: line!() as usize,
     }
 }
+pub(crate) struct TypeAnyConst;
 
-impl Value for TypeAnyConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+impl Aspect for TypeAnyConst { }
+
+impl AspectBind for TypeAnyConst {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeAnyConst {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::code_dynamic::CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeAnyConst {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
+        // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
+        // cast_from), pass through.
+        if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
+            return EResult::ok(js.clone());
+        }
+
+        // Compile-time: create external from the value's type
+        let type_ = cv.value.type_(xx, loc);
+        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
+        EResult::ok(CodeDynamic {
+            loc,
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+        })
     }
 }
 
@@ -102,40 +138,8 @@ impl Type for TypeAnyConst {
     }
 }
 
-impl Aspect for TypeAnyConst { }
-
-impl AspectConsumeDynamic for TypeAnyConst {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
-        // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
-        // cast_from), pass through.
-        if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
-            return EResult::ok(js.clone());
-        }
-
-        // Compile-time: create external from the value's type
-        let type_ = cv.value.type_(xx, loc);
-        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
-        EResult::ok(CodeDynamic {
-            loc,
-            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
-        })
-    }
-}
-
-impl AspectBindDynamicSub for TypeAnyConst {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(crate::code_dynamic::CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeAnyConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+impl Value for TypeAnyConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeAnyConst)
     }
 }

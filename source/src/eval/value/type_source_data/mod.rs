@@ -1,6 +1,6 @@
 pub mod artifact;
-pub mod r#const;
 pub mod dynamic;
+pub mod r#const;
 
 use {
     crate::langhelp::{
@@ -65,11 +65,11 @@ pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
-pub(crate) struct TypeSourceDataTypeConst {
+pub(crate) struct SourceDataTypeRef {
     pub data: Gc<SourceDataTypeData>,
 }
 
-pub(crate) struct SourceDataTypeRef {
+pub(crate) struct TypeSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
 }
 

@@ -56,9 +56,36 @@ use {
 
 pub(crate) struct TypeBoolDynamic;
 
-impl Value for TypeBoolDynamic {
-    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeBoolDynamic { }
+
+impl AspectBind for TypeBoolDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeBoolDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectBoolDynamic for TypeBoolDynamic { }
+
+impl AspectConsumeDynamic for TypeBoolDynamic {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        mortar_consume_to_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectStackValueDynamic for TypeBoolDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
     }
 }
 
@@ -151,35 +178,8 @@ impl Type for TypeBoolDynamic {
     }
 }
 
-impl Aspect for TypeBoolDynamic { }
-
-impl AspectBoolDynamic for TypeBoolDynamic { }
-
-impl AspectStackValueDynamic for TypeBoolDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
-    }
-}
-
-impl AspectConsumeDynamic for TypeBoolDynamic {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectBindDynamicSub for TypeBoolDynamic {
-    fn bind_dynamic_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeBoolDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
+impl Value for TypeBoolDynamic {
+    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

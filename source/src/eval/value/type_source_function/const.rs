@@ -44,47 +44,6 @@ use {
     super::TypeSourceFunctionConst,
 };
 
-impl Value for TypeSourceFunctionConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeSourceFunctionConst {
-    fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("definition_set_function"),
-        }
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceFunctionConst { data: self.data.clone() })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectFunction>),
-            );
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectBind>),
-            );
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert definition_set_function"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
-    }
-}
-
 impl Aspect for TypeSourceFunctionConst { }
 
 impl AspectBind for TypeSourceFunctionConst {
@@ -172,5 +131,46 @@ impl AspectFunction for TypeSourceFunctionConst {
                 }),
             }));
         });
+    }
+}
+
+impl Type for TypeSourceFunctionConst {
+    fn desc(&self) -> String {
+        match self.data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("definition_set_function"),
+        }
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeSourceFunctionConst { data: self.data.clone() })
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectFunction>),
+            );
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectBind>),
+            );
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert definition_set_function"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
+    }
+}
+
+impl Value for TypeSourceFunctionConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

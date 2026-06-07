@@ -1,12 +1,3 @@
-pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
-    redact_builtins(sources)
-}
-
-pub(super) fn redact_builtins(sources: &[String]) -> Vec<String> {
-    let re = regex::Regex::new(r"\bb\d+\b").unwrap();
-    sources.iter().map(|s| re.replace_all(s, "BUILTIN").into_owned()).collect()
-}
-
 use {
     crate::{
         langhelp::{
@@ -53,69 +44,6 @@ use {
         },
     },
 };
-
-struct TestSources {
-    modules: HashMap<String, (SourceId, SourceModule)>,
-}
-
-impl crate::langhelp::Sources for TestSources {
-    fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String> {
-        match spec {
-            SourceSpecAbsolute::Virtual(name) => {
-                self.modules.get(&name).cloned().ok_or_else(|| format!("Module not found: {}", name))
-            },
-        }
-    }
-}
-
-pub(super) struct TestArtifacts {
-    next_id: Mutex<usize>,
-    pub data: Mutex<HashMap<ArtifactId, Artifact>>,
-}
-
-impl TestArtifacts {
-    fn new() -> Self {
-        TestArtifacts {
-            next_id: Mutex::new(0),
-            data: Mutex::new(HashMap::new()),
-        }
-    }
-}
-
-impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
-    fn reserve_id(&self) -> ArtifactId {
-        let mut next = self.next_id.lock().unwrap();
-        let id = *next;
-        *next += 1;
-        ArtifactId::Source(ArtifactIdSource(CompileId(ImportStateId(0), SourceId(0)), id))
-    }
-
-    fn set(&self, id: ArtifactId, data: Artifact) {
-        self.data.lock().unwrap().insert(id, data);
-    }
-
-    fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
-        self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
-    }
-}
-
-pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext> {
-    new_gx_with_artifacts(modules).0
-}
-
-pub(super) fn new_gx_with_artifacts(
-    modules: HashMap<&str, SourceModule>,
-) -> (Arc<GlobalContext>, Arc<TestArtifacts>) {
-    let mut sources = HashMap::new();
-    let mut next_id = 0;
-    for (name, module) in modules {
-        sources.insert(name.to_string(), (SourceId(next_id), module));
-        next_id += 1;
-    }
-    let artifacts = Arc::new(TestArtifacts::new());
-    let gx = GlobalContext::new(Box::new(TestSources { modules: sources }), Box::new(artifacts.clone()));
-    (gx, artifacts)
-}
 
 #[derive(Default)]
 pub(super) struct ModuleBuilder {
@@ -315,5 +243,77 @@ impl ModuleBuilder {
             id: self.id(),
             r#type: SourceExpr_::Record(entries.into_iter().map(|(k, v)| (self.str(k), v)).collect()),
         };
+    }
+}
+
+pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext> {
+    new_gx_with_artifacts(modules).0
+}
+
+pub(super) fn new_gx_with_artifacts(
+    modules: HashMap<&str, SourceModule>,
+) -> (Arc<GlobalContext>, Arc<TestArtifacts>) {
+    let mut sources = HashMap::new();
+    let mut next_id = 0;
+    for (name, module) in modules {
+        sources.insert(name.to_string(), (SourceId(next_id), module));
+        next_id += 1;
+    }
+    let artifacts = Arc::new(TestArtifacts::new());
+    let gx = GlobalContext::new(Box::new(TestSources { modules: sources }), Box::new(artifacts.clone()));
+    (gx, artifacts)
+}
+
+pub(super) fn redact_builtins(sources: &[String]) -> Vec<String> {
+    let re = regex::Regex::new(r"\bb\d+\b").unwrap();
+    sources.iter().map(|s| re.replace_all(s, "BUILTIN").into_owned()).collect()
+}
+
+pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
+    redact_builtins(sources)
+}
+
+pub(super) struct TestArtifacts {
+    next_id: Mutex<usize>,
+    pub data: Mutex<HashMap<ArtifactId, Artifact>>,
+}
+
+impl TestArtifacts {
+    fn new() -> Self {
+        TestArtifacts {
+            next_id: Mutex::new(0),
+            data: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+struct TestSources {
+    modules: HashMap<String, (SourceId, SourceModule)>,
+}
+
+impl crate::langhelp::Sources for TestSources {
+    fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String> {
+        match spec {
+            SourceSpecAbsolute::Virtual(name) => {
+                self.modules.get(&name).cloned().ok_or_else(|| format!("Module not found: {}", name))
+            },
+        }
+    }
+}
+
+impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
+    fn reserve_id(&self) -> ArtifactId {
+        let mut next = self.next_id.lock().unwrap();
+        let id = *next;
+        *next += 1;
+        ArtifactId::Source(ArtifactIdSource(CompileId(ImportStateId(0), SourceId(0)), id))
+    }
+
+    fn set(&self, id: ArtifactId, data: Artifact) {
+        self.data.lock().unwrap().insert(id, data);
+    }
+
+    fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
+        self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
     }
 }

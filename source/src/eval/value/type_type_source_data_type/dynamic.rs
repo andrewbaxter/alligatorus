@@ -31,46 +31,8 @@ use {
     },
 };
 
-pub(crate) struct TypeTypeSourceDataTypeDynamic;
-
 generate_builtin_artifact!(TypeTypeSourceDataTypeDynamic, serde_json::Value);
-
-impl Value for TypeTypeSourceDataTypeDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeTypeSourceDataTypeDynamic {
-    fn desc(&self) -> String {
-        "definition_set_data_type_type".to_string()
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeTypeSourceDataTypeDynamic)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::eval::value::type_any::r#const::type_type_identity() {
-            return Some(Box::new(true));
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectArtifact>));
-        }
-        if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectType>));
-        }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert definition_set_data_type_type".to_string())
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to definition_set_data_type_type".to_string())
-    }
-}
+pub(crate) struct TypeTypeSourceDataTypeDynamic;
 
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
 
@@ -115,5 +77,42 @@ impl AspectType for TypeTypeSourceDataTypeDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let dt = (value as &dyn Any).downcast_ref::<TypeSourceDataTypeConst>().unwrap();
         Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() })
+    }
+}
+
+impl Type for TypeTypeSourceDataTypeDynamic {
+    fn desc(&self) -> String {
+        "definition_set_data_type_type".to_string()
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeTypeSourceDataTypeDynamic)
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == crate::eval::value::type_any::r#const::type_type_identity() {
+            return Some(Box::new(true));
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectArtifact>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectType>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert definition_set_data_type_type".to_string())
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to definition_set_data_type_type".to_string())
+    }
+}
+
+impl Value for TypeTypeSourceDataTypeDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

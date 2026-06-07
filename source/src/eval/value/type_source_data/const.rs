@@ -1,3 +1,9 @@
+use super::artifact::{
+    ArtifactDataDefSet,
+    ArtifactDataDefSetDataType,
+    ArtifactDataDefSetDataTypeEntry,
+    ArtifactDataDefSetMethod,
+};
 use {
     crate::{
         builtin::{
@@ -77,158 +83,308 @@ use {
     },
 };
 
-impl Value for TypeSourceDataTypeConst {
+// --- Definition set serialization ---
+pub(crate) fn defset_artifact_identity() -> ArtifactIdBuiltin {
+    builtin_artifact_id!()
+}
+
+pub(crate) fn deserialize_definition_set(
+    xx: &ExprContext,
+    gx: &GlobalContext,
+    loc: QExprId,
+    artifact: &Artifact,
+) -> Result<Gc<DefinitionSet>, String> {
+    use crate::eval::{
+        value::type_source_data::SourceDataMethodData,
+        value::type_source_data_type_constructor::dynamic::serial_to_unique,
+    };
+
+    let serial: ArtifactDataDefSet =
+        serde_json::from_value(
+            artifact.data.clone(),
+        ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
+    let set = Gc::new(DefinitionSet {
+        import_id: serial.import_id,
+        def_set_id: serial.def_set_id,
+        functions: std::cell::RefCell::new(Vec::new()),
+        data_types: std::cell::RefCell::new(Vec::new()),
+        interfaces: std::cell::RefCell::new(Vec::new()),
+        finished: std::cell::Cell::new(true),
+        next_field_id: crate::langhelp::Counter::default(),
+        next_entry_id: crate::langhelp::Counter::default(),
+        next_interface_method_id: crate::langhelp::Counter::default(),
+    });
+    let data_types: Vec<Gc<SourceDataTypeData>> = serial.data_types.iter().enumerate().map(|(dt_i, dt)| {
+        let underlying_type =
+            gx
+                .deserialize_type_ref(xx, loc, &dt.underlying_type)
+                .unwrap_or_else(|e| panic!("Failed to deserialize underlying type for data type {}: {}", dt_i, e));
+        let methods: Vec<SourceDataMethodData> = dt.methods.iter().enumerate().map(|(m_i, m)| {
+            let ret_type =
+                gx
+                    .deserialize_type_ref(xx, loc, &m.ret_type)
+                    .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {}", e));
+            SourceDataMethodData {
+                name: m.name.clone(),
+                impl_expr: std::cell::RefCell::new(None),
+                ret_type: std::cell::RefCell::new(Some(ret_type)),
+                scope_entry_id: std::cell::Cell::new(
+                    Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, serial.def_set_id, m_i)),
+                ),
+                self_scope_entry_id: std::cell::Cell::new(None),
+                field_name: m.field_name.clone(),
+                compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
+            }
+        }).collect();
+        Gc::new(SourceDataTypeData {
+            set: set.clone(),
+            name: dt.name.clone(),
+            description: std::cell::RefCell::new(None),
+            underlying_type: std::cell::RefCell::new(Some(underlying_type)),
+            methods: std::cell::RefCell::new(methods),
+            interface_impls: std::cell::RefCell::new(Vec::new()),
+            identity: serial_to_unique(&dt.identity),
+            data_field: dt.data_field.clone(),
+            artifact_id: std::cell::RefCell::new(None),
+        })
+    }).collect();
+    *set.data_types.borrow_mut() = data_types;
+    Ok(set)
+}
+
+// --- LiftedDefSetDataTypeValue: value produced by lifting a data type instance
+// from v8 ---
+pub(crate) struct LiftedDefSetDataTypeValue {
+    pub underlying: Rc<dyn Value>,
+    pub data: Gc<SourceDataTypeData>,
+    pub artifact_id: RefCell<Option<ArtifactId>>,
+}
+
+impl Value for LiftedDefSetDataTypeValue {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeTypeSourceDataTypeDynamic)
+        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
 }
 
-impl Type for TypeSourceDataTypeConst {
-    fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("data_type({})", self.data.name.as_deref().unwrap_or("?")),
-        }
-    }
+fn serialize_definition_set(
+    xx: &ExprContext,
+    gx: &GlobalContext,
+    loc: QExprId,
+    set: &Gc<DefinitionSet>,
+) -> ArtifactId {
+    use crate::eval::value::type_source_data_type_constructor::dynamic::{
+        serialize_type_ref,
+        unique_to_serial,
+    };
 
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
-    }
+    let data_types = set.data_types.borrow();
+    let serial_data_types: Vec<ArtifactDataDefSetDataTypeEntry> = data_types.iter().map(|dt| {
+        let underlying_type = dt.underlying_type.borrow();
+        let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
+        let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
+            let compiled_js = m.compiled_js.borrow();
+            let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
+            let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
+            ArtifactDataDefSetMethod {
+                name: m.name.clone(),
+                field_name: m.field_name.clone(),
+                ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
+                compiled_js: compiled_js.clone(),
+            }
+        }).collect();
+        ArtifactDataDefSetDataTypeEntry {
+            name: dt.name.clone(),
+            underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
+            identity: unique_to_serial(&dt.identity),
+            data_field: dt.data_field.clone(),
+            methods,
+        }
+    }).collect();
+    let serial = ArtifactDataDefSet {
+        data_types: serial_data_types,
+        import_id: set.import_id,
+        def_set_id: set.def_set_id,
+    };
+    let json = serde_json::to_value(&serial).expect("Failed to serialize definition set");
+    let artifact_id = gx.artifacts.reserve_id();
+    gx.artifacts.set(artifact_id.clone(), Artifact {
+        type_: ArtifactId::Builtin(defset_artifact_identity()),
+        data: json,
+    });
+    artifact_id
+}
 
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        // Check own data type identity aspect
-        if *key == self.data.identity {
-            return Some(Box::new(true));
-        }
-        if *key == aspect_field_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
-            );
-        }
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
-                ),
-            );
-        }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBindDynamicSub>),
-            );
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBind>),
-            );
-        }
-        if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as
-                        Box<dyn AspectStackValueDynamic>,
-                ),
-            );
-        }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
-                ),
-            );
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
-            );
-        }
+impl TypeSourceDataTypeConst {
+    /// Materialize a constant (lifted/deserialized) data type value as a JS object.
+    /// Registers the definition set with the eval context so methods get compiled.
+    fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<CodeDynamic, String> {
+        use crate::builtin::aspect_string_const_get_maybe;
 
-        // Check interface identity aspects
+        // Register definition set with eval context
         {
-            let interface_impls = self.data.interface_impls.borrow();
-            for impl_data in interface_impls.iter() {
-                if *key == impl_data.interface.identity {
-                    return Some(Box::new(true));
-                }
+            let set = &self.data.set;
+            let mut sets = xx.vx.definition_sets.borrow_mut();
+            let already =
+                sets.iter().any(|s| std::ptr::eq(&**s as *const DefinitionSet, &**set as *const DefinitionSet));
+            if !already {
+                sets.push(set.clone());
             }
         }
-        return None;
-    }
 
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        let (own_identity, iface_identities) = {
-            let own = self.data.identity.clone();
-            let interface_impls = self.data.interface_impls.borrow();
-            let ifaces: Vec<crate::langhelp::Unique> = interface_impls.iter().map(|impl_data| {
-                impl_data.interface.identity.clone()
-            }).collect();
-            (own, ifaces)
-        };
-        if type_.aspect(xx, &own_identity).is_some() {
-            return true;
-        }
-        for identity in iface_identities {
-            if type_.aspect(xx, &identity).is_some() {
-                return true;
+        // Get the underlying value from LiftedDefSetDataTypeValue
+        let lifted =
+            (cv.value.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<LiftedDefSetDataTypeValue>()
+                .ok_or_else(|| "Expected LiftedDefSetDataTypeValue for constant materialization".to_string())?;
+
+        // Build the underlying value as a JS literal
+        let underlying_type = lifted.underlying.type_(xx, loc);
+        let underlying_js = if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_type.as_ref()) {
+            let s = aspect_str.get(lifted.underlying.as_ref());
+            CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
             }
-        }
-        false
-    }
-
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        // Extract own identity + interface identities
-        let (own_identity, iface_data) = {
-            let own = self.data.identity.clone();
-            let interface_impls = self.data.interface_impls.borrow();
-            let ifaces: Vec<(Gc<SourceInterfaceData>, crate::langhelp::Unique)> =
-                interface_impls.iter().map(|impl_data| {
-                    (impl_data.interface.clone(), impl_data.interface.identity.clone())
-                }).collect();
-            (own, ifaces)
+        } else {
+            return Err(
+                format!(
+                    "Cannot materialize constant: underlying type ({}) not supported as JS literal",
+                    underlying_type.desc()
+                ),
+            );
         };
 
-        // Same data type check
-        if type_.aspect(xx, &own_identity).is_some() {
-            return EvalRes::ok(CodeValue {
-                code: cv.code,
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
-                }),
-            });
+        // Build wrapper object fields
+        let mut object_fields = vec![(self.data.data_field.clone(), underlying_js)];
+        for method in self.data.methods.borrow().iter() {
+            let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
+            object_fields.push((method.field_name.clone(), CodeDynamic {
+                loc,
+                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+            }));
         }
-
-        // Interface casting
-        for (iface_data, identity) in iface_data {
-            if type_.aspect(xx, &identity).is_some() {
-                return EvalRes::ok(CodeValue {
-                    code: cv.code,
-                    value: Rc::new(ValueDynamic {
-                        source: ValueDynamicSource::Expr,
-                        type_: Rc::new(TypeSourceInterfaceConst { data: iface_data }),
-                    }),
-                });
-            }
-        }
-        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
+        Ok(CodeDynamic {
+            loc,
+            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
+        })
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
+    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
+        // Check if already serialized
+        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
+            return existing_id;
+        }
+
+        // First serialize the definition set
+        let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
+
+        // Reserve an ID for the data type
+        let dt_artifact_id = gx.artifacts.reserve_id();
+        *self.data.artifact_id.borrow_mut() = Some(dt_artifact_id.clone());
+
+        // Find own index in the set
+        let type_index = {
+            let data_types = self.data.set.data_types.borrow();
+            data_types
+                .iter()
+                .position(
+                    |dt| std::ptr::eq(&**dt as *const SourceDataTypeData, &*self.data as *const SourceDataTypeData),
+                )
+                .expect("Data type not found in its definition set")
+        };
+        let serial = ArtifactDataDefSetDataType {
+            def_set: def_set_artifact_id,
+            type_index,
+        };
+        let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
+        gx.artifacts.set(dt_artifact_id.clone(), Artifact {
+            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
+            data: json,
+        });
+        dt_artifact_id
     }
 }
 
 impl Aspect for TypeSourceDataTypeConst { }
 
-impl AspectConsumeDynamic for TypeSourceDataTypeConst {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
+impl AspectArtifact for TypeSourceDataTypeConst {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        self_: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let lifted =
+            (self_.as_ref() as &dyn Any)
+                .downcast_ref::<LiftedDefSetDataTypeValue>()
+                .expect("TypeSourceDataTypeConst::to_serial expects LiftedDefSetDataTypeValue");
 
-impl AspectBindDynamicSub for TypeSourceDataTypeConst {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
+        // Get the underlying type from the definition set (mortar type)
+        let underlying_type = self.data.underlying_type.borrow();
+        let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
+
+        // Serialize the underlying value using the mortar type's AspectArtifact
+        let underlying_aspect = match crate::builtin::aspect_artifact_get_maybe(xx, underlying_type.as_ref()) {
+            Some(a) => a,
+            None => {
+                return EResult::err(
+                    loc,
+                    format!("Underlying type ({}) missing AspectArtifact", underlying_type.desc()),
+                );
+            },
+        };
+        let underlying_artifact =
+            match underlying_aspect.to_serial(xx, gx, loc, lifted.underlying.clone()).into_res() {
+                Ok(a) => a,
+                Err(e) => {
+                    return EResult::err(loc, format!("Failed to serialize underlying value: {:?}", e));
+                },
+            };
+
+        // Serialize the data type itself (which includes serializing the definition set)
+        drop(underlying_type);
+        let data_type_artifact_id = self.serialize_data_type(xx, gx, loc);
+
+        // Return directly — underlying data is embedded inline for primitives
+        EResult::ok(Artifact {
+            type_: data_type_artifact_id,
+            data: underlying_artifact.data,
+        })
+    }
+
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        // Get the underlying type from the definition set to recover the artifact identity
+        let underlying_type = self.data.underlying_type.borrow();
+        let underlying_type =
+            underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
+
+        // Use serialize_type_ref to get the underlying type's artifact identity
+        let type_ref_artifact =
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                xx,
+                gx,
+                loc,
+                underlying_type.as_ref(),
+            );
+
+        // Reconstruct the full underlying artifact and deserialize via the value type
+        let underlying_artifact = Artifact {
+            type_: type_ref_artifact.type_,
+            data: data.clone(),
+        };
+        let underlying_value = gx.deserialize_artifact(xx, loc, &underlying_artifact)?;
+        Ok(Rc::new(LiftedDefSetDataTypeValue {
+            underlying: underlying_value,
+            data: self.data.clone(),
+            artifact_id: RefCell::new(None),
+        }))
     }
 }
 
@@ -243,18 +399,20 @@ impl AspectBind for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceDataTypeConst {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
-            }),
-        }
+impl AspectBindDynamicSub for TypeSourceDataTypeConst {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeSourceDataTypeConst {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -384,312 +542,160 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
     }
 }
 
-// --- LiftedDefSetDataTypeValue: value produced by lifting a data type instance
-// from v8 ---
-pub(crate) struct LiftedDefSetDataTypeValue {
-    pub underlying: Rc<dyn Value>,
-    pub data: Gc<SourceDataTypeData>,
-    pub artifact_id: RefCell<Option<ArtifactId>>,
+impl AspectStackValueDynamic for TypeSourceDataTypeConst {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
+            }),
+        }
+    }
 }
 
-impl Value for LiftedDefSetDataTypeValue {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+impl Type for TypeSourceDataTypeConst {
+    fn desc(&self) -> String {
+        match self.data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("data_type({})", self.data.name.as_deref().unwrap_or("?")),
+        }
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
-}
 
-impl AspectArtifact for TypeSourceDataTypeConst {
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let lifted =
-            (self_.as_ref() as &dyn Any)
-                .downcast_ref::<LiftedDefSetDataTypeValue>()
-                .expect("TypeSourceDataTypeConst::to_serial expects LiftedDefSetDataTypeValue");
-
-        // Get the underlying type from the definition set (mortar type)
-        let underlying_type = self.data.underlying_type.borrow();
-        let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-
-        // Serialize the underlying value using the mortar type's AspectArtifact
-        let underlying_aspect = match crate::builtin::aspect_artifact_get_maybe(xx, underlying_type.as_ref()) {
-            Some(a) => a,
-            None => {
-                return EResult::err(
-                    loc,
-                    format!("Underlying type ({}) missing AspectArtifact", underlying_type.desc()),
-                );
-            },
-        };
-        let underlying_artifact =
-            match underlying_aspect.to_serial(xx, gx, loc, lifted.underlying.clone()).into_res() {
-                Ok(a) => a,
-                Err(e) => {
-                    return EResult::err(loc, format!("Failed to serialize underlying value: {:?}", e));
-                },
-            };
-
-        // Serialize the data type itself (which includes serializing the definition set)
-        drop(underlying_type);
-        let data_type_artifact_id = self.serialize_data_type(xx, gx, loc);
-
-        // Return directly — underlying data is embedded inline for primitives
-        EResult::ok(Artifact {
-            type_: data_type_artifact_id,
-            data: underlying_artifact.data,
-        })
-    }
-
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        // Get the underlying type from the definition set to recover the artifact identity
-        let underlying_type = self.data.underlying_type.borrow();
-        let underlying_type =
-            underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
-
-        // Use serialize_type_ref to get the underlying type's artifact identity
-        let type_ref_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
-                xx,
-                gx,
-                loc,
-                underlying_type.as_ref(),
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        // Check own data type identity aspect
+        if *key == self.data.identity {
+            return Some(Box::new(true));
+        }
+        if *key == aspect_field_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
             );
+        }
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBindDynamicSub>,
+                ),
+            );
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBind>),
+            );
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as
+                        Box<dyn AspectStackValueDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
+            );
+        }
 
-        // Reconstruct the full underlying artifact and deserialize via the value type
-        let underlying_artifact = Artifact {
-            type_: type_ref_artifact.type_,
-            data: data.clone(),
-        };
-        let underlying_value = gx.deserialize_artifact(xx, loc, &underlying_artifact)?;
-        Ok(Rc::new(LiftedDefSetDataTypeValue {
-            underlying: underlying_value,
-            data: self.data.clone(),
-            artifact_id: RefCell::new(None),
-        }))
-    }
-}
-
-impl TypeSourceDataTypeConst {
-    /// Materialize a constant (lifted/deserialized) data type value as a JS object.
-    /// Registers the definition set with the eval context so methods get compiled.
-    fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<CodeDynamic, String> {
-        use crate::builtin::aspect_string_const_get_maybe;
-
-        // Register definition set with eval context
+        // Check interface identity aspects
         {
-            let set = &self.data.set;
-            let mut sets = xx.vx.definition_sets.borrow_mut();
-            let already =
-                sets.iter().any(|s| std::ptr::eq(&**s as *const DefinitionSet, &**set as *const DefinitionSet));
-            if !already {
-                sets.push(set.clone());
+            let interface_impls = self.data.interface_impls.borrow();
+            for impl_data in interface_impls.iter() {
+                if *key == impl_data.interface.identity {
+                    return Some(Box::new(true));
+                }
             }
         }
-
-        // Get the underlying value from LiftedDefSetDataTypeValue
-        let lifted =
-            (cv.value.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<LiftedDefSetDataTypeValue>()
-                .ok_or_else(|| "Expected LiftedDefSetDataTypeValue for constant materialization".to_string())?;
-
-        // Build the underlying value as a JS literal
-        let underlying_type = lifted.underlying.type_(xx, loc);
-        let underlying_js = if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_type.as_ref()) {
-            let s = aspect_str.get(lifted.underlying.as_ref());
-            CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
-            }
-        } else {
-            return Err(
-                format!(
-                    "Cannot materialize constant: underlying type ({}) not supported as JS literal",
-                    underlying_type.desc()
-                ),
-            );
-        };
-
-        // Build wrapper object fields
-        let mut object_fields = vec![(self.data.data_field.clone(), underlying_js)];
-        for method in self.data.methods.borrow().iter() {
-            let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-            object_fields.push((method.field_name.clone(), CodeDynamic {
-                loc,
-                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-            }));
-        }
-        Ok(CodeDynamic {
-            loc,
-            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
-        })
+        return None;
     }
 
-    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        // Check if already serialized
-        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
-            return existing_id;
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        let (own_identity, iface_identities) = {
+            let own = self.data.identity.clone();
+            let interface_impls = self.data.interface_impls.borrow();
+            let ifaces: Vec<crate::langhelp::Unique> = interface_impls.iter().map(|impl_data| {
+                impl_data.interface.identity.clone()
+            }).collect();
+            (own, ifaces)
+        };
+        if type_.aspect(xx, &own_identity).is_some() {
+            return true;
+        }
+        for identity in iface_identities {
+            if type_.aspect(xx, &identity).is_some() {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        // Extract own identity + interface identities
+        let (own_identity, iface_data) = {
+            let own = self.data.identity.clone();
+            let interface_impls = self.data.interface_impls.borrow();
+            let ifaces: Vec<(Gc<SourceInterfaceData>, crate::langhelp::Unique)> =
+                interface_impls.iter().map(|impl_data| {
+                    (impl_data.interface.clone(), impl_data.interface.identity.clone())
+                }).collect();
+            (own, ifaces)
+        };
+
+        // Same data type check
+        if type_.aspect(xx, &own_identity).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
+                }),
+            });
         }
 
-        // First serialize the definition set
-        let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
+        // Interface casting
+        for (iface_data, identity) in iface_data {
+            if type_.aspect(xx, &identity).is_some() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code,
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(TypeSourceInterfaceConst { data: iface_data }),
+                    }),
+                });
+            }
+        }
+        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
+    }
 
-        // Reserve an ID for the data type
-        let dt_artifact_id = gx.artifacts.reserve_id();
-        *self.data.artifact_id.borrow_mut() = Some(dt_artifact_id.clone());
-
-        // Find own index in the set
-        let type_index = {
-            let data_types = self.data.set.data_types.borrow();
-            data_types
-                .iter()
-                .position(
-                    |dt| std::ptr::eq(&**dt as *const SourceDataTypeData, &*self.data as *const SourceDataTypeData),
-                )
-                .expect("Data type not found in its definition set")
-        };
-        let serial = ArtifactDataDefSetDataType {
-            def_set: def_set_artifact_id,
-            type_index,
-        };
-        let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
-        gx.artifacts.set(dt_artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
-            data: json,
-        });
-        dt_artifact_id
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
     }
 }
 
-use super::artifact::{
-    ArtifactDataDefSet,
-    ArtifactDataDefSetDataType,
-    ArtifactDataDefSetDataTypeEntry,
-    ArtifactDataDefSetMethod,
-};
-
-// --- Definition set serialization ---
-pub(crate) fn defset_artifact_identity() -> ArtifactIdBuiltin {
-    builtin_artifact_id!()
-}
-
-fn serialize_definition_set(
-    xx: &ExprContext,
-    gx: &GlobalContext,
-    loc: QExprId,
-    set: &Gc<DefinitionSet>,
-) -> ArtifactId {
-    use crate::eval::value::type_source_data_type_constructor::dynamic::{
-        serialize_type_ref,
-        unique_to_serial,
-    };
-
-    let data_types = set.data_types.borrow();
-    let serial_data_types: Vec<ArtifactDataDefSetDataTypeEntry> = data_types.iter().map(|dt| {
-        let underlying_type = dt.underlying_type.borrow();
-        let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-        let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
-            let compiled_js = m.compiled_js.borrow();
-            let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
-            let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-            ArtifactDataDefSetMethod {
-                name: m.name.clone(),
-                field_name: m.field_name.clone(),
-                ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
-                compiled_js: compiled_js.clone(),
-            }
-        }).collect();
-        ArtifactDataDefSetDataTypeEntry {
-            name: dt.name.clone(),
-            underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-            identity: unique_to_serial(&dt.identity),
-            data_field: dt.data_field.clone(),
-            methods,
-        }
-    }).collect();
-    let serial = ArtifactDataDefSet {
-        data_types: serial_data_types,
-        import_id: set.import_id,
-        def_set_id: set.def_set_id,
-    };
-    let json = serde_json::to_value(&serial).expect("Failed to serialize definition set");
-    let artifact_id = gx.artifacts.reserve_id();
-    gx.artifacts.set(artifact_id.clone(), Artifact {
-        type_: ArtifactId::Builtin(defset_artifact_identity()),
-        data: json,
-    });
-    artifact_id
-}
-
-pub(crate) fn deserialize_definition_set(
-    xx: &ExprContext,
-    gx: &GlobalContext,
-    loc: QExprId,
-    artifact: &Artifact,
-) -> Result<Gc<DefinitionSet>, String> {
-    use crate::eval::{
-        value::type_source_data::SourceDataMethodData,
-        value::type_source_data_type_constructor::dynamic::serial_to_unique,
-    };
-
-    let serial: ArtifactDataDefSet =
-        serde_json::from_value(
-            artifact.data.clone(),
-        ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
-    let set = Gc::new(DefinitionSet {
-        import_id: serial.import_id,
-        def_set_id: serial.def_set_id,
-        functions: std::cell::RefCell::new(Vec::new()),
-        data_types: std::cell::RefCell::new(Vec::new()),
-        interfaces: std::cell::RefCell::new(Vec::new()),
-        finished: std::cell::Cell::new(true),
-        next_field_id: crate::langhelp::Counter::default(),
-        next_entry_id: crate::langhelp::Counter::default(),
-        next_interface_method_id: crate::langhelp::Counter::default(),
-    });
-    let data_types: Vec<Gc<SourceDataTypeData>> = serial.data_types.iter().enumerate().map(|(dt_i, dt)| {
-        let underlying_type =
-            gx
-                .deserialize_type_ref(xx, loc, &dt.underlying_type)
-                .unwrap_or_else(|e| panic!("Failed to deserialize underlying type for data type {}: {}", dt_i, e));
-        let methods: Vec<SourceDataMethodData> = dt.methods.iter().enumerate().map(|(m_i, m)| {
-            let ret_type =
-                gx
-                    .deserialize_type_ref(xx, loc, &m.ret_type)
-                    .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {}", e));
-            SourceDataMethodData {
-                name: m.name.clone(),
-                impl_expr: std::cell::RefCell::new(None),
-                ret_type: std::cell::RefCell::new(Some(ret_type)),
-                scope_entry_id: std::cell::Cell::new(
-                    Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, serial.def_set_id, m_i)),
-                ),
-                self_scope_entry_id: std::cell::Cell::new(None),
-                field_name: m.field_name.clone(),
-                compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
-            }
-        }).collect();
-        Gc::new(SourceDataTypeData {
-            set: set.clone(),
-            name: dt.name.clone(),
-            description: std::cell::RefCell::new(None),
-            underlying_type: std::cell::RefCell::new(Some(underlying_type)),
-            methods: std::cell::RefCell::new(methods),
-            interface_impls: std::cell::RefCell::new(Vec::new()),
-            identity: serial_to_unique(&dt.identity),
-            data_field: dt.data_field.clone(),
-            artifact_id: std::cell::RefCell::new(None),
-        })
-    }).collect();
-    *set.data_types.borrow_mut() = data_types;
-    Ok(set)
+impl Value for TypeSourceDataTypeConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeTypeSourceDataTypeDynamic)
+    }
 }

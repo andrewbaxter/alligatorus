@@ -28,15 +28,18 @@ fn test_0000_list() {
                                 mb.bind(
                                     "my_list",
                                     mb.call(
-                                        mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new"),),
-                                        mb.tuple(vec![mb.str("c"), mb.str("d")])
-                                    )
+                                        mb.field(
+                                            mb.call(mb.scope_use("list"), mb.scope_use("string")),
+                                            mb.str("new"),
+                                        ),
+                                        mb.tuple(vec![mb.str("c"), mb.str("d")]),
+                                    ),
                                 ),
                                 mb.call(mb.field(mb.scope_use("my_list"), mb.str("push")), mb.str("a")),
                                 mb.call(mb.field(mb.scope_use("my_list"), mb.str("push")), mb.str("b")),
                                 mb.call(
                                     mb.scope_use("log"),
-                                    mb.call(mb.field(mb.scope_use("my_list"), mb.str("join")), mb.str("_"))
+                                    mb.call(mb.field(mb.scope_use("my_list"), mb.str("join")), mb.str("_")),
                                 ),
                             ],
                         ),

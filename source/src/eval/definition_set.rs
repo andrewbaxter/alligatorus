@@ -46,10 +46,6 @@ use {
     },
 };
 
-pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
-    set.next_interface_method_id.next()
-}
-
 pub(crate) struct DefinitionSet {
     pub import_id: ImportStateId,
     pub def_set_id: DefSetId,
@@ -60,26 +56,6 @@ pub(crate) struct DefinitionSet {
     pub next_field_id: Counter,
     pub next_entry_id: Counter,
     pub next_interface_method_id: Counter,
-}
-
-unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
-    fn accept(&self, visitor: &mut V) -> Result<(), ()> {
-        let functions = self.functions.try_borrow().map_err(|_| ())?;
-        for f in functions.iter() {
-            visitor.visit_unsync(f);
-        }
-        drop(functions);
-        let data_types = self.data_types.try_borrow().map_err(|_| ())?;
-        for dt in data_types.iter() {
-            visitor.visit_unsync(dt);
-        }
-        drop(data_types);
-        let interfaces = self.interfaces.try_borrow().map_err(|_| ())?;
-        for i in interfaces.iter() {
-            visitor.visit_unsync(i);
-        }
-        Ok(())
-    }
 }
 
 impl DefinitionSet {
@@ -150,8 +126,32 @@ impl DefinitionSet {
     }
 }
 
+unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
+    fn accept(&self, visitor: &mut V) -> Result<(), ()> {
+        let functions = self.functions.try_borrow().map_err(|_| ())?;
+        for f in functions.iter() {
+            visitor.visit_unsync(f);
+        }
+        drop(functions);
+        let data_types = self.data_types.try_borrow().map_err(|_| ())?;
+        for dt in data_types.iter() {
+            visitor.visit_unsync(dt);
+        }
+        drop(data_types);
+        let interfaces = self.interfaces.try_borrow().map_err(|_| ())?;
+        for i in interfaces.iter() {
+            visitor.visit_unsync(i);
+        }
+        Ok(())
+    }
+}
+
 pub(crate) struct DefinitionSetExports {
     pub set: Gc<DefinitionSet>,
+}
+
+pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
+    set.next_interface_method_id.next()
 }
 
 impl DynamicWrap for Rc<DefinitionSetExports> {

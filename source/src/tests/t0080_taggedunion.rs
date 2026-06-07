@@ -36,35 +36,38 @@ fn test_0000_tagged_union_match() {
                                                     "builder",
                                                     mb.call(
                                                         mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                                        mb.tuple(vec![])
-                                                    )
+                                                        mb.tuple(vec![]),
+                                                    ),
                                                 ),
                                                 mb.bind(
                                                     "new_str",
                                                     mb.call(
                                                         mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                                        mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")])
-                                                    )
+                                                        mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")]),
+                                                    ),
                                                 ),
                                                 mb.bind(
                                                     "new_num",
                                                     mb.call(
                                                         mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                                        mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")])
-                                                    )
+                                                        mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")]),
+                                                    ),
                                                 ),
                                                 mb.record(
                                                     vec![
                                                         ("type", mb.field(mb.scope_use("builder"), mb.str("type"))),
                                                         ("str", mb.scope_use("new_str")),
-                                                        ("num", mb.scope_use("new_num"))
-                                                    ]
-                                                )
-                                            ]
-                                        )
+                                                        ("num", mb.scope_use("new_num")),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
                                     ),
                                 ),
-                                mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
+                                mb.bind(
+                                    "x",
+                                    mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.)),
+                                ),
                                 mb.match_(
                                     mb.scope_use("x"),
                                     mb.str("y"),
@@ -76,13 +79,13 @@ fn test_0000_tagged_union_match() {
                                                 mb.scope_use("log"),
                                                 mb.call(
                                                     mb.field(mb.scope_use("y"), mb.str("to_string")),
-                                                    mb.tuple(vec![])
-                                                )
+                                                    mb.tuple(vec![]),
+                                                ),
                                             ),
-                                        )
+                                        ),
                                     ],
                                     None,
-                                )
+                                ),
                             ],
                         ),
                     ),
@@ -237,41 +240,44 @@ fn test_0010_tagged_union_match_fallback() {
                                                     "builder",
                                                     mb.call(
                                                         mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                                        mb.tuple(vec![])
-                                                    )
+                                                        mb.tuple(vec![]),
+                                                    ),
                                                 ),
                                                 mb.bind(
                                                     "new_str",
                                                     mb.call(
                                                         mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                                        mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")])
-                                                    )
+                                                        mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")]),
+                                                    ),
                                                 ),
                                                 mb.bind(
                                                     "new_num",
                                                     mb.call(
                                                         mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                                        mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")])
-                                                    )
+                                                        mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")]),
+                                                    ),
                                                 ),
                                                 mb.record(
                                                     vec![
                                                         ("type", mb.field(mb.scope_use("builder"), mb.str("type"))),
                                                         ("str", mb.scope_use("new_str")),
-                                                        ("num", mb.scope_use("new_num"))
-                                                    ]
-                                                )
-                                            ]
-                                        )
+                                                        ("num", mb.scope_use("new_num")),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
                                     ),
                                 ),
-                                mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
+                                mb.bind(
+                                    "x",
+                                    mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.)),
+                                ),
                                 mb.match_(
                                     mb.scope_use("x"),
                                     mb.str("y"),
-                                    vec![(mb.str("strtag"), mb.call(mb.scope_use("log"), mb.scope_use("y"))),],
-                                    Some(mb.call(mb.scope_use("log"), mb.str("fallback")))
-                                )
+                                    vec![(mb.str("strtag"), mb.call(mb.scope_use("log"), mb.scope_use("y")))],
+                                    Some(mb.call(mb.scope_use("log"), mb.str("fallback"))),
+                                ),
                             ],
                         ),
                     ),
@@ -428,35 +434,38 @@ fn test_0020_tagged_union_nonexhaustive() {
                                                     "builder",
                                                     mb.call(
                                                         mb.field(mb.scope_use("d"), mb.str("tagged_union")),
-                                                        mb.tuple(vec![])
-                                                    )
+                                                        mb.tuple(vec![]),
+                                                    ),
                                                 ),
                                                 mb.bind(
                                                     "new_str",
                                                     mb.call(
                                                         mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                                        mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")])
-                                                    )
+                                                        mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")]),
+                                                    ),
                                                 ),
                                                 mb.bind(
                                                     "new_num",
                                                     mb.call(
                                                         mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                                        mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")])
-                                                    )
+                                                        mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")]),
+                                                    ),
                                                 ),
                                                 mb.record(
                                                     vec![
                                                         ("type", mb.field(mb.scope_use("builder"), mb.str("type"))),
                                                         ("str", mb.scope_use("new_str")),
-                                                        ("num", mb.scope_use("new_num"))
-                                                    ]
-                                                )
-                                            ]
-                                        )
+                                                        ("num", mb.scope_use("new_num")),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
                                     ),
                                 ),
-                                mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
+                                mb.bind(
+                                    "x",
+                                    mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.)),
+                                ),
                                 mb.match_(
                                     mb.scope_use("x"),
                                     mb.str("y"),
@@ -467,13 +476,13 @@ fn test_0020_tagged_union_nonexhaustive() {
                                                 mb.scope_use("log"),
                                                 mb.call(
                                                     mb.field(mb.scope_use("y"), mb.str("to_string")),
-                                                    mb.tuple(vec![])
-                                                )
+                                                    mb.tuple(vec![]),
+                                                ),
                                             ),
-                                        )
+                                        ),
                                     ],
                                     None,
-                                )
+                                ),
                             ],
                         ),
                     ),
@@ -498,31 +507,31 @@ fn test_0030_tagged_union_exhaustive_with_fallback() {
                         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                         mb.bind(
                             "builder",
-                            mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))
+                            mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![])),
                         ),
                         mb.bind(
                             "new_str",
                             mb.call(
                                 mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")])
-                            )
+                                mb.tuple(vec![mb.str("strtag"), mb.scope_use("string")]),
+                            ),
                         ),
                         mb.bind(
                             "new_num",
                             mb.call(
                                 mb.field(mb.scope_use("builder"), mb.str("variant")),
-                                mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")])
-                            )
+                                mb.tuple(vec![mb.str("numtag"), mb.scope_use("number")]),
+                            ),
                         ),
                         mb.record(
                             vec![
                                 ("type", mb.field(mb.scope_use("builder"), mb.str("type"))),
                                 ("str", mb.scope_use("new_str")),
-                                ("num", mb.scope_use("new_num"))
-                            ]
-                        )
-                    ]
-                )
+                                ("num", mb.scope_use("new_num")),
+                            ],
+                        ),
+                    ],
+                ),
             ),
         ),
         mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
@@ -536,12 +545,12 @@ fn test_0030_tagged_union_exhaustive_with_fallback() {
                     mb.str("numtag"),
                     mb.call(
                         mb.scope_use("log"),
-                        mb.call(mb.field(mb.scope_use("y"), mb.str("to_string")), mb.tuple(vec![]))
+                        mb.call(mb.field(mb.scope_use("y"), mb.str("to_string")), mb.tuple(vec![])),
                     ),
-                )
+                ),
             ],
             Some(mb.call(mb.scope_use("log"), mb.str("fallback"))),
-        )
+        ),
     ])))].into_iter().collect());
     compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).err().unwrap();
 }

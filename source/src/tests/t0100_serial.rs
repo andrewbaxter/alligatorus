@@ -56,12 +56,19 @@ fn test_00200_import_definitionset() {
                     // Set underlying type to string
                     mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_underlying")), mb.scope_use("string")),
                     // Define to_string method
-                    mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("new_func")), mb.str("to_string")),),
-                    mb.call(mb.field(mb.scope_use("mnfr"), mb.str("ret")), mb.tuple(vec![mb.scope_use("string")]),),
+                    mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("new_func")), mb.str("to_string"))),
+                    mb.call(
+                        mb.field(mb.scope_use("mnfr"), mb.str("ret")),
+                        mb.tuple(vec![mb.scope_use("string")]),
+                    ),
                     mb.call(
                         mb.field(mb.scope_use("mnfr"), mb.str("impl")),
                         mb.tuple(
-                            vec![mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null()))]
+                            vec![
+                                mb.stage(
+                                    mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null()),
+                                ),
+                            ],
                         ),
                     ),
                     // Return the constructor
@@ -79,7 +86,7 @@ fn test_00200_import_definitionset() {
                         mb.bind("val", mb.import(mb.str("other"))),
                         mb.call(
                             mb.scope_use("log"),
-                            mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null(),),
+                            mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null()),
                         ),
                     ],
                 ),
@@ -234,7 +241,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/value/type_source_data/const.rs",
-      "line": 582
+      "line": 88
     }
   },
   "data": {
@@ -258,7 +265,7 @@ e0;"#]);
               "type_": {
                 "builtin": {
                   "file": "src/eval/value/type_string/dynamic.rs",
-                  "line": 77
+                  "line": 75
                 }
               }
             }
@@ -270,7 +277,7 @@ e0;"#]);
           "type_": {
             "builtin": {
               "file": "src/eval/value/type_string/dynamic.rs",
-              "line": 77
+              "line": 75
             }
           }
         }
@@ -284,7 +291,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
-      "line": 36
+      "line": 34
     }
   },
   "data": {

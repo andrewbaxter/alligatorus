@@ -1,14 +1,45 @@
+pub(crate) use crate::eval::aspect::*;
 #[allow(unused_imports)]
 use {
     crate::langhelp::Unique,
     paste::paste,
 };
 
-macro_rules! unique{
-    () => {
-        Unique::Builtin {
-            file: file!(),
-            line: line!() as usize
+macro_rules! aspect{
+    ($name: ident {
+        $($i: item) *
+    }) => {
+        paste!{
+            #[allow(dead_code)] pub(crate) trait $name: Aspect {
+                $($i) *
+            }
+            #[allow(dead_code)] pub(crate) fn[< $name: snake _aspect_id >]() -> Unique {
+                return unique!();
+            }
+            #[
+                allow(dead_code)
+            ] pub(
+                crate
+            ) fn[
+                < $name: snake _get >
+            ](xx: & ExprContext, loc: QExprId, v: & dyn Type) -> EResult < Box < dyn $name >> {
+                let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
+                    return EResult::err(loc, format!("Type ({}) is missing aspect {}", v.desc(), stringify!{
+                        $name
+                    }));
+                };
+                return EResult:: ok(* out.downcast::< Box < dyn $name >>().unwrap());
+            }
+            #[
+                allow(dead_code)
+            ] pub(
+                crate
+            ) fn[< $name: snake _get_maybe >](xx: & ExprContext, v: & dyn Type) -> Option < Box < dyn $name >> {
+                let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
+                    return None;
+                };
+                return Some(* out.downcast::< Box < dyn $name >>().unwrap());
+            }
         }
     };
 }
@@ -61,43 +92,11 @@ macro_rules! generate_builtin_artifact{
     };
 }
 
-macro_rules! aspect{
-    ($name: ident {
-        $($i: item) *
-    }) => {
-        paste!{
-            #[allow(dead_code)] pub(crate) trait $name: Aspect {
-                $($i) *
-            }
-            #[allow(dead_code)] pub(crate) fn[< $name: snake _aspect_id >]() -> Unique {
-                return unique!();
-            }
-            #[
-                allow(dead_code)
-            ] pub(
-                crate
-            ) fn[
-                < $name: snake _get >
-            ](xx: & ExprContext, loc: QExprId, v: & dyn Type) -> EResult < Box < dyn $name >> {
-                let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
-                    return EResult::err(loc, format!("Type ({}) is missing aspect {}", v.desc(), stringify!{
-                        $name
-                    }));
-                };
-                return EResult:: ok(* out.downcast::< Box < dyn $name >>().unwrap());
-            }
-            #[
-                allow(dead_code)
-            ] pub(
-                crate
-            ) fn[< $name: snake _get_maybe >](xx: & ExprContext, v: & dyn Type) -> Option < Box < dyn $name >> {
-                let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
-                    return None;
-                };
-                return Some(* out.downcast::< Box < dyn $name >>().unwrap());
-            }
+macro_rules! unique{
+    () => {
+        Unique::Builtin {
+            file: file!(),
+            line: line!() as usize
         }
     };
 }
-
-pub(crate) use crate::eval::aspect::*;

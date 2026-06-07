@@ -1,9 +1,11 @@
-pub mod code_dynamic;
-pub mod langhelp;
-pub mod syntax;
 #[macro_use]
 pub mod builtin;
+pub mod code_dynamic;
 pub mod eval;
+pub mod langhelp;
+pub mod syntax;
+#[cfg(test)]
+mod tests;
 
 use {
     crate::{
@@ -62,6 +64,49 @@ use {
         sync::Arc,
     },
 };
+
+pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Result<CompileOutput, Vec<ExprErr>> {
+    let (source_id, source_module) = gx.sources.get(source).map_err(|e| vec![ExprErr {
+        loc: (SourceId(0), crate::syntax::ExprId(0)),
+        errors: vec![langhelp::ExprSubErr::Opaque(e)],
+    }])?;
+    let module = source_module_to_module(source_id, &source_module);
+    let res = compile_importid(&gx, ImportStateId(0), module, vec![]);
+
+    fn collect_errors(r: &CompileRes) -> Vec<ExprErr> {
+        match &r.result {
+            CompileResResult::Err(errs) => errs.clone(),
+            CompileResResult::Ok(_) => vec![],
+        }
+    }
+
+    let mut all_errors = vec![];
+    let mut all_scripts = vec![];
+    for (_, entry) in gx.compile_results.lock().unwrap().iter() {
+        let guard = entry.result.read().unwrap();
+        if let Some(Ok(r)) = guard.as_ref() {
+            all_errors.extend(collect_errors(r));
+            all_scripts.extend(r.generated_mortar_scripts.iter().cloned());
+        }
+    }
+    all_errors.extend(collect_errors(&res));
+    all_scripts.extend(res.generated_mortar_scripts.iter().cloned());
+    if !all_errors.is_empty() {
+        return Err(all_errors);
+    }
+    return Ok(CompileOutput {
+        logs: res.logs,
+        generated_mortar_scripts: all_scripts,
+    });
+}
+
+#[derive(Debug)]
+pub(crate) struct CompileOutput {
+    pub(crate) logs: Vec<LogEntry>,
+    pub(crate) generated_mortar_scripts: Vec<String>,
+}
+
+fn main() { }
 
 pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> Module {
     fn source_expr_to_expr(source_id: SourceId, m: &SourceExpr) -> Expr {
@@ -170,48 +215,3 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
         SourceModule::V1(m) => Module::V1(source_expr_to_expr(source_id, m)),
     }
 }
-
-#[derive(Debug)]
-pub(crate) struct CompileOutput {
-    pub(crate) logs: Vec<LogEntry>,
-    pub(crate) generated_mortar_scripts: Vec<String>,
-}
-
-pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Result<CompileOutput, Vec<ExprErr>> {
-    let (source_id, source_module) = gx.sources.get(source).map_err(|e| vec![ExprErr {
-        loc: (SourceId(0), crate::syntax::ExprId(0)),
-        errors: vec![langhelp::ExprSubErr::Opaque(e)],
-    }])?;
-    let module = source_module_to_module(source_id, &source_module);
-    let res = compile_importid(&gx, ImportStateId(0), module, vec![]);
-
-    fn collect_errors(r: &CompileRes) -> Vec<ExprErr> {
-        match &r.result {
-            CompileResResult::Err(errs) => errs.clone(),
-            CompileResResult::Ok(_) => vec![],
-        }
-    }
-
-    let mut all_errors = vec![];
-    let mut all_scripts = vec![];
-    for (_, entry) in gx.compile_results.lock().unwrap().iter() {
-        let guard = entry.result.read().unwrap();
-        if let Some(Ok(r)) = guard.as_ref() {
-            all_errors.extend(collect_errors(r));
-            all_scripts.extend(r.generated_mortar_scripts.iter().cloned());
-        }
-    }
-    all_errors.extend(collect_errors(&res));
-    all_scripts.extend(res.generated_mortar_scripts.iter().cloned());
-    if !all_errors.is_empty() {
-        return Err(all_errors);
-    }
-    return Ok(CompileOutput {
-        logs: res.logs,
-        generated_mortar_scripts: all_scripts,
-    });
-}
-
-fn main() { }
-#[cfg(test)]
-mod tests;

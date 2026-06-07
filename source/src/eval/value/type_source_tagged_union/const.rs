@@ -47,9 +47,54 @@ pub(crate) struct TypeSourceTaggedUnionConst {
     pub data: Rc<SourceTaggedUnionData>,
 }
 
-impl Value for TypeSourceTaggedUnionConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeSourceTaggedUnionConst { }
+
+impl AspectBind for TypeSourceTaggedUnionConst {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeSourceTaggedUnionConst {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeSourceTaggedUnionConst {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
+            }),
+        }
+    }
+}
+
+impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
+    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, String, Rc<dyn Type>)> {
+        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
     }
 }
 
@@ -83,7 +128,10 @@ impl Type for TypeSourceTaggedUnionConst {
         }
         if *key == aspect_bind_dynamic_sub_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamicSub>),
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
+                        Box<dyn AspectBindDynamicSub>,
+                ),
             );
         }
         if *key == aspect_bind_aspect_id() {
@@ -111,48 +159,8 @@ impl Type for TypeSourceTaggedUnionConst {
     }
 }
 
-impl Aspect for TypeSourceTaggedUnionConst { }
-
-impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
-    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, String, Rc<dyn Type>)> {
-        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
-    }
-}
-
-impl AspectConsumeDynamic for TypeSourceTaggedUnionConst {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamicSub for TypeSourceTaggedUnionConst {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeSourceTaggedUnionConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            }),
-        }
+impl Value for TypeSourceTaggedUnionConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

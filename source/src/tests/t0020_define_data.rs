@@ -26,20 +26,22 @@ fn test_00800define_data() {
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
             mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper"))),
             // Set underlying type to string
-            mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_underlying")), mb.scope_use("string"),),
+            mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_underlying")), mb.scope_use("string")),
             // Define to_string method
-            mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("new_func")), mb.str("to_string"),)),
-            mb.call(mb.field(mb.scope_use("mnfr"), mb.str("ret")), mb.tuple(vec![mb.scope_use("string")]),),
+            mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("new_func")), mb.str("to_string"))),
+            mb.call(mb.field(mb.scope_use("mnfr"), mb.str("ret")), mb.tuple(vec![mb.scope_use("string")])),
             mb.call(
                 mb.field(mb.scope_use("mnfr"), mb.str("impl")),
-                mb.tuple(vec![mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null(),),)]),
+                mb.tuple(
+                    vec![mb.stage(mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null()))],
+                ),
             ),
             // Return the constructor
             mb.field(mb.scope_use("ndr"), mb.str("new")),
         ]))),
         // Create an instance and call to_string
-        mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"),)),
-        mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null(),),),
+        mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
+        mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null())),
     ])))].into_iter().collect());
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);

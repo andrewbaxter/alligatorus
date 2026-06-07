@@ -32,7 +32,7 @@ fn test_0000_const_fold_bind() {
                                         (
                                             mb.operator_lt(mb.scope_use("x"), mb.num(10.)),
                                             mb.call(mb.scope_use("log"), mb.str("less")),
-                                        )
+                                        ),
                                     ],
                                     Some(mb.call(mb.scope_use("log"), mb.str("not less"))),
                                 ),
@@ -82,7 +82,7 @@ fn test_0010_no_const_fold_with_as() {
                                         (
                                             mb.operator_lt(mb.scope_use("x"), mb.num(10.)),
                                             mb.call(mb.scope_use("log"), mb.str("less")),
-                                        )
+                                        ),
                                     ],
                                     Some(mb.call(mb.scope_use("log"), mb.str("not less"))),
                                 ),

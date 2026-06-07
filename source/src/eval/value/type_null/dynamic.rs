@@ -55,13 +55,92 @@ use {
     },
 };
 
+generate_builtin_artifact!(TypeNullDynamic, super::artifact::ArtifactDataNull);
 pub(crate) struct TypeNullDynamic;
 
-generate_builtin_artifact!(TypeNullDynamic, super::artifact::ArtifactDataNull);
+impl Aspect for TypeNullDynamic { }
 
-impl Value for TypeNullDynamic {
-    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl AspectArtifact for TypeNullDynamic {
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        EResult::ok(Self::build_artifact(()))
+    }
+
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(ValueNullConst))
+    }
+}
+
+impl AspectBind for TypeNullDynamic {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeNullDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeNullDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        match cv.code.code {
+            Code_::Dyn(_) => cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone()),
+            Code_::None => EResult::ok(CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Literal(serde_json::Value::Null),
+            }),
+        }
+    }
+}
+
+impl AspectLiftDynamic for TypeNullDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        _value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(ValueNullConst))
+    }
+}
+
+impl AspectNull for TypeNullDynamic { }
+
+impl AspectStackValueDynamic for TypeNullDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeNullDynamic),
+            }),
+        }
     }
 }
 
@@ -136,83 +215,8 @@ impl Type for TypeNullDynamic {
     }
 }
 
-impl Aspect for TypeNullDynamic { }
-
-impl AspectStackValueDynamic for TypeNullDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc: loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeNullDynamic),
-            }),
-        }
-    }
-}
-
-impl AspectArtifact for TypeNullDynamic {
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        EResult::ok(Self::build_artifact(()))
-    }
-
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNullConst))
-    }
-}
-
-impl AspectLiftDynamic for TypeNullDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        _value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNullConst))
-    }
-}
-
-impl AspectNull for TypeNullDynamic { }
-
-impl AspectConsumeDynamic for TypeNullDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        match cv.code.code {
-            Code_::Dyn(_) => cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone()),
-            Code_::None => EResult::ok(CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Literal(serde_json::Value::Null),
-            }),
-        }
-    }
-}
-
-impl AspectBindDynamicSub for TypeNullDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeNullDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+impl Value for TypeNullDynamic {
+    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

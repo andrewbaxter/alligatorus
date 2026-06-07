@@ -4,16 +4,16 @@ use crate::langhelp::{
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactDataDefSetDataType {
-    pub def_set: ArtifactId,
-    pub type_index: usize,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSet {
     pub data_types: Vec<ArtifactDataDefSetDataTypeEntry>,
     pub import_id: crate::langhelp::ImportStateId,
     pub def_set_id: crate::langhelp::DefSetId,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactDataDefSetDataType {
+    pub def_set: ArtifactId,
+    pub type_index: usize,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

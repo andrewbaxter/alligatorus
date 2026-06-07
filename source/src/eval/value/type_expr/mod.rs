@@ -50,23 +50,58 @@ use {
     },
 };
 
-impl Value for Expr {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeExpr)
-    }
-}
-pub(crate) struct TypeExpr;
-
 fn expr_type_identity() -> Unique {
     Unique::Builtin {
         file: file!(),
         line: line!() as usize,
     }
 }
+pub(crate) struct TypeExpr;
 
-impl Value for TypeExpr {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeExpr { }
+
+impl AspectBind for TypeExpr {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeExpr {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeExpr {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        // If there's already JS code (e.g. from a __stage call), use it directly
+        if let Some(js) = cv.code.cast::<CodeDynamic>().v.flatten() {
+            return EResult::ok(js.clone());
+        }
+        let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
+        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
+        EResult::ok(CodeDynamic {
+            loc,
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+        })
+    }
+}
+
+impl AspectLiftDynamic for TypeExpr {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
+        Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }
 
@@ -135,37 +170,22 @@ impl Type for TypeExpr {
     }
 }
 
-impl Aspect for TypeExpr { }
+impl Value for TypeExpr {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::type_any::r#const::TypeAnyConst)
+    }
+}
+pub(crate) struct TypeStagedExprPlaceholder;
 
-impl AspectConsumeDynamic for TypeExpr {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        // If there's already JS code (e.g. from a __stage call), use it directly
-        if let Some(js) = cv.code.cast::<CodeDynamic>().v.flatten() {
-            return EResult::ok(js.clone());
-        }
-        let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
-        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
-        EResult::ok(CodeDynamic {
-            loc,
-            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
-        })
+impl Aspect for TypeStagedExprPlaceholder { }
+
+impl AspectConsumeDynamic for TypeStagedExprPlaceholder {
+    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        super::type_dynamic::mortar_consume_to_dynamic(_xx, loc, cv)
     }
 }
 
-impl AspectBindDynamicSub for TypeExpr {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeExpr {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectLiftDynamic for TypeExpr {
+impl AspectLiftDynamic for TypeStagedExprPlaceholder {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -173,14 +193,7 @@ impl AspectLiftDynamic for TypeExpr {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
-        Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
-    }
-}
-pub(crate) struct TypeStagedExprPlaceholder;
-
-impl Value for TypeStagedExprPlaceholder {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_any::r#const::TypeAnyConst)
+        Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
     }
 }
 
@@ -212,22 +225,14 @@ impl Type for TypeStagedExprPlaceholder {
     }
 }
 
-impl Aspect for TypeStagedExprPlaceholder { }
-
-impl AspectConsumeDynamic for TypeStagedExprPlaceholder {
-    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        super::type_dynamic::mortar_consume_to_dynamic(_xx, loc, cv)
+impl Value for TypeStagedExprPlaceholder {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(super::type_any::r#const::TypeAnyConst)
     }
 }
 
-impl AspectLiftDynamic for TypeStagedExprPlaceholder {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
-        Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
+impl Value for Expr {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeExpr)
     }
 }

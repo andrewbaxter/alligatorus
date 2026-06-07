@@ -1,3 +1,14 @@
+/// Unpacks all EvalRes.
+macro_rules! er_all{
+    ($v: ident, {
+        $($i: ident = $e: expr,) *
+    }) => {
+        $(let $i = $v.must_er($e);) * 
+        //. .
+        $(let $i = $i ?;) *
+    };
+}
+
 macro_rules! er_seq{
     ($loc: expr, $v: ident, $t: ty, $($x: tt) *) => {
         {
@@ -29,17 +40,6 @@ macro_rules! er_seq{
 macro_rules! er_seq_cv{
     ($loc: expr, $v: ident, $($x: tt) *) => {
         er_seq!($loc, $v, CodeValue, $($x) *)
-    };
-}
-
-/// Unpacks all EvalRes.
-macro_rules! er_all{
-    ($v: ident, {
-        $($i: ident = $e: expr,) *
-    }) => {
-        $(let $i = $v.must_er($e);) * 
-        //. .
-        $(let $i = $i ?;) *
     };
 }
 

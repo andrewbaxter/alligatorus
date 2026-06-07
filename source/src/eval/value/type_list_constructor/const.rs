@@ -26,9 +26,18 @@ use {
 #[derive(Clone)]
 pub(crate) struct TypeListConstructorConst;
 
-impl Value for TypeListConstructorConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeListConstructorConst)
+impl Aspect for TypeListConstructorConst { }
+
+impl AspectFunction for TypeListConstructorConst {
+    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
+        let element_type = argument.value.type_(xx, loc);
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
+            value: Rc::new(super::super::type_list::dynamic::TypeListDynamic { element_type }),
+        })
     }
 }
 
@@ -57,17 +66,8 @@ impl Type for TypeListConstructorConst {
     }
 }
 
-impl Aspect for TypeListConstructorConst { }
-
-impl AspectFunction for TypeListConstructorConst {
-    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let element_type = argument.value.type_(xx, loc);
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(super::super::type_list::dynamic::TypeListDynamic { element_type }),
-        })
+impl Value for TypeListConstructorConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeListConstructorConst)
     }
 }

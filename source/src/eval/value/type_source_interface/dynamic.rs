@@ -46,18 +46,72 @@ use {
     },
 };
 
-pub(crate) struct TypeSourceInterfaceDynamic;
-
 fn interface_ref_type_identity() -> Unique {
     Unique::Builtin {
         file: file!(),
         line: line!() as usize,
     }
 }
+pub(crate) struct TypeSourceInterfaceDynamic;
 
-impl Value for TypeSourceInterfaceDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeSourceInterfaceDynamic { }
+
+impl AspectBind for TypeSourceInterfaceDynamic {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeSourceInterfaceDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeSourceInterfaceDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
+        iface_ref.data.set.finish()?;
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
+            type_: Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }),
+        }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceInterfaceDynamic),
+            }),
+        }
     }
 }
 
@@ -115,58 +169,8 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 }
 
-impl Aspect for TypeSourceInterfaceDynamic { }
-
-impl AspectConsumeDynamic for TypeSourceInterfaceDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamicSub for TypeSourceInterfaceDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeSourceInterfaceDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceInterfaceDynamic),
-            }),
-        }
-    }
-}
-
-impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
-        iface_ref.data.set.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }),
-        }))
+impl Value for TypeSourceInterfaceDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

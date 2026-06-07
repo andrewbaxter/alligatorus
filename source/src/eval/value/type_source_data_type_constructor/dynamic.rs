@@ -1,3 +1,7 @@
+use super::artifact::{
+    ArtifactDataDefSetCtorData,
+    ArtifactDataDefSetCtorMethod,
+};
 use {
     crate::{
         builtin::{
@@ -54,111 +58,17 @@ use {
     super::TypeSourceDataTypeConstructorConst,
 };
 
-// --- TypeSourceDataTypeConstructorDynamic: eval_half type during JS execution ---
-pub(crate) struct TypeSourceDataTypeConstructorDynamic;
-
-impl Value for TypeSourceDataTypeConstructorDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeSourceDataTypeConstructorDynamic {
-    fn desc(&self) -> String {
-        format!("definition_set_data_type_constructor")
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceDataTypeConstructorDynamic)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
-            );
-        }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamicSub>));
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBind>));
-        }
-        if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectStackValueDynamic>),
-            );
-        }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
-    }
-}
-
-impl Aspect for TypeSourceDataTypeConstructorDynamic { }
-
-impl AspectConsumeDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamicSub for TypeSourceDataTypeConstructorDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeSourceDataTypeConstructorDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
-            }),
-        }
-    }
-}
-
-impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
-            from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
-        ctor_ref.data.set.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() }),
-        }))
-    }
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) enum ArtifactDataUnique {
+    Builtin {
+        file: String,
+        line: usize,
+    },
+    Source {
+        import_state: usize,
+        source: usize,
+        counter: usize,
+    },
 }
 
 pub(crate) fn deserialize_defset_ctor_as_type(
@@ -216,22 +126,24 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     Ok(Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }))
 }
 
-use super::artifact::{
-    ArtifactDataDefSetCtorData,
-    ArtifactDataDefSetCtorMethod,
-};
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) enum ArtifactDataUnique {
-    Builtin {
-        file: String,
-        line: usize,
-    },
-    Source {
-        import_state: usize,
-        source: usize,
-        counter: usize,
-    },
+pub(crate) fn serial_to_unique(s: &ArtifactDataUnique) -> Unique {
+    match s {
+        ArtifactDataUnique::Builtin { file, line } => {
+            // For deserialized builtins, use Compile with a deterministic id since we can't
+            // reconstruct &'static str
+            Unique::Source(
+                crate::langhelp::CompileId(crate::langhelp::ImportStateId(usize::MAX), crate::langhelp::SourceId(0)),
+                *line,
+            )
+        },
+        ArtifactDataUnique::Source { import_state, source, counter } => Unique::Source(
+            crate::langhelp::CompileId(
+                crate::langhelp::ImportStateId(*import_state),
+                crate::langhelp::SourceId(*source),
+            ),
+            *counter,
+        ),
+    }
 }
 
 // --- Conversion helpers ---
@@ -250,6 +162,120 @@ pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, loc: QExp
     })
 }
 
+// --- TypeSourceDataTypeConstructorDynamic: eval_half type during JS execution ---
+pub(crate) struct TypeSourceDataTypeConstructorDynamic;
+
+impl Aspect for TypeSourceDataTypeConstructorDynamic { }
+
+impl AspectBind for TypeSourceDataTypeConstructorDynamic {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeSourceDataTypeConstructorDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
+            from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
+        ctor_ref.data.set.finish()?;
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
+            type_: Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() }),
+        }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
+            }),
+        }
+    }
+}
+
+impl Type for TypeSourceDataTypeConstructorDynamic {
+    fn desc(&self) -> String {
+        format!("definition_set_data_type_constructor")
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeSourceDataTypeConstructorDynamic)
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
+            );
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamicSub>),
+            );
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBind>));
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectStackValueDynamic>),
+            );
+        }
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
+    }
+}
+
+impl Value for TypeSourceDataTypeConstructorDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
+
 pub(crate) fn unique_to_serial(u: &Unique) -> ArtifactDataUnique {
     match u {
         Unique::Builtin { file, line } => ArtifactDataUnique::Builtin {
@@ -261,25 +287,5 @@ pub(crate) fn unique_to_serial(u: &Unique) -> ArtifactDataUnique {
             source: compile_id.1.0,
             counter: *counter,
         },
-    }
-}
-
-pub(crate) fn serial_to_unique(s: &ArtifactDataUnique) -> Unique {
-    match s {
-        ArtifactDataUnique::Builtin { file, line } => {
-            // For deserialized builtins, use Compile with a deterministic id since we can't
-            // reconstruct &'static str
-            Unique::Source(
-                crate::langhelp::CompileId(crate::langhelp::ImportStateId(usize::MAX), crate::langhelp::SourceId(0)),
-                *line,
-            )
-        },
-        ArtifactDataUnique::Source { import_state, source, counter } => Unique::Source(
-            crate::langhelp::CompileId(
-                crate::langhelp::ImportStateId(*import_state),
-                crate::langhelp::SourceId(*source),
-            ),
-            *counter,
-        ),
     }
 }

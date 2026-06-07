@@ -72,15 +72,132 @@ use {
     },
 };
 
+generate_builtin_artifact!(TypeStringDynamic, super::artifact::ArtifactDataString);
 pub(crate) struct TypeStringDynamic;
 
-generate_builtin_artifact!(TypeStringDynamic, super::artifact::ArtifactDataString);
+impl Aspect for TypeStringDynamic { }
 
-impl Value for TypeStringDynamic {
-    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl AspectArtifact for TypeStringDynamic {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        _gx: &GlobalContext,
+        loc: QExprId,
+        value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let type_ = value.type_(xx, loc);
+        let s =
+            aspect_string_const_get_maybe(xx, type_.as_ref())
+                .expect("TypeStringDynamic::to_serial expects a string value")
+                .get(value.as_ref());
+        EResult::ok(Self::build_artifact(s))
+    }
+
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())))
     }
 }
+
+impl AspectBind for TypeStringDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeStringDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeStringDynamic {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        mortar_consume_to_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectField for TypeStringDynamic {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            let field_type = match self.field_opt(xx, &key_name) {
+                Some(t) => t,
+                None => return erb.err_new(format!("Field '{}' not found on mortar string", key_name)),
+            };
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
+            return Ok(CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
+                        loc: loc,
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                            base: Box::new(self_code),
+                            field: key_name.clone(),
+                        }),
+                    })),
+                },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
+                    type_: field_type,
+                }),
+            });
+        });
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        match key {
+            "toLowerCase" => Some(Rc::new(TypeFunctionDynamic {
+                arg: Rc::new(TypeNullDynamic),
+                ret: Rc::new(TypeStringDynamic),
+            })),
+            "toUpperCase" => Some(Rc::new(TypeFunctionDynamic {
+                arg: Rc::new(TypeNullDynamic),
+                ret: Rc::new(TypeStringDynamic),
+            })),
+            _ => None,
+        }
+    }
+}
+
+impl AspectLiftDynamic for TypeStringDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
+    }
+}
+
+impl AspectSet for TypeStringDynamic {
+    fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
+        mortar_set(xx, loc, self_, value)
+    }
+}
+
+impl AspectStackValueDynamic for TypeStringDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
+    }
+}
+
+impl AspectStringDynamic for TypeStringDynamic { }
 
 impl Type for TypeStringDynamic {
     fn desc(&self) -> String {
@@ -186,126 +303,8 @@ impl Type for TypeStringDynamic {
     }
 }
 
-impl Aspect for TypeStringDynamic { }
-
-impl AspectStringDynamic for TypeStringDynamic { }
-
-impl AspectStackValueDynamic for TypeStringDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
-    }
-}
-
-impl AspectConsumeDynamic for TypeStringDynamic {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectBindDynamicSub for TypeStringDynamic {
-    fn bind_dynamic_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeStringDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectField for TypeStringDynamic {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let field_type = match self.field_opt(xx, &key_name) {
-                Some(t) => t,
-                None => return erb.err_new(format!("Field '{}' not found on mortar string", key_name)),
-            };
-            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            return Ok(CodeValue {
-                code: Code {
-                    loc: loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc: loc,
-                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                            base: Box::new(self_code),
-                            field: key_name.clone(),
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
-                    type_: field_type,
-                }),
-            });
-        });
-    }
-
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        match key {
-            "toLowerCase" => Some(Rc::new(TypeFunctionDynamic {
-                arg: Rc::new(TypeNullDynamic),
-                ret: Rc::new(TypeStringDynamic),
-            })),
-            "toUpperCase" => Some(Rc::new(TypeFunctionDynamic {
-                arg: Rc::new(TypeNullDynamic),
-                ret: Rc::new(TypeStringDynamic),
-            })),
-            _ => None,
-        }
-    }
-}
-
-impl AspectLiftDynamic for TypeStringDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
-    }
-}
-
-impl AspectArtifact for TypeStringDynamic {
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        _gx: &GlobalContext,
-        loc: QExprId,
-        value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let type_ = value.type_(xx, loc);
-        let s =
-            aspect_string_const_get_maybe(xx, type_.as_ref())
-                .expect("TypeStringDynamic::to_serial expects a string value")
-                .get(value.as_ref());
-        EResult::ok(Self::build_artifact(s))
-    }
-
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())))
-    }
-}
-
-impl AspectSet for TypeStringDynamic {
-    fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        mortar_set(xx, loc, self_, value)
+impl Value for TypeStringDynamic {
+    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

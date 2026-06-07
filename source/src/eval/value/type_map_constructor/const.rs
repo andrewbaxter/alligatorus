@@ -27,37 +27,6 @@ use {
 #[derive(Clone)]
 pub(crate) struct TypeMapConstructorConst;
 
-impl Value for TypeMapConstructorConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeMapConstructorConst)
-    }
-}
-
-impl Type for TypeMapConstructorConst {
-    fn desc(&self) -> String {
-        "map constructor".to_string()
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMapConstructorConst)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeMapConstructorConst) as Box<dyn AspectFunction>));
-        }
-        None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert map constructor".to_string())
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to map constructor".to_string())
-    }
-}
-
 impl Aspect for TypeMapConstructorConst { }
 
 impl AspectFunction for TypeMapConstructorConst {
@@ -86,5 +55,36 @@ impl AspectFunction for TypeMapConstructorConst {
                 value_type,
             }),
         })
+    }
+}
+
+impl Type for TypeMapConstructorConst {
+    fn desc(&self) -> String {
+        "map constructor".to_string()
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMapConstructorConst)
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeMapConstructorConst) as Box<dyn AspectFunction>));
+        }
+        None
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert map constructor".to_string())
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to map constructor".to_string())
+    }
+}
+
+impl Value for TypeMapConstructorConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeMapConstructorConst)
     }
 }

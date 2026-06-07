@@ -1,5 +1,5 @@
-pub mod r#const;
 pub mod dynamic;
+pub mod r#const;
 
 use {
     crate::langhelp::{
@@ -12,12 +12,6 @@ use {
     },
 };
 
-pub(crate) struct SourceTaggedUnionVariant {
-    pub tag: crate::langhelp::ConstKey,
-    pub js_tag: String,
-    pub type_: Rc<dyn crate::langhelp::Type>,
-}
-
 pub(crate) struct SourceTaggedUnionData {
     pub variants: RefCell<Vec<SourceTaggedUnionVariant>>,
     pub identity: Unique,
@@ -26,4 +20,10 @@ pub(crate) struct SourceTaggedUnionData {
 
 pub(crate) struct SourceTaggedUnionRef {
     pub data: Rc<SourceTaggedUnionData>,
+}
+
+pub(crate) struct SourceTaggedUnionVariant {
+    pub tag: crate::langhelp::ConstKey,
+    pub js_tag: String,
+    pub type_: Rc<dyn crate::langhelp::Type>,
 }

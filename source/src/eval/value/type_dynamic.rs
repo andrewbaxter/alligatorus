@@ -10,7 +10,6 @@ use {
             aspect_bind_dynamic_sub_get_maybe,
             aspect_consume_dynamic_get,
         },
-        eval::aspect::ScopeEntryDynamicSub,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBind,
@@ -20,7 +19,10 @@ use {
             CodeDynamicFieldSet,
             CodeDynamicType,
         },
-        eval::Erb,
+        eval::{
+            Erb,
+            aspect::ScopeEntryDynamicSub,
+        },
         langhelp::{
             Code,
             CodeValue,
@@ -42,6 +44,41 @@ use {
         rc::Rc,
     },
 };
+
+pub(crate) fn bind_dynamic(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    let vtype = cv.value.type_(xx, loc);
+    let Some(bind_sub) = aspect_bind_dynamic_sub_get_maybe(xx, vtype.as_ref()) else {
+        return EResult::err(loc, format!("Type ({}) is missing aspect AspectBindDynamicSub", vtype.desc()));
+    };
+    bind_sub.bind_dynamic_sub(xx, loc, cv).map(|(c, sub)| {
+        let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let code = Code {
+            loc: loc,
+            code: Code_::Dyn(Rc::new(CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::Block(
+                    CodeDynamicBlock { entries: vec![CodeDynamicBlockEntry::Bind(CodeDynamicBind {
+                        base: js_key,
+                        value: Box::new(c),
+                    })] },
+                ),
+            })),
+        };
+        (code, Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
+            js_key: js_key,
+            type_: sub.type_,
+        }) as Box<dyn ScopeEntry>)
+    })
+}
+
+pub(crate) fn bind_dynamic_sub_default(
+    xx: &ExprContext,
+    loc: QExprId,
+    cv: CodeValue,
+) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+    let vtype = cv.value.type_(xx, loc);
+    mortar_consume_to_dynamic(xx, loc, cv).map(|c| (c, ScopeEntryDynamicSub { type_: vtype }))
+}
 
 pub(crate) fn mortar_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
     let r = cv.code.cast::<CodeDynamic>();
@@ -68,44 +105,6 @@ pub(crate) fn mortar_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: Cod
             errors: r.errors,
         };
     }
-}
-
-pub(crate) fn bind_dynamic_sub_default(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-    let vtype = cv.value.type_(xx, loc);
-    mortar_consume_to_dynamic(xx, loc, cv).map(|c| (c, ScopeEntryDynamicSub { type_: vtype }))
-}
-
-pub(crate) fn bind_dynamic(
-    xx: &ExprContext,
-    loc: QExprId,
-    cv: CodeValue,
-) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-    let vtype = cv.value.type_(xx, loc);
-    let Some(bind_sub) = aspect_bind_dynamic_sub_get_maybe(xx, vtype.as_ref()) else {
-        return EResult::err(loc, format!("Type ({}) is missing aspect AspectBindDynamicSub", vtype.desc()));
-    };
-    bind_sub.bind_dynamic_sub(xx, loc, cv).map(|(c, sub)| {
-        let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        let code = Code {
-            loc: loc,
-            code: Code_::Dyn(Rc::new(CodeDynamic {
-                loc: loc,
-                type_: CodeDynamicType::Block(
-                    CodeDynamicBlock {
-                        entries: vec![
-                            CodeDynamicBlockEntry::Bind(
-                                CodeDynamicBind { base: js_key, value: Box::new(c) },
-                            ),
-                        ],
-                    },
-                ),
-            })),
-        };
-        (code, Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
-            js_key: js_key,
-            type_: sub.type_,
-        }) as Box<dyn ScopeEntry>)
-    })
 }
 
 pub(crate) fn mortar_dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {

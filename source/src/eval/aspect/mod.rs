@@ -1,28 +1,28 @@
-mod function;
 mod artifact;
-mod lift_dynamic;
-mod stack_value_dynamic;
-mod consume_dynamic;
 mod bind;
 mod bind_dynamic_sub;
-mod string_dynamic;
-mod null;
-mod string_const;
-mod set;
-mod field;
-mod tuple;
-mod number_const;
 mod bool_const;
-mod number_dynamic;
 mod bool_dynamic;
-mod operator_lt;
-mod operator_add;
+mod consume_dynamic;
+mod field;
+mod function;
 mod iterable;
-mod type_;
-mod tagged_union;
+mod lift_dynamic;
 mod list_dynamic;
 mod map_dynamic;
+mod null;
+mod number_const;
+mod number_dynamic;
+mod operator_add;
+mod operator_lt;
 mod record;
+mod set;
+mod stack_value_dynamic;
+mod string_const;
+mod string_dynamic;
+mod tagged_union;
+mod tuple;
+mod type_;
 
 pub(crate) use {
     artifact::*,

@@ -30,10 +30,10 @@ fn test_0000_scope_ok() {
                                 mb.block(
                                     vec![
                                         mb.bind("x", mb.str("apple")),
-                                        mb.call(mb.scope_use("log"), mb.scope_use("x"),),
-                                    ]
+                                        mb.call(mb.scope_use("log"), mb.scope_use("x")),
+                                    ],
                                 ),
-                                mb.call(mb.scope_use("log"), mb.scope_use("x"),),
+                                mb.call(mb.scope_use("log"), mb.scope_use("x")),
                             ],
                         ),
                     ),
@@ -92,8 +92,8 @@ fn test_0010_scope_bad() {
                     SourceModule::V1(
                         mb.block(
                             vec![
-                                mb.block(vec![mb.bind("x", mb.str("apple")),]),
-                                mb.call(mb.scope_use("log"), mb.scope_use("x"),),
+                                mb.block(vec![mb.bind("x", mb.str("apple"))]),
+                                mb.call(mb.scope_use("log"), mb.scope_use("x")),
                             ],
                         ),
                     ),

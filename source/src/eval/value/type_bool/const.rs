@@ -31,9 +31,11 @@ use {
 
 pub(crate) struct TypeBoolConst;
 
-impl Value for TypeBoolConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeBoolConst { }
+
+impl AspectBoolConst for TypeBoolConst {
+    fn get(&self, value: &dyn Value) -> bool {
+        return <dyn Any>::downcast_ref::<ValueBoolConst>(value).unwrap().0;
     }
 }
 
@@ -85,10 +87,8 @@ impl Type for TypeBoolConst {
     }
 }
 
-impl Aspect for TypeBoolConst { }
-
-impl AspectBoolConst for TypeBoolConst {
-    fn get(&self, value: &dyn Value) -> bool {
-        return <dyn Any>::downcast_ref::<ValueBoolConst>(value).unwrap().0;
+impl Value for TypeBoolConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

@@ -72,11 +72,144 @@ use {
     },
 };
 
+fn js_field_name(key: &str) -> &str {
+    match key {
+        "to_string" => "toString",
+        other => other,
+    }
+}
 pub(crate) struct TypeNumberDynamic;
 
-impl Value for TypeNumberDynamic {
-    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeNumberDynamic { }
+
+impl AspectBind for TypeNumberDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamicSub for TypeNumberDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
+        bind_dynamic_sub_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeNumberDynamic {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        mortar_consume_to_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectField for TypeNumberDynamic {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let key_type = key.value.type_(xx, loc);
+            let key_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let key_name = key_string.get(key.value.as_ref());
+            let field_type = match self.field_opt(xx, &key_name) {
+                Some(t) => t,
+                None => return erb.err_new(format!("Field '{}' not found on mortar number", key_name)),
+            };
+            let js_name = js_field_name(&key_name).to_string();
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
+            return Ok(CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
+                        loc: loc,
+                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                            base: Box::new(self_code),
+                            field: js_name.clone(),
+                        }),
+                    })),
+                },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: js_name, }),
+                    type_: field_type,
+                }),
+            });
+        });
+    }
+
+    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+        match key {
+            "to_string" => Some(Rc::new(TypeFunctionDynamic {
+                arg: Rc::new(TypeNullDynamic),
+                ret: Rc::new(TypeStringDynamic),
+            })),
+            _ => None,
+        }
+    }
+}
+
+impl AspectNumberDynamic for TypeNumberDynamic { }
+
+impl AspectOperatorAdd for TypeNumberDynamic {
+    fn add(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
+            let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
+            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::OperatorAdd(CodeDynamicOperatorAdd {
+                            base: Box::new(base_code),
+                            reference: Box::new(ref_code),
+                        }),
+                    })),
+                },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeNumberDynamic),
+                }),
+            });
+        });
+    }
+}
+
+impl AspectOperatorLt for TypeNumberDynamic {
+    fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
+            let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
+            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::OperatorLt(CodeDynamicOperatorLt {
+                            base: Box::new(base_code),
+                            reference: Box::new(ref_code),
+                        }),
+                    })),
+                },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
+                }),
+            });
+        });
+    }
+}
+
+impl AspectSet for TypeNumberDynamic {
+    fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
+        mortar_set(xx, loc, self_, value)
+    }
+}
+
+impl AspectStackValueDynamic for TypeNumberDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeNumberDynamic))
     }
 }
 
@@ -181,142 +314,8 @@ impl Type for TypeNumberDynamic {
     }
 }
 
-impl Aspect for TypeNumberDynamic { }
-
-impl AspectNumberDynamic for TypeNumberDynamic { }
-
-impl AspectStackValueDynamic for TypeNumberDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeNumberDynamic))
-    }
-}
-
-impl AspectConsumeDynamic for TypeNumberDynamic {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectBindDynamicSub for TypeNumberDynamic {
-    fn bind_dynamic_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeNumberDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
-    }
-}
-
-fn js_field_name(key: &str) -> &str {
-    match key {
-        "to_string" => "toString",
-        other => other,
-    }
-}
-
-impl AspectField for TypeNumberDynamic {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let field_type = match self.field_opt(xx, &key_name) {
-                Some(t) => t,
-                None => return erb.err_new(format!("Field '{}' not found on mortar number", key_name)),
-            };
-            let js_name = js_field_name(&key_name).to_string();
-            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            return Ok(CodeValue {
-                code: Code {
-                    loc: loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc: loc,
-                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                            base: Box::new(self_code),
-                            field: js_name.clone(),
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: js_name, }),
-                    type_: field_type,
-                }),
-            });
-        });
-    }
-
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        match key {
-            "to_string" => Some(Rc::new(TypeFunctionDynamic {
-                arg: Rc::new(TypeNullDynamic),
-                ret: Rc::new(TypeStringDynamic),
-            })),
-            _ => None,
-        }
-    }
-}
-
-impl AspectSet for TypeNumberDynamic {
-    fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        mortar_set(xx, loc, self_, value)
-    }
-}
-
-impl AspectOperatorLt for TypeNumberDynamic {
-    fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
-            let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
-            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::OperatorLt(CodeDynamicOperatorLt {
-                            base: Box::new(base_code),
-                            reference: Box::new(ref_code),
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
-                }),
-            });
-        });
-    }
-}
-
-impl AspectOperatorAdd for TypeNumberDynamic {
-    fn add(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
-            let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
-            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::OperatorAdd(CodeDynamicOperatorAdd {
-                            base: Box::new(base_code),
-                            reference: Box::new(ref_code),
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeNumberDynamic),
-                }),
-            });
-        });
+impl Value for TypeNumberDynamic {
+    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

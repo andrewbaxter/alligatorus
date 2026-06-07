@@ -36,17 +36,17 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                 mb.tuple(
                     vec![
                         mb.str("call"),
-                        mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))])
-                    ]
-                )
-            )
+                        mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))]),
+                    ],
+                ),
+            ),
         ),
         mb.bind(
             "code_lit_str",
             mb.call(
                 mb.field(mb.scope_use("code_builder"), mb.str("variant")),
-                mb.tuple(vec![mb.str("lit_str"), mb.scope_use("string")])
-            )
+                mb.tuple(vec![mb.str("lit_str"), mb.scope_use("string")]),
+            ),
         ),
         mb.bind(
             "code_field",
@@ -55,22 +55,22 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                 mb.tuple(
                     vec![
                         mb.str("field"),
-                        mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))])
-                    ]
-                )
-            )
+                        mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))]),
+                    ],
+                ),
+            ),
         ),
         mb.bind(
             "code_scope_use",
             mb.call(
                 mb.field(mb.scope_use("code_builder"), mb.str("variant")),
-                mb.tuple(vec![mb.str("scope_use"), mb.scope_use("string")])
-            )
+                mb.tuple(vec![mb.str("scope_use"), mb.scope_use("string")]),
+            ),
         ),
         // # Define render-code function (recursive inner version)
         mb.bind(
             "render_inner_builder",
-            mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code (inner)"))
+            mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code (inner)")),
         ),
         mb.bind("render_inner", mb.field(mb.scope_use("render_inner_builder"), mb.str("func"))),
         mb.call(
@@ -82,13 +82,13 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                         mb.record(
                             vec![
                                 ("expr_count", mb.scope_use("number")),
-                                ("out", mb.call(mb.scope_use("list"), mb.scope_use("string")))
-                            ]
+                                ("out", mb.call(mb.scope_use("list"), mb.scope_use("string"))),
+                            ],
                         ),
                     ),
-                    ("code", mb.scope_use("code"))
-                ]
-            )
+                    ("code", mb.scope_use("code")),
+                ],
+            ),
         ),
         mb.call(mb.field(mb.scope_use("render_inner_builder"), mb.str("ret")), mb.scope_use("string")),
         mb.call(
@@ -101,7 +101,10 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                             mb.call(
                                 mb.field(
                                     mb.call(
-                                        mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
+                                        mb.field(
+                                            mb.call(mb.scope_use("list"), mb.scope_use("string")),
+                                            mb.str("new"),
+                                        ),
                                         mb.tuple(
                                             vec![
                                                 mb.str("e"),
@@ -109,28 +112,31 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                                     mb.field(
                                                         mb.field(
                                                             mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                            mb.str("expr_count")
+                                                            mb.str("expr_count"),
                                                         ),
-                                                        mb.str("to_string")
+                                                        mb.str("to_string"),
                                                     ),
-                                                    mb.tuple(vec![])
-                                                )
-                                            ]
-                                        )
+                                                    mb.tuple(vec![]),
+                                                ),
+                                            ],
+                                        ),
                                     ),
-                                    mb.str("join")
+                                    mb.str("join"),
                                 ),
-                                mb.str("")
-                            )
+                                mb.str(""),
+                            ),
                         ),
                         mb.set(
                             mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
                             mb.operator_add(
                                 mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
-                                mb.num(1.)
-                            )
+                                mb.num(1.),
+                            ),
                         ),
-                        mb.bind("out", mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("out"))),
+                        mb.bind(
+                            "out",
+                            mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("out")),
+                        ),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str("let ")),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.scope_use("key")),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n{\n")),
@@ -138,8 +144,8 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                             "value",
                             mb.call(
                                 mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
-                                mb.tuple(vec![mb.scope_use("key"), mb.str(" = "),])
-                            )
+                                mb.tuple(vec![mb.scope_use("key"), mb.str(" = ")]),
+                            ),
                         ),
                         mb.match_(
                             mb.field(mb.scope_use("arg"), mb.str("code")),
@@ -159,10 +165,13 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                                                 "context",
                                                                 mb.field(mb.scope_use("arg"), mb.str("context")),
                                                             ),
-                                                            ("code", mb.field(mb.scope_use("code"), mb.str("func")))
-                                                        ]
-                                                    )
-                                                )
+                                                            (
+                                                                "code",
+                                                                mb.field(mb.scope_use("code"), mb.str("func")),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
                                             ),
                                             mb.bind(
                                                 "rendered_arg",
@@ -174,23 +183,29 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                                                 "context",
                                                                 mb.field(mb.scope_use("arg"), mb.str("context")),
                                                             ),
-                                                            ("code", mb.field(mb.scope_use("code"), mb.str("arg")))
-                                                        ]
-                                                    )
-                                                )
+                                                            (
+                                                                "code",
+                                                                mb.field(mb.scope_use("code"), mb.str("arg")),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
                                             ),
                                             mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str("(")),
                                             mb.call(
                                                 mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("func")
+                                                mb.scope_use("func"),
                                             ),
-                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")(")),
                                             mb.call(
                                                 mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("rendered_arg")
+                                                mb.str(")("),
+                                            ),
+                                            mb.call(
+                                                mb.field(mb.scope_use("value"), mb.str("push")),
+                                                mb.scope_use("rendered_arg"),
                                             ),
                                             mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")")),
-                                        ]
+                                        ],
                                     ),
                                 ),
                                 (
@@ -199,9 +214,9 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                         vec![
                                             mb.call(
                                                 mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.call(mb.scope_use("str_to_json"), mb.scope_use("code"))
-                                            )
-                                        ]
+                                                mb.call(mb.scope_use("str_to_json"), mb.scope_use("code")),
+                                            ),
+                                        ],
                                     ),
                                 ),
                                 (
@@ -218,10 +233,13 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                                                 "context",
                                                                 mb.field(mb.scope_use("arg"), mb.str("context")),
                                                             ),
-                                                            ("code", mb.field(mb.scope_use("code"), mb.str("base")))
-                                                        ]
-                                                    )
-                                                )
+                                                            (
+                                                                "code",
+                                                                mb.field(mb.scope_use("code"), mb.str("base")),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
                                             ),
                                             mb.bind(
                                                 "field",
@@ -233,21 +251,24 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                                                 "context",
                                                                 mb.field(mb.scope_use("arg"), mb.str("context")),
                                                             ),
-                                                            ("code", mb.field(mb.scope_use("code"), mb.str("field")))
-                                                        ]
-                                                    )
-                                                )
+                                                            (
+                                                                "code",
+                                                                mb.field(mb.scope_use("code"), mb.str("field")),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
                                             ),
                                             mb.call(
                                                 mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("base")
+                                                mb.scope_use("base"),
                                             ),
                                             mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(".")),
                                             mb.call(
                                                 mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("field")
+                                                mb.scope_use("field"),
                                             ),
-                                        ]
+                                        ],
                                     ),
                                 ),
                                 (
@@ -256,26 +277,29 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                         vec![
                                             mb.call(
                                                 mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("code")
+                                                mb.scope_use("code"),
                                             ),
-                                        ]
+                                        ],
                                     ),
                                 ),
                             ],
-                            None
+                            None,
                         ),
                         mb.call(
                             mb.field(mb.scope_use("out"), mb.str("push")),
-                            mb.call(mb.field(mb.scope_use("value"), mb.str("join")), mb.str(""))
+                            mb.call(mb.field(mb.scope_use("value"), mb.str("join")), mb.str("")),
                         ),
                         mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n}\n")),
-                        mb.scope_use("key")
-                    ]
-                )
-            )
+                        mb.scope_use("key"),
+                    ],
+                ),
+            ),
         ),
         // Define render-code func (outer)
-        mb.bind("render_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code"))),
+        mb.bind(
+            "render_builder",
+            mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code")),
+        ),
         mb.bind("render", mb.field(mb.scope_use("render_builder"), mb.str("func"))),
         mb.call(mb.field(mb.scope_use("render_builder"), mb.str("arg")), mb.scope_use("code")),
         mb.call(mb.field(mb.scope_use("render_builder"), mb.str("ret")), mb.scope_use("string")),
@@ -293,26 +317,31 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                         mb.call(
                                             mb.field(
                                                 mb.call(mb.scope_use("list"), mb.scope_use("string")),
-                                                mb.str("new")
+                                                mb.str("new"),
                                             ),
-                                            mb.tuple(vec![])
+                                            mb.tuple(vec![]),
                                         ),
                                     ),
                                     ("expr_count", mb.num(0.)),
-                                ]
-                            )
+                                ],
+                            ),
                         ),
                         mb.call(
                             mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("push")),
                             mb.call(
                                 mb.lower(mb.scope_use("render_inner")),
-                                mb.record(vec![("context", mb.scope_use("context")), ("code", mb.scope_use("arg"))])
-                            )
+                                mb.record(
+                                    vec![("context", mb.scope_use("context")), ("code", mb.scope_use("arg"))],
+                                ),
+                            ),
                         ),
-                        mb.call(mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("join")), mb.str(""))
-                    ]
-                )
-            )
+                        mb.call(
+                            mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("join")),
+                            mb.str(""),
+                        ),
+                    ],
+                ),
+            ),
         ),
         // Assemble and return
         mb.record(
@@ -322,9 +351,9 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                 ("lit_str", mb.scope_use("code_lit_str")),
                 ("field", mb.scope_use("code_field")),
                 ("scope_use", mb.scope_use("code_scope_use")),
-                ("render", mb.scope_use("render"))
-            ]
-        )
+                ("render", mb.scope_use("render")),
+            ],
+        ),
     ]));
 }
 
@@ -359,17 +388,17 @@ fn test_0000_nodejs_code() {
                                                             mb.record(
                                                                 vec![
                                                                     ("base", code("scope_use", mb.str("console"))),
-                                                                    ("field", code("lit_str", mb.str("log")))
-                                                                ]
-                                                            )
+                                                                    ("field", code("lit_str", mb.str("log"))),
+                                                                ],
+                                                            ),
                                                         ),
                                                     ),
-                                                    ("arg", code("lit_str", mb.str("Hello world (node)")))
-                                                ]
-                                            )
-                                        )
-                                    )
-                                )
+                                                    ("arg", code("lit_str", mb.str("Hello world (node)"))),
+                                                ],
+                                            ),
+                                        ),
+                                    ),
+                                ),
                             ],
                         ),
                     ),

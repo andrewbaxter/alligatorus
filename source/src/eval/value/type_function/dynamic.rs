@@ -55,60 +55,22 @@ pub(crate) struct TypeFunctionDynamic {
     pub ret: Rc<dyn Type>,
 }
 
-impl Value for TypeFunctionDynamic {
-    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+impl Aspect for TypeFunctionDynamic { }
+
+impl AspectBind for TypeFunctionDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
     }
 }
 
-impl Type for TypeFunctionDynamic {
-    fn desc(&self) -> String {
-        return format!("mortar func");
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeFunctionDynamic {
-            arg: self.arg.clone(),
-            ret: self.ret.clone(),
-        })
-    }
-
-    fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
-        }
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
-        }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamicSub>));
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBind>));
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert mortar function"))
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_function_get_maybe(xx, source_type).is_some()
-    }
-
-    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let source_type = cv.value.type_(ex, loc);
-            erb.must_er(aspect_function_get(ex, loc, source_type.as_ref()))?;
-            return Ok(CodeValue {
-                code: cv.code,
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(self.clone()),
-                }),
-            });
-        });
+impl AspectBindDynamicSub for TypeFunctionDynamic {
+    fn bind_dynamic_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
+        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
     }
 }
 
@@ -117,20 +79,6 @@ impl AspectConsumeDynamic for TypeFunctionDynamic {
         return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
     }
 }
-
-impl AspectBindDynamicSub for TypeFunctionDynamic {
-    fn bind_dynamic_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
-    }
-}
-
-impl AspectBind for TypeFunctionDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
-    }
-}
-
-impl Aspect for TypeFunctionDynamic { }
 
 impl AspectFunction for TypeFunctionDynamic {
     fn call(
@@ -218,5 +166,62 @@ impl AspectFunction for TypeFunctionDynamic {
                 })
             }));
         });
+    }
+}
+
+impl Type for TypeFunctionDynamic {
+    fn desc(&self) -> String {
+        return format!("mortar func");
+    }
+
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeFunctionDynamic {
+            arg: self.arg.clone(),
+            ret: self.ret.clone(),
+        })
+    }
+
+    fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_sub_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamicSub>));
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBind>));
+        }
+        return None;
+    }
+
+    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert mortar function"))
+    }
+
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_function_get_maybe(xx, source_type).is_some()
+    }
+
+    fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let source_type = cv.value.type_(ex, loc);
+            erb.must_er(aspect_function_get(ex, loc, source_type.as_ref()))?;
+            return Ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            });
+        });
+    }
+}
+
+impl Value for TypeFunctionDynamic {
+    fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
