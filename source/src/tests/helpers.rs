@@ -23,6 +23,7 @@ use {
             SerialExprIfConditionBranch,
             SerialExprMatchTagBranch,
             SourceExpr,
+            SourceExprAs,
             SourceExprBind,
             SourceExprBindingUse,
             SourceExprBlock,
@@ -296,6 +297,16 @@ impl ModuleBuilder {
         return SourceExpr {
             id: self.id(),
             r#type: SourceExpr_::Import(SourceExprImport { spec: Box::new(spec) }),
+        };
+    }
+
+    pub fn as_(&self, base: SourceExpr, target: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::As(SourceExprAs {
+                base: Box::new(base),
+                target: Box::new(target),
+            }),
         };
     }
 

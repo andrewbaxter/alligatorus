@@ -1,19 +1,12 @@
 use {
-    crate::{
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicType,
-        },
-        langhelp::{
-            Code,
-            CodeValue,
-            Code_,
-            ConstKey,
-            EvalRes,
-            ScopeEntry,
-            Type,
-        },
+    crate::langhelp::{
+        Code,
+        CodeValue,
+        Code_,
+        ConstKey,
+        EvalRes,
+        ScopeEntry,
+        Type,
     },
     std::{
         collections::BTreeMap,
@@ -39,27 +32,31 @@ pub(crate) enum RecordScopeField {
 /// entries.
 pub(crate) struct ScopeEntryRecordMortar {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
+    pub js_key: Option<crate::langhelp::ScopeEntryId>,
 }
 
-impl super::super::type_scope_entry::dynamic::DynamicScopeEntry for ScopeEntryRecordMortar {
-    fn use_(&self, value: super::super::type_dynamic::ValueDynamic) -> EvalRes {
+impl ScopeEntry for ScopeEntryRecordMortar {
+    fn use_(&self, loc: crate::langhelp::QExprId, _code: Code) -> CodeValue {
         let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
-        let (loc, code, source) = if has_mortar {
-            let (loc, key) = match &value.source {
-                super::super::type_dynamic::ValueDynamicSource::Binding(b) => (b.loc, b.key),
-                _ => unreachable!("ScopeEntryRecordMortar with mortar fields called with non-binding source"),
-            };
-            (loc, Code {
-                loc,
-                code: Code_::Dyn(Rc::new(CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: key }),
+        let (use_code, source) = if has_mortar {
+            let js_key = self.js_key.expect("ScopeEntryRecordMortar with mortar fields must have js_key");
+            (Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(crate::code_dynamic::CodeDynamic {
+                    loc: loc,
+                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                        crate::code_dynamic::CodeDynamicBindingUse { id: js_key },
+                    ),
                 })),
-            }, Some(value.source))
+            }, Some(super::super::type_dynamic::ValueDynamicSource::Binding(
+                super::super::type_dynamic::ValueDynamicDataScope {
+                    loc: loc,
+                    key: js_key,
+                },
+            )))
         } else {
-            let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-            (loc, Code {
-                loc,
+            (Code {
+                loc: loc,
                 code: Code_::None,
             }, None)
         };
@@ -68,7 +65,7 @@ impl super::super::type_scope_entry::dynamic::DynamicScopeEntry for ScopeEntryRe
             match field {
                 RecordScopeField::Scope(se) => {
                     let cv = se.use_(loc, Code {
-                        loc,
+                        loc: loc,
                         code: Code_::None,
                     });
                     result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(cv)));
@@ -84,12 +81,12 @@ impl super::super::type_scope_entry::dynamic::DynamicScopeEntry for ScopeEntryRe
                 },
             }
         }
-        EvalRes::ok(CodeValue {
-            code,
+        CodeValue {
+            code: use_code,
             value: Rc::new(Record {
-                source,
+                source: source,
                 fields: result_fields,
             }),
-        })
+        }
     }
 }

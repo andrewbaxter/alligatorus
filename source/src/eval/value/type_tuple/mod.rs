@@ -1,11 +1,11 @@
 use {
     crate::{
         builtin::{
-            AspectBindDynamic,
+            AspectBind,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectTuple,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
             aspect_lift_dynamic_aspect_id,
@@ -38,7 +38,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::type_dynamic::bind_dynamic_some,
+    super::type_dynamic::mortar_bind_to_scope,
 };
 
 /// Represents a single element entry in a Tuple.
@@ -119,8 +119,8 @@ impl Type for Tuple {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindDynamic>));
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBind>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             let element_lifts: Vec<Box<dyn AspectLiftDynamic>> = self.elements.iter().map(|e| {
@@ -379,15 +379,14 @@ impl AspectConsumeDynamic for Tuple {
     }
 }
 
-impl AspectBindDynamic for Tuple {
-    fn bind_dynamic(
+impl AspectBind for Tuple {
+    fn bind(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        mortar_bind_to_scope(xx, loc, cv)
     }
 }
 pub mod scope_entry;

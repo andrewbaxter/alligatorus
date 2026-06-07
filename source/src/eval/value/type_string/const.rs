@@ -2,11 +2,13 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBindDynamic,
+            AspectBind,
+            AspectConsumeDynamic,
             AspectField,
             AspectStringConst,
             aspect_artifact_aspect_id,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_string_const_aspect_id,
             aspect_string_const_get,
@@ -16,7 +18,7 @@ use {
         eval::{
             Erb,
             value::{
-                type_dynamic::bind_dynamic_some,
+                type_dynamic::mortar_bind_to_scope,
                 type_string::dynamic::TypeStringDynamic,
                 value_string::r#const::ValueStringConst,
             },
@@ -24,12 +26,14 @@ use {
         langhelp::{
             Artifact,
             Aspect,
+            Code,
             CodeValue,
             EResult,
             EvalRes,
             ExprContext,
             GlobalContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -72,11 +76,14 @@ impl Type for TypeStringConst {
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectArtifact>));
         }
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectConsumeDynamic>));
+        }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectField>));
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBindDynamic>));
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBind>));
         }
         return None;
     }
@@ -115,20 +122,29 @@ impl Type for TypeStringConst {
 
 impl Aspect for TypeStringConst { }
 
-impl AspectBindDynamic for TypeStringConst {
-    fn bind_dynamic(
+impl AspectConsumeDynamic for TypeStringConst {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        return er_seq!(loc, erb, CodeDynamic, {
+            let cv = erb.must_er(TypeStringDynamic.cast_from(xx, loc, cv))?;
+            return erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeStringDynamic, xx, loc, cv));
+        });
+    }
+}
+
+impl AspectBind for TypeStringConst {
+    fn bind(
         &self,
-        xx: &ExprContext,
+        _xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        TypeStringDynamic::cast_from(&TypeStringDynamic, xx, loc, cv).map(|js| {
-            bind_dynamic_some(
-                loc,
-                js.code.cast::<CodeDynamic>().v.unwrap().unwrap().clone(),
-                Rc::new(TypeStringDynamic) as Rc<dyn Type>,
-            )
-        })
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((
+            Code {
+                loc: loc,
+                code: crate::langhelp::Code_::None,
+            },
+            Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>,
+        ))
     }
 }
 

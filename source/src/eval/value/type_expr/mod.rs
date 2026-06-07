@@ -1,10 +1,10 @@
 use {
     crate::{
         builtin::{
-            AspectBindDynamic,
+            AspectBind,
             AspectConsumeDynamic,
             AspectLiftDynamic,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
         },
@@ -20,16 +20,18 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
-            value::type_dynamic::bind_dynamic_some,
+            value::type_dynamic::mortar_bind_to_scope,
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
             EResult,
             EvalRes,
             ExprContext,
             External,
             QExprId,
+            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -79,8 +81,8 @@ impl Type for TypeExpr {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectBindDynamic>));
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectBind>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLiftDynamic>));
@@ -143,15 +145,14 @@ impl AspectConsumeDynamic for TypeExpr {
     }
 }
 
-impl AspectBindDynamic for TypeExpr {
-    fn bind_dynamic(
+impl AspectBind for TypeExpr {
+    fn bind(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn super::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        mortar_bind_to_scope(xx, loc, cv)
     }
 }
 

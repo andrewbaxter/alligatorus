@@ -1,6 +1,7 @@
 use {
     crate::langhelp::{
         Aspect,
+        Code,
         CodeValue,
         EResult,
         ExprContext,
@@ -12,6 +13,6 @@ use {
     paste::paste,
 };
 
-aspect!(AspectBindConst {
-    fn bind(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < Box < dyn ScopeEntry > >;
+aspect!(AspectBind {
+    fn bind(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult <(Code, Box < dyn ScopeEntry >) >;
 });

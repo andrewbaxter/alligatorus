@@ -1,10 +1,10 @@
 use {
     crate::{
         builtin::{
-            AspectBindConst,
+            AspectBind,
             AspectConsumeDynamic,
             AspectFunction,
-            aspect_bind_const_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_get,
             aspect_function_aspect_id,
             aspect_null_get_maybe,
@@ -23,7 +23,9 @@ use {
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -66,9 +68,9 @@ impl Type for TypeSourceFunctionConst {
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectFunction>),
             );
         }
-        if *key == aspect_bind_const_aspect_id() {
+        if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectBindConst>),
+                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectBind>),
             );
         }
         return None;
@@ -85,12 +87,16 @@ impl Type for TypeSourceFunctionConst {
 
 impl Aspect for TypeSourceFunctionConst { }
 
-impl AspectBindConst for TypeSourceFunctionConst {
-    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<Box<dyn ScopeEntry>> {
-        EResult::ok(
+impl AspectBind for TypeSourceFunctionConst {
+    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((
+            Code {
+                loc: loc,
+                code: Code_::None,
+            },
             Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
                 Box<dyn ScopeEntry>,
-        )
+        ))
     }
 }
 

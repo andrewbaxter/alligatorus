@@ -74,24 +74,18 @@ fn test_00200_bind_use() {
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "Hello world (mortar)");
     assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
-let a0;
 {
 let e1;
-{
 let e2;
-e2 = "Hello world (mortar)";
-e1 = e2;
-}
-a0 = e1;
-}
-{
+e2 = BUILTIN;
 let e3;
+{
 let e4;
-e4 = BUILTIN;
-let e5;
-e5 = a0;
-e3 = (e4)(e5);
-e0 = e3;
+e4 = "Hello world (mortar)";
+e3 = e4;
+}
+e1 = (e2)(e3);
+e0 = e1;
 }
 e0;"#]);
 }

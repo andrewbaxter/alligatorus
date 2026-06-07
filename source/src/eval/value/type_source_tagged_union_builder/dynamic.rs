@@ -1,11 +1,11 @@
 use {
     crate::{
         builtin::{
-            AspectBindDynamic,
+            AspectBind,
             AspectConsumeDynamic,
             AspectField,
             AspectStackValueDynamic,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -44,6 +44,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            ScopeEntry,
             QExprId,
             Type,
             Unique,

@@ -109,6 +109,12 @@ pub(crate) struct ExprMatch {
 }
 
 #[derive(Clone)]
+pub(crate) struct ExprAs {
+    pub base: Rc<Expr>,
+    pub target: Rc<Expr>,
+}
+
+#[derive(Clone)]
 pub(crate) struct ExprImport {
     pub spec: Rc<Expr>,
 }
@@ -133,6 +139,7 @@ pub(crate) enum Expr_ {
     OperatorAdd(ExprOperatorAdd),
     Foreach(ExprForeach),
     Match(ExprMatch),
+    As(ExprAs),
     Import(ExprImport),
 }
 

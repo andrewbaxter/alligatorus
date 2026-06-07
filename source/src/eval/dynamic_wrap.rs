@@ -266,8 +266,8 @@ macro_rules! dynamic_wrap{
                     if * key == aspect_consume_dynamic_aspect_id() {
                         return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectConsumeDynamic >));
                     }
-                    if * key == aspect_bind_dynamic_aspect_id() {
-                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectBindDynamic >));
+                    if * key == aspect_bind_aspect_id() {
+                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectBind >));
                     }
                     if * key == aspect_stack_value_dynamic_aspect_id() {
                         return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectStackValueDynamic >));
@@ -301,19 +301,14 @@ macro_rules! dynamic_wrap{
                     cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
                 }
             }
-            impl AspectBindDynamic for[< Type $name Dynamic >] {
-                fn bind_dynamic(
+            impl AspectBind for[< Type $name Dynamic >] {
+                fn bind(
                     &self,
                     xx: &ExprContext,
                     loc: QExprId,
                     cv: CodeValue,
-                ) -> EResult<
-                    (Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)
-                > {
-                    let vtype = cv.value.type_(xx, loc);
-                    self
-                        .to_dynamic(xx, loc, cv)
-                        .map(|c| crate::eval::value::type_dynamic::bind_dynamic_some(loc, c, vtype))
+                ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+                    crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {

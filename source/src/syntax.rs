@@ -196,6 +196,13 @@ pub struct SourceExprMatch {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprAs {
+    pub base: Box<SourceExpr>,
+    pub target: Box<SourceExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprImport {
     pub spec: Box<SourceExpr>,
 }
@@ -219,6 +226,7 @@ pub enum SourceExpr_ {
     OperatorAdd(SourceExprOperatorAdd),
     Foreach(SourceExprForeach),
     Match(SourceExprMatch),
+    As(SourceExprAs),
     Import(SourceExprImport),
 }
 

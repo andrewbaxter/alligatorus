@@ -1,12 +1,14 @@
 use {
     crate::{
         builtin::{
-            AspectBindDynamic,
+            AspectBind,
+            AspectConsumeDynamic,
             AspectField,
             AspectNumberConst,
             AspectOperatorAdd,
             AspectOperatorLt,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_number_const_aspect_id,
             aspect_number_const_get,
@@ -18,7 +20,7 @@ use {
         eval::{
             Erb,
             value::{
-                type_dynamic::bind_dynamic_some,
+                type_dynamic::mortar_bind_to_scope,
                 type_number::dynamic::TypeNumberDynamic,
                 value_bool::r#const::ValueBoolConst,
                 value_number::r#const::ValueNumberConst,
@@ -26,11 +28,13 @@ use {
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
             EResult,
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -67,8 +71,11 @@ impl Type for TypeNumberConst {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectField>));
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectBindDynamic>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectBind>));
         }
         if *key == aspect_operator_lt_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorLt>));
@@ -113,20 +120,29 @@ impl Type for TypeNumberConst {
 
 impl Aspect for TypeNumberConst { }
 
-impl AspectBindDynamic for TypeNumberConst {
-    fn bind_dynamic(
+impl AspectConsumeDynamic for TypeNumberConst {
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        return er_seq!(loc, erb, CodeDynamic, {
+            let cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, cv))?;
+            return erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, cv));
+        });
+    }
+}
+
+impl AspectBind for TypeNumberConst {
+    fn bind(
         &self,
-        xx: &ExprContext,
+        _xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        TypeNumberDynamic::cast_from(&TypeNumberDynamic, xx, loc, cv).map(|js| {
-            bind_dynamic_some(
-                loc,
-                js.code.cast::<CodeDynamic>().v.unwrap().unwrap().clone(),
-                Rc::new(TypeNumberDynamic) as Rc<dyn Type>,
-            )
-        })
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((
+            Code {
+                loc: loc,
+                code: crate::langhelp::Code_::None,
+            },
+            Box::new(crate::eval::value::type_tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>,
+        ))
     }
 }
 

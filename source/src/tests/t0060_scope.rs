@@ -47,47 +47,35 @@ fn test_0000_scope_ok() {
     assert_eq!(res.logs[0].message, "apple");
     assert_eq!(res.logs[1].message, "zebra");
     assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
-let a0;
 {
 let e1;
 {
 let e2;
-e2 = "zebra";
-e1 = e2;
-}
-a0 = e1;
-}
-{
 let e3;
-let a1;
-{
+e3 = BUILTIN;
 let e4;
 {
 let e5;
 e5 = "apple";
 e4 = e5;
 }
-a1 = e4;
+e2 = (e3)(e4);
+e1 = e2;
+}
+e0 = e1;
 }
 {
 let e6;
 let e7;
 e7 = BUILTIN;
 let e8;
-e8 = a1;
-e6 = (e7)(e8);
-e3 = e6;
-}
-e0 = e3;
-}
 {
 let e9;
-let e10;
-e10 = BUILTIN;
-let e11;
-e11 = a0;
-e9 = (e10)(e11);
-e0 = e9;
+e9 = "zebra";
+e8 = e9;
+}
+e6 = (e7)(e8);
+e0 = e6;
 }
 e0;"#]);
 }

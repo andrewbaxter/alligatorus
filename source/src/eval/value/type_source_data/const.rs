@@ -2,13 +2,13 @@ use {
     crate::{
         builtin::{
             AspectArtifact,
-            AspectBindDynamic,
+            AspectBind,
             AspectConsumeDynamic,
             AspectField,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_artifact_aspect_id,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_lift_dynamic_aspect_id,
@@ -30,7 +30,6 @@ use {
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
-                    bind_dynamic_some,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
@@ -105,9 +104,9 @@ impl Type for TypeSourceDataTypeConst {
                 Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
             );
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
+        if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectBind>),
             );
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
@@ -209,15 +208,14 @@ impl AspectConsumeDynamic for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectBindDynamic for TypeSourceDataTypeConst {
-    fn bind_dynamic(
+impl AspectBind for TypeSourceDataTypeConst {
+    fn bind(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
     }
 }
 

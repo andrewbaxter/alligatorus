@@ -13,8 +13,7 @@ use {
     crate::{
         builtin::{
             aspect_artifact_get,
-            aspect_bind_const_get_maybe,
-            aspect_bind_dynamic_get_maybe,
+            aspect_bind_get_maybe,
             aspect_bool_const_get_maybe,
             aspect_consume_dynamic_get,
             aspect_field_get,
@@ -84,6 +83,7 @@ use {
     dynamic_wrap::DynamicWrap,
     expr::{
         Expr,
+        ExprAs,
         ExprBind,
         ExprBlock,
         ExprCall,
@@ -122,10 +122,7 @@ use {
             Record,
             RecordField,
         },
-        type_scope_entry::dynamic::{
-            ScopeEntryDynamicAsScope,
-            ScopeEntryDynamicBinding,
-        },
+        type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         type_string::dynamic::TypeStringDynamic,
         type_tuple::{
             ScopeEntryStatic,
@@ -282,58 +279,13 @@ pub(crate) struct MortarTarget;
 impl Target for MortarTarget {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         let vtype = cv.value.type_(xx, loc);
-        let none_code = Code {
-            loc: loc,
-            code: Code_::None,
-        };
-        if let Some(bind) = aspect_bind_const_get_maybe(xx, vtype.as_ref()) {
-            return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
-                let scope_entry = erb.must_er(bind.bind(xx, loc, cv))?;
-                return Ok((none_code, scope_entry));
-            });
-        }
-        let Some(bind_dynamic) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
+        let Some(bind) = aspect_bind_get_maybe(xx, vtype.as_ref()) else {
             return EResult::err(
                 loc,
-                format!("Type ({}) is missing aspect AspectBindConst and AspectBindDynamic", vtype.desc()),
+                format!("Type ({}) is missing aspect AspectBind", vtype.desc()),
             );
         };
-        return er_seq!(loc, erb, (Code, Box < dyn ScopeEntry >), {
-            let bind_result = bind_dynamic.bind_dynamic(xx, loc, cv);
-            if bind_result.v.is_none() {
-                return Ok((none_code, Box::new(ScopeEntryStatic { type_: vtype }) as Box<dyn ScopeEntry>));
-            }
-            let (js_code, mortar_entry) = erb.must_er(bind_result)?;
-            match js_code {
-                Some(vcode) => {
-                    let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                    let code = Code {
-                        loc: loc,
-                        code: Code_::Dyn(Rc::new(CodeDynamic {
-                            loc: loc,
-                            type_: CodeDynamicType::Block(
-                                CodeDynamicBlock { entries: vec![CodeDynamicBlockEntry::Bind(CodeDynamicBind {
-                                    base: js_key,
-                                    value: Box::new(vcode),
-                                })], }
-                            ),
-                        })),
-                    };
-                    return Ok((code, Box::new(ScopeEntryDynamicAsScope {
-                        js_key: Some(js_key),
-                        type_: vtype,
-                        inner: mortar_entry,
-                    })));
-                },
-                None => {
-                    return Ok((none_code, Box::new(ScopeEntryDynamicAsScope {
-                        js_key: None,
-                        type_: vtype,
-                        inner: mortar_entry,
-                    }) as Box<dyn ScopeEntry>));
-                },
-            }
-        });
+        bind.bind(xx, loc, cv)
     }
 
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
@@ -716,6 +668,10 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     },
                     Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
                     Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => { },
+                    Expr_::As(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.target, sd, ld, out);
+                    },
                     Expr_::Call(c) => {
                         find_matched_lowers_inner(&c.func, sd, ld, out);
                         find_matched_lowers_inner(&c.arg, sd, ld, out);
@@ -1083,6 +1039,15 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 let v = erb.must_er(xx.target.if_(xx, expr.loc, conditions, e.else_.as_deref(),))?;
                 return Ok(v);
             }
+        }),
+        Expr_::As(e) => return er_seq_cv!(expr.loc, erb, {
+            er_all!(erb, {
+                base = const_eval(xx, e.base.as_ref()),
+                target = const_eval(xx, e.target.as_ref()),
+            });
+            let target_type = target.value.type_(xx, expr.loc);
+            let v = erb.must_er(typecheck_convert(xx, expr.loc, target_type.as_ref(), base))?;
+            return Ok(v);
         }),
     }
 }
@@ -1751,6 +1716,13 @@ fn eval(
                         ),
                     },
                     Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => expr.clone(),
+                    Expr_::As(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::As(ExprAs {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            target: Rc::new(clone_with_lower_substitutions(&e.target, sd, ld, values)),
+                        }),
+                    },
                     Expr_::Call(c) => Expr {
                         loc: expr.loc,
                         r#type: Expr_::Call(ExprCall {
@@ -1967,7 +1939,14 @@ fn eval(
     }
 
     // Set externals as globals before running the script
+    eprintln!("externals count: {}", ex.externals.borrow().len());
     for (id, value) in ex.externals.borrow().iter() {
+        let ext_type = match value {
+            External::StagedExprCell(_) => "StagedExprCell",
+            External::StageLiftCell(_) => "StageLiftCell",
+            External::Type(t) => { eprintln!("  external {:?} = Type({})", id, t.desc()); "Type" },
+        };
+        let _ = ext_type;
         let key = v8::String::new(js_scope, &scope_entry_id_js_key(*id)).unwrap().cast();
         match value {
             External::StagedExprCell(cell) => {
@@ -2236,6 +2215,9 @@ pub(crate) fn compile_importid(
                 },
                 Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
                 Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
+                Expr_::As(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
+                },
                 Expr_::Call(c) => {
                     max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
                 },

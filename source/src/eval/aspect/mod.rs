@@ -3,8 +3,7 @@ mod artifact;
 mod lift_dynamic;
 mod stack_value_dynamic;
 mod consume_dynamic;
-mod bind_const;
-mod bind_dynamic;
+mod bind;
 mod string_dynamic;
 mod null;
 mod string_const;
@@ -26,8 +25,7 @@ mod record;
 
 pub(crate) use {
     artifact::*,
-    bind_const::*,
-    bind_dynamic::*,
+    bind::*,
     bool_const::*,
     bool_dynamic::*,
     consume_dynamic::*,

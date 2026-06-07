@@ -9,6 +9,7 @@ use {
         builtin::aspect_consume_dynamic_get,
         code_dynamic::{
             CodeDynamic,
+            CodeDynamicBind,
             CodeDynamicBindingSet,
             CodeDynamicBlock,
             CodeDynamicBlockEntry,
@@ -26,6 +27,8 @@ use {
             ExprErr,
             ExprSubErr,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
         },
     },
@@ -63,25 +66,39 @@ pub(crate) fn mortar_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: Cod
     }
 }
 
-pub(crate) fn mortar_bind_dynamic(
+pub(crate) fn mortar_bind_to_scope(
     xx: &ExprContext,
     loc: QExprId,
     cv: CodeValue,
-) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
+) -> EResult<(Code, Box<dyn ScopeEntry>)> {
     let vtype = cv.value.type_(xx, loc);
-    mortar_consume_to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
-}
-
-/// Helper to construct the return value for bind_dynamic when JS code is produced.
-pub(crate) fn bind_dynamic_some(
-    _loc: QExprId,
-    js: CodeDynamic,
-    bound_type: Rc<dyn Type>,
-) -> (Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>) {
-    (
-        Some(js),
-        Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicDirect { type_: bound_type }),
-    )
+    mortar_consume_to_dynamic(xx, loc, cv).map(|c| {
+        let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let code = Code {
+            loc: loc,
+            code: Code_::Dyn(Rc::new(CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::Block(
+                    CodeDynamicBlock {
+                        entries: vec![
+                            CodeDynamicBlockEntry::Bind(
+                                CodeDynamicBind { base: js_key, value: Box::new(c) },
+                            ),
+                        ],
+                    },
+                ),
+            })),
+        };
+        (
+            code,
+            Box::new(
+                crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
+                    js_key: js_key,
+                    type_: vtype,
+                },
+            ) as Box<dyn ScopeEntry>,
+        )
+    })
 }
 
 pub(crate) fn mortar_dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {

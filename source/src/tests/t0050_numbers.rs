@@ -30,7 +30,7 @@ fn test_0000_number_lit() {
                     SourceModule::V1(
                         mb.block(
                             vec![
-                                mb.bind("x", mb.num(4.)),
+                                mb.bind("x", mb.as_(mb.num(4.), mb.scope_use("number"))),
                                 mb.if_(
                                     vec![
                                         (

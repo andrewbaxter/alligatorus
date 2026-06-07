@@ -18,6 +18,7 @@ use {
                 ExprField,
                 ExprForeach,
                 ExprIf,
+                ExprAs,
                 ExprImport,
                 ExprLower,
                 ExprMatch,
@@ -49,6 +50,7 @@ use {
         },
         syntax::{
             SourceExpr,
+            SourceExprAs,
             SourceExpr_,
             SourceLiteral,
             SourceModule,
@@ -152,6 +154,10 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                         body: source_expr_to_expr(source_id, &c.body),
                     }).collect(),
                     fallback: expr.fallback.as_ref().map(|e| Rc::new(source_expr_to_expr(source_id, e))),
+                }),
+                SourceExpr_::As(expr) => Expr_::As(ExprAs {
+                    base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                    target: Rc::new(source_expr_to_expr(source_id, &expr.target)),
                 }),
                 SourceExpr_::Import(expr) => Expr_::Import(
                     ExprImport { spec: Rc::new(source_expr_to_expr(source_id, &expr.spec)) },

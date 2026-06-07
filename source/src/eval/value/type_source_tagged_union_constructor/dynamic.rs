@@ -1,11 +1,11 @@
 use {
     crate::{
         builtin::{
-            AspectBindDynamic,
+            AspectBind,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectStackValueDynamic,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -16,7 +16,7 @@ use {
             value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_dynamic_some,
+                mortar_bind_to_scope,
             },
         },
         langhelp::{
@@ -65,9 +65,9 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
                 Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
             );
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
+        if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectBindDynamic>),
+                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectBind>),
             );
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
@@ -100,15 +100,14 @@ impl AspectConsumeDynamic for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl AspectBindDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn bind_dynamic(
+impl AspectBind for TypeSourceTaggedUnionConstructorDynamic {
+    fn bind(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
+    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        mortar_bind_to_scope(xx, loc, cv)
     }
 }
 

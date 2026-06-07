@@ -1,9 +1,9 @@
 use {
     crate::{
         builtin::{
-            AspectBindDynamic,
+            AspectBind,
             AspectConsumeDynamic,
-            aspect_bind_dynamic_aspect_id,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
         },
         code_dynamic::{
@@ -60,8 +60,8 @@ impl Type for TypeAnyConst {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectBindDynamic>));
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectBind>));
         }
         None
     }
@@ -118,15 +118,13 @@ impl AspectConsumeDynamic for TypeAnyConst {
     }
 }
 
-impl AspectBindDynamic for TypeAnyConst {
-    fn bind_dynamic(
+impl AspectBind for TypeAnyConst {
+    fn bind(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        self.to_dynamic(xx, loc, cv).map(|js| {
-            crate::eval::value::type_dynamic::bind_dynamic_some(loc, js, Rc::new(super::dynamic::TypeAnyDynamic))
-        })
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        crate::eval::value::type_dynamic::mortar_bind_to_scope(xx, loc, cv)
     }
 }
