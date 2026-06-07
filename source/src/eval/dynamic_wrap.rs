@@ -9,18 +9,18 @@ use {
 
 macro_rules! dynamic_wrap{
     // --- Function variant --- Produces a (&str, ScopeEntryDynamicBinding,
-    // v8::Local<v8::Value>) tuple. `$ex` is the EvalContext, `$js_scope` is the v8
-    // scope for building. `$scope` is available in the body as the v8 HandleScope.
+    // v8::Local<v8::Value>) tuple. `$ex` is the EvalContext, `$dynamic_scope` is the
+    // v8 scope for building. `$scope` is available in the body as the v8 HandleScope.
     (
         fn $name: ident(
             $ex: ident,
-            $js_scope: ident,
+            $dynamic_scope: ident,
             $scope: ident
         )($($arg: ident: $arg_ty: ty), * $(,) ?) -> $ret_ty: ty $body: block
     ) => {
         {
             (stringify!($name), ScopeEntryDynamicBinding {
-                js_key: ScopeEntryId:: Builtin(line!() as usize),
+                dynamic_key: ScopeEntryId:: Builtin(line!() as usize),
                 type_: Rc:: new(TypeFunctionDynamic {
                     arg: dynamic_wrap !(@ arg_mortar_type $($arg_ty), *),
                     ret: <$ret_ty as DynamicWrap >:: mortar_type(),
@@ -40,7 +40,7 @@ macro_rules! dynamic_wrap{
                     ) * let _jw_result: $ret_ty = $body;
                     _jw_rv.set(<$ret_ty as DynamicWrap >:: into_v8(_jw_result, $scope));
                 }
-                v8:: Function:: builder(_jw_cb).build($js_scope).unwrap().cast::< v8:: Value >()
+                v8:: Function:: builder(_jw_cb).build($dynamic_scope).unwrap().cast::< v8:: Value >()
             })
         }
     };
@@ -334,8 +334,8 @@ pub(crate) trait DynamicWrap: Sized + 'static {
 /// Trait for types that can be used as BTreeMap keys in DynamicWrap. Converts
 /// between Rust keys and JS object property names (strings).
 pub(crate) trait DynamicWrapKey: Sized + Ord + 'static {
-    fn from_js_key(s: &str) -> Result<Self, String>;
-    fn to_js_key(&self) -> String;
+    fn from_dynamic_key(s: &str) -> Result<Self, String>;
+    fn to_dynamic_key(&self) -> String;
 }
 
 /// Wrapper for type values received from JS. In v8, types are always
@@ -416,11 +416,11 @@ impl DynamicWrap for crate::langhelp::ConstKey {
 }
 
 impl DynamicWrapKey for crate::langhelp::ConstKey {
-    fn from_js_key(s: &str) -> Result<Self, String> {
+    fn from_dynamic_key(s: &str) -> Result<Self, String> {
         crate::langhelp::ConstKey::from_str(s)
     }
 
-    fn to_js_key(&self) -> String {
+    fn to_dynamic_key(&self) -> String {
         self.to_str()
     }
 }
@@ -459,17 +459,17 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
         let len = keys.length();
         let mut map = std::collections::BTreeMap::new();
         for i in 0 .. len {
-            let js_key = keys.get_index(scope, i).unwrap();
-            let key_str = js_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
-            let key = match K::from_js_key(&key_str) {
+            let dynamic_key = keys.get_index(scope, i).unwrap();
+            let key_str = dynamic_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+            let key = match K::from_dynamic_key(&key_str) {
                 Ok(k) => k,
                 Err(e) => {
                     super::dynamic_util::throw_error(scope, &format!("Invalid map key: {}", e));
                     return std::collections::BTreeMap::new();
                 },
             };
-            let js_val = obj.get(scope, js_key).unwrap();
-            let val = V::from_v8(scope, js_val);
+            let dynamic_val = obj.get(scope, dynamic_key).unwrap();
+            let val = V::from_v8(scope, dynamic_val);
             map.insert(key, val);
         }
         map
@@ -478,9 +478,9 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let obj = v8::Object::new(scope);
         for (k, v) in self {
-            let js_key: v8::Local<v8::Value> = v8::String::new(scope, &k.to_js_key()).unwrap().into();
-            let js_val = V::into_v8(v, scope);
-            obj.set(scope, js_key, js_val);
+            let dynamic_key: v8::Local<v8::Value> = v8::String::new(scope, &k.to_dynamic_key()).unwrap().into();
+            let dynamic_val = V::into_v8(v, scope);
+            obj.set(scope, dynamic_key, dynamic_val);
         }
         obj.into()
     }

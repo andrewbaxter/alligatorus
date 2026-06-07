@@ -96,7 +96,7 @@ pub(crate) struct CodeDynamicMatch {
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicMatchBranch {
-    pub(crate) js_tag: String,
+    pub(crate) dynamic_tag: String,
     pub(crate) body: CodeDynamic,
 }
 

@@ -65,7 +65,7 @@ pub(crate) fn bind_dynamic(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> ERe
             })),
         };
         (code, Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
-            js_key: js_key,
+            dynamic_key: js_key,
             type_: sub.type_,
         }) as Box<dyn ScopeEntry>)
     })

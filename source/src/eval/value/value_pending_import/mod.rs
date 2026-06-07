@@ -1,6 +1,6 @@
 use {
     crate::{
-        eval::MortarTarget,
+        eval::TargetDynamic,
         langhelp::{
             CompileImportContext,
             CompileResResult,
@@ -63,7 +63,7 @@ impl PendingImportState {
                 values: RefCell::new(HashMap::new()),
                 parent: None,
             }),
-            target: Rc::new(MortarTarget),
+            target: Rc::new(TargetDynamic),
         };
         self.resolve(&xx)
     }

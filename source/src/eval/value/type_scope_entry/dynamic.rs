@@ -25,7 +25,7 @@ use {
 
 #[derive(Clone)]
 pub(crate) struct ScopeEntryDynamicBinding {
-    pub js_key: ScopeEntryId,
+    pub dynamic_key: ScopeEntryId,
     pub type_: Rc<dyn Type>,
 }
 
@@ -36,13 +36,13 @@ impl ScopeEntry for ScopeEntryDynamicBinding {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(CodeDynamic {
                     loc: loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.js_key }),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Binding(ValueDynamicDataScope {
                     loc: loc,
-                    key: self.js_key,
+                    key: self.dynamic_key,
                 }),
                 type_: self.type_.clone(),
             }),
