@@ -3,29 +3,20 @@ use {
         builtin::{
             AspectBindDynamic,
             AspectConsumeDynamic,
-            AspectField,
+            AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
+            aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicFieldUse,
-            CodeDynamicType,
-        },
+        code_dynamic::CodeDynamic,
         eval::{
-            Erb,
-            value::{
-                type_dynamic::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                    bind_dynamic_some,
-                },
-                type_function::dynamic::TypeFunctionDynamic,
-                type_null::dynamic::TypeNullDynamic,
+            from_v8_ref,
+            value::type_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_some,
             },
         },
         langhelp::{
@@ -44,90 +35,89 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
-    super::TypeSourceInterfaceConst,
+    super::{
+        SourceInterfaceRef,
+        TypeSourceInterfaceConst,
+    },
 };
 
-impl Value for TypeSourceInterfaceConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
+pub(crate) struct TypeSourceInterfaceDynamic;
+
+fn interface_ref_type_identity() -> Unique {
+    Unique::Builtin {
+        file: file!(),
+        line: line!() as usize,
     }
 }
 
-impl Type for TypeSourceInterfaceConst {
+impl Value for TypeSourceInterfaceDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
+
+impl Type for TypeSourceInterfaceDynamic {
     fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("interface"),
-        }
+        format!("definition_set_interface_ref")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
+        Rc::new(TypeSourceInterfaceDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        // Check interface identity aspect
-        if *key == self.data.identity {
+        if *key == interface_ref_type_identity() {
             return Some(Box::new(true));
         }
-        if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectField>));
-        }
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectStackValueDynamic>));
+        }
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLiftDynamic>));
         }
         return None;
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
+        EvalRes::err(loc, format!("Cannot convert interface_ref"))
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        let identity = self.data.identity.clone();
-        source_type.aspect(xx, &identity).is_some()
+        source_type.aspect(xx, &interface_ref_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let identity = self.data.identity.clone();
         let source_type = cv.value.type_(xx, loc);
-        if source_type.aspect(xx, &identity).is_some() {
+        if source_type.aspect(xx, &interface_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
+                    type_: Rc::new(TypeSourceInterfaceDynamic),
                 }),
             });
         }
-        EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
+        EvalRes::err(loc, format!("Cannot convert to interface_ref"))
     }
 }
 
-impl Aspect for TypeSourceInterfaceConst { }
+impl Aspect for TypeSourceInterfaceDynamic { }
 
-impl AspectConsumeDynamic for TypeSourceInterfaceConst {
+impl AspectConsumeDynamic for TypeSourceInterfaceDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for TypeSourceInterfaceConst {
+impl AspectBindDynamic for TypeSourceInterfaceDynamic {
     fn bind_dynamic(
         &self,
         xx: &ExprContext,
@@ -139,7 +129,7 @@ impl AspectBindDynamic for TypeSourceInterfaceConst {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceInterfaceConst {
+impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -148,64 +138,24 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
+                type_: Rc::new(TypeSourceInterfaceDynamic),
             }),
         }
     }
 }
 
-impl AspectField for TypeSourceInterfaceConst {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let (field_name, arg_type, ret_type) = {
-                let methods = self.data.methods.borrow();
-                let method = methods.iter().find(|m| m.name == key_name);
-                match method {
-                    Some(m) => {
-                        let arg_t = m.arg_type.borrow().clone().expect("Interface method missing arg type");
-                        let ret_t = m.ret_type.borrow().clone().expect("Interface method missing return type");
-                        (m.field_name.clone(), arg_t, ret_t)
-                    },
-                    None => return erb.err_new(format!("Field '{}' not found on interface", key_name)),
-                }
-            };
-            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            let field_type = Rc::new(TypeFunctionDynamic {
-                arg: arg_type,
-                ret: ret_type,
-            });
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                            base: Box::new(self_code),
-                            field: field_name,
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: field_type,
-                }),
-            });
-        });
-    }
-
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        let methods = self.data.methods.borrow();
-        for method in methods.iter() {
-            if method.name == key {
-                return Some(Rc::new(TypeFunctionDynamic {
-                    arg: Rc::new(TypeNullDynamic),
-                    ret: Rc::new(TypeNullDynamic),
-                }));
-            }
-        }
-        None
+impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
+        iface_ref.data.set.finish()?;
+        Ok(Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
+            type_: Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }),
+        }))
     }
 }

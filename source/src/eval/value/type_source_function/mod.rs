@@ -1,4 +1,5 @@
 pub mod dynamic;
+pub mod r#const;
 
 use {
     crate::langhelp::{

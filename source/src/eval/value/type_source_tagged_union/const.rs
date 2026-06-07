@@ -3,24 +3,18 @@ use {
         builtin::{
             AspectBindDynamic,
             AspectConsumeDynamic,
-            AspectLiftDynamic,
             AspectStackValueDynamic,
+            AspectTaggedUnion,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
-            aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            aspect_tagged_union_aspect_id,
         },
         code_dynamic::CodeDynamic,
-        eval::{
-            from_v8_ref,
-            value::{
-                type_dynamic::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                    bind_dynamic_some,
-                },
-                type_source_data::TypeSourceDataTypeConst,
-            },
+        eval::value::type_dynamic::{
+            ValueDynamic,
+            ValueDynamicSource,
+            bind_dynamic_some,
         },
         langhelp::{
             Aspect,
@@ -40,59 +34,79 @@ use {
         any::Any,
         rc::Rc,
     },
+    super::SourceTaggedUnionData,
 };
 
-pub(crate) struct TypeSourceDataDynamic;
+pub(crate) struct TypeSourceTaggedUnionConst {
+    pub data: Rc<SourceTaggedUnionData>,
+}
 
-impl Value for TypeSourceDataDynamic {
+impl Value for TypeSourceTaggedUnionConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
-impl Type for TypeSourceDataDynamic {
+impl Type for TypeSourceTaggedUnionConst {
     fn desc(&self) -> String {
-        format!("definition_set_data_type_ref")
+        format!("tagged_union")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceDataDynamic)
+        Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == self.data.identity {
+            return Some(Box::new(true));
+        }
+        if *key == aspect_tagged_union_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>),
+            );
+        }
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectConsumeDynamic>));
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
+            );
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectBindDynamic>));
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
+            );
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectStackValueDynamic>));
-        }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataDynamic) as Box<dyn AspectLiftDynamic>));
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
+            );
         }
         return None;
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert data_type_ref"))
+        EvalRes::err(loc, format!("Cannot convert tagged_union"))
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_ref"))
+        EvalRes::err(loc, format!("Cannot convert to tagged_union"))
     }
 }
 
-impl Aspect for TypeSourceDataDynamic { }
+impl Aspect for TypeSourceTaggedUnionConst { }
 
-impl AspectConsumeDynamic for TypeSourceDataDynamic {
+impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
+    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, String, Rc<dyn Type>)> {
+        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
+    }
+}
+
+impl AspectConsumeDynamic for TypeSourceTaggedUnionConst {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
-impl AspectBindDynamic for TypeSourceDataDynamic {
+impl AspectBindDynamic for TypeSourceTaggedUnionConst {
     fn bind_dynamic(
         &self,
         xx: &ExprContext,
@@ -104,7 +118,7 @@ impl AspectBindDynamic for TypeSourceDataDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceDataDynamic {
+impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
             code: Code {
@@ -113,28 +127,8 @@ impl AspectStackValueDynamic for TypeSourceDataDynamic {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataDynamic),
+                type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
             }),
         }
-    }
-}
-
-impl AspectLiftDynamic for TypeSourceDataDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let dt =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceDataTypeConst>()
-                .expect("TypeSourceDataDynamic::lift: expected TypeSourceDataTypeConst");
-        dt.data.set.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }),
-        }))
     }
 }

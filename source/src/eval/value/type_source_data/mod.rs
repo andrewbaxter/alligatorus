@@ -1,4 +1,5 @@
 pub mod artifact;
+pub mod r#const;
 pub mod dynamic;
 
 use {
@@ -66,4 +67,29 @@ pub(crate) struct SourceDataTypeInterfaceMethodImplData {
 
 pub(crate) struct TypeSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
+}
+
+pub(crate) struct SourceDataTypeRef {
+    pub data: Gc<SourceDataTypeData>,
+}
+
+impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
+    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+        Rc::new(dynamic::TypeSourceDataTypeDynamic)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let type_: &Rc<dyn crate::langhelp::Type> = crate::eval::from_v8_ref(&*value);
+        let dt =
+            (type_.as_ref() as &dyn std::any::Any)
+                .downcast_ref::<TypeSourceDataTypeConst>()
+                .expect("SourceDataTypeRef::from_v8: expected TypeSourceDataTypeConst");
+        Rc::new(SourceDataTypeRef { data: dt.data.clone() })
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        let type_: Rc<dyn crate::langhelp::Type> =
+            Rc::new(TypeSourceDataTypeConst { data: self.data.clone() });
+        crate::eval::to_v8(scope, type_).into()
+    }
 }

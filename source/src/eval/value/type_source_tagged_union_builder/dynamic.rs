@@ -29,11 +29,11 @@ use {
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_tagged_union::{
-                    SourceTaggedUnionConstructorRef,
                     SourceTaggedUnionData,
                     SourceTaggedUnionRef,
                     SourceTaggedUnionVariant,
                 },
+                type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
             },
         },
         langhelp::{

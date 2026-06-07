@@ -29,7 +29,7 @@ use {
                     ValueDynamicSource,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_source_data_ref::SourceDataTypeRef,
+                type_source_data::SourceDataTypeRef,
             },
         },
         langhelp::{

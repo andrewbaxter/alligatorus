@@ -11,7 +11,7 @@ use {
                     SourceDataTypeInterfaceMethodImplData,
                 },
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
-                type_source_data_ref::SourceDataTypeRef,
+                type_source_data::SourceDataTypeRef,
                 type_source_function::{
                     TypeSourceFunctionConst,
                     SourceFunctionData,
@@ -21,13 +21,13 @@ use {
                     SourceInterfaceData,
                     SourceInterfaceMethodData,
                 },
-                type_source_interface_ref::SourceInterfaceRef,
+                type_source_interface::SourceInterfaceRef,
                 type_source_tagged_union::{
-                    SourceTaggedUnionConstructorRef,
                     SourceTaggedUnionData,
                     SourceTaggedUnionRef,
                     SourceTaggedUnionVariant,
                 },
+                type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
             },
         },
         langhelp::{

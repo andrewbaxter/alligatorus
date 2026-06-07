@@ -3,28 +3,18 @@ use {
         builtin::{
             AspectBindDynamic,
             AspectConsumeDynamic,
-            AspectFunction,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             AspectTaggedUnion,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
-            aspect_consume_dynamic_get,
-            aspect_function_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
-            aspect_stack_value_dynamic_get,
             aspect_tagged_union_aspect_id,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicNewObject,
-            CodeDynamicType,
-        },
+        code_dynamic::CodeDynamic,
         eval::{
-            Erb,
             from_v8_ref,
-            typecheck_convert,
             value::type_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
@@ -47,15 +37,15 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
     super::{
-        SourceTaggedUnionConstructorRef,
         SourceTaggedUnionData,
         SourceTaggedUnionRef,
     },
 };
+
+use super::r#const::TypeSourceTaggedUnionConst;
 
 fn tagged_union_ref_type_identity() -> Unique {
     Unique::Builtin {
@@ -64,7 +54,6 @@ fn tagged_union_ref_type_identity() -> Unique {
     }
 }
 
-// --- Mortar type for SourceTaggedUnionRef (during eval_half / v8 phase) ---
 pub(crate) struct TypeSourceTaggedUnionDynamic {
     pub data: Option<Rc<SourceTaggedUnionData>>,
 }
@@ -255,116 +244,6 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
     }
 }
 
-// --- Mortar type for SourceTaggedUnionConstructorRef (during eval_half / v8
-// phase) ---
-pub(crate) struct TypeSourceTaggedUnionConstructorDynamic;
-
-impl Value for TypeSourceTaggedUnionConstructorDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeSourceTaggedUnionConstructorDynamic {
-    fn desc(&self) -> String {
-        format!("tagged_union_constructor_ref")
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceTaggedUnionConstructorDynamic)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
-            );
-        }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectBindDynamic>),
-            );
-        }
-        if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectStackValueDynamic>),
-            );
-        }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLiftDynamic>),
-            );
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert tagged_union_constructor_ref"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
-    }
-}
-
-impl Aspect for TypeSourceTaggedUnionConstructorDynamic { }
-
-impl AspectConsumeDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
-            }),
-        }
-    }
-}
-
-impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let ctor =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceTaggedUnionConstructorConst>()
-                .expect("TypeSourceTaggedUnionConstructorDynamic::lift: expected TypeSourceTaggedUnionConstructorConst");
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceTaggedUnionConstructorConst {
-                data: ctor.data.clone(),
-                variant_index: ctor.variant_index,
-            }),
-        }))
-    }
-}
-
-// --- DynamicWrap impls ---
 fn tagged_union_ref_from_v8_type(type_: &Rc<dyn Type>) -> Rc<SourceTaggedUnionRef> {
     let mortar =
         (type_.as_ref() as &dyn Any)
@@ -385,196 +264,5 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionRef> {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let type_: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionDynamic { data: Some(self.data.clone()) });
         crate::eval::to_v8(scope, type_).into()
-    }
-}
-
-impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionConstructorRef> {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(TypeSourceTaggedUnionConstructorDynamic)
-    }
-
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let type_: &Rc<dyn Type> = crate::eval::from_v8_ref(&*value);
-        let ctor =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceTaggedUnionConstructorConst>()
-                .expect("SourceTaggedUnionConstructorRef::from_v8: expected TypeSourceTaggedUnionConstructorConst");
-        Rc::new(SourceTaggedUnionConstructorRef {
-            data: ctor.data.clone(),
-            variant_index: ctor.variant_index,
-        })
-    }
-
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        let type_: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
-            data: self.data.clone(),
-            variant_index: self.variant_index,
-        });
-        crate::eval::to_v8(scope, type_).into()
-    }
-}
-
-// --- Post-lift: TypeSourceTaggedUnionConst (type of tagged union values) ---
-pub(crate) struct TypeSourceTaggedUnionConst {
-    pub data: Rc<SourceTaggedUnionData>,
-}
-
-impl Value for TypeSourceTaggedUnionConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeSourceTaggedUnionConst {
-    fn desc(&self) -> String {
-        format!("tagged_union")
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == self.data.identity {
-            return Some(Box::new(true));
-        }
-        if *key == aspect_tagged_union_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectTaggedUnion>),
-            );
-        }
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>),
-            );
-        }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
-            );
-        }
-        if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>),
-            );
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert tagged_union"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union"))
-    }
-}
-
-impl Aspect for TypeSourceTaggedUnionConst { }
-
-impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
-    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, String, Rc<dyn Type>)> {
-        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
-    }
-}
-
-impl AspectConsumeDynamic for TypeSourceTaggedUnionConst {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectBindDynamic for TypeSourceTaggedUnionConst {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Option<CodeDynamic>, Box<dyn crate::eval::value::type_scope_entry::dynamic::DynamicScopeEntry>)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| bind_dynamic_some(loc, c, vtype))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            }),
-        }
-    }
-}
-
-// ## --- Post-lift: TypeSourceTaggedUnionConstructorConst (callable to create tagged union values)
-pub(crate) struct TypeSourceTaggedUnionConstructorConst {
-    pub data: Rc<SourceTaggedUnionData>,
-    pub variant_index: usize,
-}
-
-impl Value for TypeSourceTaggedUnionConstructorConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-impl Type for TypeSourceTaggedUnionConstructorConst {
-    fn desc(&self) -> String {
-        let variants = self.data.variants.borrow();
-        let tag = &variants[self.variant_index].tag;
-        format!("tagged_union_constructor({:?})", tag)
-    }
-
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceTaggedUnionConstructorConst {
-            data: self.data.clone(),
-            variant_index: self.variant_index,
-        })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceTaggedUnionConstructorConst {
-                data: self.data.clone(),
-                variant_index: self.variant_index,
-            }) as Box<dyn AspectFunction>));
-        }
-        return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert tagged_union_constructor"))
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor"))
-    }
-}
-
-impl Aspect for TypeSourceTaggedUnionConstructorConst { }
-
-impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
-    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let variants = self.data.variants.borrow();
-        let variant = &variants[self.variant_index];
-        let js_tag = variant.js_tag.clone();
-        let underlying_type = variant.type_.clone();
-        drop(variants);
-        return er_seq_cv!(loc, erb, {
-            let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
-            let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
-            let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
-            let result_type = Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() });
-            let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
-            return Ok(ret_stack.to_value(loc, CodeDynamic {
-                loc,
-                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: vec![(js_tag, underlying_js)], }),
-            }));
-        });
     }
 }

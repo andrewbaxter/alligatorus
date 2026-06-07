@@ -1,3 +1,4 @@
+pub mod r#const;
 pub mod dynamic;
 
 use {
@@ -27,7 +28,3 @@ pub(crate) struct SourceTaggedUnionRef {
     pub data: Rc<SourceTaggedUnionData>,
 }
 
-pub(crate) struct SourceTaggedUnionConstructorRef {
-    pub data: Rc<SourceTaggedUnionData>,
-    pub variant_index: usize,
-}

@@ -31,7 +31,7 @@ use {
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_function::TypeSourceFunctionConst,
                 type_source_interface::TypeSourceInterfaceConst,
-                type_source_interface_ref::SourceInterfaceRef,
+                type_source_interface::SourceInterfaceRef,
             },
         },
         langhelp::{
