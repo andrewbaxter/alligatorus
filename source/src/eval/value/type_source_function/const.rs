@@ -2,7 +2,6 @@ use {
     crate::{
         builtin::{
             AspectBind,
-            AspectConsumeDynamic,
             AspectFunction,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_get,

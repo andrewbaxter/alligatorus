@@ -47,7 +47,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -55,7 +54,6 @@ use {
     },
     std::{
         any::Any,
-        cell::RefCell,
         mem,
         rc::Rc,
     },

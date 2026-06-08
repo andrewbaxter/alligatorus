@@ -33,7 +33,6 @@ use {
         mem,
         rc::Rc,
     },
-    super::SourceTaggedUnionConstructorRef,
 };
 
 pub(crate) struct TypeSourceTaggedUnionConstructorConst {

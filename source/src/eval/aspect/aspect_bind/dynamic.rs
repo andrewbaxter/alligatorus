@@ -12,7 +12,6 @@ use {
         },
     },
     paste::paste,
-    std::rc::Rc,
 };
 
 aspect!(AspectBindDynamic {

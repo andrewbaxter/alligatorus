@@ -22,7 +22,6 @@ use {
             dynamic_wrap::{
                 AnyType,
                 DynamicWrap,
-                StagedExpr,
                 dynamic_wrap_method_name,
             },
             value::{

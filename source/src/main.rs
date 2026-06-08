@@ -52,7 +52,6 @@ use {
         },
         syntax::{
             SourceExpr,
-            SourceExprAs,
             SourceExpr_,
             SourceLiteral,
             SourceModule,
