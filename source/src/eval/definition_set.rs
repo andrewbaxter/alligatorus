@@ -9,6 +9,7 @@ use {
             },
         },
         langhelp::{
+            ArtifactId,
             Counter,
             DefSetId,
             ImportStateId,
@@ -25,6 +26,7 @@ use {
 };
 
 pub(crate) struct DefinitionSet {
+    pub artifact_id: RefCell<Option<ArtifactId>>,
     pub data_types: RefCell<Vec<Gc<SourceDataTypeData>>>,
     pub def_set_id: DefSetId,
     pub finished: Cell<bool>,
@@ -91,6 +93,7 @@ impl DefinitionSet {
 
     pub fn new(import_id: ImportStateId, def_set_id: DefSetId) -> Self {
         DefinitionSet {
+            artifact_id: RefCell::new(None),
             import_id,
             def_set_id,
             functions: RefCell::new(Vec::new()),

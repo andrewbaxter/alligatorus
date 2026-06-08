@@ -30,6 +30,21 @@ pub trait Artifacts: Send + Sync {
     fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
 }
 
+pub(crate) fn produce_independent_artifact(
+    artifacts: &dyn Artifacts,
+    cell: &std::cell::RefCell<Option<ArtifactId>>,
+    produce: impl FnOnce() -> Artifact,
+) -> ArtifactId {
+    if let Some(existing_id) = cell.borrow().clone() {
+        return existing_id;
+    }
+    let id = artifacts.reserve_id();
+    *cell.borrow_mut() = Some(id.clone());
+    let artifact = produce();
+    artifacts.set(id.clone(), artifact);
+    id
+}
+
 pub(crate) trait Aspect: Any { }
 
 pub(crate) trait CodeDyn: Any { }

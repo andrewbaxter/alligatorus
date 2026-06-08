@@ -98,6 +98,7 @@ pub(crate) fn deserialize_definition_set(
             artifact.data.clone(),
         ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
     let set = Gc::new(DefinitionSet {
+        artifact_id: std::cell::RefCell::new(None),
         import_id: serial.import_id,
         def_set_id: serial.def_set_id,
         functions: std::cell::RefCell::new(Vec::new()),
@@ -152,43 +153,43 @@ fn serialize_definition_set(
     loc: QExprId,
     set: &Gc<DefinitionSet>,
 ) -> ArtifactId {
-    use crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref;
+    crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &set.artifact_id, || {
+        use crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref;
 
-    let data_types = set.data_types.borrow();
-    let serial_data_types: Vec<ArtifactDataDefSetDataTypeEntry> = data_types.iter().map(|dt| {
-        let underlying_type = dt.underlying_type.borrow();
-        let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-        let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
-            let compiled_js = m.compiled_js.borrow();
-            let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
-            let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-            ArtifactDataDefSetMethod {
-                name: m.name.clone(),
-                field_name: m.field_name.clone(),
-                ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
-                compiled_js: compiled_js.clone(),
+        let data_types = set.data_types.borrow();
+        let serial_data_types: Vec<ArtifactDataDefSetDataTypeEntry> = data_types.iter().map(|dt| {
+            let underlying_type = dt.underlying_type.borrow();
+            let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
+            let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
+                let compiled_js = m.compiled_js.borrow();
+                let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
+                let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
+                ArtifactDataDefSetMethod {
+                    name: m.name.clone(),
+                    field_name: m.field_name.clone(),
+                    ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
+                    compiled_js: compiled_js.clone(),
+                }
+            }).collect();
+            ArtifactDataDefSetDataTypeEntry {
+                name: dt.name.clone(),
+                underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
+                identity: dt.identity.clone(),
+                data_field: dt.data_field.clone(),
+                methods,
             }
         }).collect();
-        ArtifactDataDefSetDataTypeEntry {
-            name: dt.name.clone(),
-            underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-            identity: dt.identity.clone(),
-            data_field: dt.data_field.clone(),
-            methods,
+        let serial = ArtifactDataDefSet {
+            data_types: serial_data_types,
+            import_id: set.import_id,
+            def_set_id: set.def_set_id,
+        };
+        let json = serde_json::to_value(&serial).expect("Failed to serialize definition set");
+        Artifact {
+            type_: ArtifactId::Builtin(defset_artifact_identity()),
+            data: json,
         }
-    }).collect();
-    let serial = ArtifactDataDefSet {
-        data_types: serial_data_types,
-        import_id: set.import_id,
-        def_set_id: set.def_set_id,
-    };
-    let json = serde_json::to_value(&serial).expect("Failed to serialize definition set");
-    let artifact_id = gx.artifacts.reserve_id();
-    gx.artifacts.set(artifact_id.clone(), Artifact {
-        type_: ArtifactId::Builtin(defset_artifact_identity()),
-        data: json,
-    });
-    artifact_id
+    })
 }
 
 // --- ValueSourceDataTypeConst: value produced by lifting a data type instance
@@ -260,38 +261,34 @@ impl TypeSourceDataTypeConst {
     }
 
     pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        // Check if already serialized
-        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
-            return existing_id;
-        }
-
-        // First serialize the definition set
-        let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
-
-        // Reserve an ID for the data type
-        let dt_artifact_id = gx.artifacts.reserve_id();
-        *self.data.artifact_id.borrow_mut() = Some(dt_artifact_id.clone());
-
-        // Find own index in the set
-        let type_index = {
-            let data_types = self.data.set.data_types.borrow();
-            data_types
-                .iter()
-                .position(
-                    |dt| std::ptr::eq(&**dt as *const SourceDataTypeData, &*self.data as *const SourceDataTypeData),
-                )
-                .expect("Data type not found in its definition set")
-        };
-        let serial = ArtifactDataDefSetDataType {
-            def_set: def_set_artifact_id,
-            type_index,
-        };
-        let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
-        gx.artifacts.set(dt_artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
-            data: json,
-        });
-        dt_artifact_id
+        crate::langhelp::produce_independent_artifact(
+            gx.artifacts.as_ref(),
+            &self.data.artifact_id,
+            || {
+                let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
+                let type_index = {
+                    let data_types = self.data.set.data_types.borrow();
+                    data_types
+                        .iter()
+                        .position(|dt| {
+                            std::ptr::eq(
+                                &**dt as *const SourceDataTypeData,
+                                &*self.data as *const SourceDataTypeData,
+                            )
+                        })
+                        .expect("Data type not found in its definition set")
+                };
+                let serial = ArtifactDataDefSetDataType {
+                    def_set: def_set_artifact_id,
+                    type_index,
+                };
+                let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
+                Artifact {
+                    type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
+                    data: json,
+                }
+            },
+        )
     }
 }
 

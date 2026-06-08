@@ -58,41 +58,39 @@ use {
 
 impl TypeSourceDataTypeConstructorConst {
     pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        if let Some(existing_id) = self.data.artifact_id.borrow().clone() {
-            return existing_id;
-        }
-        let artifact_id = gx.artifacts.reserve_id();
-        *self.data.artifact_id.borrow_mut() = Some(artifact_id.clone());
-        let serial_data = {
-            let underlying_type = self.data.underlying_type.borrow();
-            let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
-            let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
-                let compiled_js = m.compiled_js.borrow();
-                let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
-                let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-                ArtifactDataDefSetCtorMethod {
-                    name: m.name.clone(),
-                    field_name: m.field_name.clone(),
-                    ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
-                    compiled_js: compiled_js.clone(),
+        crate::langhelp::produce_independent_artifact(
+            gx.artifacts.as_ref(),
+            &self.data.artifact_id,
+            || {
+                let underlying_type = self.data.underlying_type.borrow();
+                let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
+                let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
+                    let compiled_js = m.compiled_js.borrow();
+                    let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
+                    let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
+                    ArtifactDataDefSetCtorMethod {
+                        name: m.name.clone(),
+                        field_name: m.field_name.clone(),
+                        ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
+                        compiled_js: compiled_js.clone(),
+                    }
+                }).collect();
+                let serial_data = ArtifactDataDefSetCtorData {
+                    name: self.data.name.clone(),
+                    data_field: self.data.data_field.clone(),
+                    underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
+                    identity: self.data.identity.clone(),
+                    methods,
+                    import_id: self.data.set.import_id,
+                    def_set_id: self.data.set.def_set_id,
+                };
+                let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
+                Artifact {
+                    type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
+                    data: json,
                 }
-            }).collect();
-            ArtifactDataDefSetCtorData {
-                name: self.data.name.clone(),
-                data_field: self.data.data_field.clone(),
-                underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-                identity: self.data.identity.clone(),
-                methods,
-                import_id: self.data.set.import_id,
-                def_set_id: self.data.set.def_set_id,
-            }
-        };
-        let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
-        gx.artifacts.set(artifact_id.clone(), Artifact {
-            type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
-            data: json,
-        });
-        artifact_id
+            },
+        )
     }
 }
 

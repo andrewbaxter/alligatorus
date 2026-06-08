@@ -86,6 +86,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         }
     }).collect();
     let set = dumpster::unsync::Gc::new(DefinitionSet {
+        artifact_id: std::cell::RefCell::new(None),
         import_id: serial.import_id,
         def_set_id: serial.def_set_id,
         functions: std::cell::RefCell::new(Vec::new()),
