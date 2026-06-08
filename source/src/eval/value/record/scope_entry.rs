@@ -1,12 +1,26 @@
 use {
-    crate::langhelp::{
-        Code,
-        CodeValue,
-        Code_,
-        ConstKey,
-        EvalRes,
-        ScopeEntry,
-        Type,
+    crate::{
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicType,
+        },
+        eval::value::value_dynamic::{
+            ValueDynamicDataScope,
+            ValueDynamicSource,
+        },
+        langhelp::{
+            Code,
+            CodeValue,
+            Code_,
+            ConstKey,
+            EvalRes,
+            ExprErr,
+            QExprId,
+            ScopeEntry,
+            ScopeEntryId,
+            Type,
+        },
     },
     std::{
         collections::BTreeMap,
@@ -22,7 +36,7 @@ use {
 /// (for fields that were mortar-only), a ScopeEntry (for fields that were fully
 /// evaluated), or an error.
 pub(crate) enum RecordScopeField {
-    Error(Vec<crate::langhelp::ExprErr>),
+    Error(Vec<ExprErr>),
     Mortar(Rc<dyn Type>),
     Scope(Box<dyn ScopeEntry>),
 }
@@ -32,30 +46,21 @@ pub(crate) enum RecordScopeField {
 /// entries.
 pub(crate) struct ScopeEntryRecordMortar {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
-    pub js_key: Option<crate::langhelp::ScopeEntryId>,
+    pub js_key: Option<ScopeEntryId>,
 }
 
 impl ScopeEntry for ScopeEntryRecordMortar {
-    fn use_(&self, loc: crate::langhelp::QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
         let (use_code, source) = if has_mortar {
             let js_key = self.js_key.expect("ScopeEntryRecordMortar with mortar fields must have js_key");
-            (
-                Code {
+            (Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(CodeDynamic {
                     loc: loc,
-                    code: Code_::Dyn(Rc::new(crate::code_dynamic::CodeDynamic {
-                        loc: loc,
-                        type_: crate::code_dynamic::CodeDynamicType::BindingUse(
-                            crate::code_dynamic::CodeDynamicBindingUse { id: js_key },
-                        ),
-                    })),
-                },
-                Some(
-                    super::super::dynamic_util::ValueDynamicSource::Binding(
-                        super::super::dynamic_util::ValueDynamicDataScope { key: js_key },
-                    ),
-                ),
-            )
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: js_key }),
+                })),
+            }, Some(ValueDynamicSource::Binding(ValueDynamicDataScope { key: js_key })))
         } else {
             (Code {
                 loc: loc,

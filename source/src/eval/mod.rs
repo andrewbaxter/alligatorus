@@ -1,18 +1,20 @@
+#[macro_use]
+pub mod dynamic_wrap;
+#[macro_use]
+pub mod util;
 pub mod aspect;
 pub mod definition_set;
 pub mod dynamic_util;
-#[macro_use]
-pub mod dynamic_wrap;
 pub mod expr;
-#[macro_use]
-pub mod util;
 pub mod value;
 
 use {
     core::mem,
     crate::{
         builtin::{
+            AspectLiftDynamic,
             aspect_artifact_get,
+            aspect_bind_dynamic_get_maybe,
             aspect_bind_get,
             aspect_bool_const_get_maybe,
             aspect_consume_dynamic_get,
@@ -23,6 +25,7 @@ use {
             aspect_operator_add_get,
             aspect_operator_lt_get,
             aspect_set_get,
+            aspect_stack_value_dynamic_get,
             aspect_string_const_get_maybe,
             aspect_tagged_union_get,
         },
@@ -34,15 +37,24 @@ use {
             CodeDynamicBindingUse,
             CodeDynamicBlock,
             CodeDynamicBlockEntry,
+            CodeDynamicCall,
             CodeDynamicIf,
             CodeDynamicMatch,
             CodeDynamicMatchBranch,
+            CodeDynamicNewArray,
+            CodeDynamicNewObject,
             CodeDynamicType,
             DEF_PREFIX,
             EXPR_PREFIX,
             TAG_VAR,
         },
-        eval::value::type_source_define_result::dynamic::SourceDefineResult,
+        eval::{
+            dynamic_util::wrap_with_carry,
+            value::{
+                type_source_define_result::dynamic::SourceDefineResult,
+                value_empty::scope_entry::ScopeEntryEmpty,
+            },
+        },
         langhelp::{
             Code,
             CodeValue,
@@ -64,6 +76,7 @@ use {
             External,
             GlobalContext,
             ImportStateId,
+            LogEntry,
             QExprId,
             Scope,
             ScopeEntry,
@@ -72,6 +85,7 @@ use {
             Type,
             Value,
             downcast_value,
+            make_builtin_types,
         },
         syntax::{
             ExprId,
@@ -119,7 +133,6 @@ use {
             RecordField,
         },
         tuple::{
-            ScopeEntryStatic,
             Tuple,
             TupleElement,
         },
@@ -176,7 +189,7 @@ pub(crate) fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
-        builtin_types: crate::langhelp::make_builtin_types(),
+        builtin_types: make_builtin_types(),
     });
     let mut root_expr = match source {
         Module::V1(e) => e,
@@ -946,23 +959,29 @@ fn eval(
     });
     let mut s1_scope = HashMap::new();
     let mut builtin_scope_entries = Vec::new();
-    for (key, eval_value, dynamic_value) in [dynamic_wrap!(fn log(ex, dynamic_scope, scope)(message: String) ->() {
-        let timestamp_ms =
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
-        scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(crate::langhelp::LogEntry {
-            timestamp_ms,
-            message
-        });
-    }), dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> SourceDefineResult {
-        let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
-        let def_set_id = DefSetId(dsc.counter.next());
-        let import_id = dsc.import_id;
-        SourceDefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
-    }), dynamic_wrap!(fn str_to_json(ex, dynamic_scope, scope)(s: String) -> String {
-        serde_json::to_string(&s).unwrap()
-    }), dynamic_wrap!(fn constkey_to_str(ex, dynamic_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
-        key.to_str()
-    })] {
+    for (key, eval_value, dynamic_value) in [
+        //. .
+        dynamic_wrap!(fn log(ex, dynamic_scope, scope)(message: String) ->() {
+            let timestamp_ms =
+                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+            scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(LogEntry {
+                timestamp_ms,
+                message
+            });
+        }),
+        dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> SourceDefineResult {
+            let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
+            let def_set_id = DefSetId(dsc.counter.next());
+            let import_id = dsc.import_id;
+            SourceDefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
+        }),
+        dynamic_wrap!(fn str_to_json(ex, dynamic_scope, scope)(s: String) -> String {
+            serde_json::to_string(&s).unwrap()
+        }),
+        dynamic_wrap!(fn constkey_to_str(ex, dynamic_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
+            key.to_str()
+        }),
+    ] {
         dynamic_scope
             .get_current_context()
             .global(dynamic_scope)
@@ -981,19 +1000,19 @@ fn eval(
     // Type references (static scope entries, no JS representation)
     s1_scope.insert(
         ConstKey::String("null".to_string()),
-        Box::new(ScopeEntryStatic { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("string".to_string()),
-        Box::new(ScopeEntryStatic { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryEmpty { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("number".to_string()),
-        Box::new(ScopeEntryStatic { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
     );
     s1_scope.insert(
         ConstKey::String("expr".to_string()),
-        Box::new(ScopeEntryStatic { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
+        Box::new(ScopeEntryEmpty { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
     );
 
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
@@ -1118,19 +1137,19 @@ fn eval(
         }
         scope_entries.insert(
             ConstKey::String("null".to_string()),
-            Box::new(ScopeEntryStatic { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("string".to_string()),
-            Box::new(ScopeEntryStatic { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryEmpty { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("number".to_string()),
-            Box::new(ScopeEntryStatic { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
         );
         scope_entries.insert(
             ConstKey::String("expr".to_string()),
-            Box::new(ScopeEntryStatic { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
+            Box::new(ScopeEntryEmpty { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
         );
         scope_entries
     }
@@ -1828,7 +1847,7 @@ fn eval(
 }
 
 struct EvalResult {
-    logs: Vec<crate::langhelp::LogEntry>,
+    logs: Vec<LogEntry>,
     value: Rc<dyn Value>,
 }
 
@@ -2070,7 +2089,7 @@ pub fn setup_v8() {
 /// values.
 pub(crate) struct StageLiftCell {
     pub import_state: Rc<Cell<ImportStateId>>,
-    pub lift: Box<dyn crate::builtin::AspectLiftDynamic>,
+    pub lift: Box<dyn AspectLiftDynamic>,
     pub scope: Rc<Scope>,
     pub target: Rc<dyn Target>,
     pub vx: Rc<EvalContext>,
@@ -2127,9 +2146,9 @@ impl Target for TargetDynamic {
             source: None,
             fields: mortar_fields,
         }) as Rc<dyn Type>;
-        let js = value::tuple::wrap_with_carry(loc, carry, CodeDynamic {
+        let js = wrap_with_carry(loc, carry, CodeDynamic {
             loc: loc,
-            type_: CodeDynamicType::NewObject(crate::code_dynamic::CodeDynamicNewObject { fields: js_fields }),
+            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: js_fields }),
         });
         TargetBindSub {
             data: Code {
@@ -2159,9 +2178,9 @@ impl Target for TargetDynamic {
             source: None,
             elements: mortar_elements,
         }) as Rc<dyn Type>;
-        let js = value::tuple::wrap_with_carry(loc, carry, CodeDynamic {
+        let js = wrap_with_carry(loc, carry, CodeDynamic {
             loc: loc,
-            type_: CodeDynamicType::NewArray(crate::code_dynamic::CodeDynamicNewArray { elements: js_elements }),
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
         });
         TargetBindSub {
             data: Code {
@@ -2254,7 +2273,7 @@ impl Target for TargetDynamic {
                     else_: dynamic_else,
                 }),
             };
-            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
+            let null_stack = aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
             let null_stack = erb.must_er(null_stack)?;
             return Ok(null_stack.to_value(loc, if_js));
         });
@@ -2317,7 +2336,7 @@ impl Target for TargetDynamic {
                     fallback: dynamic_fallback,
                 }),
             };
-            let null_stack = crate::builtin::aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
+            let null_stack = aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
             let null_stack = erb.must_er(null_stack)?;
             return Ok(null_stack.to_value(loc, match_js));
         });
@@ -2325,7 +2344,7 @@ impl Target for TargetDynamic {
 
     fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let vtype = cv.value.type_(xx, loc);
-        if let Some(bind_dyn) = crate::builtin::aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) {
+        if let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) {
             return bind_dyn.bind_dynamic(xx, loc, cv);
         }
         EResult::ok(None)
@@ -2389,7 +2408,7 @@ impl Target for TargetDynamic {
             }
             let stage_js = CodeDynamic {
                 loc,
-                type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                type_: CodeDynamicType::Call(CodeDynamicCall {
                     func: Box::new(CodeDynamic {
                         loc,
                         type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: STAGE_FN_SCOPE_ID, }),
@@ -2460,7 +2479,7 @@ pub(crate) struct V8DefSetCounter {
 }
 
 pub(crate) struct V8LogStore {
-    pub(crate) logs: RefCell<Vec<crate::langhelp::LogEntry>>,
+    pub(crate) logs: RefCell<Vec<LogEntry>>,
 }
 
 // --- Rc`<T>` ↔ v8::External helpers ---

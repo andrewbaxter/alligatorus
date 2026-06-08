@@ -19,6 +19,7 @@ use {
         eval::{
             Erb,
             typecheck_convert,
+            value::tuple::scope_entry::ScopeEntryValue,
         },
         langhelp::{
             Aspect,
@@ -47,16 +48,10 @@ impl Aspect for TypeSourceFunctionConst { }
 
 impl AspectBind for TypeSourceFunctionConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok(
-            (
-                Code {
-                    loc: loc,
-                    code: Code_::None,
-                },
-                Box::new(crate::eval::value::tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
-                    Box<dyn ScopeEntry>,
-            ),
-        )
+        EResult::ok((Code {
+            loc: loc,
+            code: Code_::None,
+        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>))
     }
 }
 

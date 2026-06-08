@@ -15,6 +15,7 @@ use {
         eval::{
             Erb,
             value::{
+                tuple::scope_entry::ScopeEntryValue,
                 type_string::dynamic::TypeStringDynamic,
                 value_string::r#const::ValueStringConst,
             },
@@ -78,7 +79,7 @@ impl AspectBind for TypeStringConst {
         EResult::ok((Code {
             loc: loc,
             code: crate::langhelp::Code_::None,
-        }, Box::new(crate::eval::value::tuple::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
     }
 }
 

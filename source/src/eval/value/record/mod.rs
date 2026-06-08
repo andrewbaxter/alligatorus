@@ -1,9 +1,5 @@
 pub mod scope_entry;
 
-pub(crate) use scope_entry::{
-    RecordScopeField,
-    ScopeEntryRecordMortar,
-};
 use {
     crate::{
         builtin::{
@@ -32,6 +28,23 @@ use {
         eval::{
             Erb,
             TargetBindSub,
+            dynamic_util::wrap_with_carry,
+            value::{
+                tuple::{
+                    Tuple,
+                    scope_entry::ScopeEntryValue,
+                },
+                type_any::r#const::{
+                    TypeAnyConst,
+                    type_type_identity,
+                },
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                },
+                value_empty::r#const::ValueEmptyConst,
+            },
         },
         langhelp::{
             Aspect,
@@ -52,13 +65,16 @@ use {
             downcast_value,
         },
     },
+    scope_entry::{
+        RecordScopeField,
+        ScopeEntryRecordMortar,
+    },
     std::{
         any::Any,
         collections::BTreeMap,
         mem,
         rc::Rc,
     },
-    super::tuple::wrap_with_carry,
 };
 
 enum BindSubResult {
@@ -71,7 +87,7 @@ pub(crate) struct Record {
     pub fields: BTreeMap<ConstKey, RecordField>,
     /// Optional mortar source (like ValueDynamic) — a JS object that fields can be
     /// accessed from at runtime.
-    pub source: Option<super::dynamic_util::ValueDynamicSource>,
+    pub source: Option<ValueDynamicSource>,
 }
 
 impl Record {
@@ -104,7 +120,7 @@ impl Record {
                             scope_fields.insert(
                                 key,
                                 RecordScopeField::Scope(
-                                    Box::new(super::tuple::ScopeEntryValue { value: Rc::from(field_cv.value) }),
+                                    Box::new(ScopeEntryValue { value: Rc::from(field_cv.value) }),
                                 ),
                             );
                         }
@@ -184,7 +200,7 @@ impl Record {
                     BindSubResult::Const(cv) => {
                         scope_fields.insert(
                             key,
-                            RecordScopeField::Scope(Box::new(super::tuple::ScopeEntryValue { value: cv.value })),
+                            RecordScopeField::Scope(Box::new(ScopeEntryValue { value: cv.value })),
                         );
                     },
                     BindSubResult::Target(_) => unreachable!(),
@@ -203,7 +219,7 @@ impl Record {
                 BindSubResult::Const(cv) => {
                     scope_fields.insert(
                         key,
-                        RecordScopeField::Scope(Box::new(super::tuple::ScopeEntryValue { value: cv.value })),
+                        RecordScopeField::Scope(Box::new(ScopeEntryValue { value: cv.value })),
                     );
                 },
             }
@@ -388,10 +404,7 @@ impl AspectField for Record {
                                 }),
                             })),
                         };
-                        let field_source =
-                            super::dynamic_util::ValueDynamicSource::Field(
-                                super::dynamic_util::ValueDynamicDataAccess { key: key_name },
-                            );
+                        let field_source = ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name });
                         if aspect_record_get_maybe(xx, mortar_type.as_ref()).is_some() {
                             let record_type =
                                 (mortar_type.as_ref() as &dyn Any)
@@ -416,7 +429,7 @@ impl AspectField for Record {
                         }
                         return Ok(CodeValue {
                             code: field_code,
-                            value: Rc::new(super::dynamic_util::ValueDynamic {
+                            value: Rc::new(ValueDynamic {
                                 source: field_source,
                                 type_: mortar_type,
                             }),
@@ -435,7 +448,7 @@ impl AspectField for Record {
                         loc,
                         code: Code_::None,
                     },
-                    value: Rc::new(super::value_static::ValueStatic { type_: entry_type }),
+                    value: Rc::new(ValueEmptyConst { type_: entry_type }),
                 });
             }
             let self_code = erb.must_er(self_code_raw.cast::<CodeDynamic>())?.unwrap().clone();
@@ -449,10 +462,7 @@ impl AspectField for Record {
                     }),
                 })),
             };
-            let field_source =
-                super::dynamic_util::ValueDynamicSource::Field(
-                    super::dynamic_util::ValueDynamicDataAccess { key: key_name },
-                );
+            let field_source = ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name });
             if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
                 let record_type =
                     (entry_type.as_ref() as &dyn Any)
@@ -477,7 +487,7 @@ impl AspectField for Record {
             }
             return Ok(CodeValue {
                 code: field_code,
-                value: Rc::new(super::dynamic_util::ValueDynamic {
+                value: Rc::new(ValueDynamic {
                     source: field_source,
                     type_: entry_type,
                 }),
@@ -545,7 +555,7 @@ impl Type for Record {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &super::type_any::r#const::type_type_identity()).is_some()
+        type_.aspect(_xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -625,9 +635,7 @@ impl Type for Record {
                                     .fields
                                     .insert(
                                         key.clone(),
-                                        RecordField::Mortar(
-                                            Rc::new(super::type_any::r#const::TypeAnyConst) as Rc<dyn Type>,
-                                        ),
+                                        RecordField::Mortar(Rc::new(TypeAnyConst) as Rc<dyn Type>),
                                     );
                                 RecordField::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
@@ -639,7 +647,7 @@ impl Type for Record {
                                             ),
                                         })),
                                     },
-                                    value: Rc::new(super::type_any::r#const::TypeAnyConst),
+                                    value: Rc::new(TypeAnyConst),
                                 }))
                             } else {
                                 RecordField::EvalRes(EvalRes::ok(entry_cv))
@@ -734,7 +742,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
         RecordField::Mortar(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
             Some(cv) => cv.value.type_(xx, loc),
-            None => Rc::new(super::tuple::Tuple {
+            None => Rc::new(Tuple {
                 source: None,
                 elements: vec![],
             }) as Rc<dyn Type>,

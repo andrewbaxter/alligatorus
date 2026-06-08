@@ -25,6 +25,7 @@ use {
                     ValueDynamic,
                     ValueDynamicSource,
                 },
+                tuple::scope_entry::ScopeEntryValue,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_function::TypeSourceFunctionConst,
             },
@@ -161,16 +162,10 @@ impl Aspect for TypeSourceExportsLiftedDynamic { }
 
 impl AspectBind for TypeSourceExportsLiftedDynamic {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok(
-            (
-                Code {
-                    loc: loc,
-                    code: Code_::None,
-                },
-                Box::new(crate::eval::value::tuple::ScopeEntryValue { value: Rc::from(cv.value) }) as
-                    Box<dyn ScopeEntry>,
-            ),
-        )
+        EResult::ok((Code {
+            loc: loc,
+            code: Code_::None,
+        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>))
     }
 }
 

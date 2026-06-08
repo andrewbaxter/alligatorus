@@ -1,7 +1,24 @@
 use {
-    crate::langhelp::{
-        Type,
-        Value,
+    crate::{
+        eval::{
+            dynamic_util::throw_error,
+            from_v8_ref,
+            value::{
+                record::Record,
+                tuple::Tuple,
+                type_any::dynamic::TypeAnyDynamic,
+                type_expr::TypeExpr,
+                type_map::dynamic::TypeMapDynamic,
+                type_null::dynamic::TypeNullDynamic,
+                type_string::dynamic::TypeStringDynamic,
+            },
+        },
+        langhelp::{
+            ConstKey,
+            Type,
+            Value,
+            downcast_value,
+        },
     },
     std::rc::Rc,
     super::expr,
@@ -71,7 +88,7 @@ macro_rules! dynamic_wrap{
             }
             impl Value for[< Type $name Dynamic >] {
                 fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-                    Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+                    Rc::new(TypeAnyConst)
                 }
             }
             impl Type for[< Type $name Dynamic >] {
@@ -115,8 +132,8 @@ macro_rules! dynamic_wrap{
                     if source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some() {
                         return EvalRes:: ok(CodeValue {
                             code: cv.code,
-                            value: Rc:: new(crate:: eval:: value:: dynamic_util:: ValueDynamic {
-                                source: crate:: eval:: value:: dynamic_util:: ValueDynamicSource:: Expr,
+                            value: Rc:: new(ValueDynamic {
+                                source: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new([< Type $name Dynamic >]),
                             }),
                         });
@@ -137,8 +154,8 @@ macro_rules! dynamic_wrap{
                     xx: &ExprContext,
                     loc: QExprId,
                     cv: CodeValue,
-                ) -> EResult<Option<crate::eval::TargetBindSub>> {
-                    crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
+                ) -> EResult<Option<TargetBindSub>> {
+                    bind_dynamic_default(xx, loc, cv)
                 }
             }
             impl AspectBind for[< Type $name Dynamic >] {
@@ -147,8 +164,8 @@ macro_rules! dynamic_wrap{
                     xx: &ExprContext,
                     loc: QExprId,
                     cv: CodeValue,
-                ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-                    crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
+                ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+                    bind_via_target(xx, loc, cv)
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {
@@ -182,12 +199,10 @@ macro_rules! dynamic_wrap{
                                         loc,
                                         code: Code_::Dyn(Rc::new(CodeDynamic {
                                             loc,
-                                            type_: CodeDynamicType::FieldUse(
-                                                crate::code_dynamic::CodeDynamicFieldUse {
-                                                    base: Box::new(self_code),
-                                                    field: format!("_{}", _jw_idx),
-                                                },
-                                            ),
+                                            type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                                                base: Box::new(self_code),
+                                                field: format!("_{}", _jw_idx),
+                                            },),
                                         })),
                                     },
                                     value: Rc::new(ValueDynamic {
@@ -209,12 +224,10 @@ macro_rules! dynamic_wrap{
                                         loc,
                                         code: Code_::Dyn(Rc::new(CodeDynamic {
                                             loc,
-                                            type_: CodeDynamicType::FieldUse(
-                                                crate::code_dynamic::CodeDynamicFieldUse {
-                                                    base: Box::new(self_code),
-                                                    field: format!("_{}", _jw_idx),
-                                                },
-                                            ),
+                                            type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                                                base: Box::new(self_code),
+                                                field: format!("_{}", _jw_idx),
+                                            },),
                                         })),
                                     },
                                     value: Rc::new(ValueDynamic {
@@ -303,7 +316,7 @@ macro_rules! dynamic_wrap{
     };
     // --- Helpers --- 0 args → empty tuple type
     (@ arg_mortar_type) => {
-        Rc::new(crate::eval::value::tuple::Tuple {
+        Rc::new(Tuple {
             source: None,
             elements: vec![]
         }) as Rc<dyn Type>
@@ -314,7 +327,7 @@ macro_rules! dynamic_wrap{
     };
     // 2+ args → tuple type
     (@ arg_mortar_type $first: ty, $($rest: ty), +) => {
-        Rc::new(crate::eval::value::tuple::Tuple {
+        Rc::new(Tuple {
             source: None,
             elements: vec![
                 crate:: eval:: value:: tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
@@ -352,7 +365,7 @@ impl DynamicWrap for AnyType {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_any::dynamic::TypeAnyDynamic)
+        Rc::new(TypeAnyDynamic)
     }
 }
 
@@ -366,7 +379,7 @@ pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
 impl DynamicWrap for StagedExpr {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
+        let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
     }
 
@@ -375,7 +388,7 @@ impl DynamicWrap for StagedExpr {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_expr::TypeExpr)
+        Rc::new(TypeExpr)
     }
 }
 
@@ -391,18 +404,18 @@ impl DynamicWrap for () {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_null::dynamic::TypeNullDynamic)
+        Rc::new(TypeNullDynamic)
     }
 }
 
-impl DynamicWrap for crate::langhelp::ConstKey {
+impl DynamicWrap for ConstKey {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        match crate::langhelp::ConstKey::from_str(&s) {
+        match ConstKey::from_str(&s) {
             Ok(k) => k,
             Err(e) => {
-                super::dynamic_util::throw_error(scope, &format!("Invalid ConstKey: {}", e));
-                crate::langhelp::ConstKey::String(String::new())
+                throw_error(scope, &format!("Invalid ConstKey: {}", e));
+                ConstKey::String(String::new())
             },
         }
     }
@@ -413,13 +426,13 @@ impl DynamicWrap for crate::langhelp::ConstKey {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
+        Rc::new(TypeStringDynamic)
     }
 }
 
-impl DynamicWrapKey for crate::langhelp::ConstKey {
+impl DynamicWrapKey for ConstKey {
     fn from_dynamic_key(s: &str) -> Result<Self, String> {
-        crate::langhelp::ConstKey::from_str(s)
+        ConstKey::from_str(s)
     }
 
     fn to_dynamic_key(&self) -> String {
@@ -429,11 +442,9 @@ impl DynamicWrapKey for crate::langhelp::ConstKey {
 
 impl DynamicWrap for expr::Expr {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
+        let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
-        Rc::try_unwrap(
-            crate::langhelp::downcast_value::<expr::Expr>(inner).expect("Expected Expr in StagedExprCell"),
-        )
+        Rc::try_unwrap(downcast_value::<expr::Expr>(inner).expect("Expected Expr in StagedExprCell"))
             .ok()
             .expect("Expr in StagedExprCell: Rc not unique")
     }
@@ -443,7 +454,7 @@ impl DynamicWrap for expr::Expr {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_expr::TypeExpr)
+        Rc::new(TypeExpr)
     }
 }
 
@@ -459,7 +470,7 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
             let key = match K::from_dynamic_key(&key_str) {
                 Ok(k) => k,
                 Err(e) => {
-                    super::dynamic_util::throw_error(scope, &format!("Invalid map key: {}", e));
+                    throw_error(scope, &format!("Invalid map key: {}", e));
                     return std::collections::BTreeMap::new();
                 },
             };
@@ -481,7 +492,7 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_map::dynamic::TypeMapDynamic {
+        Rc::new(TypeMapDynamic {
             key_type: K::mortar_type(),
             value_type: V::mortar_type(),
         })
@@ -498,6 +509,6 @@ impl DynamicWrap for String {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
+        Rc::new(TypeStringDynamic)
     }
 }

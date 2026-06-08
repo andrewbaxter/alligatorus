@@ -43,7 +43,7 @@ use {
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
                 },
-                value_static::ValueStatic,
+                value_empty::r#const::ValueEmptyConst,
             },
         },
         langhelp::{
@@ -119,7 +119,7 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueStatic { type_: Rc::new(TypeMapNewDynamic {
+                value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapNewDynamic {
                     key_type: self.key_type.clone(),
                     value_type: self.value_type.clone(),
                 }) }),

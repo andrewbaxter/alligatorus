@@ -43,7 +43,7 @@ use {
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_string::dynamic::TypeStringDynamic,
-                value_static::ValueStatic,
+                value_empty::r#const::ValueEmptyConst,
             },
         },
         langhelp::{
@@ -118,7 +118,9 @@ impl AspectField for TypeListDynamic {
                     code: Code_::None,
                 },
                 value: Rc::new(
-                    ValueStatic { type_: Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() }) },
+                    ValueEmptyConst {
+                        type_: Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() }),
+                    },
                 ),
             });
         }

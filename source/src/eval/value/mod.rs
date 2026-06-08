@@ -1,4 +1,3 @@
-pub mod dynamic_util;
 pub mod record;
 pub mod tuple;
 pub mod type_any;
@@ -32,10 +31,10 @@ pub mod type_type_source_data_type;
 pub mod type_type_source_data_type_constructor;
 pub mod value_bool;
 pub mod value_dynamic;
+pub mod value_empty;
 pub mod value_null;
 pub mod value_number;
 pub mod value_pending_import;
 pub mod value_source_data_type;
-pub mod value_static;
 pub mod value_string;
 pub mod value_unique;

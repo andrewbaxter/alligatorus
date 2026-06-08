@@ -9,11 +9,11 @@ use {
 };
 
 /// A generic value to be used by purely logical types (like const functions).
-pub(crate) struct ValueStatic {
+pub(crate) struct ValueEmptyConst {
     pub type_: Rc<dyn Type>,
 }
 
-impl Value for ValueStatic {
+impl Value for ValueEmptyConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         self.type_.clone()
     }

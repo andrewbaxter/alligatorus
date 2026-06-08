@@ -1,9 +1,5 @@
 pub mod scope_entry;
 
-pub(crate) use scope_entry::{
-    ScopeEntryStatic,
-    ScopeEntryValue,
-};
 use {
     crate::{
         builtin::{
@@ -21,12 +17,25 @@ use {
         },
         code_dynamic::{
             CodeDynamic,
-            CodeDynamicBlock,
-            CodeDynamicBlockEntry,
+            CodeDynamicBindingUse,
+            CodeDynamicCall,
             CodeDynamicNewArray,
             CodeDynamicType,
         },
-        eval::TargetBindSub,
+        eval::{
+            TUPLE_TO_TYPE_FN_SCOPE_ID,
+            TargetBindSub,
+            dynamic_util::wrap_with_carry,
+            value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    type_type_identity,
+                },
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::ValueDynamicSource,
+                value_empty::scope_entry::ScopeEntryEmpty,
+            },
+        },
         langhelp::{
             Aspect,
             Code,
@@ -35,13 +44,19 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            ExprErr,
+            ExprSubErr,
+            External,
             QExprId,
             ScopeEntry,
+            ScopeEntryId,
+            SourceId,
             Type,
             Unique,
             Value,
             downcast_value,
         },
+        syntax::ExprId,
     },
     std::{
         any::Any,
@@ -54,7 +69,7 @@ pub(crate) struct Tuple {
     pub elements: Vec<TupleElement>,
     /// Optional mortar source — a JS array that elements can be accessed from at
     /// runtime.
-    pub source: Option<super::dynamic_util::ValueDynamicSource>,
+    pub source: Option<ValueDynamicSource>,
 }
 
 impl Tuple {
@@ -84,12 +99,10 @@ impl Tuple {
         for elem in tuple.elements.into_iter() {
             match elem {
                 TupleElement::Mortar(_) => {
-                    errors.push(crate::langhelp::ExprErr {
+                    errors.push(ExprErr {
                         loc: loc,
                         errors: vec![
-                            crate::langhelp::ExprSubErr::Opaque(
-                                format!("Tuple element is mortar-only, cannot bind directly"),
-                            ),
+                            ExprSubErr::Opaque(format!("Tuple element is mortar-only, cannot bind directly")),
                         ],
                     });
                 },
@@ -135,10 +148,10 @@ impl Tuple {
                     target_elements.push(sub);
                 },
                 TupleBindSubResult::Const(_cv) => {
-                    errors.push(crate::langhelp::ExprErr {
+                    errors.push(ExprErr {
                         loc: loc,
                         errors: vec![
-                            crate::langhelp::ExprSubErr::Opaque(
+                            ExprSubErr::Opaque(
                                 format!("Tuple element is const but other elements require target binding"),
                             ),
                         ],
@@ -184,11 +197,11 @@ impl AspectBind for Tuple {
                 EResult::ok((Code {
                     loc: loc,
                     code: Code_::None,
-                }, Box::new(ScopeEntryStatic { type_: tuple_type }) as Box<dyn ScopeEntry>))
+                }, Box::new(ScopeEntryEmpty { type_: tuple_type }) as Box<dyn ScopeEntry>))
             },
             Ok(Some(sub)) => {
                 let (code, js_key) = xx.target.bind(xx, loc, sub);
-                EResult::ok((code, Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
+                EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
                     dynamic_key: js_key,
                     type_: tuple_type,
                 }) as Box<dyn ScopeEntry>))
@@ -307,7 +320,7 @@ impl Type for Tuple {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &super::type_any::r#const::type_type_identity()).is_some()
+        type_.aspect(_xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
@@ -340,23 +353,19 @@ impl Type for Tuple {
                                         code: entry_cv.code.clone(),
                                         value: entry_cv.value,
                                     })));
-                                let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(elem_type)));
+                                let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                                xx.vx.externals.borrow_mut().push((id, External::Type(elem_type)));
                                 converted_type.elements[i] =
-                                    TupleElement::Mortar(
-                                        Rc::new(super::type_any::r#const::TypeAnyConst) as Rc<dyn Type>,
-                                    );
+                                    TupleElement::Mortar(Rc::new(TypeAnyConst) as Rc<dyn Type>);
                                 TupleElement::EvalRes(EvalRes::ok(CodeValue {
                                     code: Code {
                                         loc,
                                         code: Code_::Dyn(Rc::new(CodeDynamic {
                                             loc,
-                                            type_: CodeDynamicType::BindingUse(
-                                                crate::code_dynamic::CodeDynamicBindingUse { id },
-                                            ),
+                                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                                         })),
                                     },
-                                    value: Rc::new(super::type_any::r#const::TypeAnyConst),
+                                    value: Rc::new(TypeAnyConst),
                                 }))
                             } else {
                                 TupleElement::EvalRes(EvalRes::ok(entry_cv))
@@ -380,13 +389,11 @@ impl Type for Tuple {
                 Ok(tuple_js) => {
                     let call_code = CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                        type_: CodeDynamicType::Call(CodeDynamicCall {
                             func: Box::new(CodeDynamic {
                                 loc,
                                 type_: CodeDynamicType::BindingUse(
-                                    crate::code_dynamic::CodeDynamicBindingUse {
-                                        id: crate::eval::TUPLE_TO_TYPE_FN_SCOPE_ID,
-                                    },
+                                    CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID },
                                 ),
                             }),
                             args: vec![tuple_js],
@@ -407,14 +414,14 @@ impl Type for Tuple {
             }
         } else {
             // No mortar data: all compile-time, store type as external.
-            let id = crate::langhelp::ScopeEntryId::Local(xx.vx.next_local_id.next());
-            xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(result_type.clone())));
+            let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            xx.vx.externals.borrow_mut().push((id, External::Type(result_type.clone())));
             EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
                     code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse { id }),
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                     })),
                 },
                 value: result_type.as_value(),
@@ -491,7 +498,7 @@ impl AspectLiftDynamic for TupleLiftJs {
             let lifted = elem_lift.lift(xx, scope, elem_v8)?;
             elements.push(TupleElement::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
-                    loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
+                    loc: (SourceId(0), ExprId(0)),
                     code: Code_::None,
                 },
                 value: lifted,
@@ -502,24 +509,4 @@ impl AspectLiftDynamic for TupleLiftJs {
             elements,
         }))
     }
-}
-
-/// When a compound value (Tuple/Record) is the last expression in a block, the
-/// block's code contains binding declarations but the compound value has
-/// Code_::None. When consumed to JS, the generated JS references those bindings.
-/// This helper wraps the consumed JS with the carry code so the bindings are in
-/// scope.
-pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: CodeDynamic) -> CodeDynamic {
-    if let Some(Some(carry_js)) = carry.cast::<CodeDynamic>().v {
-        let mut entries = match &carry_js.type_ {
-            CodeDynamicType::Block(block) => block.entries.clone(),
-            _ => vec![CodeDynamicBlockEntry::Code(carry_js.clone())],
-        };
-        entries.push(CodeDynamicBlockEntry::Code(js));
-        return CodeDynamic {
-            loc,
-            type_: CodeDynamicType::Block(CodeDynamicBlock { entries }),
-        };
-    }
-    js
 }

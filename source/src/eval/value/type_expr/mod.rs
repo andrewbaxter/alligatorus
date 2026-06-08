@@ -22,9 +22,12 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
-            value::dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
+            value::{
+                dynamic_util::{
+                    bind_dynamic_default,
+                    bind_via_target,
+                },
+                value_empty::r#const::ValueEmptyConst,
             },
         },
         langhelp::{
@@ -152,7 +155,7 @@ impl Type for TypeExpr {
         let expr = Expr {
             loc,
             r#type: Expr_::Literal(Rc::new(move || {
-                Rc::new(super::value_static::ValueStatic { type_: type_rc.clone() }) as Rc<dyn Value>
+                Rc::new(ValueEmptyConst { type_: type_rc.clone() }) as Rc<dyn Value>
             })),
         };
         return EvalRes::ok(CodeValue {
