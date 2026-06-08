@@ -4,9 +4,11 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
         },
         code_dynamic::{
             CodeDynamic,
@@ -19,6 +21,7 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -26,6 +29,7 @@ use {
             EResult,
             ExprContext,
             QExprId,
+            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -56,6 +60,15 @@ impl AspectBind for TypeAnyConst {
         cv: CodeValue,
     ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeAnyConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeAnyConst),
+        })
     }
 }
 
@@ -101,6 +114,9 @@ impl Type for TypeAnyConst {
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectBind>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectInitialBind>));
         }
         None
     }

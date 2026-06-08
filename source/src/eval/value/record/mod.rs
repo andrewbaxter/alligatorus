@@ -11,6 +11,7 @@ use {
             AspectLiftDynamic,
             AspectRecord,
             aspect_bind_aspect_id,
+            aspect_bind_get,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get_maybe,
@@ -32,10 +33,7 @@ use {
             TargetBindSub,
             dynamic_util::wrap_with_carry,
             value::{
-                tuple::{
-                    Tuple,
-                    scope_entry::ScopeEntryValue,
-                },
+                tuple::Tuple,
                 type_any::r#const::{
                     TypeAnyConst,
                     type_type_identity,
@@ -118,12 +116,19 @@ impl Record {
                         if let Some(errs) = &er.errors {
                             scope_fields.insert(key, RecordScopeField::Error(errs.clone()));
                         } else if let Some(field_cv) = er.v {
-                            scope_fields.insert(
-                                key,
-                                RecordScopeField::Scope(
-                                    Box::new(ScopeEntryValue { value: Rc::from(field_cv.value) }),
-                                ),
-                            );
+                            let field_type = field_cv.value.type_(xx, loc);
+                            let bind_res = match aspect_bind_get(xx, loc, field_type.as_ref()).into_res() {
+                                Ok(fb) => fb.bind(xx, loc, field_cv),
+                                Err(errs) => EResult { v: None, errors: Some(errs) },
+                            };
+                            match bind_res.into_res() {
+                                Ok((_, entry)) => {
+                                    scope_fields.insert(key, RecordScopeField::Scope(entry));
+                                },
+                                Err(errs) => {
+                                    scope_fields.insert(key, RecordScopeField::Error(errs));
+                                },
+                            }
                         }
                     },
                     RecordField::Mortar(_) => unreachable!(),
@@ -199,10 +204,19 @@ impl Record {
             for (key, _key_str, result) in bind_results {
                 match result {
                     BindSubResult::Const(cv) => {
-                        scope_fields.insert(
-                            key,
-                            RecordScopeField::Scope(Box::new(ScopeEntryValue { value: cv.value })),
-                        );
+                        let field_type = cv.value.type_(xx, loc);
+                        let bind_res = match aspect_bind_get(xx, loc, field_type.as_ref()).into_res() {
+                            Ok(fb) => fb.bind(xx, loc, cv),
+                            Err(errs) => EResult { v: None, errors: Some(errs) },
+                        };
+                        match bind_res.into_res() {
+                            Ok((_, entry)) => {
+                                scope_fields.insert(key, RecordScopeField::Scope(entry));
+                            },
+                            Err(errs) => {
+                                scope_fields.insert(key, RecordScopeField::Error(errs));
+                            },
+                        }
                     },
                     BindSubResult::Target(_) => unreachable!(),
                 }
@@ -218,10 +232,19 @@ impl Record {
                     target_fields.push((key_str, sub));
                 },
                 BindSubResult::Const(cv) => {
-                    scope_fields.insert(
-                        key,
-                        RecordScopeField::Scope(Box::new(ScopeEntryValue { value: cv.value })),
-                    );
+                    let field_type = cv.value.type_(xx, loc);
+                    let bind_res = match aspect_bind_get(xx, loc, field_type.as_ref()).into_res() {
+                        Ok(fb) => fb.bind(xx, loc, cv),
+                        Err(errs) => EResult { v: None, errors: Some(errs) },
+                    };
+                    match bind_res.into_res() {
+                        Ok((_, entry)) => {
+                            scope_fields.insert(key, RecordScopeField::Scope(entry));
+                        },
+                        Err(errs) => {
+                            scope_fields.insert(key, RecordScopeField::Error(errs));
+                        },
+                    }
                 },
             }
         }

@@ -5,6 +5,7 @@ use {
             AspectBindDynamic,
             AspectBoolDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -12,6 +13,7 @@ use {
             aspect_bool_dynamic_aspect_id,
             aspect_bool_dynamic_get_maybe,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
         code_dynamic::{
@@ -30,6 +32,7 @@ use {
                 mortar_consume_to_dynamic,
                 mortar_dynamic_stack_to_value,
             },
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -41,6 +44,7 @@ use {
             ExprContext,
             QExprId,
             ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -60,6 +64,15 @@ impl Aspect for TypeBoolDynamic { }
 impl AspectBind for TypeBoolDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeBoolDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeBoolDynamic),
+        })
     }
 }
 
@@ -108,6 +121,9 @@ impl Type for TypeBoolDynamic {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectStackValueDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

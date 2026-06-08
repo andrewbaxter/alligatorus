@@ -23,7 +23,7 @@ use {
 };
 
 macro_rules! dynamic_wrap{
-    // --- Function variant --- Produces a (&str, ScopeEntryDynamicBinding,
+    // --- Function variant --- Produces a (&str, ScopeEntryId, Rc`<dyn Type>`,
     // v8::Local<v8::Value>) tuple. `$ex` is the EvalContext, `$dynamic_scope` is the
     // v8 scope for building. `$scope` is available in the body as the v8 HandleScope.
     (
@@ -34,13 +34,10 @@ macro_rules! dynamic_wrap{
         )($($arg: ident: $arg_ty: ty), * $(,) ?) -> $ret_ty: ty $body: block
     ) => {
         {
-            (stringify!($name), ScopeEntryDynamicBinding {
-                dynamic_key: ScopeEntryId:: Builtin(line!() as usize),
-                type_: Rc:: new(TypeFunctionDynamic {
-                    arg: dynamic_wrap !(@ arg_mortar_type $($arg_ty), *),
-                    ret: <$ret_ty as DynamicWrap >:: mortar_type(),
-                }),
-            }, {
+            (stringify!($name), ScopeEntryId::Builtin(line!() as usize), Rc:: new(TypeFunctionDynamic {
+                arg: dynamic_wrap !(@ arg_mortar_type $($arg_ty), *),
+                ret: <$ret_ty as DynamicWrap >:: mortar_type(),
+            }) as Rc < dyn Type >, {
                 fn _jw_cb <'s >(
                     $scope: & mut v8:: PinnedRef <'s,
                     v8:: HandleScope <'_ >>,
@@ -117,6 +114,11 @@ macro_rules! dynamic_wrap{
                             Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectStackValueDynamic >)
                         );
                     }
+                    if * key == aspect_initial_bind_aspect_id() {
+                        return Some(
+                            Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectInitialBind >)
+                        );
+                    }
                     None
                 }
                 fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type,) -> EvalRes {
@@ -164,6 +166,14 @@ macro_rules! dynamic_wrap{
                     cv: CodeValue,
                 ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
                     bind_via_target(xx, loc, cv)
+                }
+            }
+            impl AspectInitialBind for[< Type $name Dynamic >] {
+                fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+                    Box::new(ScopeEntryDynamicBinding {
+                        dynamic_key: dynamic_key,
+                        type_: Rc::new([< Type $name Dynamic >]),
+                    })
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {

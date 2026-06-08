@@ -4,11 +4,13 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
@@ -21,6 +23,7 @@ use {
                 bind_via_target,
             },
             from_v8_ref,
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -31,6 +34,8 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -56,6 +61,15 @@ impl AspectBind for TypeSourceFunctionDynamic {
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeSourceFunctionDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceFunctionDynamic),
+        })
     }
 }
 
@@ -126,6 +140,9 @@ impl Type for TypeSourceFunctionDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

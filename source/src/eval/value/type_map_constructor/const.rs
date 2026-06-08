@@ -2,9 +2,12 @@ use {
     crate::{
         builtin::{
             AspectFunction,
+            AspectInitialBind,
             aspect_function_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_tuple_get_maybe,
         },
+        eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         langhelp::{
             Aspect,
             Code,
@@ -13,6 +16,8 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -58,6 +63,15 @@ impl AspectFunction for TypeMapConstructorConst {
     }
 }
 
+impl AspectInitialBind for TypeMapConstructorConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeMapConstructorConst),
+        })
+    }
+}
+
 impl Type for TypeMapConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapConstructorConst)
@@ -66,6 +80,9 @@ impl Type for TypeMapConstructorConst {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeMapConstructorConst) as Box<dyn AspectFunction>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeMapConstructorConst) as Box<dyn AspectInitialBind>));
         }
         None
     }

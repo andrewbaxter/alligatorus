@@ -4,10 +4,12 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectLiftDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
         },
         code_dynamic::{
@@ -27,6 +29,7 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             value::value_empty::r#const::ValueEmptyConst,
         },
         langhelp::{
@@ -65,6 +68,15 @@ impl Aspect for TypeExpr { }
 impl AspectBind for TypeExpr {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeExpr {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeExpr),
+        })
     }
 }
 
@@ -127,6 +139,9 @@ impl Type for TypeExpr {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

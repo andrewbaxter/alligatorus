@@ -51,10 +51,7 @@ use {
         },
         eval::{
             dynamic_util::wrap_with_carry,
-            value::{
-                type_source_define_result::dynamic::SourceDefineResult,
-                value_empty::scope_entry::ScopeEntryEmpty,
-            },
+            value::type_source_define_result::dynamic::SourceDefineResult,
         },
         langhelp::{
             Code,
@@ -140,7 +137,6 @@ use {
         type_function::dynamic::TypeFunctionDynamic,
         type_null::dynamic::TypeNullDynamic,
         type_number::dynamic::TypeNumberDynamic,
-        type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         type_string::dynamic::TypeStringDynamic,
         value_null::r#const::ValueNullConst,
     },
@@ -954,9 +950,20 @@ fn eval(
         definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
     });
-    let mut s1_scope = HashMap::new();
-    let mut builtin_scope_entries = Vec::new();
-    for (key, eval_value, dynamic_value) in [
+    let root_loc = expr.loc;
+    let target: Rc<dyn Target> = Rc::new(TargetDynamic);
+    let scope = Rc::new(Scope {
+        values: RefCell::new(HashMap::new()),
+        parent: None,
+    });
+    let xx = Rc::new(ExprContext {
+        vx: ex.clone(),
+        import_state: Rc::new(Cell::new(import_state)),
+        scope: scope.clone(),
+        target: target.clone(),
+    });
+    let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
+    for (key, dynamic_key, type_, dynamic_value) in [
         //. .
         dynamic_wrap!(fn log(ex, dynamic_scope, scope)(message: String) ->() {
             let timestamp_ms =
@@ -984,36 +991,41 @@ fn eval(
             .global(dynamic_scope)
             .set(
                 dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(eval_value.dynamic_key)).unwrap().cast(),
+                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
                 dynamic_value,
             );
-        builtin_scope_entries.push((key.to_string(), eval_value.clone()));
-        s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
+        let ib = aspect_initial_bind_get(&xx, root_loc, type_.as_ref()).into_res()?;
+        builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
+        scope.values.borrow_mut().insert(
+            ConstKey::String(key.to_string()),
+            ib.initial_bind(dynamic_key),
+        );
     }
 
     // Type references (static scope entries, no JS representation)
-    s1_scope.insert(
-        ConstKey::String("null".to_string()),
-        Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
-    );
-    s1_scope.insert(
-        ConstKey::String("string".to_string()),
-        Box::new(ScopeEntryEmpty { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
-    );
-    s1_scope.insert(
-        ConstKey::String("number".to_string()),
-        Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
-    );
-    s1_scope.insert(
-        ConstKey::String("expr".to_string()),
-        Box::new(ScopeEntryEmpty { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
-    );
+    for (key, type_ref) in [
+        ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
+        ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
+        ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
+        ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
+    ] {
+        let cv = CodeValue {
+            code: Code {
+                loc: root_loc,
+                code: Code_::None,
+            },
+            value: Rc::new(value::value_empty::r#const::ValueEmptyConst { type_: type_ref.clone() }),
+        };
+        let bind = aspect_bind_get(&xx, root_loc, type_ref.as_ref()).into_res()?;
+        let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
+        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
+    }
 
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
     for (
         key,
         constructor_type,
-        (_, dynamic_wrap_entry, dynamic_value),
+        (_, dynamic_key, _, dynamic_value),
     ) in [
         (
             "list",
@@ -1053,24 +1065,17 @@ fn eval(
             .global(dynamic_scope)
             .set(
                 dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_wrap_entry.dynamic_key))
-                    .unwrap()
-                    .cast(),
+                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
                 dynamic_value,
             );
-        let entry = ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_wrap_entry.dynamic_key,
-            type_: constructor_type,
-        };
-        builtin_scope_entries.push((key.to_string(), entry.clone()));
-        s1_scope.insert(ConstKey::String(key.to_string()), Box::new(entry) as Box<dyn ScopeEntry>);
+        let ib = aspect_initial_bind_get(&xx, root_loc, constructor_type.as_ref()).into_res()?;
+        builtin_scope_entries.push((key.to_string(), dynamic_key, constructor_type));
+        scope.values.borrow_mut().insert(
+            ConstKey::String(key.to_string()),
+            ib.initial_bind(dynamic_key),
+        );
     }
-    let root_loc = expr.loc;
-    let target: Rc<dyn Target> = Rc::new(TargetDynamic);
-    let (xx, result) = const_eval_root(ex.clone(), Rc::new(Cell::new(import_state)), Rc::new(Scope {
-        values: RefCell::new(s1_scope),
-        parent: None,
-    }), target.clone(), expr);
+    let result = const_eval(&xx, expr);
     if let Some(errs) = result.errors {
         return Err(errs);
     }
@@ -1120,32 +1125,33 @@ fn eval(
     // Build scope for definition set body compilation: only builtins and type
     // references. Definition set members are accessed via lower + to_dynamic.
     fn build_builtin_scope(
-        builtin_scope_entries: &[(String, ScopeEntryDynamicBinding)],
-    ) -> HashMap<ConstKey, Box<dyn ScopeEntry>> {
+        xx: &ExprContext,
+        loc: QExprId,
+        builtin_scope_entries: &[(String, ScopeEntryId, Rc<dyn Type>)],
+    ) -> Result<HashMap<ConstKey, Box<dyn ScopeEntry>>, Vec<ExprErr>> {
         let mut scope_entries = HashMap::<ConstKey, Box<dyn ScopeEntry>>::new();
-        for (name, entry) in builtin_scope_entries {
-            scope_entries.insert(ConstKey::String(name.clone()), Box::new(ScopeEntryDynamicBinding {
-                dynamic_key: entry.dynamic_key,
-                type_: entry.type_.clone(),
-            }));
+        for (name, dynamic_key, type_) in builtin_scope_entries {
+            let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
+            scope_entries.insert(ConstKey::String(name.clone()), ib.initial_bind(*dynamic_key));
         }
-        scope_entries.insert(
-            ConstKey::String("null".to_string()),
-            Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNullDynamic) }) as Box<dyn ScopeEntry>,
-        );
-        scope_entries.insert(
-            ConstKey::String("string".to_string()),
-            Box::new(ScopeEntryEmpty { type_: Rc::new(TypeStringDynamic) }) as Box<dyn ScopeEntry>,
-        );
-        scope_entries.insert(
-            ConstKey::String("number".to_string()),
-            Box::new(ScopeEntryEmpty { type_: Rc::new(TypeNumberDynamic) }) as Box<dyn ScopeEntry>,
-        );
-        scope_entries.insert(
-            ConstKey::String("expr".to_string()),
-            Box::new(ScopeEntryEmpty { type_: Rc::new(value::type_expr::TypeExpr) }) as Box<dyn ScopeEntry>,
-        );
-        scope_entries
+        for (key, type_ref) in [
+            ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
+            ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
+            ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
+            ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
+        ] {
+            let cv = CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::None,
+                },
+                value: Rc::new(value::value_empty::r#const::ValueEmptyConst { type_: type_ref.clone() }),
+            };
+            let bind = aspect_bind_get(xx, loc, type_ref.as_ref()).into_res()?;
+            let (_, entry) = bind.bind(xx, loc, cv).into_res()?;
+            scope_entries.insert(ConstKey::String(key.to_string()), entry);
+        }
+        Ok(scope_entries)
     }
 
     let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic)> = vec![];
@@ -1164,7 +1170,7 @@ fn eval(
         });
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
-            let mut body_scope = build_builtin_scope(&builtin_scope_entries);
+            let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
             let arg_ib = aspect_initial_bind_get(&xx, root_loc, info.arg_type.as_ref()).into_res()?;
             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
             Rc::new(ExprContext {
@@ -1251,7 +1257,7 @@ fn eval(
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
-                    let mut body_scope = build_builtin_scope(&builtin_scope_entries);
+                    let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                     let self_ib = aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
                     body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
                     Rc::new(ExprContext {
@@ -1322,7 +1328,7 @@ fn eval(
                     let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     method_impl.self_scope_entry_id.set(Some(self_id));
                     let method_xx = {
-                        let mut body_scope = build_builtin_scope(&builtin_scope_entries);
+                        let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                         let self_ib = aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
                         body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
                         Rc::new(ExprContext {

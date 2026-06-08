@@ -6,6 +6,7 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectFunction,
+            AspectInitialBind,
             AspectIterable,
             AspectListDynamic,
             AspectStackValueDynamic,
@@ -15,6 +16,7 @@ use {
             aspect_consume_dynamic_get,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_iterable_aspect_id,
             aspect_list_dynamic_aspect_id,
             aspect_list_dynamic_get_maybe,
@@ -43,6 +45,7 @@ use {
             typecheck_convert,
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_null::dynamic::TypeNullDynamic,
                 type_string::dynamic::TypeStringDynamic,
                 value_empty::r#const::ValueEmptyConst,
@@ -82,6 +85,15 @@ impl Aspect for TypeListDynamic { }
 impl AspectBind for TypeListDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeListDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(self.clone()),
+        })
     }
 }
 
@@ -279,6 +291,9 @@ impl Type for TypeListDynamic {
         }
         if *key == aspect_list_dynamic_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectListDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
         }
         None
     }

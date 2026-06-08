@@ -1,11 +1,14 @@
 use {
     crate::{
         builtin::{
+            AspectBind,
             AspectFunction,
+            aspect_bind_aspect_id,
             aspect_consume_dynamic_get,
             aspect_function_aspect_id,
             aspect_stack_value_dynamic_get,
         },
+        eval::dynamic_util::bind_via_target,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,
@@ -42,6 +45,17 @@ pub(crate) struct TypeSourceTaggedUnionConstructorConst {
 
 impl Aspect for TypeSourceTaggedUnionConstructorConst { }
 
+impl AspectBind for TypeSourceTaggedUnionConstructorConst {
+    fn bind(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        bind_via_target(xx, loc, cv)
+    }
+}
+
 impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let variants = self.data.variants.borrow();
@@ -72,6 +86,12 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceTaggedUnionConstructorConst {
+                data: self.data.clone(),
+                variant_index: self.variant_index,
+            }) as Box<dyn AspectBind>));
+        }
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceTaggedUnionConstructorConst {
                 data: self.data.clone(),

@@ -4,20 +4,25 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectStackValueDynamic,
             AspectTaggedUnion,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
         },
         code_dynamic::CodeDynamic,
-        eval::dynamic_util::{
-            ValueDynamic,
-            ValueDynamicSource,
-            bind_dynamic_default,
-            bind_via_target,
+        eval::{
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+            },
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -28,6 +33,8 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -45,6 +52,15 @@ pub(crate) struct TypeSourceTaggedUnionConst {
 }
 
 impl Aspect for TypeSourceTaggedUnionConst { }
+
+impl AspectInitialBind for TypeSourceTaggedUnionConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
+        })
+    }
+}
 
 impl AspectBind for TypeSourceTaggedUnionConst {
     fn bind(
@@ -136,6 +152,13 @@ impl Type for TypeSourceTaggedUnionConst {
                 Box::new(
                     Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
                         Box<dyn AspectStackValueDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>,
                 ),
             );
         }

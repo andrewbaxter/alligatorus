@@ -9,6 +9,7 @@ use {
         builtin::{
             aspect_bind_dynamic_get_maybe,
             aspect_consume_dynamic_get,
+            aspect_initial_bind_get,
             aspect_stack_value_dynamic_get,
         },
         code_dynamic::{
@@ -25,7 +26,7 @@ use {
             typecheck_convert,
             value::{
                 type_null::dynamic::TypeNullDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                tuple::scope_entry::ScopeEntryValue,
             },
         },
         langhelp::{
@@ -66,6 +67,9 @@ pub(crate) fn bind_via_target(
     cv: CodeValue,
 ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
     let vtype = cv.value.type_(xx, loc);
+    if matches!(cv.code.code, Code_::None) {
+        return EResult::ok((cv.code, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>));
+    }
     let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
         return EResult::err(loc, format!("Type ({}) is missing aspect AspectBindDynamic", vtype.desc()));
     };
@@ -77,10 +81,14 @@ pub(crate) fn bind_via_target(
         },
         Ok(Some(sub)) => {
             let (code, js_key) = xx.target.bind(xx, loc, sub);
-            EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
-                dynamic_key: js_key,
-                type_: vtype,
-            }) as Box<dyn ScopeEntry>))
+            let ib = aspect_initial_bind_get(xx, loc, vtype.as_ref());
+            match ib.into_res() {
+                Ok(ib) => EResult::ok((code, ib.initial_bind(js_key))),
+                Err(errs) => EResult {
+                    v: None,
+                    errors: Some(errs),
+                },
+            }
         },
         Ok(None) => {
             EResult::err(loc, format!("Type ({}) returned None from AspectBindDynamic", vtype.desc()))

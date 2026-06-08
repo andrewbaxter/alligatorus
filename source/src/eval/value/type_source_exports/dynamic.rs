@@ -5,12 +5,14 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
@@ -26,6 +28,7 @@ use {
                 bind_via_target,
             },
             from_v8_ref,
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
@@ -42,6 +45,7 @@ use {
             ExprContext,
             QExprId,
             ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -61,6 +65,15 @@ impl Aspect for TypeSourceExportsDynamic { }
 impl AspectBind for TypeSourceExportsDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeSourceExportsDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceExportsDynamic),
+        })
     }
 }
 
@@ -132,6 +145,9 @@ impl Type for TypeSourceExportsDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

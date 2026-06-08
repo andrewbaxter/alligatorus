@@ -6,6 +6,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_artifact_aspect_id,
@@ -13,6 +14,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_lift_dynamic_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
@@ -36,6 +38,7 @@ use {
             },
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_null::dynamic::TypeNullDynamic,
                 type_source_interface::{
                     SourceInterfaceData,
@@ -58,6 +61,8 @@ use {
             ExprContext,
             GlobalContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -349,6 +354,15 @@ impl AspectArtifact for TypeSourceDataTypeConst {
     }
 }
 
+impl AspectInitialBind for TypeSourceDataTypeConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
+        })
+    }
+}
+
 impl AspectBind for TypeSourceDataTypeConst {
     fn bind(
         &self,
@@ -569,6 +583,13 @@ impl Type for TypeSourceDataTypeConst {
         if *key == aspect_artifact_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
+            );
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>,
+                ),
             );
         }
 
