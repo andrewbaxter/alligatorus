@@ -57,19 +57,6 @@ use {
     },
 };
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) enum ArtifactDataUnique {
-    Builtin {
-        file: String,
-        line: usize,
-    },
-    Source {
-        import_state: usize,
-        source: usize,
-        counter: usize,
-    },
-}
-
 pub(crate) fn deserialize_defset_ctor_as_type(
     xx: &ExprContext,
     gx: &GlobalContext,
@@ -116,32 +103,12 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         underlying_type: std::cell::RefCell::new(Some(underlying_type)),
         methods: std::cell::RefCell::new(methods),
         interface_impls: std::cell::RefCell::new(Vec::new()),
-        identity: serial_to_unique(&serial.identity),
+        identity: serial.identity.clone(),
         data_field: serial.data_field,
         artifact_id: std::cell::RefCell::new(None),
     });
     set.data_types.borrow_mut().push(dt_data.clone());
     Ok(Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }))
-}
-
-pub(crate) fn serial_to_unique(s: &ArtifactDataUnique) -> Unique {
-    match s {
-        ArtifactDataUnique::Builtin { file, line } => {
-            // For deserialized builtins, use Compile with a deterministic id since we can't
-            // reconstruct &'static str
-            Unique::Source(
-                crate::langhelp::CompileId(crate::langhelp::ImportStateId(usize::MAX), crate::langhelp::SourceId(0)),
-                *line,
-            )
-        },
-        ArtifactDataUnique::Source { import_state, source, counter } => Unique::Source(
-            crate::langhelp::CompileId(
-                crate::langhelp::ImportStateId(*import_state),
-                crate::langhelp::SourceId(*source),
-            ),
-            *counter,
-        ),
-    }
 }
 
 // --- Conversion helpers ---
@@ -272,16 +239,3 @@ impl Value for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-pub(crate) fn unique_to_serial(u: &Unique) -> ArtifactDataUnique {
-    match u {
-        Unique::Builtin { file, line } => ArtifactDataUnique::Builtin {
-            file: file.to_string(),
-            line: *line,
-        },
-        Unique::Source(compile_id, counter) => ArtifactDataUnique::Source {
-            import_state: compile_id.0.0,
-            source: compile_id.1.0,
-            counter: *counter,
-        },
-    }
-}

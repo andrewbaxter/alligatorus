@@ -91,10 +91,7 @@ pub(crate) fn deserialize_definition_set(
     loc: QExprId,
     artifact: &Artifact,
 ) -> Result<Gc<DefinitionSet>, String> {
-    use crate::eval::{
-        value::type_source_data::SourceDataMethodData,
-        value::type_source_data_type_constructor::dynamic::serial_to_unique,
-    };
+    use crate::eval::value::type_source_data::SourceDataMethodData;
 
     let serial: ArtifactDataDefSet =
         serde_json::from_value(
@@ -140,7 +137,7 @@ pub(crate) fn deserialize_definition_set(
             underlying_type: std::cell::RefCell::new(Some(underlying_type)),
             methods: std::cell::RefCell::new(methods),
             interface_impls: std::cell::RefCell::new(Vec::new()),
-            identity: serial_to_unique(&dt.identity),
+            identity: dt.identity.clone(),
             data_field: dt.data_field.clone(),
             artifact_id: std::cell::RefCell::new(None),
         })
@@ -155,10 +152,7 @@ fn serialize_definition_set(
     loc: QExprId,
     set: &Gc<DefinitionSet>,
 ) -> ArtifactId {
-    use crate::eval::value::type_source_data_type_constructor::dynamic::{
-        serialize_type_ref,
-        unique_to_serial,
-    };
+    use crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref;
 
     let data_types = set.data_types.borrow();
     let serial_data_types: Vec<ArtifactDataDefSetDataTypeEntry> = data_types.iter().map(|dt| {
@@ -178,7 +172,7 @@ fn serialize_definition_set(
         ArtifactDataDefSetDataTypeEntry {
             name: dt.name.clone(),
             underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-            identity: unique_to_serial(&dt.identity),
+            identity: dt.identity.clone(),
             data_field: dt.data_field.clone(),
             methods,
         }

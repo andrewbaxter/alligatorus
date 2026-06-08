@@ -465,10 +465,11 @@ pub(crate) enum ScopeEntryId {
 pub(crate) struct SourceId(pub usize);
 
 /// A value guaranteed to be unique in the world
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum Unique {
     Builtin {
-        file: &'static str,
+        file: String,
         line: usize,
     },
     Source(CompileId, usize),

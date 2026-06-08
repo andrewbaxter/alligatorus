@@ -5,7 +5,7 @@ pub(crate) struct ArtifactDataDefSetCtorData {
     pub name: Option<String>,
     pub data_field: String,
     pub underlying_type: Artifact,
-    pub identity: super::dynamic::ArtifactDataUnique,
+    pub identity: crate::langhelp::Unique,
     pub methods: Vec<ArtifactDataDefSetCtorMethod>,
     pub import_id: crate::langhelp::ImportStateId,
     pub def_set_id: crate::langhelp::DefSetId,

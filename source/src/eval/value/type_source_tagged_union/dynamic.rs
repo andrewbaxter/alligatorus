@@ -59,7 +59,7 @@ fn tagged_union_ref_from_v8_type(type_: &Rc<dyn Type>) -> Rc<SourceTaggedUnionRe
 
 fn tagged_union_ref_type_identity() -> Unique {
     Unique::Builtin {
-        file: file!(),
+        file: file!().to_string(),
         line: line!() as usize,
     }
 }

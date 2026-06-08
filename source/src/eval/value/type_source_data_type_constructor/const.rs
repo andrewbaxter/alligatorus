@@ -52,10 +52,7 @@ use {
             ArtifactDataDefSetCtorData,
             ArtifactDataDefSetCtorMethod,
         },
-        dynamic::{
-            serialize_type_ref,
-            unique_to_serial,
-        },
+        dynamic::serialize_type_ref,
     },
 };
 
@@ -84,7 +81,7 @@ impl TypeSourceDataTypeConstructorConst {
                 name: self.data.name.clone(),
                 data_field: self.data.data_field.clone(),
                 underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
-                identity: unique_to_serial(&self.data.identity),
+                identity: self.data.identity.clone(),
                 methods,
                 import_id: self.data.set.import_id,
                 def_set_id: self.data.set.def_set_id,

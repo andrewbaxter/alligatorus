@@ -95,7 +95,7 @@ macro_rules! generate_builtin_artifact{
 macro_rules! unique{
     () => {
         Unique::Builtin {
-            file: file!(),
+            file: file!().to_string(),
             line: line!() as usize
         }
     };

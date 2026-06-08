@@ -20,7 +20,7 @@ pub(crate) struct ArtifactDataDefSetDataType {
 pub(crate) struct ArtifactDataDefSetDataTypeEntry {
     pub name: Option<String>,
     pub underlying_type: Artifact,
-    pub identity: crate::eval::value::type_source_data_type_constructor::dynamic::ArtifactDataUnique,
+    pub identity: crate::langhelp::Unique,
     pub data_field: String,
     pub methods: Vec<ArtifactDataDefSetMethod>,
 }

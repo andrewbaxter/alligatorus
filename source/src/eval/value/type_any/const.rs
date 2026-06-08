@@ -33,7 +33,7 @@ use {
 
 pub(crate) fn type_type_identity() -> Unique {
     Unique::Builtin {
-        file: file!(),
+        file: file!().to_string(),
         line: line!() as usize,
     }
 }

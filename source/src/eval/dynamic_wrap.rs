@@ -65,7 +65,7 @@ macro_rules! dynamic_wrap{
             pub(crate) struct[< Type $name Dynamic >];
             fn[<$name: snake _type_identity >]() -> Unique {
                 Unique::Builtin {
-                    file: file!(),
+                    file: file!().to_string(),
                     line: line!() as usize
                 }
             }
