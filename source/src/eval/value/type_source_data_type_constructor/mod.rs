@@ -5,7 +5,7 @@ pub mod r#const;
 use std::rc::Rc;
 
 pub(crate) struct TypeSourceDataTypeConstructorConst {
-    pub data: dumpster::unsync::Gc<super::type_source_data::SourceDataTypeData>,
+    pub data: dumpster::unsync::Gc<super::type_source_data_type::SourceDataTypeData>,
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TypeSourceDataTypeConstructorConst> {

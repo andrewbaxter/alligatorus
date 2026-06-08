@@ -6,7 +6,7 @@ use {
             aspect_artifact_aspect_id,
             aspect_type_aspect_id,
         },
-        eval::value::type_source_data::{
+        eval::value::type_source_data_type::{
             TypeSourceDataTypeConst,
             artifact::ArtifactDataDefSetDataType,
             r#const::deserialize_definition_set,

@@ -23,7 +23,7 @@ use {
                     bind_dynamic_default,
                     bind_via_target,
                 },
-                type_source_data::{
+                type_source_data_type::{
                     SourceDataMethodData,
                     SourceDataTypeData,
                 },

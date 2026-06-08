@@ -31,7 +31,7 @@ use {
                     ValueDynamicSource,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_source_data::{
+                type_source_data_type::{
                     SourceDataMethodData,
                     SourceDataTypeInterfaceImplData,
                     SourceDataTypeInterfaceMethodImplData,

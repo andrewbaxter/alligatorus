@@ -3,7 +3,7 @@ use {
         eval::{
             dynamic_wrap::DynamicWrap,
             value::{
-                type_source_data::SourceDataTypeData,
+                type_source_data_type::SourceDataTypeData,
                 type_source_function::SourceFunctionData,
                 type_source_interface::SourceInterfaceData,
             },

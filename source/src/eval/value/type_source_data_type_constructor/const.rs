@@ -19,7 +19,7 @@ use {
             definition_set::DefinitionSet,
             typecheck_convert,
             value::{
-                type_source_data::TypeSourceDataTypeConst,
+                type_source_data_type::TypeSourceDataTypeConst,
                 type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
         },

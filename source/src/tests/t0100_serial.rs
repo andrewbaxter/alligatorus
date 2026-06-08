@@ -238,12 +238,6 @@ e0;"#]);
         art_jsons,
         vec![
             r#"{
-  "type_": {
-    "builtin": {
-      "file": "src/eval/value/type_source_data/const.rs",
-      "line": 85
-    }
-  },
   "data": {
     "data_types": [
       {
@@ -287,15 +281,15 @@ e0;"#]);
     ],
     "def_set_id": 0,
     "import_id": 0
+  },
+  "type_": {
+    "builtin": {
+      "file": "src/eval/value/type_source_data_type/const.rs",
+      "line": 86
+    }
   }
 }"#,
             r#"{
-  "type_": {
-    "builtin": {
-      "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
-      "line": 34
-    }
-  },
   "data": {
     "def_set": {
       "source": [
@@ -307,6 +301,12 @@ e0;"#]);
       ]
     },
     "type_index": 0
+  },
+  "type_": {
+    "builtin": {
+      "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
+      "line": 34
+    }
   }
 }"#
         ]

@@ -42,6 +42,7 @@ use {
                     TypeSourceInterfaceConst,
                 },
                 type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
+                value_source_data_type::r#const::ValueSourceDataTypeConst,
             },
         },
         langhelp::{
@@ -91,7 +92,7 @@ pub(crate) fn deserialize_definition_set(
     loc: QExprId,
     artifact: &Artifact,
 ) -> Result<Gc<DefinitionSet>, String> {
-    use crate::eval::value::type_source_data::SourceDataMethodData;
+    use crate::eval::value::type_source_data_type::SourceDataMethodData;
 
     let serial: ArtifactDataDefSet =
         serde_json::from_value(
@@ -190,19 +191,6 @@ fn serialize_definition_set(
             data: json,
         }
     })
-}
-
-// --- ValueSourceDataTypeConst: value produced by lifting a data type instance
-// from v8 ---
-pub(crate) struct ValueSourceDataTypeConst {
-    pub data: Gc<SourceDataTypeData>,
-    pub underlying: Rc<dyn Value>,
-}
-
-impl Value for ValueSourceDataTypeConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
-    }
 }
 
 impl TypeSourceDataTypeConst {
