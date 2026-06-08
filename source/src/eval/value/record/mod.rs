@@ -410,48 +410,8 @@ impl AspectField for Record {
                         }
                         return erb.err_new(format!("Field '{}' evaluated to error", key_name));
                     },
-                    Some(RecordField::Mortar(mortar_type)) => {
-                        let self_code = erb.must_er(self_code_raw.cast::<CodeDynamic>())?.unwrap().clone();
-                        let field_code = Code {
-                            loc,
-                            code: Code_::Dyn(Rc::new(CodeDynamic {
-                                loc,
-                                type_: CodeDynamicType::FieldUse(crate::code_dynamic::CodeDynamicFieldUse {
-                                    base: Box::new(self_code),
-                                    field: key_name.clone(),
-                                }),
-                            })),
-                        };
-                        let field_source = ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name });
-                        if aspect_record_get_maybe(xx, mortar_type.as_ref()).is_some() {
-                            let record_type =
-                                (mortar_type.as_ref() as &dyn Any)
-                                    .downcast_ref::<Record>()
-                                    .expect("record aspect present but type is not Record");
-                            let fields = record_type.fields.iter().map(|(k, f)| {
-                                let t = match f {
-                                    RecordField::Mortar(t) => t.clone(),
-                                    RecordField::EvalRes(_) => {
-                                        panic!("field mortar type Record has non-Mortar field")
-                                    },
-                                };
-                                (k.clone(), RecordField::Mortar(t))
-                            }).collect();
-                            return Ok(CodeValue {
-                                code: field_code,
-                                value: Rc::new(Record {
-                                    source: Some(field_source),
-                                    fields,
-                                }),
-                            });
-                        }
-                        return Ok(CodeValue {
-                            code: field_code,
-                            value: Rc::new(ValueDynamic {
-                                source: field_source,
-                                type_: mortar_type,
-                            }),
-                        });
+                    Some(RecordField::Mortar(_)) => {
+                        panic!("sourceless record has Mortar field");
                     },
                     None => {
                         return erb.err_new(format!("Field '{}' not found on record value", key_name));
