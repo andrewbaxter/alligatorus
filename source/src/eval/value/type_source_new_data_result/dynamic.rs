@@ -15,20 +15,27 @@ use {
         },
         code_dynamic::{
             CodeDynamic,
+            CodeDynamicFieldUse,
             CodeDynamicType,
         },
         eval::{
             Erb,
+            TargetBindSub,
             dynamic_wrap::{
                 AnyType,
                 DynamicWrap,
                 dynamic_wrap_method_name,
             },
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+                throw_error,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
+                tuple::Tuple,
+                type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_data_type::{
                     SourceDataMethodData,
@@ -50,6 +57,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -83,7 +91,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
         let mut underlying = self_.data_type_ref.data.underlying_type.borrow_mut();
         if underlying.is_some() {
             drop(underlying);
-            crate::eval::dynamic_util::throw_error(scope, "Data type already has an underlying type");
+            throw_error(scope, "Data type already has an underlying type");
             return;
         }
         *underlying = Some(type_ref.0);
@@ -146,7 +154,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
                     });
                 },
                 None => {
-                    crate::eval::dynamic_util::throw_error(
+                    throw_error(
                         scope,
                         &format!("Missing implementation for interface method '{}'", imethod_name)
                     );

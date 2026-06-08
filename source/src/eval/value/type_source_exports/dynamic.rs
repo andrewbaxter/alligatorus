@@ -20,11 +20,13 @@ use {
             Erb,
             definition_set::DefinitionSetExports,
             from_v8_ref,
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
                 tuple::scope_entry::ScopeEntryValue,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_function::TypeSourceFunctionConst,
@@ -58,7 +60,7 @@ impl Aspect for TypeSourceExportsDynamic { }
 
 impl AspectBind for TypeSourceExportsDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
@@ -69,7 +71,7 @@ impl AspectBindDynamic for TypeSourceExportsDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 

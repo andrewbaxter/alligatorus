@@ -15,21 +15,28 @@ use {
         },
         code_dynamic::{
             CodeDynamic,
+            CodeDynamicFieldUse,
             CodeDynamicType,
         },
         eval::{
             Erb,
+            TargetBindSub,
             dynamic_wrap::{
                 AnyType,
                 DynamicWrap,
                 StagedExpr,
                 dynamic_wrap_method_name,
             },
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+                throw_error,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
+                tuple::Tuple,
+                type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_function::TypeSourceFunctionConst,
                 type_source_interface::{
@@ -47,6 +54,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -73,7 +81,7 @@ dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
         let mut impl_expr = self_.func_ref.data.impl_expr.borrow_mut();
         if impl_expr.is_some() {
             drop(impl_expr);
-            crate::eval::dynamic_util::throw_error(scope, "Function already has an implementation");
+            throw_error(scope, "Function already has an implementation");
             return;
         }
         *impl_expr = Some(staged.0);
@@ -82,7 +90,7 @@ dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
         let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
         if arg_type.is_some() {
             drop(arg_type);
-            crate::eval::dynamic_util::throw_error(scope, "Function already has an arg type");
+            throw_error(scope, "Function already has an arg type");
             return;
         }
         *arg_type = Some(type_ref.0);
@@ -91,7 +99,7 @@ dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
         let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
         if arg_type.is_some() {
             drop(arg_type);
-            crate::eval::dynamic_util::throw_error(scope, "Function already has an arg type");
+            throw_error(scope, "Function already has an arg type");
             return;
         }
         *arg_type =
@@ -103,7 +111,7 @@ dynamic_wrap!(struct SourceNewFuncResult(self_, scope) {
         let mut ret_type = self_.func_ref.data.ret_type.borrow_mut();
         if ret_type.is_some() {
             drop(ret_type);
-            crate::eval::dynamic_util::throw_error(scope, "Function already has a ret type");
+            throw_error(scope, "Function already has a ret type");
             return;
         }
         *ret_type = Some(type_ref.0);

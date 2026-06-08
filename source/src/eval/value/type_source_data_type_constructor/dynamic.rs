@@ -16,13 +16,13 @@ use {
         eval::{
             definition_set::DefinitionSet,
             from_v8_ref,
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                    bind_dynamic_default,
-                    bind_via_target,
-                },
                 type_source_data_type::{
                     SourceDataMethodData,
                     SourceDataTypeData,

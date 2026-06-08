@@ -15,20 +15,26 @@ use {
         },
         code_dynamic::{
             CodeDynamic,
+            CodeDynamicFieldUse,
             CodeDynamicType,
         },
         eval::{
             Erb,
+            TargetBindSub,
             definition_set::next_interface_method_id,
             dynamic_wrap::{
                 DynamicWrap,
                 dynamic_wrap_method_name,
             },
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
+                tuple::Tuple,
+                type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_interface::{
                     SourceInterfaceMethodData,
@@ -46,6 +52,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,

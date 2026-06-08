@@ -5,7 +5,7 @@ use {
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
-        eval::value::dynamic_util::{
+        eval::dynamic_util::{
             ValueDynamic,
             ValueDynamicDataScope,
             ValueDynamicSource,

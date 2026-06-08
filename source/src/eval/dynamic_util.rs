@@ -1,3 +1,10 @@
+pub(crate) use crate::eval::value::value_dynamic::{
+    ValueDynamic,
+    ValueDynamicDataAccess,
+    ValueDynamicDataScope,
+    ValueDynamicSource,
+};
+
 use {
     crate::{
         builtin::{
@@ -20,10 +27,6 @@ use {
             value::{
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                value_dynamic::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
             },
         },
         langhelp::{

@@ -32,17 +32,17 @@ use {
         },
         eval::{
             Erb,
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicDataAccess,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+                mortar_consume_to_dynamic,
+                mortar_dynamic_stack_to_value,
+                mortar_set,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicDataAccess,
-                    ValueDynamicSource,
-                    bind_dynamic_default,
-                    bind_via_target,
-                    mortar_consume_to_dynamic,
-                    mortar_dynamic_stack_to_value,
-                    mortar_set,
-                },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
             },

@@ -22,11 +22,12 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
+            dynamic_util::{
+                bind_dynamic_default,
+                bind_via_target,
+                mortar_consume_to_dynamic,
+            },
             value::{
-                dynamic_util::{
-                    bind_dynamic_default,
-                    bind_via_target,
-                },
                 value_empty::r#const::ValueEmptyConst,
             },
         },
@@ -184,7 +185,7 @@ impl Aspect for TypeExprStagedPlaceholder { }
 
 impl AspectConsumeDynamic for TypeExprStagedPlaceholder {
     fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        super::dynamic_util::mortar_consume_to_dynamic(_xx, loc, cv)
+        mortar_consume_to_dynamic(_xx, loc, cv)
     }
 }
 

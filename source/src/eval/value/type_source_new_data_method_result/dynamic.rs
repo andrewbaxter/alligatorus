@@ -15,21 +15,28 @@ use {
         },
         code_dynamic::{
             CodeDynamic,
+            CodeDynamicFieldUse,
             CodeDynamicType,
         },
         eval::{
             Erb,
+            TargetBindSub,
             dynamic_wrap::{
                 AnyType,
                 DynamicWrap,
                 StagedExpr,
                 dynamic_wrap_method_name,
             },
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+                throw_error,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
+                tuple::Tuple,
+                type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_source_data_type::SourceDataTypeRef,
             },
@@ -43,6 +50,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -67,7 +75,7 @@ dynamic_wrap!(struct SourceNewDataMethodResult(self_, scope) {
         if impl_expr.is_some() {
             drop(impl_expr);
             drop(methods);
-            crate::eval::dynamic_util::throw_error(scope, "Method already has an implementation");
+            throw_error(scope, "Method already has an implementation");
             return;
         }
         *impl_expr = Some(staged.0);
@@ -79,7 +87,7 @@ dynamic_wrap!(struct SourceNewDataMethodResult(self_, scope) {
         if ret_type.is_some() {
             drop(ret_type);
             drop(methods);
-            crate::eval::dynamic_util::throw_error(scope, "Method already has a ret type");
+            throw_error(scope, "Method already has a ret type");
             return;
         }
         *ret_type = Some(type_ref.0);

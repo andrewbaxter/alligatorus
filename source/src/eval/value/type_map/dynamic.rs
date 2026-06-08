@@ -37,12 +37,15 @@ use {
         },
         eval::{
             Erb,
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicDataAccess,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+                mortar_set,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicDataAccess,
-                    ValueDynamicSource,
-                },
                 value_empty::r#const::ValueEmptyConst,
             },
         },
@@ -81,7 +84,7 @@ impl Aspect for TypeMapDynamic { }
 
 impl AspectBind for TypeMapDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
@@ -92,7 +95,7 @@ impl AspectBindDynamic for TypeMapDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -232,7 +235,7 @@ impl AspectMapDynamic for TypeMapDynamic {
 
 impl AspectSet for TypeMapDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        crate::eval::value::dynamic_util::mortar_set(xx, loc, self_, value)
+        mortar_set(xx, loc, self_, value)
     }
 }
 

@@ -13,7 +13,7 @@ use {
             aspect_tagged_union_aspect_id,
         },
         code_dynamic::CodeDynamic,
-        eval::value::dynamic_util::{
+        eval::dynamic_util::{
             ValueDynamic,
             ValueDynamicSource,
             bind_dynamic_default,

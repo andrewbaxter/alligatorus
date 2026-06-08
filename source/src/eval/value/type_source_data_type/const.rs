@@ -28,13 +28,13 @@ use {
         eval::{
             Erb,
             definition_set::DefinitionSet,
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+            },
             value::{
-                dynamic_util::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                    bind_dynamic_default,
-                    bind_via_target,
-                },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_source_interface::{

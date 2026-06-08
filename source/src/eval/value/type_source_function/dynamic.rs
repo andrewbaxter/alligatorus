@@ -15,9 +15,11 @@ use {
         code_dynamic::CodeDynamic,
         eval::{
             from_v8_ref,
-            value::dynamic_util::{
+            dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -53,7 +55,7 @@ impl AspectBind for TypeSourceFunctionDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
@@ -64,7 +66,7 @@ impl AspectBindDynamic for TypeSourceFunctionDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 

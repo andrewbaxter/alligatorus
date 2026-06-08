@@ -23,9 +23,12 @@ use {
         eval::{
             Erb,
             typecheck_convert,
-            value::dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -59,7 +62,7 @@ impl Aspect for TypeFunctionDynamic { }
 
 impl AspectBind for TypeFunctionDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
@@ -69,8 +72,8 @@ impl AspectBindDynamic for TypeFunctionDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
+    ) -> EResult<Option<TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 
