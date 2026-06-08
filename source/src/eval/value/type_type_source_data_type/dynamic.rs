@@ -37,6 +37,23 @@ pub(crate) struct TypeTypeSourceDataTypeDynamic;
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        let serial: ArtifactDataDefSetDataType =
+            serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
+        let def_set_artifact = gx.artifacts.get(serial.def_set)?;
+        let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
+        let data_types = def_set.data_types.borrow();
+        let dt_data = data_types[serial.type_index].clone();
+        drop(data_types);
+        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_data }))
+    }
+
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -54,23 +71,6 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
             data: serde_json::Value::Null,
         })
     }
-
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let serial: ArtifactDataDefSetDataType =
-            serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
-        let def_set_artifact = gx.artifacts.get(serial.def_set)?;
-        let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
-        let data_types = def_set.data_types.borrow();
-        let dt_data = data_types[serial.type_index].clone();
-        drop(data_types);
-        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_data }))
-    }
 }
 
 impl AspectType for TypeTypeSourceDataTypeDynamic {
@@ -81,10 +81,6 @@ impl AspectType for TypeTypeSourceDataTypeDynamic {
 }
 
 impl Type for TypeTypeSourceDataTypeDynamic {
-    fn desc(&self) -> String {
-        "definition_set_data_type_type".to_string()
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
     }
@@ -102,12 +98,16 @@ impl Type for TypeTypeSourceDataTypeDynamic {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to definition_set_data_type_type".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert definition_set_data_type_type".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to definition_set_data_type_type".to_string())
+    fn desc(&self) -> String {
+        "definition_set_data_type_type".to_string()
     }
 }
 

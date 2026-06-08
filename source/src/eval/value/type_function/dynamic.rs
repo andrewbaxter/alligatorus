@@ -170,10 +170,6 @@ impl AspectFunction for TypeFunctionDynamic {
 }
 
 impl Type for TypeFunctionDynamic {
-    fn desc(&self) -> String {
-        return format!("mortar func");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeFunctionDynamic {
             arg: self.arg.clone(),
@@ -197,10 +193,6 @@ impl Type for TypeFunctionDynamic {
         return None;
     }
 
-    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert mortar function"))
-    }
-
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         aspect_function_get_maybe(xx, source_type).is_some()
     }
@@ -217,6 +209,14 @@ impl Type for TypeFunctionDynamic {
                 }),
             });
         });
+    }
+
+    fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert mortar function"))
+    }
+
+    fn desc(&self) -> String {
+        return format!("mortar func");
     }
 }
 

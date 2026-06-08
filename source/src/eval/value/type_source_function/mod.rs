@@ -17,13 +17,13 @@ use {
 };
 
 pub(crate) struct SourceFunctionData {
-    pub set: Gc<crate::eval::definition_set::DefinitionSet>,
-    pub name: Option<String>,
+    pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
-    pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
+    pub name: Option<String>,
     pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub set: Gc<crate::eval::definition_set::DefinitionSet>,
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData {
@@ -38,15 +38,15 @@ pub(crate) struct TypeSourceFunctionConst {
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TypeSourceFunctionConst> {
-    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(dynamic::TypeSourceFunctionDynamic)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::to_v8(scope, self).into()
+    }
+
+    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+        Rc::new(dynamic::TypeSourceFunctionDynamic)
     }
 }

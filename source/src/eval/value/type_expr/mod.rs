@@ -23,8 +23,8 @@ use {
             },
             from_v8_ref,
             value::dynamic_util::{
-                bind_via_target,
                 bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -106,10 +106,6 @@ impl AspectLiftDynamic for TypeExpr {
 }
 
 impl Type for TypeExpr {
-    fn desc(&self) -> String {
-        return format!("expr");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeExpr)
     }
@@ -131,10 +127,6 @@ impl Type for TypeExpr {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLiftDynamic>));
         }
         return None;
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        return EvalRes::err(loc, format!("Cannot convert expr to other type"));
     }
 
     fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
@@ -168,6 +160,14 @@ impl Type for TypeExpr {
             value: Rc::new(expr),
         });
     }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        return EvalRes::err(loc, format!("Cannot convert expr to other type"));
+    }
+
+    fn desc(&self) -> String {
+        return format!("expr");
+    }
 }
 
 impl Value for TypeExpr {
@@ -198,10 +198,6 @@ impl AspectLiftDynamic for TypeExprStagedPlaceholder {
 }
 
 impl Type for TypeExprStagedPlaceholder {
-    fn desc(&self) -> String {
-        "stage result".to_string()
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeExprStagedPlaceholder)
     }
@@ -216,12 +212,16 @@ impl Type for TypeExprStagedPlaceholder {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to stage result".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert stage result".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to stage result".to_string())
+    fn desc(&self) -> String {
+        "stage result".to_string()
     }
 }
 

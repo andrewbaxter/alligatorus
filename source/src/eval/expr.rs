@@ -17,24 +17,24 @@ pub(crate) struct Expr {
 
 #[derive(Clone)]
 pub(crate) enum Expr_ {
-    Literal(LitValue),
-    Bind(ExprBind),
-    Set(ExprSet),
-    Field(ExprField),
-    Block(ExprBlock),
-    ScopeUse(ExprScopeUse),
-    Call(ExprCall),
-    Stage(ExprStage),
-    Lower(ExprLower),
-    Tuple(ExprTuple),
-    Record(ExprRecord),
-    If(ExprIf),
-    OperatorLt(ExprOperatorLt),
-    OperatorAdd(ExprOperatorAdd),
-    Foreach(ExprForeach),
-    Match(ExprMatch),
     As(ExprAs),
+    Bind(ExprBind),
+    Block(ExprBlock),
+    Call(ExprCall),
+    Field(ExprField),
+    Foreach(ExprForeach),
+    If(ExprIf),
     Import(ExprImport),
+    Literal(LitValue),
+    Lower(ExprLower),
+    Match(ExprMatch),
+    OperatorAdd(ExprOperatorAdd),
+    OperatorLt(ExprOperatorLt),
+    Record(ExprRecord),
+    ScopeUse(ExprScopeUse),
+    Set(ExprSet),
+    Stage(ExprStage),
+    Tuple(ExprTuple),
 }
 
 #[derive(Clone)]
@@ -56,14 +56,14 @@ pub(crate) struct ExprBlock {
 
 #[derive(Clone)]
 pub(crate) struct ExprCall {
-    pub func: Rc<Expr>,
     pub arg: Rc<Expr>,
+    pub func: Rc<Expr>,
 }
 
 #[derive(Clone)]
 pub(crate) struct ExprConditionBranch {
-    pub condition: Expr,
     pub body: Expr,
+    pub condition: Expr,
 }
 
 #[derive(Clone)]
@@ -75,8 +75,8 @@ pub(crate) struct ExprField {
 #[derive(Clone)]
 pub(crate) struct ExprForeach {
     pub base: Rc<Expr>,
-    pub element_key: Rc<Expr>,
     pub body: Rc<Expr>,
+    pub element_key: Rc<Expr>,
 }
 
 #[derive(Clone)]
@@ -98,15 +98,15 @@ pub(crate) struct ExprLower {
 #[derive(Clone)]
 pub(crate) struct ExprMatch {
     pub base: Rc<Expr>,
-    pub element_key: Rc<Expr>,
     pub cases: Vec<ExprMatchBranch>,
+    pub element_key: Rc<Expr>,
     pub fallback: Option<Rc<Expr>>,
 }
 
 #[derive(Clone)]
 pub(crate) struct ExprMatchBranch {
-    pub condition: Expr,
     pub body: Expr,
+    pub condition: Expr,
 }
 
 #[derive(Clone)]

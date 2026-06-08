@@ -70,8 +70,8 @@ impl PendingImportState {
 }
 
 pub(crate) struct ValuePendingImport {
-    pub state: Rc<PendingImportState>,
     pub resolved: RefCell<Option<Rc<dyn Value>>>,
+    pub state: Rc<PendingImportState>,
 }
 
 impl ValuePendingImport {

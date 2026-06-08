@@ -235,10 +235,6 @@ impl AspectStackValueDynamic for TypeListDynamic {
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for TypeListDynamic {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeListDynamic> = crate::eval::from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
         (*rc).clone()
@@ -247,13 +243,13 @@ impl crate::eval::dynamic_wrap::DynamicWrap for TypeListDynamic {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::to_v8(scope, Rc::new(self)).into()
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
 }
 
 impl Type for TypeListDynamic {
-    fn desc(&self) -> String {
-        format!("list({})", self.element_type.desc())
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeListDynamic { element_type: self.element_type.clone() })
     }
@@ -283,10 +279,6 @@ impl Type for TypeListDynamic {
         None
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert list type".to_string())
-    }
-
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         aspect_list_dynamic_get_maybe(xx, source_type).is_some()
     }
@@ -303,6 +295,14 @@ impl Type for TypeListDynamic {
             });
         }
         EvalRes::err(loc, "Cannot convert to list type".to_string())
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert list type".to_string())
+    }
+
+    fn desc(&self) -> String {
+        format!("list({})", self.element_type.desc())
     }
 }
 
@@ -352,10 +352,6 @@ impl AspectFunction for TypeListNewDynamic {
 }
 
 impl Type for TypeListNewDynamic {
-    fn desc(&self) -> String {
-        format!("list({}).new", self.element_type.desc())
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() })
     }
@@ -367,12 +363,16 @@ impl Type for TypeListNewDynamic {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to list new".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert list new".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to list new".to_string())
+    fn desc(&self) -> String {
+        format!("list({}).new", self.element_type.desc())
     }
 }
 

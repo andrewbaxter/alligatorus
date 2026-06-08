@@ -39,16 +39,6 @@ pub(crate) struct TypeNullConst;
 impl Aspect for TypeNullConst { }
 
 impl AspectArtifact for TypeNullConst {
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        EResult::ok(Self::build_artifact(()))
-    }
-
     fn from_serial(
         &self,
         _xx: &ExprContext,
@@ -61,21 +51,23 @@ impl AspectArtifact for TypeNullConst {
             _ => Err("Expected null data for null type".to_string()),
         }
     }
+
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        EResult::ok(Self::build_artifact(()))
+    }
 }
 
 impl AspectNull for TypeNullConst { }
 
 impl Type for TypeNullConst {
-    fn desc(&self) -> String {
-        return format!("null");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNullConst)
-    }
-
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::build_artifact(()))
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -88,8 +80,23 @@ impl Type for TypeNullConst {
         return None;
     }
 
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_null_get_maybe(xx, source_type).is_some()
+    }
+
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_null_get_maybe(xx, type_).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let type_ = cv.value.type_(xx, loc);
+            erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
+            return Ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueNullConst)
+            });
+        });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -102,19 +109,12 @@ impl Type for TypeNullConst {
         });
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_null_get_maybe(xx, source_type).is_some()
+    fn desc(&self) -> String {
+        return format!("null");
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let type_ = cv.value.type_(xx, loc);
-            erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
-            return Ok(CodeValue {
-                code: cv.code,
-                value: Rc::new(ValueNullConst)
-            });
-        });
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Self::build_artifact(()))
     }
 }
 

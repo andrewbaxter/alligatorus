@@ -105,10 +105,6 @@ impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
 }
 
 impl Type for TypeSourceFunctionDynamic {
-    fn desc(&self) -> String {
-        format!("definition_set_function")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceFunctionDynamic)
     }
@@ -132,12 +128,16 @@ impl Type for TypeSourceFunctionDynamic {
         return None;
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert definition_set_function"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
+    fn desc(&self) -> String {
+        format!("definition_set_function")
     }
 }
 

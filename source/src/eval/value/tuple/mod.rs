@@ -49,49 +49,27 @@ use {
     },
 };
 
-enum TupleBindSubResult {
-    Target(TargetBindSub),
-    Const(CodeValue),
-}
-
 pub(crate) struct Tuple {
+    /// Ordered list of element entries.
+    pub elements: Vec<TupleElement>,
     /// Optional mortar source — a JS array that elements can be accessed from at
     /// runtime.
     pub source: Option<super::dynamic_util::ValueDynamicSource>,
-    /// Ordered list of element entries.
-    pub elements: Vec<TupleElement>,
 }
 
 impl Tuple {
-    /// Clone this type-Tuple. Panics if not a type.
-    pub fn clone_as_type(&self) -> Tuple {
-        Tuple {
-            source: None,
-            elements: self.elements.iter().map(|e| {
-                match e {
-                    TupleElement::Mortar(t) => TupleElement::Mortar(t.clone()),
-                    TupleElement::EvalRes(_) => panic!("clone_as_type on non-type tuple"),
-                }
-            }).collect(),
-        }
-    }
-
-    fn bind_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap()).ok().expect("Tuple bind_sub: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
+                .ok()
+                .expect("Tuple bind_sub: Rc not unique");
         let is_sourceless =
-            matches!(cv.code.code, Code_::None) && tuple.source.is_none() &&
-                tuple.elements.iter().all(|e| match e {
-                    TupleElement::EvalRes(er) => {
-                        er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
-                    },
-                    TupleElement::Mortar(_) => false,
-                });
+            matches!(cv.code.code, Code_::None) && tuple.source.is_none() && tuple.elements.iter().all(|e| match e {
+                TupleElement::EvalRes(er) => {
+                    er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
+                },
+                TupleElement::Mortar(_) => false,
+            });
         if is_sourceless {
             return EResult::ok(None);
         }
@@ -128,7 +106,10 @@ impl Tuple {
                             },
                             Ok(None) => {
                                 bind_results.push(TupleBindSubResult::Const(CodeValue {
-                                    code: Code { loc: loc, code: Code_::None },
+                                    code: Code {
+                                        loc: loc,
+                                        code: Code_::None,
+                                    },
                                     value: saved_value,
                                 }));
                             },
@@ -174,6 +155,19 @@ impl Tuple {
         let combined = xx.target.bind_sub_tuple(loc, carry, target_elements);
         EResult::ok(Some(combined))
     }
+
+    /// Clone this type-Tuple. Panics if not a type.
+    pub fn clone_as_type(&self) -> Tuple {
+        Tuple {
+            source: None,
+            elements: self.elements.iter().map(|e| {
+                match e {
+                    TupleElement::Mortar(t) => TupleElement::Mortar(t.clone()),
+                    TupleElement::EvalRes(_) => panic!("clone_as_type on non-type tuple"),
+                }
+            }).collect(),
+        }
+    }
 }
 
 impl Aspect for Tuple { }
@@ -190,30 +184,21 @@ impl AspectBind for Tuple {
                 EResult::ok((Code {
                     loc: loc,
                     code: Code_::None,
-                }, Box::new(ScopeEntryStatic {
-                    type_: tuple_type,
-                }) as Box<dyn ScopeEntry>))
+                }, Box::new(ScopeEntryStatic { type_: tuple_type }) as Box<dyn ScopeEntry>))
             },
             Ok(Some(sub)) => {
                 let (code, js_key) = xx.target.bind(xx, loc, sub);
-                EResult::ok((code, Box::new(
-                    crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
-                        dynamic_key: js_key,
-                        type_: tuple_type,
-                    },
-                ) as Box<dyn ScopeEntry>))
+                EResult::ok((code, Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
+                    dynamic_key: js_key,
+                    type_: tuple_type,
+                }) as Box<dyn ScopeEntry>))
             },
         }
     }
 }
 
 impl AspectBindDynamic for Tuple {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         self.bind_sub(xx, loc, cv)
     }
 }
@@ -287,15 +272,6 @@ impl AspectTuple for Tuple {
 }
 
 impl Type for Tuple {
-    fn desc(&self) -> String {
-        format!("tuple({})", self.elements.iter().map(|e| {
-            match e {
-                TupleElement::Mortar(t) => t.desc(),
-                TupleElement::EvalRes(_) => "?".to_string(),
-            }
-        }).collect::<Vec<_>>().join(", "))
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone_as_type())
     }
@@ -332,6 +308,10 @@ impl Type for Tuple {
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         type_.aspect(_xx, &super::type_any::r#const::type_type_identity()).is_some()
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to tuple type"))
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -442,8 +422,13 @@ impl Type for Tuple {
         }
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tuple type"))
+    fn desc(&self) -> String {
+        format!("tuple({})", self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => t.desc(),
+                TupleElement::EvalRes(_) => "?".to_string(),
+            }
+        }).collect::<Vec<_>>().join(", "))
     }
 }
 
@@ -472,13 +457,18 @@ fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<d
     }
 }
 
+enum TupleBindSubResult {
+    Const(CodeValue),
+    Target(TargetBindSub),
+}
+
 /// Represents a single element entry in a Tuple.
 pub(crate) enum TupleElement {
+    /// Element has been fully evaluated and is available immediately.
+    EvalRes(EvalRes),
     /// Element available only via the mortar source. Type is known but value is
     /// deferred to runtime.
     Mortar(Rc<dyn Type>),
-    /// Element has been fully evaluated and is available immediately.
-    EvalRes(EvalRes),
 }
 
 struct TupleLiftJs {

@@ -6,8 +6,8 @@ use crate::langhelp::{
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSet {
     pub data_types: Vec<ArtifactDataDefSetDataTypeEntry>,
-    pub import_id: crate::langhelp::ImportStateId,
     pub def_set_id: crate::langhelp::DefSetId,
+    pub import_id: crate::langhelp::ImportStateId,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -18,17 +18,17 @@ pub(crate) struct ArtifactDataDefSetDataType {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetDataTypeEntry {
+    pub data_field: String,
+    pub identity: crate::langhelp::Unique,
+    pub methods: Vec<ArtifactDataDefSetMethod>,
     pub name: Option<String>,
     pub underlying_type: Artifact,
-    pub identity: crate::langhelp::Unique,
-    pub data_field: String,
-    pub methods: Vec<ArtifactDataDefSetMethod>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetMethod {
-    pub name: String,
-    pub field_name: String,
-    pub ret_type: Artifact,
     pub compiled_js: String,
+    pub field_name: String,
+    pub name: String,
+    pub ret_type: Artifact,
 }

@@ -261,34 +261,24 @@ impl TypeSourceDataTypeConst {
     }
 
     pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        crate::langhelp::produce_independent_artifact(
-            gx.artifacts.as_ref(),
-            &self.data.artifact_id,
-            || {
-                let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
-                let type_index = {
-                    let data_types = self.data.set.data_types.borrow();
-                    data_types
-                        .iter()
-                        .position(|dt| {
-                            std::ptr::eq(
-                                &**dt as *const SourceDataTypeData,
-                                &*self.data as *const SourceDataTypeData,
-                            )
-                        })
-                        .expect("Data type not found in its definition set")
-                };
-                let serial = ArtifactDataDefSetDataType {
-                    def_set: def_set_artifact_id,
-                    type_index,
-                };
-                let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
-                Artifact {
-                    type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
-                    data: json,
-                }
-            },
-        )
+        crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &self.data.artifact_id, || {
+            let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
+            let type_index = {
+                let data_types = self.data.set.data_types.borrow();
+                data_types.iter().position(|dt| {
+                    std::ptr::eq(&**dt as *const SourceDataTypeData, &*self.data as *const SourceDataTypeData)
+                }).expect("Data type not found in its definition set")
+            };
+            let serial = ArtifactDataDefSetDataType {
+                def_set: def_set_artifact_id,
+                type_index,
+            };
+            let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
+            Artifact {
+                type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
+                data: json,
+            }
+        })
     }
 }
 

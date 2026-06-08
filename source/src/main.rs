@@ -102,8 +102,8 @@ pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Res
 
 #[derive(Debug)]
 pub(crate) struct CompileOutput {
-    pub(crate) logs: Vec<LogEntry>,
     pub(crate) generated_mortar_scripts: Vec<String>,
+    pub(crate) logs: Vec<LogEntry>,
 }
 
 fn main() { }

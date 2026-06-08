@@ -40,14 +40,13 @@ use {
     },
 };
 
-pub(crate) fn bind_dynamic_default(
-    xx: &ExprContext,
-    loc: QExprId,
-    cv: CodeValue,
-) -> EResult<Option<TargetBindSub>> {
+pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
     let vtype = cv.value.type_(xx, loc);
     mortar_consume_to_dynamic(xx, loc, cv).map(|c| Some(TargetBindSub {
-        data: Code { loc: loc, code: Code_::Dyn(Rc::new(c)) },
+        data: Code {
+            loc: loc,
+            code: Code_::Dyn(Rc::new(c)),
+        },
         type_: vtype,
     }))
 }

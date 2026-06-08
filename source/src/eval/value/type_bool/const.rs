@@ -40,10 +40,6 @@ impl AspectBoolConst for TypeBoolConst {
 }
 
 impl Type for TypeBoolConst {
-    fn desc(&self) -> String {
-        return format!("bool");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeBoolConst)
     }
@@ -55,8 +51,24 @@ impl Type for TypeBoolConst {
         return None;
     }
 
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_bool_const_get_maybe(xx, source_type).is_some()
+    }
+
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_bool_const_get_maybe(xx, type_).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let CodeValue { code, value } = cv;
+            let type_ = value.type_(xx, loc);
+            let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
+            return Ok(CodeValue {
+                code: code,
+                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
+            });
+        });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -70,20 +82,8 @@ impl Type for TypeBoolConst {
         });
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_bool_const_get_maybe(xx, source_type).is_some()
-    }
-
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let CodeValue { code, value } = cv;
-            let type_ = value.type_(xx, loc);
-            let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
-            return Ok(CodeValue {
-                code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
-            });
-        });
+    fn desc(&self) -> String {
+        return format!("bool");
     }
 }
 

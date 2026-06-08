@@ -252,10 +252,6 @@ impl AspectStackValueDynamic for TypeMapDynamic {
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for TypeMapDynamic {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeMapDynamic> = crate::eval::from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()
@@ -264,13 +260,13 @@ impl crate::eval::dynamic_wrap::DynamicWrap for TypeMapDynamic {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::to_v8(scope, Rc::new(self)).into()
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
 }
 
 impl Type for TypeMapDynamic {
-    fn desc(&self) -> String {
-        format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapDynamic {
             key_type: self.key_type.clone(),
@@ -304,10 +300,6 @@ impl Type for TypeMapDynamic {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectMapDynamic>));
         }
         None
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert map type".to_string())
     }
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
@@ -413,6 +405,14 @@ impl Type for TypeMapDynamic {
             });
         });
     }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert map type".to_string())
+    }
+
+    fn desc(&self) -> String {
+        format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
+    }
 }
 
 impl Value for TypeMapDynamic {
@@ -458,10 +458,6 @@ impl AspectFunction for TypeMapNewDynamic {
 }
 
 impl Type for TypeMapNewDynamic {
-    fn desc(&self) -> String {
-        format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapNewDynamic {
             key_type: self.key_type.clone(),
@@ -476,12 +472,16 @@ impl Type for TypeMapNewDynamic {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to map new".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert map new".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to map new".to_string())
+    fn desc(&self) -> String {
+        format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
     }
 }
 

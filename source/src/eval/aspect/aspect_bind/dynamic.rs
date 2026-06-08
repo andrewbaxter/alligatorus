@@ -16,10 +16,5 @@ use {
 };
 
 aspect!(AspectBindDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: & ExprContext,
-        loc: QExprId,
-        cv: CodeValue
-    ) -> EResult <Option <TargetBindSub> >;
+    fn bind_dynamic(&self, xx: & ExprContext, loc: QExprId, cv: CodeValue) -> EResult < Option < TargetBindSub > >;
 });

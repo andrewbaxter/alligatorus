@@ -18,8 +18,8 @@ use {
             value::dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_via_target,
                 bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -116,10 +116,6 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
 }
 
 impl Type for TypeSourceInterfaceDynamic {
-    fn desc(&self) -> String {
-        format!("definition_set_interface_ref")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceInterfaceDynamic)
     }
@@ -146,10 +142,6 @@ impl Type for TypeSourceInterfaceDynamic {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert interface_ref"))
-    }
-
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         source_type.aspect(xx, &interface_ref_type_identity()).is_some()
     }
@@ -166,6 +158,14 @@ impl Type for TypeSourceInterfaceDynamic {
             });
         }
         EvalRes::err(loc, format!("Cannot convert to interface_ref"))
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert interface_ref"))
+    }
+
+    fn desc(&self) -> String {
+        format!("definition_set_interface_ref")
     }
 }
 

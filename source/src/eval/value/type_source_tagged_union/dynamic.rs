@@ -20,8 +20,8 @@ use {
             value::dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_via_target,
                 bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -134,10 +134,6 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionDynamic {
 }
 
 impl Type for TypeSourceTaggedUnionDynamic {
-    fn desc(&self) -> String {
-        format!("tagged_union_ref")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() })
     }
@@ -157,8 +153,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }) as
-                        Box<dyn AspectBindDynamic>,
+                    Box::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
                 ),
             );
         }
@@ -197,24 +192,6 @@ impl Type for TypeSourceTaggedUnionDynamic {
         return None;
     }
 
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        if let Some(data) = &self.data {
-            type_.aspect(xx, &data.identity).is_some()
-        } else {
-            type_.aspect(xx, &tagged_union_ref_type_identity()).is_some()
-        }
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: cv.code,
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
-            }),
-        })
-    }
-
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         if let Some(data) = &self.data {
             if source_type.aspect(xx, &data.identity).is_some() {
@@ -226,6 +203,14 @@ impl Type for TypeSourceTaggedUnionDynamic {
             }
         }
         source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some()
+    }
+
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        if let Some(data) = &self.data {
+            type_.aspect(xx, &data.identity).is_some()
+        } else {
+            type_.aspect(xx, &tagged_union_ref_type_identity()).is_some()
+        }
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -262,6 +247,20 @@ impl Type for TypeSourceTaggedUnionDynamic {
         }
         EvalRes::err(loc, format!("Cannot convert {} to tagged_union_ref", source_type.desc()))
     }
+
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
+            }),
+        })
+    }
+
+    fn desc(&self) -> String {
+        format!("tagged_union_ref")
+    }
 }
 
 impl Value for TypeSourceTaggedUnionDynamic {
@@ -271,10 +270,6 @@ impl Value for TypeSourceTaggedUnionDynamic {
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionRef> {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(TypeSourceTaggedUnionDynamic { data: None })
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         tagged_union_ref_from_v8_type(crate::eval::from_v8_ref::<Rc<dyn Type>>(&*value))
     }
@@ -282,5 +277,9 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionRef> {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let type_: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionDynamic { data: Some(self.data.clone()) });
         crate::eval::to_v8(scope, type_).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(TypeSourceTaggedUnionDynamic { data: None })
     }
 }

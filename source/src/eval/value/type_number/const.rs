@@ -110,10 +110,6 @@ impl AspectOperatorLt for TypeNumberConst {
 }
 
 impl Type for TypeNumberConst {
-    fn desc(&self) -> String {
-        return format!("number");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNumberConst)
     }
@@ -137,8 +133,24 @@ impl Type for TypeNumberConst {
         return None;
     }
 
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_number_const_get_maybe(xx, source_type).is_some()
+    }
+
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_number_const_get_maybe(xx, type_).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let CodeValue { code, value } = cv;
+            let type_ = value.type_(xx, loc);
+            let aspect_number = erb.must_er(aspect_number_const_get(xx, loc, type_.as_ref()))?;
+            return Ok(CodeValue {
+                code: code,
+                value: Rc::new(ValueNumberConst(aspect_number.get(value.as_ref())))
+            });
+        });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -152,20 +164,8 @@ impl Type for TypeNumberConst {
         });
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_number_const_get_maybe(xx, source_type).is_some()
-    }
-
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let CodeValue { code, value } = cv;
-            let type_ = value.type_(xx, loc);
-            let aspect_number = erb.must_er(aspect_number_const_get(xx, loc, type_.as_ref()))?;
-            return Ok(CodeValue {
-                code: code,
-                value: Rc::new(ValueNumberConst(aspect_number.get(value.as_ref())))
-            });
-        });
+    fn desc(&self) -> String {
+        return format!("number");
     }
 }
 

@@ -96,10 +96,6 @@ impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
 }
 
 impl Type for TypeSourceTaggedUnionConst {
-    fn desc(&self) -> String {
-        format!("tagged_union")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
     }
@@ -126,8 +122,7 @@ impl Type for TypeSourceTaggedUnionConst {
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
-                        Box<dyn AspectBindDynamic>,
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
                 ),
             );
         }
@@ -147,12 +142,16 @@ impl Type for TypeSourceTaggedUnionConst {
         return None;
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to tagged_union"))
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tagged_union"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union"))
+    fn desc(&self) -> String {
+        format!("tagged_union")
     }
 }
 

@@ -13,15 +13,15 @@ pub struct ExprId(pub usize);
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprIfConditionBranch {
-    pub condition: SourceExpr,
     pub body: SourceExpr,
+    pub condition: SourceExpr,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SerialExprMatchTagBranch {
-    pub condition: SourceExpr,
     pub body: SourceExpr,
+    pub condition: SourceExpr,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -34,24 +34,24 @@ pub struct SourceExpr {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SourceExpr_ {
-    Literal(SourceLiteral),
-    Block(SourceExprBlock),
-    ScopeUse(SourceExprBindingUse),
-    Bind(SourceExprBind),
-    Set(SourceExprSet),
-    Field(SourceExprField),
-    Call(SourceExprCall),
-    Stage(SourceExprStage),
-    Lower(SourceExprLower),
-    Tuple(Vec<SourceExpr>),
-    Record(Vec<(SourceExpr, SourceExpr)>),
-    If(SourceExprIf),
-    OperatorLt(SourceExprOperatorLt),
-    OperatorAdd(SourceExprOperatorAdd),
-    Foreach(SourceExprForeach),
-    Match(SourceExprMatch),
     As(SourceExprAs),
+    Bind(SourceExprBind),
+    Block(SourceExprBlock),
+    Call(SourceExprCall),
+    Field(SourceExprField),
+    Foreach(SourceExprForeach),
+    If(SourceExprIf),
     Import(SourceExprImport),
+    Literal(SourceLiteral),
+    Lower(SourceExprLower),
+    Match(SourceExprMatch),
+    OperatorAdd(SourceExprOperatorAdd),
+    OperatorLt(SourceExprOperatorLt),
+    Record(Vec<(SourceExpr, SourceExpr)>),
+    ScopeUse(SourceExprBindingUse),
+    Set(SourceExprSet),
+    Stage(SourceExprStage),
+    Tuple(Vec<SourceExpr>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -89,8 +89,8 @@ pub struct SourceExprBlock {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprCall {
-    pub func: Box<SourceExpr>,
     pub arg: Box<SourceExpr>,
+    pub func: Box<SourceExpr>,
 }
 
 /// Refer to a field of a value.
@@ -108,8 +108,8 @@ pub struct SourceExprField {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprForeach {
     pub base: Box<SourceExpr>,
-    pub element_key: Box<SourceExpr>,
     pub body: Box<SourceExpr>,
+    pub element_key: Box<SourceExpr>,
 }
 
 /// An `if` statement, with multiple condition clauses and optionally one
@@ -140,8 +140,8 @@ pub struct SourceExprLower {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprMatch {
     pub base: Box<SourceExpr>,
-    pub element_key: Box<SourceExpr>,
     pub cases: Vec<SerialExprMatchTagBranch>,
+    pub element_key: Box<SourceExpr>,
     pub fallback: Option<Box<SourceExpr>>,
 }
 
@@ -188,8 +188,8 @@ pub struct SourceExprStage {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum SourceLiteral {
     Null,
-    String(String),
     Number(NotNan<f64>),
+    String(String),
     //. Bool(bool),
     //. Array(Vec<SerialValue>),
     //. Set(BTreeSet<SerialValue>),

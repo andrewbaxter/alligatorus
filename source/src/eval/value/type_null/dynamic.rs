@@ -61,16 +61,6 @@ pub(crate) struct TypeNullDynamic;
 impl Aspect for TypeNullDynamic { }
 
 impl AspectArtifact for TypeNullDynamic {
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        EResult::ok(Self::build_artifact(()))
-    }
-
     fn from_serial(
         &self,
         _xx: &ExprContext,
@@ -79,6 +69,16 @@ impl AspectArtifact for TypeNullDynamic {
         _data: &serde_json::Value,
     ) -> Result<Rc<dyn Value>, String> {
         Ok(Rc::new(ValueNullConst))
+    }
+
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        EResult::ok(Self::build_artifact(()))
     }
 }
 
@@ -145,10 +145,6 @@ impl AspectStackValueDynamic for TypeNullDynamic {
 }
 
 impl Type for TypeNullDynamic {
-    fn desc(&self) -> String {
-        return format!("mortar null");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNullDynamic)
     }
@@ -178,26 +174,12 @@ impl Type for TypeNullDynamic {
         return None;
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::build_artifact(()))
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_null_get_maybe(xx, source_type).is_some()
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_null_get_maybe(xx, type_).is_some()
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: cv.code,
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeNullDynamic),
-            }),
-        })
-    }
-
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_null_get_maybe(xx, source_type).is_some()
     }
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -212,6 +194,24 @@ impl Type for TypeNullDynamic {
                 }),
             });
         });
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeNullDynamic),
+            }),
+        })
+    }
+
+    fn desc(&self) -> String {
+        return format!("mortar null");
+    }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Self::build_artifact(()))
     }
 }
 

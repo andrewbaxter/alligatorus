@@ -326,9 +326,9 @@ macro_rules! dynamic_wrap{
 }
 
 pub(crate) trait DynamicWrap: Sized + 'static {
-    fn mortar_type() -> Rc<dyn Type>;
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self;
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
+    fn mortar_type() -> Rc<dyn Type>;
 }
 
 /// Trait for types that can be used as BTreeMap keys in DynamicWrap. Converts
@@ -343,16 +343,16 @@ pub(crate) trait DynamicWrapKey: Sized + Ord + 'static {
 pub(crate) struct AnyType(pub Rc<dyn Type>);
 
 impl DynamicWrap for AnyType {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_any::dynamic::TypeAnyDynamic)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         AnyType(super::rc_type_from_v8(&*value))
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         unimplemented!("AnyType should not be sent back to v8")
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_any::dynamic::TypeAnyDynamic)
     }
 }
 
@@ -365,10 +365,6 @@ pub(crate) fn dynamic_wrap_method_name(s: &str) -> &str {
 pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
 impl DynamicWrap for StagedExpr {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_expr::TypeExpr)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
@@ -377,27 +373,29 @@ impl DynamicWrap for StagedExpr {
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         unimplemented!("StagedExpr should not be sent back to v8")
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_expr::TypeExpr)
+    }
 }
 
 impl DynamicWrap for () {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_null::dynamic::TypeNullDynamic)
-    }
-
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_v8<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
 
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         v8::null(scope).into()
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_null::dynamic::TypeNullDynamic)
+    }
 }
 
 impl DynamicWrap for crate::langhelp::ConstKey {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
-    }
-
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
         match crate::langhelp::ConstKey::from_str(&s) {
@@ -413,6 +411,10 @@ impl DynamicWrap for crate::langhelp::ConstKey {
         let s = self.to_str();
         v8::String::new(scope, &s).unwrap().into()
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
+    }
 }
 
 impl DynamicWrapKey for crate::langhelp::ConstKey {
@@ -426,10 +428,6 @@ impl DynamicWrapKey for crate::langhelp::ConstKey {
 }
 
 impl DynamicWrap for expr::Expr {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_expr::TypeExpr)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = super::from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
@@ -443,16 +441,13 @@ impl DynamicWrap for expr::Expr {
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         unimplemented!("Expr should not be sent back to v8")
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_expr::TypeExpr)
+    }
 }
 
 impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::collections::BTreeMap<K, V> {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_map::dynamic::TypeMapDynamic {
-            key_type: K::mortar_type(),
-            value_type: V::mortar_type(),
-        })
-    }
-
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
@@ -484,18 +479,25 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
         }
         obj.into()
     }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_map::dynamic::TypeMapDynamic {
+            key_type: K::mortar_type(),
+            value_type: V::mortar_type(),
+        })
+    }
 }
 
 impl DynamicWrap for String {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
-    }
-
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         value.to_string(scope).unwrap().to_rust_string_lossy(scope)
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         v8::String::new(scope, &self).unwrap().into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(super::value::type_string::dynamic::TypeStringDynamic)
     }
 }

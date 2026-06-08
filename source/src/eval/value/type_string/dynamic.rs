@@ -37,8 +37,8 @@ use {
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    bind_via_target,
                     bind_dynamic_default,
+                    bind_via_target,
                     mortar_consume_to_dynamic,
                     mortar_dynamic_stack_to_value,
                     mortar_set,
@@ -77,6 +77,17 @@ pub(crate) struct TypeStringDynamic;
 impl Aspect for TypeStringDynamic { }
 
 impl AspectArtifact for TypeStringDynamic {
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())))
+    }
+
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -90,17 +101,6 @@ impl AspectArtifact for TypeStringDynamic {
                 .expect("TypeStringDynamic::to_serial expects a string value")
                 .get(value.as_ref());
         EResult::ok(Self::build_artifact(s))
-    }
-
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())))
     }
 }
 
@@ -199,10 +199,6 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 impl AspectStringDynamic for TypeStringDynamic { }
 
 impl Type for TypeStringDynamic {
-    fn desc(&self) -> String {
-        return format!("mortar string");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringDynamic)
     }
@@ -238,23 +234,13 @@ impl Type for TypeStringDynamic {
         return None;
     }
 
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_string_dynamic_get_maybe(xx, type_).is_some()
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: cv.code,
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeStringDynamic),
-            }),
-        })
-    }
-
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         aspect_string_const_get_maybe(xx, source_type).is_some() ||
             aspect_string_dynamic_get_maybe(xx, source_type).is_some()
+    }
+
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        aspect_string_dynamic_get_maybe(xx, type_).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -295,6 +281,20 @@ impl Type for TypeStringDynamic {
                 });
             }
         });
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeStringDynamic),
+            }),
+        })
+    }
+
+    fn desc(&self) -> String {
+        return format!("mortar string");
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {

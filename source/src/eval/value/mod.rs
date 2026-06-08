@@ -1,8 +1,8 @@
+pub mod dynamic_util;
 pub mod record;
 pub mod tuple;
 pub mod type_any;
 pub mod type_bool;
-pub mod dynamic_util;
 pub mod type_expr;
 pub mod type_function;
 pub mod type_list;

@@ -49,8 +49,8 @@ pub(crate) enum CodeDynamicBlockEntry {
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicCall {
-    pub(crate) func: Box<CodeDynamic>,
     pub(crate) args: Vec<CodeDynamic>,
+    pub(crate) func: Box<CodeDynamic>,
 }
 
 #[derive(Clone)]
@@ -69,15 +69,15 @@ pub(crate) struct CodeDynamicFieldUse {
 #[derive(Clone)]
 pub(crate) struct CodeDynamicForeach {
     pub(crate) base: Box<CodeDynamic>,
-    pub(crate) element_key: ScopeEntryId,
     pub(crate) body: Box<CodeDynamic>,
+    pub(crate) element_key: ScopeEntryId,
 }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicForeachMap {
     pub(crate) base: Box<CodeDynamic>,
-    pub(crate) element_key: ScopeEntryId,
     pub(crate) body: Box<CodeDynamic>,
+    pub(crate) element_key: ScopeEntryId,
 }
 
 #[derive(Clone)]
@@ -89,15 +89,15 @@ pub(crate) struct CodeDynamicIf {
 #[derive(Clone)]
 pub(crate) struct CodeDynamicMatch {
     pub(crate) base: Box<CodeDynamic>,
-    pub(crate) element_key: ScopeEntryId,
     pub(crate) cases: Vec<CodeDynamicMatchBranch>,
+    pub(crate) element_key: ScopeEntryId,
     pub(crate) fallback: Option<Box<CodeDynamic>>,
 }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicMatchBranch {
-    pub(crate) dynamic_tag: String,
     pub(crate) body: CodeDynamic,
+    pub(crate) dynamic_tag: String,
 }
 
 #[derive(Clone)]
@@ -129,20 +129,20 @@ pub(crate) struct CodeDynamicOperatorLt {
 
 #[derive(Clone)]
 pub(crate) enum CodeDynamicType {
-    Literal(serde_json::Value),
-    NewObject(CodeDynamicNewObject),
-    NewMap(CodeDynamicNewMap),
-    NewArray(CodeDynamicNewArray),
-    Block(CodeDynamicBlock),
-    BindingUse(CodeDynamicBindingUse),
     BindingSet(CodeDynamicBindingSet),
-    FieldUse(CodeDynamicFieldUse),
-    FieldSet(CodeDynamicFieldSet),
+    BindingUse(CodeDynamicBindingUse),
+    Block(CodeDynamicBlock),
     Call(CodeDynamicCall),
-    If(CodeDynamicIf),
-    OperatorLt(CodeDynamicOperatorLt),
-    OperatorAdd(CodeDynamicOperatorAdd),
+    FieldSet(CodeDynamicFieldSet),
+    FieldUse(CodeDynamicFieldUse),
     Foreach(CodeDynamicForeach),
     ForeachMap(CodeDynamicForeachMap),
+    If(CodeDynamicIf),
+    Literal(serde_json::Value),
     Match(CodeDynamicMatch),
+    NewArray(CodeDynamicNewArray),
+    NewMap(CodeDynamicNewMap),
+    NewObject(CodeDynamicNewObject),
+    OperatorAdd(CodeDynamicOperatorAdd),
+    OperatorLt(CodeDynamicOperatorLt),
 }

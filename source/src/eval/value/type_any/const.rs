@@ -83,10 +83,6 @@ impl AspectConsumeDynamic for TypeAnyConst {
 }
 
 impl Type for TypeAnyConst {
-    fn desc(&self) -> String {
-        "type".to_string()
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAnyConst)
     }
@@ -107,16 +103,6 @@ impl Type for TypeAnyConst {
         None
     }
 
-    fn cast_to(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _cv: crate::langhelp::CodeValue,
-        _type_: &dyn Type,
-    ) -> crate::langhelp::EvalRes {
-        crate::langhelp::EvalRes::err(loc, "Cannot convert type".to_string())
-    }
-
     fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn crate::langhelp::Type) -> bool {
         true
     }
@@ -135,6 +121,20 @@ impl Type for TypeAnyConst {
             },
             value: type_.as_value(),
         })
+    }
+
+    fn cast_to(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _cv: crate::langhelp::CodeValue,
+        _type_: &dyn Type,
+    ) -> crate::langhelp::EvalRes {
+        crate::langhelp::EvalRes::err(loc, "Cannot convert type".to_string())
+    }
+
+    fn desc(&self) -> String {
+        "type".to_string()
     }
 }
 

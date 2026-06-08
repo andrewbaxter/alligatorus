@@ -25,24 +25,9 @@ use {
 };
 
 pub trait Artifacts: Send + Sync {
+    fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
     fn reserve_id(&self) -> ArtifactId;
     fn set(&self, id: ArtifactId, data: Artifact);
-    fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
-}
-
-pub(crate) fn produce_independent_artifact(
-    artifacts: &dyn Artifacts,
-    cell: &std::cell::RefCell<Option<ArtifactId>>,
-    produce: impl FnOnce() -> Artifact,
-) -> ArtifactId {
-    if let Some(existing_id) = cell.borrow().clone() {
-        return existing_id;
-    }
-    let id = artifacts.reserve_id();
-    *cell.borrow_mut() = Some(id.clone());
-    let artifact = produce();
-    artifacts.set(id.clone(), artifact);
-    id
 }
 
 pub(crate) trait Aspect: Any { }
@@ -58,19 +43,19 @@ pub trait Sources: Send + Sync {
 }
 
 pub(crate) trait Type: Value {
-    fn desc(&self) -> String;
-    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
     fn as_value(&self) -> Rc<dyn Value>;
-
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        false
-    }
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes;
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
 
     fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
         false
     }
+
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        false
+    }
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes;
+    fn desc(&self) -> String;
 
     /// Serialize this type itself as an artifact (for type references).
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
@@ -85,8 +70,8 @@ pub(crate) trait Value: Any {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct Artifact {
-    pub(crate) type_: ArtifactId,
     pub(crate) data: serde_json::Value,
+    pub(crate) type_: ArtifactId,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
@@ -109,8 +94,8 @@ pub(crate) struct ArtifactIdSource(pub CompileId, pub usize);
 
 #[derive(Clone)]
 pub(crate) struct Code {
-    pub(crate) loc: QExprId,
     pub(crate) code: Code_,
+    pub(crate) loc: QExprId,
 }
 
 impl Code {
@@ -133,8 +118,8 @@ impl Code {
 
 #[derive(Clone)]
 pub(crate) enum Code_ {
-    None,
     Dyn(Rc<dyn CodeDyn>),
+    None,
 }
 
 /// In the first pass (meta evaluation) this bundles a Value (static meta about a
@@ -154,24 +139,24 @@ pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 /// One per module (per import env).
 pub(crate) struct CompileImportContext {
-    pub(crate) gx: Arc<GlobalContext>,
-    pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) builtin_types: HashMap<ArtifactIdBuiltin, Rc<dyn Type>>,
+    pub(crate) compile_path: Vec<(CompileId, ExprId)>,
+    pub(crate) gx: Arc<GlobalContext>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileRes {
+    pub(crate) generated_mortar_scripts: Vec<String>,
     pub(crate) logs: Vec<LogEntry>,
     pub(crate) result: CompileResResult,
-    pub(crate) generated_mortar_scripts: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum CompileResResult {
-    Ok(Artifact),
     Err(Vec<ExprErr>),
+    Ok(Artifact),
 }
 
 pub(crate) struct CompileResultEntry {
@@ -185,15 +170,6 @@ pub(crate) enum ConstKey {
 }
 
 impl ConstKey {
-    /// Serialize to a canonical JSON string (for persistence/wire format).
-    pub(crate) fn to_str(&self) -> String {
-        let json = match self {
-            ConstKey::String(s) => serde_json::Value::String(s.clone()),
-            ConstKey::Usize(n) => serde_json::Value::Number((*n).into()),
-        };
-        serde_json_canonicalizer::to_string(&json).unwrap()
-    }
-
     /// Deserialize from a canonical JSON string.
     pub(crate) fn from_str(s: &str) -> Result<ConstKey, String> {
         let json: serde_json::Value =
@@ -209,6 +185,15 @@ impl ConstKey {
             },
             _ => Err(format!("Unsupported ConstKey JSON value: {}", s)),
         }
+    }
+
+    /// Serialize to a canonical JSON string (for persistence/wire format).
+    pub(crate) fn to_str(&self) -> String {
+        let json = match self {
+            ConstKey::String(s) => serde_json::Value::String(s.clone()),
+            ConstKey::Usize(n) => serde_json::Value::Number((*n).into()),
+        };
+        serde_json_canonicalizer::to_string(&json).unwrap()
     }
 }
 
@@ -266,7 +251,6 @@ pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Option<Rc<T>> {
 ///
 /// If `v` is empty this is an error result, and `errors` must be non-empty.
 pub(crate) struct EResult<T> {
-    pub(crate) v: Option<T>,
     /// Various errors, either causing the current evaluation to fail or from side
     /// effects or prior statements. When considering alternative evaluation paths,
     /// errors may be discarded, but the errors from one branch will always be kept.
@@ -275,16 +259,17 @@ pub(crate) struct EResult<T> {
     ///
     /// If `Some`, the result is in an error state (even if the list is empty).
     pub(crate) errors: Option<Vec<ExprErr>>,
+    pub(crate) v: Option<T>,
 }
 
 /// Multiple evaluations per module.
 pub(crate) struct EvalContext {
-    pub(crate) ix: Rc<CompileImportContext>,
-    pub(crate) next_local_id: Counter,
     pub(crate) definition_sets: std
     ::cell
     ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
+    pub(crate) ix: Rc<CompileImportContext>,
+    pub(crate) next_local_id: Counter,
 }
 
 /// If None, it means that the evaluation failed in a way that affects downstream
@@ -293,17 +278,17 @@ pub(crate) type EvalRes = EResult<CodeValue>;
 
 /// Per expression
 pub(crate) struct ExprContext {
-    pub(crate) vx: Rc<EvalContext>,
     pub(crate) import_state: Rc<Cell<ImportStateId>>,
     pub(crate) scope: Rc<Scope>,
     pub(crate) target: Rc<dyn crate::eval::Target>,
+    pub(crate) vx: Rc<EvalContext>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ExprErr {
-    pub(crate) loc: QExprId,
     pub(crate) errors: Vec<ExprSubErr>,
+    pub(crate) loc: QExprId,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
@@ -319,22 +304,13 @@ pub(crate) enum External {
 }
 
 pub(crate) struct GlobalContext {
-    pub(crate) sources: Box<dyn Sources>,
     pub(crate) artifacts: Box<dyn Artifacts>,
-    pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
     pub(crate) compile_results: Mutex<HashMap<CompileId, Arc<CompileResultEntry>>>,
+    pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
+    pub(crate) sources: Box<dyn Sources>,
 }
 
 impl GlobalContext {
-    pub(crate) fn new(sources: Box<dyn Sources>, artifacts: Box<dyn Artifacts>) -> Arc<GlobalContext> {
-        Arc::new(GlobalContext {
-            sources,
-            artifacts,
-            generated_mortar_scripts: Default::default(),
-            compile_results: Default::default(),
-        })
-    }
-
     pub(crate) fn deserialize_artifact(
         &self,
         xx: &ExprContext,
@@ -424,6 +400,15 @@ impl GlobalContext {
             },
         }
     }
+
+    pub(crate) fn new(sources: Box<dyn Sources>, artifacts: Box<dyn Artifacts>) -> Arc<GlobalContext> {
+        Arc::new(GlobalContext {
+            sources,
+            artifacts,
+            generated_mortar_scripts: Default::default(),
+            compile_results: Default::default(),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
@@ -433,8 +418,8 @@ pub(crate) struct ImportStateId(pub usize);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct LogEntry {
-    pub(crate) timestamp_ms: u64,
     pub(crate) message: String,
+    pub(crate) timestamp_ms: u64,
 }
 
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
@@ -457,21 +442,36 @@ pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     m
 }
 
+pub(crate) fn produce_independent_artifact(
+    artifacts: &dyn Artifacts,
+    cell: &std::cell::RefCell<Option<ArtifactId>>,
+    produce: impl FnOnce() -> Artifact,
+) -> ArtifactId {
+    if let Some(existing_id) = cell.borrow().clone() {
+        return existing_id;
+    }
+    let id = artifacts.reserve_id();
+    *cell.borrow_mut() = Some(id.clone());
+    let artifact = produce();
+    artifacts.set(id.clone(), artifact);
+    id
+}
+
 pub(crate) type QExprId = (SourceId, ExprId);
 
 pub(crate) struct Scope {
-    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn ScopeEntry>>>,
     pub(crate) parent: Option<Rc<Scope>>,
+    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn ScopeEntry>>>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 pub(crate) enum ScopeEntryId {
-    /// Local bindings within an evaluation
-    Local(usize),
     /// Builtin/static functions - deterministic indices
     Builtin(usize),
     /// Definition set entry - deterministic
     Def(ImportStateId, DefSetId, usize),
+    /// Local bindings within an evaluation
+    Local(usize),
 }
 
 /// World id for this import spec
@@ -491,13 +491,6 @@ pub(crate) enum Unique {
 }
 
 impl<T> EResult<T> {
-    pub(crate) fn ok(v: T) -> Self {
-        return Self {
-            v: Some(v),
-            errors: None,
-        };
-    }
-
     pub(crate) fn err(loc: QExprId, e: String) -> Self {
         return Self {
             v: None,
@@ -520,6 +513,13 @@ impl<T> EResult<T> {
         return EResult {
             v: self.v.map(f),
             errors: self.errors,
+        };
+    }
+
+    pub(crate) fn ok(v: T) -> Self {
+        return Self {
+            v: Some(v),
+            errors: None,
         };
     }
 }

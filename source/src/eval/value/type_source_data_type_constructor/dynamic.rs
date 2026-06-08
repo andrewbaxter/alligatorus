@@ -239,4 +239,3 @@ impl Value for TypeSourceDataTypeConstructorDynamic {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
-

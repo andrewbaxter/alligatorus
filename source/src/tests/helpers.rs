@@ -51,38 +51,51 @@ pub(super) struct ModuleBuilder {
 }
 
 impl ModuleBuilder {
-    pub fn id(&self) -> ExprId {
-        let id = self.next_phrase_id.get();
-        self.next_phrase_id.set(id + 1);
-        return ExprId(id);
-    }
-
-    pub fn null(&self) -> SourceExpr {
+    pub fn as_(&self, base: SourceExpr, target: SourceExpr) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Literal(SourceLiteral::Null),
-        }
+            r#type: SourceExpr_::As(SourceExprAs {
+                base: Box::new(base),
+                target: Box::new(target),
+            }),
+        };
     }
 
-    pub fn num(&self, v: f64) -> SourceExpr {
+    pub fn bind(&self, key: &str, expr: SourceExpr) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Literal(SourceLiteral::Number(v.try_into().unwrap())),
-        }
+            r#type: SourceExpr_::Bind(SourceExprBind {
+                base: key.to_string(),
+                value: Box::new(expr),
+            }),
+        };
     }
 
-    pub fn str(&self, s: &str) -> SourceExpr {
+    pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Literal(SourceLiteral::String(s.to_string())),
-        }
+            r#type: SourceExpr_::Block(SourceExprBlock { exprs: exprs }),
+        };
     }
 
-    pub fn tuple(&self, values: Vec<SourceExpr>) -> SourceExpr {
+    pub fn call(&self, func: SourceExpr, args: SourceExpr) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Tuple(values),
-        }
+            r#type: SourceExpr_::Call(SourceExprCall {
+                func: Box::new(func),
+                arg: Box::new(args),
+            }),
+        };
+    }
+
+    pub fn field(&self, base: SourceExpr, key: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Field(SourceExprField {
+                base: Box::new(base),
+                key: Box::new(key),
+            }),
+        };
     }
 
     pub fn foreach(&self, base: SourceExpr, element_key: SourceExpr, body: SourceExpr) -> SourceExpr {
@@ -94,6 +107,39 @@ impl ModuleBuilder {
                 body: Box::new(body),
             }),
         }
+    }
+
+    pub fn id(&self) -> ExprId {
+        let id = self.next_phrase_id.get();
+        self.next_phrase_id.set(id + 1);
+        return ExprId(id);
+    }
+
+    pub fn if_(&self, cases: Vec<(SourceExpr, SourceExpr)>, else_: Option<SourceExpr>) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::If(SourceExprIf {
+                conditions: cases.into_iter().map(|x| SerialExprIfConditionBranch {
+                    condition: x.0,
+                    body: x.1,
+                }).collect(),
+                fallback: else_.map(Box::new),
+            }),
+        };
+    }
+
+    pub fn import(&self, spec: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Import(SourceExprImport { spec: Box::new(spec) }),
+        };
+    }
+
+    pub fn lower(&self, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Lower(SourceExprLower { expr: Box::new(expr) }),
+        };
     }
 
     pub fn match_(
@@ -117,62 +163,26 @@ impl ModuleBuilder {
         }
     }
 
-    pub fn scope_use(&self, key: &str) -> SourceExpr {
+    pub fn null(&self) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::ScopeUse(SourceExprBindingUse { key: Box::new(SourceExpr {
-                id: self.id(),
-                r#type: SourceExpr_::Literal(SourceLiteral::String(key.to_string())),
-            }) }),
-        };
+            r#type: SourceExpr_::Literal(SourceLiteral::Null),
+        }
     }
 
-    pub fn field(&self, base: SourceExpr, key: SourceExpr) -> SourceExpr {
+    pub fn num(&self, v: f64) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Field(SourceExprField {
+            r#type: SourceExpr_::Literal(SourceLiteral::Number(v.try_into().unwrap())),
+        }
+    }
+
+    pub fn operator_add(&self, base: SourceExpr, reference: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::OperatorAdd(SourceExprOperatorAdd {
                 base: Box::new(base),
-                key: Box::new(key),
-            }),
-        };
-    }
-
-    pub fn call(&self, func: SourceExpr, args: SourceExpr) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Call(SourceExprCall {
-                func: Box::new(func),
-                arg: Box::new(args),
-            }),
-        };
-    }
-
-    pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Block(SourceExprBlock { exprs: exprs }),
-        };
-    }
-
-    pub fn bind(&self, key: &str, expr: SourceExpr) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Bind(SourceExprBind {
-                base: key.to_string(),
-                value: Box::new(expr),
-            }),
-        };
-    }
-
-    pub fn if_(&self, cases: Vec<(SourceExpr, SourceExpr)>, else_: Option<SourceExpr>) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::If(SourceExprIf {
-                conditions: cases.into_iter().map(|x| SerialExprIfConditionBranch {
-                    condition: x.0,
-                    body: x.1,
-                }).collect(),
-                fallback: else_.map(Box::new),
+                reference: Box::new(reference),
             }),
         };
     }
@@ -187,13 +197,20 @@ impl ModuleBuilder {
         };
     }
 
-    pub fn operator_add(&self, base: SourceExpr, reference: SourceExpr) -> SourceExpr {
+    pub fn record(&self, entries: Vec<(&str, SourceExpr)>) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::OperatorAdd(SourceExprOperatorAdd {
-                base: Box::new(base),
-                reference: Box::new(reference),
-            }),
+            r#type: SourceExpr_::Record(entries.into_iter().map(|(k, v)| (self.str(k), v)).collect()),
+        };
+    }
+
+    pub fn scope_use(&self, key: &str) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::ScopeUse(SourceExprBindingUse { key: Box::new(SourceExpr {
+                id: self.id(),
+                r#type: SourceExpr_::Literal(SourceLiteral::String(key.to_string())),
+            }) }),
         };
     }
 
@@ -214,35 +231,18 @@ impl ModuleBuilder {
         };
     }
 
-    pub fn lower(&self, expr: SourceExpr) -> SourceExpr {
+    pub fn str(&self, s: &str) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Lower(SourceExprLower { expr: Box::new(expr) }),
-        };
+            r#type: SourceExpr_::Literal(SourceLiteral::String(s.to_string())),
+        }
     }
 
-    pub fn import(&self, spec: SourceExpr) -> SourceExpr {
+    pub fn tuple(&self, values: Vec<SourceExpr>) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Import(SourceExprImport { spec: Box::new(spec) }),
-        };
-    }
-
-    pub fn as_(&self, base: SourceExpr, target: SourceExpr) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::As(SourceExprAs {
-                base: Box::new(base),
-                target: Box::new(target),
-            }),
-        };
-    }
-
-    pub fn record(&self, entries: Vec<(&str, SourceExpr)>) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Record(entries.into_iter().map(|(k, v)| (self.str(k), v)).collect()),
-        };
+            r#type: SourceExpr_::Tuple(values),
+        }
     }
 }
 
@@ -274,8 +274,8 @@ pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
 }
 
 pub(super) struct TestArtifacts {
-    next_id: Mutex<usize>,
     pub data: Mutex<HashMap<ArtifactId, Artifact>>,
+    next_id: Mutex<usize>,
 }
 
 impl TestArtifacts {
@@ -302,6 +302,10 @@ impl crate::langhelp::Sources for TestSources {
 }
 
 impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
+    fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
+        self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
+    }
+
     fn reserve_id(&self) -> ArtifactId {
         let mut next = self.next_id.lock().unwrap();
         let id = *next;
@@ -311,9 +315,5 @@ impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
 
     fn set(&self, id: ArtifactId, data: Artifact) {
         self.data.lock().unwrap().insert(id, data);
-    }
-
-    fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
-        self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
     }
 }

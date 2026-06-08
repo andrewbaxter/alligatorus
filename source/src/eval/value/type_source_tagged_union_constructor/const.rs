@@ -65,12 +65,6 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
 }
 
 impl Type for TypeSourceTaggedUnionConstructorConst {
-    fn desc(&self) -> String {
-        let variants = self.data.variants.borrow();
-        let tag = &variants[self.variant_index].tag;
-        format!("tagged_union_constructor({:?})", tag)
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionConstructorConst {
             data: self.data.clone(),
@@ -88,12 +82,18 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
         return None;
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor"))
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tagged_union_constructor"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor"))
+    fn desc(&self) -> String {
+        let variants = self.data.variants.borrow();
+        let tag = &variants[self.variant_index].tag;
+        format!("tagged_union_constructor({:?})", tag)
     }
 }
 

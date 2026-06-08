@@ -18,8 +18,8 @@ use {
             value::dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_via_target,
                 bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -118,10 +118,6 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
 }
 
 impl Type for TypeSourceTaggedUnionConstructorDynamic {
-    fn desc(&self) -> String {
-        format!("tagged_union_constructor_ref")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
@@ -153,12 +149,16 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         return None;
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert tagged_union_constructor_ref"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
+    fn desc(&self) -> String {
+        format!("tagged_union_constructor_ref")
     }
 }
 
@@ -169,10 +169,6 @@ impl Value for TypeSourceTaggedUnionConstructorDynamic {
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionConstructorRef> {
-    fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(TypeSourceTaggedUnionConstructorDynamic)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let type_: &Rc<dyn Type> = crate::eval::from_v8_ref(&*value);
         let ctor =
@@ -191,5 +187,9 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionConstructorR
             variant_index: self.variant_index,
         });
         crate::eval::to_v8(scope, type_).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
 }

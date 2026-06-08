@@ -48,17 +48,6 @@ pub(crate) struct TypeStringConst;
 impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let s = <dyn Any>::downcast_ref::<ValueStringConst>(value.as_ref()).unwrap().0.clone();
-        EResult::ok(Self::build_artifact(s))
-    }
-
     fn from_serial(
         &self,
         _xx: &ExprContext,
@@ -70,6 +59,17 @@ impl AspectArtifact for TypeStringConst {
             serde_json::Value::String(s) => Ok(Rc::new(ValueStringConst(s.clone())) as Rc<dyn Value>),
             _ => Err("Expected string data for string type".to_string()),
         }
+    }
+
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _gx: &GlobalContext,
+        _loc: QExprId,
+        value: Rc<dyn Value>,
+    ) -> EResult<Artifact> {
+        let s = <dyn Any>::downcast_ref::<ValueStringConst>(value.as_ref()).unwrap().0.clone();
+        EResult::ok(Self::build_artifact(s))
     }
 }
 
@@ -103,16 +103,8 @@ impl AspectStringConst for TypeStringConst {
 }
 
 impl Type for TypeStringConst {
-    fn desc(&self) -> String {
-        return format!("string");
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringConst)
-    }
-
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::type_ref_artifact())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -131,8 +123,24 @@ impl Type for TypeStringConst {
         return None;
     }
 
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        aspect_string_const_get_maybe(xx, source_type).is_some()
+    }
+
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_string_const_get_maybe(xx, type_).is_some()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let CodeValue { code, value } = cv;
+            let type_ = value.type_(xx, loc);
+            let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_.as_ref()))?;
+            return Ok(CodeValue {
+                code: code,
+                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
+            });
+        });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -146,20 +154,12 @@ impl Type for TypeStringConst {
         });
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        aspect_string_const_get_maybe(xx, source_type).is_some()
+    fn desc(&self) -> String {
+        return format!("string");
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let CodeValue { code, value } = cv;
-            let type_ = value.type_(xx, loc);
-            let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_.as_ref()))?;
-            return Ok(CodeValue {
-                code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
-            });
-        });
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Self::type_ref_artifact())
     }
 }
 

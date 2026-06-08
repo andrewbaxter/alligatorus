@@ -59,10 +59,6 @@ impl AspectFunction for TypeMapConstructorConst {
 }
 
 impl Type for TypeMapConstructorConst {
-    fn desc(&self) -> String {
-        "map constructor".to_string()
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapConstructorConst)
     }
@@ -74,12 +70,16 @@ impl Type for TypeMapConstructorConst {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to map constructor".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert map constructor".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to map constructor".to_string())
+    fn desc(&self) -> String {
+        "map constructor".to_string()
     }
 }
 

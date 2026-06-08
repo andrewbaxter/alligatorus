@@ -22,10 +22,14 @@ mod aspect_type;
 
 pub(crate) use {
     aspect_artifact::*,
-    aspect_bind::*,
-    aspect_bind::dynamic::*,
-    aspect_bool::r#const::*,
-    aspect_bool::dynamic::*,
+    aspect_bind::{
+        dynamic::*,
+        *,
+    },
+    aspect_bool::{
+        dynamic::*,
+        r#const::*,
+    },
     aspect_consume::dynamic::*,
     aspect_field::*,
     aspect_function::*,
@@ -34,15 +38,19 @@ pub(crate) use {
     aspect_list::dynamic::*,
     aspect_map::dynamic::*,
     aspect_null::*,
-    aspect_number::r#const::*,
-    aspect_number::dynamic::*,
+    aspect_number::{
+        dynamic::*,
+        r#const::*,
+    },
     aspect_operator_add::*,
     aspect_operator_lt::*,
     aspect_record::*,
     aspect_set::*,
     aspect_stack_value::dynamic::*,
-    aspect_string::r#const::*,
-    aspect_string::dynamic::*,
+    aspect_string::{
+        dynamic::*,
+        r#const::*,
+    },
     aspect_tagged_union::*,
     aspect_tuple::*,
     aspect_type::*,

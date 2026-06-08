@@ -155,13 +155,6 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
 }
 
 impl Type for TypeSourceInterfaceConst {
-    fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("interface"),
-        }
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
     }
@@ -206,10 +199,6 @@ impl Type for TypeSourceInterfaceConst {
         return None;
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
-    }
-
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         let identity = self.data.identity.clone();
         source_type.aspect(xx, &identity).is_some()
@@ -228,6 +217,17 @@ impl Type for TypeSourceInterfaceConst {
             });
         }
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
+    }
+
+    fn desc(&self) -> String {
+        match self.data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("interface"),
+        }
     }
 }
 

@@ -42,10 +42,6 @@ impl AspectFunction for TypeListConstructorConst {
 }
 
 impl Type for TypeListConstructorConst {
-    fn desc(&self) -> String {
-        "list constructor".to_string()
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeListConstructorConst)
     }
@@ -57,12 +53,16 @@ impl Type for TypeListConstructorConst {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to list constructor".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert list constructor".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to list constructor".to_string())
+    fn desc(&self) -> String {
+        "list constructor".to_string()
     }
 }
 

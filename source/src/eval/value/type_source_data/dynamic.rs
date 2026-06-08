@@ -18,8 +18,8 @@ use {
             value::dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_via_target,
                 bind_dynamic_default,
+                bind_via_target,
             },
         },
         langhelp::{
@@ -111,10 +111,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
 }
 
 impl Type for TypeSourceDataTypeDynamic {
-    fn desc(&self) -> String {
-        format!("definition_set_data_type_ref")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeDynamic)
     }
@@ -138,12 +134,16 @@ impl Type for TypeSourceDataTypeDynamic {
         return None;
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to data_type_ref"))
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert data_type_ref"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_ref"))
+    fn desc(&self) -> String {
+        format!("definition_set_data_type_ref")
     }
 }
 

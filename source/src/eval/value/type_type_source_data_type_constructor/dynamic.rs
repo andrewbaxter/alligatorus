@@ -36,6 +36,17 @@ pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_ = deserialize_defset_ctor_as_type(xx, gx, loc, data)?;
+        Ok(type_.as_value())
+    }
+
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -55,17 +66,6 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
             data: serde_json::Value::Null,
         })
     }
-
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_ = deserialize_defset_ctor_as_type(xx, gx, loc, data)?;
-        Ok(type_.as_value())
-    }
 }
 
 impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
@@ -76,10 +76,6 @@ impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
 }
 
 impl Type for TypeTypeSourceDataTypeConstructorDynamic {
-    fn desc(&self) -> String {
-        "definition_set_data_type_constructor_type".to_string()
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
@@ -97,12 +93,16 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
         None
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to definition_set_data_type_constructor_type".to_string())
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert definition_set_data_type_constructor_type".to_string())
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to definition_set_data_type_constructor_type".to_string())
+    fn desc(&self) -> String {
+        "definition_set_data_type_constructor_type".to_string()
     }
 }
 
