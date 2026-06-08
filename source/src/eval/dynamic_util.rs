@@ -51,6 +51,9 @@ use {
 };
 
 pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
+    if matches!(cv.code.code, Code_::None) {
+        return EResult::ok(None);
+    }
     let vtype = cv.value.type_(xx, loc);
     mortar_consume_to_dynamic(xx, loc, cv).map(|c| Some(TargetBindSub {
         data: Code {

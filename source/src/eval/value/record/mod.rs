@@ -47,7 +47,6 @@ use {
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
                 },
-                value_empty::r#const::ValueEmptyConst,
             },
         },
         langhelp::{
@@ -104,42 +103,6 @@ impl Record {
     ) -> EResult<(BTreeMap<ConstKey, RecordScopeField>, Option<TargetBindSub>)> {
         let record: Record =
             Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record bind_sub: Rc not unique");
-        let is_sourceless =
-            matches!(cv.code.code, Code_::None) && record.source.is_none() &&
-                record.fields.values().all(|f| match f {
-                    RecordField::EvalRes(er) => {
-                        er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
-                    },
-                    RecordField::Mortar(_) => false,
-                });
-        if is_sourceless {
-            let mut scope_fields = BTreeMap::new();
-            for (key, field) in record.fields {
-                match field {
-                    RecordField::EvalRes(er) => {
-                        if let Some(errs) = &er.errors {
-                            scope_fields.insert(key, RecordScopeField::Error(errs.clone()));
-                        } else if let Some(field_cv) = er.v {
-                            let field_type = field_cv.value.type_(xx, loc);
-                            let bind_res = match aspect_bind_get(xx, loc, field_type.as_ref()).into_res() {
-                                Ok(fb) => fb.bind(xx, loc, field_cv),
-                                Err(errs) => EResult { v: None, errors: Some(errs) },
-                            };
-                            match bind_res.into_res() {
-                                Ok((_, entry)) => {
-                                    scope_fields.insert(key, RecordScopeField::Scope(entry));
-                                },
-                                Err(errs) => {
-                                    scope_fields.insert(key, RecordScopeField::Error(errs));
-                                },
-                            }
-                        }
-                    },
-                    RecordField::Mortar(_) => unreachable!(),
-                }
-            }
-            return EResult::ok((scope_fields, None));
-        }
         let carry = cv.code;
         if record.source.is_some() {
             let record_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
@@ -401,7 +364,6 @@ impl AspectField for Record {
                 });
             })?);
             let CodeValue { code: self_code_raw, value: self_value } = self_;
-            let is_none = matches!(self_code_raw.code, Code_::None);
             if self.source.is_none() {
                 let mut record =
                     Rc::try_unwrap(downcast_value::<Record>(self_value))
@@ -421,17 +383,6 @@ impl AspectField for Record {
                         return erb.err_new(format!("Field '{}' not found on record value", key_name));
                     },
                 }
-            }
-
-            // If self_ is a static value (no JS code), return a static value for the field
-            if is_none {
-                return Ok(CodeValue {
-                    code: Code {
-                        loc,
-                        code: Code_::None,
-                    },
-                    value: Rc::new(ValueEmptyConst { type_: entry_type }),
-                });
             }
             let self_code = erb.must_er(self_code_raw.cast::<CodeDynamic>())?.unwrap().clone();
             let field_code = Code {

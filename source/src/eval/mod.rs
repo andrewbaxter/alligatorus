@@ -614,12 +614,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 };
             }
 
-            // Check if any entry value has JS code (Code_::Dyn). If so, the record must also
-            // carry Code_::Dyn so stage processing knows to lift it.
-            let has_entry_code = entries.values().any(|e| {
-                e.v.as_ref().map_or(false, |cv| matches!(cv.code.code, Code_::Dyn(_)))
-            });
-            let code = if key_codes.is_empty() && !has_entry_code {
+            let code = if key_codes.is_empty() {
                 Code {
                     loc: expr.loc,
                     code: Code_::None,

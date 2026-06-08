@@ -156,20 +156,16 @@ a5 = e14;
 }
 {
 let e19;
-e4 = e19;
-}
-{
 let e20;
+e20 = a5;
 let e21;
-e21 = a5;
+e21 = a3;
 let e22;
-e22 = a3;
 let e23;
-let e24;
-e24 = a1;
-e23 = e24._0;
-e20 = { num: e21, str: e22, type: e23 };
-e4 = e20;
+e23 = a1;
+e22 = e23._0;
+e19 = { num: e20, str: e21, type: e22 };
+e4 = e19;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
@@ -348,20 +344,16 @@ a5 = e14;
 }
 {
 let e19;
-e4 = e19;
-}
-{
 let e20;
+e20 = a5;
 let e21;
-e21 = a5;
+e21 = a3;
 let e22;
-e22 = a3;
 let e23;
-let e24;
-e24 = a1;
-e23 = e24._0;
-e20 = { num: e21, str: e22, type: e23 };
-e4 = e20;
+e23 = a1;
+e22 = e23._0;
+e19 = { num: e20, str: e21, type: e22 };
+e4 = e19;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);

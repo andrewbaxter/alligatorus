@@ -77,24 +77,14 @@ impl Tuple {
     fn bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple bind_sub: Rc not unique");
-        let is_sourceless =
-            matches!(cv.code.code, Code_::None) && tuple.source.is_none() && tuple.elements.iter().all(|e| match e {
-                TupleElement::EvalRes(er) => {
-                    er.v.as_ref().map_or(true, |cv| matches!(cv.code.code, Code_::None))
-                },
-                TupleElement::Mortar(_) => false,
-            });
-        if is_sourceless {
-            return EResult::ok(None);
-        }
-        let carry = cv.code;
         if tuple.source.is_some() {
             let tuple_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
-            return xx.target.code_to_bind_sub(loc, carry, tuple_type).map(|sub| Some(sub));
+            return xx.target.code_to_bind_sub(loc, cv.code, tuple_type).map(|sub| Some(sub));
         }
         let mut errors = vec![];
         let mut bind_results: Vec<TupleBindSubResult> = Vec::new();
         let mut has_target = false;
+        let mut extra_codes: Vec<Code> = vec![cv.code];
         for elem in tuple.elements.into_iter() {
             match elem {
                 TupleElement::Mortar(_) => {
@@ -111,12 +101,14 @@ impl Tuple {
                     }
                     if let Some(elem_cv) = elem_res.v {
                         let saved_value = elem_cv.value.clone();
+                        let saved_code = elem_cv.code.clone();
                         match xx.target.maybe_bind_sub(xx, loc, elem_cv).into_res() {
                             Ok(Some(sub)) => {
                                 has_target = true;
                                 bind_results.push(TupleBindSubResult::Target(sub));
                             },
                             Ok(None) => {
+                                extra_codes.push(saved_code);
                                 bind_results.push(TupleBindSubResult::Const(CodeValue {
                                     code: Code {
                                         loc: loc,
@@ -137,8 +129,16 @@ impl Tuple {
                 errors: Some(errors),
             };
         }
+        let carry = match xx.target.block(loc, extra_codes).into_res() {
+            Ok(c) => c,
+            Err(e) => return EResult { v: None, errors: Some(e) },
+        };
         if !has_target {
-            return EResult::ok(None);
+            if matches!(carry.code, Code_::None) {
+                return EResult::ok(None);
+            }
+            let tuple_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
+            return xx.target.code_to_bind_sub(loc, carry, tuple_type).map(|sub| Some(sub));
         }
         let mut target_elements = Vec::new();
         for result in bind_results {
