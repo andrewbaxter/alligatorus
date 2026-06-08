@@ -142,6 +142,11 @@ const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 /// Well-known scope entry ID for __tuple_to_type mortar function.
 pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+pub(crate) struct TargetBindSub {
+    pub data: Code,
+    pub type_: Rc<dyn Type>,
+}
+
 pub(crate) trait Target {
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
     fn if_(
@@ -161,6 +166,11 @@ pub(crate) trait Target {
         fallback: Option<&Expr>,
     ) -> EvalRes;
     fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes;
+    fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>>;
+    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(String, TargetBindSub)>) -> TargetBindSub;
+    fn bind_sub_tuple(&self, loc: QExprId, carry: Code, elements: Vec<TargetBindSub>) -> TargetBindSub;
+    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
+    fn code_to_bind_sub(&self, loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub>;
 }
 
 pub(crate) fn compile_importid(
@@ -2295,6 +2305,112 @@ impl Target for TargetDynamic {
                 }),
             });
         });
+    }
+
+    fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
+        let vtype = cv.value.type_(xx, loc);
+        if let Some(bind_dyn) = crate::builtin::aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) {
+            return bind_dyn.bind_dynamic(xx, loc, cv);
+        }
+        EResult::ok(None)
+    }
+
+    fn bind_sub_record(
+        &self,
+        loc: QExprId,
+        carry: Code,
+        fields: Vec<(String, TargetBindSub)>,
+    ) -> TargetBindSub {
+        let mut js_fields = Vec::new();
+        let mut mortar_fields = std::collections::BTreeMap::new();
+        for (key, sub) in fields {
+            let cd = sub.data.cast::<CodeDynamic>().into_res().expect("TargetDynamic bind_sub_record: expected CodeDynamic").unwrap().clone();
+            js_fields.push((key.clone(), cd));
+            mortar_fields.insert(
+                ConstKey::String(key),
+                value::record::RecordField::Mortar(sub.type_),
+            );
+        }
+        let record_type = Rc::new(Record {
+            source: None,
+            fields: mortar_fields,
+        }) as Rc<dyn Type>;
+        let js = value::tuple::wrap_with_carry(
+            loc,
+            carry,
+            CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::NewObject(crate::code_dynamic::CodeDynamicNewObject {
+                    fields: js_fields,
+                }),
+            },
+        );
+        TargetBindSub {
+            data: Code { loc: loc, code: Code_::Dyn(Rc::new(js)) },
+            type_: record_type,
+        }
+    }
+
+    fn bind_sub_tuple(
+        &self,
+        loc: QExprId,
+        carry: Code,
+        elements: Vec<TargetBindSub>,
+    ) -> TargetBindSub {
+        let mut js_elements = Vec::new();
+        let mut mortar_elements = Vec::new();
+        for sub in elements {
+            let cd = sub.data.cast::<CodeDynamic>().into_res().expect("TargetDynamic bind_sub_tuple: expected CodeDynamic").unwrap().clone();
+            js_elements.push(cd);
+            mortar_elements.push(TupleElement::Mortar(sub.type_));
+        }
+        let tuple_type = Rc::new(Tuple {
+            source: None,
+            elements: mortar_elements,
+        }) as Rc<dyn Type>;
+        let js = value::tuple::wrap_with_carry(
+            loc,
+            carry,
+            CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::NewArray(crate::code_dynamic::CodeDynamicNewArray {
+                    elements: js_elements,
+                }),
+            },
+        );
+        TargetBindSub {
+            data: Code { loc: loc, code: Code_::Dyn(Rc::new(js)) },
+            type_: tuple_type,
+        }
+    }
+
+    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
+        let js = sub.data.cast::<CodeDynamic>().into_res().expect("TargetDynamic bind: expected CodeDynamic").unwrap().clone();
+        let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let code = Code {
+            loc: loc,
+            code: Code_::Dyn(Rc::new(CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::Block(
+                    CodeDynamicBlock {
+                        entries: vec![
+                            CodeDynamicBlockEntry::Bind(CodeDynamicBind {
+                                base: js_key,
+                                value: Box::new(js),
+                            }),
+                        ],
+                    },
+                ),
+            })),
+        };
+        (code, js_key)
+    }
+
+    fn code_to_bind_sub(&self, _loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub> {
+        EResult::ok(TargetBindSub {
+            data: code,
+            type_: type_,
+        })
     }
 }
 

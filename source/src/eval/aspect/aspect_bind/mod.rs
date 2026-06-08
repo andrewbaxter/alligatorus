@@ -1,4 +1,4 @@
-pub mod dynamic_sub;
+pub mod dynamic;
 
 use {
     crate::langhelp::{

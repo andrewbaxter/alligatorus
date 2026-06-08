@@ -3,14 +3,14 @@ use {
         builtin::{
             AspectArtifact,
             AspectBind,
-            AspectBindDynamicSub,
+            AspectBindDynamic,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectNull,
             AspectStackValueDynamic,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_sub_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_null_aspect_id,
@@ -89,18 +89,18 @@ impl AspectBind for TypeNullDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+        crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamicSub for TypeNullDynamic {
-    fn bind_dynamic_sub(
+impl AspectBindDynamic for TypeNullDynamic {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -169,8 +169,8 @@ impl Type for TypeNullDynamic {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBindDynamicSub>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBind>));

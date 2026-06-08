@@ -8,14 +8,13 @@ use {
     crate::{
         builtin::{
             AspectBind,
-            AspectBindDynamicSub,
+            AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
             AspectLiftDynamic,
             AspectRecord,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_sub_aspect_id,
-            aspect_bind_dynamic_sub_get,
+            aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get_maybe,
             aspect_field_aspect_id,
@@ -32,7 +31,7 @@ use {
         },
         eval::{
             Erb,
-            aspect::ScopeEntryDynamicSub,
+            TargetBindSub,
         },
         langhelp::{
             Aspect,
@@ -62,6 +61,11 @@ use {
     super::tuple::wrap_with_carry,
 };
 
+enum BindSubResult {
+    Target(TargetBindSub),
+    Const(CodeValue),
+}
+
 pub(crate) struct Record {
     /// Optional mortar source (like ValueDynamic) — a JS object that fields can be
     /// accessed from at runtime.
@@ -83,14 +87,15 @@ impl Record {
             }).collect(),
         }
     }
-}
 
-impl Aspect for Record { }
-
-impl AspectBind for Record {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind_sub(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<(BTreeMap<ConstKey, RecordScopeField>, Option<TargetBindSub>)> {
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value).unwrap()).ok().expect("Record bind: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value).unwrap()).ok().expect("Record bind_sub: Rc not unique");
         let is_sourceless =
             matches!(cv.code.code, Code_::None) && record.source.is_none() &&
                 record.fields.values().all(|f| match f {
@@ -118,52 +123,23 @@ impl AspectBind for Record {
                     RecordField::Mortar(_) => unreachable!(),
                 }
             }
-            return EResult::ok((Code {
-                loc: loc,
-                code: Code_::None,
-            }, Box::new(ScopeEntryRecordMortar {
-                fields: scope_fields,
-                js_key: None,
-            }) as Box<dyn ScopeEntry>));
+            return EResult::ok((scope_fields, None));
         }
         let carry = cv.code;
         if record.source.is_some() {
-            return carry.cast::<CodeDynamic>().map(|x| x.unwrap().clone()).map(|c| {
-                let scope_fields: BTreeMap<ConstKey, RecordScopeField> = self.fields.iter().map(|(k, f)| {
-                    let t = match f {
-                        RecordField::Mortar(t) => t.clone(),
-                        RecordField::EvalRes(_) => panic!("bind on non-type record"),
-                    };
-                    (k.clone(), RecordScopeField::Mortar(t))
-                }).collect();
-                let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                let code = Code {
-                    loc: loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc: loc,
-                        type_: CodeDynamicType::Block(
-                            crate::code_dynamic::CodeDynamicBlock {
-                                entries: vec![
-                                    crate::code_dynamic::CodeDynamicBlockEntry::Bind(
-                                        crate::code_dynamic::CodeDynamicBind {
-                                            base: js_key,
-                                            value: Box::new(c),
-                                        },
-                                    ),
-                                ],
-                            },
-                        ),
-                    })),
+            let record_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
+            let scope_fields: BTreeMap<ConstKey, RecordScopeField> = self.fields.iter().map(|(k, f)| {
+                let t = match f {
+                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::EvalRes(_) => panic!("bind on non-type record"),
                 };
-                (code, Box::new(ScopeEntryRecordMortar {
-                    fields: scope_fields,
-                    js_key: Some(js_key),
-                }) as Box<dyn ScopeEntry>)
-            });
+                (k.clone(), RecordScopeField::Mortar(t))
+            }).collect();
+            return xx.target.code_to_bind_sub(loc, carry, record_type).map(|sub| (scope_fields, Some(sub)));
         }
         let mut errors = vec![];
-        let mut js_fields = Vec::new();
-        let mut scope_fields = BTreeMap::new();
+        let mut bind_results: Vec<(ConstKey, String, BindSubResult)> = Vec::new();
+        let mut has_target = false;
         for (key, field) in record.fields.into_iter() {
             let key_str = match &key {
                 ConstKey::String(s) => s.clone(),
@@ -172,7 +148,7 @@ impl AspectBind for Record {
             match field {
                 RecordField::Mortar(_) => {
                     errors.push(crate::langhelp::ExprErr {
-                        loc,
+                        loc: loc,
                         errors: vec![
                             crate::langhelp::ExprSubErr::Opaque(
                                 format!("Record entry '{}' is mortar-only, cannot bind directly", key_str),
@@ -185,14 +161,17 @@ impl AspectBind for Record {
                         errors.extend(errs);
                     }
                     if let Some(elem_cv) = elem_res.v {
-                        let elem_value_type = elem_cv.value.type_(xx, loc);
-                        match aspect_bind_dynamic_sub_get(xx, loc, elem_value_type.as_ref()).into_res() {
-                            Ok(bind_sub) => match bind_sub.bind_dynamic_sub(xx, loc, elem_cv).into_res() {
-                                Ok((js, sub)) => {
-                                    js_fields.push((key_str, js));
-                                    scope_fields.insert(key, RecordScopeField::Mortar(sub.type_));
-                                },
-                                Err(e) => errors.extend(e),
+                        let saved_value = elem_cv.value.clone();
+                        match xx.target.maybe_bind_sub(xx, loc, elem_cv).into_res() {
+                            Ok(Some(sub)) => {
+                                has_target = true;
+                                bind_results.push((key, key_str, BindSubResult::Target(sub)));
+                            },
+                            Ok(None) => {
+                                bind_results.push((key, key_str, BindSubResult::Const(CodeValue {
+                                    code: Code { loc: loc, code: Code_::None },
+                                    value: saved_value,
+                                })));
                             },
                             Err(e) => errors.extend(e),
                         }
@@ -206,43 +185,89 @@ impl AspectBind for Record {
                 errors: Some(errors),
             };
         }
-        let js = wrap_with_carry(loc, carry, CodeDynamic {
-            loc,
-            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: js_fields }),
-        });
-        let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        let code = Code {
-            loc: loc,
-            code: Code_::Dyn(Rc::new(CodeDynamic {
-                loc: loc,
-                type_: CodeDynamicType::Block(
-                    crate::code_dynamic::CodeDynamicBlock {
-                        entries: vec![
-                            crate::code_dynamic::CodeDynamicBlockEntry::Bind(crate::code_dynamic::CodeDynamicBind {
-                                base: js_key,
-                                value: Box::new(js),
-                            }),
-                        ],
+        if !has_target {
+            let mut scope_fields = BTreeMap::new();
+            for (key, _key_str, result) in bind_results {
+                match result {
+                    BindSubResult::Const(cv) => {
+                        scope_fields.insert(
+                            key,
+                            RecordScopeField::Scope(
+                                Box::new(super::tuple::ScopeEntryValue { value: cv.value }),
+                            ),
+                        );
                     },
-                ),
-            })),
-        };
-        EResult::ok((code, Box::new(ScopeEntryRecordMortar {
-            fields: scope_fields,
-            js_key: Some(js_key),
-        }) as Box<dyn ScopeEntry>))
+                    BindSubResult::Target(_) => unreachable!(),
+                }
+            }
+            return EResult::ok((scope_fields, None));
+        }
+        let mut target_fields = Vec::new();
+        let mut scope_fields = BTreeMap::new();
+        for (key, key_str, result) in bind_results {
+            match result {
+                BindSubResult::Target(sub) => {
+                    scope_fields.insert(key, RecordScopeField::Mortar(sub.type_.clone()));
+                    target_fields.push((key_str, sub));
+                },
+                BindSubResult::Const(cv) => {
+                    scope_fields.insert(
+                        key,
+                        RecordScopeField::Scope(
+                            Box::new(super::tuple::ScopeEntryValue { value: cv.value }),
+                        ),
+                    );
+                },
+            }
+        }
+        if !errors.is_empty() {
+            return EResult {
+                v: None,
+                errors: Some(errors),
+            };
+        }
+        let combined = xx.target.bind_sub_record(loc, carry, target_fields);
+        EResult::ok((scope_fields, Some(combined)))
     }
 }
 
-impl AspectBindDynamicSub for Record {
-    fn bind_dynamic_sub(
+impl Aspect for Record { }
+
+impl AspectBind for Record {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        match self.bind_sub(xx, loc, cv).into_res() {
+            Err(errs) => EResult {
+                v: None,
+                errors: Some(errs),
+            },
+            Ok((scope_fields, None)) => {
+                EResult::ok((Code {
+                    loc: loc,
+                    code: Code_::None,
+                }, Box::new(ScopeEntryRecordMortar {
+                    fields: scope_fields,
+                    js_key: None,
+                }) as Box<dyn ScopeEntry>))
+            },
+            Ok((scope_fields, Some(sub))) => {
+                let (code, js_key) = xx.target.bind(xx, loc, sub);
+                EResult::ok((code, Box::new(ScopeEntryRecordMortar {
+                    fields: scope_fields,
+                    js_key: Some(js_key),
+                }) as Box<dyn ScopeEntry>))
+            },
+        }
+    }
+}
+
+impl AspectBindDynamic for Record {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        let vtype = cv.value.type_(xx, loc);
-        self.to_dynamic(xx, loc, cv).map(|c| (c, ScopeEntryDynamicSub { type_: vtype }))
+    ) -> EResult<Option<TargetBindSub>> {
+        self.bind_sub(xx, loc, cv).map(|(_scope_fields, sub)| sub)
     }
 }
 
@@ -493,8 +518,8 @@ impl Type for Record {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindDynamicSub>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBind>));

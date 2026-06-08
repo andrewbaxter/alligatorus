@@ -3,7 +3,7 @@ use {
         builtin::{
             AspectArtifact,
             AspectBind,
-            AspectBindDynamicSub,
+            AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
             AspectLiftDynamic,
@@ -12,7 +12,7 @@ use {
             AspectStringDynamic,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_sub_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_lift_dynamic_aspect_id,
@@ -32,14 +32,13 @@ use {
         },
         eval::{
             Erb,
-            aspect::ScopeEntryDynamicSub,
             value::{
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
-                    bind_dynamic,
-                    bind_dynamic_sub_default,
+                    bind_via_target,
+                    bind_dynamic_default,
                     mortar_consume_to_dynamic,
                     mortar_dynamic_stack_to_value,
                     mortar_set,
@@ -107,18 +106,18 @@ impl AspectArtifact for TypeStringDynamic {
 
 impl AspectBind for TypeStringDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamicSub for TypeStringDynamic {
-    fn bind_dynamic_sub(
+impl AspectBindDynamic for TypeStringDynamic {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -218,8 +217,8 @@ impl Type for TypeStringDynamic {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectBindDynamicSub>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectBind>));

@@ -2,12 +2,12 @@ use {
     crate::{
         builtin::{
             AspectBind,
-            AspectBindDynamicSub,
+            AspectBindDynamic,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_sub_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -48,18 +48,18 @@ impl AspectBind for TypeAnyDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_dynamic(xx, loc, cv)
+        crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamicSub for TypeAnyDynamic {
-    fn bind_dynamic_sub(
+impl AspectBindDynamic for TypeAnyDynamic {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::code_dynamic::CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        crate::eval::value::type_dynamic::bind_dynamic_sub_default(xx, loc, cv)
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -103,8 +103,8 @@ impl Type for TypeAnyDynamic {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectBindDynamicSub>));
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectBind>));

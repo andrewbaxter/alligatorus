@@ -23,7 +23,7 @@ mod aspect_type;
 pub(crate) use {
     aspect_artifact::*,
     aspect_bind::*,
-    aspect_bind::dynamic_sub::*,
+    aspect_bind::dynamic::*,
     aspect_bool::r#const::*,
     aspect_bool::dynamic::*,
     aspect_consume::dynamic::*,

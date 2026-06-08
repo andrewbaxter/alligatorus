@@ -322,7 +322,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                                             mb.tuple(vec![]),
                                         ),
                                     ),
-                                    ("expr_count", mb.num(0.)),
+                                    ("expr_count", mb.as_(mb.num(0.), mb.scope_use("number"))),
                                 ],
                             ),
                         ),

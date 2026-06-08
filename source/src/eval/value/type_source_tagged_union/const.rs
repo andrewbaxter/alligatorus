@@ -2,25 +2,22 @@ use {
     crate::{
         builtin::{
             AspectBind,
-            AspectBindDynamicSub,
+            AspectBindDynamic,
             AspectConsumeDynamic,
             AspectStackValueDynamic,
             AspectTaggedUnion,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_sub_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
         },
         code_dynamic::CodeDynamic,
-        eval::{
-            aspect::ScopeEntryDynamicSub,
-            value::type_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
-                bind_dynamic,
-                bind_dynamic_sub_default,
-            },
+        eval::value::type_dynamic::{
+            ValueDynamic,
+            ValueDynamicSource,
+            bind_dynamic_default,
+            bind_via_target,
         },
         langhelp::{
             Aspect,
@@ -56,18 +53,18 @@ impl AspectBind for TypeSourceTaggedUnionConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamicSub for TypeSourceTaggedUnionConst {
-    fn bind_dynamic_sub(
+impl AspectBindDynamic for TypeSourceTaggedUnionConst {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(CodeDynamic, ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -126,11 +123,11 @@ impl Type for TypeSourceTaggedUnionConst {
                 ),
             );
         }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
+        if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
                 Box::new(
                     Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
-                        Box<dyn AspectBindDynamicSub>,
+                        Box<dyn AspectBindDynamic>,
                 ),
             );
         }

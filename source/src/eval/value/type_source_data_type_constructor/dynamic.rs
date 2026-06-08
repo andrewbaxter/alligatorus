@@ -6,12 +6,12 @@ use {
     crate::{
         builtin::{
             AspectBind,
-            AspectBindDynamicSub,
+            AspectBindDynamic,
             AspectConsumeDynamic,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_sub_aspect_id,
+            aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -24,8 +24,8 @@ use {
                 type_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
-                    bind_dynamic,
-                    bind_dynamic_sub_default,
+                    bind_via_target,
+                    bind_dynamic_default,
                 },
                 type_source_data::{
                     SourceDataMethodData,
@@ -174,18 +174,18 @@ impl AspectBind for TypeSourceDataTypeConstructorDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        bind_dynamic(xx, loc, cv)
+        bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamicSub for TypeSourceDataTypeConstructorDynamic {
-    fn bind_dynamic_sub(
+impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn bind_dynamic(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(CodeDynamic, crate::eval::aspect::ScopeEntryDynamicSub)> {
-        bind_dynamic_sub_default(xx, loc, cv)
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -242,9 +242,9 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
                 Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectConsumeDynamic>),
             );
         }
-        if *key == aspect_bind_dynamic_sub_aspect_id() {
+        if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamicSub>),
+                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamic>),
             );
         }
         if *key == aspect_bind_aspect_id() {
