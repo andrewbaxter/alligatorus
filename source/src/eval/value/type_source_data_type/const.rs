@@ -261,11 +261,9 @@ impl TypeSourceDataTypeConst {
                 def_set: def_set_artifact_id,
                 type_index,
             };
-            let json = serde_json::to_value(&serial).expect("Failed to serialize data type");
-            Artifact {
-                type_: ArtifactId::Builtin(TypeTypeSourceDataTypeDynamic::artifact_id()),
-                data: json,
-            }
+            TypeTypeSourceDataTypeDynamic::build_artifact(
+                serde_json::to_value(&serial).expect("Failed to serialize data type"),
+            )
         })
     }
 }
@@ -286,7 +284,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
 
         // Use serialize_type_ref to get the underlying type's artifact identity
-        let type_ref_artifact =
+        let build_type_artifact =
             crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
                 xx,
                 gx,
@@ -296,7 +294,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
 
         // Reconstruct the full underlying artifact and deserialize via the value type
         let underlying_artifact = Artifact {
-            type_: type_ref_artifact.type_,
+            type_: build_type_artifact.type_,
             data: data.clone(),
         };
         let underlying_value = gx.deserialize_artifact(xx, loc, &underlying_artifact)?;

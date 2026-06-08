@@ -24,7 +24,7 @@ use {
     },
 };
 
-pub trait Artifacts: Send + Sync {
+pub(crate) trait Artifacts: Send + Sync {
     fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
     fn reserve_id(&self) -> ArtifactId;
     fn set(&self, id: ArtifactId, data: Artifact);
@@ -38,7 +38,7 @@ pub(crate) trait ScopeEntry {
     fn use_(&self, loc: QExprId, code: Code) -> CodeValue;
 }
 
-pub trait Sources: Send + Sync {
+pub(crate) trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
 }
 
@@ -424,12 +424,12 @@ pub(crate) struct LogEntry {
 
 pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     use crate::eval::{
-        value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
-        value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
         value::type_null::dynamic::TypeNullDynamic,
         value::type_string::dynamic::TypeStringDynamic,
         value::type_null::r#const::TypeNullConst,
         value::type_string::r#const::TypeStringConst,
+        value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
+        value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
     };
 
     let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn Type>> = HashMap::new();

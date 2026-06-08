@@ -24,7 +24,6 @@ use {
             },
         },
         langhelp::{
-            Artifact,
             ArtifactId,
             Aspect,
             Code,
@@ -81,11 +80,9 @@ impl TypeSourceDataTypeConstructorConst {
                 import_id: self.data.set.import_id,
                 def_set_id: self.data.set.def_set_id,
             };
-            let json = serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data");
-            Artifact {
-                type_: ArtifactId::Builtin(TypeTypeSourceDataTypeConstructorDynamic::artifact_id()),
-                data: json,
-            }
+            TypeTypeSourceDataTypeConstructorDynamic::build_artifact(
+                serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data"),
+            )
         })
     }
 }

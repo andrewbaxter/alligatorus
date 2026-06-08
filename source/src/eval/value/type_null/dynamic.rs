@@ -211,7 +211,7 @@ impl Type for TypeNullDynamic {
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::build_artifact(()))
+        Some(Self::build_type_artifact())
     }
 }
 

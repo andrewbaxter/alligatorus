@@ -298,7 +298,7 @@ impl Type for TypeStringDynamic {
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::type_ref_artifact())
+        Some(Self::build_type_artifact())
     }
 }
 

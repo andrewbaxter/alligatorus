@@ -56,7 +56,7 @@ macro_rules! builtin_artifact_id{
 /// Generates methods on a type for artifact serialization and registration.
 ///
 /// Expands to
-/// `impl $type { artifact_id(), build_artifact(data), type_ref_artifact(), register(m) }`.
+/// `impl $type { artifact_id(), build_artifact(data), build_type_artifact(), register(m) }`.
 /// `$data` constrains the data shape so you can't accidentally serialize the wrong
 /// data for a type.
 macro_rules! generate_builtin_artifact{
@@ -74,7 +74,7 @@ macro_rules! generate_builtin_artifact{
                     data: serde_json::to_value(data).unwrap(),
                 }
             }
-            pub(crate) fn type_ref_artifact() -> crate::langhelp::Artifact {
+            pub(crate) fn build_type_artifact() -> crate::langhelp::Artifact {
                 crate::langhelp::Artifact {
                     type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
                     data: serde_json::Value::Null,

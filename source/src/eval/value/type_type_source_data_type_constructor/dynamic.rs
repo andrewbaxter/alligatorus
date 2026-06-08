@@ -104,6 +104,10 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     fn desc(&self) -> String {
         "definition_set_data_type_constructor_type".to_string()
     }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+        Some(Self::build_type_artifact())
+    }
 }
 
 impl Value for TypeTypeSourceDataTypeConstructorDynamic {
