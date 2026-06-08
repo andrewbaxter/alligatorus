@@ -22,9 +22,9 @@ use {
 /// (for fields that were mortar-only), a ScopeEntry (for fields that were fully
 /// evaluated), or an error.
 pub(crate) enum RecordScopeField {
+    Error(Vec<crate::langhelp::ExprErr>),
     Mortar(Rc<dyn Type>),
     Scope(Box<dyn ScopeEntry>),
-    Error(Vec<crate::langhelp::ExprErr>),
 }
 
 /// DynamicScopeEntry adapter for sourceless records (used by bind_dynamic when
@@ -52,10 +52,7 @@ impl ScopeEntry for ScopeEntryRecordMortar {
                 },
                 Some(
                     super::super::type_dynamic::ValueDynamicSource::Binding(
-                        super::super::type_dynamic::ValueDynamicDataScope {
-                            loc: loc,
-                            key: js_key,
-                        },
+                        super::super::type_dynamic::ValueDynamicDataScope { key: js_key },
                     ),
                 ),
             )

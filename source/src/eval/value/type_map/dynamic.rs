@@ -119,7 +119,7 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueStatic { type_: Rc::new(TypeMapNew {
+                value: Rc::new(ValueStatic { type_: Rc::new(TypeMapNewDynamic {
                     key_type: self.key_type.clone(),
                     value_type: self.value_type.clone(),
                 }) }),
@@ -154,7 +154,7 @@ impl AspectField for TypeMapDynamic {
 
     fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         match key {
-            "new" => Some(Rc::new(TypeMapNew {
+            "new" => Some(Rc::new(TypeMapNewDynamic {
                 key_type: self.key_type.clone(),
                 value_type: self.value_type.clone(),
             })),
@@ -423,14 +423,14 @@ impl Value for TypeMapDynamic {
 
 // --- map new function ---
 #[derive(Clone)]
-struct TypeMapNew {
+struct TypeMapNewDynamic {
     key_type: Rc<dyn Type>,
     value_type: Rc<dyn Type>,
 }
 
-impl Aspect for TypeMapNew { }
+impl Aspect for TypeMapNewDynamic { }
 
-impl AspectFunction for TypeMapNew {
+impl AspectFunction for TypeMapNewDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let instance_type = Rc::new(TypeMapDynamic {
             key_type: self.key_type.clone(),
@@ -457,13 +457,13 @@ impl AspectFunction for TypeMapNew {
     }
 }
 
-impl Type for TypeMapNew {
+impl Type for TypeMapNewDynamic {
     fn desc(&self) -> String {
         format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMapNew {
+        Rc::new(TypeMapNewDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
         })
@@ -485,7 +485,7 @@ impl Type for TypeMapNew {
     }
 }
 
-impl Value for TypeMapNew {
+impl Value for TypeMapNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(self.clone())
     }

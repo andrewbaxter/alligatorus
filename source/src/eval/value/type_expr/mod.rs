@@ -175,17 +175,17 @@ impl Value for TypeExpr {
         Rc::new(super::type_any::r#const::TypeAnyConst)
     }
 }
-pub(crate) struct TypeStagedExprPlaceholder;
+pub(crate) struct TypeExprStagedPlaceholder;
 
-impl Aspect for TypeStagedExprPlaceholder { }
+impl Aspect for TypeExprStagedPlaceholder { }
 
-impl AspectConsumeDynamic for TypeStagedExprPlaceholder {
+impl AspectConsumeDynamic for TypeExprStagedPlaceholder {
     fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         super::type_dynamic::mortar_consume_to_dynamic(_xx, loc, cv)
     }
 }
 
-impl AspectLiftDynamic for TypeStagedExprPlaceholder {
+impl AspectLiftDynamic for TypeExprStagedPlaceholder {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -197,21 +197,21 @@ impl AspectLiftDynamic for TypeStagedExprPlaceholder {
     }
 }
 
-impl Type for TypeStagedExprPlaceholder {
+impl Type for TypeExprStagedPlaceholder {
     fn desc(&self) -> String {
         "stage result".to_string()
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeStagedExprPlaceholder)
+        Rc::new(TypeExprStagedPlaceholder)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStagedExprPlaceholder) as Box<dyn AspectConsumeDynamic>));
+            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStagedExprPlaceholder) as Box<dyn AspectLiftDynamic>));
+            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLiftDynamic>));
         }
         None
     }
@@ -225,7 +225,7 @@ impl Type for TypeStagedExprPlaceholder {
     }
 }
 
-impl Value for TypeStagedExprPlaceholder {
+impl Value for TypeExprStagedPlaceholder {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(super::type_any::r#const::TypeAnyConst)
     }

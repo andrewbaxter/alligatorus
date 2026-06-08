@@ -25,7 +25,6 @@ pub(crate) struct ValueDynamicDataAccess {
 }
 
 pub(crate) struct ValueDynamicDataScope {
-    pub loc: QExprId,
     pub key: ScopeEntryId,
 }
 

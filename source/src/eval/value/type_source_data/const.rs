@@ -1,9 +1,3 @@
-use super::artifact::{
-    ArtifactDataDefSet,
-    ArtifactDataDefSetDataType,
-    ArtifactDataDefSetDataTypeEntry,
-    ArtifactDataDefSetMethod,
-};
 use {
     crate::{
         builtin::{
@@ -76,9 +70,14 @@ use {
         rc::Rc,
     },
     super::{
-        SourceDataMethodData,
         SourceDataTypeData,
         TypeSourceDataTypeConst,
+        artifact::{
+            ArtifactDataDefSet,
+            ArtifactDataDefSetDataType,
+            ArtifactDataDefSetDataTypeEntry,
+            ArtifactDataDefSetMethod,
+        },
     },
 };
 
@@ -151,15 +150,15 @@ pub(crate) fn deserialize_definition_set(
     Ok(set)
 }
 
-// --- LiftedDefSetDataTypeValue: value produced by lifting a data type instance
+// --- ValueSourceDataTypeConst: value produced by lifting a data type instance
 // from v8 ---
-pub(crate) struct LiftedDefSetDataTypeValue {
-    pub underlying: Rc<dyn Value>,
-    pub data: Gc<SourceDataTypeData>,
+pub(crate) struct ValueSourceDataTypeConst {
     pub artifact_id: RefCell<Option<ArtifactId>>,
+    pub data: Gc<SourceDataTypeData>,
+    pub underlying: Rc<dyn Value>,
 }
 
-impl Value for LiftedDefSetDataTypeValue {
+impl Value for ValueSourceDataTypeConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
@@ -230,11 +229,11 @@ impl TypeSourceDataTypeConst {
             }
         }
 
-        // Get the underlying value from LiftedDefSetDataTypeValue
+        // Get the underlying value from ValueSourceDataTypeConst
         let lifted =
             (cv.value.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<LiftedDefSetDataTypeValue>()
-                .ok_or_else(|| "Expected LiftedDefSetDataTypeValue for constant materialization".to_string())?;
+                .downcast_ref::<ValueSourceDataTypeConst>()
+                .ok_or_else(|| "Expected ValueSourceDataTypeConst for constant materialization".to_string())?;
 
         // Build the underlying value as a JS literal
         let underlying_type = lifted.underlying.type_(xx, loc);
@@ -307,6 +306,40 @@ impl TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        gx: &GlobalContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> Result<Rc<dyn Value>, String> {
+        // Get the underlying type from the definition set to recover the artifact identity
+        let underlying_type = self.data.underlying_type.borrow();
+        let underlying_type =
+            underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
+
+        // Use serialize_type_ref to get the underlying type's artifact identity
+        let type_ref_artifact =
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                xx,
+                gx,
+                loc,
+                underlying_type.as_ref(),
+            );
+
+        // Reconstruct the full underlying artifact and deserialize via the value type
+        let underlying_artifact = Artifact {
+            type_: type_ref_artifact.type_,
+            data: data.clone(),
+        };
+        let underlying_value = gx.deserialize_artifact(xx, loc, &underlying_artifact)?;
+        Ok(Rc::new(ValueSourceDataTypeConst {
+            underlying: underlying_value,
+            data: self.data.clone(),
+            artifact_id: RefCell::new(None),
+        }))
+    }
+
     fn to_serial(
         &self,
         xx: &ExprContext,
@@ -316,8 +349,8 @@ impl AspectArtifact for TypeSourceDataTypeConst {
     ) -> EResult<Artifact> {
         let lifted =
             (self_.as_ref() as &dyn Any)
-                .downcast_ref::<LiftedDefSetDataTypeValue>()
-                .expect("TypeSourceDataTypeConst::to_serial expects LiftedDefSetDataTypeValue");
+                .downcast_ref::<ValueSourceDataTypeConst>()
+                .expect("TypeSourceDataTypeConst::to_serial expects ValueSourceDataTypeConst");
 
         // Get the underlying type from the definition set (mortar type)
         let underlying_type = self.data.underlying_type.borrow();
@@ -350,40 +383,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             type_: data_type_artifact_id,
             data: underlying_artifact.data,
         })
-    }
-
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        // Get the underlying type from the definition set to recover the artifact identity
-        let underlying_type = self.data.underlying_type.borrow();
-        let underlying_type =
-            underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
-
-        // Use serialize_type_ref to get the underlying type's artifact identity
-        let type_ref_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
-                xx,
-                gx,
-                loc,
-                underlying_type.as_ref(),
-            );
-
-        // Reconstruct the full underlying artifact and deserialize via the value type
-        let underlying_artifact = Artifact {
-            type_: type_ref_artifact.type_,
-            data: data.clone(),
-        };
-        let underlying_value = gx.deserialize_artifact(xx, loc, &underlying_artifact)?;
-        Ok(Rc::new(LiftedDefSetDataTypeValue {
-            underlying: underlying_value,
-            data: self.data.clone(),
-            artifact_id: RefCell::new(None),
-        }))
     }
 }
 
@@ -533,7 +532,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         let key = v8::String::new(scope, &data_field).unwrap();
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
         let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;
-        Ok(Rc::new(LiftedDefSetDataTypeValue {
+        Ok(Rc::new(ValueSourceDataTypeConst {
             underlying: underlying_value,
             data: self.data.clone(),
             artifact_id: RefCell::new(None),
@@ -557,13 +556,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
 }
 
 impl Type for TypeSourceDataTypeConst {
-    fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("data_type({})", self.data.name.as_deref().unwrap_or("?")),
-        }
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
@@ -650,6 +642,10 @@ impl Type for TypeSourceDataTypeConst {
         false
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
+    }
+
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         // Extract own identity + interface identities
         let (own_identity, iface_data) = {
@@ -688,8 +684,11 @@ impl Type for TypeSourceDataTypeConst {
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
+    fn desc(&self) -> String {
+        match self.data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("data_type({})", self.data.name.as_deref().unwrap_or("?")),
+        }
     }
 }
 

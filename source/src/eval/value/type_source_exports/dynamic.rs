@@ -52,13 +52,13 @@ use {
 };
 
 // --- Post-lift type with field access ---
-struct DefinitionSetExportsType {
+struct TypeSourceExportsLiftedDynamic {
     set: dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>,
 }
 
-impl Aspect for DefinitionSetExportsType { }
+impl Aspect for TypeSourceExportsLiftedDynamic { }
 
-impl AspectBind for DefinitionSetExportsType {
+impl AspectBind for TypeSourceExportsLiftedDynamic {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         EResult::ok(
             (
@@ -73,7 +73,7 @@ impl AspectBind for DefinitionSetExportsType {
     }
 }
 
-impl AspectField for DefinitionSetExportsType {
+impl AspectField for TypeSourceExportsLiftedDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
@@ -142,24 +142,24 @@ impl AspectField for DefinitionSetExportsType {
     }
 }
 
-impl Type for DefinitionSetExportsType {
+impl Type for TypeSourceExportsLiftedDynamic {
     fn desc(&self) -> String {
         format!("definition_set_exports")
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(DefinitionSetExportsType { set: self.set.clone() })
+        Rc::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
             return Some(
-                Box::new(Box::new(DefinitionSetExportsType { set: self.set.clone() }) as Box<dyn AspectField>),
+                Box::new(Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectField>),
             );
         }
         if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(Box::new(DefinitionSetExportsType { set: self.set.clone() }) as Box<dyn AspectBind>),
+                Box::new(Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectBind>),
             );
         }
         return None;
@@ -174,7 +174,7 @@ impl Type for DefinitionSetExportsType {
     }
 }
 
-impl Value for DefinitionSetExportsType {
+impl Value for TypeSourceExportsLiftedDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
@@ -217,7 +217,7 @@ impl AspectLiftDynamic for TypeSourceExportsDynamic {
         exports.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
-            type_: Rc::new(DefinitionSetExportsType { set: exports.set.clone() }),
+            type_: Rc::new(TypeSourceExportsLiftedDynamic { set: exports.set.clone() }),
         }))
     }
 }

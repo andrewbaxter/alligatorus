@@ -40,10 +40,7 @@ impl ScopeEntry for ScopeEntryDynamicBinding {
                 })),
             },
             value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Binding(ValueDynamicDataScope {
-                    loc: loc,
-                    key: self.dynamic_key,
-                }),
+                source: ValueDynamicSource::Binding(ValueDynamicDataScope { key: self.dynamic_key }),
                 type_: self.type_.clone(),
             }),
         };

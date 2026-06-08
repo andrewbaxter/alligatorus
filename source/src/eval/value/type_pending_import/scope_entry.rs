@@ -4,15 +4,14 @@ use {
         CodeValue,
         QExprId,
         ScopeEntry,
-        Value,
     },
     std::rc::Rc,
     super::PendingImportState,
 };
 
 pub(crate) struct ScopeEntryPendingImport {
-    pub state: Rc<PendingImportState>,
     pub code: Code,
+    pub state: Rc<PendingImportState>,
 }
 
 impl ScopeEntry for ScopeEntryPendingImport {

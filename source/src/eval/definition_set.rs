@@ -3,31 +3,9 @@ use {
         eval::{
             dynamic_wrap::DynamicWrap,
             value::{
-                type_source_data::{
-                    SourceDataMethodData,
-                    SourceDataTypeData,
-                    SourceDataTypeInterfaceImplData,
-                    SourceDataTypeInterfaceMethodImplData,
-                    SourceDataTypeRef,
-                    TypeSourceDataTypeConst,
-                },
-                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
-                type_source_function::{
-                    SourceFunctionData,
-                    TypeSourceFunctionConst,
-                },
-                type_source_interface::{
-                    SourceInterfaceData,
-                    SourceInterfaceMethodData,
-                    SourceInterfaceRef,
-                    TypeSourceInterfaceConst,
-                },
-                type_source_tagged_union::{
-                    SourceTaggedUnionData,
-                    SourceTaggedUnionRef,
-                    SourceTaggedUnionVariant,
-                },
-                type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
+                type_source_data::SourceDataTypeData,
+                type_source_function::SourceFunctionData,
+                type_source_interface::SourceInterfaceData,
             },
         },
         langhelp::{
@@ -47,32 +25,18 @@ use {
 };
 
 pub(crate) struct DefinitionSet {
-    pub import_id: ImportStateId,
-    pub def_set_id: DefSetId,
-    pub functions: RefCell<Vec<Gc<SourceFunctionData>>>,
     pub data_types: RefCell<Vec<Gc<SourceDataTypeData>>>,
-    pub interfaces: RefCell<Vec<Gc<SourceInterfaceData>>>,
+    pub def_set_id: DefSetId,
     pub finished: Cell<bool>,
-    pub next_field_id: Counter,
+    pub functions: RefCell<Vec<Gc<SourceFunctionData>>>,
+    pub import_id: ImportStateId,
+    pub interfaces: RefCell<Vec<Gc<SourceInterfaceData>>>,
     pub next_entry_id: Counter,
+    pub next_field_id: Counter,
     pub next_interface_method_id: Counter,
 }
 
 impl DefinitionSet {
-    pub fn new(import_id: ImportStateId, def_set_id: DefSetId) -> Self {
-        DefinitionSet {
-            import_id,
-            def_set_id,
-            functions: RefCell::new(Vec::new()),
-            data_types: RefCell::new(Vec::new()),
-            interfaces: RefCell::new(Vec::new()),
-            finished: Cell::new(false),
-            next_field_id: Counter::default(),
-            next_entry_id: Counter::default(),
-            next_interface_method_id: Counter::default(),
-        }
-    }
-
     pub fn finish(&self) -> Result<(), String> {
         if self.finished.get() {
             return Ok(());
@@ -124,6 +88,20 @@ impl DefinitionSet {
         self.finished.set(true);
         Ok(())
     }
+
+    pub fn new(import_id: ImportStateId, def_set_id: DefSetId) -> Self {
+        DefinitionSet {
+            import_id,
+            def_set_id,
+            functions: RefCell::new(Vec::new()),
+            data_types: RefCell::new(Vec::new()),
+            interfaces: RefCell::new(Vec::new()),
+            finished: Cell::new(false),
+            next_field_id: Counter::default(),
+            next_entry_id: Counter::default(),
+            next_interface_method_id: Counter::default(),
+        }
+    }
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
@@ -155,15 +133,15 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
 }
 
 impl DynamicWrap for Rc<DefinitionSetExports> {
-    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(crate::eval::value::type_source_exports::dynamic::TypeSourceExportsDynamic)
-    }
-
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<DefinitionSetExports>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         crate::eval::to_v8(scope, self).into()
+    }
+
+    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+        Rc::new(crate::eval::value::type_source_exports::dynamic::TypeSourceExportsDynamic)
     }
 }

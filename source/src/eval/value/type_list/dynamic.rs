@@ -118,7 +118,7 @@ impl AspectField for TypeListDynamic {
                     code: Code_::None,
                 },
                 value: Rc::new(
-                    ValueStatic { type_: Rc::new(TypeListNew { element_type: self.element_type.clone() }) },
+                    ValueStatic { type_: Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() }) },
                 ),
             });
         }
@@ -151,7 +151,7 @@ impl AspectField for TypeListDynamic {
 
     fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
         match key {
-            "new" => Some(Rc::new(TypeListNew { element_type: self.element_type.clone() })),
+            "new" => Some(Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() })),
             "push" => Some(Rc::new(TypeFunctionDynamic {
                 arg: self.element_type.clone(),
                 ret: Rc::new(TypeNullDynamic),
@@ -314,13 +314,13 @@ impl Value for TypeListDynamic {
 
 // --- list new function ---
 #[derive(Clone)]
-struct TypeListNew {
+struct TypeListNewDynamic {
     element_type: Rc<dyn Type>,
 }
 
-impl Aspect for TypeListNew { }
+impl Aspect for TypeListNewDynamic { }
 
-impl AspectFunction for TypeListNew {
+impl AspectFunction for TypeListNewDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let arg_type = argument.value.type_(xx, loc);
@@ -351,13 +351,13 @@ impl AspectFunction for TypeListNew {
     }
 }
 
-impl Type for TypeListNew {
+impl Type for TypeListNewDynamic {
     fn desc(&self) -> String {
         format!("list({}).new", self.element_type.desc())
     }
 
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeListNew { element_type: self.element_type.clone() })
+        Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -376,7 +376,7 @@ impl Type for TypeListNew {
     }
 }
 
-impl Value for TypeListNew {
+impl Value for TypeListNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(self.clone())
     }
