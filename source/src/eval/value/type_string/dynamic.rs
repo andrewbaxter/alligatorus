@@ -33,7 +33,7 @@ use {
         eval::{
             Erb,
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,

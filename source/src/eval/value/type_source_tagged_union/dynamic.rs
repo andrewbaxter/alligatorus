@@ -17,7 +17,7 @@ use {
         code_dynamic::CodeDynamic,
         eval::{
             from_v8_ref,
-            value::type_dynamic::{
+            value::dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_via_target,

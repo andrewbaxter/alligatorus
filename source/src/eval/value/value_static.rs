@@ -8,7 +8,7 @@ use {
     std::rc::Rc,
 };
 
-/// A value whose data is entirely carried by its type.
+/// A generic value to be used by purely logical types (like const functions).
 pub(crate) struct ValueStatic {
     pub type_: Rc<dyn Type>,
 }

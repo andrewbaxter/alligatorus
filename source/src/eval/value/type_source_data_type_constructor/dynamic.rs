@@ -1,7 +1,3 @@
-use super::artifact::{
-    ArtifactDataDefSetCtorData,
-    ArtifactDataDefSetCtorMethod,
-};
 use {
     crate::{
         builtin::{
@@ -21,11 +17,11 @@ use {
             definition_set::DefinitionSet,
             from_v8_ref,
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicSource,
-                    bind_via_target,
                     bind_dynamic_default,
+                    bind_via_target,
                 },
                 type_source_data::{
                     SourceDataMethodData,
@@ -55,7 +51,10 @@ use {
         cell::Cell,
         rc::Rc,
     },
-    super::TypeSourceDataTypeConstructorConst,
+    super::{
+        TypeSourceDataTypeConstructorConst,
+        artifact::ArtifactDataDefSetCtorData,
+    },
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -85,7 +84,6 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     let stored = gx.artifacts.get(artifact_id)?;
     let serial: ArtifactDataDefSetCtorData =
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
-    let identity = serial_to_unique(&serial.identity);
     let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
     let methods: Vec<SourceDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
         let ret_type = gx.deserialize_type_ref(xx, loc, &m.ret_type).expect("Failed to resolve method ret type");
@@ -118,7 +116,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         underlying_type: std::cell::RefCell::new(Some(underlying_type)),
         methods: std::cell::RefCell::new(methods),
         interface_impls: std::cell::RefCell::new(Vec::new()),
-        identity,
+        identity: serial_to_unique(&serial.identity),
         data_field: serial.data_field,
         artifact_id: std::cell::RefCell::new(None),
     });
@@ -228,10 +226,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
 }
 
 impl Type for TypeSourceDataTypeConstructorDynamic {
-    fn desc(&self) -> String {
-        format!("definition_set_data_type_constructor")
-    }
-
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeConstructorDynamic)
     }
@@ -243,9 +237,7 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
             );
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectBind>));
@@ -261,12 +253,16 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
         return None;
     }
 
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
+    }
+
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
+    fn desc(&self) -> String {
+        format!("definition_set_data_type_constructor")
     }
 }
 

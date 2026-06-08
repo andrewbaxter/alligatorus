@@ -25,7 +25,7 @@ use {
                 dynamic_wrap_method_name,
             },
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicSource,
                 },

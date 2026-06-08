@@ -48,7 +48,7 @@ impl AspectBind for TypeAnyDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
     }
 }
 
@@ -59,13 +59,13 @@ impl AspectBindDynamic for TypeAnyDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
     }
 }
 
 impl AspectConsumeDynamic for TypeAnyDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        crate::eval::value::type_dynamic::mortar_consume_to_dynamic(xx, loc, cv)
+        crate::eval::value::dynamic_util::mortar_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -83,7 +83,7 @@ impl AspectLiftDynamic for TypeAnyDynamic {
 
 impl AspectStackValueDynamic for TypeAnyDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        crate::eval::value::type_dynamic::mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
+        crate::eval::value::dynamic_util::mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }
 

@@ -57,7 +57,7 @@ enum TupleBindSubResult {
 pub(crate) struct Tuple {
     /// Optional mortar source — a JS array that elements can be accessed from at
     /// runtime.
-    pub source: Option<super::type_dynamic::ValueDynamicSource>,
+    pub source: Option<super::dynamic_util::ValueDynamicSource>,
     /// Ordered list of element entries.
     pub elements: Vec<TupleElement>,
 }

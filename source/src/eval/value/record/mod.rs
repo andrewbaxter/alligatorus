@@ -69,7 +69,7 @@ enum BindSubResult {
 pub(crate) struct Record {
     /// Optional mortar source (like ValueDynamic) — a JS object that fields can be
     /// accessed from at runtime.
-    pub source: Option<super::type_dynamic::ValueDynamicSource>,
+    pub source: Option<super::dynamic_util::ValueDynamicSource>,
     /// Mapping from keys to field entries.
     pub fields: BTreeMap<ConstKey, RecordField>,
 }
@@ -393,8 +393,8 @@ impl AspectField for Record {
                             })),
                         };
                         let field_source =
-                            super::type_dynamic::ValueDynamicSource::Field(
-                                super::type_dynamic::ValueDynamicDataAccess { key: key_name },
+                            super::dynamic_util::ValueDynamicSource::Field(
+                                super::dynamic_util::ValueDynamicDataAccess { key: key_name },
                             );
                         if aspect_record_get_maybe(xx, mortar_type.as_ref()).is_some() {
                             let record_type =
@@ -420,7 +420,7 @@ impl AspectField for Record {
                         }
                         return Ok(CodeValue {
                             code: field_code,
-                            value: Rc::new(super::type_dynamic::ValueDynamic {
+                            value: Rc::new(super::dynamic_util::ValueDynamic {
                                 source: field_source,
                                 type_: mortar_type,
                             }),
@@ -454,8 +454,8 @@ impl AspectField for Record {
                 })),
             };
             let field_source =
-                super::type_dynamic::ValueDynamicSource::Field(
-                    super::type_dynamic::ValueDynamicDataAccess { key: key_name },
+                super::dynamic_util::ValueDynamicSource::Field(
+                    super::dynamic_util::ValueDynamicDataAccess { key: key_name },
                 );
             if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
                 let record_type =
@@ -481,7 +481,7 @@ impl AspectField for Record {
             }
             return Ok(CodeValue {
                 code: field_code,
-                value: Rc::new(super::type_dynamic::ValueDynamic {
+                value: Rc::new(super::dynamic_util::ValueDynamic {
                     source: field_source,
                     type_: entry_type,
                 }),

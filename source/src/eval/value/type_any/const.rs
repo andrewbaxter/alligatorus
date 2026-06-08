@@ -48,7 +48,7 @@ impl AspectBind for TypeAnyConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
     }
 }
 
@@ -59,7 +59,7 @@ impl AspectBindDynamic for TypeAnyConst {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
     }
 }
 

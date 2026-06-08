@@ -115,8 +115,8 @@ macro_rules! dynamic_wrap{
                     if source_type.aspect(xx, &[<$name: snake _type_identity >]()).is_some() {
                         return EvalRes:: ok(CodeValue {
                             code: cv.code,
-                            value: Rc:: new(crate:: eval:: value:: type_dynamic:: ValueDynamic {
-                                source: crate:: eval:: value:: type_dynamic:: ValueDynamicSource:: Expr,
+                            value: Rc:: new(crate:: eval:: value:: dynamic_util:: ValueDynamic {
+                                source: crate:: eval:: value:: dynamic_util:: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new([< Type $name Dynamic >]),
                             }),
                         });
@@ -138,7 +138,7 @@ macro_rules! dynamic_wrap{
                     loc: QExprId,
                     cv: CodeValue,
                 ) -> EResult<Option<crate::eval::TargetBindSub>> {
-                    crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
+                    crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
                 }
             }
             impl AspectBind for[< Type $name Dynamic >] {
@@ -148,7 +148,7 @@ macro_rules! dynamic_wrap{
                     loc: QExprId,
                     cv: CodeValue,
                 ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-                    crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
+                    crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {

@@ -29,7 +29,7 @@ use {
             Erb,
             definition_set::DefinitionSet,
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicSource,
                     bind_dynamic_default,
@@ -65,7 +65,6 @@ use {
     dumpster::unsync::Gc,
     std::{
         any::Any,
-        cell::RefCell,
         mem,
         rc::Rc,
     },
@@ -150,20 +149,6 @@ pub(crate) fn deserialize_definition_set(
     Ok(set)
 }
 
-// --- ValueSourceDataTypeConst: value produced by lifting a data type instance
-// from v8 ---
-pub(crate) struct ValueSourceDataTypeConst {
-    pub artifact_id: RefCell<Option<ArtifactId>>,
-    pub data: Gc<SourceDataTypeData>,
-    pub underlying: Rc<dyn Value>,
-}
-
-impl Value for ValueSourceDataTypeConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
-    }
-}
-
 fn serialize_definition_set(
     xx: &ExprContext,
     gx: &GlobalContext,
@@ -210,6 +195,19 @@ fn serialize_definition_set(
         data: json,
     });
     artifact_id
+}
+
+// --- ValueSourceDataTypeConst: value produced by lifting a data type instance
+// from v8 ---
+pub(crate) struct ValueSourceDataTypeConst {
+    pub data: Gc<SourceDataTypeData>,
+    pub underlying: Rc<dyn Value>,
+}
+
+impl Value for ValueSourceDataTypeConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
+    }
 }
 
 impl TypeSourceDataTypeConst {
@@ -336,7 +334,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         Ok(Rc::new(ValueSourceDataTypeConst {
             underlying: underlying_value,
             data: self.data.clone(),
-            artifact_id: RefCell::new(None),
         }))
     }
 
@@ -375,7 +372,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             };
 
         // Serialize the data type itself (which includes serializing the definition set)
-        drop(underlying_type);
         let data_type_artifact_id = self.serialize_data_type(xx, gx, loc);
 
         // Return directly — underlying data is embedded inline for primitives
@@ -535,7 +531,6 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         Ok(Rc::new(ValueSourceDataTypeConst {
             underlying: underlying_value,
             data: self.data.clone(),
-            artifact_id: RefCell::new(None),
         }))
     }
 }

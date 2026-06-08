@@ -25,7 +25,7 @@ use {
         eval::{
             Erb,
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicSource,
                 },
@@ -89,7 +89,7 @@ impl AspectBind for TypeNullDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
     }
 }
 
@@ -100,7 +100,7 @@ impl AspectBindDynamic for TypeNullDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
     }
 }
 

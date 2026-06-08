@@ -21,7 +21,7 @@ use {
         eval::{
             Erb,
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicSource,
                     bind_dynamic_default,

@@ -35,7 +35,7 @@ use {
             Erb,
             typecheck_convert,
             value::{
-                type_dynamic::{
+                dynamic_util::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
@@ -79,7 +79,7 @@ impl Aspect for TypeListDynamic { }
 
 impl AspectBind for TypeListDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        crate::eval::value::type_dynamic::bind_via_target(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_via_target(xx, loc, cv)
     }
 }
 
@@ -90,7 +90,7 @@ impl AspectBindDynamic for TypeListDynamic {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::value::type_dynamic::bind_dynamic_default(xx, loc, cv)
+        crate::eval::value::dynamic_util::bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -296,8 +296,8 @@ impl Type for TypeListDynamic {
         if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(crate::eval::value::type_dynamic::ValueDynamic {
-                    source: crate::eval::value::type_dynamic::ValueDynamicSource::Expr,
+                value: Rc::new(crate::eval::value::dynamic_util::ValueDynamic {
+                    source: crate::eval::value::dynamic_util::ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
                 }),
             });

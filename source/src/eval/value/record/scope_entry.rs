@@ -51,8 +51,8 @@ impl ScopeEntry for ScopeEntryRecordMortar {
                     })),
                 },
                 Some(
-                    super::super::type_dynamic::ValueDynamicSource::Binding(
-                        super::super::type_dynamic::ValueDynamicDataScope { key: js_key },
+                    super::super::dynamic_util::ValueDynamicSource::Binding(
+                        super::super::dynamic_util::ValueDynamicDataScope { key: js_key },
                     ),
                 ),
             )

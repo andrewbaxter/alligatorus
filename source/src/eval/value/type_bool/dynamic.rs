@@ -22,7 +22,7 @@ use {
         },
         eval::{
             Erb,
-            value::type_dynamic::{
+            value::dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_via_target,
