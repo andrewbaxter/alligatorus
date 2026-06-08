@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectBind,
@@ -316,10 +317,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         loc: QExprId,
         self_: Rc<dyn Value>,
     ) -> EResult<Artifact> {
-        let lifted =
-            (self_.as_ref() as &dyn Any)
-                .downcast_ref::<ValueSourceDataTypeConst>()
-                .expect("TypeSourceDataTypeConst::to_serial expects ValueSourceDataTypeConst");
+        let lifted = must_downcast_ref::<ValueSourceDataTypeConst>(self_.as_ref());
 
         // Get the underlying type from the definition set (mortar type)
         let underlying_type = self.data.underlying_type.borrow();

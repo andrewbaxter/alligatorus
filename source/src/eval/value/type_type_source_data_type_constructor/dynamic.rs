@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectType,
@@ -54,12 +55,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
         loc: QExprId,
         self_: Rc<dyn Value>,
     ) -> EResult<Artifact> {
-        let ctor =
-            (self_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceDataTypeConstructorConst>()
-                .expect(
-                    "TypeTypeSourceDataTypeConstructorDynamic::to_serial expects TypeSourceDataTypeConstructorConst",
-                );
+        let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(self_.as_ref());
         let artifact_id = ctor.serialize_ctor(xx, gx, loc);
         EResult::ok(Artifact {
             type_: artifact_id,
@@ -70,7 +66,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
 
 impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let ctor = (value as &dyn Any).downcast_ref::<TypeSourceDataTypeConstructorConst>().unwrap();
+        let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(value);
         Rc::new(TypeSourceDataTypeConstructorConst { data: ctor.data.clone() })
     }
 }

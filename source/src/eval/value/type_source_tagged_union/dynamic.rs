@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -55,10 +56,7 @@ use {
 };
 
 fn tagged_union_ref_from_v8_type(type_: &Rc<dyn Type>) -> Rc<SourceTaggedUnionRef> {
-    let mortar =
-        (type_.as_ref() as &dyn Any)
-            .downcast_ref::<TypeSourceTaggedUnionDynamic>()
-            .expect("SourceTaggedUnionRef: expected TypeSourceTaggedUnionDynamic");
+    let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
     Rc::new(SourceTaggedUnionRef { data: mortar.data.clone().expect("SourceTaggedUnionRef: data must be Some") })
 }
 
@@ -120,10 +118,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let mortar =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceTaggedUnionDynamic>()
-                .expect("TypeSourceTaggedUnionDynamic::lift: expected TypeSourceTaggedUnionDynamic");
+        let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
         let data = mortar.data.clone().expect("TypeSourceTaggedUnionDynamic::lift: data must be Some");
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,

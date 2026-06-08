@@ -285,7 +285,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/value/type_source_data_type/const.rs",
-      "line": 91
+      "line": 92
     }
   }
 }"#,
@@ -305,7 +305,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
-      "line": 34
+      "line": 35
     }
   }
 }"#

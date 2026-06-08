@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -97,10 +98,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let dt =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceDataTypeConst>()
-                .expect("TypeSourceDataTypeDynamic::lift: expected TypeSourceDataTypeConst");
+        let dt = must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
         dt.data.set.finish()?;
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,

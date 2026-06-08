@@ -2,6 +2,7 @@ pub mod scope_entry;
 
 use {
     crate::{
+        invariant::must_downcast_box,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -308,7 +309,7 @@ impl Type for Tuple {
                     t
                         .aspect(_xx, &aspect_lift_dynamic_aspect_id())
                         .expect(&format!("Tuple element type ({}) missing AspectLiftDynamic", t.desc()));
-                *a.downcast::<Box<dyn AspectLiftDynamic>>().unwrap()
+                must_downcast_box::<Box<dyn AspectLiftDynamic>>(a)
             }).collect();
             return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftDynamic>));
         }

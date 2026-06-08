@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectBind,
@@ -69,7 +70,7 @@ impl AspectArtifact for TypeStringConst {
         _loc: QExprId,
         value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
-        let s = <dyn Any>::downcast_ref::<ValueStringConst>(value.as_ref()).unwrap().0.clone();
+        let s = must_downcast_ref::<ValueStringConst>(value.as_ref()).0.clone();
         EResult::ok(Self::build_artifact(s))
     }
 }
@@ -99,7 +100,7 @@ impl AspectField for TypeStringConst {
 
 impl AspectStringConst for TypeStringConst {
     fn get(&self, value: &dyn Value) -> String {
-        return <dyn Any>::downcast_ref::<ValueStringConst>(value).unwrap().0.clone();
+        return must_downcast_ref::<ValueStringConst>(value).0.clone();
     }
 }
 

@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectBoolConst,
             aspect_bool_const_aspect_id,
@@ -35,7 +36,7 @@ impl Aspect for TypeBoolConst { }
 
 impl AspectBoolConst for TypeBoolConst {
     fn get(&self, value: &dyn Value) -> bool {
-        return <dyn Any>::downcast_ref::<ValueBoolConst>(value).unwrap().0;
+        return must_downcast_ref::<ValueBoolConst>(value).0;
     }
 }
 

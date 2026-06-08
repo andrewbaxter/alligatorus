@@ -43,8 +43,8 @@ use {
             Type,
         },
     },
+    crate::invariant::must_downcast_ref,
     std::{
-        any::Any,
         mem,
         rc::Rc,
     },
@@ -139,7 +139,7 @@ pub(crate) fn mortar_dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, ty
 pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let target_type = {
-            let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<ValueDynamic>().unwrap();
+            let v = must_downcast_ref::<ValueDynamic>(self_.value.as_ref());
             v.type_.clone()
         };
         let value = erb.must_er(typecheck_convert(xx, loc, target_type.as_ref(), value))?;
@@ -149,7 +149,7 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
             self_code = self_.code.cast::<CodeDynamic>(),
         });
         let value_code = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, value))?;
-        let v = (self_.value.as_ref() as &dyn Any).downcast_ref::<ValueDynamic>().unwrap();
+        let v = must_downcast_ref::<ValueDynamic>(self_.value.as_ref());
         match &v.source {
             ValueDynamicSource::Field(b) => {
                 let Some(self_code) = self_code else {

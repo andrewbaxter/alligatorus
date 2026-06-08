@@ -28,7 +28,7 @@ macro_rules! aspect{
                         $name
                     }));
                 };
-                return EResult:: ok(* out.downcast::< Box < dyn $name >>().unwrap());
+                return EResult:: ok(crate::invariant::must_downcast_box::< Box < dyn $name >>(out));
             }
             #[
                 allow(dead_code)
@@ -38,7 +38,7 @@ macro_rules! aspect{
                 let Some(out) = v.aspect(xx, &[< $name: snake _aspect_id >]()) else {
                     return None;
                 };
-                return Some(* out.downcast::< Box < dyn $name >>().unwrap());
+                return Some(crate::invariant::must_downcast_box::< Box < dyn $name >>(out));
             }
         }
     };

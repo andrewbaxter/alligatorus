@@ -76,10 +76,7 @@ pub(crate) struct TypeSourceDataTypeConst {
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let type_: &Rc<dyn crate::langhelp::Type> = crate::eval::from_v8_ref(&*value);
-        let dt =
-            (type_.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<TypeSourceDataTypeConst>()
-                .expect("SourceDataTypeRef::from_v8: expected TypeSourceDataTypeConst");
+        let dt = crate::invariant::must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
         Rc::new(SourceDataTypeRef { data: dt.data.clone() })
     }
 

@@ -2,6 +2,10 @@ pub mod scope_entry;
 
 use {
     crate::{
+        invariant::{
+            must_downcast_box,
+            must_downcast_ref,
+        },
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -442,10 +446,7 @@ impl AspectField for Record {
             };
             let field_source = ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name });
             if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
-                let record_type =
-                    (entry_type.as_ref() as &dyn Any)
-                        .downcast_ref::<Record>()
-                        .expect("record aspect present but type is not Record");
+                let record_type = must_downcast_ref::<Record>(entry_type.as_ref());
                 let fields = record_type.fields.iter().map(|(k, f)| {
                     let t = match f {
                         RecordField::Mortar(t) => t.clone(),
@@ -529,7 +530,7 @@ impl Type for Record {
                     t
                         .aspect(_xx, &aspect_lift_dynamic_aspect_id())
                         .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftDynamic", k, t.desc()));
-                (key_str, *a.downcast::<Box<dyn AspectLiftDynamic>>().unwrap())
+                (key_str, must_downcast_box::<Box<dyn AspectLiftDynamic>>(a))
             }).collect();
             return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }

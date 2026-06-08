@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -100,12 +101,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let ctor =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceTaggedUnionConstructorConst>()
-                .expect(
-                    "TypeSourceTaggedUnionConstructorDynamic::lift: expected TypeSourceTaggedUnionConstructorConst",
-                );
+        let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         Ok(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
             type_: Rc::new(TypeSourceTaggedUnionConstructorConst {
@@ -188,10 +184,7 @@ impl Value for TypeSourceTaggedUnionConstructorDynamic {
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionConstructorRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let type_: &Rc<dyn Type> = crate::eval::from_v8_ref(&*value);
-        let ctor =
-            (type_.as_ref() as &dyn Any)
-                .downcast_ref::<TypeSourceTaggedUnionConstructorConst>()
-                .expect("SourceTaggedUnionConstructorRef::from_v8: expected TypeSourceTaggedUnionConstructorConst");
+        let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         Rc::new(SourceTaggedUnionConstructorRef {
             data: ctor.data.clone(),
             variant_index: ctor.variant_index,

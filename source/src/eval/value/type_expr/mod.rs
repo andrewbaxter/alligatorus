@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -153,11 +154,7 @@ impl Type for TypeExpr {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
-            let expr =
-                (cv.value.as_ref() as &dyn Any)
-                    .downcast_ref::<Expr>()
-                    .expect("TypeExpr value must be an Expr")
-                    .clone();
+            let expr = must_downcast_ref::<Expr>(cv.value.as_ref()).clone();
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(expr),

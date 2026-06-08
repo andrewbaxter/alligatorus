@@ -1,5 +1,6 @@
 use {
     crate::{
+        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectField,
@@ -72,7 +73,7 @@ impl AspectField for TypeNumberConst {
 
 impl AspectNumberConst for TypeNumberConst {
     fn get(&self, value: &dyn Value) -> f64 {
-        return <dyn Any>::downcast_ref::<ValueNumberConst>(value).unwrap().0;
+        return must_downcast_ref::<ValueNumberConst>(value).0;
     }
 }
 

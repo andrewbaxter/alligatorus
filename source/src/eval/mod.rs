@@ -53,6 +53,7 @@ use {
             dynamic_util::wrap_with_carry,
             value::type_source_define_result::dynamic::SourceDefineResult,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Code,
             CodeValue,
@@ -850,23 +851,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
     }
 }
 
-pub(crate) fn const_eval_root(
-    vx: Rc<EvalContext>,
-    import_state: Rc<Cell<ImportStateId>>,
-    scope: Rc<Scope>,
-    target: Rc<dyn Target>,
-    expr: &Expr,
-) -> (Rc<ExprContext>, EvalRes) {
-    let xx = Rc::new(ExprContext {
-        vx,
-        import_state,
-        scope,
-        target,
-    });
-    let result = const_eval(&xx, expr);
-    (xx, result)
-}
-
 /// EvalResBuilder
 pub(crate) struct Erb {
     errors: Vec<ExprErr>,
@@ -996,14 +980,14 @@ fn eval(
             );
         let ib = aspect_initial_bind_get(&xx, root_loc, type_.as_ref()).into_res()?;
         builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
-        scope.values.borrow_mut().insert(
-            ConstKey::String(key.to_string()),
-            ib.initial_bind(dynamic_key),
-        );
+        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
     }
 
     // Type references (static scope entries, no JS representation)
-    for (key, type_ref) in [
+    for (
+        key,
+        type_ref,
+    ) in [
         ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
         ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
@@ -1070,10 +1054,7 @@ fn eval(
             );
         let ib = aspect_initial_bind_get(&xx, root_loc, constructor_type.as_ref()).into_res()?;
         builtin_scope_entries.push((key.to_string(), dynamic_key, constructor_type));
-        scope.values.borrow_mut().insert(
-            ConstKey::String(key.to_string()),
-            ib.initial_bind(dynamic_key),
-        );
+        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
     }
     let result = const_eval(&xx, expr);
     if let Some(errs) = result.errors {
@@ -1134,7 +1115,10 @@ fn eval(
             let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
             scope_entries.insert(ConstKey::String(name.clone()), ib.initial_bind(*dynamic_key));
         }
-        for (key, type_ref) in [
+        for (
+            key,
+            type_ref,
+        ) in [
             ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
             ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
             ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
@@ -1156,10 +1140,7 @@ fn eval(
 
     let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic)> = vec![];
     for info in &def_func_infos {
-        let impl_expr_ast =
-            (info.impl_expr_ast.as_ref() as &dyn Any)
-                .downcast_ref::<Expr>()
-                .expect("Definition set impl must be an Expr");
+        let impl_expr_ast = must_downcast_ref::<Expr>(info.impl_expr_ast.as_ref());
 
         // Create a separate evaluation context for the function body
         let body_ex = Rc::new(EvalContext {
@@ -1240,10 +1221,7 @@ fn eval(
                     continue;
                 }
                 let impl_expr = method.impl_expr.borrow();
-                let impl_expr_ast =
-                    (impl_expr.as_ref().unwrap().as_ref() as &dyn Any)
-                        .downcast_ref::<expr::Expr>()
-                        .expect("Method impl must be an Expr");
+                let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr.as_ref().unwrap().as_ref());
                 let ret_type: Rc<dyn Type> =
                     method.ret_type.borrow().clone().expect("Data type method missing return type");
 
@@ -1304,10 +1282,7 @@ fn eval(
             // Compile interface method implementations
             for impl_data in dt_data.interface_impls.borrow().iter() {
                 for method_impl in &impl_data.method_impls {
-                    let impl_expr_ast =
-                        (method_impl.impl_expr.as_ref() as &dyn Any)
-                            .downcast_ref::<expr::Expr>()
-                            .expect("Interface method impl must be an Expr");
+                    let impl_expr_ast = must_downcast_ref::<expr::Expr>(method_impl.impl_expr.as_ref());
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not assigned");
 
@@ -1453,11 +1428,7 @@ fn eval(
             let tree_cell: Rc<expr::StagedExprCell> =
                 from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
             let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
-            let tree =
-                (tree_value.as_ref() as &dyn Any)
-                    .downcast_ref::<Expr>()
-                    .expect("stage tree must be an Expr")
-                    .clone();
+            let tree = must_downcast_ref::<Expr>(tree_value.as_ref()).clone();
 
             enum StageLowerValue {
                 Expr(Expr),
@@ -1866,7 +1837,7 @@ fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
 
 /// Get a reference to the value inside a `v8::External` created by `to_v8`.
 pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
-    from_v8_any(value).downcast_ref::<T>().expect("from_v8_ref: type mismatch")
+    must_downcast_ref::<T>(from_v8_any(value))
 }
 
 #[derive(Default)]

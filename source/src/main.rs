@@ -2,6 +2,7 @@
 pub mod builtin;
 pub mod code_dynamic;
 pub mod eval;
+pub mod invariant;
 pub mod langhelp;
 pub mod syntax;
 #[cfg(test)]
