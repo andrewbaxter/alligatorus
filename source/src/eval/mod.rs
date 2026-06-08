@@ -577,7 +577,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     code: Code_::None,
                 },
                 value: Rc::new(Tuple {
-                    source: None,
+                    base: None,
                     elements,
                 }),
             });
@@ -633,7 +633,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             return EvalRes::ok(CodeValue {
                 code,
                 value: Rc::new(Record {
-                    source: None,
+                    base: None,
                     fields,
                 }),
             });
@@ -1662,7 +1662,7 @@ fn eval(
                     elements.push(TupleElement::Mortar(v8_value_to_type(scope, elem)));
                 }
                 return Rc::new(Tuple {
-                    source: None,
+                    base: None,
                     elements,
                 });
             }
@@ -1677,7 +1677,7 @@ fn eval(
                     fields.insert(ConstKey::String(key_str), RecordField::Mortar(v8_value_to_type(scope, val)));
                 }
                 return Rc::new(Record {
-                    source: None,
+                    base: None,
                     fields,
                 });
             }
@@ -2103,7 +2103,7 @@ impl Target for TargetDynamic {
             mortar_fields.insert(ConstKey::String(key), value::record::RecordField::Mortar(sub.type_));
         }
         let record_type = Rc::new(Record {
-            source: None,
+            base: None,
             fields: mortar_fields,
         }) as Rc<dyn Type>;
         let js = wrap_with_carry(loc, carry, CodeDynamic {
@@ -2135,7 +2135,7 @@ impl Target for TargetDynamic {
             mortar_elements.push(TupleElement::Mortar(sub.type_));
         }
         let tuple_type = Rc::new(Tuple {
-            source: None,
+            base: None,
             elements: mortar_elements,
         }) as Rc<dyn Type>;
         let js = wrap_with_carry(loc, carry, CodeDynamic {

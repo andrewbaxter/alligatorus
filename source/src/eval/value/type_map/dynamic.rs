@@ -182,7 +182,7 @@ impl AspectIterable for TypeMapDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         // Map iteration yields records with "key" and "value" fields
         Rc::new(crate::eval::value::record::Record {
-            source: None,
+            base: None,
             fields: [
                 (
                     crate::langhelp::ConstKey::String("key".to_string()),

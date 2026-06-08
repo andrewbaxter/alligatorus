@@ -5,10 +5,6 @@ use {
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
-        eval::value::value_dynamic::{
-            ValueDynamicDataScope,
-            ValueDynamicSource,
-        },
         langhelp::{
             Code,
             CodeValue,
@@ -28,6 +24,7 @@ use {
     },
     super::{
         Record,
+        RecordBaseDynamic,
         RecordField,
     },
 };
@@ -48,7 +45,6 @@ pub(crate) struct ScopeEntryRecordDynamic {
 
 impl ScopeEntry for ScopeEntryRecordDynamic {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
-        let source = ValueDynamicSource::Binding(ValueDynamicDataScope { key: self.dynamic_key });
         CodeValue {
             code: Code {
                 loc: loc,
@@ -58,7 +54,7 @@ impl ScopeEntry for ScopeEntryRecordDynamic {
                 })),
             },
             value: Rc::new(Record {
-                source: Some(source),
+                base: Some(Box::new(RecordBaseDynamic)),
                 fields: self.fields.iter().map(|(k, t)| {
                     (k.clone(), RecordField::Mortar(t.clone()))
                 }).collect(),
@@ -78,7 +74,7 @@ pub(crate) struct ScopeEntryRecordMortar {
 impl ScopeEntry for ScopeEntryRecordMortar {
     fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
         let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
-        let (use_code, source) = if has_mortar {
+        let (use_code, base) = if has_mortar {
             let js_key = self.js_key.expect("ScopeEntryRecordMortar with mortar fields must have js_key");
             (Code {
                 loc: loc,
@@ -86,7 +82,7 @@ impl ScopeEntry for ScopeEntryRecordMortar {
                     loc: loc,
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: js_key }),
                 })),
-            }, Some(ValueDynamicSource::Binding(ValueDynamicDataScope { key: js_key })))
+            }, Some(Box::new(RecordBaseDynamic) as Box<dyn super::RecordBase>))
         } else {
             (Code {
                 loc: loc,
@@ -117,7 +113,7 @@ impl ScopeEntry for ScopeEntryRecordMortar {
         CodeValue {
             code: use_code,
             value: Rc::new(Record {
-                source: source,
+                base: base,
                 fields: result_fields,
             }),
         }

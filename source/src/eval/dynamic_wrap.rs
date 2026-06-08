@@ -325,7 +325,7 @@ macro_rules! dynamic_wrap{
     // --- Helpers --- 0 args → empty tuple type
     (@ arg_mortar_type) => {
         Rc::new(Tuple {
-            source: None,
+            base: None,
             elements: vec![]
         }) as Rc<dyn Type>
     };
@@ -336,7 +336,7 @@ macro_rules! dynamic_wrap{
     // 2+ args → tuple type
     (@ arg_mortar_type $first: ty, $($rest: ty), +) => {
         Rc::new(Tuple {
-            source: None,
+            base: None,
             elements: vec![
                 crate:: eval:: value:: tuple:: TupleElement:: Mortar(<$first as DynamicWrap >:: mortar_type()),
                 $(crate:: eval:: value:: tuple:: TupleElement:: Mortar(<$rest as DynamicWrap >:: mortar_type())),
