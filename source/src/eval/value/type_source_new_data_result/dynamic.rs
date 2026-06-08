@@ -21,17 +21,17 @@ use {
         eval::{
             Erb,
             TargetBindSub,
-            dynamic_wrap::{
-                AnyType,
-                DynamicWrap,
-                dynamic_wrap_method_name,
-            },
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 throw_error,
+            },
+            dynamic_wrap::{
+                AnyType,
+                DynamicWrap,
+                dynamic_wrap_method_name,
             },
             value::{
                 tuple::Tuple,
@@ -154,10 +154,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
                     });
                 },
                 None => {
-                    throw_error(
-                        scope,
-                        &format!("Missing implementation for interface method '{}'", imethod_name)
-                    );
+                    throw_error(scope, &format!("Missing implementation for interface method '{}'", imethod_name));
                     return;
                 },
             }

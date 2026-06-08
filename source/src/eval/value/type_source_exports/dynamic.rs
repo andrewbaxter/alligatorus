@@ -19,13 +19,13 @@ use {
         eval::{
             Erb,
             definition_set::DefinitionSetExports,
-            from_v8_ref,
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
+            from_v8_ref,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,

@@ -4,8 +4,6 @@ use {
             dynamic_util::throw_error,
             from_v8_ref,
             value::{
-                record::Record,
-                tuple::Tuple,
                 type_any::dynamic::TypeAnyDynamic,
                 type_expr::TypeExpr,
                 type_map::dynamic::TypeMapDynamic,
@@ -444,9 +442,7 @@ impl DynamicWrap for expr::Expr {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
-        Rc::try_unwrap(downcast_value::<expr::Expr>(inner).expect("Expected Expr in StagedExprCell"))
-            .ok()
-            .expect("Expr in StagedExprCell: Rc not unique")
+        Rc::try_unwrap(downcast_value::<expr::Expr>(inner)).ok().expect("Expr in StagedExprCell: Rc not unique")
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {

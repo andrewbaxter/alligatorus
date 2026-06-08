@@ -20,6 +20,7 @@ use {
             aspect_consume_dynamic_get,
             aspect_field_get,
             aspect_function_get,
+            aspect_initial_bind_get,
             aspect_iterable_get,
             aspect_lift_dynamic_get,
             aspect_operator_add_get,
@@ -342,10 +343,7 @@ pub(crate) fn compile_importid(
         }
 
         // Result is an Expr (from stage eval) - use it as next expression
-        let next_expr =
-            Rc::try_unwrap(downcast_value::<Expr>(eval_value).expect("Stage eval must produce an Expr value"))
-                .ok()
-                .expect("Stage eval Expr: Rc not unique");
+        let next_expr = Rc::try_unwrap(downcast_value::<Expr>(eval_value)).ok().expect("Stage eval Expr: Rc not unique");
         root_expr = next_expr;
     }
 }
@@ -683,10 +681,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
             });
-            child_scope.values.borrow_mut().insert(element_key, Box::new(ScopeEntryDynamicBinding {
-                dynamic_key: element_scope_id,
-                type_: iterable.element_type(),
-            }),);
+            let element_type = iterable.element_type();
+            let element_ib = erb.must_er(aspect_initial_bind_get(xx, expr.loc, element_type.as_ref()))?;
+            child_scope.values.borrow_mut().insert(element_key, element_ib.initial_bind(element_scope_id));
             let child_xx = ExprContext {
                 vx: xx.vx.clone(),
                 import_state: xx.import_state.clone(),
@@ -990,10 +987,7 @@ fn eval(
                 v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(eval_value.dynamic_key)).unwrap().cast(),
                 dynamic_value,
             );
-        builtin_scope_entries.push((key.to_string(), ScopeEntryDynamicBinding {
-            dynamic_key: eval_value.dynamic_key,
-            type_: eval_value.type_.clone(),
-        }));
+        builtin_scope_entries.push((key.to_string(), eval_value.clone()));
         s1_scope.insert(ConstKey::String(key.to_string()), Box::new(eval_value) as Box<dyn ScopeEntry>);
     }
 
@@ -1171,10 +1165,8 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-            body_scope.insert(ConstKey::String("arg".to_string()), Box::new(ScopeEntryDynamicBinding {
-                dynamic_key: arg_id,
-                type_: info.arg_type.clone(),
-            }));
+            let arg_ib = aspect_initial_bind_get(&xx, root_loc, info.arg_type.as_ref()).into_res()?;
+            body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
             Rc::new(ExprContext {
                 vx: body_ex,
                 import_state: xx.import_state.clone(),
@@ -1260,10 +1252,8 @@ fn eval(
                 method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                    body_scope.insert(ConstKey::String("self".to_string()), Box::new(ScopeEntryDynamicBinding {
-                        dynamic_key: self_id,
-                        type_: underlying_type.clone(),
-                    }));
+                    let self_ib = aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
+                    body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
                     Rc::new(ExprContext {
                         vx: body_ex,
                         import_state: xx.import_state.clone(),
@@ -1333,10 +1323,8 @@ fn eval(
                     method_impl.self_scope_entry_id.set(Some(self_id));
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&builtin_scope_entries);
-                        body_scope.insert(ConstKey::String("self".to_string()), Box::new(ScopeEntryDynamicBinding {
-                            dynamic_key: self_id,
-                            type_: underlying_type.clone(),
-                        }));
+                        let self_ib = aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
+                        body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
                         Rc::new(ExprContext {
                             vx: body_ex,
                             import_state: xx.import_state.clone(),
@@ -1482,7 +1470,7 @@ fn eval(
                     let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
                     if (value.as_ref() as &dyn Any).is::<Expr>() {
                         let expr =
-                            Rc::try_unwrap(downcast_value::<Expr>(value).unwrap())
+                            Rc::try_unwrap(downcast_value::<Expr>(value))
                                 .ok()
                                 .expect("Stage lower Expr: Rc not unique");
                         values.push(StageLowerValue::Expr(expr));
@@ -2299,10 +2287,10 @@ impl Target for TargetDynamic {
                     values: RefCell::new(HashMap::new()),
                     parent: Some(xx.scope.clone()),
                 });
-                child_scope.values.borrow_mut().insert(element_key.clone(), Box::new(ScopeEntryDynamicBinding {
-                    dynamic_key: element_scope_id,
-                    type_: variant_type.clone(),
-                }),);
+                child_scope.values.borrow_mut().insert(element_key.clone(), {
+                    let variant_ib = erb.must_er(aspect_initial_bind_get(xx, loc, variant_type.as_ref()))?;
+                    variant_ib.initial_bind(element_scope_id)
+                });
                 let child_xx = ExprContext {
                     vx: xx.vx.clone(),
                     import_state: xx.import_state.clone(),

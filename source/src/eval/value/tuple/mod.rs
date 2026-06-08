@@ -75,9 +75,7 @@ pub(crate) struct Tuple {
 impl Tuple {
     fn bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
-                .ok()
-                .expect("Tuple bind_sub: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple bind_sub: Rc not unique");
         let is_sourceless =
             matches!(cv.code.code, Code_::None) && tuple.source.is_none() && tuple.elements.iter().all(|e| match e {
                 TupleElement::EvalRes(er) => {
@@ -220,9 +218,7 @@ impl AspectConsumeDynamic for Tuple {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).unwrap())
-                .ok()
-                .expect("Tuple to_dynamic: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple to_dynamic: Rc not unique");
         let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
             match e {
                 TupleElement::Mortar(t) => t.clone(),
@@ -274,7 +270,7 @@ impl AspectTuple for Tuple {
 
     fn take_elements(&self, value: Rc<dyn Value>) -> Vec<EvalRes> {
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(value).unwrap()).ok().expect("take_elements: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(value)).ok().expect("take_elements: Rc not unique");
         tuple.elements.into_iter().map(|e| {
             match e {
                 TupleElement::EvalRes(er) => er,
@@ -330,9 +326,7 @@ impl Type for Tuple {
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let result_type = cv.value.type_(xx, loc);
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value).expect("Tuple cast_to: expected Tuple value"))
-                .ok()
-                .expect("Tuple cast_to: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple cast_to: Rc not unique");
         let needs_runtime = tuple.elements.iter().any(|e| match e {
             TupleElement::Mortar(_) => true,
             TupleElement::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),

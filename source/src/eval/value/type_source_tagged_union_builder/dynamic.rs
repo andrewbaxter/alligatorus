@@ -21,16 +21,16 @@ use {
         eval::{
             Erb,
             TargetBindSub,
-            dynamic_wrap::{
-                AnyType,
-                DynamicWrap,
-                dynamic_wrap_method_name,
-            },
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
+            },
+            dynamic_wrap::{
+                AnyType,
+                DynamicWrap,
+                dynamic_wrap_method_name,
             },
             value::{
                 tuple::Tuple,

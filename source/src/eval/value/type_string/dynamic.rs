@@ -6,6 +6,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectSet,
             AspectStackValueDynamic,
@@ -15,6 +16,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -45,6 +47,7 @@ use {
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             },
         },
         langhelp::{
@@ -59,6 +62,7 @@ use {
             GlobalContext,
             QExprId,
             ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -172,6 +176,15 @@ impl AspectField for TypeStringDynamic {
     }
 }
 
+impl AspectInitialBind for TypeStringDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeStringDynamic),
+        })
+    }
+}
+
 impl AspectLiftDynamic for TypeStringDynamic {
     fn lift(
         &self,
@@ -230,6 +243,9 @@ impl Type for TypeStringDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

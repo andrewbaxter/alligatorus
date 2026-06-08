@@ -5,6 +5,7 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectNull,
             AspectStackValueDynamic,
@@ -12,6 +13,7 @@ use {
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_null_aspect_id,
             aspect_null_get,
@@ -31,6 +33,7 @@ use {
                 bind_via_target,
             },
             value::{
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_null::r#const::ValueNullConst,
             },
         },
@@ -45,6 +48,8 @@ use {
             ExprContext,
             GlobalContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -118,6 +123,15 @@ impl AspectConsumeDynamic for TypeNullDynamic {
     }
 }
 
+impl AspectInitialBind for TypeNullDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeNullDynamic),
+        })
+    }
+}
+
 impl AspectLiftDynamic for TypeNullDynamic {
     fn lift(
         &self,
@@ -172,6 +186,9 @@ impl Type for TypeNullDynamic {
         }
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectBind>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

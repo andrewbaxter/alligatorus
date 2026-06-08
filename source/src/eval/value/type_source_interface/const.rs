@@ -5,11 +5,13 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
+            AspectInitialBind,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
         },
@@ -29,6 +31,7 @@ use {
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             },
         },
         langhelp::{
@@ -40,6 +43,8 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -139,6 +144,15 @@ impl AspectField for TypeSourceInterfaceConst {
     }
 }
 
+impl AspectInitialBind for TypeSourceInterfaceConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
+        })
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceInterfaceConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -193,6 +207,13 @@ impl Type for TypeSourceInterfaceConst {
                 Box::new(
                     Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as
                         Box<dyn AspectStackValueDynamic>,
+                ),
+            );
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>,
                 ),
             );
         }

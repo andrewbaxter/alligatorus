@@ -45,9 +45,7 @@ use {
                 bind_via_target,
                 mortar_set,
             },
-            value::{
-                value_empty::r#const::ValueEmptyConst,
-            },
+            value::value_empty::r#const::ValueEmptyConst,
         },
         langhelp::{
             Aspect,
@@ -356,12 +354,9 @@ impl Type for TypeMapDynamic {
         // Record source: decompose, typecheck_convert each value to the map's value type,
         // then convert each to JS individually.
         let record: crate::eval::value::record::Record =
-            match downcast_value::<crate::eval::value::record::Record>(
-                cv.value,
-            ).and_then(|r| Rc::try_unwrap(r).ok()) {
-                Some(r) => r,
-                None => return EvalRes::err(loc, "Cannot convert non-record to map type".to_string()),
-            };
+            Rc::try_unwrap(downcast_value::<crate::eval::value::record::Record>(cv.value))
+                .ok()
+                .expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let mut js_fields = Vec::new();

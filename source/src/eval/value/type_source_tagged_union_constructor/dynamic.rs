@@ -14,13 +14,13 @@ use {
         },
         code_dynamic::CodeDynamic,
         eval::{
-            from_v8_ref,
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
+            from_v8_ref,
         },
         langhelp::{
             Aspect,

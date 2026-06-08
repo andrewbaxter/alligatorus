@@ -41,6 +41,32 @@ pub(crate) enum RecordScopeField {
     Scope(Box<dyn ScopeEntry>),
 }
 
+pub(crate) struct ScopeEntryRecordDynamic {
+    pub dynamic_key: ScopeEntryId,
+    pub fields: BTreeMap<ConstKey, Rc<dyn Type>>,
+}
+
+impl ScopeEntry for ScopeEntryRecordDynamic {
+    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+        let source = ValueDynamicSource::Binding(ValueDynamicDataScope { key: self.dynamic_key });
+        CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(CodeDynamic {
+                    loc: loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
+                })),
+            },
+            value: Rc::new(Record {
+                source: Some(source),
+                fields: self.fields.iter().map(|(k, t)| {
+                    (k.clone(), RecordField::Mortar(t.clone()))
+                }).collect(),
+            }),
+        }
+    }
+}
+
 /// DynamicScopeEntry adapter for sourceless records (used by bind_dynamic when
 /// record has no JS code). On use_, constructs a Record from the stored scope
 /// entries.

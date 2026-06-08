@@ -230,14 +230,11 @@ pub(crate) struct DefSetId(pub usize);
 /// This is safe because we verify the concrete type via `Any` before performing
 /// the pointer cast. The type guarantee comes from the type checker (cast_to /
 /// cast_from).
-pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Option<Rc<T>> {
-    if (v.as_ref() as &dyn Any).is::<T>() {
-        let raw = Rc::into_raw(v) as *const T;
-        Some(unsafe {
-            Rc::from_raw(raw)
-        })
-    } else {
-        None
+pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Rc<T> {
+    assert!((v.as_ref() as &dyn Any).is::<T>(), "downcast_value: expected {}", std::any::type_name::<T>());
+    let raw = Rc::into_raw(v) as *const T;
+    unsafe {
+        Rc::from_raw(raw)
     }
 }
 

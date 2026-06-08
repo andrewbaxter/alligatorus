@@ -7,6 +7,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectRecord,
             aspect_bind_aspect_id,
@@ -15,6 +16,7 @@ use {
             aspect_consume_dynamic_get_maybe,
             aspect_field_aspect_id,
             aspect_field_get_maybe,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_record_aspect_id,
             aspect_record_get_maybe,
@@ -67,6 +69,7 @@ use {
     },
     scope_entry::{
         RecordScopeField,
+        ScopeEntryRecordDynamic,
         ScopeEntryRecordMortar,
     },
     std::{
@@ -98,9 +101,7 @@ impl Record {
         cv: CodeValue,
     ) -> EResult<(BTreeMap<ConstKey, RecordScopeField>, Option<TargetBindSub>)> {
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value).unwrap())
-                .ok()
-                .expect("Record bind_sub: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record bind_sub: Rc not unique");
         let is_sourceless =
             matches!(cv.code.code, Code_::None) && record.source.is_none() &&
                 record.fields.values().all(|f| match f {
@@ -237,7 +238,7 @@ impl Record {
     /// Clone this type-Record. Panics if not a type.
     fn clone_as_type(&self) -> Record {
         Record {
-            source: None,
+            source: self.source.clone(),
             fields: self.fields.iter().map(|(k, f)| {
                 (k.clone(), match f {
                     RecordField::Mortar(t) => RecordField::Mortar(t.clone()),
@@ -286,15 +287,8 @@ impl AspectBindDynamic for Record {
 impl AspectConsumeDynamic for Record {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
-
-        // If the value is a ValueDynamic (e.g. from cast_from), the JS code already
-        // represents the record object — just pass the code through
-        let record: Record = match downcast_value::<Record>(cv.value).and_then(|r| Rc::try_unwrap(r).ok()) {
-            Some(r) => r,
-            None => {
-                return carry.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
-            },
-        };
+        let record: Record =
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record Rc not unique in to_dynamic");
 
         // If the record has a mortar source (it's backed by a JS object), pass through
         // the code — the fields are accessed at runtime.
@@ -379,11 +373,13 @@ impl AspectField for Record {
                     ],
                 });
             })?);
-
-            // If self_ is a Record, extract the field directly
             let CodeValue { code: self_code_raw, value: self_value } = self_;
             let is_none = matches!(self_code_raw.code, Code_::None);
-            if let Some(mut record) = downcast_value::<Record>(self_value).and_then(|r| Rc::try_unwrap(r).ok()) {
+            if self.source.is_none() {
+                let mut record =
+                    Rc::try_unwrap(downcast_value::<Record>(self_value))
+                        .ok()
+                        .expect("Record Rc not unique in field access");
                 match record.fields.remove(&const_key) {
                     Some(RecordField::EvalRes(entry)) => {
                         if let Some(cv) = entry.v {
@@ -392,7 +388,6 @@ impl AspectField for Record {
                         return erb.err_new(format!("Field '{}' evaluated to error", key_name));
                     },
                     Some(RecordField::Mortar(mortar_type)) => {
-                        // Field is only available via mortar source — generate JS access
                         let self_code = erb.must_er(self_code_raw.cast::<CodeDynamic>())?.unwrap().clone();
                         let field_code = Code {
                             loc,
@@ -502,6 +497,20 @@ impl AspectField for Record {
     }
 }
 
+impl AspectInitialBind for Record {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryRecordDynamic {
+            dynamic_key: dynamic_key,
+            fields: self.fields.iter().map(|(k, f)| {
+                (k.clone(), match f {
+                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::EvalRes(_) => panic!("initial_bind on non-type record"),
+                })
+            }).collect(),
+        })
+    }
+}
+
 impl Type for Record {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone_as_type())
@@ -541,6 +550,9 @@ impl Type for Record {
             }).collect();
             return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
+        }
         return None;
     }
 
@@ -561,9 +573,7 @@ impl Type for Record {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let code = cv.code;
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value).expect("Record type must have Record value"))
-                .ok()
-                .expect("Record cast_from: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record cast_from: Rc not unique");
         return er_seq_cv!(loc, erb, {
             let mut converted_fields = BTreeMap::new();
             for (key, field) in record.fields {
@@ -603,9 +613,7 @@ impl Type for Record {
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let result_type = cv.value.type_(xx, loc);
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value).expect("Record cast_to: expected Record value"))
-                .ok()
-                .expect("Record cast_to: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record cast_to: Rc not unique");
         let needs_runtime = record.fields.values().any(|f| match f {
             RecordField::Mortar(_) => true,
             RecordField::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
@@ -731,7 +739,7 @@ impl Value for Record {
             (k.clone(), RecordField::Mortar(t))
         }).collect();
         Rc::new(Record {
-            source: None,
+            source: self.source.clone(),
             fields,
         })
     }

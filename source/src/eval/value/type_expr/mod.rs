@@ -16,20 +16,18 @@ use {
             CodeDynamicType,
         },
         eval::{
+            dynamic_util::{
+                bind_dynamic_default,
+                bind_via_target,
+                mortar_consume_to_dynamic,
+            },
             expr::{
                 Expr,
                 Expr_,
                 StagedExprCell,
             },
             from_v8_ref,
-            dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
-                mortar_consume_to_dynamic,
-            },
-            value::{
-                value_empty::r#const::ValueEmptyConst,
-            },
+            value::value_empty::r#const::ValueEmptyConst,
         },
         langhelp::{
             Aspect,

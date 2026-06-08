@@ -62,12 +62,7 @@ impl AspectBind for TypeAnyDynamic {
 }
 
 impl AspectBindDynamic for TypeAnyDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }

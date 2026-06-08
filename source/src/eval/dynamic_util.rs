@@ -4,7 +4,6 @@ pub(crate) use crate::eval::value::value_dynamic::{
     ValueDynamicDataScope,
     ValueDynamicSource,
 };
-
 use {
     crate::{
         builtin::{

@@ -4,23 +4,26 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
         code_dynamic::CodeDynamic,
         eval::{
-            from_v8_ref,
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
+            from_v8_ref,
+            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -31,6 +34,8 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntry,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -81,6 +86,15 @@ impl AspectBindDynamic for TypeSourceInterfaceDynamic {
 impl AspectConsumeDynamic for TypeSourceInterfaceDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceInterfaceDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceInterfaceDynamic),
+        })
     }
 }
 
@@ -138,6 +152,9 @@ impl Type for TypeSourceInterfaceDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectInitialBind>));
         }
         return None;
     }

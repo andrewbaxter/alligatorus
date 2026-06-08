@@ -4,6 +4,7 @@ mod aspect_bool;
 mod aspect_consume;
 mod aspect_field;
 mod aspect_function;
+mod aspect_initial_bind;
 mod aspect_iterable;
 mod aspect_lift;
 mod aspect_list;
@@ -33,6 +34,7 @@ pub(crate) use {
     aspect_consume::dynamic::*,
     aspect_field::*,
     aspect_function::*,
+    aspect_initial_bind::*,
     aspect_iterable::*,
     aspect_lift::dynamic::*,
     aspect_list::dynamic::*,

@@ -15,18 +15,16 @@ use {
         code_dynamic::CodeDynamic,
         eval::{
             definition_set::DefinitionSet,
-            from_v8_ref,
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
-            value::{
-                type_source_data_type::{
-                    SourceDataMethodData,
-                    SourceDataTypeData,
-                },
+            from_v8_ref,
+            value::type_source_data_type::{
+                SourceDataMethodData,
+                SourceDataTypeData,
             },
         },
         langhelp::{

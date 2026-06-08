@@ -20,14 +20,17 @@ impl Value for ValueDynamic {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct ValueDynamicDataAccess {
     pub key: String,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct ValueDynamicDataScope {
     pub key: ScopeEntryId,
 }
 
+#[derive(Clone)]
 pub(crate) enum ValueDynamicSource {
     Binding(ValueDynamicDataScope),
     DefinitionSet,
