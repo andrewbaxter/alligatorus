@@ -188,6 +188,8 @@ pub(crate) fn compile_importid(
         gx: fx.clone(),
         compile_path: compile_path,
         builtin_types: make_builtin_types(),
+        deserialized_artifacts: RefCell::new(HashMap::new()),
+        pending_finalizers: RefCell::new(Vec::new()),
     });
     let mut root_expr = match source {
         Module::V1(e) => e,

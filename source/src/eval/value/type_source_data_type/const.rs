@@ -25,7 +25,6 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
             definition_set::DefinitionSet,
             dynamic_util::{
                 ValueDynamic,
@@ -43,10 +42,7 @@ use {
                 value_source_data_type::r#const::ValueSourceDataTypeConst,
             },
         },
-        invariant::{
-            DeserialLazy,
-            must_downcast_ref,
-        },
+        invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             ArtifactId,
@@ -70,7 +66,6 @@ use {
     dumpster::unsync::Gc,
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
     super::{
@@ -85,91 +80,6 @@ use {
 
 pub(crate) fn defset_artifact_identity() -> ArtifactIdBuiltin {
     builtin_artifact_id!()
-}
-
-pub(crate) fn deserialize_definition_set(
-    xx: &ExprContext,
-    gx: &GlobalContext,
-    loc: QExprId,
-    def_set_artifact_id: ArtifactId,
-) -> Result<(Gc<DefinitionSet>, Vec<Code>), String> {
-    use {
-        crate::eval::value::type_source_data_type::SourceDataMethodData,
-        std::{
-            cell::{
-                Cell,
-                RefCell,
-            },
-            collections::HashMap,
-        },
-        super::SourceDataTypeData,
-    };
-
-    let def_set_artifact = gx.artifacts.get(def_set_artifact_id.clone())?;
-    let def_set_serial: ArtifactDataDefSet =
-        serde_json::from_value(
-            def_set_artifact.data,
-        ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
-
-    // Phase 1: create shells
-    let mut map: HashMap<ArtifactId, Box<dyn Any>> = HashMap::new();
-    let set = Gc::new(DefinitionSet::new(def_set_serial.import_id, def_set_serial.def_set_id));
-    map.insert(def_set_artifact_id, Box::new(set.clone()));
-    let mut dt_serials: Vec<(ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
-    for dt_artifact_id in &def_set_serial.data_types {
-        let dt_artifact = gx.artifacts.get(dt_artifact_id.clone())?;
-        let dt_serial: ArtifactDataDefSetDataType =
-            serde_json::from_value(dt_artifact.data).map_err(|e| format!("Failed to parse data type: {}", e))?;
-        let dt_data = Gc::new(SourceDataTypeData {
-            set: set.clone(),
-            name: dt_serial.name.clone(),
-            identity: dt_serial.identity.clone(),
-            data_field: dt_serial.data_field.clone(),
-            description: RefCell::new(None),
-            underlying_type: DeserialLazy::new(),
-            methods: RefCell::new(Vec::new()),
-            interface_impls: RefCell::new(Vec::new()),
-            artifact_id: RefCell::new(None),
-        });
-        map.insert(dt_artifact_id.clone(), Box::new(dt_data));
-        dt_serials.push((dt_artifact_id.clone(), dt_serial));
-    }
-
-    // Phase 2: fill bodies
-    let dt_gcs: Vec<Gc<SourceDataTypeData>> = def_set_serial.data_types.iter().map(|id| {
-        must_downcast_ref::<Gc<SourceDataTypeData>>(map.get(id).unwrap().as_ref()).clone()
-    }).collect();
-    *set.data_types.borrow_mut() = dt_gcs;
-    let mut codes: Vec<Code> = Vec::new();
-    for (dt_artifact_id, dt_serial) in &dt_serials {
-        let dt_data = must_downcast_ref::<Gc<SourceDataTypeData>>(map.get(dt_artifact_id).unwrap().as_ref());
-        let (underlying_type, underlying_code) =
-            crate::eval::util::deserialize_type_artifact(xx, gx, loc, &dt_serial.underlying_type.type_)
-                .into_res()
-                .map_err(|e| format!("Failed to deserialize underlying type: {:?}", e))?;
-        codes.push(underlying_code);
-        dt_data.underlying_type.set(underlying_type);
-        let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
-            let (ret_type, ret_code) =
-                crate::eval::util::deserialize_type_artifact(xx, gx, loc, &m.ret_type.type_)
-                    .into_res()
-                    .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {:?}", e));
-            codes.push(ret_code);
-            SourceDataMethodData {
-                name: m.name.clone(),
-                impl_expr: RefCell::new(None),
-                ret_type: RefCell::new(Some(ret_type)),
-                scope_entry_id: Cell::new(
-                    Some(ScopeEntryId::Def(def_set_serial.import_id, def_set_serial.def_set_id, i)),
-                ),
-                self_scope_entry_id: Cell::new(None),
-                field_name: m.field_name.clone(),
-                compiled_js: RefCell::new(Some(m.compiled_js.clone())),
-            }
-        }).collect();
-        *dt_data.methods.borrow_mut() = methods;
-    }
-    Ok((set, codes))
 }
 
 fn serialize_definition_set(
@@ -237,9 +147,11 @@ impl TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
-    fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        er_seq_cv!(loc, erb, {
-            let underlying_type = self.data.underlying_type.get();
+    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        let dt_data = self.data.clone();
+        let data = data.clone();
+        _xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, gx, loc| {
+            let underlying_type = dt_data.underlying_type.get();
             let build_type_artifact =
                 crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
                     xx,
@@ -250,12 +162,14 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             drop(underlying_type);
             let underlying_artifact = Artifact {
                 type_: build_type_artifact.type_,
-                data: data.clone(),
+                data: data,
             };
             let underlying_cv =
-                erb.must_er(crate::eval::util::deserialize_artifact(xx, gx, loc, &underlying_artifact))?;
+                crate::eval::util::deserialize_artifact(xx, gx, loc, &underlying_artifact)
+                    .into_res()
+                    .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
             {
-                let set = &self.data.set;
+                let set = &dt_data.set;
                 let mut sets = xx.vx.definition_sets.borrow_mut();
                 let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
                 if !already {
@@ -263,14 +177,17 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 }
             }
             let underlying_value_type = underlying_cv.value.type_(xx, loc);
-            let aspect_str = erb.must_er(aspect_string_const_get(xx, loc, underlying_value_type.as_ref()))?;
+            let aspect_str =
+                aspect_string_const_get(xx, loc, underlying_value_type.as_ref())
+                    .into_res()
+                    .map_err(|e| format!("Failed to get string aspect: {:?}", e))?;
             let s = aspect_str.get(underlying_cv.value.as_ref());
             let underlying_js = CodeDynamic {
                 loc: loc,
                 type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
             };
-            let mut object_fields = vec![(self.data.data_field.clone(), underlying_js)];
-            for method in self.data.methods.borrow().iter() {
+            let mut object_fields = vec![(dt_data.data_field.clone(), underlying_js)];
+            for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
                 object_fields.push((method.field_name.clone(), CodeDynamic {
                     loc: loc,
@@ -281,16 +198,20 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 loc: loc,
                 type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
             };
-            return Ok(CodeValue {
-                code: Code {
-                    loc: loc,
-                    code: Code_::Dyn(Rc::new(code)),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: Some(self.data.clone()) }),
-                }),
-            });
+            Ok(vec![Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(code)),
+            }])
+        }));
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::None,
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: Some(self.data.clone()) }),
+            }),
         })
     }
 

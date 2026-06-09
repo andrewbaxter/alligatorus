@@ -43,7 +43,54 @@ impl PendingImportState {
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        crate::eval::util::deserialize_artifact(xx, &self.gx, loc, artifact).into_res().expect("Artifact deserialization failed")
+        let cv = crate::eval::util::deserialize_artifact(xx, &self.gx, loc, artifact)
+            .into_res()
+            .expect("Artifact deserialization failed");
+        let mut all_finalizer_codes: Vec<Code> = Vec::new();
+        loop {
+            let finalizers =
+                std::mem::take(&mut *xx.vx.ix.pending_finalizers.borrow_mut());
+            if finalizers.is_empty() {
+                break;
+            }
+            for f in finalizers {
+                let codes = f(xx, &self.gx, loc).expect("Finalizer failed");
+                all_finalizer_codes.extend(
+                    codes
+                        .into_iter()
+                        .filter(|c| !matches!(c.code, crate::langhelp::Code_::None)),
+                );
+            }
+        }
+        let mut all_codes = all_finalizer_codes;
+        let cv_code_is_none = matches!(cv.code.code, crate::langhelp::Code_::None);
+        if !cv_code_is_none {
+            all_codes.push(cv.code);
+        }
+        if all_codes.is_empty() {
+            CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: crate::langhelp::Code_::None,
+                },
+                value: cv.value,
+            }
+        } else if all_codes.len() == 1 {
+            CodeValue {
+                code: all_codes.pop().unwrap(),
+                value: cv.value,
+            }
+        } else {
+            let combined_code = xx
+                .target
+                .block(loc, all_codes)
+                .into_res()
+                .expect("Failed to combine finalizer codes");
+            CodeValue {
+                code: combined_code,
+                value: cv.value,
+            }
+        }
     }
 
     pub(crate) fn resolve_standalone(&self) -> CodeValue {
@@ -51,6 +98,8 @@ impl PendingImportState {
             gx: self.gx.clone(),
             compile_path: vec![],
             builtin_types: crate::langhelp::make_builtin_types(),
+            deserialized_artifacts: std::cell::RefCell::new(std::collections::HashMap::new()),
+            pending_finalizers: std::cell::RefCell::new(Vec::new()),
         });
         let ex = Rc::new(EvalContext {
             ix: cix,
