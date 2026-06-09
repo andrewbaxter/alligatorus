@@ -2430,14 +2430,6 @@ pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value:
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
-        // Resolve pending imports so downstream code sees the real value
-        let source =
-            if let Some(pending) =
-                <dyn Any>::downcast_ref::<value::value_pending_import::ValuePendingImport>(source.value.as_ref()) {
-                pending.resolve(xx)
-            } else {
-                source
-            };
         let source_type = source.value.type_(xx, loc);
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {

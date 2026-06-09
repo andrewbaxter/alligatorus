@@ -85,7 +85,8 @@ impl Type for TypePendingImport {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> bool {
-        self.resolved_type(xx, loc).can_cast_to(xx, loc, type_)
+        let resolved = self.resolved_type(xx, loc);
+        resolved.can_cast_to(xx, loc, type_) || type_.can_cast_from(xx, loc, resolved.as_ref())
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> crate::langhelp::EvalRes {
@@ -93,7 +94,13 @@ impl Type for TypePendingImport {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> crate::langhelp::EvalRes {
-        self.resolved_type(xx, loc).cast_to(xx, loc, self.substitute_cv(cv), type_)
+        let resolved = self.resolved_type(xx, loc);
+        let cv = self.substitute_cv(cv);
+        if resolved.can_cast_to(xx, loc, type_) {
+            resolved.cast_to(xx, loc, cv, type_)
+        } else {
+            type_.cast_from(xx, loc, cv)
+        }
     }
 
     fn desc(&self) -> String {
