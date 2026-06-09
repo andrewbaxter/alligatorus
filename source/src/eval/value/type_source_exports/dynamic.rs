@@ -1,36 +1,23 @@
 use {
     crate::{
         builtin::{
+            AspectArtifact,
             AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
             AspectField,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectStackValueDynamic,
+            aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
         },
-        code_dynamic::CodeDynamic,
         eval::{
             Erb,
-            definition_set::DefinitionSetExports,
+            definition_set::DefinitionSet,
             dynamic_util::{
                 ValueDynamic,
                 ValueDynamicSource,
-                bind_dynamic_default,
-                bind_via_target,
             },
-            from_v8_ref,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_function::TypeSourceFunctionConst,
             },
@@ -44,13 +31,12 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
-            ScopeEntryId,
             Type,
             Unique,
             Value,
         },
     },
+    dumpster::unsync::Gc,
     std::{
         any::Any,
         mem,
@@ -58,132 +44,58 @@ use {
     },
 };
 
-pub(crate) struct TypeSourceExportsDynamic;
-
-impl Aspect for TypeSourceExportsDynamic { }
-
-impl AspectBind for TypeSourceExportsDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_via_target(xx, loc, cv)
-    }
-}
-
-impl AspectBindDynamic for TypeSourceExportsDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        bind_dynamic_default(xx, loc, cv)
-    }
-}
-
-impl AspectConsumeDynamic for TypeSourceExportsDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
-    }
-}
-
-impl AspectInitialBind for TypeSourceExportsDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceExportsDynamic),
-        })
-    }
-}
-
-impl AspectLiftDynamic for TypeSourceExportsDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let exports: Rc<DefinitionSetExports> = from_v8_ref::<Rc<DefinitionSetExports>>(&value).clone();
-        exports.set.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceExportsLiftedDynamic { set: exports.set.clone() }),
-        }))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceExportsDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceExportsDynamic),
-            }),
-        }
-    }
-}
-
-impl Type for TypeSourceExportsDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceExportsDynamic)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectConsumeDynamic>));
-        }
-        if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectBindDynamic>));
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectBind>));
-        }
-        if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectStackValueDynamic>));
-        }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_initial_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceExportsDynamic) as Box<dyn AspectInitialBind>));
-        }
-        return None;
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to definition_set_exports"))
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert definition_set_exports"))
-    }
-
-    fn desc(&self) -> String {
-        format!("definition_set_exports")
-    }
-}
-
-impl Value for TypeSourceExportsDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-// --- Post-lift type with field access ---
-struct TypeSourceExportsLiftedDynamic {
-    set: dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>,
+pub(crate) struct TypeSourceExportsLiftedDynamic {
+    pub set: Gc<DefinitionSet>,
 }
 
 impl Aspect for TypeSourceExportsLiftedDynamic { }
 
+impl AspectArtifact for TypeSourceExportsLiftedDynamic {
+    fn from_serial(&self, xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        {
+            let mut sets = xx.vx.definition_sets.borrow_mut();
+            let already = sets.iter().any(|s| s.def_set_id == self.set.def_set_id);
+            if !already {
+                sets.push(self.set.clone());
+            }
+        }
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::None,
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }),
+            }),
+        })
+    }
+
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        _self_: Rc<dyn Value>,
+    ) -> EResult<crate::langhelp::Artifact> {
+        let artifact_id = crate::eval::definition_set::serialize_definition_set(xx, loc, &self.set);
+        EResult::ok(crate::langhelp::Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        })
+    }
+}
+
 impl AspectBind for TypeSourceExportsLiftedDynamic {
-    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((Code {
+    fn bind(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> crate::langhelp::EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        crate::langhelp::EResult::ok((Code {
             loc: loc,
             code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn crate::langhelp::ScopeEntry>))
     }
 }
 
@@ -193,8 +105,6 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
             let key_type = key.value.type_(xx, loc);
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
-
-            // Look up named functions
             {
                 let functions = self.set.functions.borrow();
                 for func_data in functions.iter() {
@@ -212,8 +122,6 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
                     }
                 }
             }
-
-            // Look up named data type constructors
             {
                 let data_types = self.set.data_types.borrow();
                 for dt_data in data_types.iter() {
@@ -275,6 +183,13 @@ impl Type for TypeSourceExportsLiftedDynamic {
         if *key == aspect_bind_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectBind>),
+            );
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectArtifact>,
+                ),
             );
         }
         return None;

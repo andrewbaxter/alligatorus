@@ -14,7 +14,6 @@ pub mod type_pending_import;
 pub mod type_scope_entry;
 pub mod type_source_data_type;
 pub mod type_source_data_type_constructor;
-pub mod type_source_define_result;
 pub mod type_source_exports;
 pub mod type_source_function;
 pub mod type_source_interface;

@@ -49,10 +49,7 @@ use {
             EXPR_PREFIX,
             TAG_VAR,
         },
-        eval::{
-            dynamic_util::wrap_with_carry,
-            value::type_source_define_result::dynamic::SourceDefineResult,
-        },
+        eval::dynamic_util::wrap_with_carry,
         invariant::must_downcast_ref,
         langhelp::{
             Code,
@@ -953,11 +950,11 @@ fn eval(
                 message
             });
         }),
-        dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> SourceDefineResult {
+        dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> Gc<DefinitionSet> {
             let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
             let def_set_id = DefSetId(dsc.counter.next());
             let import_id = dsc.import_id;
-            SourceDefineResult { ds: Rc::new(Gc::new(DefinitionSet::new(import_id, def_set_id))) }
+            Gc::new(DefinitionSet::new(import_id, def_set_id))
         }),
         dynamic_wrap!(fn str_to_json(ex, dynamic_scope, scope)(s: String) -> String {
             serde_json::to_string(&s).unwrap()
