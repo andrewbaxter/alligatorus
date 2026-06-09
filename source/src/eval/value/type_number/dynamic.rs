@@ -23,6 +23,7 @@ use {
             aspect_operator_lt_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            aspect_type_aspect_id,
         },
         code_dynamic::{
             CodeDynamic,
@@ -230,6 +231,12 @@ impl AspectStackValueDynamic for TypeNumberDynamic {
     }
 }
 
+impl crate::eval::aspect::AspectType for TypeNumberDynamic {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(TypeNumberDynamic)
+    }
+}
+
 impl Type for TypeNumberDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNumberDynamic)
@@ -265,6 +272,9 @@ impl Type for TypeNumberDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn crate::eval::aspect::AspectType>));
         }
         return None;
     }

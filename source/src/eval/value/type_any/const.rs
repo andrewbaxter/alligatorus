@@ -122,7 +122,7 @@ impl Type for TypeAnyConst {
     }
 
     fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn crate::langhelp::Type) -> bool {
-        true
+        false
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {

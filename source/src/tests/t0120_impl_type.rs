@@ -66,35 +66,23 @@ fn test_00100_impl_type() {
                                         (
                                             "cast_from",
                                             mb.stage(
-                                                mb.block(vec![mb.call(mb.scope_use("panic"), mb.tuple(vec![]))]),
+                                                mb.call(
+                                                    mb.scope_use("eval_const"),
+                                                    mb.record(
+                                                        vec![
+                                                            ("xx", mb.field(mb.scope_use("arg"), mb.str("xx"))),
+                                                            ("expr", mb.stage(mb.call(mb.field(
+                                                                // Graft is like "lower" except it just takes an EvalRes and puts it in the tree,
+                                                                // to be used as-is when evaluated.
+                                                                mb.graft(mb.field(mb.scope_use("arg"), "cv")),
+                                                                mb.str("to_upper"),
+                                                            ), mb.tuple(vec![])))),
+                                                        ],
+                                                    ),
+                                                ),
                                             ),
                                         ),
                                         ("desc", mb.stage(mb.block(vec![mb.str("upper")]))),
-                                        (
-                                            "aspect",
-                                            mb.stage(
-                                                mb.block(vec![mb.call(mb.scope_use("panic"), mb.tuple(vec![]))]),
-                                            ),
-                                        ),
-                                        ("can_cast_to", mb.stage(mb.bool_(false))),
-                                        (
-                                            "cast_to",
-                                            mb.stage(
-                                                mb.block(vec![mb.call(mb.scope_use("panic"), mb.tuple(vec![]))]),
-                                            ),
-                                        ),
-                                        (
-                                            "cast_to",
-                                            mb.stage(
-                                                mb.block(vec![mb.call(mb.scope_use("panic"), mb.tuple(vec![]))]),
-                                            ),
-                                        ),
-                                        (
-                                            "cast_to",
-                                            mb.stage(
-                                                mb.block(vec![mb.call(mb.scope_use("panic"), mb.tuple(vec![]))]),
-                                            ),
-                                        ),
                                     ])]),
                                 ),
                                 mb.field(mb.scope_use("u"), mb.str("new")),

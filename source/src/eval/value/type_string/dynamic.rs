@@ -24,6 +24,7 @@ use {
             aspect_string_const_get_maybe,
             aspect_string_dynamic_aspect_id,
             aspect_string_dynamic_get_maybe,
+            aspect_type_aspect_id,
         },
         code_dynamic::{
             CodeDynamic,
@@ -211,6 +212,12 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 
 impl AspectStringDynamic for TypeStringDynamic { }
 
+impl crate::eval::aspect::AspectType for TypeStringDynamic {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(TypeStringDynamic)
+    }
+}
+
 impl Type for TypeStringDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringDynamic)
@@ -246,6 +253,9 @@ impl Type for TypeStringDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn crate::eval::aspect::AspectType>));
         }
         return None;
     }

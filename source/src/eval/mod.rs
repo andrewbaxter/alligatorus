@@ -29,6 +29,7 @@ use {
             aspect_stack_value_dynamic_get,
             aspect_string_const_get_maybe,
             aspect_tagged_union_get,
+            aspect_type_get,
         },
         code_dynamic::{
             BINDING_PREFIX,
@@ -837,7 +838,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 target = const_eval(xx, e.target.as_ref()),
             });
-            let target_type = target.value.type_(xx, expr.loc);
+            let target_meta_type = target.value.type_(xx, expr.loc);
+            let aspect_type = erb.must_er(aspect_type_get(xx, expr.loc, target_meta_type.as_ref()))?;
+            let target_type = aspect_type.type_(target.value.as_ref());
             let v = erb.must_er(typecheck_convert(xx, expr.loc, target_type.as_ref(), base))?;
             return Ok(v);
         }),

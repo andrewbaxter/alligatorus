@@ -19,6 +19,7 @@ use {
             aspect_null_get,
             aspect_null_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
+            aspect_type_aspect_id,
         },
         code_dynamic::{
             CodeDynamic,
@@ -153,6 +154,12 @@ impl AspectStackValueDynamic for TypeNullDynamic {
     }
 }
 
+impl crate::eval::aspect::AspectType for TypeNullDynamic {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(TypeNullDynamic)
+    }
+}
+
 impl Type for TypeNullDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNullDynamic)
@@ -182,6 +189,9 @@ impl Type for TypeNullDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn crate::eval::aspect::AspectType>));
         }
         return None;
     }

@@ -44,7 +44,10 @@ pub(crate) trait Sources: Send + Sync {
 
 pub(crate) trait Type: Value {
     fn as_value(&self) -> Rc<dyn Value>;
-    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>>;
+
+    fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
+        return None;
+    }
 
     fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
         false
@@ -53,8 +56,14 @@ pub(crate) trait Type: Value {
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
         false
     }
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes;
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes;
+
+    fn cast_from(&self, _xx: &ExprContext, _loc: QExprId, _cv: CodeValue) -> EvalRes {
+        unimplemented!();
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        unimplemented!();
+    }
     fn desc(&self) -> String;
 
     /// Serialize this type itself as an artifact (for type references).

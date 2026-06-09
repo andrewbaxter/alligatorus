@@ -11,6 +11,7 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_type_aspect_id,
         },
         code_dynamic::{
             CodeDynamic,
@@ -122,6 +123,12 @@ impl AspectLiftDynamic for TypeExpr {
     }
 }
 
+impl crate::eval::aspect::AspectType for TypeExpr {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(TypeExpr)
+    }
+}
+
 impl Type for TypeExpr {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeExpr)
@@ -145,6 +152,9 @@ impl Type for TypeExpr {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn crate::eval::aspect::AspectType>));
         }
         return None;
     }
