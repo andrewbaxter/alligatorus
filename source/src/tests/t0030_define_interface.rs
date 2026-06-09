@@ -553,14 +553,3 @@ fn test_00920interface_wrong_map_value_type() {
     ])))])))].into_iter().collect());
     compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap_err();
 }
-//. #[test]
-//. fn test_01000_rust_interface() {
-//.    setup_v8();
-//.    let mb = ModuleBuilder::default();
-//.    let gx = new_gx([("main", SerialModule::V1(mb.block(vec![
-//.        ...
-//.    ])))].into_iter().collect());
-//.    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-//.    assert_eq!(res.logs.len(), 1);
-//.    assert_eq!(res.logs[0].message, "HELLO");
-//. }
