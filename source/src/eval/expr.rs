@@ -23,6 +23,7 @@ pub(crate) enum Expr_ {
     Call(ExprCall),
     Field(ExprField),
     Foreach(ExprForeach),
+    Graft(ExprGraft),
     If(ExprIf),
     Import(ExprImport),
     Literal(LitValue),
@@ -88,6 +89,11 @@ pub(crate) struct ExprIf {
 #[derive(Clone)]
 pub(crate) struct ExprImport {
     pub spec: Rc<Expr>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ExprGraft {
+    pub expr: Rc<Expr>,
 }
 
 #[derive(Clone)]

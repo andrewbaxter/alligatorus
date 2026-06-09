@@ -160,6 +160,9 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                 SourceExpr_::Lower(expr) => Expr_::Lower(
                     ExprLower { expr: Rc::new(source_expr_to_expr(source_id, &expr.expr)) },
                 ),
+                SourceExpr_::Graft(expr) => Expr_::Graft(
+                    crate::eval::expr::ExprGraft { expr: Rc::new(source_expr_to_expr(source_id, &expr.expr)) },
+                ),
                 SourceExpr_::Tuple(exprs) => Expr_::Tuple(
                     ExprTuple { elements: exprs.iter().map(|e| source_expr_to_expr(source_id, e)).collect() },
                 ),

@@ -40,6 +40,7 @@ pub enum SourceExpr_ {
     Call(SourceExprCall),
     Field(SourceExprField),
     Foreach(SourceExprForeach),
+    Graft(SourceExprGraft),
     If(SourceExprIf),
     Import(SourceExprImport),
     Literal(SourceLiteral),
@@ -125,6 +126,16 @@ pub struct SourceExprIf {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprImport {
     pub spec: Box<SourceExpr>,
+}
+
+/// Inside a staged source tree, inserts an already-evaluated value as-is, to be
+/// used directly when the stage is later evaluated. Like `lower`, except the
+/// inner expression is evaluated in the current stage (not the previous one)
+/// and its `EvalRes` is grafted into the staged tree.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprGraft {
+    pub expr: Box<SourceExpr>,
 }
 
 /// Places a value in a staged source tree. When at the root source level,

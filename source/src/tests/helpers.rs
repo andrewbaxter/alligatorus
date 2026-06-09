@@ -21,6 +21,7 @@ use {
             SourceExprCall,
             SourceExprField,
             SourceExprForeach,
+            SourceExprGraft,
             SourceExprIf,
             SourceExprImport,
             SourceExprLower,
@@ -139,6 +140,13 @@ impl ModuleBuilder {
         return SourceExpr {
             id: self.id(),
             r#type: SourceExpr_::Lower(SourceExprLower { expr: Box::new(expr) }),
+        };
+    }
+
+    pub fn graft(&self, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Graft(SourceExprGraft { expr: Box::new(expr) }),
         };
     }
 
