@@ -92,13 +92,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
         *self_.data_type_ref.data.description.borrow_mut() = Some(description);
     }
     fn set_underlying(type_ref: AnyType) -> () {
-        let mut underlying = self_.data_type_ref.data.underlying_type.borrow_mut();
-        if underlying.is_some() {
-            drop(underlying);
-            throw_error(scope, "Data type already has an underlying type");
-            return;
-        }
-        *underlying = Some(type_ref.0);
+        self_.data_type_ref.data.underlying_type.set(type_ref.0);
     }
     fn new_func(name: String) -> SourceNewDataMethodResult {
         let dt_data = &self_.data_type_ref.data;

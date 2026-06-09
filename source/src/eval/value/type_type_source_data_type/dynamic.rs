@@ -52,10 +52,14 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         data.clone()
                     ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
                 )?;
-            let def_set_artifact = erb.must_res(gx.artifacts.get(serial.def_set))?;
-            let def_set = erb.must_res(deserialize_definition_set(xx, gx, loc, &def_set_artifact))?;
+            let def_set = erb.must_res(deserialize_definition_set(xx, gx, loc, serial.def_set))?;
             let data_types = def_set.data_types.borrow();
-            let dt_data = data_types[serial.type_index].clone();
+            let dt_data =
+                data_types
+                    .iter()
+                    .find(|dt| dt.identity == serial.identity)
+                    .expect("Data type not found in definition set")
+                    .clone();
             drop(data_types);
             return Ok(CodeValue {
                 code: Code {

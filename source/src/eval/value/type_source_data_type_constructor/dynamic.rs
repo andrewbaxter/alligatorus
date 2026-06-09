@@ -106,7 +106,11 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         set: set.clone(),
         name: serial.name,
         description: std::cell::RefCell::new(None),
-        underlying_type: std::cell::RefCell::new(Some(underlying_type)),
+        underlying_type: {
+            let dl = crate::invariant::DeserialLazy::new();
+            dl.set(underlying_type);
+            dl
+        },
         methods: std::cell::RefCell::new(methods),
         interface_impls: std::cell::RefCell::new(Vec::new()),
         identity: serial.identity.clone(),

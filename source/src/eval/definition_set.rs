@@ -59,9 +59,6 @@ impl DefinitionSet {
         let data_types = self.data_types.borrow();
         for dt_data in data_types.iter() {
             let name = dt_data.name.as_deref().unwrap_or("(unnamed)");
-            if dt_data.underlying_type.borrow().is_none() {
-                return Err(format!("Data type '{}' is missing underlying type", name));
-            }
             for method in dt_data.methods.borrow().iter() {
                 if method.impl_expr.borrow().is_none() {
                     return Err(format!("Data type '{}' method '{}' is missing implementation", name, method.name));

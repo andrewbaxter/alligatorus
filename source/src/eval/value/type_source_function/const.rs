@@ -63,12 +63,7 @@ impl AspectFunction for TypeSourceFunctionConst {
             let already =
                 sets
                     .iter()
-                    .any(
-                        |s| std::ptr::eq(
-                            &**s as *const crate::eval::definition_set::DefinitionSet,
-                            &**set as *const crate::eval::definition_set::DefinitionSet,
-                        ),
-                    );
+                    .any(|s| s.def_set_id == set.def_set_id);
             if !already {
                 sets.push(set.clone());
             }

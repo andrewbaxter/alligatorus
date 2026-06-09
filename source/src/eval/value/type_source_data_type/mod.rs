@@ -3,10 +3,13 @@ pub mod dynamic;
 pub mod r#const;
 
 use {
-    crate::langhelp::{
-        ScopeEntryId,
-        Unique,
-        Value,
+    crate::{
+        invariant::DeserialLazy,
+        langhelp::{
+            ScopeEntryId,
+            Unique,
+            Value,
+        },
     },
     dumpster::unsync::Gc,
     std::{
@@ -39,7 +42,7 @@ pub(crate) struct SourceDataTypeData {
     pub methods: RefCell<Vec<SourceDataMethodData>>,
     pub name: Option<String>,
     pub set: Gc<crate::eval::definition_set::DefinitionSet>,
-    pub underlying_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
+    pub underlying_type: DeserialLazy<Rc<dyn crate::langhelp::Type>>,
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceDataTypeData {

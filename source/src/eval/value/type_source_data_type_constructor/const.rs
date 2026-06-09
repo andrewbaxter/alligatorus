@@ -16,7 +16,6 @@ use {
         },
         eval::{
             Erb,
-            definition_set::DefinitionSet,
             typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
@@ -58,8 +57,7 @@ use {
 impl TypeSourceDataTypeConstructorConst {
     pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &self.data.artifact_id, || {
-            let underlying_type = self.data.underlying_type.borrow();
-            let underlying_type = underlying_type.as_ref().expect("Data type missing underlying type");
+            let underlying_type = self.data.underlying_type.get();
             let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
                 let compiled_js = m.compiled_js.borrow();
                 let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
@@ -103,14 +101,12 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
         {
             let set = &self.data.set;
             let mut sets = xx.vx.definition_sets.borrow_mut();
-            let already =
-                sets.iter().any(|s| std::ptr::eq(&**s as *const DefinitionSet, &**set as *const DefinitionSet));
+            let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
             if !already {
                 sets.push(set.clone());
             }
         }
-        let underlying_type =
-            self.data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
+        let underlying_type = self.data.underlying_type.get().clone();
         return er_seq_cv!(loc, erb, {
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;

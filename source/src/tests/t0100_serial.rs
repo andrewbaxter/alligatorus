@@ -239,36 +239,31 @@ e0;"#]);
         vec![
             r#"{
   "data": {
-    "data_types": [
-      {
-        "data_field": "_0",
-        "identity": {
-          "source": [
-            [
-              0,
-              0
-            ],
-            0
-          ]
-        },
-        "methods": [
-          {
-            "compiled_js": "function d0_0_0() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n}",
-            "field_name": "_1",
-            "name": "to_string",
-            "ret_type": {
-              "data": null,
-              "type_": {
-                "builtin": {
-                  "file": "src/eval/value/type_string/dynamic.rs",
-                  "line": 79
-                }
-              }
-            }
-          }
+    "data_field": "_0",
+    "def_set": {
+      "source": [
+        [
+          0,
+          0
         ],
-        "name": "upper",
-        "underlying_type": {
+        0
+      ]
+    },
+    "identity": {
+      "source": [
+        [
+          0,
+          0
+        ],
+        0
+      ]
+    },
+    "methods": [
+      {
+        "compiled_js": "function d0_0_0() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n}",
+        "field_name": "_1",
+        "name": "to_string",
+        "ret_type": {
           "data": null,
           "type_": {
             "builtin": {
@@ -279,6 +274,37 @@ e0;"#]);
         }
       }
     ],
+    "name": "upper",
+    "underlying_type": {
+      "data": null,
+      "type_": {
+        "builtin": {
+          "file": "src/eval/value/type_string/dynamic.rs",
+          "line": 79
+        }
+      }
+    }
+  },
+  "type_": {
+    "builtin": {
+      "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
+      "line": 41
+    }
+  }
+}"#,
+            r#"{
+  "data": {
+    "data_types": [
+      {
+        "source": [
+          [
+            0,
+            0
+          ],
+          1
+        ]
+      }
+    ],
     "def_set_id": 0,
     "import_id": 0
   },
@@ -286,26 +312,6 @@ e0;"#]);
     "builtin": {
       "file": "src/eval/value/type_source_data_type/const.rs",
       "line": 87
-    }
-  }
-}"#,
-            r#"{
-  "data": {
-    "def_set": {
-      "source": [
-        [
-          0,
-          0
-        ],
-        1
-      ]
-    },
-    "type_index": 0
-  },
-  "type_": {
-    "builtin": {
-      "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
-      "line": 41
     }
   }
 }"#

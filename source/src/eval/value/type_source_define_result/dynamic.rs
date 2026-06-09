@@ -117,7 +117,7 @@ dynamic_wrap!(struct SourceDefineResult(self_, scope) {
             set: (*ds).clone(),
             name: Some(name),
             description: RefCell::new(None),
-            underlying_type: RefCell::new(None),
+            underlying_type: crate::invariant::DeserialLazy::new(),
             methods: RefCell::new(Vec::new()),
             interface_impls: RefCell::new(Vec::new()),
             identity,

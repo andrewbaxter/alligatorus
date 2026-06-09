@@ -208,8 +208,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         if let Some(data) = &self.data {
-            let underlying_type =
-                data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
+            let underlying_type = data.underlying_type.get().clone();
             let underlying_lift =
                 crate::builtin::aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
                     format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc())

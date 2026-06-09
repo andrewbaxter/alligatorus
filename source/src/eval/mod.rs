@@ -1200,8 +1200,7 @@ fn eval(
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
     for ds in ex.definition_sets.borrow().iter() {
         for dt_data in ds.data_types.borrow().iter() {
-            let underlying_type: Rc<dyn Type> =
-                dt_data.underlying_type.borrow().as_ref().expect("Data type missing underlying type").clone();
+            let underlying_type: Rc<dyn Type> = dt_data.underlying_type.get().clone();
             let data_field = dt_data.data_field.clone();
             for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
