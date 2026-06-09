@@ -250,6 +250,60 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
     }
 }
 
+impl crate::builtin::AspectType for TypeSourceDataTypeDynamic {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        let data = self.data.clone().expect("AspectType requested on data-typeless TypeSourceDataTypeDynamic");
+        Rc::new(TypeUserDefined { data })
+    }
+}
+
+/// A type produced by `AspectType.type_` on a data-type instance whose data
+/// type implements the builtin `type` interface. Delegates
+/// `cast_from`/`can_cast_from`/`desc` to the user-provided impls by setting up
+/// an `arg` binding and `const_eval`-ing the impl expression.
+pub(crate) struct TypeUserDefined {
+    pub data: Gc<SourceDataTypeData>,
+}
+
+impl Aspect for TypeUserDefined { }
+
+impl Type for TypeUserDefined {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeUserDefined { data: self.data.clone() })
+    }
+
+    fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
+        None
+    }
+
+    fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
+        crate::eval::user_defined_type_dispatch::user_defined_can_cast_from(
+            &self.data,
+            xx,
+            loc,
+            source_type,
+        )
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        crate::eval::user_defined_type_dispatch::user_defined_cast_from(&self.data, xx, loc, cv)
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
+    }
+
+    fn desc(&self) -> String {
+        crate::eval::user_defined_type_dispatch::user_defined_desc(&self.data)
+    }
+}
+
+impl Value for TypeUserDefined {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
+
 impl Type for TypeSourceDataTypeDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() })
@@ -312,6 +366,24 @@ impl Type for TypeSourceDataTypeDynamic {
             for impl_data in interface_impls.iter() {
                 if *key == impl_data.interface.identity {
                     return Some(Box::new(true));
+                }
+            }
+            // If the data type implements the builtin `type` interface, instances
+            // of it can be used as types — `AspectType.type_(value)` returns a
+            // `TypeUserDefined` that delegates `cast_from`/`can_cast_from`/`desc`
+            // to the user-provided impls.
+            if *key == crate::builtin::aspect_type_aspect_id() {
+                let has_type_impl = interface_impls.iter().any(|impl_data| {
+                    impl_data.interface.builtin_kind
+                        == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+                });
+                if has_type_impl {
+                    return Some(
+                        Box::new(
+                            Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as
+                                Box<dyn crate::builtin::AspectType>,
+                        ),
+                    );
                 }
             }
         }

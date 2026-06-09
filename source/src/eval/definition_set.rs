@@ -146,6 +146,7 @@ dynamic_wrap!(wrap Gc < DefinitionSet > as DefinitionSet(self_, scope) {
         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
         let iface_data = Gc::new(SourceInterfaceData {
+            builtin_kind: None,
             set: ds.clone(),
             description: RefCell::new(None),
             methods: RefCell::new(Vec::new()),

@@ -91,7 +91,7 @@ fn test_00100_impl_type() {
                             ],
                         ),
                     ),
-                    mb.tuple(vec![]),
+                    mb.null(),
                 ),
             )),
             // Cast a string to the "upper" type (which actually results in a string) and log
@@ -112,6 +112,130 @@ fn test_00100_impl_type() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO");
-    assert_eq!(redact_builtins(&res.generated_mortar_scripts), vec!["TODO"]);
+    let scripts = redact_builtins(&res.generated_mortar_scripts);
+    assert_eq!(scripts.len(), 3);
+    // Stage 1: build the upper data type — call define(), new_data("upper"),
+    // set_underlying(null), impl_interface(value, ...), impl_interface(type, ...),
+    // and return u.new.
+    assert_eq!(scripts[0], r#"let e0;
+let e1;
+e1 = BUILTIN;
+let e2;
+e2 = a7;
+let e3;
+e3 = a8;
+let e4;
+let a0;
+{
+let e5;
+let e6;
+e6 = BUILTIN;
+e5 = (e6)();
+a0 = e5;
+}
+let a1;
+{
+let e7;
+let e8;
+e8 = a0;
+let e9;
+{
+let e10;
+e10 = "upper";
+e9 = e10;
+}
+e7 = e8["_1"](e9);
+a1 = e7;
+}
+{
+let e11;
+let e12;
+e12 = a1;
+let e13;
+e13 = a2;
+e11 = e12["_3"](e13);
+e4 = e11;
+}
+{
+let e14;
+let e15;
+e15 = a1;
+let e16;
+e16 = BUILTIN;
+let e17;
+let e18;
+e18 = "\"type\"";
+let e19;
+e19 = a3;
+e17 = { [e18]: e19 };
+e14 = e15["_5"](e16,e17);
+e4 = e14;
+}
+{
+let e20;
+let e21;
+e21 = a1;
+let e22;
+e22 = BUILTIN;
+let e23;
+let e24;
+e24 = "\"can_cast_from\"";
+let e25;
+e25 = a4;
+let e26;
+e26 = "\"cast_from\"";
+let e27;
+e27 = a5;
+let e28;
+e28 = "\"desc\"";
+let e29;
+e29 = a6;
+e23 = { [e24]: e25, [e26]: e27, [e28]: e29 };
+e20 = e21["_5"](e22,e23);
+e4 = e20;
+}
+{
+let e30;
+let e31;
+e31 = a1;
+e30 = e31["_1"];
+e4 = e30;
+}
+e0 = (e1)(e2,e3,e4);
+e0;"#);
+    // Stage 2: call the constructor with `null` to construct the `upper`
+    // instance.
+    assert_eq!(scripts[1], r#"let e0;
+let e1;
+e1 = BUILTIN;
+let e2;
+e2 = a0;
+let e3;
+e3 = a1;
+let e4;
+let e5;
+e5 = null;
+e4 = { "_0": e5 };
+e0 = (e1)(e2,e3,e4);
+e0;"#);
+    // Stage 3: cast "hello" through the user-defined type — produces
+    // "hello".toUpperCase() and logs it.
+    assert_eq!(scripts[2], r#"let e0;
+{
+let e1;
+let e2;
+e2 = BUILTIN;
+let e3;
+let e4;
+{
+let e5;
+e5 = "hello";
+e4 = e5;
+}
+e3 = e4["toUpperCase"]();
+e1 = (e2)(e3);
+e0 = e1;
+}
+e0;"#);
 }
 // TODO as module

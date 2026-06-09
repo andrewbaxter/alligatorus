@@ -6,6 +6,7 @@ pub mod aspect;
 pub mod definition_set;
 pub mod dynamic_util;
 pub mod expr;
+pub mod user_defined_type_dispatch;
 pub mod value;
 
 use {
@@ -140,6 +141,24 @@ use {
         value_null::r#const::ValueNullConst,
     },
 };
+
+/// Identity for the builtin `value` interface (every value must implement
+/// `type()`). Stable across compile runs.
+pub(crate) fn builtin_value_iface_identity() -> crate::langhelp::Unique {
+    crate::langhelp::Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
+
+/// Identity for the builtin `type` interface (when implemented, instances of
+/// the implementing data type act as types).
+pub(crate) fn builtin_type_iface_identity() -> crate::langhelp::Unique {
+    crate::langhelp::Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
 
 /// Well-known scope entry ID for __record_to_type mortar function.
 pub(crate) const RECORD_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
@@ -988,6 +1007,93 @@ fn eval(
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
     }
 
+    // Synthetic builtin interfaces: `value` and `type`. These are exposed as
+    // `Rc<SourceInterfaceRef>` so `impl_interface(value | type, ...)` accepts
+    // them through the same path as source-defined interfaces. They share a
+    // single throwaway DefinitionSet that is never compiled or serialized.
+    {
+        use value::type_source_interface::{
+            BuiltinInterfaceKind,
+            SourceInterfaceData,
+            SourceInterfaceMethodData,
+            SourceInterfaceRef,
+        };
+        let builtin_def_set =
+            Gc::new(DefinitionSet::new(import_state, DefSetId(usize::MAX)));
+        let any_type: Rc<dyn Type> = Rc::new(value::type_any::dynamic::TypeAnyDynamic);
+        let value_iface_data = Gc::new(SourceInterfaceData {
+            builtin_kind: Some(BuiltinInterfaceKind::Value),
+            set: builtin_def_set.clone(),
+            description: RefCell::new(Some("value".to_string())),
+            methods: RefCell::new(vec![SourceInterfaceMethodData {
+                name: "type".to_string(),
+                arg_type: RefCell::new(Some(Rc::new(TypeNullDynamic) as Rc<dyn Type>)),
+                ret_type: RefCell::new(Some(any_type.clone())),
+                field_name: "_im0".to_string(),
+            }]),
+            identity: builtin_value_iface_identity(),
+        });
+        let type_iface_data = Gc::new(SourceInterfaceData {
+            builtin_kind: Some(BuiltinInterfaceKind::Type),
+            set: builtin_def_set.clone(),
+            description: RefCell::new(Some("type".to_string())),
+            methods: RefCell::new(vec![
+                SourceInterfaceMethodData {
+                    name: "can_cast_from".to_string(),
+                    arg_type: RefCell::new(Some(any_type.clone())),
+                    ret_type: RefCell::new(Some(any_type.clone())),
+                    field_name: "_im1".to_string(),
+                },
+                SourceInterfaceMethodData {
+                    name: "cast_from".to_string(),
+                    arg_type: RefCell::new(Some(any_type.clone())),
+                    ret_type: RefCell::new(Some(any_type.clone())),
+                    field_name: "_im2".to_string(),
+                },
+                SourceInterfaceMethodData {
+                    name: "desc".to_string(),
+                    arg_type: RefCell::new(Some(Rc::new(TypeNullDynamic) as Rc<dyn Type>)),
+                    ret_type: RefCell::new(Some(any_type.clone())),
+                    field_name: "_im3".to_string(),
+                },
+            ]),
+            identity: builtin_type_iface_identity(),
+        });
+        builtin_def_set.interfaces.borrow_mut().push(value_iface_data.clone());
+        builtin_def_set.interfaces.borrow_mut().push(type_iface_data.clone());
+        let iface_dyn_type: Rc<dyn Type> =
+            Rc::new(value::type_source_interface::dynamic::TypeSourceInterfaceDynamic);
+        for (name, data) in
+            [("value", value_iface_data), ("type", type_iface_data)] {
+            let iface_ref = Rc::new(SourceInterfaceRef { data });
+            let dynamic_key = ScopeEntryId::Builtin(
+                // Distinct ids per name to avoid collisions.
+                line!() as usize + match name {
+                    "value" => 0,
+                    "type" => 1,
+                    _ => unreachable!(),
+                },
+            );
+            let v8_val = to_v8(dynamic_scope, iface_ref);
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key))
+                        .unwrap()
+                        .cast(),
+                    v8_val.into(),
+                );
+            let ib = aspect_initial_bind_get(&xx, root_loc, iface_dyn_type.as_ref()).into_res()?;
+            builtin_scope_entries.push((name.to_string(), dynamic_key, iface_dyn_type.clone()));
+            scope
+                .values
+                .borrow_mut()
+                .insert(ConstKey::String(name.to_string()), ib.initial_bind(dynamic_key));
+        }
+    }
+
     // Type references (static scope entries, no JS representation)
     for (
         key,
@@ -997,6 +1103,7 @@ fn eval(
         ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
+        ("eval_const", Rc::new(value::type_eval_const::TypeEvalConst) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
             code: Code {
@@ -1285,6 +1392,11 @@ fn eval(
 
             // Compile interface method implementations
             for impl_data in dt_data.interface_impls.borrow().iter() {
+                // Builtin interface impls (value, type) are dispatched in Rust at
+                // const-eval time, not via compiled JS.
+                if impl_data.interface.builtin_kind.is_some() {
+                    continue;
+                }
                 for method_impl in &impl_data.method_impls {
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(method_impl.impl_expr.as_ref());
                     let method_id =

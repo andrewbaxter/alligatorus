@@ -7,7 +7,21 @@ use {
     std::cell::RefCell,
 };
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BuiltinInterfaceKind {
+    /// The `value` interface: methods that every value must support (e.g.
+    /// `type()`).
+    Value,
+    /// The `type` interface: when implemented on a data type, instances of the
+    /// data type act as types (providing `can_cast_from`, `cast_from`, `desc`).
+    Type,
+}
+
 pub(crate) struct SourceInterfaceData {
+    /// `Some` for builtin interfaces created at scope setup (e.g. `value`,
+    /// `type`). Builtin interface impls bypass the normal source-method
+    /// compilation path and are dispatched in Rust.
+    pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
     pub methods: RefCell<Vec<SourceInterfaceMethodData>>,

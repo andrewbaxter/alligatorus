@@ -311,12 +311,29 @@ impl Type for TypeSourceDataTypeConst {
             );
         }
 
-        // Check interface identity aspects
+        // Check interface identity aspects + builtin `type` interface
         {
             let interface_impls = self.data.interface_impls.borrow();
             for impl_data in interface_impls.iter() {
                 if *key == impl_data.interface.identity {
                     return Some(Box::new(true));
+                }
+            }
+            // If the data type implements the builtin `type` interface, the
+            // instance acts as a Type — provide AspectType that delegates to
+            // the user impl.
+            if *key == crate::builtin::aspect_type_aspect_id() {
+                let has_type_impl = interface_impls.iter().any(|impl_data| {
+                    impl_data.interface.builtin_kind
+                        == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+                });
+                if has_type_impl {
+                    return Some(
+                        Box::new(
+                            Box::new(TypeSourceDataTypeConstAspectType { data: self.data.clone() }) as
+                                Box<dyn crate::builtin::AspectType>,
+                        ),
+                    );
                 }
             }
         }
@@ -396,5 +413,20 @@ impl Type for TypeSourceDataTypeConst {
 impl Value for TypeSourceDataTypeConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
+    }
+}
+
+/// Carrier for `AspectType` when a data type implements the builtin `type`
+/// interface. `type_(value)` returns a `TypeUserDefined` which delegates to the
+/// user's impl methods.
+pub(crate) struct TypeSourceDataTypeConstAspectType {
+    pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
+}
+
+impl Aspect for TypeSourceDataTypeConstAspectType { }
+
+impl crate::builtin::AspectType for TypeSourceDataTypeConstAspectType {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(super::dynamic::TypeUserDefined { data: self.data.clone() })
     }
 }
