@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -26,6 +25,7 @@ use {
             from_v8_ref,
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -67,15 +67,6 @@ impl AspectBind for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl AspectInitialBind for TypeSourceTaggedUnionConstructorDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeSourceTaggedUnionConstructorDynamic {
     fn bind_dynamic(
         &self,
@@ -90,6 +81,15 @@ impl AspectBindDynamic for TypeSourceTaggedUnionConstructorDynamic {
 impl AspectConsumeDynamic for TypeSourceTaggedUnionConstructorDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceTaggedUnionConstructorDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
+        })
     }
 }
 
@@ -157,7 +157,9 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectInitialBind>));
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectInitialBind>),
+            );
         }
         return None;
     }

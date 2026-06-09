@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectBind,
@@ -21,11 +20,13 @@ use {
                 value_string::r#const::ValueStringConst,
             },
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             Aspect,
             Code,
             CodeValue,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -93,7 +94,7 @@ impl AspectField for TypeStringConst {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         TypeStringDynamic.field_opt(xx, key)
     }
 }

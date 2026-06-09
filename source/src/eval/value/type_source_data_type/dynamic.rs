@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -26,6 +25,7 @@ use {
             from_v8_ref,
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -64,15 +64,6 @@ impl AspectBind for TypeSourceDataTypeDynamic {
     }
 }
 
-impl AspectInitialBind for TypeSourceDataTypeDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceDataTypeDynamic),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeSourceDataTypeDynamic {
     fn bind_dynamic(
         &self,
@@ -87,6 +78,15 @@ impl AspectBindDynamic for TypeSourceDataTypeDynamic {
 impl AspectConsumeDynamic for TypeSourceDataTypeDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceDataTypeDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceDataTypeDynamic),
+        })
     }
 }
 

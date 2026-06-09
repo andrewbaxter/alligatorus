@@ -123,7 +123,7 @@ let e10;
 e10 = "upper";
 e9 = e10;
 }
-e7 = e8._1(e9);
+e7 = e8["_1"](e9);
 a1 = e7;
 }
 {
@@ -132,7 +132,7 @@ let e12;
 e12 = a1;
 let e13;
 e13 = a2;
-e11 = e12._3(e13);
+e11 = e12["_3"](e13);
 e4 = e11;
 }
 let a3;
@@ -146,7 +146,7 @@ let e17;
 e17 = "to_string";
 e16 = e17;
 }
-e14 = e15._4(e16);
+e14 = e15["_4"](e16);
 a3 = e14;
 }
 {
@@ -155,7 +155,7 @@ let e19;
 e19 = a3;
 let e20;
 e20 = a4;
-e18 = e19._1(e20);
+e18 = e19["_1"](e20);
 e4 = e18;
 }
 {
@@ -164,14 +164,14 @@ let e22;
 e22 = a3;
 let e23;
 e23 = a5;
-e21 = e22._0(e23);
+e21 = e22["_0"](e23);
 e4 = e21;
 }
 {
 let e24;
 let e25;
 e25 = a1;
-e24 = e25._1;
+e24 = e25["_1"];
 e4 = e24;
 }
 e0 = (e1)(e2,e3,e4);
@@ -182,7 +182,7 @@ let e1;
 e1 = a0;
 let e2;
 e2 = null;
-e0 = e1.toUpperCase(e2);
+e0 = e1["toUpperCase"](e2);
 return e0;
 }
 let e3;
@@ -196,7 +196,7 @@ e5 = e6;
 }
 let e7;
 e7 = d0_0_0;
-e4 = { _0: e5, _1: e7 };
+e4 = { "_0": e5, "_1": e7 };
 e3 = e4;
 }
 e3;"#, r#"function d0_0_0() {
@@ -206,7 +206,7 @@ let e1;
 e1 = a0;
 let e2;
 e2 = null;
-e0 = e1.toUpperCase(e2);
+e0 = e1["toUpperCase"](e2);
 return e0;
 }
 let e0;
@@ -220,10 +220,10 @@ let e5;
 e5 = "hello";
 let e6;
 e6 = d0_0_0;
-e4 = { _0: e5, _1: e6 };
+e4 = { "_0": e5, "_1": e6 };
 let e7;
 e7 = null;
-e3 = e4._1(e7);
+e3 = e4["_1"](e7);
 e1 = (e2)(e3);
 e0 = e1;
 }
@@ -253,7 +253,7 @@ e0;"#]);
         },
         "methods": [
           {
-            "compiled_js": "function d0_0_0() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1.toUpperCase(e2);\nreturn e0;\n}",
+            "compiled_js": "function d0_0_0() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n}",
             "field_name": "_1",
             "name": "to_string",
             "ret_type": {
@@ -261,7 +261,7 @@ e0;"#]);
               "type_": {
                 "builtin": {
                   "file": "src/eval/value/type_string/dynamic.rs",
-                  "line": 78
+                  "line": 79
                 }
               }
             }
@@ -273,7 +273,7 @@ e0;"#]);
           "type_": {
             "builtin": {
               "file": "src/eval/value/type_string/dynamic.rs",
-              "line": 78
+              "line": 79
             }
           }
         }
@@ -285,7 +285,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/value/type_source_data_type/const.rs",
-      "line": 92
+      "line": 93
     }
   }
 }"#,

@@ -39,6 +39,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -130,10 +131,13 @@ impl AspectField for TypeSourceInterfaceConst {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(key) = key else {
+            return None;
+        };
         let methods = self.data.methods.borrow();
         for method in methods.iter() {
-            if method.name == key {
+            if method.name == *key {
                 return Some(Rc::new(TypeFunctionDynamic {
                     arg: Rc::new(TypeNullDynamic),
                     ret: Rc::new(TypeNullDynamic),

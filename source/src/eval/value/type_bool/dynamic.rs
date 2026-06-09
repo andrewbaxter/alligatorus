@@ -67,15 +67,6 @@ impl AspectBind for TypeBoolDynamic {
     }
 }
 
-impl AspectInitialBind for TypeBoolDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeBoolDynamic),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeBoolDynamic {
     fn bind_dynamic(
         &self,
@@ -92,6 +83,15 @@ impl AspectBoolDynamic for TypeBoolDynamic { }
 impl AspectConsumeDynamic for TypeBoolDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         mortar_consume_to_dynamic(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeBoolDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeBoolDynamic),
+        })
     }
 }
 

@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectType,
@@ -12,6 +11,7 @@ use {
             artifact::ArtifactDataDefSetDataType,
             r#const::deserialize_definition_set,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             Aspect,

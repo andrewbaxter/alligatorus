@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectField,
@@ -23,10 +22,12 @@ use {
                 value_number::r#const::ValueNumberConst,
             },
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
             CodeValue,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -66,7 +67,7 @@ impl AspectField for TypeNumberConst {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         TypeNumberDynamic.field_opt(xx, key)
     }
 }

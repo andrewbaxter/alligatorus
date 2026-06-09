@@ -24,10 +24,12 @@ use {
                 bind_via_target,
             },
             from_v8_ref,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-            value::type_source_data_type::{
-                SourceDataMethodData,
-                SourceDataTypeData,
+            value::{
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_source_data_type::{
+                    SourceDataMethodData,
+                    SourceDataTypeData,
+                },
             },
         },
         langhelp::{
@@ -147,15 +149,6 @@ impl AspectBind for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl AspectInitialBind for TypeSourceDataTypeConstructorDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
     fn bind_dynamic(
         &self,
@@ -170,6 +163,15 @@ impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
 impl AspectConsumeDynamic for TypeSourceDataTypeConstructorDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceDataTypeConstructorDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
+        })
     }
 }
 

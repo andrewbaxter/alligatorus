@@ -25,10 +25,11 @@ use {
             TargetBindSub,
             typecheck_convert,
             value::{
-                type_null::dynamic::TypeNullDynamic,
                 tuple::scope_entry::ScopeEntryValue,
+                type_null::dynamic::TypeNullDynamic,
             },
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Code,
             CodeValue,
@@ -43,7 +44,6 @@ use {
             Type,
         },
     },
-    crate::invariant::must_downcast_ref,
     std::{
         mem,
         rc::Rc,

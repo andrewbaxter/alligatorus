@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -28,6 +27,7 @@ use {
             from_v8_ref,
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,

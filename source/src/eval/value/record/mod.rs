@@ -95,7 +95,7 @@ pub(crate) trait RecordBase {
         xx: &ExprContext,
         loc: QExprId,
         self_code_raw: Code,
-        key_name: String,
+        key: String,
         entry_type: Rc<dyn Type>,
     ) -> CodeValue;
     fn to_dynamic(&self, carry: Code) -> EResult<CodeDynamic>;
@@ -133,20 +133,16 @@ impl Record {
             return base.bind_sub(xx, loc, carry, record_type).map(|sub| (scope_fields, Some(sub)));
         }
         let mut errors = vec![];
-        let mut bind_results: Vec<(ConstKey, String, BindSubResult)> = Vec::new();
+        let mut bind_results: Vec<(ConstKey, BindSubResult)> = Vec::new();
         let mut has_target = false;
         for (key, field) in record.fields.into_iter() {
-            let key_str = match &key {
-                ConstKey::String(s) => s.clone(),
-                ConstKey::Usize(n) => n.to_string(),
-            };
             match field {
                 RecordField::Mortar(_) => {
                     errors.push(crate::langhelp::ExprErr {
                         loc: loc,
                         errors: vec![
                             crate::langhelp::ExprSubErr::Opaque(
-                                format!("Record entry '{}' is mortar-only, cannot bind directly", key_str),
+                                format!("Record entry '{:?}' is mortar-only, cannot bind directly", key),
                             ),
                         ],
                     });
@@ -160,10 +156,10 @@ impl Record {
                         match xx.target.maybe_bind_sub(xx, loc, elem_cv).into_res() {
                             Ok(Some(sub)) => {
                                 has_target = true;
-                                bind_results.push((key, key_str, BindSubResult::Target(sub)));
+                                bind_results.push((key, BindSubResult::Target(sub)));
                             },
                             Ok(None) => {
-                                bind_results.push((key, key_str, BindSubResult::Const(CodeValue {
+                                bind_results.push((key, BindSubResult::Const(CodeValue {
                                     code: Code {
                                         loc: loc,
                                         code: Code_::None,
@@ -185,7 +181,7 @@ impl Record {
         }
         if !has_target {
             let mut scope_fields = BTreeMap::new();
-            for (key, _key_str, result) in bind_results {
+            for (key, result) in bind_results {
                 match result {
                     BindSubResult::Const(cv) => {
                         let field_type = cv.value.type_(xx, loc);
@@ -212,11 +208,11 @@ impl Record {
         }
         let mut target_fields = Vec::new();
         let mut scope_fields = BTreeMap::new();
-        for (key, key_str, result) in bind_results {
+        for (key, result) in bind_results {
             match result {
                 BindSubResult::Target(sub) => {
-                    scope_fields.insert(key, RecordScopeField::Mortar(sub.type_.clone()));
-                    target_fields.push((key_str, sub));
+                    scope_fields.insert(key.clone(), RecordScopeField::Mortar(sub.type_.clone()));
+                    target_fields.push((key.clone(), sub));
                 },
                 BindSubResult::Const(cv) => {
                     let field_type = cv.value.type_(xx, loc);
@@ -307,20 +303,13 @@ impl AspectConsumeDynamic for Record {
         let mut errors = vec![];
         let mut js_fields = Vec::new();
         for (key, field) in record.fields.into_iter() {
-            let key_str = match &key {
-                ConstKey::String(s) => s.clone(),
-                ConstKey::Usize(n) => n.to_string(),
-            };
             match field {
                 RecordField::Mortar(_) => {
-                    // Mortar fields are only available via the source object — they shouldn't appear
-                    // in a record being directly consumed to JS (literal records have all EvalRes
-                    // fields)
                     errors.push(crate::langhelp::ExprErr {
                         loc,
                         errors: vec![
                             crate::langhelp::ExprSubErr::Opaque(
-                                format!("Record entry '{}' is mortar-only, cannot consume directly to JS", key_str),
+                                format!("Record entry '{:?}' is mortar-only, cannot consume directly to JS", key),
                             ),
                         ],
                     });
@@ -333,7 +322,7 @@ impl AspectConsumeDynamic for Record {
                         let elem_value_type = elem_cv.value.type_(xx, loc);
                         if let Some(to_dynamic) = aspect_consume_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
                             match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
-                                Ok(js) => js_fields.push((key_str, js)),
+                                Ok(js) => js_fields.push((key.to_str(), js)),
                                 Err(e) => errors.extend(e),
                             }
                         } else {
@@ -342,8 +331,8 @@ impl AspectConsumeDynamic for Record {
                                 errors: vec![
                                     crate::langhelp::ExprSubErr::Opaque(
                                         format!(
-                                            "Record entry '{}' type ({}) is missing aspect AspectConsumeDynamic",
-                                            key_str,
+                                            "Record entry '{:?}' type ({}) is missing aspect AspectConsumeDynamic",
+                                            key,
                                             elem_value_type.desc()
                                         ),
                                     ),
@@ -384,7 +373,7 @@ impl AspectField for Record {
             })?);
             let CodeValue { code: self_code_raw, value: self_value } = self_;
             if let Some(base) = &self.base {
-                return Ok(base.field_access(xx, loc, self_code_raw, key_name, entry_type));
+                return Ok(base.field_access(xx, loc, self_code_raw, const_key.to_str(), entry_type));
             }
             let mut record =
                 Rc::try_unwrap(downcast_value::<Record>(self_value))
@@ -407,10 +396,9 @@ impl AspectField for Record {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        let const_key = ConstKey::from_str(key).ok()?;
-        self.fields.get(&const_key).map(|f| record_field_type(xx, loc, f))
+        self.fields.get(key).map(|f| record_field_type(xx, loc, f))
     }
 }
 
@@ -450,11 +438,7 @@ impl Type for Record {
             return Some(Box::new(Box::new(RecordAspectImpl) as Box<dyn AspectRecord>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
-            let entry_lifts: Vec<(String, Box<dyn AspectLiftDynamic>)> = self.fields.iter().map(|(k, f)| {
-                let key_str = match k {
-                    ConstKey::String(s) => s.clone(),
-                    ConstKey::Usize(n) => n.to_string(),
-                };
+            let entry_lifts: Vec<(ConstKey, Box<dyn AspectLiftDynamic>)> = self.fields.iter().map(|(k, f)| {
                 let t = match f {
                     RecordField::Mortar(t) => t.clone(),
                     RecordField::EvalRes(_) => panic!("lift_js on non-type record"),
@@ -463,7 +447,7 @@ impl Type for Record {
                     t
                         .aspect(_xx, &aspect_lift_dynamic_aspect_id())
                         .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftDynamic", k, t.desc()));
-                (key_str, must_downcast_box::<Box<dyn AspectLiftDynamic>>(a))
+                (k.clone(), must_downcast_box::<Box<dyn AspectLiftDynamic>>(a))
             }).collect();
             return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }
@@ -480,7 +464,7 @@ impl Type for Record {
         let Some(source_field) = aspect_field_get_maybe(xx, source_type) else {
             return false;
         };
-        self.fields.keys().all(|k| source_field.field_opt(xx, &k.to_str()).is_some())
+        self.fields.keys().all(|k| source_field.field_opt(xx, k).is_some())
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
@@ -496,7 +480,7 @@ impl Type for Record {
             for (key, field) in record.fields {
                 let dest_entry_type = match self.fields.get(&key) {
                     Some(RecordField::Mortar(t)) => t.clone(),
-                    _ => panic!("cast_from: dest missing key {:?}", key.to_str()),
+                    _ => panic!("cast_from: dest missing key {:?}", key),
                 };
                 let converted_field = match field {
                     RecordField::EvalRes(entry_res) => {
@@ -701,7 +685,7 @@ impl RecordBase for RecordBaseDynamic {
         xx: &ExprContext,
         loc: QExprId,
         self_code_raw: Code,
-        key_name: String,
+        key: String,
         entry_type: Rc<dyn Type>,
     ) -> CodeValue {
         let self_code = self_code_raw.cast::<CodeDynamic>().into_res().unwrap().unwrap().clone();
@@ -711,11 +695,11 @@ impl RecordBase for RecordBaseDynamic {
                 loc: loc,
                 type_: CodeDynamicType::FieldUse(crate::code_dynamic::CodeDynamicFieldUse {
                     base: Box::new(self_code),
-                    field: key_name.clone(),
+                    field: key.clone(),
                 }),
             })),
         };
-        let field_source = ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name });
+        let field_source = ValueDynamicSource::Field(ValueDynamicDataAccess { key: key });
         if aspect_record_get_maybe(xx, entry_type.as_ref()).is_some() {
             let record_type = must_downcast_ref::<Record>(entry_type.as_ref());
             let fields = record_type.fields.iter().map(|(k, f)| {
@@ -759,7 +743,7 @@ pub(crate) enum RecordField {
 }
 
 struct RecordLiftDynamic {
-    entry_lifts: Vec<(String, Box<dyn AspectLiftDynamic>)>,
+    entry_lifts: Vec<(ConstKey, Box<dyn AspectLiftDynamic>)>,
 }
 
 impl Aspect for RecordLiftDynamic { }
@@ -774,11 +758,10 @@ impl AspectLiftDynamic for RecordLiftDynamic {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
         let mut fields = BTreeMap::new();
         for (key, entry_lift) in &self.entry_lifts {
-            let v8_key = v8::String::new(scope, key).unwrap();
+            let v8_key = v8::String::new(scope, &key.to_str()).unwrap();
             let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
             let lifted = entry_lift.lift(xx, scope, v8_val)?;
-            let const_key = ConstKey::String(key.clone());
-            fields.insert(const_key, RecordField::EvalRes(EvalRes::ok(CodeValue {
+            fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
                     code: Code_::None,

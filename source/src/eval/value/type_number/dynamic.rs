@@ -57,6 +57,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -114,7 +115,8 @@ impl AspectField for TypeNumberDynamic {
             let key_type = key.value.type_(xx, loc);
             let key_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
-            let field_type = match self.field_opt(xx, &key_name) {
+            let const_key = ConstKey::String(key_name.clone());
+            let field_type = match self.field_opt(xx, &const_key) {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on mortar number", key_name)),
             };
@@ -139,8 +141,11 @@ impl AspectField for TypeNumberDynamic {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        match key {
+    fn field_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(key) = key else {
+            return None;
+        };
+        match key.as_str() {
             "to_string" => Some(Rc::new(TypeFunctionDynamic {
                 arg: Rc::new(TypeNullDynamic),
                 ret: Rc::new(TypeStringDynamic),

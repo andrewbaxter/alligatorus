@@ -154,7 +154,7 @@ pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin
 
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
-    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(String, TargetBindSub)>) -> TargetBindSub;
+    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
     fn bind_sub_tuple(&self, loc: QExprId, carry: Code, elements: Vec<TargetBindSub>) -> TargetBindSub;
     fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
     fn code_to_bind_sub(&self, loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub>;
@@ -613,7 +613,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     errors: Some(errors),
                 };
             }
-
             let code = if key_codes.is_empty() {
                 Code {
                     loc: expr.loc,
@@ -1674,7 +1673,11 @@ fn eval(
                     let key = keys.get_index(scope, i).unwrap();
                     let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
                     let val = obj.get(scope, key).unwrap();
-                    fields.insert(ConstKey::String(key_str), RecordField::Mortar(v8_value_to_type(scope, val)));
+                    let const_key =
+                        ConstKey::from_str(
+                            &key_str,
+                        ).expect(&format!("Invalid ConstKey in v8 object property: {}", key_str));
+                    fields.insert(const_key, RecordField::Mortar(v8_value_to_type(scope, val)));
                 }
                 return Rc::new(Record {
                     base: None,
@@ -1908,7 +1911,16 @@ fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
                 for arg in &c.args {
                     arg_vars.push(render_code(lines, arg));
                 }
-                lines.push(code.loc, format!("{} = {}.{}({});", out, base_var, f.field, arg_vars.join(",")));
+                lines.push(
+                    code.loc,
+                    format!(
+                        "{} = {}[{}]({});",
+                        out,
+                        base_var,
+                        serde_json::to_string(&f.field).unwrap(),
+                        arg_vars.join(",")
+                    ),
+                );
             } else {
                 let func_var = render_code(lines, &c.func);
                 let mut arg_vars = vec![];
@@ -1920,7 +1932,10 @@ fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
         },
         CodeDynamicType::FieldUse(dynamic_code_field) => {
             let base = render_code(lines, &dynamic_code_field.base);
-            lines.push(code.loc, format!("{} = {}.{};", out, base, dynamic_code_field.field));
+            lines.push(
+                code.loc,
+                format!("{} = {}[{}];", out, base, serde_json::to_string(&dynamic_code_field.field).unwrap()),
+            );
         },
         CodeDynamicType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);
@@ -1930,14 +1945,14 @@ fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
         CodeDynamicType::FieldSet(c) => {
             let base_var = render_code(lines, &c.base);
             let val_var = render_code(lines, &c.value);
-            lines.push(code.loc, format!("{}.{} = {};", base_var, c.key, val_var));
+            lines.push(code.loc, format!("{}[{}] = {};", base_var, serde_json::to_string(&c.key).unwrap(), val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
         CodeDynamicType::NewObject(c) => {
             let mut fields_str = vec![];
             for (key, value) in &c.fields {
                 let val_var = render_code(lines, value);
-                fields_str.push(format!("{}: {}", key, val_var));
+                fields_str.push(format!("{}: {}", serde_json::to_string(key).unwrap(), val_var));
             }
             lines.push(code.loc, format!("{} = {{ {} }};", out, fields_str.join(", ")));
         },
@@ -1997,7 +2012,15 @@ fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
             let base_var = render_code(lines, &c.base);
             let elem_key = scope_entry_id_dynamic_key(c.element_key);
             lines.push(code.loc, format!("for (let __entry of Object.entries({})) {{", base_var));
-            lines.push(code.loc, format!("let {} = {{ key: __entry[0], value: __entry[1] }};", elem_key));
+            lines.push(
+                code.loc,
+                format!(
+                    "let {} = {{ {}: __entry[0], {}: __entry[1] }};",
+                    elem_key,
+                    serde_json::to_string(&ConstKey::String("key".to_string()).to_str()).unwrap(),
+                    serde_json::to_string(&ConstKey::String("value".to_string()).to_str()).unwrap(),
+                ),
+            );
             let body_var = render_code(lines, &c.body);
             lines.push(code.loc, format!("{} = {};", out, body_var));
             lines.push(code.loc, "}".to_string());
@@ -2087,7 +2110,7 @@ impl Target for TargetDynamic {
         (code, js_key)
     }
 
-    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(String, TargetBindSub)>) -> TargetBindSub {
+    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub {
         let mut js_fields = Vec::new();
         let mut mortar_fields = std::collections::BTreeMap::new();
         for (key, sub) in fields {
@@ -2099,8 +2122,8 @@ impl Target for TargetDynamic {
                     .expect("TargetDynamic bind_sub_record: expected CodeDynamic")
                     .unwrap()
                     .clone();
-            js_fields.push((key.clone(), cd));
-            mortar_fields.insert(ConstKey::String(key), value::record::RecordField::Mortar(sub.type_));
+            js_fields.push((key.to_str(), cd));
+            mortar_fields.insert(key, value::record::RecordField::Mortar(sub.type_));
         }
         let record_type = Rc::new(Record {
             base: None,

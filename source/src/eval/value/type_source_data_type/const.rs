@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectBind,
@@ -39,8 +38,8 @@ use {
             },
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_interface::{
                     SourceInterfaceData,
                     TypeSourceInterfaceConst,
@@ -49,6 +48,7 @@ use {
                 value_source_data_type::r#const::ValueSourceDataTypeConst,
             },
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             ArtifactId,
@@ -57,6 +57,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -352,15 +353,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectInitialBind for TypeSourceDataTypeConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
-        })
-    }
-}
-
 impl AspectBind for TypeSourceDataTypeConst {
     fn bind(
         &self,
@@ -457,11 +449,15 @@ impl AspectField for TypeSourceDataTypeConst {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(key) = key else {
+            return None;
+        };
+
         // Check direct methods
         let methods = self.data.methods.borrow();
         for method in methods.iter() {
-            if method.name == key {
+            if method.name == *key {
                 return Some(Rc::new(TypeFunctionDynamic {
                     arg: Rc::new(TypeNullDynamic),
                     ret: Rc::new(TypeNullDynamic),
@@ -475,7 +471,7 @@ impl AspectField for TypeSourceDataTypeConst {
         for impl_data in interface_impls.iter() {
             let iface_methods = impl_data.interface.methods.borrow();
             for method in iface_methods.iter() {
-                if method.name == key {
+                if method.name == *key {
                     return Some(Rc::new(TypeFunctionDynamic {
                         arg: Rc::new(TypeNullDynamic),
                         ret: Rc::new(TypeNullDynamic),
@@ -484,6 +480,15 @@ impl AspectField for TypeSourceDataTypeConst {
             }
         }
         None
+    }
+}
+
+impl AspectInitialBind for TypeSourceDataTypeConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
+        })
     }
 }
 

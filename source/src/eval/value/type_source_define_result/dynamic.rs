@@ -38,6 +38,7 @@ use {
                 tuple::Tuple,
                 type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type::{
                     SourceDataTypeData,
                     SourceDataTypeRef,
@@ -50,7 +51,6 @@ use {
                     SourceInterfaceData,
                     SourceInterfaceRef,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_new_data_result::dynamic::SourceNewDataResult,
                 type_source_new_func_result::dynamic::SourceNewFuncResult,
                 type_source_new_interface_result::dynamic::SourceNewInterfaceResult,

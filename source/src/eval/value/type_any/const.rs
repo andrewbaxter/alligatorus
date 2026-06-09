@@ -63,15 +63,6 @@ impl AspectBind for TypeAnyConst {
     }
 }
 
-impl AspectInitialBind for TypeAnyConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeAnyConst),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeAnyConst {
     fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
@@ -93,6 +84,15 @@ impl AspectConsumeDynamic for TypeAnyConst {
         EResult::ok(CodeDynamic {
             loc,
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+        })
+    }
+}
+
+impl AspectInitialBind for TypeAnyConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeAnyConst),
         })
     }
 }

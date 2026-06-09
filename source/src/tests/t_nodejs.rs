@@ -432,7 +432,9 @@ e0 = (e1)(e4);
 e0"#);
     let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources.len(), 2);
-    assert_eq!(js_sources[0], r#"let e0;
+    assert_eq!(
+        js_sources[0],
+        r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -453,7 +455,7 @@ let a1;
 let e7;
 let e8;
 e8 = a0;
-e7 = e8._3();
+e7 = e8["_3"]();
 a1 = e7;
 }
 let a2;
@@ -461,7 +463,7 @@ let a2;
 let e9;
 let e10;
 e10 = a1;
-e9 = e10._0;
+e9 = e10["_0"];
 a2 = e9;
 }
 let a3;
@@ -483,9 +485,9 @@ let e18;
 e18 = a2;
 let e19;
 e19 = a2;
-e17 = { arg: e18, func: e19 };
+e17 = { "\"arg\"": e18, "\"func\"": e19 };
 e15 = (e16)(e17);
-e11 = e12._1(e13,e15);
+e11 = e12["_1"](e13,e15);
 a3 = e11;
 }
 let a5;
@@ -501,7 +503,7 @@ e22 = e23;
 }
 let e24;
 e24 = a4;
-e20 = e21._1(e22,e24);
+e20 = e21["_1"](e22,e24);
 a5 = e20;
 }
 let a6;
@@ -523,9 +525,9 @@ let e32;
 e32 = a2;
 let e33;
 e33 = a2;
-e31 = { base: e32, field: e33 };
+e31 = { "\"base\"": e32, "\"field\"": e33 };
 e29 = (e30)(e31);
-e25 = e26._1(e27,e29);
+e25 = e26["_1"](e27,e29);
 a6 = e25;
 }
 let a8;
@@ -541,7 +543,7 @@ e36 = e37;
 }
 let e38;
 e38 = a7;
-e34 = e35._1(e36,e38);
+e34 = e35["_1"](e36,e38);
 a8 = e34;
 }
 let a9;
@@ -555,7 +557,7 @@ let e42;
 e42 = "Render Node.js code (inner)";
 e41 = e42;
 }
-e39 = e40._0(e41);
+e39 = e40["_0"](e41);
 a9 = e39;
 }
 let a10;
@@ -563,7 +565,7 @@ let a10;
 let e43;
 let e44;
 e44 = a9;
-e43 = e44._0;
+e43 = e44["_0"];
 a10 = e43;
 }
 {
@@ -578,9 +580,9 @@ let e50;
 e50 = a2;
 let e51;
 e51 = a11;
-e49 = { code: e50, context: e51 };
+e49 = { "\"code\"": e50, "\"context\"": e51 };
 e47 = (e48)(e49);
-e45 = e46._3(e47);
+e45 = e46["_3"](e47);
 e4 = e45;
 }
 {
@@ -589,7 +591,7 @@ let e53;
 e53 = a9;
 let e54;
 e54 = a12;
-e52 = e53._5(e54);
+e52 = e53["_5"](e54);
 e4 = e52;
 }
 {
@@ -618,7 +620,7 @@ e66 = a17;
 let e67;
 e67 = a10;
 e57 = (e58)(e59,e60,e61,e62,e63,e64,e65,e66,e67);
-e55 = e56._2(e57);
+e55 = e56["_2"](e57);
 e4 = e55;
 }
 let a18;
@@ -632,7 +634,7 @@ let e71;
 e71 = "Render Node.js code";
 e70 = e71;
 }
-e68 = e69._0(e70);
+e68 = e69["_0"](e70);
 a18 = e68;
 }
 let a19;
@@ -640,7 +642,7 @@ let a19;
 let e72;
 let e73;
 e73 = a18;
-e72 = e73._0;
+e72 = e73["_0"];
 a19 = e72;
 }
 {
@@ -649,7 +651,7 @@ let e75;
 e75 = a18;
 let e76;
 e76 = a20;
-e74 = e75._3(e76);
+e74 = e75["_3"](e76);
 e4 = e74;
 }
 {
@@ -658,7 +660,7 @@ let e78;
 e78 = a18;
 let e79;
 e79 = a21;
-e77 = e78._5(e79);
+e77 = e78["_5"](e79);
 e4 = e77;
 }
 {
@@ -675,7 +677,7 @@ e85 = a23;
 let e86;
 e86 = a10;
 e82 = (e83)(e84,e85,e86);
-e80 = e81._2(e82);
+e80 = e81["_2"](e82);
 e4 = e80;
 }
 {
@@ -692,11 +694,12 @@ let e92;
 e92 = a8;
 let e93;
 e93 = a2;
-e87 = { call: e88, field: e89, lit_str: e90, render: e91, scope_use: e92, type: e93 };
+e87 = { "\"call\"": e88, "\"field\"": e89, "\"lit_str\"": e90, "\"render\"": e91, "\"scope_use\"": e92, "\"type\"": e93 };
 e4 = e87;
 }
 e0 = (e1)(e2,e3,e4);
-e0;"#);
+e0;"#
+    );
     assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
 let e0;
 let a1;
@@ -714,9 +717,9 @@ let e6;
 let e7;
 let e8;
 e8 = a0;
-e7 = e8.context;
-e6 = e7.expr_count;
-e5 = e6.toString();
+e7 = e8["\"context\""];
+e6 = e7["\"expr_count\""];
+e5 = e6["toString"]();
 e2 = [e3, e5];
 let e9;
 {
@@ -724,7 +727,7 @@ let e10;
 e10 = "";
 e9 = e10;
 }
-e1 = e2.join(e9);
+e1 = e2["join"](e9);
 a1 = e1;
 }
 {
@@ -732,14 +735,14 @@ let e11;
 let e12;
 let e13;
 e13 = a0;
-e12 = e13.context;
+e12 = e13["\"context\""];
 let e14;
 let e15;
 let e16;
 let e17;
 e17 = a0;
-e16 = e17.context;
-e15 = e16.expr_count;
+e16 = e17["\"context\""];
+e15 = e16["\"expr_count\""];
 let e18;
 {
 let e19;
@@ -747,7 +750,7 @@ e19 = 1.0;
 e18 = e19;
 }
 e14 = (e15 + e18);
-e12.expr_count = e14;
+e12["\"expr_count\""] = e14;
 e11 = null;
 e0 = e11;
 }
@@ -757,8 +760,8 @@ let e20;
 let e21;
 let e22;
 e22 = a0;
-e21 = e22.context;
-e20 = e21.out;
+e21 = e22["\"context\""];
+e20 = e21["\"out\""];
 a2 = e20;
 }
 {
@@ -771,7 +774,7 @@ let e26;
 e26 = "let ";
 e25 = e26;
 }
-e23 = e24.push(e25);
+e23 = e24["push"](e25);
 e0 = e23;
 }
 {
@@ -780,7 +783,7 @@ let e28;
 e28 = a2;
 let e29;
 e29 = a1;
-e27 = e28.push(e29);
+e27 = e28["push"](e29);
 e0 = e27;
 }
 {
@@ -793,7 +796,7 @@ let e33;
 e33 = ";\n{\n";
 e32 = e33;
 }
-e30 = e31.push(e32);
+e30 = e31["push"](e32);
 e0 = e30;
 }
 let a3;
@@ -815,7 +818,7 @@ let e38;
 let e39;
 let e40;
 e40 = a0;
-e39 = e40.code;
+e39 = e40["\"code\""];
 { let [__tag, a4] = Object.entries(e39)[0];
 switch (__tag) {
 case "t0": {
@@ -829,12 +832,12 @@ let e44;
 let e45;
 let e46;
 e46 = a4;
-e45 = e46.func;
+e45 = e46["\"func\""];
 let e47;
 let e48;
 e48 = a0;
-e47 = e48.context;
-e44 = { code: e45, context: e47 };
+e47 = e48["\"context\""];
+e44 = { "\"code\"": e45, "\"context\"": e47 };
 e42 = (e43)(e44);
 a5 = e42;
 }
@@ -847,12 +850,12 @@ let e51;
 let e52;
 let e53;
 e53 = a4;
-e52 = e53.arg;
+e52 = e53["\"arg\""];
 let e54;
 let e55;
 e55 = a0;
-e54 = e55.context;
-e51 = { code: e52, context: e54 };
+e54 = e55["\"context\""];
+e51 = { "\"code\"": e52, "\"context\"": e54 };
 e49 = (e50)(e51);
 a6 = e49;
 }
@@ -866,7 +869,7 @@ let e59;
 e59 = "(";
 e58 = e59;
 }
-e56 = e57.push(e58);
+e56 = e57["push"](e58);
 e41 = e56;
 }
 {
@@ -875,7 +878,7 @@ let e61;
 e61 = a3;
 let e62;
 e62 = a5;
-e60 = e61.push(e62);
+e60 = e61["push"](e62);
 e41 = e60;
 }
 {
@@ -888,7 +891,7 @@ let e66;
 e66 = ")(";
 e65 = e66;
 }
-e63 = e64.push(e65);
+e63 = e64["push"](e65);
 e41 = e63;
 }
 {
@@ -897,7 +900,7 @@ let e68;
 e68 = a3;
 let e69;
 e69 = a6;
-e67 = e68.push(e69);
+e67 = e68["push"](e69);
 e41 = e67;
 }
 {
@@ -910,7 +913,7 @@ let e73;
 e73 = ")";
 e72 = e73;
 }
-e70 = e71.push(e72);
+e70 = e71["push"](e72);
 e41 = e70;
 }
 e38 = e41;
@@ -927,7 +930,7 @@ e78 = BUILTIN;
 let e79;
 e79 = a4;
 e77 = (e78)(e79);
-e75 = e76.push(e77);
+e75 = e76["push"](e77);
 e74 = e75;
 }
 e38 = e74;
@@ -943,12 +946,12 @@ let e83;
 let e84;
 let e85;
 e85 = a4;
-e84 = e85.base;
+e84 = e85["\"base\""];
 let e86;
 let e87;
 e87 = a0;
-e86 = e87.context;
-e83 = { code: e84, context: e86 };
+e86 = e87["\"context\""];
+e83 = { "\"code\"": e84, "\"context\"": e86 };
 e81 = (e82)(e83);
 a7 = e81;
 }
@@ -961,12 +964,12 @@ let e90;
 let e91;
 let e92;
 e92 = a4;
-e91 = e92.field;
+e91 = e92["\"field\""];
 let e93;
 let e94;
 e94 = a0;
-e93 = e94.context;
-e90 = { code: e91, context: e93 };
+e93 = e94["\"context\""];
+e90 = { "\"code\"": e91, "\"context\"": e93 };
 e88 = (e89)(e90);
 a8 = e88;
 }
@@ -976,7 +979,7 @@ let e96;
 e96 = a3;
 let e97;
 e97 = a7;
-e95 = e96.push(e97);
+e95 = e96["push"](e97);
 e80 = e95;
 }
 {
@@ -989,7 +992,7 @@ let e101;
 e101 = ".";
 e100 = e101;
 }
-e98 = e99.push(e100);
+e98 = e99["push"](e100);
 e80 = e98;
 }
 {
@@ -998,7 +1001,7 @@ let e103;
 e103 = a3;
 let e104;
 e104 = a8;
-e102 = e103.push(e104);
+e102 = e103["push"](e104);
 e80 = e102;
 }
 e38 = e80;
@@ -1011,7 +1014,7 @@ let e107;
 e107 = a3;
 let e108;
 e108 = a4;
-e106 = e107.push(e108);
+e106 = e107["push"](e108);
 e105 = e106;
 }
 e38 = e105;
@@ -1032,8 +1035,8 @@ let e114;
 e114 = "";
 e113 = e114;
 }
-e111 = e112.join(e113);
-e109 = e110.push(e111);
+e111 = e112["join"](e113);
+e109 = e110["push"](e111);
 e0 = e109;
 }
 {
@@ -1046,7 +1049,7 @@ let e118;
 e118 = ";\n}\n";
 e117 = e118;
 }
-e115 = e116.push(e117);
+e115 = e116["push"](e117);
 e0 = e115;
 }
 {
@@ -1069,7 +1072,7 @@ e122 = e123;
 }
 let e124;
 e124 = [];
-e121 = { expr_count: e122, out: e124 };
+e121 = { "\"expr_count\"": e122, "\"out\"": e124 };
 a1 = e121;
 }
 {
@@ -1077,7 +1080,7 @@ let e125;
 let e126;
 let e127;
 e127 = a1;
-e126 = e127.out;
+e126 = e127["\"out\""];
 let e128;
 let e129;
 e129 = d0_0_0;
@@ -1086,9 +1089,9 @@ let e131;
 e131 = a0;
 let e132;
 e132 = a1;
-e130 = { code: e131, context: e132 };
+e130 = { "\"code\"": e131, "\"context\"": e132 };
 e128 = (e129)(e130);
-e125 = e126.push(e128);
+e125 = e126["push"](e128);
 e120 = e125;
 }
 {
@@ -1096,14 +1099,14 @@ let e133;
 let e134;
 let e135;
 e135 = a1;
-e134 = e135.out;
+e134 = e135["\"out\""];
 let e136;
 {
 let e137;
 e137 = "";
 e136 = e137;
 }
-e133 = e134.join(e136);
+e133 = e134["join"](e136);
 e120 = e133;
 }
 return e120;
@@ -1125,7 +1128,7 @@ let e147;
 e147 = "Hello world (node)";
 e146 = e147;
 }
-e145 = { t1: e146 };
+e145 = { "t1": e146 };
 let e148;
 let e149;
 let e150;
@@ -1135,7 +1138,7 @@ let e152;
 e152 = "console";
 e151 = e152;
 }
-e150 = { t3: e151 };
+e150 = { "t3": e151 };
 let e153;
 let e154;
 {
@@ -1143,11 +1146,11 @@ let e155;
 e155 = "log";
 e154 = e155;
 }
-e153 = { t1: e154 };
-e149 = { base: e150, field: e153 };
-e148 = { t2: e149 };
-e144 = { arg: e145, func: e148 };
-e143 = { t0: e144 };
+e153 = { "t1": e154 };
+e149 = { "\"base\"": e150, "\"field\"": e153 };
+e148 = { "t2": e149 };
+e144 = { "\"arg\"": e145, "\"func\"": e148 };
+e143 = { "t0": e144 };
 e141 = (e142)(e143);
 e139 = (e140)(e141);
 e138 = e139;

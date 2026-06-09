@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectBoolConst,
             aspect_bool_const_aspect_id,
@@ -11,6 +10,7 @@ use {
             Erb,
             value::value_bool::r#const::ValueBoolConst,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             CodeValue,

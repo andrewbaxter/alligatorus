@@ -195,7 +195,7 @@ e3 = e4;
 }
 let e5;
 e5 = null;
-e2 = e3.toLowerCase(e5);
+e2 = e3["toLowerCase"](e5);
 e0 = (e1)(e2);
 e0;"#]);
 }

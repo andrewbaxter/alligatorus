@@ -28,9 +28,9 @@ use {
                 bind_via_target,
             },
             from_v8_ref,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_function::TypeSourceFunctionConst,
             },
@@ -68,15 +68,6 @@ impl AspectBind for TypeSourceExportsDynamic {
     }
 }
 
-impl AspectInitialBind for TypeSourceExportsDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceExportsDynamic),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeSourceExportsDynamic {
     fn bind_dynamic(
         &self,
@@ -91,6 +82,15 @@ impl AspectBindDynamic for TypeSourceExportsDynamic {
 impl AspectConsumeDynamic for TypeSourceExportsDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceExportsDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceExportsDynamic),
+        })
     }
 }
 
@@ -235,11 +235,14 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
+    fn field_opt(&self, _xx: &ExprContext, key: &crate::langhelp::ConstKey) -> Option<Rc<dyn Type>> {
+        let crate::langhelp::ConstKey::String(key) = key else {
+            return None;
+        };
         {
             let functions = self.set.functions.borrow();
             for func_data in functions.iter() {
-                if func_data.name.as_deref() == Some(key) {
+                if func_data.name.as_deref() == Some(key.as_str()) {
                     return Some(Rc::new(TypeSourceFunctionConst { data: func_data.clone() }));
                 }
             }
@@ -247,7 +250,7 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
         {
             let data_types = self.set.data_types.borrow();
             for dt_data in data_types.iter() {
-                if dt_data.name.as_deref() == Some(key) {
+                if dt_data.name.as_deref() == Some(key.as_str()) {
                     return Some(Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() }));
                 }
             }

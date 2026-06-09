@@ -57,6 +57,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -88,15 +89,6 @@ impl Aspect for TypeMapDynamic { }
 impl AspectBind for TypeMapDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
-    }
-}
-
-impl AspectInitialBind for TypeMapDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(self.clone()),
-        })
     }
 }
 
@@ -143,7 +135,8 @@ impl AspectField for TypeMapDynamic {
 
         // Instance-level fields
         return er_seq_cv!(loc, erb, {
-            let field_type = match self.field_opt(xx, &key_name) {
+            let const_key = ConstKey::String(key_name.clone());
+            let field_type = match self.field_opt(xx, &const_key) {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on map", key_name)),
             };
@@ -167,14 +160,26 @@ impl AspectField for TypeMapDynamic {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        match key {
+    fn field_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(key) = key else {
+            return None;
+        };
+        match key.as_str() {
             "new" => Some(Rc::new(TypeMapNewDynamic {
                 key_type: self.key_type.clone(),
                 value_type: self.value_type.clone(),
             })),
             _ => Some(self.value_type.clone()),
         }
+    }
+}
+
+impl AspectInitialBind for TypeMapDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(self.clone()),
+        })
     }
 }
 

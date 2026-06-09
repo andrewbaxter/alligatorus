@@ -83,8 +83,8 @@ dynamic_wrap!(struct SourceTaggedUnionBuilder(self_, scope) {
             let idx = variants.len();
             let js_tag = format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next());
             variants.push(SourceTaggedUnionVariant {
-                tag: crate::langhelp::ConstKey::String(tag),
                 js_tag,
+                tag: crate::langhelp::ConstKey::String(tag),
                 type_: type_ref.0,
             });
             idx

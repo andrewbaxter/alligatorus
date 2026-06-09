@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectBind,
             AspectBindDynamic,
@@ -30,9 +29,12 @@ use {
                 StagedExprCell,
             },
             from_v8_ref,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-            value::value_empty::r#const::ValueEmptyConst,
+            value::{
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_empty::r#const::ValueEmptyConst,
+            },
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -72,15 +74,6 @@ impl AspectBind for TypeExpr {
     }
 }
 
-impl AspectInitialBind for TypeExpr {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeExpr),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeExpr {
     fn bind_dynamic(
         &self,
@@ -104,6 +97,15 @@ impl AspectConsumeDynamic for TypeExpr {
         EResult::ok(CodeDynamic {
             loc,
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+        })
+    }
+}
+
+impl AspectInitialBind for TypeExpr {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeExpr),
         })
     }
 }

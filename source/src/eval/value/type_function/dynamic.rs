@@ -11,9 +11,9 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
             aspect_function_aspect_id,
-            aspect_initial_bind_aspect_id,
             aspect_function_get,
             aspect_function_get_maybe,
+            aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_get,
             aspect_tuple_get_maybe,
         },
@@ -67,15 +67,6 @@ impl Aspect for TypeFunctionDynamic { }
 impl AspectBind for TypeFunctionDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
-    }
-}
-
-impl AspectInitialBind for TypeFunctionDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(self.clone()),
-        })
     }
 }
 
@@ -177,6 +168,15 @@ impl AspectFunction for TypeFunctionDynamic {
                 })
             }));
         });
+    }
+}
+
+impl AspectInitialBind for TypeFunctionDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(self.clone()),
+        })
     }
 }
 

@@ -8,7 +8,6 @@ use {
             aspect_function_aspect_id,
             aspect_stack_value_dynamic_get,
         },
-        eval::dynamic_util::bind_via_target,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,
@@ -17,6 +16,7 @@ use {
         eval::{
             EResult,
             Erb,
+            dynamic_util::bind_via_target,
             typecheck_convert,
             value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
         },

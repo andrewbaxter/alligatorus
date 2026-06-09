@@ -1,6 +1,5 @@
 use {
     crate::{
-        invariant::must_downcast_ref,
         builtin::{
             AspectArtifact,
             AspectType,
@@ -11,6 +10,7 @@ use {
             TypeSourceDataTypeConstructorConst,
             dynamic::deserialize_defset_ctor_as_type,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             Aspect,

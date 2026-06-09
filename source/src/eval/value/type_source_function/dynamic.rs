@@ -64,15 +64,6 @@ impl AspectBind for TypeSourceFunctionDynamic {
     }
 }
 
-impl AspectInitialBind for TypeSourceFunctionDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceFunctionDynamic),
-        })
-    }
-}
-
 impl AspectBindDynamic for TypeSourceFunctionDynamic {
     fn bind_dynamic(
         &self,
@@ -87,6 +78,15 @@ impl AspectBindDynamic for TypeSourceFunctionDynamic {
 impl AspectConsumeDynamic for TypeSourceFunctionDynamic {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceFunctionDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceFunctionDynamic),
+        })
     }
 }
 

@@ -45,8 +45,8 @@ use {
             typecheck_convert,
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
                 value_empty::r#const::ValueEmptyConst,
             },
@@ -56,6 +56,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -85,15 +86,6 @@ impl Aspect for TypeListDynamic { }
 impl AspectBind for TypeListDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
-    }
-}
-
-impl AspectInitialBind for TypeListDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(self.clone()),
-        })
     }
 }
 
@@ -141,7 +133,8 @@ impl AspectField for TypeListDynamic {
 
         // Instance-level fields (push, join, etc.)
         return er_seq_cv!(loc, erb, {
-            let field_type = match self.field_opt(xx, &key_name) {
+            let const_key = ConstKey::String(key_name.clone());
+            let field_type = match self.field_opt(xx, &const_key) {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on list", key_name)),
             };
@@ -165,8 +158,11 @@ impl AspectField for TypeListDynamic {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &str) -> Option<Rc<dyn Type>> {
-        match key {
+    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(key) = key else {
+            return None;
+        };
+        match key.as_str() {
             "new" => Some(Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() })),
             "push" => Some(Rc::new(TypeFunctionDynamic {
                 arg: self.element_type.clone(),
@@ -184,6 +180,15 @@ impl AspectField for TypeListDynamic {
             },
             _ => None,
         }
+    }
+}
+
+impl AspectInitialBind for TypeListDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(self.clone()),
+        })
     }
 }
 

@@ -115,9 +115,7 @@ macro_rules! dynamic_wrap{
                         );
                     }
                     if * key == aspect_initial_bind_aspect_id() {
-                        return Some(
-                            Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectInitialBind >)
-                        );
+                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectInitialBind >));
                     }
                     None
                 }
@@ -169,10 +167,10 @@ macro_rules! dynamic_wrap{
                 }
             }
             impl AspectInitialBind for[< Type $name Dynamic >] {
-                fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-                    Box::new(ScopeEntryDynamicBinding {
+                fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box < dyn ScopeEntry > {
+                    Box:: new(ScopeEntryDynamicBinding {
                         dynamic_key: dynamic_key,
-                        type_: Rc::new([< Type $name Dynamic >]),
+                        type_: Rc:: new([< Type $name Dynamic >]),
                     })
                 }
             }
@@ -248,10 +246,17 @@ macro_rules! dynamic_wrap{
                         ) * return erb.err_new(format!("Unknown field '{}' on {}", key_name, stringify!($name),));
                     })
                 }
-                fn field_opt(&self, _xx: & ExprContext, key: & str,) -> Option < Rc < dyn Type >> {
-                    $(if key == dynamic_wrap_method_name(stringify!($f_name)) {
+                fn field_opt(
+                    &self,
+                    _xx: & ExprContext,
+                    key: & crate:: langhelp:: ConstKey,
+                ) -> Option < Rc < dyn Type >> {
+                    let crate::langhelp::ConstKey::String(key) = key else {
+                        return None;
+                    };
+                    $(if key.as_str() == dynamic_wrap_method_name(stringify!($f_name)) {
                         return Some(<$f_ty as DynamicWrap >:: mortar_type());
-                    }) * $(if key == dynamic_wrap_method_name(stringify!($m_name)) {
+                    }) * $(if key.as_str() == dynamic_wrap_method_name(stringify!($m_name)) {
                         return Some(Rc:: new(TypeFunctionDynamic {
                             arg: dynamic_wrap !(@ arg_mortar_type $($m_arg_ty), *),
                             ret: <$m_ret as DynamicWrap >:: mortar_type(),

@@ -53,15 +53,6 @@ pub(crate) struct TypeSourceTaggedUnionConst {
 
 impl Aspect for TypeSourceTaggedUnionConst { }
 
-impl AspectInitialBind for TypeSourceTaggedUnionConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-        })
-    }
-}
-
 impl AspectBind for TypeSourceTaggedUnionConst {
     fn bind(
         &self,
@@ -87,6 +78,15 @@ impl AspectBindDynamic for TypeSourceTaggedUnionConst {
 impl AspectConsumeDynamic for TypeSourceTaggedUnionConst {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectInitialBind for TypeSourceTaggedUnionConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
+        })
     }
 }
 
