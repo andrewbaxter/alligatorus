@@ -17,13 +17,10 @@ use {
         langhelp::{
             Artifact,
             Aspect,
-            Code,
             CodeValue,
-            Code_,
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             Type,
             Unique,
@@ -43,9 +40,9 @@ pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
-    fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         er_seq_cv!(loc, erb, {
-            let (type_, type_codes) = erb.must_res(deserialize_defset_ctor_as_type(xx, gx, loc, data))?;
+            let (type_, type_codes) = erb.must_res(deserialize_defset_ctor_as_type(xx, loc, data))?;
             let code = erb.must_er(xx.target.block(loc, type_codes))?;
             return Ok(CodeValue {
                 code: code,
@@ -57,12 +54,11 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
     fn to_serial(
         &self,
         xx: &ExprContext,
-        gx: &GlobalContext,
         loc: QExprId,
         self_: Rc<dyn Value>,
     ) -> EResult<Artifact> {
         let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(self_.as_ref());
-        let artifact_id = ctor.serialize_ctor(xx, gx, loc);
+        let artifact_id = ctor.serialize_ctor(xx, loc);
         EResult::ok(Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
@@ -107,7 +103,7 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
         "definition_set_data_type_constructor_type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
         Some(Self::build_type_artifact())
     }
 }

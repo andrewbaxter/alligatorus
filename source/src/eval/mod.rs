@@ -325,7 +325,7 @@ pub(crate) fn compile_importid(
                     result: CompileResResult::Err(e),
                 },
             };
-            let value = match value_serial.to_serial(&xx, &fx, root_loc, eval_value).into_res() {
+            let value = match value_serial.to_serial(&xx, root_loc, eval_value).into_res() {
                 Ok(v) => v,
                 Err(e) => return CompileRes {
                     logs,

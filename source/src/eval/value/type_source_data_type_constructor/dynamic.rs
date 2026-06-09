@@ -42,7 +42,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntry,
             ScopeEntryId,
@@ -64,27 +63,25 @@ use {
 
 pub(crate) fn deserialize_defset_ctor_as_type(
     xx: &ExprContext,
-    gx: &GlobalContext,
     loc: QExprId,
     data: &serde_json::Value,
 ) -> Result<(Rc<dyn Type>, Vec<crate::langhelp::Code>), String> {
-    // data contains a serialized ArtifactId reference
     let artifact_id: ArtifactId =
         serde_json::from_value(
             data.clone(),
         ).map_err(|e| format!("Failed to parse defset ctor artifact ref: {}", e))?;
-    let stored = gx.artifacts.get(artifact_id)?;
+    let stored = xx.vx.ix.gx.artifacts.get(artifact_id)?;
     let serial: ArtifactDataDefSetCtorData =
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
     let mut codes: Vec<crate::langhelp::Code> = Vec::new();
     let (underlying_type, underlying_code) =
-        crate::eval::util::deserialize_type_artifact(xx, gx, loc, &serial.underlying_type.type_)
+        crate::eval::util::deserialize_type_artifact(xx, loc, &serial.underlying_type.type_)
             .into_res()
             .map_err(|e| format!("{:?}", e))?;
     codes.push(underlying_code);
     let methods: Vec<SourceDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
         let (ret_type, ret_code) =
-            crate::eval::util::deserialize_type_artifact(xx, gx, loc, &m.ret_type.type_)
+            crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type.type_)
                 .into_res()
                 .expect("Failed to resolve method ret type");
         codes.push(ret_code);
@@ -131,8 +128,8 @@ pub(crate) fn deserialize_defset_ctor_as_type(
 }
 
 // --- Conversion helpers ---
-pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, loc: QExprId, type_: &dyn Type) -> Artifact {
-    if let Some(artifact) = type_.type_to_serial(xx, gx, loc) {
+pub(crate) fn serialize_type_ref(xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> Artifact {
+    if let Some(artifact) = type_.type_to_serial(xx, loc) {
         return artifact;
     }
     let type_type = type_.type_(xx, loc);
@@ -141,7 +138,7 @@ pub(crate) fn serialize_type_ref(xx: &ExprContext, gx: &GlobalContext, loc: QExp
             xx,
             type_type.as_ref(),
         ).unwrap_or_else(|| panic!("Type ({}) type-type missing AspectArtifact", type_.desc()));
-    aspect.to_serial(xx, gx, loc, type_.as_value()).into_res().unwrap_or_else(|e| {
+    aspect.to_serial(xx, loc, type_.as_value()).into_res().unwrap_or_else(|e| {
         panic!("Failed to serialize type ref for {}: {:?}", type_.desc(), e)
     })
 }

@@ -54,7 +54,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntry,
             ScopeEntryId,
@@ -84,17 +83,16 @@ pub(crate) fn defset_artifact_identity() -> ArtifactIdBuiltin {
 
 fn serialize_definition_set(
     xx: &ExprContext,
-    gx: &GlobalContext,
     loc: QExprId,
     set: &Gc<DefinitionSet>,
 ) -> ArtifactId {
-    crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &set.artifact_id, || {
+    crate::langhelp::produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
         use crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref;
 
         let def_set_artifact_id = set.artifact_id.borrow().clone().unwrap();
         let data_types = set.data_types.borrow();
         let data_type_ids: Vec<ArtifactId> = data_types.iter().map(|dt| {
-            crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &dt.artifact_id, || {
+            crate::langhelp::produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &dt.artifact_id, || {
                 let underlying_type = dt.underlying_type.get();
                 let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
                     let compiled_js = m.compiled_js.borrow();
@@ -103,14 +101,14 @@ fn serialize_definition_set(
                     ArtifactDataDefSetMethod {
                         name: m.name.clone(),
                         field_name: m.field_name.clone(),
-                        ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
+                        ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
                         compiled_js: compiled_js.clone(),
                     }
                 }).collect();
                 let serial = ArtifactDataDefSetDataType {
                     name: dt.name.clone(),
                     data_field: dt.data_field.clone(),
-                    underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
+                    underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
                     identity: dt.identity.clone(),
                     methods,
                     def_set: def_set_artifact_id.clone(),
@@ -133,8 +131,8 @@ fn serialize_definition_set(
 }
 
 impl TypeSourceDataTypeConst {
-    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        serialize_definition_set(xx, gx, loc, &self.data.set);
+    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
+        serialize_definition_set(xx, loc, &self.data.set);
         self
             .data
             .artifact_id
@@ -147,15 +145,14 @@ impl TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
-    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let dt_data = self.data.clone();
         let data = data.clone();
-        _xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, gx, loc| {
+        _xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, loc| {
             let underlying_type = dt_data.underlying_type.get();
             let build_type_artifact =
                 crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
                     xx,
-                    gx,
                     loc,
                     underlying_type.as_ref(),
                 );
@@ -165,7 +162,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 data: data,
             };
             let underlying_cv =
-                crate::eval::util::deserialize_artifact(xx, gx, loc, &underlying_artifact)
+                crate::eval::util::deserialize_artifact(xx, loc, &underlying_artifact)
                     .into_res()
                     .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
             {
@@ -218,16 +215,13 @@ impl AspectArtifact for TypeSourceDataTypeConst {
     fn to_serial(
         &self,
         xx: &ExprContext,
-        gx: &GlobalContext,
         loc: QExprId,
         self_: Rc<dyn Value>,
     ) -> EResult<Artifact> {
         let lifted = must_downcast_ref::<ValueSourceDataTypeConst>(self_.as_ref());
 
-        // Get the underlying type from the definition set (mortar type)
         let underlying_type = self.data.underlying_type.get();
 
-        // Serialize the underlying value using the mortar type's AspectArtifact
         let underlying_aspect = match crate::builtin::aspect_artifact_get_maybe(xx, underlying_type.as_ref()) {
             Some(a) => a,
             None => {
@@ -238,17 +232,15 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             },
         };
         let underlying_artifact =
-            match underlying_aspect.to_serial(xx, gx, loc, lifted.underlying.clone()).into_res() {
+            match underlying_aspect.to_serial(xx, loc, lifted.underlying.clone()).into_res() {
                 Ok(a) => a,
                 Err(e) => {
                     return EResult::err(loc, format!("Failed to serialize underlying value: {:?}", e));
                 },
             };
 
-        // Serialize the data type itself (which includes serializing the definition set)
-        let data_type_artifact_id = self.serialize_data_type(xx, gx, loc);
+        let data_type_artifact_id = self.serialize_data_type(xx, loc);
 
-        // Return directly — underlying data is embedded inline for primitives
         EResult::ok(Artifact {
             type_: data_type_artifact_id,
             data: underlying_artifact.data,

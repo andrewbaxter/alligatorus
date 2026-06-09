@@ -46,7 +46,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntry,
             ScopeEntryId,
@@ -71,7 +70,6 @@ impl AspectArtifact for TypeNullDynamic {
     fn from_serial(
         &self,
         _xx: &ExprContext,
-        _gx: &GlobalContext,
         loc: QExprId,
         _data: &serde_json::Value,
     ) -> EvalRes {
@@ -87,7 +85,6 @@ impl AspectArtifact for TypeNullDynamic {
     fn to_serial(
         &self,
         _xx: &ExprContext,
-        _gx: &GlobalContext,
         _loc: QExprId,
         _value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
@@ -235,7 +232,7 @@ impl Type for TypeNullDynamic {
         return format!("mortar null");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
         Some(Self::build_type_artifact())
     }
 }

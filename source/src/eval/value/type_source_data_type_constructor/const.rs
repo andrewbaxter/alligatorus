@@ -31,7 +31,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntry,
             Type,
@@ -55,8 +54,8 @@ use {
 };
 
 impl TypeSourceDataTypeConstructorConst {
-    pub(crate) fn serialize_ctor(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
-        crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &self.data.artifact_id, || {
+    pub(crate) fn serialize_ctor(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
+        crate::langhelp::produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.data.artifact_id, || {
             let underlying_type = self.data.underlying_type.get();
             let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
                 let compiled_js = m.compiled_js.borrow();
@@ -65,14 +64,14 @@ impl TypeSourceDataTypeConstructorConst {
                 ArtifactDataDefSetCtorMethod {
                     name: m.name.clone(),
                     field_name: m.field_name.clone(),
-                    ret_type: serialize_type_ref(xx, gx, loc, ret_type.as_ref()),
+                    ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
                     compiled_js: compiled_js.clone(),
                 }
             }).collect();
             let serial_data = ArtifactDataDefSetCtorData {
                 name: self.data.name.clone(),
                 data_field: self.data.data_field.clone(),
-                underlying_type: serialize_type_ref(xx, gx, loc, underlying_type.as_ref()),
+                underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
                 identity: self.data.identity.clone(),
                 methods,
                 import_id: self.data.set.import_id,

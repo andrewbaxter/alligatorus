@@ -21,7 +21,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             Type,
             Unique,
@@ -41,7 +40,7 @@ pub(crate) struct TypeNullConst;
 impl Aspect for TypeNullConst { }
 
 impl AspectArtifact for TypeNullConst {
-    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match data {
             serde_json::Value::Null => {
                 EvalRes::ok(CodeValue {
@@ -59,7 +58,6 @@ impl AspectArtifact for TypeNullConst {
     fn to_serial(
         &self,
         _xx: &ExprContext,
-        _gx: &GlobalContext,
         _loc: QExprId,
         _value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
@@ -117,7 +115,7 @@ impl Type for TypeNullConst {
         return format!("null");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
         Some(Self::build_type_artifact())
     }
 }

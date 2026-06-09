@@ -32,7 +32,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntryId,
             Type,
@@ -59,7 +58,7 @@ pub(crate) struct TypeTypeSourceDataTypeDynamic;
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
-    fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         er_seq_cv!(loc, erb, {
             let serial: ArtifactDataDefSetDataType =
                 erb.must_res(
@@ -71,7 +70,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                 &xx.vx.ix,
                 &serial.def_set,
                 || {
-                    let def_set_artifact = gx.artifacts.get(serial.def_set.clone())?;
+                    let def_set_artifact = xx.vx.ix.gx.artifacts.get(serial.def_set.clone())?;
                     let def_set_serial: ArtifactDataDefSet =
                         serde_json::from_value(def_set_artifact.data)
                             .map_err(|e| format!("Failed to parse definition set: {}", e))?;
@@ -84,7 +83,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                     )> = Vec::new();
                     let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
                     for dt_artifact_id in &def_set_serial.data_types {
-                        let dt_artifact = gx.artifacts.get(dt_artifact_id.clone())?;
+                        let dt_artifact = xx.vx.ix.gx.artifacts.get(dt_artifact_id.clone())?;
                         let dt_serial: ArtifactDataDefSetDataType =
                             serde_json::from_value(dt_artifact.data)
                                 .map_err(|e| format!("Failed to parse data type: {}", e))?;
@@ -108,7 +107,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                     }
                     *set.data_types.borrow_mut() = dt_gcs;
                     let finalizer: crate::langhelp::ArtifactFinalizer =
-                        Box::new(move |xx: &ExprContext, gx: &GlobalContext, loc: QExprId| {
+                        Box::new(move |xx: &ExprContext, loc: QExprId| {
                             let mut codes: Vec<Code> = Vec::new();
                             for (dt_artifact_id, dt_serial) in &dt_serials {
                                 let dt_data = {
@@ -121,7 +120,6 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                                 let (underlying_type, underlying_code) =
                                     crate::eval::util::deserialize_type_artifact(
                                         xx,
-                                        gx,
                                         loc,
                                         &dt_serial.underlying_type.type_,
                                     )
@@ -140,7 +138,6 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                                             let (ret_type, ret_code) =
                                                 crate::eval::util::deserialize_type_artifact(
                                                     xx,
-                                                    gx,
                                                     loc,
                                                     &m.ret_type.type_,
                                                 )
@@ -199,12 +196,11 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
     fn to_serial(
         &self,
         xx: &ExprContext,
-        gx: &GlobalContext,
         loc: QExprId,
         self_: Rc<dyn Value>,
     ) -> EResult<Artifact> {
         let dt = must_downcast_ref::<TypeSourceDataTypeConst>(self_.as_ref());
-        let artifact_id = dt.serialize_data_type(xx, gx, loc);
+        let artifact_id = dt.serialize_data_type(xx, loc);
         EResult::ok(Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
@@ -249,7 +245,7 @@ impl Type for TypeTypeSourceDataTypeDynamic {
         "definition_set_data_type_type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
         Some(Self::build_type_artifact())
     }
 }

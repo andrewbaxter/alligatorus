@@ -58,7 +58,7 @@ pub(crate) trait Type: Value {
     fn desc(&self) -> String;
 
     /// Serialize this type itself as an artifact (for type references).
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
         None
     }
 }
@@ -138,7 +138,7 @@ pub(crate) struct CodeValue {
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 pub(crate) type ArtifactFinalizer =
-    Box<dyn FnOnce(&ExprContext, &GlobalContext, QExprId) -> Result<Vec<Code>, String>>;
+    Box<dyn FnOnce(&ExprContext, QExprId) -> Result<Vec<Code>, String>>;
 
 /// One per module (per import env).
 pub(crate) struct CompileImportContext {

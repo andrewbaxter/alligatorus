@@ -43,7 +43,7 @@ impl PendingImportState {
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        let cv = crate::eval::util::deserialize_artifact(xx, &self.gx, loc, artifact)
+        let cv = crate::eval::util::deserialize_artifact(xx, loc, artifact)
             .into_res()
             .expect("Artifact deserialization failed");
         let mut all_finalizer_codes: Vec<Code> = Vec::new();
@@ -54,7 +54,7 @@ impl PendingImportState {
                 break;
             }
             for f in finalizers {
-                let codes = f(xx, &self.gx, loc).expect("Finalizer failed");
+                let codes = f(xx, loc).expect("Finalizer failed");
                 all_finalizer_codes.extend(
                     codes
                         .into_iter()

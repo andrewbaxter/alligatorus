@@ -31,7 +31,6 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            GlobalContext,
             QExprId,
             ScopeEntry,
             Type,
@@ -52,7 +51,7 @@ pub(crate) struct TypeStringConst;
 impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
-    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match data {
             serde_json::Value::String(s) => {
                 EvalRes::ok(CodeValue {
@@ -70,7 +69,6 @@ impl AspectArtifact for TypeStringConst {
     fn to_serial(
         &self,
         _xx: &ExprContext,
-        _gx: &GlobalContext,
         _loc: QExprId,
         value: Rc<dyn Value>,
     ) -> EResult<Artifact> {
@@ -164,7 +162,7 @@ impl Type for TypeStringConst {
         return format!("string");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, _loc: QExprId) -> Option<Artifact> {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
         Some(Self::build_type_artifact())
     }
 }

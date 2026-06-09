@@ -45,7 +45,6 @@ macro_rules! er_seq_cv{
 
 pub(crate) fn deserialize_artifact(
     xx: &crate::langhelp::ExprContext,
-    gx: &crate::langhelp::GlobalContext,
     loc: crate::langhelp::QExprId,
     artifact: &crate::langhelp::Artifact,
 ) -> crate::langhelp::EvalRes {
@@ -62,12 +61,12 @@ pub(crate) fn deserialize_artifact(
             },
             crate::langhelp::ArtifactId::Source(compile_id) => {
                 erb.must_er(
-                    deserialize_type_artifact(xx, gx, loc, &crate::langhelp::ArtifactId::Source(*compile_id)),
+                    deserialize_type_artifact(xx, loc, &crate::langhelp::ArtifactId::Source(*compile_id)),
                 )?
             },
         };
         let aspect_artifact = erb.must_er(crate::builtin::aspect_artifact_get(xx, loc, type_.as_ref()))?;
-        let data_cv = erb.must_er(aspect_artifact.from_serial(xx, gx, loc, &artifact.data))?;
+        let data_cv = erb.must_er(aspect_artifact.from_serial(xx, loc, &artifact.data))?;
         if matches!(type_code.code, crate::langhelp::Code_::None) {
             Ok(data_cv)
         } else {
@@ -82,7 +81,6 @@ pub(crate) fn deserialize_artifact(
 
 pub(crate) fn deserialize_type_artifact(
     xx: &crate::langhelp::ExprContext,
-    gx: &crate::langhelp::GlobalContext,
     loc: crate::langhelp::QExprId,
     id: &crate::langhelp::ArtifactId,
 ) -> crate::langhelp::EResult<(std::rc::Rc<dyn crate::langhelp::Type>, crate::langhelp::Code)> {
@@ -97,11 +95,11 @@ pub(crate) fn deserialize_type_artifact(
             }
         },
         crate::langhelp::ArtifactId::Source(compile_id) => {
-            let artifact = match gx.artifacts.get(crate::langhelp::ArtifactId::Source(*compile_id)) {
+            let artifact = match xx.vx.ix.gx.artifacts.get(crate::langhelp::ArtifactId::Source(*compile_id)) {
                 Ok(v) => v,
                 Err(e) => return crate::langhelp::EResult::err(loc, e),
             };
-            let cv = match deserialize_artifact(xx, gx, loc, &artifact).into_res() {
+            let cv = match deserialize_artifact(xx, loc, &artifact).into_res() {
                 Ok(v) => v,
                 Err(e) => return crate::langhelp::EResult {
                     v: None,
