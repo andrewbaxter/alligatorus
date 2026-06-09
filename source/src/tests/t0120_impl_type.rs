@@ -16,13 +16,15 @@ use {
 
 #[test]
 fn test_00100_impl_type() {
+    // This test demonstrates defining a new type in source. Until now only
+    // source-defined interfaces were supported.
     setup_v8();
     let gx = new_gx([("main", SourceModule::V1({
         let mb = ModuleBuilder::default();
         mb.block(vec![
             // Bind new "upper" type
             mb.bind("upper", mb.lower(
-                // Instantiate type
+                // Instantiate type.
                 mb.call(
                     // Return constructor of type that implements "type"
                     mb.lower(
@@ -74,7 +76,7 @@ fn test_00100_impl_type() {
                                                             ("expr", mb.stage(mb.call(mb.field(
                                                                 // Graft is like "lower" except it just takes an EvalRes and puts it in the tree,
                                                                 // to be used as-is when evaluated.
-                                                                mb.graft(mb.field(mb.scope_use("arg"), "cv")),
+                                                                mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv"))),
                                                                 mb.str("to_upper"),
                                                             ), mb.tuple(vec![])))),
                                                         ],
@@ -94,7 +96,17 @@ fn test_00100_impl_type() {
             )),
             // Cast a string to the "upper" type (which actually results in a string) and log
             // it
-            mb.call(mb.scope_use("log"), mb.as_(mb.str("hello"), mb.scope_use("upper"))),
+            mb.call(mb.scope_use("log"), mb.as_(
+                mb.str("hello"),
+                // For this to work,
+                //
+                // 1. const source data types will need to also implement `Type`.
+                //
+                // 2. The "type" will need to keep the v8 engine alive, and keep a reference to the
+                //    instance, then call the v8 methods when any trait method is called, then lift the
+                //    values back out.
+                mb.scope_use("upper"),
+            )),
         ])
     }))].into_iter().collect());
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
