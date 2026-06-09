@@ -67,7 +67,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     gx: &GlobalContext,
     loc: QExprId,
     data: &serde_json::Value,
-) -> Result<Rc<dyn Type>, String> {
+) -> Result<(Rc<dyn Type>, Vec<crate::langhelp::Code>), String> {
     // data contains a serialized ArtifactId reference
     let artifact_id: ArtifactId =
         serde_json::from_value(
@@ -76,9 +76,18 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     let stored = gx.artifacts.get(artifact_id)?;
     let serial: ArtifactDataDefSetCtorData =
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
-    let underlying_type = gx.deserialize_type_ref(xx, loc, &serial.underlying_type)?;
+    let mut codes: Vec<crate::langhelp::Code> = Vec::new();
+    let (underlying_type, underlying_code) =
+        crate::eval::util::deserialize_type_artifact(xx, gx, loc, &serial.underlying_type.type_)
+            .into_res()
+            .map_err(|e| format!("{:?}", e))?;
+    codes.push(underlying_code);
     let methods: Vec<SourceDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
-        let ret_type = gx.deserialize_type_ref(xx, loc, &m.ret_type).expect("Failed to resolve method ret type");
+        let (ret_type, ret_code) =
+            crate::eval::util::deserialize_type_artifact(xx, gx, loc, &m.ret_type.type_)
+                .into_res()
+                .expect("Failed to resolve method ret type");
+        codes.push(ret_code);
         let entry_id = serial.def_set_id;
         SourceDataMethodData {
             name: m.name.clone(),
@@ -118,7 +127,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         artifact_id: std::cell::RefCell::new(None),
     });
     set.data_types.borrow_mut().push(dt_data.clone());
-    Ok(Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }))
+    Ok((Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }), codes))
 }
 
 // --- Conversion helpers ---

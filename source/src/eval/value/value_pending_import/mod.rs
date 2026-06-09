@@ -43,7 +43,7 @@ impl PendingImportState {
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        self.gx.deserialize_artifact(xx, loc, artifact).into_res().expect("Artifact deserialization failed")
+        crate::eval::util::deserialize_artifact(xx, &self.gx, loc, artifact).into_res().expect("Artifact deserialization failed")
     }
 
     pub(crate) fn resolve_standalone(&self) -> CodeValue {

@@ -92,7 +92,7 @@ pub(crate) fn deserialize_definition_set(
     gx: &GlobalContext,
     loc: QExprId,
     def_set_artifact_id: ArtifactId,
-) -> Result<Gc<DefinitionSet>, String> {
+) -> Result<(Gc<DefinitionSet>, Vec<Code>), String> {
     use {
         crate::eval::value::type_source_data_type::SourceDataMethodData,
         std::{
@@ -140,18 +140,21 @@ pub(crate) fn deserialize_definition_set(
         must_downcast_ref::<Gc<SourceDataTypeData>>(map.get(id).unwrap().as_ref()).clone()
     }).collect();
     *set.data_types.borrow_mut() = dt_gcs;
+    let mut codes: Vec<Code> = Vec::new();
     for (dt_artifact_id, dt_serial) in &dt_serials {
         let dt_data = must_downcast_ref::<Gc<SourceDataTypeData>>(map.get(dt_artifact_id).unwrap().as_ref());
-        let underlying_type =
-            gx
-                .deserialize_type_ref(xx, loc, &dt_serial.underlying_type)
-                .map_err(|e| format!("Failed to deserialize underlying type: {}", e))?;
+        let (underlying_type, underlying_code) =
+            crate::eval::util::deserialize_type_artifact(xx, gx, loc, &dt_serial.underlying_type.type_)
+                .into_res()
+                .map_err(|e| format!("Failed to deserialize underlying type: {:?}", e))?;
+        codes.push(underlying_code);
         dt_data.underlying_type.set(underlying_type);
         let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
-            let ret_type =
-                gx
-                    .deserialize_type_ref(xx, loc, &m.ret_type)
-                    .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {}", e));
+            let (ret_type, ret_code) =
+                crate::eval::util::deserialize_type_artifact(xx, gx, loc, &m.ret_type.type_)
+                    .into_res()
+                    .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {:?}", e));
+            codes.push(ret_code);
             SourceDataMethodData {
                 name: m.name.clone(),
                 impl_expr: RefCell::new(None),
@@ -166,7 +169,7 @@ pub(crate) fn deserialize_definition_set(
         }).collect();
         *dt_data.methods.borrow_mut() = methods;
     }
-    Ok(set)
+    Ok((set, codes))
 }
 
 fn serialize_definition_set(
@@ -249,7 +252,8 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 type_: build_type_artifact.type_,
                 data: data.clone(),
             };
-            let underlying_cv = erb.must_er(gx.deserialize_artifact(xx, loc, &underlying_artifact))?;
+            let underlying_cv =
+                erb.must_er(crate::eval::util::deserialize_artifact(xx, gx, loc, &underlying_artifact))?;
             {
                 let set = &self.data.set;
                 let mut sets = xx.vx.definition_sets.borrow_mut();

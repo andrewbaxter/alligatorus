@@ -45,12 +45,10 @@ impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
     fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         er_seq_cv!(loc, erb, {
-            let type_ = erb.must_res(deserialize_defset_ctor_as_type(xx, gx, loc, data))?;
+            let (type_, type_codes) = erb.must_res(deserialize_defset_ctor_as_type(xx, gx, loc, data))?;
+            let code = erb.must_er(xx.target.block(loc, type_codes))?;
             return Ok(CodeValue {
-                code: Code {
-                    loc: loc,
-                    code: Code_::None,
-                },
+                code: code,
                 value: type_.as_value(),
             });
         })

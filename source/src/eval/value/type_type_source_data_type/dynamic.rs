@@ -52,7 +52,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         data.clone()
                     ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
                 )?;
-            let def_set = erb.must_res(deserialize_definition_set(xx, gx, loc, serial.def_set))?;
+            let (def_set, type_codes) = erb.must_res(deserialize_definition_set(xx, gx, loc, serial.def_set))?;
             let data_types = def_set.data_types.borrow();
             let dt_data =
                 data_types
@@ -61,11 +61,9 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                     .expect("Data type not found in definition set")
                     .clone();
             drop(data_types);
+            let code = erb.must_er(xx.target.block(loc, type_codes))?;
             return Ok(CodeValue {
-                code: Code {
-                    loc: loc,
-                    code: Code_::None,
-                },
+                code: code,
                 value: Rc::new(TypeSourceDataTypeConst { data: dt_data }),
             });
         })
