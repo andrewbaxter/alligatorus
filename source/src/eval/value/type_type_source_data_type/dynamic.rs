@@ -6,16 +6,21 @@ use {
             aspect_artifact_aspect_id,
             aspect_type_aspect_id,
         },
-        eval::value::type_source_data_type::{
-            TypeSourceDataTypeConst,
-            artifact::ArtifactDataDefSetDataType,
-            r#const::deserialize_definition_set,
+        eval::{
+            Erb,
+            value::type_source_data_type::{
+                TypeSourceDataTypeConst,
+                artifact::ArtifactDataDefSetDataType,
+                r#const::deserialize_definition_set,
+            },
         },
         invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             Aspect,
+            Code,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -28,6 +33,7 @@ use {
     },
     std::{
         any::Any,
+        mem,
         rc::Rc,
     },
 };
@@ -38,21 +44,27 @@ pub(crate) struct TypeTypeSourceDataTypeDynamic;
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let serial: ArtifactDataDefSetDataType =
-            serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset data type: {}", e))?;
-        let def_set_artifact = gx.artifacts.get(serial.def_set)?;
-        let def_set = deserialize_definition_set(xx, gx, loc, &def_set_artifact)?;
-        let data_types = def_set.data_types.borrow();
-        let dt_data = data_types[serial.type_index].clone();
-        drop(data_types);
-        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_data }))
+    fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        er_seq_cv!(loc, erb, {
+            let serial: ArtifactDataDefSetDataType =
+                erb.must_res(
+                    serde_json::from_value(
+                        data.clone()
+                    ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
+                )?;
+            let def_set_artifact = erb.must_res(gx.artifacts.get(serial.def_set))?;
+            let def_set = erb.must_res(deserialize_definition_set(xx, gx, loc, &def_set_artifact))?;
+            let data_types = def_set.data_types.borrow();
+            let dt_data = data_types[serial.type_index].clone();
+            drop(data_types);
+            return Ok(CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::None,
+                },
+                value: Rc::new(TypeSourceDataTypeConst { data: dt_data }),
+            });
+        })
     }
 
     fn to_serial(

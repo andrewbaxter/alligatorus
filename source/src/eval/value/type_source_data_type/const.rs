@@ -5,7 +5,6 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
-            AspectField,
             AspectInitialBind,
             AspectLiftDynamic,
             AspectStackValueDynamic,
@@ -13,7 +12,6 @@ use {
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_lift_dynamic_get_maybe,
@@ -23,7 +21,6 @@ use {
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
-            CodeDynamicFieldUse,
             CodeDynamicNewObject,
             CodeDynamicType,
         },
@@ -37,8 +34,6 @@ use {
                 bind_via_target,
             },
             value::{
-                type_function::dynamic::TypeFunctionDynamic,
-                type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_interface::{
                     SourceInterfaceData,
@@ -57,7 +52,6 @@ use {
             Code,
             CodeValue,
             Code_,
-            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -201,60 +195,6 @@ fn serialize_definition_set(
 }
 
 impl TypeSourceDataTypeConst {
-    /// Materialize a constant (lifted/deserialized) data type value as a JS object.
-    /// Registers the definition set with the eval context so methods get compiled.
-    fn materialize_constant(&self, xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<CodeDynamic, String> {
-        use crate::builtin::aspect_string_const_get_maybe;
-
-        // Register definition set with eval context
-        {
-            let set = &self.data.set;
-            let mut sets = xx.vx.definition_sets.borrow_mut();
-            let already =
-                sets.iter().any(|s| std::ptr::eq(&**s as *const DefinitionSet, &**set as *const DefinitionSet));
-            if !already {
-                sets.push(set.clone());
-            }
-        }
-
-        // Get the underlying value from ValueSourceDataTypeConst
-        let lifted =
-            (cv.value.as_ref() as &dyn std::any::Any)
-                .downcast_ref::<ValueSourceDataTypeConst>()
-                .ok_or_else(|| "Expected ValueSourceDataTypeConst for constant materialization".to_string())?;
-
-        // Build the underlying value as a JS literal
-        let underlying_type = lifted.underlying.type_(xx, loc);
-        let underlying_js = if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_type.as_ref()) {
-            let s = aspect_str.get(lifted.underlying.as_ref());
-            CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
-            }
-        } else {
-            return Err(
-                format!(
-                    "Cannot materialize constant: underlying type ({}) not supported as JS literal",
-                    underlying_type.desc()
-                ),
-            );
-        };
-
-        // Build wrapper object fields
-        let mut object_fields = vec![(self.data.data_field.clone(), underlying_js)];
-        for method in self.data.methods.borrow().iter() {
-            let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-            object_fields.push((method.field_name.clone(), CodeDynamic {
-                loc,
-                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-            }));
-        }
-        Ok(CodeDynamic {
-            loc,
-            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
-        })
-    }
-
     pub(crate) fn serialize_data_type(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId) -> ArtifactId {
         crate::langhelp::produce_independent_artifact(gx.artifacts.as_ref(), &self.data.artifact_id, || {
             let def_set_artifact_id = serialize_definition_set(xx, gx, loc, &self.data.set);
@@ -278,37 +218,64 @@ impl TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        // Get the underlying type from the definition set to recover the artifact identity
-        let underlying_type = self.data.underlying_type.borrow();
-        let underlying_type =
-            underlying_type.as_ref().ok_or_else(|| "Data type missing underlying type".to_string())?;
-
-        // Use serialize_type_ref to get the underlying type's artifact identity
-        let build_type_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
-                xx,
-                gx,
-                loc,
-                underlying_type.as_ref(),
-            );
-
-        // Reconstruct the full underlying artifact and deserialize via the value type
-        let underlying_artifact = Artifact {
-            type_: build_type_artifact.type_,
-            data: data.clone(),
-        };
-        let underlying_value = gx.deserialize_artifact(xx, loc, &underlying_artifact)?;
-        Ok(Rc::new(ValueSourceDataTypeConst {
-            underlying: underlying_value,
-            data: self.data.clone(),
-        }))
+    fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        er_seq_cv!(loc, erb, {
+            let underlying_type = self.data.underlying_type.borrow();
+            let Some(underlying_type_ref) = underlying_type.as_ref() else {
+                return erb.err_new("Data type missing underlying type".to_string());
+            };
+            let build_type_artifact =
+                crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                    xx,
+                    gx,
+                    loc,
+                    underlying_type_ref.as_ref(),
+                );
+            drop(underlying_type);
+            let underlying_artifact = Artifact {
+                type_: build_type_artifact.type_,
+                data: data.clone(),
+            };
+            let underlying_cv = erb.must_er(gx.deserialize_artifact(xx, loc, &underlying_artifact))?;
+            {
+                let set = &self.data.set;
+                let mut sets = xx.vx.definition_sets.borrow_mut();
+                let already =
+                    sets.iter().any(|s| std::ptr::eq(&**s as *const DefinitionSet, &**set as *const DefinitionSet));
+                if !already {
+                    sets.push(set.clone());
+                }
+            }
+            let underlying_value_type = underlying_cv.value.type_(xx, loc);
+            let aspect_str = erb.must_er(aspect_string_const_get(xx, loc, underlying_value_type.as_ref()))?;
+            let s = aspect_str.get(underlying_cv.value.as_ref());
+            let underlying_js = CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
+            };
+            let mut object_fields = vec![(self.data.data_field.clone(), underlying_js)];
+            for method in self.data.methods.borrow().iter() {
+                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
+                object_fields.push((method.field_name.clone(), CodeDynamic {
+                    loc: loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                }));
+            }
+            let code = CodeDynamic {
+                loc: loc,
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
+            };
+            return Ok(CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::Dyn(Rc::new(code)),
+                },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: Some(self.data.clone()) }),
+                }),
+            });
+        })
     }
 
     fn to_serial(
@@ -381,108 +348,6 @@ impl AspectConsumeDynamic for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectField for TypeSourceDataTypeConst {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-
-            // Look up method by name - get types directly
-            type MethodLookup = (String, Rc<dyn Type>, Rc<dyn Type>);
-            let lookup_result: Option<MethodLookup> = 'lookup: {
-                // Check direct methods first
-                {
-                    let methods = self.data.methods.borrow();
-                    if let Some(m) = methods.iter().find(|m| m.name == key_name) {
-                        let ret_t = m.ret_type.borrow().clone().expect("Data type method missing return type");
-                        break 'lookup Some((m.field_name.clone(), Rc::new(TypeNullDynamic), ret_t));
-                    }
-                }
-
-                // Check interface methods
-                {
-                    let interface_impls = self.data.interface_impls.borrow();
-                    for impl_data in interface_impls.iter() {
-                        let iface_methods = impl_data.interface.methods.borrow();
-                        if let Some(method) = iface_methods.iter().find(|m| m.name == key_name) {
-                            let arg_t = method.arg_type.borrow().clone().expect("Interface method missing arg type");
-                            let ret_t =
-                                method.ret_type.borrow().clone().expect("Interface method missing return type");
-                            break 'lookup Some((method.field_name.clone(), arg_t, ret_t));
-                        }
-                    }
-                }
-                None
-            };
-            let (field_name, arg_type, ret_type) = match lookup_result {
-                Some(r) => r,
-                None => return erb.err_new(format!("Field '{}' not found on data type", key_name)),
-            };
-            let self_code = match erb.must_er(self_.code.cast::<CodeDynamic>())? {
-                Some(c) => c.clone(),
-                None => {
-                    // Constant value (e.g. deserialized import) — materialize as JS object
-                    erb.must_res(self.materialize_constant(xx, loc, &self_))?
-                },
-            };
-            let field_type = Rc::new(TypeFunctionDynamic {
-                arg: arg_type,
-                ret: ret_type,
-            });
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                            base: Box::new(self_code),
-                            field: field_name,
-                        }),
-                    })),
-                },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: field_type,
-                }),
-            });
-        });
-    }
-
-    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
-        let ConstKey::String(key) = key else {
-            return None;
-        };
-
-        // Check direct methods
-        let methods = self.data.methods.borrow();
-        for method in methods.iter() {
-            if method.name == *key {
-                return Some(Rc::new(TypeFunctionDynamic {
-                    arg: Rc::new(TypeNullDynamic),
-                    ret: Rc::new(TypeNullDynamic),
-                }));
-            }
-        }
-        drop(methods);
-
-        // Check interface methods
-        let interface_impls = self.data.interface_impls.borrow();
-        for impl_data in interface_impls.iter() {
-            let iface_methods = impl_data.interface.methods.borrow();
-            for method in iface_methods.iter() {
-                if method.name == *key {
-                    return Some(Rc::new(TypeFunctionDynamic {
-                        arg: Rc::new(TypeNullDynamic),
-                        ret: Rc::new(TypeNullDynamic),
-                    }));
-                }
-            }
-        }
-        None
-    }
-}
-
 impl AspectInitialBind for TypeSourceDataTypeConst {
     fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
         Box::new(ScopeEntryDynamicBinding {
@@ -543,11 +408,6 @@ impl Type for TypeSourceDataTypeConst {
         // Check own data type identity aspect
         if *key == self.data.identity {
             return Some(Box::new(true));
-        }
-        if *key == aspect_field_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
-            );
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(

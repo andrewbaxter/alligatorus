@@ -20,7 +20,6 @@ use {
             typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
-                type_source_data_type::TypeSourceDataTypeConst,
                 type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
         },
@@ -136,7 +135,12 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
                     }));
                 }
             }
-            let result_type = Rc::new(TypeSourceDataTypeConst { data: self.data.clone(), });
+            let result_type =
+                Rc::new(
+                    super::super::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                        data: Some(self.data.clone()),
+                    }
+                );
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,

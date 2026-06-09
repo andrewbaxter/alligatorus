@@ -6,15 +6,20 @@ use {
             aspect_artifact_aspect_id,
             aspect_type_aspect_id,
         },
-        eval::value::type_source_data_type_constructor::{
-            TypeSourceDataTypeConstructorConst,
-            dynamic::deserialize_defset_ctor_as_type,
+        eval::{
+            Erb,
+            value::type_source_data_type_constructor::{
+                TypeSourceDataTypeConstructorConst,
+                dynamic::deserialize_defset_ctor_as_type,
+            },
         },
         invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             Aspect,
+            Code,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -27,6 +32,7 @@ use {
     },
     std::{
         any::Any,
+        mem,
         rc::Rc,
     },
 };
@@ -37,15 +43,17 @@ pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
-    fn from_serial(
-        &self,
-        xx: &ExprContext,
-        gx: &GlobalContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_ = deserialize_defset_ctor_as_type(xx, gx, loc, data)?;
-        Ok(type_.as_value())
+    fn from_serial(&self, xx: &ExprContext, gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        er_seq_cv!(loc, erb, {
+            let type_ = erb.must_res(deserialize_defset_ctor_as_type(xx, gx, loc, data))?;
+            return Ok(CodeValue {
+                code: Code {
+                    loc: loc,
+                    code: Code_::None,
+                },
+                value: type_.as_value(),
+            });
+        })
     }
 
     fn to_serial(

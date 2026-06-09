@@ -26,6 +26,7 @@ use {
             Aspect,
             Code,
             CodeValue,
+            Code_,
             ConstKey,
             EResult,
             EvalRes,
@@ -51,16 +52,18 @@ pub(crate) struct TypeStringConst;
 impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
+    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match data {
-            serde_json::Value::String(s) => Ok(Rc::new(ValueStringConst(s.clone())) as Rc<dyn Value>),
-            _ => Err("Expected string data for string type".to_string()),
+            serde_json::Value::String(s) => {
+                EvalRes::ok(CodeValue {
+                    code: Code {
+                        loc: loc,
+                        code: Code_::None,
+                    },
+                    value: Rc::new(ValueStringConst(s.clone())) as Rc<dyn Value>,
+                })
+            },
+            _ => EvalRes::err(loc, "Expected string data for string type".to_string()),
         }
     }
 

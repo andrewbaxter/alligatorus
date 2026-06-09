@@ -3,6 +3,7 @@ use {
         Artifact,
         Aspect,
         EResult,
+        EvalRes,
         ExprContext,
         GlobalContext,
         QExprId,
@@ -28,6 +29,5 @@ aspect!(AspectArtifact {
         gx: & GlobalContext,
         loc: QExprId,
         data: & serde_json:: Value,
-    ) -> Result < Rc < dyn Value >,
-    String >;
+    ) -> EvalRes;
 });

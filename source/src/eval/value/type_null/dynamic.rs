@@ -72,10 +72,16 @@ impl AspectArtifact for TypeNullDynamic {
         &self,
         _xx: &ExprContext,
         _gx: &GlobalContext,
-        _loc: QExprId,
+        loc: QExprId,
         _data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNullConst))
+    ) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::None,
+            },
+            value: Rc::new(ValueNullConst),
+        })
     }
 
     fn to_serial(

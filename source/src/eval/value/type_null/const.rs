@@ -15,7 +15,9 @@ use {
         langhelp::{
             Artifact,
             Aspect,
+            Code,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -39,16 +41,18 @@ pub(crate) struct TypeNullConst;
 impl Aspect for TypeNullConst { }
 
 impl AspectArtifact for TypeNullConst {
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
+    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match data {
-            serde_json::Value::Null => Ok(Rc::new(ValueNullConst) as Rc<dyn Value>),
-            _ => Err("Expected null data for null type".to_string()),
+            serde_json::Value::Null => {
+                EvalRes::ok(CodeValue {
+                    code: Code {
+                        loc: loc,
+                        code: Code_::None,
+                    },
+                    value: Rc::new(ValueNullConst) as Rc<dyn Value>,
+                })
+            },
+            _ => EvalRes::err(loc, "Expected null data for null type".to_string()),
         }
     }
 

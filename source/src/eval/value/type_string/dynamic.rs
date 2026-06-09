@@ -82,15 +82,17 @@ pub(crate) struct TypeStringDynamic;
 impl Aspect for TypeStringDynamic { }
 
 impl AspectArtifact for TypeStringDynamic {
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        _gx: &GlobalContext,
-        _loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = data.as_str().ok_or_else(|| format!("Expected string data for mortar string, got {:?}", data))?;
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())))
+    fn from_serial(&self, _xx: &ExprContext, _gx: &GlobalContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        let Some(s) = data.as_str() else {
+            return EvalRes::err(loc, format!("Expected string data for mortar string, got {:?}", data));
+        };
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::None,
+            },
+            value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())),
+        })
     }
 
     fn to_serial(

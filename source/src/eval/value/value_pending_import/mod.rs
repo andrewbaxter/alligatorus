@@ -2,6 +2,8 @@ use {
     crate::{
         eval::TargetDynamic,
         langhelp::{
+            Code,
+            CodeValue,
             CompileImportContext,
             CompileResResult,
             CompileResultEntry,
@@ -32,7 +34,7 @@ pub(crate) struct PendingImportState {
 }
 
 impl PendingImportState {
-    pub(crate) fn resolve(&self, xx: &ExprContext) -> Rc<dyn Value> {
+    pub(crate) fn resolve(&self, xx: &ExprContext) -> CodeValue {
         let guard = self.entry.result.read().unwrap();
         let compile_res = guard.as_ref().unwrap();
         let compile_res = compile_res.as_ref().expect("Import compilation error");
@@ -41,10 +43,10 @@ impl PendingImportState {
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        self.gx.deserialize_artifact(xx, loc, artifact).expect("Artifact deserialization failed")
+        self.gx.deserialize_artifact(xx, loc, artifact).into_res().expect("Artifact deserialization failed")
     }
 
-    pub(crate) fn resolve_standalone(&self) -> Rc<dyn Value> {
+    pub(crate) fn resolve_standalone(&self) -> CodeValue {
         let cix = Rc::new(CompileImportContext {
             gx: self.gx.clone(),
             compile_path: vec![],
@@ -70,27 +72,31 @@ impl PendingImportState {
 }
 
 pub(crate) struct ValuePendingImport {
-    pub resolved: RefCell<Option<Rc<dyn Value>>>,
+    pub resolved: RefCell<Option<(Code, Rc<dyn Value>)>>,
     pub state: Rc<PendingImportState>,
 }
 
 impl ValuePendingImport {
-    pub(crate) fn resolve(&self, xx: &ExprContext) -> Rc<dyn Value> {
+    pub(crate) fn resolve(&self, xx: &ExprContext) -> CodeValue {
         let mut cached = self.resolved.borrow_mut();
-        if let Some(v) = cached.as_ref() {
-            return v.clone();
+        if let Some((code, value)) = cached.as_ref() {
+            return CodeValue {
+                code: code.clone(),
+                value: value.clone(),
+            };
         }
-        let v = self.state.resolve(xx);
-        *cached = Some(v.clone());
-        v
+        let cv = self.state.resolve(xx);
+        *cached = Some((cv.code.clone(), cv.value.clone()));
+        cv
     }
 }
 
 impl Value for ValuePendingImport {
     fn type_(&self, xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        let cv = self.resolve(xx);
         Rc::new(super::type_pending_import::TypePendingImport {
             state: self.state.clone(),
-            resolved: self.resolve(xx),
+            resolved: cv.value,
         })
     }
 }

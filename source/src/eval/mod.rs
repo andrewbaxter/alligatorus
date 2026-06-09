@@ -2434,10 +2434,7 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
         let source =
             if let Some(pending) =
                 <dyn Any>::downcast_ref::<value::value_pending_import::ValuePendingImport>(source.value.as_ref()) {
-                CodeValue {
-                    code: source.code,
-                    value: pending.resolve(xx)
-                }
+                pending.resolve(xx)
             } else {
                 source
             };

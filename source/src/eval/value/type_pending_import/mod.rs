@@ -32,15 +32,12 @@ impl crate::builtin::AspectBind for PendingImportBind {
         &self,
         _xx: &ExprContext,
         loc: QExprId,
-        cv: CodeValue,
+        _cv: CodeValue,
     ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
         EResult::ok((crate::langhelp::Code {
             loc: loc,
             code: crate::langhelp::Code_::None,
-        }, Box::new(ScopeEntryPendingImport {
-            state: self.state.clone(),
-            code: cv.code,
-        }) as Box<dyn ScopeEntry>))
+        }, Box::new(ScopeEntryPendingImport { state: self.state.clone() }) as Box<dyn ScopeEntry>))
     }
 }
 

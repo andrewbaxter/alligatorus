@@ -308,51 +308,34 @@ pub(crate) struct GlobalContext {
 }
 
 impl GlobalContext {
-    pub(crate) fn deserialize_artifact(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        artifact: &Artifact,
-    ) -> Result<Rc<dyn Value>, String> {
-        match &artifact.type_ {
-            ArtifactId::Builtin(id) => {
-                let type_ =
-                    xx.vx.ix.builtin_types.get(id).ok_or_else(|| format!("Unknown builtin type ID: {:?}", id))?;
-                let aspect = crate::builtin::aspect_artifact_get_maybe(xx, type_.as_ref()).ok_or_else(|| {
-                    format!("Type ({}) missing AspectArtifact", type_.desc())
-                })?;
-                aspect.from_serial(xx, self, loc, &artifact.data)
-            },
-            ArtifactId::Source(compile_id) => {
-                let type_artifact = self.artifacts.get(ArtifactId::Source(*compile_id))?;
-                let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
-                    return Err("Type artifact must have builtin type_".to_string());
-                };
-                let type_type =
-                    xx
-                        .vx
-                        .ix
-                        .builtin_types
-                        .get(tid)
-                        .ok_or_else(|| format!("Unknown type artifact builtin ID: {:?}", tid))?;
-                let aspect_type =
-                    crate::builtin::aspect_type_get_maybe(
-                        xx,
-                        type_type.as_ref(),
-                    ).ok_or_else(|| format!("Type type ({}) missing AspectType", type_type.desc()))?;
-                let aspect_artifact =
-                    crate::builtin::aspect_artifact_get_maybe(
-                        xx,
-                        type_type.as_ref(),
-                    ).ok_or_else(|| format!("Type type ({}) missing AspectArtifact", type_type.desc()))?;
-                let type_value = aspect_artifact.from_serial(xx, self, loc, &type_artifact.data)?;
-                let actual_type = aspect_type.type_(type_value.as_ref());
-                let aspect = crate::builtin::aspect_artifact_get_maybe(xx, actual_type.as_ref()).ok_or_else(|| {
-                    format!("Reconstructed type ({}) missing AspectArtifact", actual_type.desc())
-                })?;
-                aspect.from_serial(xx, self, loc, &artifact.data)
-            },
-        }
+    pub(crate) fn deserialize_artifact(&self, xx: &ExprContext, loc: QExprId, artifact: &Artifact) -> EvalRes {
+        crate::eval::util::er_seq_cv_inline(loc, |erb| {
+            match &artifact.type_ {
+                ArtifactId::Builtin(id) => {
+                    let Some(type_) = xx.vx.ix.builtin_types.get(id) else {
+                        return erb.err_new(format!("Unknown builtin type ID: {:?}", id));
+                    };
+                    let aspect = erb.must_er(crate::builtin::aspect_artifact_get(xx, loc, type_.as_ref()))?;
+                    Ok(erb.must_er(aspect.from_serial(xx, self, loc, &artifact.data))?)
+                },
+                ArtifactId::Source(compile_id) => {
+                    let type_artifact = erb.must_res(self.artifacts.get(ArtifactId::Source(*compile_id)))?;
+                    let ArtifactId::Builtin(tid) = &type_artifact.type_ else {
+                        return erb.err_new("Type artifact must have builtin type_");
+                    };
+                    let Some(type_type) = xx.vx.ix.builtin_types.get(tid) else {
+                        return erb.err_new(format!("Unknown type artifact builtin ID: {:?}", tid));
+                    };
+                    let aspect_type = erb.must_er(crate::builtin::aspect_type_get(xx, loc, type_type.as_ref()))?;
+                    let aspect_artifact =
+                        erb.must_er(crate::builtin::aspect_artifact_get(xx, loc, type_type.as_ref()))?;
+                    let type_cv = erb.must_er(aspect_artifact.from_serial(xx, self, loc, &type_artifact.data))?;
+                    let actual_type = aspect_type.type_(type_cv.value.as_ref());
+                    let aspect = erb.must_er(crate::builtin::aspect_artifact_get(xx, loc, actual_type.as_ref()))?;
+                    Ok(erb.must_er(aspect.from_serial(xx, self, loc, &artifact.data))?)
+                },
+            }
+        })
     }
 
     /// Deserialize a type reference artifact into an Rc`<dyn Type>`. For builtins,
@@ -383,17 +366,19 @@ impl GlobalContext {
                         .get(tid)
                         .ok_or_else(|| format!("Unknown type artifact builtin ID: {:?}", tid))?;
                 let aspect_type =
-                    crate::builtin::aspect_type_get_maybe(
-                        xx,
-                        type_type.as_ref(),
-                    ).ok_or_else(|| format!("Type type ({}) missing AspectType", type_type.desc()))?;
+                    crate::builtin::aspect_type_get(xx, loc, type_type.as_ref())
+                        .into_res()
+                        .map_err(|e| format!("{:?}", e))?;
                 let aspect_artifact =
-                    crate::builtin::aspect_artifact_get_maybe(
-                        xx,
-                        type_type.as_ref(),
-                    ).ok_or_else(|| format!("Type type ({}) missing AspectArtifact", type_type.desc()))?;
-                let type_value = aspect_artifact.from_serial(xx, self, loc, &type_artifact.data)?;
-                Ok(aspect_type.type_(type_value.as_ref()))
+                    crate::builtin::aspect_artifact_get(xx, loc, type_type.as_ref())
+                        .into_res()
+                        .map_err(|e| format!("{:?}", e))?;
+                let type_cv =
+                    aspect_artifact
+                        .from_serial(xx, self, loc, &type_artifact.data)
+                        .into_res()
+                        .map_err(|e| format!("{:?}", e))?;
+                Ok(aspect_type.type_(type_cv.value.as_ref()))
             },
         }
     }
