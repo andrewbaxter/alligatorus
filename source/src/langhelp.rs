@@ -74,6 +74,8 @@ pub(crate) struct Artifact {
     pub(crate) type_: ArtifactId,
 }
 
+pub(crate) type ArtifactFinalizer = Box<dyn FnOnce(&ExprContext, QExprId) -> Result<Vec<Code>, String>>;
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum ArtifactId {
@@ -136,9 +138,6 @@ pub(crate) struct CodeValue {
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
-
-pub(crate) type ArtifactFinalizer =
-    Box<dyn FnOnce(&ExprContext, QExprId) -> Result<Vec<Code>, String>>;
 
 /// One per module (per import env).
 pub(crate) struct CompileImportContext {
@@ -229,6 +228,25 @@ impl Counter {
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct DefSetId(pub usize);
+
+pub(crate) fn deserialize_independent_artifact<
+    T: Clone + 'static,
+>(
+    ix: &CompileImportContext,
+    id: &ArtifactId,
+    create: impl FnOnce() -> Result<(T, ArtifactFinalizer), String>,
+) -> Result<T, String> {
+    {
+        let cache = ix.deserialized_artifacts.borrow();
+        if let Some(cached) = cache.get(id) {
+            return Ok(crate::invariant::must_downcast_ref::<T>(cached.as_ref()).clone());
+        }
+    }
+    let (shell, finalizer) = create()?;
+    ix.deserialized_artifacts.borrow_mut().insert(id.clone(), Box::new(shell.clone()));
+    ix.pending_finalizers.borrow_mut().push(finalizer);
+    Ok(shell)
+}
 
 /// Downcast an `Rc<dyn Value>` to `Rc<T>`.
 ///
@@ -367,23 +385,6 @@ pub(crate) fn produce_independent_artifact(
     let artifact = produce();
     artifacts.set(id.clone(), artifact);
     id
-}
-
-pub(crate) fn deserialize_independent_artifact<T: Clone + 'static>(
-    ix: &CompileImportContext,
-    id: &ArtifactId,
-    create: impl FnOnce() -> Result<(T, ArtifactFinalizer), String>,
-) -> Result<T, String> {
-    {
-        let cache = ix.deserialized_artifacts.borrow();
-        if let Some(cached) = cache.get(id) {
-            return Ok(crate::invariant::must_downcast_ref::<T>(cached.as_ref()).clone());
-        }
-    }
-    let (shell, finalizer) = create()?;
-    ix.deserialized_artifacts.borrow_mut().insert(id.clone(), Box::new(shell.clone()));
-    ix.pending_finalizers.borrow_mut().push(finalizer);
-    Ok(shell)
 }
 
 pub(crate) type QExprId = (SourceId, ExprId);

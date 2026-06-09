@@ -55,12 +55,7 @@ impl AspectArtifact for TypeNullConst {
         }
     }
 
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, _value: Rc<dyn Value>) -> EResult<Artifact> {
         EResult::ok(Self::build_artifact(()))
     }
 }

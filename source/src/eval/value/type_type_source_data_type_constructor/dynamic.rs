@@ -51,12 +51,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
         })
     }
 
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(self_.as_ref());
         let artifact_id = ctor.serialize_ctor(xx, loc);
         EResult::ok(Artifact {

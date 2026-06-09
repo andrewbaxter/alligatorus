@@ -94,12 +94,7 @@ impl AspectArtifact for TypeStringDynamic {
         })
     }
 
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
         let type_ = value.type_(xx, loc);
         let s =
             aspect_string_const_get_maybe(xx, type_.as_ref())

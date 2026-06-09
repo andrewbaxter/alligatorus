@@ -11,4 +11,5 @@ mod t0080_taggedunion;
 mod t0090_maps;
 mod t0100_serial;
 mod t0110_const_folding;
+mod t0120_impl_type;
 mod t_nodejs;

@@ -66,12 +66,7 @@ impl AspectArtifact for TypeStringConst {
         }
     }
 
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _loc: QExprId,
-        value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
         let s = must_downcast_ref::<ValueStringConst>(value.as_ref()).0.clone();
         EResult::ok(Self::build_artifact(s))
     }

@@ -60,10 +60,7 @@ impl AspectFunction for TypeSourceFunctionConst {
         {
             let set = &self.data.set;
             let mut sets = xx.vx.definition_sets.borrow_mut();
-            let already =
-                sets
-                    .iter()
-                    .any(|s| s.def_set_id == set.def_set_id);
+            let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
             if !already {
                 sets.push(set.clone());
             }

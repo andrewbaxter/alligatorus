@@ -60,9 +60,7 @@ pub(crate) fn deserialize_artifact(
                 })
             },
             crate::langhelp::ArtifactId::Source(compile_id) => {
-                erb.must_er(
-                    deserialize_type_artifact(xx, loc, &crate::langhelp::ArtifactId::Source(*compile_id)),
-                )?
+                erb.must_er(deserialize_type_artifact(xx, loc, &crate::langhelp::ArtifactId::Source(*compile_id)))?
             },
         };
         let aspect_artifact = erb.must_er(crate::builtin::aspect_artifact_get(xx, loc, type_.as_ref()))?;

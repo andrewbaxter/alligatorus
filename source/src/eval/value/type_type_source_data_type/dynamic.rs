@@ -66,115 +66,85 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         data.clone()
                     ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
                 )?;
-            let def_set = erb.must_res(deserialize_independent_artifact(
-                &xx.vx.ix,
-                &serial.def_set,
-                || {
-                    let def_set_artifact = xx.vx.ix.gx.artifacts.get(serial.def_set.clone())?;
-                    let def_set_serial: ArtifactDataDefSet =
-                        serde_json::from_value(def_set_artifact.data)
-                            .map_err(|e| format!("Failed to parse definition set: {}", e))?;
-                    let set = Gc::new(
-                        DefinitionSet::new(def_set_serial.import_id, def_set_serial.def_set_id),
-                    );
-                    let mut dt_serials: Vec<(
-                        crate::langhelp::ArtifactId,
-                        ArtifactDataDefSetDataType,
-                    )> = Vec::new();
-                    let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
-                    for dt_artifact_id in &def_set_serial.data_types {
-                        let dt_artifact = xx.vx.ix.gx.artifacts.get(dt_artifact_id.clone())?;
-                        let dt_serial: ArtifactDataDefSetDataType =
-                            serde_json::from_value(dt_artifact.data)
-                                .map_err(|e| format!("Failed to parse data type: {}", e))?;
-                        let dt_data = Gc::new(SourceDataTypeData {
-                            set: set.clone(),
-                            name: dt_serial.name.clone(),
-                            identity: dt_serial.identity.clone(),
-                            data_field: dt_serial.data_field.clone(),
-                            description: RefCell::new(None),
-                            underlying_type: DeserialLazy::new(),
-                            methods: RefCell::new(Vec::new()),
-                            interface_impls: RefCell::new(Vec::new()),
-                            artifact_id: RefCell::new(None),
-                        });
-                        xx.vx.ix.deserialized_artifacts.borrow_mut().insert(
-                            dt_artifact_id.clone(),
-                            Box::new(dt_data.clone()),
-                        );
-                        dt_gcs.push(dt_data);
-                        dt_serials.push((dt_artifact_id.clone(), dt_serial));
-                    }
-                    *set.data_types.borrow_mut() = dt_gcs;
-                    let finalizer: crate::langhelp::ArtifactFinalizer =
-                        Box::new(move |xx: &ExprContext, loc: QExprId| {
-                            let mut codes: Vec<Code> = Vec::new();
-                            for (dt_artifact_id, dt_serial) in &dt_serials {
-                                let dt_data = {
-                                    let cache = xx.vx.ix.deserialized_artifacts.borrow();
-                                    must_downcast_ref::<Gc<SourceDataTypeData>>(
-                                        cache.get(dt_artifact_id).unwrap().as_ref(),
-                                    )
-                                    .clone()
-                                };
-                                let (underlying_type, underlying_code) =
-                                    crate::eval::util::deserialize_type_artifact(
-                                        xx,
-                                        loc,
-                                        &dt_serial.underlying_type.type_,
-                                    )
+            let def_set = erb.must_res(deserialize_independent_artifact(&xx.vx.ix, &serial.def_set, || {
+                let def_set_artifact = xx.vx.ix.gx.artifacts.get(serial.def_set.clone())?;
+                let def_set_serial: ArtifactDataDefSet =
+                    serde_json::from_value(
+                        def_set_artifact.data
+                    ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
+                let set = Gc::new(DefinitionSet::new(def_set_serial.import_id, def_set_serial.def_set_id),);
+                let mut dt_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
+                let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
+                for dt_artifact_id in &def_set_serial.data_types {
+                    let dt_artifact = xx.vx.ix.gx.artifacts.get(dt_artifact_id.clone())?;
+                    let dt_serial: ArtifactDataDefSetDataType =
+                        serde_json::from_value(
+                            dt_artifact.data
+                        ).map_err(|e| format!("Failed to parse data type: {}", e))?;
+                    let dt_data = Gc::new(SourceDataTypeData {
+                        set: set.clone(),
+                        name: dt_serial.name.clone(),
+                        identity: dt_serial.identity.clone(),
+                        data_field: dt_serial.data_field.clone(),
+                        description: RefCell::new(None),
+                        underlying_type: DeserialLazy::new(),
+                        methods: RefCell::new(Vec::new()),
+                        interface_impls: RefCell::new(Vec::new()),
+                        artifact_id: RefCell::new(None),
+                    });
+                    xx
+                        .vx
+                        .ix
+                        .deserialized_artifacts
+                        .borrow_mut()
+                        .insert(dt_artifact_id.clone(), Box::new(dt_data.clone()),);
+                    dt_gcs.push(dt_data);
+                    dt_serials.push((dt_artifact_id.clone(), dt_serial));
+                }
+                *set.data_types.borrow_mut() = dt_gcs;
+                let finalizer: crate::langhelp::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+                    let mut codes: Vec<Code> = Vec::new();
+                    for (dt_artifact_id, dt_serial) in &dt_serials {
+                        let dt_data = {
+                            let cache = xx.vx.ix.deserialized_artifacts.borrow();
+                            must_downcast_ref::<Gc<SourceDataTypeData>>(
+                                cache.get(dt_artifact_id).unwrap().as_ref(),
+                            ).clone()
+                        };
+                        let (underlying_type, underlying_code) =
+                            crate::eval::util::deserialize_type_artifact(xx, loc, &dt_serial.underlying_type.type_,)
+                                .into_res()
+                                .map_err(|e| {
+                                    format!("Failed to deserialize underlying type: {:?}", e)
+                                })?;
+                        codes.push(underlying_code);
+                        dt_data.underlying_type.set(underlying_type);
+                        let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
+                            let (ret_type, ret_code) =
+                                crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type.type_,)
                                     .into_res()
-                                    .map_err(|e| {
-                                        format!("Failed to deserialize underlying type: {:?}", e)
-                                    })?;
-                                codes.push(underlying_code);
-                                dt_data.underlying_type.set(underlying_type);
-                                let methods: Vec<SourceDataMethodData> =
-                                    dt_serial
-                                        .methods
-                                        .iter()
-                                        .enumerate()
-                                        .map(|(i, m)| {
-                                            let (ret_type, ret_code) =
-                                                crate::eval::util::deserialize_type_artifact(
-                                                    xx,
-                                                    loc,
-                                                    &m.ret_type.type_,
-                                                )
-                                                .into_res()
-                                                .unwrap_or_else(|e| {
-                                                    panic!(
-                                                        "Failed to deserialize method ret type: {:?}",
-                                                        e
-                                                    )
-                                                });
-                                            codes.push(ret_code);
-                                            SourceDataMethodData {
-                                                name: m.name.clone(),
-                                                impl_expr: RefCell::new(None),
-                                                ret_type: RefCell::new(Some(ret_type)),
-                                                scope_entry_id: Cell::new(
-                                                    Some(ScopeEntryId::Def(
-                                                        def_set_serial.import_id,
-                                                        def_set_serial.def_set_id,
-                                                        i,
-                                                    )),
-                                                ),
-                                                self_scope_entry_id: Cell::new(None),
-                                                field_name: m.field_name.clone(),
-                                                compiled_js: RefCell::new(
-                                                    Some(m.compiled_js.clone()),
-                                                ),
-                                            }
-                                        })
-                                        .collect();
-                                *dt_data.methods.borrow_mut() = methods;
+                                    .unwrap_or_else(|e| {
+                                        panic!("Failed to deserialize method ret type: {:?}", e)
+                                    });
+                            codes.push(ret_code);
+                            SourceDataMethodData {
+                                name: m.name.clone(),
+                                impl_expr: RefCell::new(None),
+                                ret_type: RefCell::new(Some(ret_type)),
+                                scope_entry_id: Cell::new(
+                                    Some(ScopeEntryId::Def(def_set_serial.import_id, def_set_serial.def_set_id, i,)),
+                                ),
+                                self_scope_entry_id: Cell::new(None),
+                                field_name: m.field_name.clone(),
+                                compiled_js: RefCell::new(Some(m.compiled_js.clone()),),
                             }
-                            Ok(codes)
-                        });
-                    Ok((set, finalizer))
-                },
-            ))?;
+                        }).collect();
+                        *dt_data.methods.borrow_mut() = methods;
+                    }
+                    Ok(codes)
+                });
+                Ok((set, finalizer))
+            },))?;
             let data_types = def_set.data_types.borrow();
             let dt_data =
                 data_types
@@ -193,12 +163,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
         })
     }
 
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let dt = must_downcast_ref::<TypeSourceDataTypeConst>(self_.as_ref());
         let artifact_id = dt.serialize_data_type(xx, loc);
         EResult::ok(Artifact {

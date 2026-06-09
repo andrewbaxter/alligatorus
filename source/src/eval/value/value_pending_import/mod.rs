@@ -43,22 +43,20 @@ impl PendingImportState {
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        let cv = crate::eval::util::deserialize_artifact(xx, loc, artifact)
-            .into_res()
-            .expect("Artifact deserialization failed");
+        let cv =
+            crate::eval::util::deserialize_artifact(xx, loc, artifact)
+                .into_res()
+                .expect("Artifact deserialization failed");
         let mut all_finalizer_codes: Vec<Code> = Vec::new();
         loop {
-            let finalizers =
-                std::mem::take(&mut *xx.vx.ix.pending_finalizers.borrow_mut());
+            let finalizers = std::mem::take(&mut *xx.vx.ix.pending_finalizers.borrow_mut());
             if finalizers.is_empty() {
                 break;
             }
             for f in finalizers {
                 let codes = f(xx, loc).expect("Finalizer failed");
                 all_finalizer_codes.extend(
-                    codes
-                        .into_iter()
-                        .filter(|c| !matches!(c.code, crate::langhelp::Code_::None)),
+                    codes.into_iter().filter(|c| !matches!(c.code, crate::langhelp::Code_::None)),
                 );
             }
         }
@@ -81,11 +79,8 @@ impl PendingImportState {
                 value: cv.value,
             }
         } else {
-            let combined_code = xx
-                .target
-                .block(loc, all_codes)
-                .into_res()
-                .expect("Failed to combine finalizer codes");
+            let combined_code =
+                xx.target.block(loc, all_codes).into_res().expect("Failed to combine finalizer codes");
             CodeValue {
                 code: combined_code,
                 value: cv.value,
@@ -148,5 +143,4 @@ impl Value for ValuePendingImport {
             resolved: cv.value,
         })
     }
-
 }

@@ -950,7 +950,7 @@ fn eval(
                 message
             });
         }),
-        dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> Gc<DefinitionSet> {
+        dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> Gc < DefinitionSet > {
             let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
             let def_set_id = DefSetId(dsc.counter.next());
             let import_id = dsc.import_id;

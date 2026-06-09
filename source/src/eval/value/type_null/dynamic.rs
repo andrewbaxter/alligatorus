@@ -67,12 +67,7 @@ pub(crate) struct TypeNullDynamic;
 impl Aspect for TypeNullDynamic { }
 
 impl AspectArtifact for TypeNullDynamic {
-    fn from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> EvalRes {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: Code {
                 loc: loc,
@@ -82,12 +77,7 @@ impl AspectArtifact for TypeNullDynamic {
         })
     }
 
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, _value: Rc<dyn Value>) -> EResult<Artifact> {
         EResult::ok(Self::build_artifact(()))
     }
 }
