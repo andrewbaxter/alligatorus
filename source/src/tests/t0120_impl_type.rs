@@ -35,7 +35,10 @@ fn test_00100_impl_type() {
                                     "u",
                                     mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper")),
                                 ),
-                                mb.call(mb.field(mb.scope_use("u"), mb.str("set_underlying")), mb.scope_use("null")),
+                                mb.call(
+                                    mb.field(mb.scope_use("u"), mb.str("set_underlying")),
+                                    mb.scope_use("null"),
+                                ),
                                 mb.call(
                                     mb.field(mb.scope_use("u"), mb.str("impl_interface")),
                                     mb.tuple(vec![mb.scope_use("value"), mb.record(vec![
@@ -97,7 +100,7 @@ fn test_00100_impl_type() {
             // Cast a string to the "upper" type (which actually results in a string) and log
             // it
             mb.call(mb.scope_use("log"), mb.as_(
-                mb.str("hello"),
+                mb.as_(mb.str("hello"), mb.scope_use("string")),
                 // For this to work,
                 //
                 // 1. const source data types will need to also implement `Type`.
@@ -114,6 +117,7 @@ fn test_00100_impl_type() {
     assert_eq!(res.logs[0].message, "HELLO");
     let scripts = redact_builtins(&res.generated_mortar_scripts);
     assert_eq!(scripts.len(), 3);
+
     // Stage 1: build the upper data type — call define(), new_data("upper"),
     // set_underlying(null), impl_interface(value, ...), impl_interface(type, ...),
     // and return u.new.
@@ -203,8 +207,8 @@ e4 = e30;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    // Stage 2: call the constructor with `null` to construct the `upper`
-    // instance.
+
+    // Stage 2: call the constructor with `null` to construct the `upper` instance.
     assert_eq!(scripts[1], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -218,6 +222,7 @@ e5 = null;
 e4 = { "_0": e5 };
 e0 = (e1)(e2,e3,e4);
 e0;"#);
+
     // Stage 3: cast "hello" through the user-defined type — produces
     // "hello".toUpperCase() and logs it.
     assert_eq!(scripts[2], r#"let e0;
