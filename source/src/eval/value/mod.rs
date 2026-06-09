@@ -1,6 +1,7 @@
 pub mod record;
 pub mod tuple;
 pub mod type_eval_const;
+pub mod type_option;
 pub mod type_any;
 pub mod type_bool;
 pub mod type_expr;

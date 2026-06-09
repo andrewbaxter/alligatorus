@@ -1117,6 +1117,21 @@ fn eval(
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
     }
 
+    // Aspect id scope entries: expose Rust-side aspect ids as `Unique` values
+    // so they can be passed to `.aspect(...)` lookups in source.
+    for (key, unique) in [
+        ("aspect_string_dynamic", crate::builtin::aspect_string_dynamic_aspect_id()),
+    ] {
+        let unique_type: Rc<dyn Type> = Rc::new(value::value_unique::TypeUnique);
+        let cv = CodeValue {
+            code: Code { loc: root_loc, code: Code_::None },
+            value: Rc::new(unique) as Rc<dyn Value>,
+        };
+        let bind = aspect_bind_get(&xx, root_loc, unique_type.as_ref()).into_res()?;
+        let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
+        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
+    }
+
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
     for (
         key,

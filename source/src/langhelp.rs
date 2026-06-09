@@ -45,6 +45,15 @@ pub(crate) trait Sources: Send + Sync {
 pub(crate) trait Type: Value {
     fn as_value(&self) -> Rc<dyn Value>;
 
+    /// Default `Type` doesn't know how to clone itself; concrete impls return
+    /// `Rc::new(Self)` (or clone any inner data). Only needed when a caller
+    /// holds `&dyn Type` and must produce an owned `Rc<dyn Type>`. Returning
+    /// `None` here keeps the default cheap and signals "type does not support
+    /// being held as `Rc<dyn Type>` outside its original construction site."
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        None
+    }
+
     fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
         return None;
     }

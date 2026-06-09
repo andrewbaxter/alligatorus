@@ -223,6 +223,10 @@ impl Type for TypeStringDynamic {
         Rc::new(TypeStringDynamic)
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeStringDynamic))
+    }
+
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectArtifact>));
