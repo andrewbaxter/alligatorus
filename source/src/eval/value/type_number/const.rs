@@ -67,8 +67,8 @@ impl AspectField for TypeNumberConst {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
-        TypeNumberDynamic.field_opt(xx, key)
+    fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        TypeNumberDynamic.field_type_opt(xx, key)
     }
 }
 

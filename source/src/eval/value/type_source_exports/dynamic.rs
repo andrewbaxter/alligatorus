@@ -235,7 +235,7 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &crate::langhelp::ConstKey) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, _xx: &ExprContext, key: &crate::langhelp::ConstKey) -> Option<Rc<dyn Type>> {
         let crate::langhelp::ConstKey::String(key) = key else {
             return None;
         };

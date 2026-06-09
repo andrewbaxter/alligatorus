@@ -16,5 +16,5 @@ use {
 
 aspect!(AspectField {
     fn field(&self, xx: & ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes;
-    fn field_opt(&self, xx: & ExprContext, key: & ConstKey) -> Option < Rc < dyn Type >>;
+    fn field_type_opt(&self, xx: & ExprContext, key: & ConstKey) -> Option < Rc < dyn Type >>;
 });

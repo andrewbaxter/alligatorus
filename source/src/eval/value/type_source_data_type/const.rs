@@ -449,7 +449,7 @@ impl AspectField for TypeSourceDataTypeConst {
         });
     }
 
-    fn field_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         let ConstKey::String(key) = key else {
             return None;
         };

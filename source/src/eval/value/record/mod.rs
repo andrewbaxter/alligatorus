@@ -396,7 +396,7 @@ impl AspectField for Record {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
         self.fields.get(key).map(|f| record_field_type(xx, loc, f))
     }
@@ -464,7 +464,7 @@ impl Type for Record {
         let Some(source_field) = aspect_field_get_maybe(xx, source_type) else {
             return false;
         };
-        self.fields.keys().all(|k| source_field.field_opt(xx, k).is_some())
+        self.fields.keys().all(|k| source_field.field_type_opt(xx, k).is_some())
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {

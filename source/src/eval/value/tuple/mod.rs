@@ -72,7 +72,6 @@ pub(crate) trait TupleBase {
         carry: Code,
         tuple_type: Rc<dyn Type>,
     ) -> EResult<TargetBindSub>;
-    fn clone_base(&self) -> Box<dyn TupleBase>;
 }
 
 pub(crate) struct Tuple {
@@ -467,6 +466,11 @@ fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<d
         },
     }
 }
+
+// Allowing dead code for now because there's no tests that match this, but it's
+// useful to keep to synchronize changes from Record as work progresses. Remove
+// eventually.
+#[allow(dead_code)]
 pub(crate) struct TupleBaseDynamic;
 
 impl TupleBase for TupleBaseDynamic {
@@ -478,10 +482,6 @@ impl TupleBase for TupleBaseDynamic {
         tuple_type: Rc<dyn Type>,
     ) -> EResult<TargetBindSub> {
         xx.target.code_to_bind_sub(loc, carry, tuple_type)
-    }
-
-    fn clone_base(&self) -> Box<dyn TupleBase> {
-        Box::new(TupleBaseDynamic)
     }
 }
 

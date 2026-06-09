@@ -246,7 +246,7 @@ macro_rules! dynamic_wrap{
                         ) * return erb.err_new(format!("Unknown field '{}' on {}", key_name, stringify!($name),));
                     })
                 }
-                fn field_opt(
+                fn field_type_opt(
                     &self,
                     _xx: & ExprContext,
                     key: & crate:: langhelp:: ConstKey,

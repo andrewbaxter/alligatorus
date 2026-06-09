@@ -134,7 +134,7 @@ impl AspectField for TypeListDynamic {
         // Instance-level fields (push, join, etc.)
         return er_seq_cv!(loc, erb, {
             let const_key = ConstKey::String(key_name.clone());
-            let field_type = match self.field_opt(xx, &const_key) {
+            let field_type = match self.field_type_opt(xx, &const_key) {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on list", key_name)),
             };
@@ -158,7 +158,7 @@ impl AspectField for TypeListDynamic {
         });
     }
 
-    fn field_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         let ConstKey::String(key) = key else {
             return None;
         };
