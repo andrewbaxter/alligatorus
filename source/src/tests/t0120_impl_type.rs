@@ -35,7 +35,7 @@ fn test_00100_impl_type() {
                                     "u",
                                     mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper")),
                                 ),
-                                mb.call(mb.field(mb.scope_use("u"), mb.str("set_underlying")), mb.tuple(vec![])),
+                                mb.call(mb.field(mb.scope_use("u"), mb.str("set_underlying")), mb.scope_use("null")),
                                 mb.call(
                                     mb.field(mb.scope_use("u"), mb.str("impl_interface")),
                                     mb.tuple(vec![mb.scope_use("value"), mb.record(vec![

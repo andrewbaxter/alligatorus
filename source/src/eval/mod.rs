@@ -208,6 +208,7 @@ pub(crate) fn compile_importid(
                     excess.max(max_lower_excess(&e.expr, sd, new_ld))
                 },
                 Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
+                Expr_::Graft(e) => max_lower_excess(&e.expr, sd, ld),
                 Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
                 Expr_::As(e) => {
                     max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
@@ -467,6 +468,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         }
                     },
                     Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
+                    Expr_::Graft(e) => find_matched_lowers_inner(&e.expr, sd, ld, out),
                     Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => { },
                     Expr_::As(e) => {
                         find_matched_lowers_inner(&e.base, sd, ld, out);
@@ -566,6 +568,13 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
         },
         Expr_::Lower(e) => {
             // Transparently evaluate inner expression
+            return const_eval(xx, &e.expr);
+        },
+        Expr_::Graft(e) => {
+            // Outside of stage processing, Graft just transparently evaluates its inner
+            // expression — like Lower. Inside a stage, the stage processor handles the
+            // graft specially (the inner is evaluated in the current context and its
+            // EvalRes is embedded in the staged tree as-is).
             return const_eval(xx, &e.expr);
         },
         Expr_::Tuple(t) => {
@@ -1503,6 +1512,14 @@ fn eval(
                         loc: expr.loc,
                         r#type: Expr_::Stage(
                             ExprStage { expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values)) },
+                        ),
+                    },
+                    Expr_::Graft(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Graft(
+                            expr::ExprGraft {
+                                expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, ld, values)),
+                            },
                         ),
                     },
                     Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => expr.clone(),
