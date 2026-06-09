@@ -40,7 +40,7 @@ fn test_00100_impl_type() {
                                     mb.field(mb.scope_use("u"), mb.str("impl_interface")),
                                     mb.tuple(vec![mb.scope_use("value"), mb.record(vec![
                                         //. .
-                                        ("type", mb.stage(mb.block(vec![mb.call(mb.scope_use("panic"), mb.tuple(vec![]))]))),
+                                        ("type", mb.stage(mb.scope_use("self"))),
                                     ])]),
                                 ),
                                 mb.call(
@@ -77,7 +77,7 @@ fn test_00100_impl_type() {
                                                                 // Graft is like "lower" except it just takes an EvalRes and puts it in the tree,
                                                                 // to be used as-is when evaluated.
                                                                 mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv"))),
-                                                                mb.str("to_upper"),
+                                                                mb.str("toUpperCase"),
                                                             ), mb.tuple(vec![])))),
                                                         ],
                                                     ),
