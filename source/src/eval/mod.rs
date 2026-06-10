@@ -210,6 +210,11 @@ pub(crate) fn compile_importid(
         deserialized_artifacts: RefCell::new(HashMap::new()),
         pending_finalizers: RefCell::new(Vec::new()),
         isolate: Rc::new(RefCell::new(v8::Isolate::new(Default::default()))),
+        import_state: import_state,
+        definition_sets: RefCell::new(Vec::new()),
+        def_set_counter: Counter::default(),
+        v8_context: RefCell::new(None),
+        builtins_registered: Cell::new(false),
     });
     let mut root_expr = match source {
         Module::V1(e) => e,
@@ -333,7 +338,6 @@ pub(crate) fn compile_importid(
             let ex = Rc::new(EvalContext {
                 ix: cix.clone(),
                 next_local_id: Default::default(),
-                definition_sets: RefCell::new(Vec::new()),
                 externals: RefCell::new(Vec::new()),
                 v8_scope: std::cell::Cell::new(None),
                 v8_dispatcher: std::cell::Cell::new(None),
@@ -950,7 +954,6 @@ fn eval(
     let ex = Rc::new(EvalContext {
         ix: cix.clone(),
         next_local_id: Default::default(),
-        definition_sets: RefCell::new(Vec::new()),
         externals: RefCell::new(Vec::new()),
                 v8_scope: std::cell::Cell::new(None),
                 v8_dispatcher: std::cell::Cell::new(None),
@@ -965,14 +968,20 @@ fn eval(
             .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
         counter: Counter::default(),
     });
-    dynamic_scope_isolate.set_slot(V8DefSetCounter {
-        import_id: import_state,
-        counter: Counter::default(),
-    });
     dynamic_scope_isolate.set_slot(V8EvalContextSlot { ex: ex.clone() });
     let dynamic_scope_handle = std::pin::pin!(v8::HandleScope::new(dynamic_scope_isolate));
     let mut dynamic_scope_handle2 = dynamic_scope_handle.init();
-    let dynamic_scope_context = v8::Context::new(&mut dynamic_scope_handle2, Default::default());
+    let dynamic_scope_context = {
+        let mut ctx_slot = cix.v8_context.borrow_mut();
+        match ctx_slot.as_ref() {
+            Some(global) => v8::Local::new(&mut dynamic_scope_handle2, global),
+            None => {
+                let ctx = v8::Context::new(&mut dynamic_scope_handle2, Default::default());
+                *ctx_slot = Some(v8::Global::new(&mut dynamic_scope_handle2, ctx));
+                ctx
+            },
+        }
+    };
     let dynamic_scope_context2 = &mut v8::ContextScope::new(&mut dynamic_scope_handle2, dynamic_scope_context);
     tc_scope!(let dynamic_scope, dynamic_scope_context2);
     // Install the active v8 scope on EvalContext as a raw `NonNull`. Anyone
@@ -1009,6 +1018,10 @@ fn eval(
         scope: scope.clone(),
         target: target.clone(),
     });
+    // First stage registers builtin v8 closures on the (now-persistent) context's
+    // global; later stages reuse them. ScopeEntry/scope.values are rebuilt every
+    // stage because each stage's top-level `Scope` is fresh.
+    let register_v8 = !cix.builtins_registered.get();
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
     for (key, dynamic_key, type_, dynamic_value) in [
         //. .
@@ -1021,9 +1034,9 @@ fn eval(
             });
         }),
         dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> Gc < DefinitionSet > {
-            let dsc = scope.get_slot::<V8DefSetCounter>().unwrap();
-            let def_set_id = DefSetId(dsc.counter.next());
-            let import_id = dsc.import_id;
+            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let def_set_id = DefSetId(ex_slot.ex.ix.def_set_counter.next());
+            let import_id = ex_slot.ex.ix.import_state;
             Gc::new(DefinitionSet::new(import_id, def_set_id))
         }),
         dynamic_wrap!(fn str_to_json(ex, dynamic_scope, scope)(s: String) -> String {
@@ -1058,14 +1071,16 @@ fn eval(
             }
         ),
     ] {
-        dynamic_scope
-            .get_current_context()
-            .global(dynamic_scope)
-            .set(
-                dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                dynamic_value,
-            );
+        if register_v8 {
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
+                    dynamic_value,
+                );
+        }
         let ib = aspect_initial_bind_get(&xx, root_loc, type_.as_ref()).into_res()?;
         builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
@@ -1150,17 +1165,19 @@ fn eval(
                     _ => unreachable!(),
                 },
             );
-            let v8_val = to_v8(dynamic_scope, iface_ref);
-            dynamic_scope
-                .get_current_context()
-                .global(dynamic_scope)
-                .set(
-                    dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key))
-                        .unwrap()
-                        .cast(),
-                    v8_val.into(),
-                );
+            if register_v8 {
+                let v8_val = to_v8(dynamic_scope, iface_ref);
+                dynamic_scope
+                    .get_current_context()
+                    .global(dynamic_scope)
+                    .set(
+                        dynamic_scope,
+                        v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key))
+                            .unwrap()
+                            .cast(),
+                        v8_val.into(),
+                    );
+            }
             let ib = aspect_initial_bind_get(&xx, root_loc, iface_dyn_type.as_ref()).into_res()?;
             builtin_scope_entries.push((name.to_string(), dynamic_key, iface_dyn_type.clone()));
             scope
@@ -1203,17 +1220,19 @@ fn eval(
         ("aspect_string_dynamic", crate::builtin::aspect_string_dynamic_aspect_id(), line!() as usize),
     ] {
         let dynamic_key = ScopeEntryId::Builtin(line);
-        let unique_v8 = to_v8(dynamic_scope, unique.clone());
-        dynamic_scope
-            .get_current_context()
-            .global(dynamic_scope)
-            .set(
-                dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key))
-                    .unwrap()
-                    .cast(),
-                unique_v8.into(),
-            );
+        if register_v8 {
+            let unique_v8 = to_v8(dynamic_scope, unique.clone());
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key))
+                        .unwrap()
+                        .cast(),
+                    unique_v8.into(),
+                );
+        }
         builtin_scope_entries.push((key.to_string(), dynamic_key, unique_type.clone()));
         scope.values.borrow_mut().insert(
             ConstKey::String(key.to_string()),
@@ -1263,14 +1282,16 @@ fn eval(
             ),
         ),
     ] {
-        dynamic_scope
-            .get_current_context()
-            .global(dynamic_scope)
-            .set(
-                dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                dynamic_value,
-            );
+        if register_v8 {
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
+                    dynamic_value,
+                );
+        }
         let ib = aspect_initial_bind_get(&xx, root_loc, constructor_type.as_ref()).into_res()?;
         builtin_scope_entries.push((key.to_string(), dynamic_key, constructor_type));
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
@@ -1316,10 +1337,15 @@ fn eval(
     }
 
     let def_func_infos: Vec<DefFuncInfo> = {
-        let sets = ex.definition_sets.borrow();
+        let sets = ex.ix.definition_sets.borrow();
         let mut infos = vec![];
         for ds in sets.iter() {
             for func_data in ds.functions.borrow().iter() {
+                if func_data.impl_expr.borrow().is_none() {
+                    // Already compiled in an earlier stage; v8 closure persists
+                    // on the shared `v8_context` global.
+                    continue;
+                }
                 let impl_expr_ast =
                     func_data.impl_expr.borrow_mut().take().expect("Definition set function missing implementation");
                 let arg_type = func_data.arg_type.borrow().clone().expect("Definition set function missing arg type");
@@ -1411,7 +1437,6 @@ fn eval(
         let body_ex = Rc::new(EvalContext {
             ix: ex.ix.clone(),
             next_local_id: Counter::default(),
-            definition_sets: RefCell::new(Vec::new()),
             externals: RefCell::new(Vec::new()),
                 v8_scope: std::cell::Cell::new(None),
                 v8_dispatcher: std::cell::Cell::new(None),
@@ -1476,7 +1501,7 @@ fn eval(
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
-    for ds in ex.definition_sets.borrow().iter() {
+    for ds in ex.ix.definition_sets.borrow().iter() {
         for dt_data in ds.data_types.borrow().iter() {
             let underlying_type: Rc<dyn Type> = dt_data.underlying_type.get().clone();
             let data_field = dt_data.data_field.clone();
@@ -1500,7 +1525,6 @@ fn eval(
                 let body_ex = Rc::new(EvalContext {
                     ix: ex.ix.clone(),
                     next_local_id: Counter::default(),
-                    definition_sets: RefCell::new(Vec::new()),
                     externals: RefCell::new(Vec::new()),
                 v8_scope: std::cell::Cell::new(None),
                 v8_dispatcher: std::cell::Cell::new(None),
@@ -1692,7 +1716,7 @@ fn eval(
 
                 // Store compiled JS for later serialization
                 let compiled = code1.lines[start_line..].join("\n");
-                for ds in ex.definition_sets.borrow().iter() {
+                for ds in ex.ix.definition_sets.borrow().iter() {
                     for dt_data in ds.data_types.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
                             if m.scope_entry_id.get() == Some(method.scope_entry_id) {
@@ -1710,13 +1734,19 @@ fn eval(
         }
     }
 
-    // Render main code
+    // Render main code. Wrap the main body in a block scope so its top-level
+    // `let eN;` declarations don't collide across stages on the shared v8
+    // context. The block's completion value is the last expression statement
+    // inside, which v8 returns as the script result. The `/*main*/` marker
+    // lets test helpers identify and strip this wrapping unambiguously.
+    code1.push(root_loc, "{/*main*/".to_string());
     if let Some(code) = stage1_code {
         let root_var = render_code(&mut code1, &code);
         code1.push(root_loc, format!("{};", root_var));
     } else {
         code1.push(root_loc, "null;".to_string());
     }
+    code1.push(root_loc, "}/*main*/".to_string());
 
     // Register __stage v8 function Signature: __stage(tree, lift1, val1, lift2, val2,
     // ...) If lift is null, val is already a StagedExprCell external. If lift is a
@@ -1951,15 +1981,17 @@ fn eval(
             rv.set(ext.into());
         }
 
-        let stage_fn = v8::Function::builder(stage_callback).build(dynamic_scope).unwrap();
-        dynamic_scope
-            .get_current_context()
-            .global(dynamic_scope)
-            .set(
-                dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
-                stage_fn.into(),
-            );
+        if register_v8 {
+            let stage_fn = v8::Function::builder(stage_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
+                    stage_fn.into(),
+                );
+        }
     }
 
     // Register __record_to_type and __tuple_to_type mortar functions. These convert
@@ -2029,28 +2061,31 @@ fn eval(
             rv.set(ext.into());
         }
 
-        let record_to_type_fn = v8::Function::builder(record_to_type_callback).build(dynamic_scope).unwrap();
-        dynamic_scope
-            .get_current_context()
-            .global(dynamic_scope)
-            .set(
-                dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(RECORD_TO_TYPE_FN_SCOPE_ID))
-                    .unwrap()
-                    .cast(),
-                record_to_type_fn.into(),
-            );
-        let tuple_to_type_fn = v8::Function::builder(tuple_to_type_callback).build(dynamic_scope).unwrap();
-        dynamic_scope
-            .get_current_context()
-            .global(dynamic_scope)
-            .set(
-                dynamic_scope,
-                v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(TUPLE_TO_TYPE_FN_SCOPE_ID))
-                    .unwrap()
-                    .cast(),
-                tuple_to_type_fn.into(),
-            );
+        if register_v8 {
+            let record_to_type_fn = v8::Function::builder(record_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(RECORD_TO_TYPE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    record_to_type_fn.into(),
+                );
+            let tuple_to_type_fn = v8::Function::builder(tuple_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(TUPLE_TO_TYPE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    tuple_to_type_fn.into(),
+                );
+            cix.builtins_registered.set(true);
+        }
     }
 
     // Set externals as globals before running the script
@@ -2762,11 +2797,6 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
         }
         return Ok(dest);
     });
-}
-
-pub(crate) struct V8DefSetCounter {
-    pub(crate) counter: Counter,
-    pub(crate) import_id: ImportStateId,
 }
 
 /// v8 slot carrying the current stage's `EvalContext`. Read by v8 callbacks

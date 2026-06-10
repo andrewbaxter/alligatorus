@@ -170,6 +170,23 @@ pub(crate) struct CompileImportContext {
     /// essential for `IsolateBundle` to keep a JS instance handle alive
     /// across stages.
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
+    /// Import id for this compile. Stable across all stages.
+    pub(crate) import_state: ImportStateId,
+    /// Definition sets created via `define()`. Persists across all stages so
+    /// sets from earlier stages remain registered (their v8 closures live on
+    /// the shared `v8_context` global) and visible to later stages.
+    pub(crate) definition_sets: RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
+    /// Monotonic per-compile counter for allocating fresh `DefSetId`s. Never
+    /// resets between stages so `(import_state, def_set_id)` is globally
+    /// unique within this compile.
+    pub(crate) def_set_counter: Counter,
+    /// Persistent v8 context shared by all stages. The global object accumulates
+    /// builtin closures (registered once) and def-set member closures (registered
+    /// in the stage that defines them) so later stages see them without
+    /// re-registration.
+    pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
+    /// True once builtins have been registered on `v8_context`'s global.
+    pub(crate) builtins_registered: Cell<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -308,9 +325,6 @@ pub(crate) struct EResult<T> {
 
 /// Multiple evaluations per module.
 pub(crate) struct EvalContext {
-    pub(crate) definition_sets: std
-    ::cell
-    ::RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,

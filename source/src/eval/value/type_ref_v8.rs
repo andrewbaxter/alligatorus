@@ -106,7 +106,7 @@ dynamic_wrap!(struct TypeRefV8(self_, scope) {
         let ex_slot = scope
             .get_slot::<crate::eval::V8EvalContextSlot>()
             .expect("TypeRefV8.aspect: V8EvalContextSlot not set");
-        let import_state_id = scope.get_slot::<crate::eval::V8DefSetCounter>().unwrap().import_id;
+        let import_state_id = ex_slot.ex.ix.import_state;
         let xx = Rc::new(ExprContext {
             vx: ex_slot.ex.clone(),
             import_state: Rc::new(Cell::new(import_state_id)),

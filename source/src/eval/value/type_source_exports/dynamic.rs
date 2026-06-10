@@ -53,7 +53,7 @@ impl Aspect for TypeSourceExportsLiftedDynamic { }
 impl AspectArtifact for TypeSourceExportsLiftedDynamic {
     fn from_serial(&self, xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
         {
-            let mut sets = xx.vx.definition_sets.borrow_mut();
+            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
             let already = sets.iter().any(|s| s.def_set_id == self.set.def_set_id);
             if !already {
                 sets.push(self.set.clone());

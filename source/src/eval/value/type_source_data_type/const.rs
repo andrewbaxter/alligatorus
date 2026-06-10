@@ -105,7 +105,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
             {
                 let set = &dt_data.set;
-                let mut sets = xx.vx.definition_sets.borrow_mut();
+                let mut sets = xx.vx.ix.definition_sets.borrow_mut();
                 let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
                 if !already {
                     sets.push(set.clone());
