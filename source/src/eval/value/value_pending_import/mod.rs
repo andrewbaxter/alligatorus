@@ -95,12 +95,14 @@ impl PendingImportState {
             builtin_types: crate::langhelp::make_builtin_types(),
             deserialized_artifacts: std::cell::RefCell::new(std::collections::HashMap::new()),
             pending_finalizers: std::cell::RefCell::new(Vec::new()),
+            isolate: Rc::new(std::cell::RefCell::new(v8::Isolate::new(Default::default()))),
         });
         let ex = Rc::new(EvalContext {
             ix: cix,
             next_local_id: Default::default(),
             definition_sets: RefCell::new(Vec::new()),
             externals: RefCell::new(Vec::new()),
+                v8_scope: std::cell::Cell::new(None),
                 v8_dispatcher: std::cell::Cell::new(None),
         });
         let xx = ExprContext {

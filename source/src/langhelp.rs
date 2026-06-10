@@ -164,6 +164,12 @@ pub(crate) struct CompileImportContext {
     pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
+    /// Shared v8 isolate for all compile stages — one isolate per
+    /// `compile_importid`. Persistent handles (`v8::Global<...>`) captured
+    /// during one stage's lift remain valid in later stages, which is
+    /// essential for `IsolateBundle` to keep a JS instance handle alive
+    /// across stages.
+    pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -308,15 +314,21 @@ pub(crate) struct EvalContext {
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
-    /// Trait-object pointer to a dispatcher that holds the currently-active
-    /// v8 scope. `eval()` constructs an impl that captures `&mut scope`,
-    /// installs it here for the duration of `const_eval`, and clears it on
-    /// return. Stored as `NonNull<dyn>` so the fat pointer (data + vtable)
-    /// is preserved end-to-end; `TypeUserDefined.cast_from` re-borrows it
-    /// (`unsafe { ptr.as_mut() }`) and invokes synchronous v8 work through
-    /// the trait methods. Lifetime erasure is contained: the dispatcher
-    /// impl is alive on `eval()`'s stack throughout `const_eval`, so the
-    /// re-borrow is sound.
+    /// Raw pointer to the active v8 scope. `eval()` installs it at the top
+    /// of the function (after creating `dynamic_scope`) and clears it just
+    /// before returning. Stored as a lifetime-erased `NonNull` so it can
+    /// sit in `EvalContext` (which the borrow checker treats as `'static`).
+    /// Re-borrowed in `V8CastDispatcher::dispatch_cast_from` and other v8
+    /// dispatch points; soundness depends on no two re-borrows being live
+    /// at once and on the underlying scope outliving every read.
+    pub(crate) v8_scope: std::cell::Cell<
+        Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>,
+    >,
+    /// Trait-object pointer to a dispatcher for v8-side type interface
+    /// methods (currently `cast_from`). `eval()` constructs a unit impl
+    /// and installs it here for the duration of `eval()`. The dispatcher
+    /// itself stateless — it reads the active scope from `v8_scope` on
+    /// each call, so its lifetime is decoupled from the v8 scope's borrow.
     pub(crate) v8_dispatcher: std::cell::Cell<Option<std::ptr::NonNull<dyn crate::eval::V8CastDispatcher>>>,
 }
 
