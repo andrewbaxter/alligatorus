@@ -119,11 +119,6 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
                 }));
             }
             for impl_data in self.data.interface_impls.borrow().iter() {
-                // Builtin interfaces are dispatched in Rust; their impls are not
-                // compiled to JS and have no field on the instance object.
-                if impl_data.interface.builtin_kind.is_some() {
-                    continue;
-                }
                 let iface_methods = impl_data.interface.methods.borrow();
                 for method_impl in &impl_data.method_impls {
                     let iface_method = &iface_methods[method_impl.interface_method_index];

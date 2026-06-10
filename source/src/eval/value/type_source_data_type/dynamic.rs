@@ -219,9 +219,26 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
             let key = v8::String::new(scope, &data_field).unwrap();
             let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
             let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;
+            // If this data type implements the builtin `type` interface, the
+            // instance acts as a Type at use sites — capture the JS handle and
+            // a clone of the shared isolate so `TypeUserDefined.cast_from`
+            // can re-enter the isolate at as-time.
+            let has_type_iface = data.interface_impls.borrow().iter().any(|impl_data| {
+                impl_data.interface.builtin_kind
+                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+            });
+            let isolate_bundle = if has_type_iface {
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
+                std::cell::RefCell::new(Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle {
+                    instance: instance_global,
+                })))
+            } else {
+                std::cell::RefCell::new(None)
+            };
             Ok(Rc::new(crate::eval::value::value_source_data_type::r#const::ValueSourceDataTypeConst {
                 underlying: underlying_value,
                 data: data.clone(),
+                isolate_bundle,
             }))
         } else {
             let type_: &Rc<dyn Type> = from_v8_ref(&value);
@@ -251,25 +268,35 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
 }
 
 impl crate::builtin::AspectType for TypeSourceDataTypeDynamic {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let data = self.data.clone().expect("AspectType requested on data-typeless TypeSourceDataTypeDynamic");
-        Rc::new(TypeUserDefined { data })
+        // If the value is a `ValueSourceDataTypeConst` (the lifted form of an
+        // instance), thread its `isolate_bundle` through so `cast_from` can
+        // dispatch via v8.
+        let bundle = (value as &dyn std::any::Any)
+            .downcast_ref::<crate::eval::value::value_source_data_type::r#const::ValueSourceDataTypeConst>()
+            .and_then(|v| v.isolate_bundle.borrow().clone());
+        Rc::new(TypeUserDefined { data, bundle })
     }
 }
 
 /// A type produced by `AspectType.type_` on a data-type instance whose data
-/// type implements the builtin `type` interface. Delegates
-/// `cast_from`/`can_cast_from`/`desc` to the user-provided impls by setting up
-/// an `arg` binding and `const_eval`-ing the impl expression.
+/// type implements the builtin `type` interface. When the instance carries an
+/// `IsolateBundle`, `cast_from` emits JS that re-enters the shared v8 isolate
+/// and invokes the compiled `_im2` method on the original JS instance.
+/// Without a bundle (e.g. for newly-constructed const values that haven't
+/// been through v8), falls back to the const-eval dispatch in
+/// `user_defined_type_dispatch`.
 pub(crate) struct TypeUserDefined {
     pub data: Gc<SourceDataTypeData>,
+    pub bundle: Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>,
 }
 
 impl Aspect for TypeUserDefined { }
 
 impl Type for TypeUserDefined {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeUserDefined { data: self.data.clone() })
+        Rc::new(TypeUserDefined { data: self.data.clone(), bundle: self.bundle.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
@@ -286,6 +313,15 @@ impl Type for TypeUserDefined {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        if let Some(bundle) = &self.bundle {
+            return crate::eval::user_defined_type_dispatch::user_defined_cast_from_v8(
+                &self.data,
+                bundle,
+                xx,
+                loc,
+                cv,
+            );
+        }
         crate::eval::user_defined_type_dispatch::user_defined_cast_from(&self.data, xx, loc, cv)
     }
 

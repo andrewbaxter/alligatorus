@@ -101,6 +101,7 @@ impl PendingImportState {
             next_local_id: Default::default(),
             definition_sets: RefCell::new(Vec::new()),
             externals: RefCell::new(Vec::new()),
+                v8_dispatcher: std::cell::Cell::new(None),
         });
         let xx = ExprContext {
             vx: ex,

@@ -104,10 +104,10 @@ fn run_impl(
 /// record field access (which requires `Rc::try_unwrap`) always sees a unique
 /// `Rc`. `cv` is cloned on each use (Code is `Clone` and value is `Rc<dyn
 /// Value>`).
-struct ArgRecordFactory {
-    loc: QExprId,
-    source_type: Rc<dyn Type>,
-    cv: CodeValue,
+pub(crate) struct ArgRecordFactory {
+    pub(crate) loc: QExprId,
+    pub(crate) source_type: Rc<dyn Type>,
+    pub(crate) cv: CodeValue,
 }
 
 fn clone_cv(cv: &CodeValue) -> CodeValue {
@@ -156,15 +156,10 @@ pub(crate) fn user_defined_can_cast_from(
     let Some(impl_expr) = lookup_impl(data, "can_cast_from") else {
         return false;
     };
-    // If the source type supports `clone_rc`, run the user's impl. If it
-    // returns `true` we accept. We don't currently reject on `false` because
-    // the test's impl checks `aspect_string_dynamic` which `TypeStringConst`
-    // does not advertise, even though the cast still works via const→dynamic
-    // delegation. Once `aspect_string_const` is also wired and the test is
-    // updated (or we add a generic "any string" aspect), this should reject on
-    // explicit `false`.
+    // If the source type can't be held as `Rc<dyn Type>` we can't run the
+    // impl — reject; the user can extend `clone_rc` on the relevant type.
     let Some(source_type_rc) = source_type.clone_rc() else {
-        return true;
+        return false;
     };
     let placeholder_cv = CodeValue {
         code: Code { loc, code: Code_::None },
@@ -172,17 +167,13 @@ pub(crate) fn user_defined_can_cast_from(
     };
     let res = run_impl(impl_expr, xx, loc, source_type_rc, placeholder_cv);
     let Some(out_cv) = res.v else {
-        return true;
+        return false;
     };
     let v_type = out_cv.value.type_(xx, loc);
     if let Some(b) = crate::builtin::aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
-        if b.get(out_cv.value.as_ref()) {
-            return true;
-        }
-        // Impl returned `false` — see note above; for now accept the cast.
-        return true;
+        return b.get(out_cv.value.as_ref());
     }
-    true
+    false
 }
 
 pub(crate) fn user_defined_cast_from(
@@ -196,6 +187,70 @@ pub(crate) fn user_defined_cast_from(
     };
     let source_type = cv.value.type_(xx, loc);
     run_impl(impl_expr, xx, loc, source_type, cv)
+}
+
+/// Find the JS field name for the `cast_from` method on the bundled
+/// builtin-`type` interface impl.
+fn cast_from_field_name(data: &Gc<SourceDataTypeData>) -> Option<String> {
+    let impls = data.interface_impls.borrow();
+    for impl_data in impls.iter() {
+        if impl_data.interface.builtin_kind
+            != Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+        {
+            continue;
+        }
+        let methods = impl_data.interface.methods.borrow();
+        for method_impl in &impl_data.method_impls {
+            if methods[method_impl.interface_method_index].name == "cast_from" {
+                return Some(methods[method_impl.interface_method_index].field_name.clone());
+            }
+        }
+    }
+    None
+}
+
+/// v8 dispatch for `TypeUserDefined.cast_from`. Synchronously invokes the
+/// compiled JS method on the bundled instance via the active v8 scope
+/// (threaded through `EvalContext.v8_dispatcher` as a `NonNull<dyn ..>`
+/// trait-object pointer set up by `eval()` for the duration of
+/// `const_eval`). The method returns an External-wrapped `CodeValue` built
+/// by the user impl (via `eval_const`); the dispatcher unwraps and returns
+/// it as-is, so the produced code flows into the caller's evaluation
+/// without any lift through a fixed type.
+pub(crate) fn user_defined_cast_from_v8(
+    data: &Gc<SourceDataTypeData>,
+    bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    xx: &ExprContext,
+    loc: QExprId,
+    cv: CodeValue,
+) -> EvalRes {
+    let field_name = match cast_from_field_name(data) {
+        Some(n) => n,
+        None => return EvalRes::err(loc, "cast_from field name not found".to_string()),
+    };
+    let dispatcher_ptr = match xx.vx.v8_dispatcher.get() {
+        Some(p) => p,
+        None => {
+            return EvalRes::err(
+                loc,
+                "v8 dispatch attempted with no active dispatcher — cast_from must be called from \
+                 within const_eval"
+                    .to_string(),
+            );
+        },
+    };
+    // SAFETY: pointer set by eval() to a stack-resident dispatcher impl
+    // alive for the duration of const_eval. NonNull preserves the fat
+    // pointer (data + vtable) end-to-end, so trait-method dispatch goes
+    // through the right vtable.
+    let dispatcher: &mut dyn crate::eval::V8CastDispatcher = unsafe {
+        let mut p = dispatcher_ptr;
+        p.as_mut()
+    };
+    match dispatcher.dispatch_cast_from(bundle, &field_name, xx, loc, cv) {
+        Ok(out_cv) => EvalRes::ok(out_cv),
+        Err(e) => EvalRes::err(loc, format!("v8 cast_from dispatch: {}", e)),
+    }
 }
 
 pub(crate) fn user_defined_desc(data: &Gc<SourceDataTypeData>) -> String {

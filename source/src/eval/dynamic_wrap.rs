@@ -751,3 +751,17 @@ impl DynamicWrap for String {
         Rc::new(TypeStringDynamic)
     }
 }
+
+impl DynamicWrap for bool {
+    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        value.boolean_value(scope)
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        v8::Boolean::new(scope, self).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic)
+    }
+}

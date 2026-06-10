@@ -308,6 +308,16 @@ pub(crate) struct EvalContext {
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
+    /// Trait-object pointer to a dispatcher that holds the currently-active
+    /// v8 scope. `eval()` constructs an impl that captures `&mut scope`,
+    /// installs it here for the duration of `const_eval`, and clears it on
+    /// return. Stored as `NonNull<dyn>` so the fat pointer (data + vtable)
+    /// is preserved end-to-end; `TypeUserDefined.cast_from` re-borrows it
+    /// (`unsafe { ptr.as_mut() }`) and invokes synchronous v8 work through
+    /// the trait methods. Lifetime erasure is contained: the dispatcher
+    /// impl is alive on `eval()`'s stack throughout `const_eval`, so the
+    /// re-borrow is sound.
+    pub(crate) v8_dispatcher: std::cell::Cell<Option<std::ptr::NonNull<dyn crate::eval::V8CastDispatcher>>>,
 }
 
 /// If None, it means that the evaluation failed in a way that affects downstream

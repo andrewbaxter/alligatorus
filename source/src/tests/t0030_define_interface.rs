@@ -185,10 +185,10 @@ e4 = e33;
 e0 = (e1)(e2,e3,e4);
 e0;"#);
     assert_eq!(js_sources[1], r#"function d0_0_0() {
-let a0 = this._0;
+let a1 = this._0;
 let e0;
 let e1;
-e1 = a0;
+e1 = a1;
 let e2;
 e2 = null;
 e0 = e1["toUpperCase"](e2);

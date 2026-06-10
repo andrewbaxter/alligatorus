@@ -232,9 +232,22 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         let key = v8::String::new(scope, &data_field).unwrap();
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
         let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;
+        let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
+            impl_data.interface.builtin_kind
+                == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+        });
+        let isolate_bundle = if has_type_iface {
+            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
+            std::cell::RefCell::new(Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle {
+                instance: instance_global,
+            })))
+        } else {
+            std::cell::RefCell::new(None)
+        };
         Ok(Rc::new(ValueSourceDataTypeConst {
             underlying: underlying_value,
             data: self.data.clone(),
+            isolate_bundle,
         }))
     }
 }
@@ -426,7 +439,10 @@ pub(crate) struct TypeSourceDataTypeConstAspectType {
 impl Aspect for TypeSourceDataTypeConstAspectType { }
 
 impl crate::builtin::AspectType for TypeSourceDataTypeConstAspectType {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
-        Rc::new(super::dynamic::TypeUserDefined { data: self.data.clone() })
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let bundle = (value as &dyn std::any::Any)
+            .downcast_ref::<ValueSourceDataTypeConst>()
+            .and_then(|v| v.isolate_bundle.borrow().clone());
+        Rc::new(super::dynamic::TypeUserDefined { data: self.data.clone(), bundle })
     }
 }
