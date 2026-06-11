@@ -18,6 +18,7 @@ use {
         eval::{
             dynamic_util::{
                 ValueDynamic,
+                ValueDynamicDataScope,
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
@@ -98,8 +99,9 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
+        let key = func_ref.data.scope_entry_id.get().expect("Definition set function not registered");
         Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::DefinitionSet,
+            source: ValueDynamicSource::Binding(ValueDynamicDataScope { key }),
             type_: Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() }),
         }))
     }

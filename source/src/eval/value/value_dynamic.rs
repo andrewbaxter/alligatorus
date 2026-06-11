@@ -33,7 +33,6 @@ pub(crate) struct ValueDynamicDataScope {
 #[derive(Clone)]
 pub(crate) enum ValueDynamicSource {
     Binding(ValueDynamicDataScope),
-    DefinitionSet,
     // Result of effect
     Expr,
     Field(ValueDynamicDataAccess),

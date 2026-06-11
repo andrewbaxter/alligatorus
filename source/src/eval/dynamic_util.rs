@@ -199,9 +199,6 @@ pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value
             ValueDynamicSource::Expr => {
                 return erb.err_new(format!("Cannot modify a temporary value"));
             },
-            ValueDynamicSource::DefinitionSet => {
-                return erb.err_new(format!("Cannot modify a definition set function"));
-            },
         }
     });
 }
