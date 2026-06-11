@@ -56,7 +56,7 @@ fn lookup_impl<'a>(
         let methods = impl_data.interface.methods.borrow();
         for method_impl in &impl_data.method_impls {
             if methods[method_impl.interface_method_index].name == method_name {
-                return Some(method_impl.impl_expr.clone());
+                return method_impl.impl_expr.borrow().clone();
             }
         }
     }
@@ -156,8 +156,6 @@ pub(crate) fn user_defined_can_cast_from(
     let Some(impl_expr) = lookup_impl(data, "can_cast_from") else {
         return false;
     };
-    // If the source type can't be held as `Rc<dyn Type>` we can't run the
-    // impl — reject; the user can extend `clone_rc` on the relevant type.
     let Some(source_type_rc) = source_type.clone_rc() else {
         return false;
     };
@@ -189,9 +187,9 @@ pub(crate) fn user_defined_cast_from(
     run_impl(impl_expr, xx, loc, source_type, cv)
 }
 
-/// Find the JS field name for the `cast_from` method on the bundled
-/// builtin-`type` interface impl.
-fn cast_from_field_name(data: &Gc<SourceDataTypeData>) -> Option<String> {
+/// Find the JS field name for the named builtin-`type` interface method on
+/// the bundled instance.
+fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> Option<String> {
     let impls = data.interface_impls.borrow();
     for impl_data in impls.iter() {
         if impl_data.interface.builtin_kind
@@ -201,12 +199,43 @@ fn cast_from_field_name(data: &Gc<SourceDataTypeData>) -> Option<String> {
         }
         let methods = impl_data.interface.methods.borrow();
         for method_impl in &impl_data.method_impls {
-            if methods[method_impl.interface_method_index].name == "cast_from" {
+            if methods[method_impl.interface_method_index].name == method_name {
                 return Some(methods[method_impl.interface_method_index].field_name.clone());
             }
         }
     }
     None
+}
+
+fn cast_from_field_name(data: &Gc<SourceDataTypeData>) -> Option<String> {
+    type_method_field_name(data, "cast_from")
+}
+
+pub(crate) fn user_defined_can_cast_from_v8(
+    data: &Gc<SourceDataTypeData>,
+    bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    xx: &ExprContext,
+    loc: QExprId,
+    source_type: &dyn Type,
+) -> bool {
+    let Some(field_name) = type_method_field_name(data, "can_cast_from") else {
+        return false;
+    };
+    let Some(source_type_rc) = source_type.clone_rc() else {
+        return false;
+    };
+    let dispatcher_ptr = match xx.vx.v8_dispatcher.get() {
+        Some(p) => p,
+        None => return false,
+    };
+    let dispatcher: &mut dyn crate::eval::V8CastDispatcher = unsafe {
+        let mut p = dispatcher_ptr;
+        p.as_mut()
+    };
+    match dispatcher.dispatch_can_cast_from(bundle, &field_name, xx, loc, source_type_rc) {
+        Ok(b) => b,
+        Err(_) => false,
+    }
 }
 
 /// v8 dispatch for `TypeUserDefined.cast_from`. Synchronously invokes the

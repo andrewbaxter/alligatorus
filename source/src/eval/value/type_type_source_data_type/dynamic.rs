@@ -72,7 +72,13 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                     serde_json::from_value(
                         def_set_artifact.data
                     ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
-                let set = Gc::new(DefinitionSet::new(def_set_serial.import_id, def_set_serial.def_set_id),);
+                let set = Gc::new(
+                    DefinitionSet::new(
+                        def_set_serial.import_id,
+                        def_set_serial.def_set_id,
+                        def_set_serial.source_id,
+                    ),
+                );
                 let mut dt_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
                 let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
                 for dt_artifact_id in &def_set_serial.data_types {
@@ -90,7 +96,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         underlying_type: DeserialLazy::new(),
                         methods: RefCell::new(Vec::new()),
                         interface_impls: RefCell::new(Vec::new()),
-                        artifact_id: RefCell::new(None),
+                        artifact_id: RefCell::new(Some(dt_artifact_id.clone())),
                     });
                     xx
                         .vx
@@ -140,6 +146,53 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                             }
                         }).collect();
                         *dt_data.methods.borrow_mut() = methods;
+                        let (value_iface_data, type_iface_data) =
+                            crate::eval::value::type_source_interface::build_builtin_interfaces(
+                                def_set_serial.import_id,
+                            );
+                        let interface_impls: Vec<
+                            crate::eval::value::type_source_data_type::SourceDataTypeInterfaceImplData,
+                        > = dt_serial.interface_impls.iter().map(|impl_serial| {
+                            let iface = match impl_serial.builtin_kind {
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::Value => {
+                                    value_iface_data.clone()
+                                },
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type => {
+                                    type_iface_data.clone()
+                                },
+                            };
+                            let method_impls = impl_serial
+                                .method_impls
+                                .iter()
+                                .map(|m| {
+                                    let impl_expr =
+                                        crate::eval::expr_artifact::expr_from_artifact(xx, &m.impl_expr)
+                                            .expect("Failed to deserialize interface method impl_expr");
+                                    crate::eval::value::type_source_data_type::SourceDataTypeInterfaceMethodImplData {
+                                        interface_method_index: m.interface_method_index,
+                                        impl_expr: RefCell::new(
+                                            Some(Rc::new(impl_expr) as Rc<dyn crate::langhelp::Value>),
+                                        ),
+                                        compiled_js: RefCell::new(Some(m.compiled_js.clone())),
+                                        scope_entry_id: Cell::new(
+                                            Some(
+                                                ScopeEntryId::Def(
+                                                    def_set_serial.import_id,
+                                                    def_set_serial.def_set_id,
+                                                    m.entry_id,
+                                                ),
+                                            ),
+                                        ),
+                                        self_scope_entry_id: Cell::new(None),
+                                    }
+                                })
+                                .collect();
+                            crate::eval::value::type_source_data_type::SourceDataTypeInterfaceImplData {
+                                interface: iface,
+                                method_impls,
+                            }
+                        }).collect();
+                        *dt_data.interface_impls.borrow_mut() = interface_impls;
                     }
                     Ok(codes)
                 });

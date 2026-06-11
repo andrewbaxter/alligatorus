@@ -258,6 +258,7 @@ e0;"#]);
         0
       ]
     },
+    "interface_impls": [],
     "methods": [
       {
         "compiled_js": "function d0_0_0() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n}",
@@ -306,12 +307,13 @@ e0;"#]);
       }
     ],
     "def_set_id": 0,
-    "import_id": 0
+    "import_id": 0,
+    "source_id": 1
   },
   "type_": {
     "builtin": {
       "file": "src/eval/definition_set.rs",
-      "line": 270
+      "line": 279
     }
   }
 }"#

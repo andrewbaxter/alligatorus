@@ -34,6 +34,41 @@ pub(crate) struct PendingImportState {
 }
 
 impl PendingImportState {
+    /// True if the imported value is an instance of a data type that
+    /// implements the builtin `type` interface — those imports must be
+    /// resolved against the importing compile's `ExprContext` (we need its
+    /// v8 scope + `builtin_scope_entries` to re-compile the interface impls
+    /// and install the bundle).
+    pub(crate) fn imported_needs_v8_bundle(&self) -> bool {
+        let guard = self.entry.result.read().unwrap();
+        let compile_res = match guard.as_ref().and_then(|r| r.as_ref().ok()) {
+            Some(c) => c,
+            None => return false,
+        };
+        let artifact = match &compile_res.result {
+            crate::langhelp::CompileResResult::Ok(a) => a,
+            _ => return false,
+        };
+        let dt_artifact_id = match &artifact.type_ {
+            crate::langhelp::ArtifactId::Source(_) => artifact.type_.clone(),
+            _ => return false,
+        };
+        let dt_artifact = match self.gx.artifacts.get(dt_artifact_id) {
+            Ok(a) => a,
+            Err(_) => return false,
+        };
+        let dt_serial: Result<
+            crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetDataType,
+            _,
+        > = serde_json::from_value(dt_artifact.data);
+        match dt_serial {
+            Ok(dt) => dt.interface_impls.iter().any(|i| {
+                i.builtin_kind == crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type
+            }),
+            Err(_) => false,
+        }
+    }
+
     pub(crate) fn resolve(&self, xx: &ExprContext) -> CodeValue {
         let guard = self.entry.result.read().unwrap();
         let compile_res = guard.as_ref().unwrap();
@@ -101,6 +136,8 @@ impl PendingImportState {
             def_set_counter: crate::langhelp::Counter::default(),
             v8_context: RefCell::new(None),
             builtins_registered: Cell::new(false),
+            source_id: crate::langhelp::SourceId(0),
+            builtin_scope_entries: RefCell::new(Vec::new()),
         });
         let ex = Rc::new(EvalContext {
             ix: cix,

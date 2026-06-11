@@ -76,6 +76,7 @@ impl TypeSourceDataTypeConstructorConst {
                 methods,
                 import_id: self.data.set.import_id,
                 def_set_id: self.data.set.def_set_id,
+                source_id: self.data.set.source_id,
             };
             TypeTypeSourceDataTypeConstructorDynamic::build_artifact(
                 serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data"),

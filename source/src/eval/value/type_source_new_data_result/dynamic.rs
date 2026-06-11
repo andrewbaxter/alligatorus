@@ -138,7 +138,8 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
                     let entry_id = dt_data.set.next_entry_id.next();
                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
-                        impl_expr: Rc::new(expr.clone()),
+                        impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
+                        compiled_js: RefCell::new(None),
                         scope_entry_id: Cell::new(
                             Some(
                                 crate::langhelp::ScopeEntryId::Def(

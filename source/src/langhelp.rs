@@ -187,6 +187,16 @@ pub(crate) struct CompileImportContext {
     pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
     /// True once builtins have been registered on `v8_context`'s global.
     pub(crate) builtins_registered: Cell<bool>,
+    /// Source id of the module being compiled at this level. Used to derive
+    /// the `CompileId` for cross-compile lookups.
+    pub(crate) source_id: crate::langhelp::SourceId,
+    /// Builtin scope entries `(name, scope_entry_id, type)` populated at
+    /// the start of each stage's `eval()`. Read by import-side `from_serial`
+    /// when re-compiling an imported data type's interface impls — it needs
+    /// the same builtin scope (`define`, `eval_const`, type refs, etc.) the
+    /// originating compile saw, so the user's `impl_expr` resolves the same
+    /// scope references.
+    pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, std::rc::Rc<dyn Type>)>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

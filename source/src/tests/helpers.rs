@@ -262,10 +262,14 @@ pub(super) fn new_gx_with_artifacts(
     modules: HashMap<&str, SourceModule>,
 ) -> (Arc<GlobalContext>, Arc<TestArtifacts>) {
     let mut sources = HashMap::new();
-    let mut next_id = 0;
-    for (name, module) in modules {
-        sources.insert(name.to_string(), (SourceId(next_id), module));
-        next_id += 1;
+    // Assign source ids deterministically (by name) so test fixtures that
+    // depend on a specific `SourceId` ordering — e.g., assertions over
+    // serialized artifacts that now carry a `source_id` — don't flake on
+    // HashMap iteration order.
+    let mut sorted: Vec<(&str, SourceModule)> = modules.into_iter().collect();
+    sorted.sort_by_key(|(name, _)| *name);
+    for (i, (name, module)) in sorted.into_iter().enumerate() {
+        sources.insert(name.to_string(), (SourceId(i), module));
     }
     let artifacts = Arc::new(TestArtifacts::new());
     let gx = GlobalContext::new(Box::new(TestSources { modules: sources }), Box::new(artifacts.clone()));

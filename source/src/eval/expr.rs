@@ -153,7 +153,46 @@ pub(crate) struct ExprTuple {
     pub elements: Vec<Expr>,
 }
 
-pub(crate) type LitValue = Rc<dyn Fn() -> Rc<dyn Value>>;
+/// A `Literal`'s payload.
+///
+/// `Shared` holds an immutable Value that can be cloned on every evaluation
+/// — used for source-derived literals (strings, numbers, null).
+///
+/// `Once` is a take-once cell — used when stage lowering hoists a value into
+/// the next stage as a Literal. Downstream code (e.g., `Record::bind_sub`)
+/// relies on `Rc::try_unwrap` succeeding, so the value must not be shared.
+/// Evaluating the same `Once` Literal twice panics.
+#[derive(Clone)]
+pub(crate) enum LitValue {
+    Shared(Rc<dyn Value>),
+    Once(Rc<RefCell<Option<Rc<dyn Value>>>>),
+}
+
+impl LitValue {
+    /// Consume-or-clone for `const_eval`.
+    pub(crate) fn consume(&self) -> Rc<dyn Value> {
+        match self {
+            LitValue::Shared(v) => v.clone(),
+            LitValue::Once(cell) => cell.borrow_mut().take().expect("Once Literal already consumed"),
+        }
+    }
+
+    /// Non-consuming peek for serialization.
+    pub(crate) fn peek(&self) -> Option<Rc<dyn Value>> {
+        match self {
+            LitValue::Shared(v) => Some(v.clone()),
+            LitValue::Once(cell) => cell.borrow().clone(),
+        }
+    }
+}
+
+pub(crate) fn make_lit_value(v: Rc<dyn Value>) -> LitValue {
+    LitValue::Shared(v)
+}
+
+pub(crate) fn make_lit_value_once(v: Rc<dyn Value>) -> LitValue {
+    LitValue::Once(Rc::new(RefCell::new(Some(v))))
+}
 
 pub(crate) enum Module {
     V1(Expr),

@@ -178,6 +178,10 @@ pub(crate) struct DefinitionSet {
     pub next_entry_id: crate::langhelp::Counter,
     pub next_field_id: crate::langhelp::Counter,
     pub next_interface_method_id: crate::langhelp::Counter,
+    /// Source id of the compile that created this definition set. Imports use
+    /// this together with `import_id` to look up the per-compile IMPORT_STAGE_DATA
+    /// when rebuilding instance objects in the importer's isolate.
+    pub source_id: crate::langhelp::SourceId,
 }
 
 impl DefinitionSet {
@@ -230,7 +234,11 @@ impl DefinitionSet {
         Ok(())
     }
 
-    pub fn new(import_id: crate::langhelp::ImportStateId, def_set_id: crate::langhelp::DefSetId) -> Self {
+    pub fn new(
+        import_id: crate::langhelp::ImportStateId,
+        def_set_id: crate::langhelp::DefSetId,
+        source_id: crate::langhelp::SourceId,
+    ) -> Self {
         DefinitionSet {
             artifact_id: RefCell::new(None),
             import_id: import_id,
@@ -242,6 +250,7 @@ impl DefinitionSet {
             next_field_id: crate::langhelp::Counter::default(),
             next_entry_id: crate::langhelp::Counter::default(),
             next_interface_method_id: crate::langhelp::Counter::default(),
+            source_id,
         }
     }
 }
@@ -283,6 +292,8 @@ pub(crate) fn serialize_definition_set(
         type_source_data_type::artifact::{
             ArtifactDataDefSet,
             ArtifactDataDefSetDataType,
+            ArtifactDataDefSetInterfaceImpl,
+            ArtifactDataDefSetInterfaceMethodImpl,
             ArtifactDataDefSetMethod,
         },
         type_source_data_type_constructor::dynamic::serialize_type_ref,
@@ -306,12 +317,56 @@ pub(crate) fn serialize_definition_set(
                         compiled_js: compiled_js.clone(),
                     }
                 }).collect();
+                let interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> =
+                    dt.interface_impls.borrow().iter().filter_map(|impl_data| {
+                        let builtin_kind = impl_data.interface.builtin_kind?;
+                        let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> =
+                            impl_data.method_impls.iter().map(|m| {
+                                let compiled_js = m.compiled_js.borrow();
+                                let compiled_js =
+                                    compiled_js.as_ref().expect("Interface method impl missing compiled JS");
+                                let entry_id = match m
+                                    .scope_entry_id
+                                    .get()
+                                    .expect("Interface method impl missing scope_entry_id") {
+                                    crate::langhelp::ScopeEntryId::Def(_, _, id) => id,
+                                    other => panic!(
+                                        "Interface method impl has non-Def scope_entry_id: {:?}",
+                                        other,
+                                    ),
+                                };
+                                let impl_expr_value =
+                                    m
+                                        .impl_expr
+                                        .borrow()
+                                        .clone()
+                                        .expect("Interface method impl missing impl_expr");
+                                let impl_expr_ast =
+                                    crate::invariant::must_downcast_ref::<crate::eval::expr::Expr>(
+                                        impl_expr_value.as_ref(),
+                                    );
+                                let impl_expr =
+                                    crate::eval::expr_artifact::expr_to_artifact(xx, impl_expr_ast)
+                                        .expect("Failed to serialize interface method impl_expr");
+                                ArtifactDataDefSetInterfaceMethodImpl {
+                                    interface_method_index: m.interface_method_index,
+                                    entry_id,
+                                    compiled_js: compiled_js.clone(),
+                                    impl_expr,
+                                }
+                            }).collect();
+                        Some(ArtifactDataDefSetInterfaceImpl {
+                            builtin_kind,
+                            method_impls,
+                        })
+                    }).collect();
                 let serial = ArtifactDataDefSetDataType {
                     name: dt.name.clone(),
                     data_field: dt.data_field.clone(),
                     underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
                     identity: dt.identity.clone(),
                     methods: methods,
+                    interface_impls,
                     def_set: def_set_artifact_id.clone(),
                 };
                 TypeTypeSourceDataTypeDynamic::build_artifact(
@@ -323,6 +378,7 @@ pub(crate) fn serialize_definition_set(
             data_types: data_type_ids,
             import_id: set.import_id,
             def_set_id: set.def_set_id,
+            source_id: set.source_id,
         };
         crate::langhelp::Artifact {
             type_: crate::langhelp::ArtifactId::Builtin(defset_artifact_identity()),

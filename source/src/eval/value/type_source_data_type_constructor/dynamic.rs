@@ -107,6 +107,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         next_field_id: crate::langhelp::Counter::default(),
         next_entry_id: crate::langhelp::Counter::default(),
         next_interface_method_id: crate::langhelp::Counter::default(),
+        source_id: serial.source_id,
     });
     let dt_data = dumpster::unsync::Gc::new(SourceDataTypeData {
         set: set.clone(),

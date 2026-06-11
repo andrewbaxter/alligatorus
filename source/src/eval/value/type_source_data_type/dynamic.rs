@@ -304,6 +304,15 @@ impl Type for TypeUserDefined {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
+        if let Some(bundle) = &self.bundle {
+            return crate::eval::user_defined_type_dispatch::user_defined_can_cast_from_v8(
+                &self.data,
+                bundle,
+                xx,
+                loc,
+                source_type,
+            );
+        }
         crate::eval::user_defined_type_dispatch::user_defined_can_cast_from(
             &self.data,
             xx,

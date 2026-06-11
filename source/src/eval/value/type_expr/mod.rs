@@ -177,9 +177,9 @@ impl Type for TypeExpr {
         let type_rc = cv.value.type_(xx, loc);
         let expr = Expr {
             loc,
-            r#type: Expr_::Literal(Rc::new(move || {
-                Rc::new(ValueEmptyConst { type_: type_rc.clone() }) as Rc<dyn Value>
-            })),
+            r#type: Expr_::Literal(
+                crate::eval::expr::make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>),
+            ),
         };
         return EvalRes::ok(CodeValue {
             code: cv.code,

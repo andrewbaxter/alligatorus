@@ -113,17 +113,13 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
         return Expr {
             loc: (source_id, m.id),
             r#type: match &m.r#type {
-                SourceExpr_::Literal(lit) => Expr_::Literal(match lit {
-                    SourceLiteral::Null => Rc::new(|| Rc::new(ValueNullConst) as Rc<dyn crate::langhelp::Value>),
-                    SourceLiteral::String(l) => {
-                        let l = l.clone();
-                        Rc::new(move || Rc::new(ValueStringConst(l.clone())) as Rc<dyn crate::langhelp::Value>)
-                    },
+                SourceExpr_::Literal(lit) => Expr_::Literal(crate::eval::expr::make_lit_value(match lit {
+                    SourceLiteral::Null => Rc::new(ValueNullConst) as Rc<dyn crate::langhelp::Value>,
+                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as Rc<dyn crate::langhelp::Value>,
                     SourceLiteral::Number(n) => {
-                        let n = n.into_inner();
-                        Rc::new(move || Rc::new(ValueNumberConst(n)) as Rc<dyn crate::langhelp::Value>)
+                        Rc::new(ValueNumberConst(n.into_inner())) as Rc<dyn crate::langhelp::Value>
                     },
-                }),
+                })),
                 SourceExpr_::ScopeUse(expr) => Expr_::ScopeUse(
                     ExprScopeUse { key: Rc::new(source_expr_to_expr(source_id, &expr.key)) },
                 ),
@@ -145,12 +141,9 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                 SourceExpr_::Bind(expr) => Expr_::Bind(ExprBind {
                     base: Rc::new(Expr {
                         loc: (source_id, m.id),
-                        r#type: Expr_::Literal({
-                            let base = expr.base.clone();
-                            Rc::new(
-                                move || Rc::new(ValueStringConst(base.clone())) as Rc<dyn crate::langhelp::Value>,
-                            )
-                        }),
+                        r#type: Expr_::Literal(crate::eval::expr::make_lit_value(
+                            Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn crate::langhelp::Value>,
+                        )),
                     }),
                     value: Rc::new(source_expr_to_expr(source_id, &expr.value)),
                 }),

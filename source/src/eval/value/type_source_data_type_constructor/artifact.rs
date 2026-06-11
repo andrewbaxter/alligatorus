@@ -8,6 +8,7 @@ pub(crate) struct ArtifactDataDefSetCtorData {
     pub import_id: crate::langhelp::ImportStateId,
     pub methods: Vec<ArtifactDataDefSetCtorMethod>,
     pub name: Option<String>,
+    pub source_id: crate::langhelp::SourceId,
     pub underlying_type: Artifact,
 }
 

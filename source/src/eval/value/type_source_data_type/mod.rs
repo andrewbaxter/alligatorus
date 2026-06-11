@@ -62,7 +62,8 @@ pub(crate) struct SourceDataTypeInterfaceImplData {
 }
 
 pub(crate) struct SourceDataTypeInterfaceMethodImplData {
-    pub impl_expr: Rc<dyn Value>,
+    pub compiled_js: RefCell<Option<String>>,
+    pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub interface_method_index: usize,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
