@@ -10,12 +10,10 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
-            AspectInitialBind,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
         code_dynamic::CodeDynamic,
@@ -32,7 +30,6 @@ use {
             dynamic_wrap::DynamicWrap,
             from_v8_ref,
             to_v8,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -43,7 +40,6 @@ use {
             ExprContext,
             QExprId,
             ScopeEntry,
-            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -115,15 +111,6 @@ impl AspectConsumeDynamic for TypeExprContextRefDynamic {
     }
 }
 
-impl AspectInitialBind for TypeExprContextRefDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key,
-            type_: Rc::new(TypeExprContextRefDynamic),
-        })
-    }
-}
-
 impl AspectStackValueDynamic for TypeExprContextRefDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeExprContextRefDynamic))
@@ -150,9 +137,6 @@ impl Type for TypeExprContextRefDynamic {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprContextRefDynamic) as Box<dyn AspectStackValueDynamic>));
-        }
-        if *key == aspect_initial_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprContextRefDynamic) as Box<dyn AspectInitialBind>));
         }
         None
     }
@@ -245,15 +229,6 @@ impl AspectConsumeDynamic for TypeCodeValueExternDynamic {
     }
 }
 
-impl AspectInitialBind for TypeCodeValueExternDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key,
-            type_: Rc::new(TypeCodeValueExternDynamic),
-        })
-    }
-}
-
 impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeCodeValueExternDynamic))
@@ -280,9 +255,6 @@ impl Type for TypeCodeValueExternDynamic {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectStackValueDynamic>));
-        }
-        if *key == aspect_initial_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectInitialBind>));
         }
         None
     }

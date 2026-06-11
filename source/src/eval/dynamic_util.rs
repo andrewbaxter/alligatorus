@@ -9,7 +9,6 @@ use {
         builtin::{
             aspect_bind_dynamic_get_maybe,
             aspect_consume_dynamic_get,
-            aspect_initial_bind_get,
             aspect_stack_value_dynamic_get,
         },
         code_dynamic::{
@@ -27,6 +26,7 @@ use {
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             },
         },
         invariant::must_downcast_ref,
@@ -84,14 +84,10 @@ pub(crate) fn bind_via_target(
         },
         Ok(Some(sub)) => {
             let (code, js_key) = xx.target.bind(xx, loc, sub);
-            let ib = aspect_initial_bind_get(xx, loc, vtype.as_ref());
-            match ib.into_res() {
-                Ok(ib) => EResult::ok((code, ib.initial_bind(js_key))),
-                Err(errs) => EResult {
-                    v: None,
-                    errors: Some(errs),
-                },
-            }
+            EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
+                dynamic_key: js_key,
+                type_: vtype,
+            }) as Box<dyn ScopeEntry>))
         },
         Ok(None) => {
             EResult::err(loc, format!("Type ({}) returned None from AspectBindDynamic", vtype.desc()))

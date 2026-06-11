@@ -114,9 +114,6 @@ macro_rules! dynamic_wrap{
                             Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectStackValueDynamic >)
                         );
                     }
-                    if * key == aspect_initial_bind_aspect_id() {
-                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectInitialBind >));
-                    }
                     None
                 }
                 fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type,) -> EvalRes {
@@ -164,14 +161,6 @@ macro_rules! dynamic_wrap{
                     cv: CodeValue,
                 ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
                     bind_via_target(xx, loc, cv)
-                }
-            }
-            impl AspectInitialBind for[< Type $name Dynamic >] {
-                fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box < dyn ScopeEntry > {
-                    Box:: new(ScopeEntryDynamicBinding {
-                        dynamic_key: dynamic_key,
-                        type_: Rc:: new([< Type $name Dynamic >]),
-                    })
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {
@@ -377,9 +366,6 @@ macro_rules! dynamic_wrap{
                             Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectStackValueDynamic >)
                         );
                     }
-                    if * key == aspect_initial_bind_aspect_id() {
-                        return Some(Box:: new(Box:: new([< Type $name Dynamic >]) as Box < dyn AspectInitialBind >));
-                    }
                     [<$name: snake _extra_aspect >](_xx, key)
                 }
                 fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type,) -> EvalRes {
@@ -427,14 +413,6 @@ macro_rules! dynamic_wrap{
                     cv: CodeValue,
                 ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
                     bind_via_target(xx, loc, cv)
-                }
-            }
-            impl AspectInitialBind for[< Type $name Dynamic >] {
-                fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box < dyn ScopeEntry > {
-                    Box:: new(ScopeEntryDynamicBinding {
-                        dynamic_key: dynamic_key,
-                        type_: Rc:: new([< Type $name Dynamic >]),
-                    })
                 }
             }
             impl AspectStackValueDynamic for[< Type $name Dynamic >] {
