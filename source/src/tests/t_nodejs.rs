@@ -28,44 +28,57 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         //. .
         mb.bind("code", build_nodejs_code(mb)),
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+        // `option` is treated here as a builtin type constructor (like `list` / `map`),
+        // taking a payload type and exposing `.some` / `.none` constructors. It is not
+        // exposed as a builtin scope entry yet — see TODO to register it.
+        mb.bind("root", mb.call(mb.scope_use("option"), mb.scope_use("expr"))),
         // # Define the "nodejs" target, required by eval
         mb.bind("ntarget", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs target"))),
-        mb.call(mb.field(mb.scope_use("ntarget"), mb.str("underlying")), mb.null()),
+        mb.call(mb.field(mb.scope_use("ntarget"), mb.str("set_underlying")), mb.scope_use("null")),
         mb.call(
             mb.field(mb.scope_use("ntarget"), mb.str("impl_interface")),
-            mb.tuple(vec![mb.scope_use("target"), mb.record(vec![
-                // TODO
-                ])]),
+            mb.tuple(vec![mb.scope_use("target"), mb.call(
+                mb.field(
+                    mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("expr")])),
+                    mb.str("new"),
+                ),
+                mb.record(vec![
+                    // TODO: implement Target interface methods (bind, bind_sub_record,
+                    //   bind_sub_tuple, block, code_to_bind_sub, if_, match_, maybe_bind_sub,
+                    //   stage). Each should construct an `nvalue` with the appropriate base
+                    //   + type and emit nodejs `code` as needed.
+                ]),
+            )]),
         ),
         // # Define a generic nodejs value
         //
         // This will be used for objects and functions for the first examples
         mb.bind("nvalue_base", mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))),
-        mb.bind("code_call", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
+        mb.bind("nvalue_binding", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
             //. .
             mb.str("binding"),
             mb.scope_use("string"),
         ]))),
-        mb.bind("code_call", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
+        mb.bind("nvalue_expr", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
             //. .
             mb.str("expr"),
             mb.tuple(vec![]),
         ]))),
         mb.bind("nvalue", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs value"))),
-        mb.call(mb.field(mb.scope_use("nvalue"), mb.str("underlying")), mb.record(vec![
+        mb.call(mb.field(mb.scope_use("nvalue"), mb.str("set_underlying")), mb.record(vec![
             //. .
             ("base", mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
             ("type", mb.scope_use("type")),
         ])),
         // # Define a nodejs string type
         mb.bind("ntype_str", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs string"))),
-        mb.call(mb.field(mb.scope_use("ntype_str"), mb.str("underlying")), mb.tuple(vec![])),
+        mb.call(mb.field(mb.scope_use("ntype_str"), mb.str("set_underlying")), mb.tuple(vec![])),
         // # Define a generic nodejs function type.
         //
         // This needs to implement AspectFunction at a minimum, and it should generate
         // "code" (from `build_nodejs_code`)
         mb.bind("ntype_func", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs function"))),
-        mb.call(mb.field(mb.scope_use("ntype_func"), mb.str("underlying")), mb.record(vec![
+        mb.call(mb.field(mb.scope_use("ntype_func"), mb.str("set_underlying")), mb.record(vec![
             //. .
             ("arg", mb.scope_use("type")),
             ("ret", mb.scope_use("type")),
@@ -76,17 +89,16 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         // and generate "code" (from `build_nodejs_code`).
         mb.bind("ntype_object", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs object"))),
         mb.call(
-            mb.field(mb.scope_use("ntype_object"), mb.str("underlying")),
+            mb.field(mb.scope_use("ntype_object"), mb.str("set_underlying")),
             mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("type")])),
         ),
         // # Define a "nodejs app" object to put it all together
         //
         // This object uses the target, types, and scope entries to turn staged code into
         // a functional nodejs program
-        mb.bind("napp", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs object"))),
-        mb.bind("root", mb.call(mb.scope_use("option"), mb.scope_use("expr"))),
+        mb.bind("napp", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs app"))),
         mb.call(
-            mb.field(mb.scope_use("napp"), mb.str("underlying")),
+            mb.field(mb.scope_use("napp"), mb.str("set_underlying")),
             mb.record(vec![("root", mb.scope_use("root"))]),
         ),
         mb.bind("napp_root", mb.call(mb.field(mb.scope_use("napp"), mb.str("new_func")), mb.str("root"))),
@@ -97,7 +109,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             mb.stage(
                 mb.set(
                     mb.field(mb.scope_use("self"), mb.str("root")),
-                    mb.call(mb.lower(mb.field(mb.scope_use("root"), mb.str("some"))), mb.scope_use("arg")),
+                    mb.call(
+                        mb.lower(mb.field(mb.scope_use("root"), mb.str("some"))),
+                        mb.scope_use("arg"),
+                    ),
                 ),
             ),
         ),
@@ -147,7 +162,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     mb.lower(mb.field(mb.scope_use("napp"), mb.str("new"))),
                     mb.record(
                         vec![
-                            ("root", mb.call(mb.field(mb.scope_use("root"), mb.str("none")), mb.tuple(vec![]))),
+                            (
+                                "root",
+                                mb.call(
+                                    mb.lower(mb.field(mb.scope_use("root"), mb.str("none"))),
+                                    mb.null(),
+                                ),
+                            ),
                         ],
                     ),
                 ),
@@ -1181,26 +1202,26 @@ fn test_0000_nodejs_helloworld() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, r#"let e0;
- {
- let e1;
- {
- let e2;
- {
- e2 = console;
- }
- let e3;
- {
- e3 = "log";
- }
- e1 = e2.e3;
- }
- let e4;
- {
- e4 = "Hello world (node)";
- }
- e0 = (e1)(e4);
- }
- e0"#);
+{
+let e1;
+{
+let e2;
+{
+e2 = console;
+}
+let e3;
+{
+e3 = "log";
+}
+e1 = e2.e3;
+}
+let e4;
+{
+e4 = "Hello world (node)";
+}
+e0 = (e1)(e4);
+}
+e0"#);
     let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
     assert_eq!(js_sources.len(), 2);
     assert_eq!(js_sources[0], r#"TODO"#);
