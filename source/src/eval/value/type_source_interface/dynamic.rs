@@ -107,10 +107,7 @@ impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
         iface_ref.data.set.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }),
-        }))
+        Ok(Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }))
     }
 }
 

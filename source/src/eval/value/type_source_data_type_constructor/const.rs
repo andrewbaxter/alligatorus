@@ -188,6 +188,6 @@ impl Type for TypeSourceDataTypeConstructorConst {
 
 impl Value for TypeSourceDataTypeConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
+        Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() })
     }
 }

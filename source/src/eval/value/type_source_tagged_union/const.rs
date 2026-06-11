@@ -180,6 +180,6 @@ impl Type for TypeSourceTaggedUnionConst {
 
 impl Value for TypeSourceTaggedUnionConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
     }
 }

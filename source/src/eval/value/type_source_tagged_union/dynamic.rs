@@ -120,10 +120,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
         let data = mortar.data.clone().expect("TypeSourceTaggedUnionDynamic::lift: data must be Some");
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceTaggedUnionConst { data }),
-        }))
+        Ok(Rc::new(TypeSourceTaggedUnionConst { data }))
     }
 }
 

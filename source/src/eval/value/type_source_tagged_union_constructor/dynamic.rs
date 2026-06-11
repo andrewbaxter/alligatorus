@@ -102,12 +102,9 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(TypeSourceTaggedUnionConstructorConst {
-                data: ctor.data.clone(),
-                variant_index: ctor.variant_index,
-            }),
+        Ok(Rc::new(TypeSourceTaggedUnionConstructorConst {
+            data: ctor.data.clone(),
+            variant_index: ctor.variant_index,
         }))
     }
 }

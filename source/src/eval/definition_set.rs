@@ -403,11 +403,8 @@ impl crate::builtin::AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = crate::eval::from_v8_ref::<Rc<Gc<DefinitionSet>>>(&*ext).as_ref().clone();
         ds.finish()?;
-        Ok(Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_: Rc::new(
-                crate::eval::value::type_source_exports::dynamic::TypeSourceExportsLiftedDynamic { set: ds },
-            ),
+        Ok(Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+            set: ds,
         }))
     }
 }

@@ -12,10 +12,6 @@ use {
         eval::{
             Erb,
             definition_set::DefinitionSet,
-            dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
-            },
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
@@ -44,13 +40,13 @@ use {
     },
 };
 
-pub(crate) struct TypeSourceExportsLiftedDynamic {
+pub(crate) struct TypeSourceExportsLiftedConst {
     pub set: Gc<DefinitionSet>,
 }
 
-impl Aspect for TypeSourceExportsLiftedDynamic { }
+impl Aspect for TypeSourceExportsLiftedConst { }
 
-impl AspectArtifact for TypeSourceExportsLiftedDynamic {
+impl AspectArtifact for TypeSourceExportsLiftedConst {
     fn from_serial(&self, xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
         {
             let mut sets = xx.vx.ix.definition_sets.borrow_mut();
@@ -64,10 +60,7 @@ impl AspectArtifact for TypeSourceExportsLiftedDynamic {
                 loc: loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }),
-            }),
+            value: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
         })
     }
 
@@ -85,7 +78,7 @@ impl AspectArtifact for TypeSourceExportsLiftedDynamic {
     }
 }
 
-impl AspectBind for TypeSourceExportsLiftedDynamic {
+impl AspectBind for TypeSourceExportsLiftedConst {
     fn bind(
         &self,
         _xx: &ExprContext,
@@ -99,7 +92,7 @@ impl AspectBind for TypeSourceExportsLiftedDynamic {
     }
 }
 
-impl AspectField for TypeSourceExportsLiftedDynamic {
+impl AspectField for TypeSourceExportsLiftedConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
@@ -132,12 +125,9 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
-                                code: Code_::None
+                                code: Code_::None,
                             },
-                            value: Rc::new(ValueDynamic {
-                                source: ValueDynamicSource::Expr,
-                                type_: Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone(), }),
-                            }),
+                            value: Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() }),
                         });
                     }
                 }
@@ -170,28 +160,28 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
     }
 }
 
-impl Type for TypeSourceExportsLiftedDynamic {
+impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() })
+        Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectField>,
+                    Box::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) as Box<dyn AspectField>,
                 ),
             );
         }
         if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectBind>),
+                Box::new(Box::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) as Box<dyn AspectBind>),
             );
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceExportsLiftedDynamic { set: self.set.clone() }) as Box<dyn AspectArtifact>,
+                    Box::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) as Box<dyn AspectArtifact>,
                 ),
             );
         }
@@ -211,8 +201,8 @@ impl Type for TypeSourceExportsLiftedDynamic {
     }
 }
 
-impl Value for TypeSourceExportsLiftedDynamic {
+impl Value for TypeSourceExportsLiftedConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() })
     }
 }
