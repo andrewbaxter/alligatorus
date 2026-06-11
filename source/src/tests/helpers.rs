@@ -38,7 +38,10 @@ use {
     },
     std::{
         cell::Cell,
-        collections::HashMap,
+        collections::{
+            BTreeMap,
+            HashMap,
+        },
         sync::{
             Arc,
             Mutex,
@@ -110,6 +113,13 @@ impl ModuleBuilder {
         }
     }
 
+    pub fn graft(&self, expr: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Graft(SourceExprGraft { expr: Box::new(expr) }),
+        };
+    }
+
     pub fn id(&self) -> ExprId {
         let id = self.next_phrase_id.get();
         self.next_phrase_id.set(id + 1);
@@ -140,13 +150,6 @@ impl ModuleBuilder {
         return SourceExpr {
             id: self.id(),
             r#type: SourceExpr_::Lower(SourceExprLower { expr: Box::new(expr) }),
-        };
-    }
-
-    pub fn graft(&self, expr: SourceExpr) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Graft(SourceExprGraft { expr: Box::new(expr) }),
         };
     }
 
@@ -254,21 +257,15 @@ impl ModuleBuilder {
     }
 }
 
-pub(super) fn new_gx(modules: HashMap<&str, SourceModule>) -> Arc<GlobalContext> {
+pub(super) fn new_gx(modules: BTreeMap<&str, SourceModule>) -> Arc<GlobalContext> {
     new_gx_with_artifacts(modules).0
 }
 
 pub(super) fn new_gx_with_artifacts(
-    modules: HashMap<&str, SourceModule>,
+    modules: BTreeMap<&str, SourceModule>,
 ) -> (Arc<GlobalContext>, Arc<TestArtifacts>) {
     let mut sources = HashMap::new();
-    // Assign source ids deterministically (by name) so test fixtures that
-    // depend on a specific `SourceId` ordering — e.g., assertions over
-    // serialized artifacts that now carry a `source_id` — don't flake on
-    // HashMap iteration order.
-    let mut sorted: Vec<(&str, SourceModule)> = modules.into_iter().collect();
-    sorted.sort_by_key(|(name, _)| *name);
-    for (i, (name, module)) in sorted.into_iter().enumerate() {
+    for (i, (name, module)) in modules.into_iter().enumerate() {
         sources.insert(name.to_string(), (SourceId(i), module));
     }
     let artifacts = Arc::new(TestArtifacts::new());
@@ -286,9 +283,9 @@ pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
 }
 
 /// `eval()` wraps each stage's main-body in `{/*main*/ ... }/*main*/` so its
-/// top-level `let`s don't collide on the (now-persistent) v8 context. The wrap
-/// is structurally invisible to v8 but it does change the generated source
-/// string, so strip it here to keep test fixtures readable.
+/// top-level `let`s don't collide on the (now-persistent) v8 context. The wrap is
+/// structurally invisible to v8 but it does change the generated source string, so
+/// strip it here to keep test fixtures readable.
 fn strip_main_body_wrap(s: String) -> String {
     let lines: Vec<&str> = s.split('\n').filter(|l| *l != "{/*main*/" && *l != "}/*main*/").collect();
     lines.join("\n")

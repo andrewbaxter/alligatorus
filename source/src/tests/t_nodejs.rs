@@ -23,24 +23,150 @@ use {
     },
 };
 
+//. fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
+//.    return mb.block(vec![
+//.        //. .
+//.        mb.bind("code", build_nodejs_code(mb)),
+//.        mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+//.        // # Define the "nodejs" target, required by eval
+//.        mb.bind("ntarget", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs target"))),
+//.        mb.call(mb.field(mb.scope_use("ntarget"), mb.str("underlying")), mb.null()),
+//.        mb.call(
+//.            mb.field(mb.scope_use("ntarget"), mb.str("impl_interface")),
+//.            mb.tuple(vec![mb.scope_use("target"), mb.record(vec![
+//.                // TODO
+//.                ])]),
+//.        ),
+//.        // # Define a generic nodejs value
+//.        //
+//.        // This will be used for objects and functions for the first examples
+//.        mb.bind("nvalue_base", mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))),
+//.        mb.bind("code_call", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
+//.            //. .
+//.            mb.str("binding"),
+//.            mb.scope_use("string"),
+//.        ]))),
+//.        mb.bind("code_call", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
+//.            //. .
+//.            mb.str("expr"),
+//.            mb.tuple(vec![]),
+//.        ]))),
+//.        mb.bind("nvalue", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs value"))),
+//.        mb.call(mb.field(mb.scope_use("nvalue"), mb.str("underlying")), mb.record(vec![
+//.            //. .
+//.            ("base", mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
+//.            ("type", mb.scope_use("type")),
+//.        ])),
+//.        // # Define a nodejs string type
+//.        mb.bind("ntype_str", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs string"))),
+//.        mb.call(mb.field(mb.scope_use("ntype_str"), mb.str("underlying")), mb.tuple(vec![])),
+//.        // # Define a generic nodejs function type.
+//.        //
+//.        // This needs to implement AspectFunction at a minimum, and it should generate
+//.        // "code" (from `build_nodejs_code`)
+//.        mb.bind("ntype_func", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs function"))),
+//.        mb.call(mb.field(mb.scope_use("ntype_func"), mb.str("underlying")), mb.record(vec![
+//.            //. .
+//.            ("arg", mb.scope_use("type")),
+//.            ("ret", mb.scope_use("type")),
+//.        ])),
+//.        // # Define a generic nodejs object type
+//.        //
+//.        // This will need to implement `AspectField` and `AspectInitialBind` at a minimum,
+//.        // and generate "code" (from `build_nodejs_code`).
+//.        mb.bind("ntype_object", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs object"))),
+//.        mb.call(
+//.            mb.field(mb.scope_use("ntype_object"), mb.str("underlying")),
+//.            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("type")])),
+//.        ),
+//.        // # Define a "nodejs app" object to put it all together
+//.        //
+//.        // This object uses the target, types, and scope entries to turn staged code into
+//.        // a functional nodejs program
+//.        mb.bind("napp", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs object"))),
+//.        mb.bind("root", mb.call(mb.scope_use("option"), mb.scope_use("expr"))),
+//.        mb.call(
+//.            mb.field(mb.scope_use("napp"), mb.str("underlying")),
+//.            mb.record(vec![("root", mb.scope_use("root"))]),
+//.        ),
+//.        mb.bind("napp_root", mb.call(mb.field(mb.scope_use("napp"), mb.str("new_func")), mb.str("root"))),
+//.        mb.call(mb.field(mb.scope_use("napp_root"), mb.str("arg")), mb.scope_use("expr")),
+//.        mb.call(mb.field(mb.scope_use("napp_root"), mb.str("ret")), mb.scope_use("null")),
+//.        mb.call(
+//.            mb.field(mb.scope_use("napp_root"), mb.str("impl")),
+//.            mb.stage(
+//.                mb.set(
+//.                    mb.field(mb.scope_use("self"), mb.str("root")),
+//.                    mb.call(mb.lower(mb.field(mb.scope_use("root"), mb.str("some"))), mb.scope_use("arg")),
+//.                ),
+//.            ),
+//.        ),
+//.        mb.bind("napp_build", mb.call(mb.field(mb.scope_use("napp"), mb.str("new_func")), mb.str("build"))),
+//.        mb.call(mb.field(mb.scope_use("napp_build"), mb.str("arg")), mb.tuple(vec![])),
+//.        mb.call(mb.field(mb.scope_use("napp_build"), mb.str("ret")), mb.scope_use("string")),
+//.        mb.call(mb.field(mb.scope_use("napp_build"), mb.str("impl")), mb.stage(mb.block(vec![
+//.            //. .
+//.            mb.match_(mb.field(mb.scope_use("self"), mb.str("root")), mb.str("root"), vec![
+//.                //. .
+//.                (mb.str("none"), mb.block(vec![mb.str("")])),
+//.                (mb.str("some"), mb.block(vec![
+//.                    //. .
+//.                    mb.bind("res", mb.call(mb.scope_use("const_eval"), mb.tuple(vec![
+//.                        //. .
+//.                        mb.call(mb.scope_use("new_expr_context"), mb.record(vec![
+//.                            //. .
+//.                            ("target", mb.call(mb.lower(mb.field(mb.scope_use("ntarget"), mb.str("new"))), mb.null())),
+//.                            ("scope", mb.record(vec![])),
+//.                        ])),
+//.                        mb.scope_use("root"),
+//.                    ]))),
+//.                    mb.call(
+//.                        mb.lower(mb.field(mb.scope_use("code"), mb.str("render"))),
+//.                        mb.call(
+//.                            mb.field(
+//.                                mb.field(mb.field(mb.scope_use("res"), mb.str("cv")), mb.str("code")),
+//.                                mb.str("cast"),
+//.                            ),
+//.                            mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
+//.                        ),
+//.                    ),
+//.                ])),
+//.            ], None),
+//.        ]))),
+//.        // # Build a nice constructor for the node app object
+//.        mb.bind("nodejs", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("nodejs"))),
+//.        mb.call(mb.field(mb.scope_use("nodejs"), mb.str("arg")), mb.tuple(vec![])),
+//.        mb.call(
+//.            mb.field(mb.scope_use("nodejs"), mb.str("ret")),
+//.            mb.field(mb.scope_use("napp"), mb.str("type")),
+//.        ),
+//.        mb.call(
+//.            mb.field(mb.scope_use("nodejs"), mb.str("impl")),
+//.            mb.stage(
+//.                mb.call(
+//.                    mb.lower(mb.field(mb.scope_use("napp"), mb.str("new"))),
+//.                    mb.record(
+//.                        vec![
+//.                            ("root", mb.call(mb.field(mb.scope_use("root"), mb.str("none")), mb.tuple(vec![]))),
+//.                        ],
+//.                    ),
+//.                ),
+//.            ),
+//.        ),
+//.        mb.field(mb.scope_use("nodejs"), mb.str("func")),
+//.    ]);
+//. }
 fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
-    return mb.lower(mb.block(vec![
+    return mb.block(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
         // # Define "code" tagged union type
         mb.bind("code_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))),
         mb.bind("code", mb.field(mb.scope_use("code_builder"), mb.str("type"))),
-        mb.bind(
-            "code_call",
-            mb.call(
-                mb.field(mb.scope_use("code_builder"), mb.str("variant")),
-                mb.tuple(
-                    vec![
-                        mb.str("call"),
-                        mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))]),
-                    ],
-                ),
-            ),
-        ),
+        mb.bind("code_call", mb.call(mb.field(mb.scope_use("code_builder"), mb.str("variant")), mb.tuple(vec![
+            //. .
+            mb.str("call"),
+            mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))]),
+        ]))),
         mb.bind(
             "code_lit_str",
             mb.call(
@@ -48,18 +174,11 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                 mb.tuple(vec![mb.str("lit_str"), mb.scope_use("string")]),
             ),
         ),
-        mb.bind(
-            "code_field",
-            mb.call(
-                mb.field(mb.scope_use("code_builder"), mb.str("variant")),
-                mb.tuple(
-                    vec![
-                        mb.str("field"),
-                        mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))]),
-                    ],
-                ),
-            ),
-        ),
+        mb.bind("code_field", mb.call(mb.field(mb.scope_use("code_builder"), mb.str("variant")), mb.tuple(vec![
+            //. .
+            mb.str("field"),
+            mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))]),
+        ]))),
         mb.bind(
             "code_scope_use",
             mb.call(
@@ -73,228 +192,119 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("Render Node.js code (inner)")),
         ),
         mb.bind("render_inner", mb.field(mb.scope_use("render_inner_builder"), mb.str("func"))),
-        mb.call(
-            mb.field(mb.scope_use("render_inner_builder"), mb.str("arg")),
-            mb.record(
-                vec![
-                    (
-                        "context",
-                        mb.record(
-                            vec![
-                                ("expr_count", mb.scope_use("number")),
-                                ("out", mb.call(mb.scope_use("list"), mb.scope_use("string"))),
-                            ],
-                        ),
-                    ),
-                    ("code", mb.scope_use("code")),
-                ],
-            ),
-        ),
+        mb.call(mb.field(mb.scope_use("render_inner_builder"), mb.str("arg")), mb.record(vec![
+            //. .
+            ("context", mb.record(vec![
+                //. .
+                ("expr_count", mb.scope_use("number")),
+                ("out", mb.call(mb.scope_use("list"), mb.scope_use("string"))),
+            ])),
+            ("code", mb.scope_use("code")),
+        ])),
         mb.call(mb.field(mb.scope_use("render_inner_builder"), mb.str("ret")), mb.scope_use("string")),
-        mb.call(
-            mb.field(mb.scope_use("render_inner_builder"), mb.str("impl")),
-            mb.stage(
-                mb.block(
-                    vec![
-                        mb.bind(
-                            "key",
-                            mb.call(
-                                mb.field(
-                                    mb.call(
-                                        mb.field(
-                                            mb.call(mb.scope_use("list"), mb.scope_use("string")),
-                                            mb.str("new"),
-                                        ),
-                                        mb.tuple(
-                                            vec![
-                                                mb.str("e"),
-                                                mb.call(
-                                                    mb.field(
-                                                        mb.field(
-                                                            mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                            mb.str("expr_count"),
-                                                        ),
-                                                        mb.str("to_string"),
-                                                    ),
-                                                    mb.tuple(vec![]),
-                                                ),
-                                            ],
-                                        ),
-                                    ),
-                                    mb.str("join"),
-                                ),
-                                mb.str(""),
-                            ),
-                        ),
-                        mb.set(
-                            mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
-                            mb.operator_add(
-                                mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
-                                mb.num(1.),
-                            ),
-                        ),
-                        mb.bind(
-                            "out",
-                            mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("out")),
-                        ),
-                        mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str("let ")),
-                        mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.scope_use("key")),
-                        mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n{\n")),
-                        mb.bind(
-                            "value",
-                            mb.call(
-                                mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
-                                mb.tuple(vec![mb.scope_use("key"), mb.str(" = ")]),
-                            ),
-                        ),
-                        mb.match_(
-                            mb.field(mb.scope_use("arg"), mb.str("code")),
-                            mb.str("code"),
-                            vec![
-                                (
-                                    mb.str("call"),
-                                    mb.block(
-                                        vec![
-                                            mb.bind(
-                                                "func",
-                                                mb.call(
-                                                    mb.lower(mb.scope_use("render_inner")),
-                                                    mb.record(
-                                                        vec![
-                                                            (
-                                                                "context",
-                                                                mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                            ),
-                                                            (
-                                                                "code",
-                                                                mb.field(mb.scope_use("code"), mb.str("func")),
-                                                            ),
-                                                        ],
-                                                    ),
-                                                ),
-                                            ),
-                                            mb.bind(
-                                                "rendered_arg",
-                                                mb.call(
-                                                    mb.lower(mb.scope_use("render_inner")),
-                                                    mb.record(
-                                                        vec![
-                                                            (
-                                                                "context",
-                                                                mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                            ),
-                                                            (
-                                                                "code",
-                                                                mb.field(mb.scope_use("code"), mb.str("arg")),
-                                                            ),
-                                                        ],
-                                                    ),
-                                                ),
-                                            ),
-                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str("(")),
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("func"),
-                                            ),
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.str(")("),
-                                            ),
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("rendered_arg"),
-                                            ),
-                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")")),
-                                        ],
-                                    ),
-                                ),
-                                (
-                                    mb.str("lit_str"),
-                                    mb.block(
-                                        vec![
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.call(mb.scope_use("str_to_json"), mb.scope_use("code")),
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                (
-                                    mb.str("field"),
-                                    mb.block(
-                                        vec![
-                                            mb.bind(
-                                                "base",
-                                                mb.call(
-                                                    mb.lower(mb.scope_use("render_inner")),
-                                                    mb.record(
-                                                        vec![
-                                                            (
-                                                                "context",
-                                                                mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                            ),
-                                                            (
-                                                                "code",
-                                                                mb.field(mb.scope_use("code"), mb.str("base")),
-                                                            ),
-                                                        ],
-                                                    ),
-                                                ),
-                                            ),
-                                            mb.bind(
-                                                "field",
-                                                mb.call(
-                                                    mb.lower(mb.scope_use("render_inner")),
-                                                    mb.record(
-                                                        vec![
-                                                            (
-                                                                "context",
-                                                                mb.field(mb.scope_use("arg"), mb.str("context")),
-                                                            ),
-                                                            (
-                                                                "code",
-                                                                mb.field(mb.scope_use("code"), mb.str("field")),
-                                                            ),
-                                                        ],
-                                                    ),
-                                                ),
-                                            ),
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("base"),
-                                            ),
-                                            mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(".")),
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("field"),
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                (
-                                    mb.str("scope_use"),
-                                    mb.block(
-                                        vec![
-                                            mb.call(
-                                                mb.field(mb.scope_use("value"), mb.str("push")),
-                                                mb.scope_use("code"),
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                            ],
-                            None,
-                        ),
+        mb.call(mb.field(mb.scope_use("render_inner_builder"), mb.str("impl")), mb.stage(mb.block(vec![
+            //. .
+            mb.bind(
+                "key",
+                mb.call(
+                    mb.field(
                         mb.call(
-                            mb.field(mb.scope_use("out"), mb.str("push")),
-                            mb.call(mb.field(mb.scope_use("value"), mb.str("join")), mb.str("")),
+                            mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
+                            mb.tuple(vec![
+                                //. .
+                                mb.str("e"),
+                                mb.call(
+                                    mb.field(
+                                        mb.field(
+                                            mb.field(mb.scope_use("arg"), mb.str("context")),
+                                            mb.str("expr_count"),
+                                        ),
+                                        mb.str("to_string"),
+                                    ),
+                                    mb.tuple(vec![]),
+                                ),
+                            ]),
                         ),
-                        mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n}\n")),
-                        mb.scope_use("key"),
-                    ],
+                        mb.str("join"),
+                    ),
+                    mb.str(""),
                 ),
             ),
-        ),
+            mb.set(
+                mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
+                mb.operator_add(
+                    mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("expr_count")),
+                    mb.num(1.),
+                ),
+            ),
+            mb.bind("out", mb.field(mb.field(mb.scope_use("arg"), mb.str("context")), mb.str("out"))),
+            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str("let ")),
+            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.scope_use("key")),
+            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n{\n")),
+            mb.bind(
+                "value",
+                mb.call(
+                    mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
+                    mb.tuple(vec![mb.scope_use("key"), mb.str(" = ")]),
+                ),
+            ),
+            mb.match_(mb.field(mb.scope_use("arg"), mb.str("code")), mb.str("code"), vec![
+                //. .
+                (mb.str("call"), mb.block(vec![
+                    //. .
+                    mb.bind("func", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
+                        //. .
+                        ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
+                        ("code", mb.field(mb.scope_use("code"), mb.str("func"))),
+                    ]))),
+                    mb.bind("rendered_arg", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
+                        //. .
+                        ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
+                        ("code", mb.field(mb.scope_use("code"), mb.str("arg"))),
+                    ]))),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str("(")),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.scope_use("func")),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")(")),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.scope_use("rendered_arg")),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")")),
+                ])),
+                (mb.str("lit_str"), mb.block(vec![
+                    //. .
+                    mb.call(
+                        mb.field(mb.scope_use("value"), mb.str("push")),
+                        mb.call(mb.scope_use("str_to_json"), mb.scope_use("code")),
+                    ),
+                ])),
+                (mb.str("field"), mb.block(vec![
+                    //. .
+                    mb.bind("base", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
+                        //. .
+                        ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
+                        ("code", mb.field(mb.scope_use("code"), mb.str("base"))),
+                    ]))),
+                    mb.bind("field", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
+                        //. .
+                        ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
+                        ("code", mb.field(mb.scope_use("code"), mb.str("field"))),
+                    ]))),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.scope_use("base")),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(".")),
+                    mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.scope_use("field")),
+                ])),
+                (
+                    mb.str("scope_use"),
+                    mb.block(
+                        vec![mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.scope_use("code"))],
+                    ),
+                ),
+            ], None),
+            mb.call(
+                mb.field(mb.scope_use("out"), mb.str("push")),
+                mb.call(mb.field(mb.scope_use("value"), mb.str("join")), mb.str("")),
+            ),
+            mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n}\n")),
+            mb.scope_use("key"),
+        ]))),
         // Define render-code func (outer)
         mb.bind(
             "render_builder",
@@ -303,58 +313,39 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
         mb.bind("render", mb.field(mb.scope_use("render_builder"), mb.str("func"))),
         mb.call(mb.field(mb.scope_use("render_builder"), mb.str("arg")), mb.scope_use("code")),
         mb.call(mb.field(mb.scope_use("render_builder"), mb.str("ret")), mb.scope_use("string")),
-        mb.call(
-            mb.field(mb.scope_use("render_builder"), mb.str("impl")),
-            mb.stage(
-                mb.block(
-                    vec![
-                        mb.bind(
-                            "context",
-                            mb.record(
-                                vec![
-                                    (
-                                        "out",
-                                        mb.call(
-                                            mb.field(
-                                                mb.call(mb.scope_use("list"), mb.scope_use("string")),
-                                                mb.str("new"),
-                                            ),
-                                            mb.tuple(vec![]),
-                                        ),
-                                    ),
-                                    ("expr_count", mb.as_(mb.num(0.), mb.scope_use("number"))),
-                                ],
-                            ),
-                        ),
-                        mb.call(
-                            mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("push")),
-                            mb.call(
-                                mb.lower(mb.scope_use("render_inner")),
-                                mb.record(
-                                    vec![("context", mb.scope_use("context")), ("code", mb.scope_use("arg"))],
-                                ),
-                            ),
-                        ),
-                        mb.call(
-                            mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("join")),
-                            mb.str(""),
-                        ),
-                    ],
+        mb.call(mb.field(mb.scope_use("render_builder"), mb.str("impl")), mb.stage(mb.block(vec![
+            //. .
+            mb.bind("context", mb.record(vec![
+                //. .
+                (
+                    "out",
+                    mb.call(
+                        mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
+                        mb.tuple(vec![]),
+                    ),
+                ),
+                ("expr_count", mb.as_(mb.num(0.), mb.scope_use("number"))),
+            ])),
+            mb.call(
+                mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("push")),
+                mb.call(
+                    mb.lower(mb.scope_use("render_inner")),
+                    mb.record(vec![("context", mb.scope_use("context")), ("code", mb.scope_use("arg"))]),
                 ),
             ),
-        ),
+            mb.call(mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("join")), mb.str("")),
+        ]))),
         // Assemble and return
-        mb.record(
-            vec![
-                ("type", mb.scope_use("code")),
-                ("call", mb.scope_use("code_call")),
-                ("lit_str", mb.scope_use("code_lit_str")),
-                ("field", mb.scope_use("code_field")),
-                ("scope_use", mb.scope_use("code_scope_use")),
-                ("render", mb.scope_use("render")),
-            ],
-        ),
-    ]));
+        mb.record(vec![
+            //. .
+            ("type", mb.scope_use("code")),
+            ("call", mb.scope_use("code_call")),
+            ("lit_str", mb.scope_use("code_lit_str")),
+            ("field", mb.scope_use("code_field")),
+            ("scope_use", mb.scope_use("code_scope_use")),
+            ("render", mb.scope_use("render")),
+        ]),
+    ]);
 }
 
 #[test]
@@ -372,7 +363,7 @@ fn test_0000_nodejs_code() {
                     SourceModule::V1(
                         mb.block(
                             vec![
-                                mb.bind("code", build_nodejs_code(&mb)),
+                                mb.bind("code", mb.lower(build_nodejs_code(&mb))),
                                 mb.call(
                                     mb.scope_use("log"),
                                     code(
@@ -1157,3 +1148,59 @@ e138 = e139;
 }
 e138;"#);
 }
+//. #[test]
+//. fn test_0000_nodejs_helloworld() {
+//.    setup_v8();
+//.    let gx = new_gx([
+//.        //. .
+//.        ("nodejs", SourceModule::V1({
+//.            let mb = ModuleBuilder::default();
+//.            build_nodejs(&mb)
+//.        })),
+//.        ("main", SourceModule::V1({
+//.            let mb = ModuleBuilder::default();
+//.            mb.block(vec![
+//.                //. .
+//.                mb.bind("nodejs", mb.import(mb.str("nodejs"))),
+//.                mb.bind("app", mb.call(mb.scope_use("nodejs"), mb.tuple(vec![]))),
+//.                mb.call(
+//.                    mb.field(mb.scope_use("app"), mb.str("root")),
+//.                    mb.stage(
+//.                        mb.call(mb.field(mb.scope_use("console"), mb.str("log")), mb.str("Hello world (node)")),
+//.                    ),
+//.                ),
+//.                mb.call(
+//.                    mb.scope_use("log"),
+//.                    mb.call(mb.field(mb.scope_use("app"), mb.str("build")), mb.tuple(vec![])),
+//.                ),
+//.            ])
+//.        })),
+//.    ].into_iter().collect());
+//.    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+//.    assert_eq!(res.logs.len(), 1);
+//.    assert_eq!(res.logs[0].message, r#"let e0;
+//. {
+//. let e1;
+//. {
+//. let e2;
+//. {
+//. e2 = console;
+//. }
+//. let e3;
+//. {
+//. e3 = "log";
+//. }
+//. e1 = e2.e3;
+//. }
+//. let e4;
+//. {
+//. e4 = "Hello world (node)";
+//. }
+//. e0 = (e1)(e4);
+//. }
+//. e0"#);
+//.    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
+//.    assert_eq!(js_sources.len(), 2);
+//.    assert_eq!(js_sources[0], r#"TODO"#);
+//.    assert_eq!(js_sources[1], r#"TODO"#);
+//. }
