@@ -92,83 +92,83 @@ impl AspectFunction for TypeFunctionDynamic {
     ) -> crate::langhelp::EvalRes {
         return er_seq_cv!(loc, erb, {
             let func_type = function.value.type_(xx, loc);
-            let arg_type = argument.value.type_(xx, loc);
-
-            // Check if argument is a tuple
-            if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
-                let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
-                let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.ret.as_ref()))?;
-                let func = erb.must_er(func_to_dynamic.to_dynamic(xx, loc, function))?;
-
-                // Get parameter types from function arg type
-                let param_types = if let Some(param_tuple) = aspect_tuple_get_maybe(xx, self.arg.as_ref()) {
-                    param_tuple.element_types()
-                } else {
-                    vec![self.arg.clone()]
-                };
-                let elements = arg_tuple.take_elements(argument.value);
-
-                // Empty tuple calling a null-arg function → zero JS args
-                let (elements, param_types) =
-                    if elements.is_empty() && param_types.len() == 1 &&
-                        crate::builtin::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
-                        (vec![], vec![])
-                    } else {
-                        (elements, param_types)
-                    };
-                if elements.len() != param_types.len() {
-                    return erb.err_new(
-                        format!("Function expects {} arguments, got {}", param_types.len(), elements.len())
-                    );
-                }
-                let mut js_args = vec![];
-                for (elem, param_type) in elements.into_iter().zip(param_types.iter()) {
-                    let cv = match elem.v {
-                        Some(cv) => cv,
-                        None => {
-                            if let Some(errs) = elem.errors {
-                                erb.errors.extend(errs);
-                            }
-                            return erb.err_new(format!("Tuple element failed to evaluate"));
-                        },
-                    };
-                    if let Some(errs) = elem.errors {
-                        erb.errors.extend(errs);
-                    }
-                    let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
-                    let elem_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, param_type.as_ref()))?;
-                    let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
-                    js_args.push(js);
-                }
-                return Ok(ret_stack.to_value(loc, CodeDynamic {
-                    loc: loc,
-                    type_: CodeDynamicType::Call(CodeDynamicCall {
-                        func: Box::new(func),
-                        args: js_args,
-                    })
-                }));
-            }
-
-            // Non-tuple argument path (original behavior)
-            er_all!(erb, {
-                func_to_dynamic = aspect_consume_dynamic_get(xx, loc, func_type.as_ref()),
-                arg_to_dynamic = aspect_consume_dynamic_get(xx, loc, self.arg.as_ref()),
-                ret_stack = aspect_stack_value_dynamic_get(xx, loc, self.ret.as_ref()),
-                argument = typecheck_convert(xx, loc, self.arg.as_ref(), argument),
-            });
-            er_all!(erb, {
-                func = func_to_dynamic.to_dynamic(xx, loc, function),
-                arg = arg_to_dynamic.to_dynamic(xx, loc, argument),
-            });
-            return Ok(ret_stack.to_value(loc, CodeDynamic {
-                loc: loc,
-                type_: CodeDynamicType::Call(CodeDynamicCall {
-                    func: Box::new(func),
-                    args: vec![arg],
-                })
-            }));
+            let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
+            let func_code = erb.must_er(func_to_dynamic.to_dynamic(xx, loc, function))?;
+            let result =
+                erb.must_er(dynamic_call(xx, loc, func_code, self.arg.clone(), self.ret.clone(), argument))?;
+            return Ok(result);
         });
     }
+}
+
+pub(crate) fn dynamic_call(
+    xx: &ExprContext,
+    loc: QExprId,
+    func_code: CodeDynamic,
+    arg_type: Rc<dyn Type>,
+    ret_type: Rc<dyn Type>,
+    argument: CodeValue,
+) -> crate::langhelp::EvalRes {
+    return er_seq_cv!(loc, erb, {
+        let arg_value_type = argument.value.type_(xx, loc);
+        let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, ret_type.as_ref()))?;
+        if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
+            let param_types = if let Some(param_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
+                param_tuple.element_types()
+            } else {
+                vec![arg_type.clone()]
+            };
+            let elements = arg_tuple.take_elements(argument.value);
+            let (elements, param_types) =
+                if elements.is_empty() && param_types.len() == 1 &&
+                    crate::builtin::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
+                    (vec![], vec![])
+                } else {
+                    (elements, param_types)
+                };
+            if elements.len() != param_types.len() {
+                return erb.err_new(
+                    format!("Function expects {} arguments, got {}", param_types.len(), elements.len())
+                );
+            }
+            let mut js_args = vec![];
+            for (elem, param_type) in elements.into_iter().zip(param_types.iter()) {
+                let cv = match elem.v {
+                    Some(cv) => cv,
+                    None => {
+                        if let Some(errs) = elem.errors {
+                            erb.errors.extend(errs);
+                        }
+                        return erb.err_new(format!("Tuple element failed to evaluate"));
+                    },
+                };
+                if let Some(errs) = elem.errors {
+                    erb.errors.extend(errs);
+                }
+                let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
+                let elem_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, param_type.as_ref()))?;
+                let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
+                js_args.push(js);
+            }
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Call(CodeDynamicCall {
+                    func: Box::new(func_code),
+                    args: js_args,
+                }),
+            }));
+        }
+        let arg_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
+        let argument = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), argument))?;
+        let arg = erb.must_er(arg_to_dynamic.to_dynamic(xx, loc, argument))?;
+        return Ok(ret_stack.to_value(loc, CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Call(CodeDynamicCall {
+                func: Box::new(func_code),
+                args: vec![arg],
+            }),
+        }));
+    });
 }
 
 impl AspectInitialBind for TypeFunctionDynamic {

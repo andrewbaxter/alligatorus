@@ -14,7 +14,6 @@ use {
             definition_set::DefinitionSet,
             dynamic_util::{
                 ValueDynamic,
-                ValueDynamicDataScope,
                 ValueDynamicSource,
             },
             value::{
@@ -110,17 +109,18 @@ impl AspectField for TypeSourceExportsLiftedDynamic {
                 let functions = self.set.functions.borrow();
                 for func_data in functions.iter() {
                     if func_data.name.as_deref() == Some(&key_name) {
-                        let key =
-                            func_data.scope_entry_id.get().expect("Definition set function not registered");
+                        {
+                            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
+                            if !sets.iter().any(|s| s.def_set_id == self.set.def_set_id) {
+                                sets.push(self.set.clone());
+                            }
+                        }
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
-                                code: Code_::None
+                                code: Code_::None,
                             },
-                            value: Rc::new(ValueDynamic {
-                                source: ValueDynamicSource::Binding(ValueDynamicDataScope { key }),
-                                type_: Rc::new(TypeSourceFunctionConst { data: func_data.clone(), }),
-                            }),
+                            value: Rc::new(TypeSourceFunctionConst { data: func_data.clone() }),
                         });
                     }
                 }
