@@ -101,6 +101,17 @@ impl AspectStringConst for TypeStringConst {
     }
 }
 
+impl crate::builtin::AspectConsumeDynamic for TypeStringConst {
+    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<crate::code_dynamic::CodeDynamic> {
+        // Emit a JS string literal for the const value.
+        let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
+        EResult::ok(crate::code_dynamic::CodeDynamic {
+            loc,
+            type_: crate::code_dynamic::CodeDynamicType::Literal(serde_json::Value::String(s)),
+        })
+    }
+}
+
 impl Type for TypeStringConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringConst)
@@ -109,6 +120,9 @@ impl Type for TypeStringConst {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_string_const_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectStringConst>));
+        }
+        if *key == crate::builtin::aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn crate::builtin::AspectConsumeDynamic>));
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectArtifact>));

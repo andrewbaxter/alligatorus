@@ -1094,6 +1094,19 @@ fn eval(
         dynamic_wrap!(fn constkey_to_str(ex, dynamic_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
             key.to_str()
         }),
+        // `gen_binding_name(xx)` returns a fresh JS binding name (e.g. "a17")
+        // unique within this compile. Used by target.bind impls to mint the
+        // `let aN; { ... aN = code; }` binding key for a new dynamic binding.
+        // The `xx` argument is ignored — uniqueness comes from `ex.ix`'s
+        // shared counter; the parameter exists so the source-side signature
+        // matches the Rust `bind`'s `xx: &ExprContext` carry.
+        dynamic_wrap!(fn gen_binding_name(ex, dynamic_scope, scope)(
+            _xx: crate::eval::code_value_extern::CodeValueExtern
+        ) -> String {
+            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let id = ex_slot.ex.next_local_id.next();
+            format!("a{}", id)
+        }),
         // v8-callable `eval_const`: invoked synchronously from a user-defined
         // `cast_from`'s JS body. Takes the active `ExprContext` (carried as
         // External via `arg.xx`) and a staged inner expression. Runs Rust
@@ -1636,6 +1649,24 @@ fn eval(
                                         => vec!["key"],
                                     (Some(value::type_source_interface::BuiltinInterfaceKind::ScopeEntry), "use_")
                                         => vec!["loc", "code"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "bind")
+                                        => vec!["xx", "loc", "sub"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "bind_sub_record")
+                                        => vec!["loc", "carry", "fields"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "bind_sub_tuple")
+                                        => vec!["loc", "carry", "elements"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "block")
+                                        => vec!["loc", "entries"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "code_to_bind_sub")
+                                        => vec!["loc", "code", "type"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "if_")
+                                        => vec!["xx", "loc", "conditions", "else_"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "match_")
+                                        => vec!["xx", "loc", "base", "element_key", "cases", "fallback"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "maybe_bind_sub")
+                                        => vec!["xx", "loc", "cv"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "stage")
+                                        => vec!["xx", "loc", "tree", "lower_values"],
                                     _ => vec![],
                                 };
                                 let arg_type: Rc<dyn Type> = build_aspect_arg_record_type(&arg_field_names);

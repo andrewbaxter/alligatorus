@@ -7,6 +7,7 @@ use {
             AspectField,
             AspectFunction,
             AspectInitialBind,
+            AspectSet,
             AspectStackValueDynamic,
             AspectTaggedUnion,
             aspect_bind_aspect_id,
@@ -16,6 +17,7 @@ use {
             aspect_field_aspect_id,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
+            aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_stack_value_dynamic_get,
             aspect_string_const_get,
@@ -33,6 +35,7 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
+                mortar_set,
             },
             typecheck_convert,
             value::{
@@ -185,6 +188,12 @@ impl AspectTaggedUnion for TypeOptionDynamic {
     }
 }
 
+impl AspectSet for TypeOptionDynamic {
+    fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
+        mortar_set(xx, loc, self_, value)
+    }
+}
+
 impl Type for TypeOptionDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
@@ -214,6 +223,9 @@ impl Type for TypeOptionDynamic {
         }
         if *key == aspect_tagged_union_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectTaggedUnion>));
+        }
+        if *key == aspect_set_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectSet>));
         }
         None
     }

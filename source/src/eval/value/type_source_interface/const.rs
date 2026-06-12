@@ -172,14 +172,31 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
     }
 }
 
+/// Marker `Unique` used to identify *any* concrete `TypeSourceInterfaceConst`
+/// instance — distinct from `interface_ref_type_identity()` (which marks the
+/// type-erased dynamic ref) and from each interface's own `data.identity`.
+pub(crate) fn interface_const_identity() -> Unique {
+    Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
+
 impl Type for TypeSourceInterfaceConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }))
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         // Check interface identity aspect
         if *key == self.data.identity {
+            return Some(Box::new(true));
+        }
+        if *key == interface_const_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_field_aspect_id() {

@@ -158,11 +158,24 @@ impl Type for TypeSourceInterfaceDynamic {
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         source_type.aspect(xx, &interface_ref_type_identity()).is_some()
+            || source_type
+                .aspect(
+                    xx,
+                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                )
+                .is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
-        if source_type.aspect(xx, &interface_ref_type_identity()).is_some() {
+        if source_type.aspect(xx, &interface_ref_type_identity()).is_some()
+            || source_type
+                .aspect(
+                    xx,
+                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                )
+                .is_some()
+        {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
@@ -174,7 +187,39 @@ impl Type for TypeSourceInterfaceDynamic {
         EvalRes::err(loc, format!("Cannot convert to interface_ref"))
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        // A dynamic interface ref can flow into any specific interface type
+        // (Const) — the runtime value carries the actual interface data and
+        // matches identity at use-time.
+        type_.aspect(xx, &interface_ref_type_identity()).is_some()
+            || type_
+                .aspect(
+                    xx,
+                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                )
+                .is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        if type_
+            .aspect(xx, &interface_ref_type_identity())
+            .is_some()
+            || type_
+                .aspect(
+                    xx,
+                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                )
+                .is_some()
+        {
+            let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceInterfaceDynamic) as Rc<dyn Type>);
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: dest_rc,
+                }),
+            });
+        }
         EvalRes::err(loc, format!("Cannot convert interface_ref"))
     }
 

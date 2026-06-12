@@ -166,11 +166,17 @@ impl Type for TypeExpr {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
-            let expr = must_downcast_ref::<Expr>(cv.value.as_ref()).clone();
-            return EvalRes::ok(CodeValue {
-                code: cv.code,
-                value: Rc::new(expr),
-            });
+            // If the value is itself an `Expr` (e.g. from a `stage(...)`
+            // literal), clone it directly; otherwise the static type is
+            // already `expr` (e.g. via a dynamic binding) and we pass through
+            // the CV unchanged.
+            if let Some(expr) = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<Expr>() {
+                return EvalRes::ok(CodeValue {
+                    code: cv.code,
+                    value: Rc::new(expr.clone()),
+                });
+            }
+            return EvalRes::ok(cv);
         }
 
         // Wrap any non-Expr value as a literal Expr that reproduces the value
