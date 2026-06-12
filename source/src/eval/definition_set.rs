@@ -306,15 +306,14 @@ pub(crate) fn serialize_captured_externals(
                         .expect("Failed to serialize captured StagedExprCell value");
                     ArtifactExternal::StagedExpr { local_id, expr }
                 },
-                crate::langhelp::External::StageLiftCell(_cell) => {
-                    // The lift's source type isn't directly recoverable from
-                    // the `Box<dyn AspectLiftDynamic>`, so for now we punt;
-                    // round-trip support for `StageLiftCell` needs the source
-                    // type carried alongside the lift on the cell.
-                    panic!(
-                        "captured StageLiftCell at Local({}) — round-trip not yet implemented",
-                        local_id,
-                    )
+                crate::langhelp::External::StageLiftCell(cell) => ArtifactExternal::StageLift {
+                    local_id,
+                    source_type:
+                        crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                            xx,
+                            loc,
+                            cell.source_type.as_ref(),
+                        ),
                 },
                 crate::langhelp::External::Type(type_) => ArtifactExternal::Type {
                     local_id,
@@ -355,10 +354,22 @@ pub(crate) fn deserialize_captured_externals(
                         crate::langhelp::External::StagedExprCell(cell),
                     )
                 },
-                ArtifactExternal::StageLift { local_id, .. } => {
-                    panic!(
-                        "captured StageLiftCell at Local({}) — round-trip not yet implemented",
-                        local_id,
+                ArtifactExternal::StageLift { local_id, source_type } => {
+                    let (source_type, _code) =
+                        crate::eval::util::deserialize_type_artifact(xx, loc, source_type)
+                            .into_res()
+                            .expect("Failed to deserialize captured StageLiftCell source type");
+                    let cell = Rc::new(crate::eval::StageLiftCell {
+                        source_type,
+                        loc,
+                        vx: xx.vx.clone(),
+                        import_state: xx.import_state.clone(),
+                        scope: xx.scope.clone(),
+                        target: xx.target.clone(),
+                    });
+                    (
+                        crate::langhelp::ScopeEntryId::Local(*local_id),
+                        crate::langhelp::External::StageLiftCell(cell),
                     )
                 },
                 ArtifactExternal::Type { local_id, type_artifact } => {

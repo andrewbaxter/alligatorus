@@ -2056,7 +2056,11 @@ fn eval(
                         scope: lift_cell.scope.clone(),
                         target: lift_cell.target.clone(),
                     };
-                    let value = lift_cell.lift.lift(&lift_xx, &*scope, val_arg).expect("__stage: lift failed");
+                    let lift =
+                        aspect_lift_dynamic_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
+                            .into_res()
+                            .expect("__stage: source type missing AspectLiftDynamic");
+                    let value = lift.lift(&lift_xx, &*scope, val_arg).expect("__stage: lift failed");
                     values.push(StageLowerValue::Value(value));
                 }
             }
@@ -3042,11 +3046,13 @@ pub fn setup_v8() {
     });
 }
 
-/// Holds an AspectLiftDynamic, stored as a v8::External so __stage can lift raw
-/// values.
+/// Stored as a v8::External so __stage can lift raw values. The source type's
+/// `AspectLiftDynamic` is looked up at lift time so the cell stays
+/// artifact-serializable (the boxed aspect was not).
 pub(crate) struct StageLiftCell {
     pub import_state: Rc<Cell<ImportStateId>>,
-    pub lift: Box<dyn AspectLiftDynamic>,
+    pub loc: QExprId,
+    pub source_type: Rc<dyn Type>,
     pub scope: Rc<Scope>,
     pub target: Rc<dyn Target>,
     pub vx: Rc<EvalContext>,
@@ -3365,9 +3371,9 @@ impl Target for TargetDynamic {
                         });
                     },
                     Code_::Dyn(_) => {
-                        let lift = erb.must_er(aspect_lift_dynamic_get(xx, loc, vtype.as_ref()))?;
                         let lift_cell = Rc::new(StageLiftCell {
-                            lift,
+                            source_type: vtype.clone(),
+                            loc,
                             vx: xx.vx.clone(),
                             import_state: xx.import_state.clone(),
                             scope: xx.scope.clone(),
