@@ -47,6 +47,7 @@ pub enum SourceExpr_ {
     Lower(SourceExprLower),
     Match(SourceExprMatch),
     OperatorAdd(SourceExprOperatorAdd),
+    OperatorEq(SourceExprOperatorEq),
     OperatorLt(SourceExprOperatorLt),
     Record(Vec<(SourceExpr, SourceExpr)>),
     ScopeUse(SourceExprBindingUse),
@@ -161,6 +162,14 @@ pub struct SourceExprMatch {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprOperatorAdd {
+    pub base: Box<SourceExpr>,
+    pub reference: Box<SourceExpr>,
+}
+
+/// Evaluated in order "base", "reference". Returns a `bool`.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprOperatorEq {
     pub base: Box<SourceExpr>,
     pub reference: Box<SourceExpr>,
 }

@@ -9,9 +9,11 @@ use {
             AspectBind,
             AspectConsumeDynamic,
             AspectInitialBind,
+            AspectOperatorEq,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
+            aspect_operator_eq_aspect_id,
         },
         code_dynamic::CodeDynamic,
         eval::{
@@ -74,6 +76,17 @@ impl AspectBind for TypeUnique {
 impl AspectConsumeDynamic for TypeUnique {
     fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectOperatorEq for TypeUnique {
+    fn eq(&self, _xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        let base_u = crate::invariant::must_downcast_ref::<Unique>(base.value.as_ref()).clone();
+        let ref_u = crate::invariant::must_downcast_ref::<Unique>(reference.value.as_ref()).clone();
+        EvalRes::ok(CodeValue {
+            code: Code { loc, code: crate::langhelp::Code_::None },
+            value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_u == ref_u)),
+        })
     }
 }
 
@@ -157,6 +170,9 @@ impl Type for TypeUnique {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeUnique) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_operator_eq_aspect_id() {
+            return Some(Box::new(Box::new(TypeUnique) as Box<dyn AspectOperatorEq>));
         }
         None
     }

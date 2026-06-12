@@ -8,6 +8,7 @@ use {
             AspectInitialBind,
             AspectNumberDynamic,
             AspectOperatorAdd,
+            AspectOperatorEq,
             AspectOperatorLt,
             AspectSet,
             AspectStackValueDynamic,
@@ -20,6 +21,7 @@ use {
             aspect_number_dynamic_aspect_id,
             aspect_number_dynamic_get_maybe,
             aspect_operator_add_aspect_id,
+            aspect_operator_eq_aspect_id,
             aspect_operator_lt_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
@@ -31,6 +33,7 @@ use {
             CodeDynamicBlockEntry,
             CodeDynamicFieldUse,
             CodeDynamicOperatorAdd,
+            CodeDynamicOperatorEq,
             CodeDynamicOperatorLt,
             CodeDynamicType,
         },
@@ -219,6 +222,32 @@ impl AspectOperatorLt for TypeNumberDynamic {
     }
 }
 
+impl AspectOperatorEq for TypeNumberDynamic {
+    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
+            let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
+            let ref_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, ref_cv))?;
+            return Ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::OperatorEq(CodeDynamicOperatorEq {
+                            base: Box::new(base_code),
+                            reference: Box::new(ref_code),
+                        }),
+                    })),
+                },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
+                }),
+            });
+        });
+    }
+}
+
 impl AspectSet for TypeNumberDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
         mortar_set(xx, loc, self_, value)
@@ -263,6 +292,9 @@ impl Type for TypeNumberDynamic {
         }
         if *key == aspect_operator_lt_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectOperatorLt>));
+        }
+        if *key == aspect_operator_eq_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectOperatorEq>));
         }
         if *key == aspect_operator_add_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectOperatorAdd>));

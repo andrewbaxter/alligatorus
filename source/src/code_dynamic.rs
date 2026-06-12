@@ -122,6 +122,12 @@ pub(crate) struct CodeDynamicOperatorAdd {
 }
 
 #[derive(Clone)]
+pub(crate) struct CodeDynamicOperatorEq {
+    pub(crate) base: Box<CodeDynamic>,
+    pub(crate) reference: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
 pub(crate) struct CodeDynamicOperatorLt {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) reference: Box<CodeDynamic>,
@@ -144,5 +150,6 @@ pub(crate) enum CodeDynamicType {
     NewMap(CodeDynamicNewMap),
     NewObject(CodeDynamicNewObject),
     OperatorAdd(CodeDynamicOperatorAdd),
+    OperatorEq(CodeDynamicOperatorEq),
     OperatorLt(CodeDynamicOperatorLt),
 }

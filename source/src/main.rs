@@ -27,6 +27,7 @@ use {
                 ExprMatch,
                 ExprMatchBranch,
                 ExprOperatorAdd,
+                ExprOperatorEq,
                 ExprOperatorLt,
                 ExprRecord,
                 ExprScopeUse,
@@ -175,6 +176,10 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                     else_: expr.fallback.as_ref().map(|e| Rc::new(source_expr_to_expr(source_id, e))),
                 }),
                 SourceExpr_::OperatorLt(expr) => Expr_::OperatorLt(ExprOperatorLt {
+                    base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
+                    reference: Rc::new(source_expr_to_expr(source_id, &expr.reference)),
+                }),
+                SourceExpr_::OperatorEq(expr) => Expr_::OperatorEq(ExprOperatorEq {
                     base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
                     reference: Rc::new(source_expr_to_expr(source_id, &expr.reference)),
                 }),

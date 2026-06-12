@@ -29,6 +29,7 @@ use {
             aspect_iterable_get,
             aspect_lift_dynamic_get,
             aspect_operator_add_get,
+            aspect_operator_eq_get,
             aspect_operator_lt_get,
             aspect_set_get,
             aspect_stack_value_dynamic_get,
@@ -279,6 +280,9 @@ pub(crate) fn compile_importid(
                     m
                 },
                 Expr_::OperatorLt(e) => {
+                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+                },
+                Expr_::OperatorEq(e) => {
                     max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
                 },
                 Expr_::OperatorAdd(e) => {
@@ -559,6 +563,10 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         find_matched_lowers_inner(&e.base, sd, ld, out);
                         find_matched_lowers_inner(&e.reference, sd, ld, out);
                     },
+                    Expr_::OperatorEq(e) => {
+                        find_matched_lowers_inner(&e.base, sd, ld, out);
+                        find_matched_lowers_inner(&e.reference, sd, ld, out);
+                    },
                     Expr_::OperatorAdd(e) => {
                         find_matched_lowers_inner(&e.base, sd, ld, out);
                         find_matched_lowers_inner(&e.reference, sd, ld, out);
@@ -694,6 +702,16 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let base_type = base.value.type_(xx, expr.loc);
             let aspect_lt = erb.must_er(aspect_operator_lt_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(aspect_lt.lt(xx, expr.loc, base, reference))?;
+            return Ok(v);
+        }),
+        Expr_::OperatorEq(e) => return er_seq_cv!(expr.loc, erb, {
+            er_all!(erb, {
+                base = const_eval(xx, e.base.as_ref()),
+                reference = const_eval(xx, e.reference.as_ref()),
+            });
+            let base_type = base.value.type_(xx, expr.loc);
+            let aspect_eq = erb.must_er(aspect_operator_eq_get(xx, expr.loc, base_type.as_ref()))?;
+            let v = erb.must_er(aspect_eq.eq(xx, expr.loc, base, reference))?;
             return Ok(v);
         }),
         Expr_::OperatorAdd(e) => return er_seq_cv!(expr.loc, erb, {
@@ -1852,6 +1870,13 @@ fn eval(
                             reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
                         }),
                     },
+                    Expr_::OperatorEq(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::OperatorEq(expr::ExprOperatorEq {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
+                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
+                        }),
+                    },
                     Expr_::OperatorAdd(e) => Expr {
                         loc: expr.loc,
                         r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
@@ -2258,6 +2283,11 @@ pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> St
             let base_var = render_code(lines, &c.base);
             let ref_var = render_code(lines, &c.reference);
             lines.push(code.loc, format!("{} = ({} < {});", out, base_var, ref_var));
+        },
+        CodeDynamicType::OperatorEq(c) => {
+            let base_var = render_code(lines, &c.base);
+            let ref_var = render_code(lines, &c.reference);
+            lines.push(code.loc, format!("{} = ({} === {});", out, base_var, ref_var));
         },
         CodeDynamicType::OperatorAdd(c) => {
             let base_var = render_code(lines, &c.base);

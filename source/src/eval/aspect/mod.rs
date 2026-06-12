@@ -12,6 +12,7 @@ mod aspect_map;
 mod aspect_null;
 mod aspect_number;
 mod aspect_operator_add;
+mod aspect_operator_eq;
 mod aspect_operator_lt;
 mod aspect_record;
 mod aspect_set;
@@ -45,6 +46,7 @@ pub(crate) use {
         r#const::*,
     },
     aspect_operator_add::*,
+    aspect_operator_eq::*,
     aspect_operator_lt::*,
     aspect_record::*,
     aspect_set::*,

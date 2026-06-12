@@ -30,6 +30,7 @@ pub(crate) enum Expr_ {
     Lower(ExprLower),
     Match(ExprMatch),
     OperatorAdd(ExprOperatorAdd),
+    OperatorEq(ExprOperatorEq),
     OperatorLt(ExprOperatorLt),
     Record(ExprRecord),
     ScopeUse(ExprScopeUse),
@@ -117,6 +118,12 @@ pub(crate) struct ExprMatchBranch {
 
 #[derive(Clone)]
 pub(crate) struct ExprOperatorAdd {
+    pub base: Rc<Expr>,
+    pub reference: Rc<Expr>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ExprOperatorEq {
     pub base: Rc<Expr>,
     pub reference: Rc<Expr>,
 }

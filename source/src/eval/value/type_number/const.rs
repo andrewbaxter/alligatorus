@@ -5,6 +5,7 @@ use {
             AspectField,
             AspectNumberConst,
             AspectOperatorAdd,
+            AspectOperatorEq,
             AspectOperatorLt,
             aspect_bind_aspect_id,
             aspect_field_aspect_id,
@@ -12,6 +13,7 @@ use {
             aspect_number_const_get,
             aspect_number_const_get_maybe,
             aspect_operator_add_aspect_id,
+            aspect_operator_eq_aspect_id,
             aspect_operator_lt_aspect_id,
         },
         eval::{
@@ -112,6 +114,23 @@ impl AspectOperatorLt for TypeNumberConst {
     }
 }
 
+impl AspectOperatorEq for TypeNumberConst {
+    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_type = base.value.type_(xx, loc);
+            let base_num = erb.must_er(aspect_number_const_get(xx, loc, base_type.as_ref()))?;
+            let base_val = base_num.get(base.value.as_ref());
+            let ref_type = reference.value.type_(xx, loc);
+            let ref_num = erb.must_er(aspect_number_const_get(xx, loc, ref_type.as_ref()))?;
+            let ref_val = ref_num.get(reference.value.as_ref());
+            return Ok(CodeValue {
+                code: base.code.clone(),
+                value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_val == ref_val)),
+            });
+        });
+    }
+}
+
 impl Type for TypeNumberConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNumberConst)
@@ -129,6 +148,9 @@ impl Type for TypeNumberConst {
         }
         if *key == aspect_operator_lt_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorLt>));
+        }
+        if *key == aspect_operator_eq_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorEq>));
         }
         if *key == aspect_operator_add_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorAdd>));

@@ -27,6 +27,7 @@ use {
             SourceExprLower,
             SourceExprMatch,
             SourceExprOperatorAdd,
+            SourceExprOperatorEq,
             SourceExprOperatorLt,
             SourceExprSet,
             SourceExprStage,
@@ -73,6 +74,15 @@ impl ModuleBuilder {
                 value: Box::new(expr),
             }),
         };
+    }
+
+    pub fn bool(&self, v: bool) -> SourceExpr {
+        // No boolean literal in `SourceLiteral` yet — synthesize via `operator_lt`.
+        if v {
+            return self.operator_lt(self.num(0.), self.num(1.));
+        } else {
+            return self.operator_lt(self.num(1.), self.num(0.));
+        }
     }
 
     pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
@@ -192,6 +202,16 @@ impl ModuleBuilder {
         return SourceExpr {
             id: self.id(),
             r#type: SourceExpr_::OperatorAdd(SourceExprOperatorAdd {
+                base: Box::new(base),
+                reference: Box::new(reference),
+            }),
+        };
+    }
+
+    pub fn operator_eq(&self, base: SourceExpr, reference: SourceExpr) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::OperatorEq(SourceExprOperatorEq {
                 base: Box::new(base),
                 reference: Box::new(reference),
             }),

@@ -22,6 +22,7 @@ use {
             ExprMatch,
             ExprMatchBranch,
             ExprOperatorAdd,
+            ExprOperatorEq,
             ExprOperatorLt,
             ExprRecord,
             ExprScopeUse,
@@ -78,6 +79,7 @@ pub(crate) enum ArtifactExpr_ {
         fallback: Option<ArtifactExpr>,
     },
     OperatorAdd { base: ArtifactExpr, reference: ArtifactExpr },
+    OperatorEq { base: ArtifactExpr, reference: ArtifactExpr },
     OperatorLt { base: ArtifactExpr, reference: ArtifactExpr },
     Record { entries: Vec<(ArtifactExpr, ArtifactExpr)> },
     ScopeUse { key: ArtifactExpr },
@@ -171,6 +173,10 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             base: expr_to_artifact(xx, &e.base)?,
             reference: expr_to_artifact(xx, &e.reference)?,
         },
+        Expr_::OperatorEq(e) => ArtifactExpr_::OperatorEq {
+            base: expr_to_artifact(xx, &e.base)?,
+            reference: expr_to_artifact(xx, &e.reference)?,
+        },
         Expr_::OperatorLt(e) => ArtifactExpr_::OperatorLt {
             base: expr_to_artifact(xx, &e.base)?,
             reference: expr_to_artifact(xx, &e.reference)?,
@@ -252,6 +258,10 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
             fallback: fallback.as_ref().map(|x| expr_from_artifact(xx, x).map(Rc::new)).transpose()?,
         }),
         ArtifactExpr_::OperatorAdd { base, reference } => Expr_::OperatorAdd(ExprOperatorAdd {
+            base: Rc::new(expr_from_artifact(xx, base)?),
+            reference: Rc::new(expr_from_artifact(xx, reference)?),
+        }),
+        ArtifactExpr_::OperatorEq { base, reference } => Expr_::OperatorEq(ExprOperatorEq {
             base: Rc::new(expr_from_artifact(xx, base)?),
             reference: Rc::new(expr_from_artifact(xx, reference)?),
         }),
