@@ -31,7 +31,7 @@ use {
 fn aspect_dispatch(mb: &ModuleBuilder, aspect_names: Vec<&str>) -> SourceExpr {
     let conditions: Vec<(SourceExpr, SourceExpr)> = aspect_names.into_iter().map(|aspect| {
         (
-            mb.operator_eq(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use(aspect)),
+            mb.operator_eq(mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")), mb.scope_use(aspect)),
             mb.call(mb.lower(mb.field(mb.scope_use("option_any"), mb.str("some"))), mb.scope_use("self")),
         )
     }).collect();
@@ -217,7 +217,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                 "field",
                                                 mb.call(
                                                     mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
-                                                    mb.field(mb.scope_use("arg"), mb.str("key")),
+                                                    mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
                                                 ),
                                             ),
                                         ],
@@ -229,7 +229,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                             "type",
                             mb.call(
                                 mb.field(mb.scope_use("self"), mb.str("get")),
-                                mb.field(mb.scope_use("arg"), mb.str("key")),
+                                mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
                             ),
                         ),
                     ])),
@@ -238,7 +238,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     "field_type_opt",
                     mb.call(
                         mb.field(mb.scope_use("self"), mb.str("get")),
-                        mb.field(mb.scope_use("arg"), mb.str("key")),
+                        mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
                     ),
                 ),
             ],
@@ -804,10 +804,12 @@ fn impl_iface(mb: &ModuleBuilder, target_var: &str, iface: &str, methods: Vec<(&
 
 /// Convert an `nvalue_base` (tagged union of `binding(string)` / `expr(code)`)
 /// into a `code` AST node. `base_expr` should evaluate to an `nvalue_base`. `code`
-/// from the outer scope is lowered in for the `scope_use` constructor.
+/// from the outer scope is lowered in for the `scope_use` constructor. The
+/// argument is cast to `nvalue_base` first — at impl-compile time the static
+/// type may be `any` (the receiver's underlying field type isn't inferred).
 fn nvalue_base_to_code(mb: &ModuleBuilder, base_expr: SourceExpr) -> SourceExpr {
     return mb.match_(
-        base_expr,
+        mb.as_(base_expr, mb.lower(mb.field(mb.scope_use("nvalue_base"), mb.str("type")))),
         mb.str("v"),
         vec![
             (

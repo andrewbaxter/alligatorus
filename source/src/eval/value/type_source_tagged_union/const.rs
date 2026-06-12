@@ -111,6 +111,12 @@ impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
     }
 }
 
+impl crate::builtin::AspectType for TypeSourceTaggedUnionConst {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
+    }
+}
+
 impl Type for TypeSourceTaggedUnionConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
@@ -162,11 +168,45 @@ impl Type for TypeSourceTaggedUnionConst {
                 ),
             );
         }
+        if *key == crate::builtin::aspect_type_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
+                        Box<dyn crate::builtin::AspectType>,
+                ),
+            );
+        }
         return None;
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union"))
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
+        true
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        // Cast from another value to this tagged union type — accept any source
+        // whose runtime structure already matches (the JS object representation
+        // is the same; we just rewrap the value with the more specific type).
+        let source_type = cv.value.type_(xx, loc);
+        if source_type.aspect(xx, &self.data.identity).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                    source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
+                }),
+            });
+        }
+        // From AnyType (or other loose typing): trust the caller — the runtime
+        // value is expected to be a JS object that matches this tagged union's
+        // structure.
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
+            }),
+        })
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {

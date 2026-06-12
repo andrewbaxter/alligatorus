@@ -10,14 +10,22 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectField,
             AspectStackValueDynamic,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_field_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
         },
-        code_dynamic::CodeDynamic,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicCall,
+            CodeDynamicBindingUse,
+            CodeDynamicType,
+        },
         eval::{
+            Erb,
             TargetBindSub,
             dynamic_util::{
                 ValueDynamic,
@@ -35,6 +43,8 @@ use {
             Aspect,
             Code,
             CodeValue,
+            Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -48,6 +58,7 @@ use {
     std::{
         any::Any,
         cell::RefCell,
+        mem,
         rc::Rc,
     },
 };
@@ -235,6 +246,48 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
     }
 }
 
+impl AspectField for TypeCodeValueExternDynamic {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
+            // The key is always a const string at compile time (record field
+            // access). Extract its content and emit a JS string literal —
+            // const strings lack AspectConsumeDynamic but we have everything
+            // we need to inline the value here.
+            let key_type = key.value.type_(xx, loc);
+            let aspect_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let key_str = aspect_string.get(key.value.as_ref());
+            let key_code = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Literal(serde_json::Value::String(key_str)),
+            };
+            let call_code = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Call(CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse {
+                            id: crate::eval::CVE_FIELD_FN_SCOPE_ID,
+                        }),
+                    }),
+                    args: vec![self_code, key_code],
+                }),
+            };
+            return Ok(CodeValue {
+                code: Code { loc, code: Code_::Dyn(Rc::new(call_code)) },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeCodeValueExternDynamic),
+                }),
+            });
+        });
+    }
+
+    fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeCodeValueExternDynamic))
+    }
+}
+
 impl Type for TypeCodeValueExternDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeCodeValueExternDynamic)
@@ -256,11 +309,52 @@ impl Type for TypeCodeValueExternDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectStackValueDynamic>));
         }
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectField>));
+        }
         None
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         source_type.aspect(xx, &code_value_extern_type_identity()).is_some()
+    }
+
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        // A `CodeValueExtern` can be unwrapped to any dest type whose owned
+        // `Rc<dyn Type>` we can construct. `as_ T` emits a `__cve_extract`
+        // call that returns the inner CV's raw JS value, and we re-type the
+        // result as the requested `T`.
+        type_.clone_rc().is_some()
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        let dest_type_rc = match type_.clone_rc() {
+            Some(rc) => rc,
+            None => return EvalRes::err(loc, format!("CodeValueExtern.cast_to: dest type ({}) doesn't support clone_rc", type_.desc())),
+        };
+        let self_code = match cv.code.cast::<CodeDynamic>().into_res() {
+            Ok(Some(c)) => c.clone(),
+            _ => return EvalRes::err(loc, "CodeValueExtern.cast_to: receiver has no dynamic code".to_string()),
+        };
+        let extract_call = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Call(CodeDynamicCall {
+                func: Box::new(CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse {
+                        id: crate::eval::CVE_EXTRACT_FN_SCOPE_ID,
+                    }),
+                }),
+                args: vec![self_code],
+            }),
+        };
+        EvalRes::ok(CodeValue {
+            code: Code { loc, code: Code_::Dyn(Rc::new(extract_call)) },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: dest_type_rc,
+            }),
+        })
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -277,9 +371,6 @@ impl Type for TypeCodeValueExternDynamic {
         EvalRes::err(loc, "Cannot convert to CodeValueExtern".to_string())
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert from CodeValueExtern".to_string())
-    }
 
     fn desc(&self) -> String {
         "CodeValueExtern".to_string()

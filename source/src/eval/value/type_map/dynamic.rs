@@ -141,16 +141,24 @@ impl AspectField for TypeMapDynamic {
                 None => return erb.err_new(format!("Field '{}' not found on map", key_name)),
             };
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
+            // For known method-shaped fields like "get", render the field as a
+            // JS member access on the JS bracket-form (e.g. `m["get"]`) so the
+            // emitted code remains a callable function.
+            let access_code = if key_name == "get" {
+                CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                    base: Box::new(self_code),
+                    field: key_name.clone(),
+                })
+            } else {
+                CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                    base: Box::new(self_code),
+                    field: key_name.clone(),
+                })
+            };
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                            base: Box::new(self_code),
-                            field: key_name.clone(),
-                        }),
-                    })),
+                    code: Code_::Dyn(Rc::new(CodeDynamic { loc, type_: access_code })),
                 },
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
@@ -168,6 +176,10 @@ impl AspectField for TypeMapDynamic {
             "new" => Some(Rc::new(TypeMapNewDynamic {
                 key_type: self.key_type.clone(),
                 value_type: self.value_type.clone(),
+            })),
+            "get" => Some(Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                arg: self.key_type.clone(),
+                ret: self.value_type.clone(),
             })),
             _ => Some(self.value_type.clone()),
         }

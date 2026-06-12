@@ -104,6 +104,7 @@ impl AspectStackValueDynamic for TypeAnyDynamic {
     }
 }
 
+
 impl Type for TypeAnyDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAnyDynamic)
@@ -155,10 +156,6 @@ impl Type for TypeAnyDynamic {
                 type_: Rc::new(TypeAnyDynamic),
             }),
         })
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> crate::langhelp::EvalRes {
-        crate::langhelp::EvalRes::err(loc, "Cannot convert mortar type".to_string())
     }
 
     fn desc(&self) -> String {
