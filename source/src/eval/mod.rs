@@ -184,6 +184,14 @@ pub(crate) const CVE_FIELD_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(lin
 /// CodeValue's code (or const value) into a JS value.
 pub(crate) const CVE_EXTRACT_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__data_type_ref_to_type` rust-in-v8 function
+/// — `TypeSourceDataTypeRefDynamic::cast_to` (when target is `TypeAnyDynamic`
+/// or another type-of-types) emits a call to this function. It reads the
+/// `Rc<SourceDataTypeRef>` from the v8 value (the ref's own representation)
+/// and returns a `Rc<dyn Type>` (`TypeSourceDataTypeConst`) — the
+/// representation `TypeAnyDynamic` expects.
+pub(crate) const DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -2379,6 +2387,35 @@ fn eval(
                         .unwrap()
                         .cast(),
                     cve_extract_fn.into(),
+                );
+            fn data_type_ref_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let dt_ref: Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef> =
+                    from_v8_ref::<Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef>>(
+                        &*args.get(0),
+                    )
+                        .clone();
+                let type_: Rc<dyn Type> =
+                    Rc::new(crate::eval::value::type_source_data_type::TypeSourceDataTypeConst {
+                        data: dt_ref.data.clone(),
+                    });
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let data_type_ref_to_type_fn =
+                v8::Function::builder(data_type_ref_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    data_type_ref_to_type_fn.into(),
                 );
             cix.builtins_registered.set(true);
         }

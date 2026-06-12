@@ -81,14 +81,11 @@ pub(crate) struct TypeSourceDataTypeConst {
 
 impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let type_: &Rc<dyn crate::langhelp::Type> = crate::eval::from_v8_ref(&*value);
-        let dt = crate::invariant::must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
-        Rc::new(SourceDataTypeRef { data: dt.data.clone() })
+        crate::eval::from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        let type_: Rc<dyn crate::langhelp::Type> = Rc::new(TypeSourceDataTypeConst { data: self.data.clone() });
-        crate::eval::to_v8(scope, type_).into()
+        crate::eval::to_v8(scope, self).into()
     }
 
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {

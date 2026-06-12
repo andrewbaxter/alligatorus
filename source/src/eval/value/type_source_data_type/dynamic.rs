@@ -123,10 +123,9 @@ impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let dt = must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
-        dt.data.set.finish()?;
-        Ok(Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }))
+        let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
+        dt_ref.data.set.finish()?;
+        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
     }
 }
 
@@ -173,25 +172,54 @@ impl Type for TypeSourceDataTypeRefDynamic {
         None
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        let any = source_type as &dyn std::any::Any;
-        any.is::<TypeSourceDataTypeConst>()
-            || any.is::<TypeSourceDataTypeDynamic>()
-            || any.is::<TypeSourceDataTypeRefDynamic>()
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
+        false
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to definition_set_data_type_ref".to_string())
+    }
+
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        // Convert to any type-of-types (e.g. `TypeAnyDynamic`, `TypeAnyConst`).
+        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_none() {
+            return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
+        }
+        // Emit a call to the `__data_type_ref_to_type` rust-in-v8 function.
+        // It reads the `Rc<SourceDataTypeRef>` from the v8 value (the ref's
+        // representation) and returns a `Rc<dyn Type> = TypeSourceDataTypeConst`
+        // (the representation the dest expects).
+        let source_code = match cv.code.cast::<CodeDynamic>() {
+            crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+            _ => return EvalRes::err(
+                loc,
+                format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc()),
+            ),
+        };
+        let call = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                func: Box::new(CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse {
+                        id: crate::eval::DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID,
+                    }),
+                }),
+                args: vec![source_code],
+            }),
+        };
+        let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceDataTypeRefDynamic) as Rc<dyn Type>);
         EvalRes::ok(CodeValue {
-            code: cv.code,
+            code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeRefDynamic),
+                type_: dest_rc,
             }),
         })
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert definition_set_data_type_ref".to_string())
     }
 
     fn desc(&self) -> String {

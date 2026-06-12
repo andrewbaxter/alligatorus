@@ -206,10 +206,41 @@ impl Type for TypeExpr {
         _xx: &ExprContext,
         _loc: QExprId,
     ) -> Option<crate::langhelp::Artifact> {
-        Some(crate::eval::value::record::artifact::TypeRecordArtifact::build_artifact(
-            serde_json::Value::Null,
-        ))
+        Some(Self::build_type_artifact())
     }
+}
+
+generate_builtin_artifact_type!(TypeExpr, serde_json::Value);
+
+pub(crate) struct DeserializerTypeExpr;
+
+impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerTypeExpr {
+    fn value_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: crate::langhelp::QExprId,
+        _data: &serde_json::Value,
+    ) -> crate::langhelp::EvalRes {
+        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+            code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::None },
+            value: Rc::new(TypeExpr) as Rc<dyn crate::langhelp::Value>,
+        })
+    }
+
+    fn type_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: crate::langhelp::QExprId,
+        _data: &serde_json::Value,
+    ) -> crate::langhelp::EResult<(Rc<dyn Type>, crate::langhelp::Code)> {
+        crate::langhelp::EResult::ok((Rc::new(TypeExpr), crate::langhelp::Code { loc, code: crate::langhelp::Code_::None }))
+    }
+}
+
+pub(crate) fn register_expr_artifact(
+    m: &mut std::collections::HashMap<crate::langhelp::ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
+) {
+    m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
 }
 
 impl Value for TypeExpr {

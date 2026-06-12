@@ -272,6 +272,17 @@ impl Type for TypeSourceInterfaceConst {
         }
     }
 
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        // For now we only round-trip builtin interfaces — `build_builtin_interfaces`
+        // can rebuild them from `BuiltinInterfaceKind`. User-defined interfaces
+        // would need a per-interface artifact stored alongside the def-set.
+        let kind = self.data.builtin_kind?;
+        Some(super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind))
+    }
 }
 
 impl Value for TypeSourceInterfaceConst {
