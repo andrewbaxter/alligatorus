@@ -131,7 +131,7 @@ pub(crate) fn build_builtin_interfaces(
                 Some(std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic) as std::rc::Rc<dyn crate::langhelp::Type>),
             ),
             ret_type: RefCell::new(Some(any_type.clone())),
-            field_name: "_im0".to_string(),
+            field_name: "_im_v0".to_string(),
         }]),
         identity: crate::eval::builtin_value_iface_identity(),
     });
@@ -148,7 +148,7 @@ pub(crate) fn build_builtin_interfaces(
                         std::rc::Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic) as std::rc::Rc<dyn crate::langhelp::Type>,
                     ),
                 ),
-                field_name: "_im1".to_string(),
+                field_name: "_im_t1".to_string(),
             },
             SourceInterfaceMethodData {
                 name: "cast_from".to_string(),
@@ -160,7 +160,7 @@ pub(crate) fn build_builtin_interfaces(
                         ) as std::rc::Rc<dyn crate::langhelp::Type>,
                     ),
                 ),
-                field_name: "_im2".to_string(),
+                field_name: "_im_t2".to_string(),
             },
             SourceInterfaceMethodData {
                 name: "desc".to_string(),
@@ -172,7 +172,7 @@ pub(crate) fn build_builtin_interfaces(
                         std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic) as std::rc::Rc<dyn crate::langhelp::Type>,
                     ),
                 ),
-                field_name: "_im3".to_string(),
+                field_name: "_im_t3".to_string(),
             },
         ]),
         identity: crate::eval::builtin_type_iface_identity(),
@@ -185,7 +185,7 @@ pub(crate) fn build_builtin_interfaces(
             name: "call".to_string(),
             arg_type: RefCell::new(Some(any_type.clone())),
             ret_type: RefCell::new(Some(any_type.clone())),
-            field_name: "_im0".to_string(),
+            field_name: "_im_af0".to_string(),
         }]),
         identity: crate::builtin::aspect_function_aspect_id(),
     });
@@ -198,13 +198,13 @@ pub(crate) fn build_builtin_interfaces(
                 name: "field".to_string(),
                 arg_type: RefCell::new(Some(any_type.clone())),
                 ret_type: RefCell::new(Some(any_type.clone())),
-                field_name: "_im0".to_string(),
+                field_name: "_im_afd0".to_string(),
             },
             SourceInterfaceMethodData {
                 name: "field_type_opt".to_string(),
                 arg_type: RefCell::new(Some(any_type.clone())),
                 ret_type: RefCell::new(Some(any_type.clone())),
-                field_name: "_im1".to_string(),
+                field_name: "_im_afd1".to_string(),
             },
         ]),
         identity: crate::builtin::aspect_field_aspect_id(),
@@ -217,7 +217,7 @@ pub(crate) fn build_builtin_interfaces(
             name: "use_".to_string(),
             arg_type: RefCell::new(Some(any_type.clone())),
             ret_type: RefCell::new(Some(any_type.clone())),
-            field_name: "_im0".to_string(),
+            field_name: "_im_se0".to_string(),
         }]),
         identity: builtin_scope_entry_iface_identity(),
     });
@@ -225,7 +225,7 @@ pub(crate) fn build_builtin_interfaces(
         name: name.to_string(),
         arg_type: RefCell::new(Some(any_type.clone())),
         ret_type: RefCell::new(Some(any_type.clone())),
-        field_name: format!("_im{}", idx),
+        field_name: format!("_im_tg{}", idx),
     };
     let target_iface_data = Gc::new(SourceInterfaceData {
         builtin_kind: Some(BuiltinInterfaceKind::Target),
