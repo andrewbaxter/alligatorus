@@ -56,6 +56,7 @@ impl AspectBind for TypeSourceTaggedUnionConstructorConst {
     }
 }
 
+
 impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let variants = self.data.variants.borrow();

@@ -34,7 +34,7 @@ use {
     },
 };
 
-generate_builtin_artifact!(TypeNullConst, super::artifact::ArtifactDataNull);
+generate_builtin_artifact_type!(TypeNullConst, super::artifact::ArtifactDataNull);
 pub(crate) struct TypeNullConst;
 
 impl Aspect for TypeNullConst { }

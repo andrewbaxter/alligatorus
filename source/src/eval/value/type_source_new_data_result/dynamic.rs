@@ -136,6 +136,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
+                        impl_expr_artifact: RefCell::new(None),
                         compiled_js: RefCell::new(None),
                         scope_entry_id: Cell::new(
                             Some(

@@ -372,6 +372,19 @@ impl Type for TypeUserDefined {
     fn desc(&self) -> String {
         crate::eval::user_defined_type_dispatch::user_defined_desc(&self.data)
     }
+
+    fn type_to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        crate::eval::definition_set::serialize_definition_set(xx, loc, &self.data.set);
+        let artifact_id = self.data.artifact_id.borrow().clone()?;
+        Some(crate::langhelp::Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        })
+    }
 }
 
 impl Value for TypeUserDefined {
@@ -543,6 +556,29 @@ impl Type for TypeSourceDataTypeDynamic {
             }
         } else {
             format!("definition_set_data_type_ref")
+        }
+    }
+
+    fn type_to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        match &self.data {
+            Some(data) => {
+                crate::eval::definition_set::serialize_definition_set(xx, loc, &data.set);
+                let artifact_id = data.artifact_id.borrow().clone()?;
+                Some(crate::langhelp::Artifact {
+                    type_: artifact_id,
+                    data: serde_json::Value::Null,
+                })
+            },
+            None => Some(crate::langhelp::Artifact {
+                type_: crate::langhelp::ArtifactId::Builtin(
+                    super::artifact::type_source_data_type_ref_artifact_id(),
+                ),
+                data: serde_json::Value::Null,
+            }),
         }
     }
 }

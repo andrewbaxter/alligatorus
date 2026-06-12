@@ -333,19 +333,12 @@ pub(crate) fn serialize_definition_set(
                                         other,
                                     ),
                                 };
-                                let impl_expr_value =
+                                let impl_expr =
                                     m
-                                        .impl_expr
+                                        .impl_expr_artifact
                                         .borrow()
                                         .clone()
-                                        .expect("Interface method impl missing impl_expr");
-                                let impl_expr_ast =
-                                    crate::invariant::must_downcast_ref::<crate::eval::expr::Expr>(
-                                        impl_expr_value.as_ref(),
-                                    );
-                                let impl_expr =
-                                    crate::eval::expr_artifact::expr_to_artifact(xx, impl_expr_ast)
-                                        .expect("Failed to serialize interface method impl_expr");
+                                        .expect("Interface method impl missing impl_expr_artifact");
                                 ArtifactDataDefSetInterfaceMethodImpl {
                                     interface_method_index: m.interface_method_index,
                                     entry_id,

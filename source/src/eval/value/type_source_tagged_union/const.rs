@@ -216,6 +216,18 @@ impl Type for TypeSourceTaggedUnionConst {
     fn desc(&self) -> String {
         format!("tagged_union")
     }
+
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        // Minimal placeholder — encodes the tagged-union's identity. Full
+        // round-trip would require serializing variants too.
+        Some(crate::eval::value::record::artifact::TypeRecordArtifact::build_artifact(
+            serde_json::Value::Null,
+        ))
+    }
 }
 
 impl Value for TypeSourceTaggedUnionConst {

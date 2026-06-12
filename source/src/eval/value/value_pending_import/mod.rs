@@ -127,7 +127,7 @@ impl PendingImportState {
         let cix = Rc::new(CompileImportContext {
             gx: self.gx.clone(),
             compile_path: vec![],
-            builtin_types: crate::langhelp::make_builtin_types(),
+            builtin_deserializers: crate::langhelp::make_builtin_deserializers(),
             deserialized_artifacts: std::cell::RefCell::new(std::collections::HashMap::new()),
             pending_finalizers: std::cell::RefCell::new(Vec::new()),
             isolate: Rc::new(std::cell::RefCell::new(v8::Isolate::new(Default::default()))),

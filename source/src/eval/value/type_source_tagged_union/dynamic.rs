@@ -278,6 +278,18 @@ impl Type for TypeSourceTaggedUnionDynamic {
     fn desc(&self) -> String {
         format!("tagged_union_ref")
     }
+
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        // Minimal placeholder — encodes only the marker. Full round-trip
+        // would serialize the carried tagged-union's data (variants, identity).
+        Some(crate::eval::value::record::artifact::TypeRecordArtifact::build_artifact(
+            serde_json::Value::Null,
+        ))
+    }
 }
 
 impl Value for TypeSourceTaggedUnionDynamic {

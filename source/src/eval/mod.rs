@@ -88,7 +88,7 @@ use {
             Type,
             Value,
             downcast_value,
-            make_builtin_types,
+            make_builtin_deserializers,
         },
         syntax::{
             ExprId,
@@ -223,7 +223,7 @@ pub(crate) fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
-        builtin_types: make_builtin_types(),
+        builtin_deserializers: make_builtin_deserializers(),
         deserialized_artifacts: RefCell::new(HashMap::new()),
         pending_finalizers: RefCell::new(Vec::new()),
         isolate: Rc::new(RefCell::new(v8::Isolate::new(Default::default()))),
@@ -1645,6 +1645,12 @@ fn eval(
                     let impl_expr_value =
                         method_impl.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
+                    if method_impl.impl_expr_artifact.borrow().is_none() {
+                        let serialized =
+                            crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast)
+                                .expect("Failed to pre-serialize interface method impl_expr");
+                        *method_impl.impl_expr_artifact.borrow_mut() = Some(serialized);
+                    }
 
                     // Resolve ret type from interface method
                     let ret_type: Rc<dyn Type> = {

@@ -80,6 +80,14 @@ macro_rules! generate_builtin_artifact{
                     data: serde_json::Value::Null,
                 }
             }
+        }
+    };
+}
+
+macro_rules! generate_builtin_artifact_type{
+    ($type: ty, $data: ty) => {
+        generate_builtin_artifact!($type, $data);
+        impl $type {
             pub(crate) fn register(
                 m:
                     &mut std
@@ -99,4 +107,24 @@ macro_rules! unique{
             line: line!() as usize
         }
     };
+}
+
+/// Parameterless deserializer registered under a builtin artifact id. Reads the
+/// artifact's data field and produces either a value (`value_from_serial`) or a
+/// type reference (`type_from_serial`), depending on whether the caller is
+/// resolving a value-form or a type-form artifact. Implementations that don't
+/// support a form return an error from that method.
+pub(crate) trait ArtifactBuiltinDeserializer {
+    fn value_from_serial(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: crate::langhelp::QExprId,
+        data: &serde_json::Value,
+    ) -> crate::langhelp::EvalRes;
+    fn type_from_serial(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: crate::langhelp::QExprId,
+        data: &serde_json::Value,
+    ) -> crate::langhelp::EResult<(std::rc::Rc<dyn crate::langhelp::Type>, crate::langhelp::Code)>;
 }

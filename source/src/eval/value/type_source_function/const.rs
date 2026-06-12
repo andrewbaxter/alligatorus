@@ -44,8 +44,11 @@ use {
 impl Aspect for TypeSourceFunctionConst { }
 
 impl AspectArtifact for TypeSourceFunctionConst {
-    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        super::dynamic::TypeTypeSourceFunctionDynamic.from_serial(xx, loc, data)
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: Code { loc, code: Code_::None },
+            value: Rc::new(TypeSourceFunctionConst { data: self.data.clone() }) as Rc<dyn Value>,
+        })
     }
 
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
@@ -105,6 +108,13 @@ impl AspectFunction for TypeSourceFunctionConst {
     }
 }
 
+impl crate::builtin::AspectType for TypeSourceFunctionConst {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let f = crate::invariant::must_downcast_ref::<TypeSourceFunctionConst>(value);
+        Rc::new(TypeSourceFunctionConst { data: f.data.clone() })
+    }
+}
+
 impl Type for TypeSourceFunctionConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceFunctionConst { data: self.data.clone() })
@@ -124,6 +134,14 @@ impl Type for TypeSourceFunctionConst {
         if *key == aspect_artifact_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
+            );
+        }
+        if *key == crate::builtin::aspect_type_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as
+                        Box<dyn crate::builtin::AspectType>,
+                ),
             );
         }
         return None;

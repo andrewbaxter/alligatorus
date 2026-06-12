@@ -75,13 +75,13 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
     let mut codes: Vec<crate::langhelp::Code> = Vec::new();
     let (underlying_type, underlying_code) =
-        crate::eval::util::deserialize_type_artifact(xx, loc, &serial.underlying_type.type_)
+        crate::eval::util::deserialize_type_artifact(xx, loc, &serial.underlying_type)
             .into_res()
             .map_err(|e| format!("{:?}", e))?;
     codes.push(underlying_code);
     let methods: Vec<SourceDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
         let (ret_type, ret_code) =
-            crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type.type_)
+            crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type)
                 .into_res()
                 .expect("Failed to resolve method ret type");
         codes.push(ret_code);

@@ -1,3 +1,4 @@
+pub mod artifact;
 pub mod scope_entry;
 
 use {
@@ -630,6 +631,35 @@ impl Type for Record {
             };
             format!("{:?}: {}", k, t_desc)
         }).collect::<Vec<_>>().join(", "))
+    }
+
+    fn type_to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        let mut fields_serial: std::collections::BTreeMap<ConstKey, crate::langhelp::Artifact> =
+            std::collections::BTreeMap::new();
+        for (key, field) in &self.fields {
+            let field_type = match field {
+                RecordField::Mortar(t) => t.clone(),
+                RecordField::EvalRes(er) => match &er.v {
+                    Some(cv) => cv.value.type_(xx, loc),
+                    None => return None,
+                },
+            };
+            let field_artifact =
+                crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                    xx,
+                    loc,
+                    field_type.as_ref(),
+                );
+            fields_serial.insert(key.clone(), field_artifact);
+        }
+        let payload = artifact::ArtifactRecordType { fields: fields_serial };
+        Some(artifact::TypeRecordArtifact::build_artifact(
+            serde_json::to_value(&payload).expect("Failed to serialize record type"),
+        ))
     }
 }
 

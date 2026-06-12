@@ -52,7 +52,7 @@ use {
     },
 };
 
-generate_builtin_artifact!(TypeTypeSourceDataTypeDynamic, serde_json::Value);
+generate_builtin_artifact_type!(TypeTypeSourceDataTypeDynamic, serde_json::Value);
 pub(crate) struct TypeTypeSourceDataTypeDynamic;
 
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
@@ -118,7 +118,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                             ).clone()
                         };
                         let (underlying_type, underlying_code) =
-                            crate::eval::util::deserialize_type_artifact(xx, loc, &dt_serial.underlying_type.type_,)
+                            crate::eval::util::deserialize_type_artifact(xx, loc, &dt_serial.underlying_type,)
                                 .into_res()
                                 .map_err(|e| {
                                     format!("Failed to deserialize underlying type: {:?}", e)
@@ -127,7 +127,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         dt_data.underlying_type.set(underlying_type);
                         let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
                             let (ret_type, ret_code) =
-                                crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type.type_,)
+                                crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type,)
                                     .into_res()
                                     .unwrap_or_else(|e| {
                                         panic!("Failed to deserialize method ret type: {:?}", e)
@@ -189,6 +189,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                                         impl_expr: RefCell::new(
                                             Some(Rc::new(impl_expr) as Rc<dyn crate::langhelp::Value>),
                                         ),
+                                        impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
                                         compiled_js: RefCell::new(Some(m.compiled_js.clone())),
                                         scope_entry_id: Cell::new(
                                             Some(

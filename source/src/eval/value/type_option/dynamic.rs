@@ -194,6 +194,7 @@ impl AspectSet for TypeOptionDynamic {
     }
 }
 
+
 impl Type for TypeOptionDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
@@ -254,6 +255,25 @@ impl Type for TypeOptionDynamic {
 
     fn desc(&self) -> String {
         format!("option({})", self.element_type.desc())
+    }
+
+    fn type_to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        let elem_artifact =
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                xx,
+                loc,
+                self.element_type.as_ref(),
+            );
+        let payload = crate::eval::value::type_option::artifact::ArtifactOptionType {
+            element_type: elem_artifact,
+        };
+        Some(crate::eval::value::type_option::artifact::TypeOptionArtifact::build_artifact(
+            serde_json::to_value(&payload).expect("Failed to serialize option type"),
+        ))
     }
 }
 

@@ -159,7 +159,7 @@ pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 /// One per module (per import env).
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_types: HashMap<ArtifactIdBuiltin, Rc<dyn Type>>,
+    pub(crate) builtin_deserializers: HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
     pub(crate) gx: Arc<GlobalContext>,
@@ -416,24 +416,20 @@ pub(crate) struct LogEntry {
     pub(crate) timestamp_ms: u64,
 }
 
-pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
-    use crate::eval::{
-        value::type_null::dynamic::TypeNullDynamic,
-        value::type_string::dynamic::TypeStringDynamic,
-        value::type_null::r#const::TypeNullConst,
-        value::type_string::r#const::TypeStringConst,
-        value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
-        value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
-    };
-
-    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn Type>> = HashMap::new();
-    TypeNullConst::register(&mut m);
-    TypeStringConst::register(&mut m);
-    TypeNullDynamic::register(&mut m);
-    TypeStringDynamic::register(&mut m);
-    TypeTypeSourceDataTypeDynamic::register(&mut m);
-    TypeTypeSourceDataTypeConstructorDynamic::register(&mut m);
-    crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic::register(&mut m);
+pub(crate) fn make_builtin_deserializers()
+-> HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>> {
+    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>> = HashMap::new();
+    crate::eval::value::type_null::artifact::register(&mut m);
+    crate::eval::value::type_string::artifact::register(&mut m);
+    crate::eval::value::type_number::artifact::register(&mut m);
+    crate::eval::value::type_type_source_data_type::artifact::register(&mut m);
+    crate::eval::value::type_type_source_data_type_constructor::artifact::register(&mut m);
+    crate::eval::value::type_source_function::artifact::register(&mut m);
+    crate::eval::value::record::artifact::register(&mut m);
+    crate::eval::value::tuple::artifact::register(&mut m);
+    crate::eval::value::type_map::artifact::register(&mut m);
+    crate::eval::value::type_option::artifact::register(&mut m);
+    crate::eval::value::type_source_data_type::artifact::register(&mut m);
     m
 }
 

@@ -200,6 +200,16 @@ impl Type for TypeExpr {
     fn desc(&self) -> String {
         return format!("expr");
     }
+
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        Some(crate::eval::value::record::artifact::TypeRecordArtifact::build_artifact(
+            serde_json::Value::Null,
+        ))
+    }
 }
 
 impl Value for TypeExpr {

@@ -195,6 +195,7 @@ impl AspectInitialBind for TypeMapDynamic {
     }
 }
 
+
 impl AspectIterable for TypeMapDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
         // Map iteration yields records with "key" and "value" fields
@@ -444,6 +445,32 @@ impl Type for TypeMapDynamic {
 
     fn desc(&self) -> String {
         format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
+    }
+
+    fn type_to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        let key_artifact =
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                xx,
+                loc,
+                self.key_type.as_ref(),
+            );
+        let value_artifact =
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                xx,
+                loc,
+                self.value_type.as_ref(),
+            );
+        let payload = crate::eval::value::type_map::artifact::ArtifactMapType {
+            key_type: key_artifact,
+            value_type: value_artifact,
+        };
+        Some(crate::eval::value::type_map::artifact::TypeMapArtifact::build_artifact(
+            serde_json::to_value(&payload).expect("Failed to serialize map type"),
+        ))
     }
 }
 

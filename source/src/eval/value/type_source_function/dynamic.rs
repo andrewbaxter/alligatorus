@@ -190,7 +190,7 @@ impl Value for TypeSourceFunctionDynamic {
     }
 }
 
-generate_builtin_artifact!(TypeTypeSourceFunctionDynamic, serde_json::Value);
+generate_builtin_artifact_type!(TypeTypeSourceFunctionDynamic, serde_json::Value);
 pub(crate) struct TypeTypeSourceFunctionDynamic;
 
 impl Aspect for TypeTypeSourceFunctionDynamic { }
@@ -257,12 +257,12 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
                             ).clone()
                         };
                         let (arg_type, arg_code) =
-                            crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.arg_type.type_)
+                            crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.arg_type)
                                 .into_res()
                                 .map_err(|e| format!("Failed to deserialize function arg type: {:?}", e))?;
                         codes.push(arg_code);
                         let (ret_type, ret_code) =
-                            crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.ret_type.type_)
+                            crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.ret_type)
                                 .into_res()
                                 .map_err(|e| format!("Failed to deserialize function ret type: {:?}", e))?;
                         codes.push(ret_code);

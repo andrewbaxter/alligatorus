@@ -1,3 +1,4 @@
+pub mod artifact;
 pub mod scope_entry;
 
 use {
@@ -512,6 +513,34 @@ impl Type for Tuple {
                 TupleElement::EvalRes(_) => "?".to_string(),
             }
         }).collect::<Vec<_>>().join(", "))
+    }
+
+    fn type_to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        let mut elements_serial: Vec<crate::langhelp::Artifact> = Vec::new();
+        for elem in &self.elements {
+            let elem_type = match elem {
+                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::EvalRes(er) => match &er.v {
+                    Some(cv) => cv.value.type_(xx, loc),
+                    None => return None,
+                },
+            };
+            let elem_artifact =
+                crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                    xx,
+                    loc,
+                    elem_type.as_ref(),
+                );
+            elements_serial.push(elem_artifact);
+        }
+        let payload = artifact::ArtifactTupleType { elements: elements_serial };
+        Some(artifact::TypeTupleArtifact::build_artifact(
+            serde_json::to_value(&payload).expect("Failed to serialize tuple type"),
+        ))
     }
 }
 
