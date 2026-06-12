@@ -192,6 +192,25 @@ pub(crate) const CVE_EXTRACT_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(l
 /// representation `TypeAnyDynamic` expects.
 pub(crate) const DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__tagged_union_ref_to_type` rust-in-v8
+/// function — parallel to `__data_type_ref_to_type`, for tagged union refs.
+pub(crate) const TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// Well-known scope entry ID for `__interface_ref_to_type` rust-in-v8 function.
+pub(crate) const INTERFACE_REF_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// Well-known scope entry ID for `__function_const_to_type` rust-in-v8
+/// function — for `Rc<TypeSourceFunctionConst>`.
+pub(crate) const FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// Well-known scope entry ID for `__data_type_constructor_to_type` rust-in-v8
+/// function — for `Rc<TypeSourceDataTypeConstructorConst>`.
+pub(crate) const DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// Well-known scope entry ID for `__tagged_union_constructor_to_type`
+/// rust-in-v8 function — for `Rc<SourceTaggedUnionConstructorRef>`.
+pub(crate) const TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -2416,6 +2435,173 @@ fn eval(
                         .unwrap()
                         .cast(),
                     data_type_ref_to_type_fn.into(),
+                );
+            fn tagged_union_ref_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let tu_ref: Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionRef> =
+                    from_v8_ref::<Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionRef>>(
+                        &*args.get(0),
+                    )
+                        .clone();
+                let type_: Rc<dyn Type> =
+                    Rc::new(
+                        crate::eval::value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst {
+                            data: tu_ref.data.clone(),
+                        },
+                    );
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let tagged_union_ref_to_type_fn =
+                v8::Function::builder(tagged_union_ref_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    tagged_union_ref_to_type_fn.into(),
+                );
+            fn interface_ref_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let iface_ref: Rc<crate::eval::value::type_source_interface::SourceInterfaceRef> =
+                    from_v8_ref::<Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>>(
+                        &*args.get(0),
+                    )
+                        .clone();
+                let type_: Rc<dyn Type> =
+                    Rc::new(crate::eval::value::type_source_interface::TypeSourceInterfaceConst {
+                        data: iface_ref.data.clone(),
+                    });
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let interface_ref_to_type_fn =
+                v8::Function::builder(interface_ref_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(INTERFACE_REF_TO_TYPE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    interface_ref_to_type_fn.into(),
+                );
+            fn function_const_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let func_ref: Rc<crate::eval::value::type_source_function::TypeSourceFunctionConst> =
+                    from_v8_ref::<Rc<crate::eval::value::type_source_function::TypeSourceFunctionConst>>(
+                        &*args.get(0),
+                    )
+                        .clone();
+                let type_: Rc<dyn Type> =
+                    Rc::new(crate::eval::value::type_source_function::TypeSourceFunctionConst {
+                        data: func_ref.data.clone(),
+                    });
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let function_const_to_type_fn =
+                v8::Function::builder(function_const_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    function_const_to_type_fn.into(),
+                );
+            fn data_type_constructor_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let ctor_ref: Rc<
+                    crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+                > =
+                    from_v8_ref::<
+                        Rc<
+                            crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+                        >,
+                    >(&*args.get(0)).clone();
+                let type_: Rc<dyn Type> = Rc::new(
+                    crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst {
+                        data: ctor_ref.data.clone(),
+                    },
+                );
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let data_type_constructor_to_type_fn =
+                v8::Function::builder(data_type_constructor_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_type_constructor_to_type_fn.into(),
+                );
+            fn tagged_union_constructor_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let ctor_ref: Rc<
+                    crate::eval::value::type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
+                > =
+                    from_v8_ref::<
+                        Rc<
+                            crate::eval::value::type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
+                        >,
+                    >(&*args.get(0)).clone();
+                let type_: Rc<dyn Type> = Rc::new(
+                    crate::eval::value::type_source_tagged_union_constructor::r#const::TypeSourceTaggedUnionConstructorConst {
+                        data: ctor_ref.data.clone(),
+                        variant_index: ctor_ref.variant_index,
+                    },
+                );
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let tagged_union_constructor_to_type_fn =
+                v8::Function::builder(tagged_union_constructor_to_type_callback)
+                    .build(dynamic_scope)
+                    .unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    tagged_union_constructor_to_type_fn.into(),
                 );
             cix.builtins_registered.set(true);
         }

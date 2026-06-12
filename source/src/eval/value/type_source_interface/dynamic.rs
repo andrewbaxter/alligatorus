@@ -190,7 +190,8 @@ impl Type for TypeSourceInterfaceDynamic {
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         // A dynamic interface ref can flow into any specific interface type
         // (Const) — the runtime value carries the actual interface data and
-        // matches identity at use-time.
+        // matches identity at use-time. Also flow into any type-of-types
+        // (TypeAnyDynamic etc.) via the `__interface_ref_to_type` converter.
         type_.aspect(xx, &interface_ref_type_identity()).is_some()
             || type_
                 .aspect(
@@ -198,6 +199,7 @@ impl Type for TypeSourceInterfaceDynamic {
                     &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
                 )
                 .is_some()
+            || type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -218,6 +220,29 @@ impl Type for TypeSourceInterfaceDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: dest_rc,
                 }),
+            });
+        }
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+            let source_code = match cv.code.cast::<crate::code_dynamic::CodeDynamic>() {
+                crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+                _ => return EvalRes::err(loc, format!("cast interface_ref → {}: source has no runtime code", type_.desc())),
+            };
+            let call = crate::code_dynamic::CodeDynamic {
+                loc,
+                type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                    func: Box::new(crate::code_dynamic::CodeDynamic {
+                        loc,
+                        type_: crate::code_dynamic::CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse {
+                            id: crate::eval::INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
+                        }),
+                    }),
+                    args: vec![source_code],
+                }),
+            };
+            let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceInterfaceDynamic) as Rc<dyn Type>);
+            return EvalRes::ok(CodeValue {
+                code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
+                value: Rc::new(ValueDynamic { source: ValueDynamicSource::Expr, type_: dest_rc }),
             });
         }
         EvalRes::err(loc, format!("Cannot convert interface_ref"))

@@ -165,8 +165,38 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert tagged_union_constructor_ref"))
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_none() {
+            return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
+        }
+        let source_code = match cv.code.cast::<crate::code_dynamic::CodeDynamic>() {
+            crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+            _ => return EvalRes::err(loc, format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc())),
+        };
+        let call = crate::code_dynamic::CodeDynamic {
+            loc,
+            type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                func: Box::new(crate::code_dynamic::CodeDynamic {
+                    loc,
+                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse {
+                        id: crate::eval::TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+                    }),
+                }),
+                args: vec![source_code],
+            }),
+        };
+        let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceTaggedUnionConstructorDynamic) as Rc<dyn Type>);
+        EvalRes::ok(CodeValue {
+            code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::Dyn(Rc::new(call)) },
+            value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                type_: dest_rc,
+            }),
+        })
     }
 
     fn desc(&self) -> String {

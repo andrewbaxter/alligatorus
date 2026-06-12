@@ -919,9 +919,9 @@ e0"#);
 let e1;
 e1 = BUILTIN;
 let e2;
-e2 = a24;
+e2 = a23;
 let e3;
-e3 = a25;
+e3 = a24;
 let e4;
 let a0;
 {
@@ -1131,52 +1131,56 @@ let e74;
 let e75;
 e75 = a18;
 let e76;
-e76 = a20;
+let e77;
+e77 = BUILTIN;
+let e78;
+e78 = a2;
+e76 = (e77)(e78);
 e74 = e75["_3"](e76);
 e4 = e74;
 }
 {
-let e77;
-let e78;
-e78 = a18;
 let e79;
-e79 = a21;
-e77 = e78["_5"](e79);
-e4 = e77;
+let e80;
+e80 = a18;
+let e81;
+e81 = a20;
+e79 = e80["_5"](e81);
+e4 = e79;
 }
 {
-let e80;
-let e81;
-e81 = a18;
 let e82;
 let e83;
-e83 = BUILTIN;
+e83 = a18;
 let e84;
-e84 = a22;
 let e85;
-e85 = a23;
+e85 = BUILTIN;
 let e86;
-e86 = a10;
-e82 = (e83)(e84,e85,e86);
-e80 = e81["_2"](e82);
-e4 = e80;
+e86 = a21;
+let e87;
+e87 = a22;
+let e88;
+e88 = a10;
+e84 = (e85)(e86,e87,e88);
+e82 = e83["_2"](e84);
+e4 = e82;
 }
 {
-let e87;
-let e88;
-e88 = a3;
 let e89;
-e89 = a6;
 let e90;
-e90 = a5;
+e90 = a3;
 let e91;
-e91 = a19;
+e91 = a6;
 let e92;
-e92 = a8;
+e92 = a5;
 let e93;
-e93 = a2;
-e87 = { "\"call\"": e88, "\"field\"": e89, "\"lit_str\"": e90, "\"render\"": e91, "\"scope_use\"": e92, "\"type\"": e93 };
-e4 = e87;
+e93 = a19;
+let e94;
+e94 = a8;
+let e95;
+e95 = a2;
+e89 = { "\"call\"": e90, "\"field\"": e91, "\"lit_str\"": e92, "\"render\"": e93, "\"scope_use\"": e94, "\"type\"": e95 };
+e4 = e89;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#
