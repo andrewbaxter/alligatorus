@@ -1175,6 +1175,7 @@ fn eval(
         ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
+        ("any", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
             code: Code {
@@ -1197,6 +1198,8 @@ fn eval(
     let unique_type: Rc<dyn Type> = Rc::new(value::value_unique::TypeUnique);
     for (key, unique, line) in [
         ("aspect_string_dynamic", crate::builtin::aspect_string_dynamic_aspect_id(), line!() as usize),
+        ("aspect_function", crate::builtin::aspect_function_aspect_id(), line!() as usize),
+        ("aspect_field", crate::builtin::aspect_field_aspect_id(), line!() as usize),
     ] {
         let dynamic_key = ScopeEntryId::Builtin(line);
         if register_v8 {
@@ -1257,6 +1260,19 @@ fn eval(
                         key_type: key_type.0,
                         value_type: value_type.0
                     }
+                }
+            ),
+        ),
+        (
+            "option",
+            Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst) as Rc<dyn Type>,
+            dynamic_wrap!(
+                fn option(
+                    ex,
+                    dynamic_scope,
+                    scope
+                )(element_type: dynamic_wrap:: AnyType) -> value:: type_option:: dynamic:: TypeOptionDynamic {
+                    value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
                 }
             ),
         ),

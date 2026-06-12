@@ -1,6 +1,8 @@
 pub mod record;
 pub mod tuple;
 pub mod type_option;
+pub mod type_option_constructor;
+pub mod type_option_aspect;
 pub mod type_ref_v8;
 pub mod type_any;
 pub mod type_bool;

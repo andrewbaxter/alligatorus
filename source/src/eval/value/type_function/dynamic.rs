@@ -127,6 +127,28 @@ pub(crate) fn dynamic_call(
                     (elements, param_types)
                 };
             if elements.len() != param_types.len() {
+                // `tuple()` (empty unit) passed to a single-arg function whose
+                // param accepts anything — pass the empty tuple through as the
+                // single arg rather than unpacking it.
+                if elements.is_empty() &&
+                    param_types.len() == 1 &&
+                    aspect_tuple_get_maybe(xx, arg_type.as_ref()).is_none() {
+                    let unit_cv = CodeValue {
+                        code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::None },
+                        value: Rc::new(crate::eval::value::tuple::Tuple { base: None, elements: vec![] }),
+                    };
+                    let arg_to_dynamic =
+                        erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
+                    let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), unit_cv))?;
+                    let arg = erb.must_er(arg_to_dynamic.to_dynamic(xx, loc, converted))?;
+                    return Ok(ret_stack.to_value(loc, CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::Call(CodeDynamicCall {
+                            func: Box::new(func_code),
+                            args: vec![arg],
+                        }),
+                    }));
+                }
                 return erb.err_new(
                     format!("Function expects {} arguments, got {}", param_types.len(), elements.len())
                 );

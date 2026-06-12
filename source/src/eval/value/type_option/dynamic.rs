@@ -1,0 +1,311 @@
+use {
+    crate::{
+        builtin::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectFunction,
+            AspectInitialBind,
+            AspectStackValueDynamic,
+            AspectTaggedUnion,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
+            aspect_field_aspect_id,
+            aspect_function_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_stack_value_dynamic_get,
+            aspect_string_const_get,
+            aspect_tagged_union_aspect_id,
+        },
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicNewObject,
+            CodeDynamicType,
+        },
+        eval::{
+            Erb,
+            dynamic_util::{
+                ValueDynamic,
+                ValueDynamicSource,
+                bind_dynamic_default,
+                bind_via_target,
+            },
+            typecheck_convert,
+            value::{
+                type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            },
+        },
+        langhelp::{
+            Aspect,
+            Code,
+            CodeValue,
+            Code_,
+            ConstKey,
+            EResult,
+            EvalRes,
+            ExprContext,
+            QExprId,
+            ScopeEntry,
+            ScopeEntryId,
+            Type,
+            Unique,
+            Value,
+        },
+    },
+    std::{
+        any::Any,
+        mem,
+        rc::Rc,
+    },
+};
+
+#[derive(Clone)]
+pub(crate) struct TypeOptionDynamic {
+    pub(crate) element_type: Rc<dyn Type>,
+}
+
+impl TypeOptionDynamic {
+    fn variants_internal(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
+        vec![
+            (ConstKey::String("some".to_string()), "some".to_string(), self.element_type.clone()),
+            (ConstKey::String("none".to_string()), "none".to_string(), Rc::new(TypeNullDynamic) as Rc<dyn Type>),
+        ]
+    }
+}
+
+impl Aspect for TypeOptionDynamic { }
+
+impl AspectBind for TypeOptionDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamic for TypeOptionDynamic {
+    fn bind_dynamic(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeOptionDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectField for TypeOptionDynamic {
+    fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
+        let key_type = key.value.type_(xx, loc);
+        let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+            Ok(s) => s,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let key_name = key_string.get(key.value.as_ref());
+        match key_name.as_str() {
+            "some" => EvalRes::ok(CodeValue {
+                code: Code { loc, code: Code_::None },
+                value: Rc::new(TypeOptionVariantConstructorDynamic {
+                    element_type: self.element_type.clone(),
+                    is_some: true,
+                }),
+            }),
+            "none" => EvalRes::ok(CodeValue {
+                code: Code { loc, code: Code_::None },
+                value: Rc::new(TypeOptionVariantConstructorDynamic {
+                    element_type: self.element_type.clone(),
+                    is_some: false,
+                }),
+            }),
+            _ => EvalRes::err(loc, format!("Field '{}' not found on option", key_name)),
+        }
+    }
+
+    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(k) = key else {
+            return None;
+        };
+        match k.as_str() {
+            "some" => Some(Rc::new(TypeOptionVariantConstructorDynamic {
+                element_type: self.element_type.clone(),
+                is_some: true,
+            })),
+            "none" => Some(Rc::new(TypeOptionVariantConstructorDynamic {
+                element_type: self.element_type.clone(),
+                is_some: false,
+            })),
+            _ => None,
+        }
+    }
+}
+
+impl AspectInitialBind for TypeOptionDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(self.clone()),
+        })
+    }
+}
+
+impl AspectStackValueDynamic for TypeOptionDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(self.clone()),
+            }),
+        }
+    }
+}
+
+impl AspectTaggedUnion for TypeOptionDynamic {
+    fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
+        self.variants_internal()
+    }
+}
+
+impl Type for TypeOptionDynamic {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(self.clone())
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
+        }
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBindDynamic>));
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectBind>));
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectStackValueDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_tagged_union_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectTaggedUnion>));
+        }
+        None
+    }
+
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
+        false
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to option".to_string())
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert from option".to_string())
+    }
+
+    fn desc(&self) -> String {
+        format!("option({})", self.element_type.desc())
+    }
+}
+
+impl Value for TypeOptionDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(self.clone())
+    }
+}
+
+impl crate::eval::dynamic_wrap::DynamicWrap for TypeOptionDynamic {
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeOptionDynamic> = crate::eval::from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
+        (*rc).clone()
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        crate::eval::to_v8(scope, Rc::new(self)).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct TypeOptionVariantConstructorDynamic {
+    pub(crate) element_type: Rc<dyn Type>,
+    pub(crate) is_some: bool,
+}
+
+impl Aspect for TypeOptionVariantConstructorDynamic { }
+
+impl AspectFunction for TypeOptionVariantConstructorDynamic {
+    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let underlying_type: Rc<dyn Type> = if self.is_some {
+                self.element_type.clone()
+            } else {
+                Rc::new(TypeNullDynamic)
+            };
+            let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
+            let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
+            let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
+            let js_tag = if self.is_some { "some".to_string() } else { "none".to_string() };
+            let result_type = Rc::new(TypeOptionDynamic { element_type: self.element_type.clone() });
+            let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
+                loc,
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject {
+                    fields: vec![(js_tag, underlying_js)],
+                }),
+            }));
+        });
+    }
+}
+
+impl Type for TypeOptionVariantConstructorDynamic {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(self.clone())
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        None
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to option variant constructor".to_string())
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert option variant constructor".to_string())
+    }
+
+    fn desc(&self) -> String {
+        let tag = if self.is_some { "some" } else { "none" };
+        format!("option({}).{}", self.element_type.desc(), tag)
+    }
+}
+
+impl Value for TypeOptionVariantConstructorDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(self.clone())
+    }
+}

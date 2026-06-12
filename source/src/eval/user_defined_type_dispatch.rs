@@ -343,7 +343,7 @@ impl crate::builtin::AspectField for TypeTypeRef {
         if k == "aspect" {
             return Some(Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
                 arg: Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic),
-                ret: Rc::new(crate::eval::value::type_option::TypeOption),
+                ret: Rc::new(crate::eval::value::type_option_aspect::TypeOption),
             }));
         }
         None
@@ -416,7 +416,7 @@ impl crate::builtin::AspectFunction for TypeAspectLookupFnType {
         let is_some = type_ref.type_.aspect(xx, unique).is_some();
         EvalRes::ok(CodeValue {
             code: Code { loc, code: Code_::None },
-            value: Rc::new(crate::eval::value::type_option::ValueOption { is_some }),
+            value: Rc::new(crate::eval::value::type_option_aspect::ValueOption { is_some }),
         })
     }
 }
