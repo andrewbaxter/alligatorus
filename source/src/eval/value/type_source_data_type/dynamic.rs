@@ -136,7 +136,36 @@ impl AspectField for TypeSourceDataTypeDynamic {
             };
             let (field_name, arg_type, ret_type) = match lookup_result {
                 Some(r) => r,
-                None => return erb.err_new(format!("Field '{}' not found on data type", key_name)),
+                None => {
+                    // Fall through to underlying type's field access — e.g.
+                    // for an nvalue whose underlying is `record(base, type)`,
+                    // accessing `.base` reads the underlying record's field
+                    // via `instance.<data_field>.<key>`.
+                    let underlying_type = data.underlying_type.get().clone();
+                    let underlying_field = crate::builtin::aspect_field_get_maybe(xx, underlying_type.as_ref());
+                    if let Some(underlying_field) = underlying_field {
+                        let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
+                        // Build `instance.<data_field>` as the new receiver,
+                        // then dispatch field access on the underlying type.
+                        let underlying_access = CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                                base: Box::new(self_code),
+                                field: data.data_field.clone(),
+                            }),
+                        };
+                        let underlying_cv = CodeValue {
+                            code: Code { loc, code: Code_::Dyn(Rc::new(underlying_access)) },
+                            value: Rc::new(ValueDynamic {
+                                source: ValueDynamicSource::Expr,
+                                type_: underlying_type.clone(),
+                            }),
+                        };
+                        let v = erb.must_er(underlying_field.field(xx, loc, underlying_cv, key))?;
+                        return Ok(v);
+                    }
+                    return erb.err_new(format!("Field '{}' not found on data type", key_name));
+                },
             };
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             let field_type = Rc::new(TypeFunctionDynamic {

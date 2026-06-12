@@ -2397,11 +2397,21 @@ fn eval(
         v8::Script::compile(dynamic_scope, v8::String::new(dynamic_scope, &dynamic_source).unwrap(), None).unwrap();
     match script.run(dynamic_scope) {
         Some(stage2) => {
-            let value_from_js = aspect_lift_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let value: Rc<dyn Value> = value_from_js.lift(&xx, &*dynamic_scope, stage2).map_err(|e| vec![ExprErr {
-                loc: root_loc,
-                errors: vec![ExprSubErr::Opaque(e)],
-            }])?;
+            // If the const_eval value was already concrete (`Code_::None`)
+            // and JS only ran for side effects (def-set methods, etc.),
+            // use the fallback value directly — its type may not have
+            // AspectLiftDynamic and there's nothing to lift anyway.
+            let value: Rc<dyn Value> = match fallback_value {
+                Some(v) => v,
+                None => {
+                    let value_from_js =
+                        aspect_lift_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+                    value_from_js.lift(&xx, &*dynamic_scope, stage2).map_err(|e| vec![ExprErr {
+                        loc: root_loc,
+                        errors: vec![ExprSubErr::Opaque(e)],
+                    }])?
+                },
+            };
             let logs = dynamic_scope.get_slot::<V8LogStore>().unwrap().logs.take();
             Ok(EvalResult {
                 value,
