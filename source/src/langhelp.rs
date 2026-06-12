@@ -430,6 +430,8 @@ pub(crate) fn make_builtin_deserializers()
     crate::eval::value::type_map::artifact::register(&mut m);
     crate::eval::value::type_option::artifact::register(&mut m);
     crate::eval::value::type_source_data_type::artifact::register(&mut m);
+    crate::eval::value::type_source_tagged_union::artifact::register(&mut m);
+    crate::eval::value::type_any::artifact::register(&mut m);
     m
 }
 

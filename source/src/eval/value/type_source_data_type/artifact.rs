@@ -80,9 +80,26 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     pub interface_method_index: usize,
 }
 
-pub(crate) fn register(_m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
+pub(crate) struct DeserializerRef;
+
+impl ArtifactBuiltinDeserializer for DeserializerRef {
+    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        EvalRes::ok(crate::langhelp::CodeValue {
+            code: Code { loc, code: Code_::None },
+            value: Rc::new(super::dynamic::TypeSourceDataTypeRefDynamic)
+                as Rc<dyn crate::langhelp::Value>,
+        })
+    }
+
+    fn type_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(super::dynamic::TypeSourceDataTypeRefDynamic), Code { loc, code: Code_::None }))
+    }
+}
+
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
     // Source-defined data types serialize as `Artifact { type_: Source(N),
     // data: null }` where `N` points to the data-type's own artifact (which is
     // tagged `Builtin(TypeTypeSourceDataTypeDynamic::artifact_id())`). The
     // Source branch of `deserialize_(type_)artifact` handles that path.
+    m.insert(super::dynamic::TypeSourceDataTypeRefDynamic::artifact_id(), Rc::new(DeserializerRef));
 }

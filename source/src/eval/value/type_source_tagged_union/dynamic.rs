@@ -141,6 +141,10 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
         Rc::new(TypeSourceTaggedUnionRefDynamic)
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceTaggedUnionRefDynamic))
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == tagged_union_ref_type_identity() {
             return Some(Box::new(true));
@@ -207,7 +211,17 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
     fn desc(&self) -> String {
         "tagged_union_ref".to_string()
     }
+
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        Some(Self::build_type_artifact())
+    }
 }
+
+generate_builtin_artifact_type!(TypeSourceTaggedUnionRefDynamic, serde_json::Value);
 
 impl Value for TypeSourceTaggedUnionRefDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -408,7 +422,18 @@ impl Type for TypeSourceTaggedUnionDynamic {
     }
 
     fn desc(&self) -> String {
-        format!("tagged_union_ref")
+        format!("tagged_union_dyn")
+    }
+
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        // Round-trip via the ref-form deserializer for now. This loses the
+        // specific tagged-union's identity / variants — a proper serialization
+        // would mirror the per-data-type artifact for the source data type.
+        Some(TypeSourceTaggedUnionRefDynamic::build_type_artifact())
     }
 }
 

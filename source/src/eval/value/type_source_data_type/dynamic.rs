@@ -147,6 +147,10 @@ impl Type for TypeSourceDataTypeRefDynamic {
         Rc::new(TypeSourceDataTypeRefDynamic)
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceDataTypeRefDynamic))
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectConsumeDynamic>));
@@ -193,7 +197,17 @@ impl Type for TypeSourceDataTypeRefDynamic {
     fn desc(&self) -> String {
         "definition_set_data_type_ref".to_string()
     }
+
+    fn type_to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+    ) -> Option<crate::langhelp::Artifact> {
+        Some(Self::build_type_artifact())
+    }
 }
+
+generate_builtin_artifact_type!(TypeSourceDataTypeRefDynamic, serde_json::Value);
 
 impl Value for TypeSourceDataTypeRefDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
