@@ -80,71 +80,9 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     pub interface_method_index: usize,
 }
 
-/// Builtin id for `TypeSourceDataTypeDynamic { data: None }` — the typeless
-/// mortar marker. Lifting fills in a data-bearing instance, so the typeless
-/// form only appears as a static marker before lift; it serializes to this id
-/// with null data and deserializes back to itself.
-pub(crate) fn type_source_data_type_ref_artifact_id() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
-}
-
-pub(crate) struct DeserializerRef;
-
-impl ArtifactBuiltinDeserializer for DeserializerRef {
-    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::ok(crate::langhelp::CodeValue {
-            code: Code { loc, code: Code_::None },
-            value: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: None })
-                as Rc<dyn crate::langhelp::Value>,
-        })
-    }
-
-    fn type_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((
-            Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: None }) as Rc<dyn Type>,
-            Code { loc, code: Code_::None },
-        ))
-    }
-}
-
-/// Builtin id for serializing a *specific* data type (`TypeSourceDataTypeConst`
-/// or `TypeSourceDataTypeDynamic { data: Some(...) }`). The data carries the
-/// underlying type, identity, methods, and interface impls; deserialization
-/// rebuilds the data-bearing `TypeSourceDataTypeConst` from that data.
-pub(crate) fn type_source_data_type_artifact_id() -> ArtifactIdBuiltin {
-    ArtifactIdBuiltin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
-}
-
-pub(crate) struct DeserializerDataType;
-
-impl ArtifactBuiltinDeserializer for DeserializerDataType {
-    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        super::super::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic.from_serial(xx, loc, data)
-    }
-
-    fn type_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
-        let cv =
-            match super::super::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic
-                .from_serial(xx, loc, data)
-                .into_res() {
-                Ok(v) => v,
-                Err(e) => return EResult { v: None, errors: Some(e) },
-            };
-        let type_value_type = cv.value.type_(xx, loc);
-        match crate::builtin::aspect_type_get(xx, loc, type_value_type.as_ref()).into_res() {
-            Ok(aspect_type) => EResult::ok((aspect_type.type_(cv.value.as_ref()), cv.code)),
-            Err(e) => EResult { v: None, errors: Some(e) },
-        }
-    }
-}
-
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
-    m.insert(type_source_data_type_ref_artifact_id(), Rc::new(DeserializerRef));
-    m.insert(type_source_data_type_artifact_id(), Rc::new(DeserializerDataType));
+pub(crate) fn register(_m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
+    // Source-defined data types serialize as `Artifact { type_: Source(N),
+    // data: null }` where `N` points to the data-type's own artifact (which is
+    // tagged `Builtin(TypeTypeSourceDataTypeDynamic::artifact_id())`). The
+    // Source branch of `deserialize_(type_)artifact` handles that path.
 }

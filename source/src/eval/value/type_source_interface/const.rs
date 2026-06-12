@@ -272,15 +272,6 @@ impl Type for TypeSourceInterfaceConst {
         }
     }
 
-    fn type_to_serial(
-        &self,
-        _xx: &ExprContext,
-        _loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
-        Some(crate::eval::value::record::artifact::TypeRecordArtifact::build_artifact(
-            serde_json::Value::Null,
-        ))
-    }
 }
 
 impl Value for TypeSourceInterfaceConst {

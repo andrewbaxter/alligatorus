@@ -92,6 +92,6 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
     }
 
     fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
-        Rc::new(dynamic::TypeSourceDataTypeDynamic { data: None })
+        Rc::new(dynamic::TypeSourceDataTypeRefDynamic)
     }
 }

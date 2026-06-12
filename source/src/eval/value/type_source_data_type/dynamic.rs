@@ -69,10 +69,137 @@ use {
 };
 
 pub(crate) struct TypeSourceDataTypeDynamic {
-    pub data: Option<Gc<SourceDataTypeData>>,
+    pub data: Gc<SourceDataTypeData>,
 }
 
 impl Aspect for TypeSourceDataTypeDynamic { }
+
+/// Parameterless mortar marker for `Rc<SourceDataTypeRef>` v8 marshaling.
+/// A `SourceDataTypeRef` is a reference to a data-type *definition*, not an
+/// instance of one (that's `TypeSourceDataTypeDynamic`); the two need distinct
+/// static-type singletons. The v8 runtime value stored at field accessors is
+/// `Rc<dyn Type> = TypeSourceDataTypeConst`, which carries the actual data
+/// type; `lift` unwraps that to the const form.
+pub(crate) struct TypeSourceDataTypeRefDynamic;
+
+impl Aspect for TypeSourceDataTypeRefDynamic { }
+
+impl AspectConsumeDynamic for TypeSourceDataTypeRefDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
+    fn bind_dynamic(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
+    }
+}
+
+impl AspectBind for TypeSourceDataTypeRefDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+        bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectInitialBind for TypeSourceDataTypeRefDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key,
+            type_: Rc::new(TypeSourceDataTypeRefDynamic),
+        })
+    }
+}
+
+impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let dt = must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
+        dt.data.set.finish()?;
+        Ok(Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code { loc, code: Code_::Dyn(Rc::new(value)) },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeRefDynamic),
+            }),
+        }
+    }
+}
+
+impl Type for TypeSourceDataTypeRefDynamic {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeSourceDataTypeRefDynamic)
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectConsumeDynamic>));
+        }
+        if *key == aspect_bind_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectBindDynamic>));
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectBind>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == aspect_lift_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == aspect_stack_value_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectStackValueDynamic>));
+        }
+        None
+    }
+
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        let any = source_type as &dyn std::any::Any;
+        any.is::<TypeSourceDataTypeConst>()
+            || any.is::<TypeSourceDataTypeDynamic>()
+            || any.is::<TypeSourceDataTypeRefDynamic>()
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeRefDynamic),
+            }),
+        })
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert definition_set_data_type_ref".to_string())
+    }
+
+    fn desc(&self) -> String {
+        "definition_set_data_type_ref".to_string()
+    }
+}
+
+impl Value for TypeSourceDataTypeRefDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
 
 impl AspectBind for TypeSourceDataTypeDynamic {
     fn bind(
@@ -104,7 +231,7 @@ impl AspectConsumeDynamic for TypeSourceDataTypeDynamic {
 
 impl AspectField for TypeSourceDataTypeDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let data = self.data.as_ref().expect("TypeSourceDataTypeDynamic field access requires data");
+        let data = &self.data;
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
@@ -192,7 +319,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
-        let data = self.data.as_ref()?;
+        let data = &self.data;
         let ConstKey::String(key) = key else {
             return None;
         };
@@ -238,7 +365,8 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        if let Some(data) = &self.data {
+        {
+            let data = &self.data;
             let underlying_type = data.underlying_type.get().clone();
             let underlying_lift =
                 crate::builtin::aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
@@ -271,14 +399,6 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
                 data: data.clone(),
                 isolate_bundle,
             }))
-        } else {
-            let type_: &Rc<dyn Type> = from_v8_ref(&value);
-            let dt = must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
-            dt.data.set.finish()?;
-            Ok(Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() }),
-            }))
         }
     }
 }
@@ -300,7 +420,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
 
 impl crate::builtin::AspectType for TypeSourceDataTypeDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let data = self.data.clone().expect("AspectType requested on data-typeless TypeSourceDataTypeDynamic");
+        let data = self.data.clone();
         // If the value is a `ValueSourceDataTypeConst` (the lifted form of an
         // instance), thread its `isolate_bundle` through so `cast_from` can
         // dispatch via v8.
@@ -440,7 +560,8 @@ impl Type for TypeSourceDataTypeDynamic {
                 ),
             );
         }
-        if let Some(data) = &self.data {
+        {
+            let data = &self.data;
             if *key == data.identity {
                 return Some(Box::new(true));
             }
@@ -480,82 +601,58 @@ impl Type for TypeSourceDataTypeDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        if let Some(data) = &self.data {
-            if type_.aspect(xx, &data.identity).is_some() {
+        let data = &self.data;
+        if type_.aspect(xx, &data.identity).is_some() {
+            return true;
+        }
+        let interface_impls = data.interface_impls.borrow();
+        for impl_data in interface_impls.iter() {
+            if type_.aspect(xx, &impl_data.interface.identity).is_some() {
                 return true;
-            }
-            let interface_impls = data.interface_impls.borrow();
-            for impl_data in interface_impls.iter() {
-                if type_.aspect(xx, &impl_data.interface.identity).is_some() {
-                    return true;
-                }
             }
         }
         false
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        if let Some(data) = &self.data {
-            return source_type.aspect(xx, &data.identity).is_some();
-        }
-        // data=None: this is the generic "data_type_ref" placeholder. Accept any
-        // source that downcasts to a SourceDataTypeConst / SourceDataTypeDynamic
-        // (i.e. carries a SourceDataTypeRef-like identity).
-        (source_type as &dyn std::any::Any).is::<TypeSourceDataTypeConst>()
-            || (source_type as &dyn std::any::Any).downcast_ref::<TypeSourceDataTypeDynamic>()
-                .map(|t| t.data.is_some())
-                .unwrap_or(false)
+        source_type.aspect(xx, &self.data.identity).is_some()
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        if self.data.is_none() {
-            // Accept any concrete data type ref into the generic placeholder.
-            return EvalRes::ok(CodeValue {
-                code: cv.code,
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeSourceDataTypeDynamic { data: None }),
-                }),
-            });
-        }
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if let Some(data) = &self.data {
-            if type_.aspect(xx, &data.identity).is_some() {
+        let data = &self.data;
+        if type_.aspect(xx, &data.identity).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() }),
+                }),
+            });
+        }
+        let interface_impls = data.interface_impls.borrow();
+        for impl_data in interface_impls.iter() {
+            if type_.aspect(xx, &impl_data.interface.identity).is_some() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
-                        type_: Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() }),
+                        type_: Rc::new(TypeSourceInterfaceConst { data: impl_data.interface.clone() }),
                     }),
                 });
-            }
-            let interface_impls = data.interface_impls.borrow();
-            for impl_data in interface_impls.iter() {
-                if type_.aspect(xx, &impl_data.interface.identity).is_some() {
-                    return EvalRes::ok(CodeValue {
-                        code: cv.code,
-                        value: Rc::new(ValueDynamic {
-                            source: ValueDynamicSource::Expr,
-                            type_: Rc::new(TypeSourceInterfaceConst { data: impl_data.interface.clone() }),
-                        }),
-                    });
-                }
             }
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
     fn desc(&self) -> String {
-        if let Some(data) = &self.data {
-            match data.description.borrow().as_deref() {
-                Some(d) => d.to_string(),
-                None => format!("data_type({})", data.name.as_deref().unwrap_or("?")),
-            }
-        } else {
-            format!("definition_set_data_type_ref")
+        let data = &self.data;
+        match data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("data_type({})", data.name.as_deref().unwrap_or("?")),
         }
     }
 
@@ -564,22 +661,13 @@ impl Type for TypeSourceDataTypeDynamic {
         xx: &ExprContext,
         loc: QExprId,
     ) -> Option<crate::langhelp::Artifact> {
-        match &self.data {
-            Some(data) => {
-                crate::eval::definition_set::serialize_definition_set(xx, loc, &data.set);
-                let artifact_id = data.artifact_id.borrow().clone()?;
-                Some(crate::langhelp::Artifact {
-                    type_: artifact_id,
-                    data: serde_json::Value::Null,
-                })
-            },
-            None => Some(crate::langhelp::Artifact {
-                type_: crate::langhelp::ArtifactId::Builtin(
-                    super::artifact::type_source_data_type_ref_artifact_id(),
-                ),
-                data: serde_json::Value::Null,
-            }),
-        }
+        let data = &self.data;
+        crate::eval::definition_set::serialize_definition_set(xx, loc, &data.set);
+        let artifact_id = data.artifact_id.borrow().clone()?;
+        Some(crate::langhelp::Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        })
     }
 }
 

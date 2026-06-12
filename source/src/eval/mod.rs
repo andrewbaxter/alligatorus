@@ -1646,10 +1646,16 @@ fn eval(
                         method_impl.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
                     if method_impl.impl_expr_artifact.borrow().is_none() {
-                        let serialized =
-                            crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast)
-                                .expect("Failed to pre-serialize interface method impl_expr");
-                        *method_impl.impl_expr_artifact.borrow_mut() = Some(serialized);
+                        // Cross-isolate import re-runs the impl_expr's
+                        // const_eval, so the body's AST needs to round-trip
+                        // through an artifact. Same-isolate dispatch uses
+                        // `compiled_js` directly and never reads the artifact,
+                        // so a failure here is tolerated — the cross-isolate
+                        // import path will surface a clearer error if the
+                        // missing artifact is actually consumed.
+                        if let Ok(serialized) = crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast) {
+                            *method_impl.impl_expr_artifact.borrow_mut() = Some(serialized);
+                        }
                     }
 
                     // Resolve ret type from interface method
@@ -2174,7 +2180,7 @@ fn eval(
                 }
                 if let Some(dt_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef>>() {
                     return Rc::new(crate::eval::value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
-                        data: Some(dt_ref.data.clone()),
+                        data: dt_ref.data.clone(),
                     });
                 }
                 return from_v8_ref::<Rc<dyn Type>>(&*value).clone();

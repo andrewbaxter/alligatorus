@@ -227,7 +227,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         } else {
             Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: Some(self.data.clone()) }),
+                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
             })
         };
         // Stash the eventual bundle/underlying into the value once the
@@ -364,6 +364,10 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
 
 impl AspectStackValueDynamic for TypeSourceDataTypeConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        // Instances of the data type (e.g. the result of a function returning
+        // this type) need to support field access; that's on
+        // `TypeSourceDataTypeDynamic { data: Some(_) }`, not `*Const` which is
+        // the "type as value" form.
         CodeValue {
             code: Code {
                 loc,
@@ -371,7 +375,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
+                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
             }),
         }
     }

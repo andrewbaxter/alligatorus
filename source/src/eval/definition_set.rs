@@ -281,6 +281,201 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
     set.next_interface_method_id.next()
 }
 
+/// Single point of entry for deserializing a `DefinitionSet` and all its
+/// data types and functions. Implements the two-phase pattern:
+/// 1. Build empty `Gc<DefinitionSet>` shell, build all data-type and function
+///    shells, register each in `deserialized_artifacts`, attach to
+///    `set.data_types` / `set.functions`. No cross-artifact reads.
+/// 2. Register a single finalizer that resolves cross-artifact references
+///    (data type's underlying_type / method ret types / interface_impls;
+///    function arg_type / ret_type) by reading other shells out of the cache.
+pub(crate) fn load_def_set(
+    xx: &ExprContext,
+    def_set_artifact_id: &crate::langhelp::ArtifactId,
+) -> Result<Gc<DefinitionSet>, String> {
+    use {
+        crate::eval::value::{
+            type_source_data_type::{
+                SourceDataMethodData,
+                SourceDataTypeInterfaceImplData,
+                SourceDataTypeInterfaceMethodImplData,
+                artifact::{
+                    ArtifactDataDefSet,
+                    ArtifactDataDefSetDataType,
+                    ArtifactDataDefSetFunction,
+                },
+            },
+            type_source_interface::BuiltinInterfaceKind,
+        },
+        crate::invariant::{
+            DeserialLazy,
+            must_downcast_ref,
+        },
+    };
+    crate::langhelp::deserialize_independent_artifact(&xx.vx.ix, def_set_artifact_id, || {
+        let def_set_artifact = xx.vx.ix.gx.artifacts.get(def_set_artifact_id.clone())?;
+        let def_set_serial: ArtifactDataDefSet =
+            serde_json::from_value(def_set_artifact.data)
+                .map_err(|e| format!("Failed to parse definition set: {}", e))?;
+        let import_id = def_set_serial.import_id;
+        let def_set_id = def_set_serial.def_set_id;
+        let set =
+            Gc::new(DefinitionSet::new(import_id, def_set_id, def_set_serial.source_id));
+        let mut dt_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
+        let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
+        for dt_artifact_id in &def_set_serial.data_types {
+            let dt_artifact = xx.vx.ix.gx.artifacts.get(dt_artifact_id.clone())?;
+            let dt_serial: ArtifactDataDefSetDataType =
+                serde_json::from_value(dt_artifact.data)
+                    .map_err(|e| format!("Failed to parse data type: {}", e))?;
+            let dt_data = Gc::new(SourceDataTypeData {
+                set: set.clone(),
+                name: dt_serial.name.clone(),
+                identity: dt_serial.identity.clone(),
+                data_field: dt_serial.data_field.clone(),
+                description: RefCell::new(None),
+                underlying_type: DeserialLazy::new(),
+                methods: RefCell::new(Vec::new()),
+                interface_impls: RefCell::new(Vec::new()),
+                artifact_id: RefCell::new(Some(dt_artifact_id.clone())),
+            });
+            xx
+                .vx
+                .ix
+                .deserialized_artifacts
+                .borrow_mut()
+                .insert(dt_artifact_id.clone(), Box::new(dt_data.clone()));
+            dt_gcs.push(dt_data);
+            dt_serials.push((dt_artifact_id.clone(), dt_serial));
+        }
+        *set.data_types.borrow_mut() = dt_gcs;
+        let mut func_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetFunction)> = Vec::new();
+        let mut func_gcs: Vec<Gc<SourceFunctionData>> = Vec::new();
+        for func_artifact_id in &def_set_serial.functions {
+            let func_artifact = xx.vx.ix.gx.artifacts.get(func_artifact_id.clone())?;
+            let func_serial: ArtifactDataDefSetFunction =
+                serde_json::from_value(func_artifact.data)
+                    .map_err(|e| format!("Failed to parse function: {}", e))?;
+            let func_data = Gc::new(SourceFunctionData {
+                set: set.clone(),
+                name: func_serial.name.clone(),
+                description: RefCell::new(None),
+                impl_expr: RefCell::new(None),
+                arg_type: RefCell::new(None),
+                ret_type: RefCell::new(None),
+                scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
+                    import_id,
+                    def_set_id,
+                    func_serial.entry_id,
+                ))),
+                artifact_id: RefCell::new(Some(func_artifact_id.clone())),
+                compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
+            });
+            xx
+                .vx
+                .ix
+                .deserialized_artifacts
+                .borrow_mut()
+                .insert(func_artifact_id.clone(), Box::new(func_data.clone()));
+            func_gcs.push(func_data);
+            func_serials.push((func_artifact_id.clone(), func_serial));
+        }
+        *set.functions.borrow_mut() = func_gcs;
+        let finalizer: crate::langhelp::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+            let mut codes: Vec<Code> = Vec::new();
+            for (dt_artifact_id, dt_serial) in &dt_serials {
+                let dt_data = {
+                    let cache = xx.vx.ix.deserialized_artifacts.borrow();
+                    must_downcast_ref::<Gc<SourceDataTypeData>>(cache.get(dt_artifact_id).unwrap().as_ref()).clone()
+                };
+                let (underlying_type, underlying_code) =
+                    crate::eval::util::deserialize_type_artifact(xx, loc, &dt_serial.underlying_type)
+                        .into_res()
+                        .map_err(|e| format!("Failed to deserialize underlying type: {:?}", e))?;
+                codes.push(underlying_code);
+                dt_data.underlying_type.set(underlying_type);
+                let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
+                    let (ret_type, ret_code) =
+                        crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type)
+                            .into_res()
+                            .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {:?}", e));
+                    codes.push(ret_code);
+                    SourceDataMethodData {
+                        name: m.name.clone(),
+                        arg_type: RefCell::new(None),
+                        impl_expr: RefCell::new(None),
+                        ret_type: RefCell::new(Some(ret_type)),
+                        scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
+                            import_id,
+                            def_set_id,
+                            i,
+                        ))),
+                        self_scope_entry_id: Cell::new(None),
+                        field_name: m.field_name.clone(),
+                        compiled_js: RefCell::new(Some(m.compiled_js.clone())),
+                    }
+                }).collect();
+                *dt_data.methods.borrow_mut() = methods;
+                let builtin_ifaces =
+                    crate::eval::value::type_source_interface::build_builtin_interfaces(import_id);
+                let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
+                    dt_serial.interface_impls.iter().map(|impl_serial| {
+                        let iface = match impl_serial.builtin_kind {
+                            BuiltinInterfaceKind::Value => builtin_ifaces.value.clone(),
+                            BuiltinInterfaceKind::Type => builtin_ifaces.type_.clone(),
+                            BuiltinInterfaceKind::AspectFunction => builtin_ifaces.aspect_function.clone(),
+                            BuiltinInterfaceKind::AspectField => builtin_ifaces.aspect_field.clone(),
+                            BuiltinInterfaceKind::ScopeEntry => builtin_ifaces.scope_entry.clone(),
+                            BuiltinInterfaceKind::Target => builtin_ifaces.target.clone(),
+                            BuiltinInterfaceKind::CodeDyn => builtin_ifaces.code_dyn.clone(),
+                        };
+                        let method_impls = impl_serial.method_impls.iter().map(|m| {
+                            let impl_expr =
+                                crate::eval::expr_artifact::expr_from_artifact(xx, &m.impl_expr)
+                                    .expect("Failed to deserialize interface method impl_expr");
+                            SourceDataTypeInterfaceMethodImplData {
+                                interface_method_index: m.interface_method_index,
+                                impl_expr: RefCell::new(
+                                    Some(Rc::new(impl_expr) as Rc<dyn crate::langhelp::Value>),
+                                ),
+                                impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
+                                compiled_js: RefCell::new(Some(m.compiled_js.clone())),
+                                scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
+                                    import_id,
+                                    def_set_id,
+                                    m.entry_id,
+                                ))),
+                                self_scope_entry_id: Cell::new(None),
+                            }
+                        }).collect();
+                        SourceDataTypeInterfaceImplData { interface: iface, method_impls }
+                    }).collect();
+                *dt_data.interface_impls.borrow_mut() = interface_impls;
+            }
+            for (func_artifact_id, func_serial) in &func_serials {
+                let func_data = {
+                    let cache = xx.vx.ix.deserialized_artifacts.borrow();
+                    must_downcast_ref::<Gc<SourceFunctionData>>(cache.get(func_artifact_id).unwrap().as_ref()).clone()
+                };
+                let (arg_type, arg_code) =
+                    crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.arg_type)
+                        .into_res()
+                        .map_err(|e| format!("Failed to deserialize function arg type: {:?}", e))?;
+                codes.push(arg_code);
+                let (ret_type, ret_code) =
+                    crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.ret_type)
+                        .into_res()
+                        .map_err(|e| format!("Failed to deserialize function ret type: {:?}", e))?;
+                codes.push(ret_code);
+                *func_data.arg_type.borrow_mut() = Some(arg_type);
+                *func_data.ret_type.borrow_mut() = Some(ret_type);
+            }
+            Ok(codes)
+        });
+        Ok((set, finalizer))
+    })
+}
+
 pub(crate) fn serialize_definition_set(
     xx: &ExprContext,
     loc: QExprId,
@@ -333,12 +528,25 @@ pub(crate) fn serialize_definition_set(
                                         other,
                                     ),
                                 };
-                                let impl_expr =
-                                    m
-                                        .impl_expr_artifact
-                                        .borrow()
-                                        .clone()
-                                        .expect("Interface method impl missing impl_expr_artifact");
+                                // Falls back to a placeholder when
+                                // pre-serialization couldn't capture the body
+                                // (e.g. a Literal whose value type lacks
+                                // AspectArtifact). The placeholder won't
+                                // const_eval correctly cross-isolate, but
+                                // same-isolate runtime uses `compiled_js`.
+                                let impl_expr = m.impl_expr_artifact.borrow().clone().unwrap_or_else(|| {
+                                    crate::eval::expr_artifact::ArtifactExpr {
+                                        loc: crate::eval::expr_artifact::ArtifactQExprId(0, 0),
+                                        r#type: Box::new(
+                                            crate::eval::expr_artifact::ArtifactExpr_::Literal {
+                                                value:
+                                                    crate::eval::value::type_null::r#const::TypeNullConst::build_artifact(
+                                                        (),
+                                                    ),
+                                            },
+                                        ),
+                                    }
+                                });
                                 ArtifactDataDefSetInterfaceMethodImpl {
                                     interface_method_index: m.interface_method_index,
                                     entry_id,

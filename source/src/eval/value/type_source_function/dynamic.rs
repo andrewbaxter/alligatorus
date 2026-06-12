@@ -203,76 +203,8 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
                     serde_json::from_value(data.clone())
                         .map_err(|e| format!("Failed to parse defset function: {}", e)),
                 )?;
-            let def_set = erb.must_res(deserialize_independent_artifact(&xx.vx.ix, &serial.def_set, || {
-                let def_set_artifact = xx.vx.ix.gx.artifacts.get(serial.def_set.clone())?;
-                let def_set_serial: ArtifactDataDefSet =
-                    serde_json::from_value(def_set_artifact.data)
-                        .map_err(|e| format!("Failed to parse definition set: {}", e))?;
-                let set = Gc::new(
-                    DefinitionSet::new(
-                        def_set_serial.import_id,
-                        def_set_serial.def_set_id,
-                        def_set_serial.source_id,
-                    ),
-                );
-                let mut func_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetFunction)> = Vec::new();
-                let mut func_gcs: Vec<Gc<SourceFunctionData>> = Vec::new();
-                for func_artifact_id in &def_set_serial.functions {
-                    let func_artifact = xx.vx.ix.gx.artifacts.get(func_artifact_id.clone())?;
-                    let func_serial: ArtifactDataDefSetFunction =
-                        serde_json::from_value(func_artifact.data)
-                            .map_err(|e| format!("Failed to parse function: {}", e))?;
-                    let func_data = Gc::new(SourceFunctionData {
-                        set: set.clone(),
-                        name: func_serial.name.clone(),
-                        description: RefCell::new(None),
-                        impl_expr: RefCell::new(None),
-                        arg_type: RefCell::new(None),
-                        ret_type: RefCell::new(None),
-                        scope_entry_id: Cell::new(
-                            Some(crate::langhelp::ScopeEntryId::Def(
-                                def_set_serial.import_id,
-                                def_set_serial.def_set_id,
-                                func_serial.entry_id,
-                            )),
-                        ),
-                        artifact_id: RefCell::new(Some(func_artifact_id.clone())),
-                        compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
-                    });
-                    xx.vx.ix.deserialized_artifacts.borrow_mut().insert(
-                        func_artifact_id.clone(),
-                        Box::new(func_data.clone()),
-                    );
-                    func_gcs.push(func_data);
-                    func_serials.push((func_artifact_id.clone(), func_serial));
-                }
-                *set.functions.borrow_mut() = func_gcs;
-                let finalizer: crate::langhelp::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
-                    let mut codes: Vec<Code> = Vec::new();
-                    for (func_artifact_id, func_serial) in &func_serials {
-                        let func_data = {
-                            let cache = xx.vx.ix.deserialized_artifacts.borrow();
-                            must_downcast_ref::<Gc<SourceFunctionData>>(
-                                cache.get(func_artifact_id).unwrap().as_ref(),
-                            ).clone()
-                        };
-                        let (arg_type, arg_code) =
-                            crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.arg_type)
-                                .into_res()
-                                .map_err(|e| format!("Failed to deserialize function arg type: {:?}", e))?;
-                        codes.push(arg_code);
-                        let (ret_type, ret_code) =
-                            crate::eval::util::deserialize_type_artifact(xx, loc, &func_serial.ret_type)
-                                .into_res()
-                                .map_err(|e| format!("Failed to deserialize function ret type: {:?}", e))?;
-                        codes.push(ret_code);
-                        *func_data.arg_type.borrow_mut() = Some(arg_type);
-                        *func_data.ret_type.borrow_mut() = Some(ret_type);
-                    }
-                    Ok(codes)
-                });
-                Ok((set, finalizer))
-            }))?;
+            let def_set =
+                erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
             {
                 let mut sets = xx.vx.ix.definition_sets.borrow_mut();
                 if !sets.iter().any(|s| s.def_set_id == def_set.def_set_id) {

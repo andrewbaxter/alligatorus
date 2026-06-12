@@ -63,158 +63,11 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
             let serial: ArtifactDataDefSetDataType =
                 erb.must_res(
                     serde_json::from_value(
-                        data.clone()
+                        data.clone(),
                     ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
                 )?;
-            let def_set = erb.must_res(deserialize_independent_artifact(&xx.vx.ix, &serial.def_set, || {
-                let def_set_artifact = xx.vx.ix.gx.artifacts.get(serial.def_set.clone())?;
-                let def_set_serial: ArtifactDataDefSet =
-                    serde_json::from_value(
-                        def_set_artifact.data
-                    ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
-                let set = Gc::new(
-                    DefinitionSet::new(
-                        def_set_serial.import_id,
-                        def_set_serial.def_set_id,
-                        def_set_serial.source_id,
-                    ),
-                );
-                let mut dt_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
-                let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
-                for dt_artifact_id in &def_set_serial.data_types {
-                    let dt_artifact = xx.vx.ix.gx.artifacts.get(dt_artifact_id.clone())?;
-                    let dt_serial: ArtifactDataDefSetDataType =
-                        serde_json::from_value(
-                            dt_artifact.data
-                        ).map_err(|e| format!("Failed to parse data type: {}", e))?;
-                    let dt_data = Gc::new(SourceDataTypeData {
-                        set: set.clone(),
-                        name: dt_serial.name.clone(),
-                        identity: dt_serial.identity.clone(),
-                        data_field: dt_serial.data_field.clone(),
-                        description: RefCell::new(None),
-                        underlying_type: DeserialLazy::new(),
-                        methods: RefCell::new(Vec::new()),
-                        interface_impls: RefCell::new(Vec::new()),
-                        artifact_id: RefCell::new(Some(dt_artifact_id.clone())),
-                    });
-                    xx
-                        .vx
-                        .ix
-                        .deserialized_artifacts
-                        .borrow_mut()
-                        .insert(dt_artifact_id.clone(), Box::new(dt_data.clone()),);
-                    dt_gcs.push(dt_data);
-                    dt_serials.push((dt_artifact_id.clone(), dt_serial));
-                }
-                *set.data_types.borrow_mut() = dt_gcs;
-                let finalizer: crate::langhelp::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
-                    let mut codes: Vec<Code> = Vec::new();
-                    for (dt_artifact_id, dt_serial) in &dt_serials {
-                        let dt_data = {
-                            let cache = xx.vx.ix.deserialized_artifacts.borrow();
-                            must_downcast_ref::<Gc<SourceDataTypeData>>(
-                                cache.get(dt_artifact_id).unwrap().as_ref(),
-                            ).clone()
-                        };
-                        let (underlying_type, underlying_code) =
-                            crate::eval::util::deserialize_type_artifact(xx, loc, &dt_serial.underlying_type,)
-                                .into_res()
-                                .map_err(|e| {
-                                    format!("Failed to deserialize underlying type: {:?}", e)
-                                })?;
-                        codes.push(underlying_code);
-                        dt_data.underlying_type.set(underlying_type);
-                        let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
-                            let (ret_type, ret_code) =
-                                crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type,)
-                                    .into_res()
-                                    .unwrap_or_else(|e| {
-                                        panic!("Failed to deserialize method ret type: {:?}", e)
-                                    });
-                            codes.push(ret_code);
-                            SourceDataMethodData {
-                                name: m.name.clone(),
-                                arg_type: RefCell::new(None),
-                                impl_expr: RefCell::new(None),
-                                ret_type: RefCell::new(Some(ret_type)),
-                                scope_entry_id: Cell::new(
-                                    Some(ScopeEntryId::Def(def_set_serial.import_id, def_set_serial.def_set_id, i,)),
-                                ),
-                                self_scope_entry_id: Cell::new(None),
-                                field_name: m.field_name.clone(),
-                                compiled_js: RefCell::new(Some(m.compiled_js.clone()),),
-                            }
-                        }).collect();
-                        *dt_data.methods.borrow_mut() = methods;
-                        let builtin_ifaces =
-                            crate::eval::value::type_source_interface::build_builtin_interfaces(
-                                def_set_serial.import_id,
-                            );
-                        let interface_impls: Vec<
-                            crate::eval::value::type_source_data_type::SourceDataTypeInterfaceImplData,
-                        > = dt_serial.interface_impls.iter().map(|impl_serial| {
-                            let iface = match impl_serial.builtin_kind {
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::Value => {
-                                    builtin_ifaces.value.clone()
-                                },
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type => {
-                                    builtin_ifaces.type_.clone()
-                                },
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::AspectFunction => {
-                                    builtin_ifaces.aspect_function.clone()
-                                },
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::AspectField => {
-                                    builtin_ifaces.aspect_field.clone()
-                                },
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::ScopeEntry => {
-                                    builtin_ifaces.scope_entry.clone()
-                                },
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::Target => {
-                                    builtin_ifaces.target.clone()
-                                },
-                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::CodeDyn => {
-                                    builtin_ifaces.code_dyn.clone()
-                                },
-                            };
-                            let method_impls = impl_serial
-                                .method_impls
-                                .iter()
-                                .map(|m| {
-                                    let impl_expr =
-                                        crate::eval::expr_artifact::expr_from_artifact(xx, &m.impl_expr)
-                                            .expect("Failed to deserialize interface method impl_expr");
-                                    crate::eval::value::type_source_data_type::SourceDataTypeInterfaceMethodImplData {
-                                        interface_method_index: m.interface_method_index,
-                                        impl_expr: RefCell::new(
-                                            Some(Rc::new(impl_expr) as Rc<dyn crate::langhelp::Value>),
-                                        ),
-                                        impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
-                                        compiled_js: RefCell::new(Some(m.compiled_js.clone())),
-                                        scope_entry_id: Cell::new(
-                                            Some(
-                                                ScopeEntryId::Def(
-                                                    def_set_serial.import_id,
-                                                    def_set_serial.def_set_id,
-                                                    m.entry_id,
-                                                ),
-                                            ),
-                                        ),
-                                        self_scope_entry_id: Cell::new(None),
-                                    }
-                                })
-                                .collect();
-                            crate::eval::value::type_source_data_type::SourceDataTypeInterfaceImplData {
-                                interface: iface,
-                                method_impls,
-                            }
-                        }).collect();
-                        *dt_data.interface_impls.borrow_mut() = interface_impls;
-                    }
-                    Ok(codes)
-                });
-                Ok((set, finalizer))
-            },))?;
+            let def_set =
+                erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
             let data_types = def_set.data_types.borrow();
             let dt_data =
                 data_types
@@ -224,10 +77,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                     .clone();
             drop(data_types);
             return Ok(CodeValue {
-                code: Code {
-                    loc: loc,
-                    code: Code_::None,
-                },
+                code: Code { loc, code: Code_::None },
                 value: Rc::new(TypeSourceDataTypeConst { data: dt_data }),
             });
         })
