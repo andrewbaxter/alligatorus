@@ -95,6 +95,8 @@ dynamic_wrap!(wrap Gc < DefinitionSet > as DefinitionSet(self_, scope) {
             scope_entry_id: Cell::new(
                 Some(crate::langhelp::ScopeEntryId::Def(ds.import_id, ds.def_set_id, entry_id,))
             ),
+            artifact_id: RefCell::new(None),
+            compiled_js: RefCell::new(None),
         });
         ds.functions.borrow_mut().push(func_data.clone());
         let func_ref = Rc::new(TypeSourceFunctionConst { data: func_data, });
@@ -370,8 +372,33 @@ pub(crate) fn serialize_definition_set(
                 )
             })
         }).collect();
+        let functions = set.functions.borrow();
+        let function_ids: Vec<crate::langhelp::ArtifactId> = functions.iter().map(|f| {
+            crate::langhelp::produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &f.artifact_id, || {
+                let arg_type = f.arg_type.borrow().clone().expect("Function missing arg type");
+                let ret_type = f.ret_type.borrow().clone().expect("Function missing ret type");
+                let compiled_js = f.compiled_js.borrow().clone().expect("Function missing compiled JS");
+                let entry_id = match f.scope_entry_id.get().expect("Function missing scope_entry_id") {
+                    crate::langhelp::ScopeEntryId::Def(_, _, id) => id,
+                    other => panic!("Function has non-Def scope_entry_id: {:?}", other),
+                };
+                let serial = crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetFunction {
+                    name: f.name.clone(),
+                    entry_id,
+                    arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
+                    ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
+                    compiled_js,
+                    def_set: def_set_artifact_id.clone(),
+                };
+                crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic::build_artifact(
+                    serde_json::to_value(&serial).expect("Failed to serialize function"),
+                )
+            })
+        }).collect();
+        drop(functions);
         let serial = ArtifactDataDefSet {
             data_types: data_type_ids,
+            functions: function_ids,
             import_id: set.import_id,
             def_set_id: set.def_set_id,
             source_id: set.source_id,

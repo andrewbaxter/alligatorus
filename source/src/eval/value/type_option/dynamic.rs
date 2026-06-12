@@ -64,6 +64,13 @@ use {
     },
 };
 
+pub(crate) fn type_option_identity() -> Unique {
+    Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct TypeOptionDynamic {
     pub(crate) element_type: Rc<dyn Type>,
@@ -184,6 +191,9 @@ impl Type for TypeOptionDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == type_option_identity() {
+            return Some(Box::new(true));
+        }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectField>));
         }
@@ -208,11 +218,21 @@ impl Type for TypeOptionDynamic {
         None
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
-        false
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        source_type.aspect(xx, &type_option_identity()).is_some()
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+        if source_type.aspect(xx, &type_option_identity()).is_some() {
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            });
+        }
         EvalRes::err(loc, "Cannot convert to option".to_string())
     }
 

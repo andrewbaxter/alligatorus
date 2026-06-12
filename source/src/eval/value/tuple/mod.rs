@@ -6,12 +6,14 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectInitialBind,
             AspectLiftDynamic,
             AspectTuple,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
+            aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_tuple_aspect_id,
         },
@@ -217,6 +219,14 @@ impl AspectBind for Tuple {
     }
 }
 
+impl AspectInitialBind for Tuple {
+    fn initial_bind(&self, _dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryEmpty {
+            type_: Rc::new(self.clone_as_type()) as Rc<dyn Type>,
+        })
+    }
+}
+
 impl AspectBindDynamic for Tuple {
     fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         self.bind_sub(xx, loc, cv)
@@ -307,6 +317,9 @@ impl Type for Tuple {
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectBind>));
         }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
+        }
         if *key == aspect_lift_dynamic_aspect_id() {
             let element_lifts: Vec<Box<dyn AspectLiftDynamic>> = self.elements.iter().map(|e| {
                 let t = match e {
@@ -334,8 +347,17 @@ impl Type for Tuple {
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let result_type = cv.value.type_(xx, loc);
+        // `cv.value` may be a `ValueEmptyConst` placeholder (e.g. when `self` is
+        // bound to a tuple-typed underlying via `ScopeEntryEmpty`). Synthesize a
+        // fresh empty Tuple value in that case.
+        let cv_value: Rc<dyn Value> =
+            if (cv.value.as_ref() as &dyn std::any::Any).is::<crate::eval::value::value_empty::r#const::ValueEmptyConst>() {
+                Rc::new(self.clone_as_type())
+            } else {
+                cv.value
+            };
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple cast_to: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv_value)).ok().expect("Tuple cast_to: Rc not unique");
         let needs_runtime = tuple.elements.iter().any(|e| match e {
             TupleElement::Mortar(_) => true,
             TupleElement::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),

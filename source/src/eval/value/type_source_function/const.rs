@@ -1,8 +1,10 @@
 use {
     crate::{
         builtin::{
+            AspectArtifact,
             AspectBind,
             AspectFunction,
+            aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_function_aspect_id,
         },
@@ -15,7 +17,9 @@ use {
             tuple::scope_entry::ScopeEntryValue,
             type_function::dynamic::dynamic_call,
         },
+        invariant::must_downcast_ref,
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -38,6 +42,38 @@ use {
 };
 
 impl Aspect for TypeSourceFunctionConst { }
+
+impl AspectArtifact for TypeSourceFunctionConst {
+    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        super::dynamic::TypeTypeSourceFunctionDynamic.from_serial(xx, loc, data)
+    }
+
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
+        let func = must_downcast_ref::<TypeSourceFunctionConst>(self_.as_ref());
+        // Ensure the def-set is registered. Bare function references that never
+        // get called or lifted skip the usual registration paths, but their
+        // serialization still requires the def-set's data types / interface
+        // impls to have been compiled in this stage.
+        {
+            let set = &func.data.set;
+            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
+            if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
+                sets.push(set.clone());
+            }
+        }
+        crate::eval::definition_set::serialize_definition_set(xx, loc, &func.data.set);
+        let artifact_id = func
+            .data
+            .artifact_id
+            .borrow()
+            .clone()
+            .expect("Function artifact ID should be set by serialize_definition_set");
+        EResult::ok(Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        })
+    }
+}
 
 impl AspectBind for TypeSourceFunctionConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
@@ -83,6 +119,11 @@ impl Type for TypeSourceFunctionConst {
         if *key == aspect_bind_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectBind>),
+            );
+        }
+        if *key == aspect_artifact_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
             );
         }
         return None;

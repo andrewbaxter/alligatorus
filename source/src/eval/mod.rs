@@ -1074,7 +1074,9 @@ fn eval(
             let def_set_id = DefSetId(ex_slot.ex.ix.def_set_counter.next());
             let import_id = ex_slot.ex.ix.import_state;
             let source_id = ex_slot.ex.ix.source_id;
-            Gc::new(DefinitionSet::new(import_id, def_set_id, source_id))
+            let ds = Gc::new(DefinitionSet::new(import_id, def_set_id, source_id));
+            ex_slot.ex.ix.definition_sets.borrow_mut().push(ds.clone());
+            ds
         }),
         dynamic_wrap!(fn str_to_json(ex, dynamic_scope, scope)(s: String) -> String {
             serde_json::to_string(&s).unwrap()
@@ -1342,14 +1344,20 @@ fn eval(
         scope_entry_id: ScopeEntryId,
     }
 
+    let mut precompiled_def_funcs: Vec<String> = vec![];
     let def_func_infos: Vec<DefFuncInfo> = {
         let sets = ex.ix.definition_sets.borrow();
         let mut infos = vec![];
         for ds in sets.iter() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.impl_expr.borrow().is_none() {
-                    // Already compiled in an earlier stage; v8 closure persists
-                    // on the shared `v8_context` global.
+                    // Either compiled in an earlier stage of this compile (v8
+                    // closure persists on the shared `v8_context` global) or
+                    // imported from another compile (compiled_js needs
+                    // emitting in this stage).
+                    if let Some(js) = func_data.compiled_js.borrow().clone() {
+                        precompiled_def_funcs.push(js);
+                    }
                     continue;
                 }
                 let impl_expr_ast =
@@ -1389,8 +1397,9 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
-            let arg_ib = aspect_initial_bind_get(&xx, root_loc, info.arg_type.as_ref()).into_res()?;
-            body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+            if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
+                body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+            }
             Rc::new(ExprContext {
                 vx: body_ex,
                 import_state: xx.import_state.clone(),
@@ -1478,12 +1487,14 @@ fn eval(
                 method.self_scope_entry_id.set(Some(self_id));
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
-                    let self_ib = aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
-                    body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
+                    if let Some(self_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                        body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
+                    }
                     if let Some(arg_type) = method.arg_type.borrow().clone() {
-                        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-                        let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_type.as_ref()).into_res()?;
-                        body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+                        if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                            let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                            body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+                        }
                     }
                     Rc::new(ExprContext {
                         vx: body_ex,
@@ -1575,13 +1586,44 @@ fn eval(
                                     arg_ib.initial_bind(self_id),
                                 );
                             },
+                            Some(value::type_source_interface::BuiltinInterfaceKind::AspectFunction)
+                            | Some(value::type_source_interface::BuiltinInterfaceKind::AspectField)
+                            | Some(value::type_source_interface::BuiltinInterfaceKind::ScopeEntry)
+                            | Some(value::type_source_interface::BuiltinInterfaceKind::Target) => {
+                                if let Some(self_ib) =
+                                    crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                                    body_scope.insert(
+                                        ConstKey::String("self".to_string()),
+                                        self_ib.initial_bind(self_id),
+                                    );
+                                }
+                                // Also bind `arg` to the interface method's arg
+                                // type (AnyType for these builtins). The user's
+                                // body destructures `arg` to pull the per-call
+                                // values (e.g. `self_`/`argument` for
+                                // aspect_function.call).
+                                let arg_type: Rc<dyn Type> = {
+                                    let iface_methods = impl_data.interface.methods.borrow();
+                                    let m = &iface_methods[method_impl.interface_method_index];
+                                    m.arg_type.borrow().clone().expect("Interface method missing arg type")
+                                };
+                                if let Some(arg_ib) =
+                                    crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                                    let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                                    body_scope.insert(
+                                        ConstKey::String("arg".to_string()),
+                                        arg_ib.initial_bind(arg_id),
+                                    );
+                                }
+                            },
                             _ => {
-                                let self_ib =
-                                    aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
-                                body_scope.insert(
-                                    ConstKey::String("self".to_string()),
-                                    self_ib.initial_bind(self_id),
-                                );
+                                if let Some(self_ib) =
+                                    crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                                    body_scope.insert(
+                                        ConstKey::String("self".to_string()),
+                                        self_ib.initial_bind(self_id),
+                                    );
+                                }
                             },
                         }
                         Rc::new(ExprContext {
@@ -1639,8 +1681,17 @@ fn eval(
     }
     let mut code1 = JsSourceBuilder::default();
 
+    // Emit precompiled (imported) functions first so their JS bindings exist
+    // before any fresh function body that might reference them.
+    for js in &precompiled_def_funcs {
+        for line in js.lines() {
+            code1.push(root_loc, line.to_string());
+        }
+    }
+
     // Render definition set function implementations as JS functions
     for (scope_id, arg_scope_id, impl_code) in &def_funcs {
+        let start_line = code1.lines.len();
         let func_name = scope_entry_id_dynamic_key(*scope_id);
         if let Some(arg_id) = arg_scope_id {
             code1.push(root_loc, format!("function {}({}) {{", func_name, scope_entry_id_dynamic_key(*arg_id)));
@@ -1650,6 +1701,14 @@ fn eval(
         let body_var = render_code(&mut code1, impl_code);
         code1.push(root_loc, format!("return {};", body_var));
         code1.push(root_loc, "}".to_string());
+        let compiled = code1.lines[start_line..].join("\n");
+        for ds in ex.ix.definition_sets.borrow().iter() {
+            for func_data in ds.functions.borrow().iter() {
+                if func_data.scope_entry_id.get() == Some(*scope_id) {
+                    *func_data.compiled_js.borrow_mut() = Some(compiled.clone());
+                }
+            }
+        }
     }
 
     // Render data type method implementations as JS functions. Normal
@@ -1675,6 +1734,7 @@ fn eval(
 
                 // Store compiled JS for later serialization
                 let compiled = code1.lines[start_line..].join("\n");
+                eprintln!("emitted method JS for scope_entry_id={:?}", method.scope_entry_id);
                 for ds in ex.ix.definition_sets.borrow().iter() {
                     for dt_data in ds.data_types.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
@@ -1686,6 +1746,8 @@ fn eval(
                             for m in &impl_data.method_impls {
                                 if m.scope_entry_id.get() == Some(method.scope_entry_id) {
                                     *m.compiled_js.borrow_mut() = Some(compiled.clone());
+                                    eprintln!("  -> set compiled_js for dt={:?} iface kind={:?} method_idx={}",
+                                        dt_data.name, impl_data.interface.builtin_kind, m.interface_method_index);
                                 }
                             }
                         }
@@ -2780,7 +2842,9 @@ pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     );
     fields.insert(
         ConstKey::String("cv".to_string()),
-        value::record::RecordField::Mortar(Rc::new(TypeStringDynamic) as Rc<dyn Type>),
+        value::record::RecordField::Mortar(
+            Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic) as Rc<dyn Type>,
+        ),
     );
     Rc::new(value::record::Record { base: Some(Box::new(value::record::RecordBaseDynamic)), fields })
 }

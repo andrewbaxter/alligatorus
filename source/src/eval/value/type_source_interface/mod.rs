@@ -7,7 +7,7 @@ use {
     std::cell::RefCell,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum BuiltinInterfaceKind {
     /// The `value` interface: methods that every value must support (e.g.

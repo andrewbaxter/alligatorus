@@ -433,6 +433,7 @@ pub(crate) fn make_builtin_types() -> HashMap<ArtifactIdBuiltin, Rc<dyn Type>> {
     TypeStringDynamic::register(&mut m);
     TypeTypeSourceDataTypeDynamic::register(&mut m);
     TypeTypeSourceDataTypeConstructorDynamic::register(&mut m);
+    crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic::register(&mut m);
     m
 }
 

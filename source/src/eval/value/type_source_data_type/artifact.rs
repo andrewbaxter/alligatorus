@@ -7,8 +7,20 @@ use crate::langhelp::{
 pub(crate) struct ArtifactDataDefSet {
     pub data_types: Vec<ArtifactId>,
     pub def_set_id: crate::langhelp::DefSetId,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub functions: Vec<ArtifactId>,
     pub import_id: crate::langhelp::ImportStateId,
     pub source_id: crate::langhelp::SourceId,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactDataDefSetFunction {
+    pub arg_type: Artifact,
+    pub compiled_js: String,
+    pub def_set: ArtifactId,
+    pub entry_id: usize,
+    pub name: Option<String>,
+    pub ret_type: Artifact,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

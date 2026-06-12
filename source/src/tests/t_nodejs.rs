@@ -1628,7 +1628,7 @@ fn test_0010_nodejs_helloworld() {
         //. .
         ("nodejs", SourceModule::V1({
             let mb = ModuleBuilder::default();
-            build_nodejs(&mb)
+            mb.lower(build_nodejs(&mb))
         })),
         ("main", SourceModule::V1({
             let mb = ModuleBuilder::default();

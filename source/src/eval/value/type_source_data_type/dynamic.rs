@@ -452,7 +452,30 @@ impl Type for TypeSourceDataTypeDynamic {
         false
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        if let Some(data) = &self.data {
+            return source_type.aspect(xx, &data.identity).is_some();
+        }
+        // data=None: this is the generic "data_type_ref" placeholder. Accept any
+        // source that downcasts to a SourceDataTypeConst / SourceDataTypeDynamic
+        // (i.e. carries a SourceDataTypeRef-like identity).
+        (source_type as &dyn std::any::Any).is::<TypeSourceDataTypeConst>()
+            || (source_type as &dyn std::any::Any).downcast_ref::<TypeSourceDataTypeDynamic>()
+                .map(|t| t.data.is_some())
+                .unwrap_or(false)
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        if self.data.is_none() {
+            // Accept any concrete data type ref into the generic placeholder.
+            return EvalRes::ok(CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(TypeSourceDataTypeDynamic { data: None }),
+                }),
+            });
+        }
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
     }
 
