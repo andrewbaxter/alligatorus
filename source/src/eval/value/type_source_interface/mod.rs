@@ -16,6 +16,23 @@ pub(crate) enum BuiltinInterfaceKind {
     /// The `type` interface: when implemented on a data type, instances of the
     /// data type act as types (providing `can_cast_from`, `cast_from`, `desc`).
     Type,
+    /// The `aspect_function` interface — source-side counterpart of the Rust
+    /// `AspectFunction` trait. A data type implementing this gets `call(arg)`
+    /// behavior; aspect lookup via `aspect_function_aspect_id()` returns a
+    /// dispatcher that runs the user's `call` body.
+    AspectFunction,
+    /// The `aspect_field` interface — source-side counterpart of the Rust
+    /// `AspectField` trait. Methods: `field(arg) -> any` and
+    /// `field_type_opt(arg) -> any`.
+    AspectField,
+    /// The `scope_entry` interface — source-side counterpart of the Rust
+    /// `ScopeEntry` trait. Method: `use_ -> any` (the value the binding
+    /// resolves to).
+    ScopeEntry,
+    /// The `target` interface — source-side counterpart of the Rust `Target`
+    /// trait. A data type implementing this can be used as a compilation
+    /// target.
+    Target,
 }
 
 pub(crate) struct SourceInterfaceData {
@@ -51,12 +68,36 @@ pub(crate) struct TypeSourceInterfaceConst {
     pub data: Gc<SourceInterfaceData>,
 }
 
-/// Build the synthetic builtin `value` and `type` interfaces. Identities are
-/// derived from stable `builtin_*_iface_identity()` helpers so instances built
-/// in different compile contexts compare equal for aspect lookups.
+pub(crate) struct BuiltinInterfaces {
+    pub value: Gc<SourceInterfaceData>,
+    pub type_: Gc<SourceInterfaceData>,
+    pub aspect_function: Gc<SourceInterfaceData>,
+    pub aspect_field: Gc<SourceInterfaceData>,
+    pub scope_entry: Gc<SourceInterfaceData>,
+    pub target: Gc<SourceInterfaceData>,
+}
+
+pub(crate) fn builtin_scope_entry_iface_identity() -> Unique {
+    Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
+
+pub(crate) fn builtin_target_iface_identity() -> Unique {
+    Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
+}
+
+/// Build the synthetic builtin `value`/`type`/`aspect_function`/`aspect_field`
+/// interfaces. Identities are derived from stable identity helpers so
+/// instances built in different compile contexts compare equal for aspect
+/// lookups.
 pub(crate) fn build_builtin_interfaces(
     import_state: crate::langhelp::ImportStateId,
-) -> (Gc<SourceInterfaceData>, Gc<SourceInterfaceData>) {
+) -> BuiltinInterfaces {
     let builtin_def_set =
         Gc::new(
             crate::eval::definition_set::DefinitionSet::new(
@@ -123,9 +164,87 @@ pub(crate) fn build_builtin_interfaces(
         ]),
         identity: crate::eval::builtin_type_iface_identity(),
     });
+    let aspect_function_iface_data = Gc::new(SourceInterfaceData {
+        builtin_kind: Some(BuiltinInterfaceKind::AspectFunction),
+        set: builtin_def_set.clone(),
+        description: RefCell::new(Some("aspect_function".to_string())),
+        methods: RefCell::new(vec![SourceInterfaceMethodData {
+            name: "call".to_string(),
+            arg_type: RefCell::new(Some(any_type.clone())),
+            ret_type: RefCell::new(Some(any_type.clone())),
+            field_name: "_im0".to_string(),
+        }]),
+        identity: crate::builtin::aspect_function_aspect_id(),
+    });
+    let aspect_field_iface_data = Gc::new(SourceInterfaceData {
+        builtin_kind: Some(BuiltinInterfaceKind::AspectField),
+        set: builtin_def_set.clone(),
+        description: RefCell::new(Some("aspect_field".to_string())),
+        methods: RefCell::new(vec![
+            SourceInterfaceMethodData {
+                name: "field".to_string(),
+                arg_type: RefCell::new(Some(any_type.clone())),
+                ret_type: RefCell::new(Some(any_type.clone())),
+                field_name: "_im0".to_string(),
+            },
+            SourceInterfaceMethodData {
+                name: "field_type_opt".to_string(),
+                arg_type: RefCell::new(Some(any_type.clone())),
+                ret_type: RefCell::new(Some(any_type.clone())),
+                field_name: "_im1".to_string(),
+            },
+        ]),
+        identity: crate::builtin::aspect_field_aspect_id(),
+    });
+    let scope_entry_iface_data = Gc::new(SourceInterfaceData {
+        builtin_kind: Some(BuiltinInterfaceKind::ScopeEntry),
+        set: builtin_def_set.clone(),
+        description: RefCell::new(Some("scope_entry".to_string())),
+        methods: RefCell::new(vec![SourceInterfaceMethodData {
+            name: "use_".to_string(),
+            arg_type: RefCell::new(Some(any_type.clone())),
+            ret_type: RefCell::new(Some(any_type.clone())),
+            field_name: "_im0".to_string(),
+        }]),
+        identity: builtin_scope_entry_iface_identity(),
+    });
+    let target_method = |name: &str, idx: usize| SourceInterfaceMethodData {
+        name: name.to_string(),
+        arg_type: RefCell::new(Some(any_type.clone())),
+        ret_type: RefCell::new(Some(any_type.clone())),
+        field_name: format!("_im{}", idx),
+    };
+    let target_iface_data = Gc::new(SourceInterfaceData {
+        builtin_kind: Some(BuiltinInterfaceKind::Target),
+        set: builtin_def_set.clone(),
+        description: RefCell::new(Some("target".to_string())),
+        methods: RefCell::new(vec![
+            target_method("bind", 0),
+            target_method("bind_sub_record", 1),
+            target_method("bind_sub_tuple", 2),
+            target_method("block", 3),
+            target_method("code_to_bind_sub", 4),
+            target_method("if_", 5),
+            target_method("match_", 6),
+            target_method("maybe_bind_sub", 7),
+            target_method("stage", 8),
+        ]),
+        identity: builtin_target_iface_identity(),
+    });
     builtin_def_set.interfaces.borrow_mut().push(value_iface_data.clone());
     builtin_def_set.interfaces.borrow_mut().push(type_iface_data.clone());
-    (value_iface_data, type_iface_data)
+    builtin_def_set.interfaces.borrow_mut().push(aspect_function_iface_data.clone());
+    builtin_def_set.interfaces.borrow_mut().push(aspect_field_iface_data.clone());
+    builtin_def_set.interfaces.borrow_mut().push(scope_entry_iface_data.clone());
+    builtin_def_set.interfaces.borrow_mut().push(target_iface_data.clone());
+    BuiltinInterfaces {
+        value: value_iface_data,
+        type_: type_iface_data,
+        aspect_function: aspect_function_iface_data,
+        aspect_field: aspect_field_iface_data,
+        scope_entry: scope_entry_iface_data,
+        target: target_iface_data,
+    }
 }
 
 impl crate::eval::dynamic_wrap::DynamicWrap for std::rc::Rc<SourceInterfaceRef> {

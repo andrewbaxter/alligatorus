@@ -124,7 +124,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ("ret", mb.scope_use("type")),
     ])));
     exprs.extend(
-        impl_as_self_type(mb, "ntype_func", "nodejs function", aspect_dispatch(mb, vec!["aspect_function"])),
+        impl_as_self_type(mb, "ntype_func", "nodejs function", aspect_dispatch(mb, vec!["aspect_function_id"])),
     );
 
     // aspect_function.call — `arg` carries `{self_: cv, argument: cv}` from the
@@ -181,7 +181,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
     exprs.extend(
-        impl_as_self_type(mb, "ntype_object", "nodejs object", aspect_dispatch(mb, vec!["aspect_field"])),
+        impl_as_self_type(mb, "ntype_object", "nodejs object", aspect_dispatch(mb, vec!["aspect_field_id"])),
     );
 
     // aspect_field.field — `arg = {self_: cv, key: cv}`. Build an nvalue whose base

@@ -1129,18 +1129,28 @@ fn eval(
     // single throwaway DefinitionSet that is never compiled or serialized.
     {
         use value::type_source_interface::SourceInterfaceRef;
-        let (value_iface_data, type_iface_data) =
-            value::type_source_interface::build_builtin_interfaces(import_state);
+        let builtin_ifaces = value::type_source_interface::build_builtin_interfaces(import_state);
         let iface_dyn_type: Rc<dyn Type> =
             Rc::new(value::type_source_interface::dynamic::TypeSourceInterfaceDynamic);
         for (name, data) in
-            [("value", value_iface_data), ("type", type_iface_data)] {
+            [
+                ("value", builtin_ifaces.value),
+                ("type", builtin_ifaces.type_),
+                ("aspect_function", builtin_ifaces.aspect_function),
+                ("aspect_field", builtin_ifaces.aspect_field),
+                ("scope_entry", builtin_ifaces.scope_entry),
+                ("target", builtin_ifaces.target),
+            ] {
             let iface_ref = Rc::new(SourceInterfaceRef { data });
             let dynamic_key = ScopeEntryId::Builtin(
                 // Distinct ids per name to avoid collisions.
                 line!() as usize + match name {
                     "value" => 0,
                     "type" => 1,
+                    "aspect_function" => 2,
+                    "aspect_field" => 3,
+                    "scope_entry" => 4,
+                    "target" => 5,
                     _ => unreachable!(),
                 },
             );
@@ -1198,8 +1208,8 @@ fn eval(
     let unique_type: Rc<dyn Type> = Rc::new(value::value_unique::TypeUnique);
     for (key, unique, line) in [
         ("aspect_string_dynamic", crate::builtin::aspect_string_dynamic_aspect_id(), line!() as usize),
-        ("aspect_function", crate::builtin::aspect_function_aspect_id(), line!() as usize),
-        ("aspect_field", crate::builtin::aspect_field_aspect_id(), line!() as usize),
+        ("aspect_function_id", crate::builtin::aspect_function_aspect_id(), line!() as usize),
+        ("aspect_field_id", crate::builtin::aspect_field_aspect_id(), line!() as usize),
     ] {
         let dynamic_key = ScopeEntryId::Builtin(line);
         if register_v8 {
@@ -1470,6 +1480,11 @@ fn eval(
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                     let self_ib = aspect_initial_bind_get(&xx, root_loc, underlying_type.as_ref()).into_res()?;
                     body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
+                    if let Some(arg_type) = method.arg_type.borrow().clone() {
+                        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                        let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_type.as_ref()).into_res()?;
+                        body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+                    }
                     Rc::new(ExprContext {
                         vx: body_ex,
                         import_state: xx.import_state.clone(),
@@ -1952,6 +1967,26 @@ fn eval(
         /// Recursively convert a v8 value (external, object, or array) to Rc`<dyn Type>`.
         fn v8_value_to_type(scope: &mut v8::PinnedRef<v8::HandleScope>, value: v8::Local<v8::Value>) -> Rc<dyn Type> {
             if value.is_external() {
+                let any = from_v8_any(&*value);
+                if any.is::<Rc<dyn Type>>() {
+                    return crate::invariant::must_downcast_ref::<Rc<dyn Type>>(any).clone();
+                }
+                // Source-defined ref wrappers — promote each to the matching `dyn Type`.
+                if let Some(iface_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>>() {
+                    return Rc::new(crate::eval::value::type_source_interface::TypeSourceInterfaceConst {
+                        data: iface_ref.data.clone(),
+                    });
+                }
+                if let Some(tu_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionRef>>() {
+                    return Rc::new(crate::eval::value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst {
+                        data: tu_ref.data.clone(),
+                    });
+                }
+                if let Some(dt_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef>>() {
+                    return Rc::new(crate::eval::value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                        data: Some(dt_ref.data.clone()),
+                    });
+                }
                 return from_v8_ref::<Rc<dyn Type>>(&*value).clone();
             }
             if value.is_array() {
@@ -2041,17 +2076,7 @@ fn eval(
     }
 
     // Set externals as globals before running the script
-    eprintln!("externals count: {}", ex.externals.borrow().len());
     for (id, value) in ex.externals.borrow().iter() {
-        let ext_type = match value {
-            External::StagedExprCell(_) => "StagedExprCell",
-            External::StageLiftCell(_) => "StageLiftCell",
-            External::Type(t) => {
-                eprintln!("  external {:?} = Type({})", id, t.desc());
-                "Type"
-            },
-        };
-        let _ = ext_type;
         let key = v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(*id)).unwrap().cast();
         match value {
             External::StagedExprCell(cell) => {

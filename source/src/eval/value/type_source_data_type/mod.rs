@@ -22,6 +22,7 @@ use {
 };
 
 pub(crate) struct SourceDataMethodData {
+    pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     /// Pre-compiled JS function body, set after method compilation in eval(). Format:
     /// complete function definition string (e.g. "function d0_0_0() { ... }")
     pub compiled_js: RefCell<Option<String>>,

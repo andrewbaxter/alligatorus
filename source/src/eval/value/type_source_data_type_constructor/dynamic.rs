@@ -88,6 +88,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         let entry_id = serial.def_set_id;
         SourceDataMethodData {
             name: m.name.clone(),
+            arg_type: std::cell::RefCell::new(None),
             impl_expr: std::cell::RefCell::new(None),
             ret_type: std::cell::RefCell::new(Some(ret_type)),
             scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, entry_id, i))),

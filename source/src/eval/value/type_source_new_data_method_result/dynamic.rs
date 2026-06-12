@@ -91,4 +91,16 @@ dynamic_wrap!(struct SourceNewDataMethodResult(self_, scope) {
         }
         *ret_type = Some(type_ref.0);
     }
+    fn arg_(type_ref: AnyType) -> () {
+        let methods = self_.data_type_ref.data.methods.borrow();
+        let method = &methods[self_.method_index];
+        let mut arg_type = method.arg_type.borrow_mut();
+        if arg_type.is_some() {
+            drop(arg_type);
+            drop(methods);
+            throw_error(scope, "Method already has an arg type");
+            return;
+        }
+        *arg_type = Some(type_ref.0);
+    }
 });

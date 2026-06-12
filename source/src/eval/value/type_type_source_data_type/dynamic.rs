@@ -135,6 +135,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                             codes.push(ret_code);
                             SourceDataMethodData {
                                 name: m.name.clone(),
+                                arg_type: RefCell::new(None),
                                 impl_expr: RefCell::new(None),
                                 ret_type: RefCell::new(Some(ret_type)),
                                 scope_entry_id: Cell::new(
@@ -146,7 +147,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                             }
                         }).collect();
                         *dt_data.methods.borrow_mut() = methods;
-                        let (value_iface_data, type_iface_data) =
+                        let builtin_ifaces =
                             crate::eval::value::type_source_interface::build_builtin_interfaces(
                                 def_set_serial.import_id,
                             );
@@ -155,10 +156,22 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         > = dt_serial.interface_impls.iter().map(|impl_serial| {
                             let iface = match impl_serial.builtin_kind {
                                 crate::eval::value::type_source_interface::BuiltinInterfaceKind::Value => {
-                                    value_iface_data.clone()
+                                    builtin_ifaces.value.clone()
                                 },
                                 crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type => {
-                                    type_iface_data.clone()
+                                    builtin_ifaces.type_.clone()
+                                },
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::AspectFunction => {
+                                    builtin_ifaces.aspect_function.clone()
+                                },
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::AspectField => {
+                                    builtin_ifaces.aspect_field.clone()
+                                },
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::ScopeEntry => {
+                                    builtin_ifaces.scope_entry.clone()
+                                },
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::Target => {
+                                    builtin_ifaces.target.clone()
                                 },
                             };
                             let method_impls = impl_serial

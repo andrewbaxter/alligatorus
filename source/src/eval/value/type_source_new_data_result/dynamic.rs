@@ -99,6 +99,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
             let idx = methods.len();
             methods.push(SourceDataMethodData {
                 name,
+                arg_type: RefCell::new(None),
                 impl_expr: RefCell::new(None),
                 ret_type: RefCell::new(None),
                 scope_entry_id: Cell::new(

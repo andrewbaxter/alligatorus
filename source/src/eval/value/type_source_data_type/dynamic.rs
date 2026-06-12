@@ -115,7 +115,9 @@ impl AspectField for TypeSourceDataTypeDynamic {
                     let methods = data.methods.borrow();
                     if let Some(m) = methods.iter().find(|m| m.name == key_name) {
                         let ret_t = m.ret_type.borrow().clone().expect("Data type method missing return type");
-                        break 'lookup Some((m.field_name.clone(), Rc::new(TypeNullDynamic), ret_t));
+                        let arg_t: Rc<dyn Type> = m.arg_type.borrow().clone()
+                            .unwrap_or_else(|| Rc::new(TypeNullDynamic));
+                        break 'lookup Some((m.field_name.clone(), arg_t, ret_t));
                     }
                 }
                 {
