@@ -43,19 +43,6 @@ use {
 
 impl Aspect for TypeSourceFunctionConst { }
 
-impl crate::builtin::AspectLiftDynamic for TypeSourceFunctionConst {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let func_ref: Rc<TypeSourceFunctionConst> =
-            crate::eval::from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
-        Ok(Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() }))
-    }
-}
-
 impl AspectArtifact for TypeSourceFunctionConst {
     fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         super::dynamic::TypeTypeSourceFunctionDynamic.from_serial(xx, loc, data)
@@ -137,14 +124,6 @@ impl Type for TypeSourceFunctionConst {
         if *key == aspect_artifact_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
-            );
-        }
-        if *key == crate::builtin::aspect_lift_dynamic_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as
-                        Box<dyn crate::builtin::AspectLiftDynamic>,
-                ),
             );
         }
         return None;
