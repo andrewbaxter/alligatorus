@@ -381,6 +381,7 @@ pub(crate) enum ExprSubErr {
     Opaque(String),
 }
 
+#[derive(Clone)]
 pub(crate) enum External {
     StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
     StageLiftCell(Rc<crate::eval::StageLiftCell>),

@@ -175,7 +175,9 @@ e24 = e25["_1"];
 e4 = e24;
 }
 e0 = (e1)(e2,e3,e4);
-e0;"#, r#"function d0_0_0() {
+e0;"#, r#"var d0_0_0;
+{
+d0_0_0 = function() {
 let a0 = this._0;
 let e0;
 let e1;
@@ -184,6 +186,7 @@ let e2;
 e2 = null;
 e0 = e1["toUpperCase"](e2);
 return e0;
+};
 }
 let e3;
 {
@@ -199,7 +202,9 @@ e7 = d0_0_0;
 e4 = { "_0": e5, "_1": e7 };
 e3 = e4;
 }
-e3;"#, r#"function d0_0_0() {
+e3;"#, r#"var d0_0_0;
+{
+d0_0_0 = function() {
 let a0 = this._0;
 let e0;
 let e1;
@@ -208,6 +213,7 @@ let e2;
 e2 = null;
 e0 = e1["toUpperCase"](e2);
 return e0;
+};
 }
 let e0;
 {
@@ -261,7 +267,16 @@ e0;"#]);
     "interface_impls": [],
     "methods": [
       {
-        "compiled_js": "function d0_0_0() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n}",
+        "arg_type": {
+          "data": null,
+          "type_": {
+            "builtin": {
+              "file": "src/eval/value/type_null/dynamic.rs",
+              "line": 65
+            }
+          }
+        },
+        "compiled_js": "var d0_0_0;\n{\nd0_0_0 = function() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
         "field_name": "_1",
         "name": "to_string",
         "ret_type": {
@@ -313,7 +328,7 @@ e0;"#]);
   "type_": {
     "builtin": {
       "file": "src/eval/definition_set.rs",
-      "line": 277
+      "line": 278
     }
   }
 }"#

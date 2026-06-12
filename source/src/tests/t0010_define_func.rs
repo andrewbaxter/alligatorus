@@ -147,7 +147,9 @@ e4 = e22;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+    assert_eq!(js_sources[1], r#"var d0_0_0;
+{
+d0_0_0 = function(a0) {
 let e0;
 let e1;
 e1 = BUILTIN;
@@ -159,6 +161,7 @@ e2 = e3;
 }
 e0 = (e1)(e2);
 return e0;
+};
 }
 let e4;
 {
@@ -300,7 +303,9 @@ e4 = e22;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+    assert_eq!(js_sources[1], r#"var d0_0_0;
+{
+d0_0_0 = function(a0) {
 let e0;
 let e1;
 e1 = a0;
@@ -308,6 +313,7 @@ let e2;
 e2 = null;
 e0 = e1["toUpperCase"](e2);
 return e0;
+};
 }
 let e3;
 {

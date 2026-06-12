@@ -184,15 +184,18 @@ e4 = e33;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    assert_eq!(js_sources[1], r#"function d0_0_0() {
-let a1 = this._0;
+    assert_eq!(js_sources[1], r#"var d0_0_0;
+{
+d0_0_0 = function() {
+let a0 = this._0;
 let e0;
 let e1;
-e1 = a1;
+e1 = a0;
 let e2;
 e2 = null;
 e0 = e1["toUpperCase"](e2);
 return e0;
+};
 }
 let e3;
 let a0;
@@ -463,7 +466,9 @@ e4 = e47;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    assert_eq!(js_sources[1], r#"function d0_0_1(a0) {
+    assert_eq!(js_sources[1], r#"var d0_0_1;
+{
+d0_0_1 = function(a0) {
 let e0;
 let e1;
 e1 = BUILTIN;
@@ -475,8 +480,11 @@ e4 = null;
 e2 = e3["_im0"](e4);
 e0 = (e1)(e2);
 return e0;
+};
 }
-function d0_0_0() {
+var d0_0_0;
+{
+d0_0_0 = function() {
 let a0 = this._0;
 let e5;
 let e6;
@@ -485,6 +493,7 @@ let e7;
 e7 = null;
 e5 = e6["toUpperCase"](e7);
 return e5;
+};
 }
 let e8;
 {

@@ -95,6 +95,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
             self_scope_entry_id: Cell::new(None),
             field_name: m.field_name.clone(),
             compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
+            captured_externals: std::cell::RefCell::new(Vec::new()),
         }
     }).collect();
     let set = dumpster::unsync::Gc::new(DefinitionSet {

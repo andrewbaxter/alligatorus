@@ -108,6 +108,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
                 self_scope_entry_id: Cell::new(None),
                 field_name,
                 compiled_js: RefCell::new(None),
+                captured_externals: RefCell::new(Vec::new()),
             });
             idx
         };
@@ -138,6 +139,7 @@ dynamic_wrap!(struct SourceNewDataResult(self_, scope) {
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                         impl_expr_artifact: RefCell::new(None),
                         compiled_js: RefCell::new(None),
+                        captured_externals: RefCell::new(Vec::new()),
                         scope_entry_id: Cell::new(
                             Some(
                                 crate::langhelp::ScopeEntryId::Def(

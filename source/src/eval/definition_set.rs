@@ -97,6 +97,7 @@ dynamic_wrap!(wrap Gc < DefinitionSet > as DefinitionSet(self_, scope) {
             ),
             artifact_id: RefCell::new(None),
             compiled_js: RefCell::new(None),
+            captured_externals: RefCell::new(Vec::new()),
         });
         ds.functions.borrow_mut().push(func_data.clone());
         let func_ref = Rc::new(TypeSourceFunctionConst { data: func_data, });
@@ -370,6 +371,7 @@ pub(crate) fn load_def_set(
                 ))),
                 artifact_id: RefCell::new(Some(func_artifact_id.clone())),
                 compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
+                captured_externals: RefCell::new(Vec::new()),
             });
             xx
                 .vx
@@ -395,6 +397,11 @@ pub(crate) fn load_def_set(
                 codes.push(underlying_code);
                 dt_data.underlying_type.set(underlying_type);
                 let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
+                    let (arg_type, arg_code) =
+                        crate::eval::util::deserialize_type_artifact(xx, loc, &m.arg_type)
+                            .into_res()
+                            .unwrap_or_else(|e| panic!("Failed to deserialize method arg type: {:?}", e));
+                    codes.push(arg_code);
                     let (ret_type, ret_code) =
                         crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type)
                             .into_res()
@@ -402,7 +409,7 @@ pub(crate) fn load_def_set(
                     codes.push(ret_code);
                     SourceDataMethodData {
                         name: m.name.clone(),
-                        arg_type: RefCell::new(None),
+                        arg_type: RefCell::new(Some(arg_type)),
                         impl_expr: RefCell::new(None),
                         ret_type: RefCell::new(Some(ret_type)),
                         scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
@@ -413,6 +420,7 @@ pub(crate) fn load_def_set(
                         self_scope_entry_id: Cell::new(None),
                         field_name: m.field_name.clone(),
                         compiled_js: RefCell::new(Some(m.compiled_js.clone())),
+                        captured_externals: RefCell::new(Vec::new()),
                     }
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
@@ -440,6 +448,7 @@ pub(crate) fn load_def_set(
                                 ),
                                 impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
                                 compiled_js: RefCell::new(Some(m.compiled_js.clone())),
+                                captured_externals: RefCell::new(Vec::new()),
                                 scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
                                     import_id,
                                     def_set_id,
@@ -503,9 +512,17 @@ pub(crate) fn serialize_definition_set(
                     let compiled_js = m.compiled_js.borrow();
                     let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
                     let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
+                    // `arg_type == None` is the conventional "method takes null /
+                    // no argument" form (see `AspectField::field` use-site at
+                    // type_source_data_type/dynamic.rs which defaults to
+                    // `TypeNullDynamic`). Serialize that as the null mortar type.
+                    let arg_type: Rc<dyn Type> = m.arg_type.borrow().clone().unwrap_or_else(|| {
+                        Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)
+                    });
                     ArtifactDataDefSetMethod {
                         name: m.name.clone(),
                         field_name: m.field_name.clone(),
+                        arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
                         ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
                         compiled_js: compiled_js.clone(),
                     }

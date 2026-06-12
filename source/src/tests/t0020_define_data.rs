@@ -127,7 +127,9 @@ e4 = e24;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    assert_eq!(js_sources[1], r#"function d0_0_0() {
+    assert_eq!(js_sources[1], r#"var d0_0_0;
+{
+d0_0_0 = function() {
 let a0 = this._0;
 let e0;
 let e1;
@@ -136,6 +138,7 @@ let e2;
 e2 = null;
 e0 = e1["toUpperCase"](e2);
 return e0;
+};
 }
 let e3;
 let a0;

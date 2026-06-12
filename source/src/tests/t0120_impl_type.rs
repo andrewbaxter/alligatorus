@@ -118,10 +118,10 @@ fn test_00100_impl_type() {
     // emitted in the stage where the constructor consumes them (stage 2). value's
     // `type` renders as a `this`-style method; type's three render as `arg`-style
     // functions (one parameter).
-    assert!(scripts[1].contains("function d0_0_0() {"), "value.type compiled");
-    assert!(scripts[1].contains("function d0_0_1("), "type.can_cast_from compiled (arg)");
-    assert!(scripts[1].contains("function d0_0_2("), "type.cast_from compiled (arg)");
-    assert!(scripts[1].contains("function d0_0_3("), "type.desc compiled (arg)");
+    assert!(scripts[1].contains("d0_0_0 = function() {"), "value.type compiled");
+    assert!(scripts[1].contains("d0_0_1 = function("), "type.can_cast_from compiled (arg)");
+    assert!(scripts[1].contains("d0_0_2 = function("), "type.cast_from compiled (arg)");
+    assert!(scripts[1].contains("d0_0_3 = function("), "type.desc compiled (arg)");
     assert!(scripts[1].contains("source_type"), "can_cast_from accesses arg.source_type");
 
     // (Strict stage-1 snapshot retained below for reference; will need to be replaced

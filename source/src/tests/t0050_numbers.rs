@@ -283,7 +283,9 @@ e4 = e20;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
-    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+    assert_eq!(js_sources[1], r#"var d0_0_0;
+{
+d0_0_0 = function(a0) {
 let e0;
 {
 let e1;
@@ -330,6 +332,7 @@ e13 = a0;
 e0 = e13;
 }
 return e0;
+};
 }
 let e14;
 {

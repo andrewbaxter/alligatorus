@@ -1185,7 +1185,9 @@ e4 = e89;
 e0 = (e1)(e2,e3,e4);
 e0;"#
     );
-    assert_eq!(js_sources[1], r#"function d0_0_0(a0) {
+    assert_eq!(js_sources[1], r#"var d0_0_0;
+{
+d0_0_0 = function(a0) {
 let e0;
 let a1;
 {
@@ -1543,8 +1545,11 @@ e119 = a1;
 e0 = e119;
 }
 return e0;
+};
 }
-function d0_0_1(a0) {
+var d0_0_1;
+{
+d0_0_1 = function(a0) {
 let e120;
 let a1;
 {
@@ -1595,6 +1600,7 @@ e133 = e134["join"](e136);
 e120 = e133;
 }
 return e120;
+};
 }
 let e138;
 {

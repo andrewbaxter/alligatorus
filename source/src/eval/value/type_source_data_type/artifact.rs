@@ -56,6 +56,7 @@ pub(crate) struct ArtifactDataDefSetDataType {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetMethod {
+    pub arg_type: Artifact,
     pub compiled_js: String,
     pub field_name: String,
     pub name: String,

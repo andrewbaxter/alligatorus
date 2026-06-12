@@ -1494,7 +1494,7 @@ fn eval(
     // and from import-side `from_serial` for re-compiling imported
     // interface impls.)
 
-    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic)> = vec![];
+    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic, Vec<(ScopeEntryId, External)>)> = vec![];
     for info in &def_func_infos {
         let impl_expr_ast = must_downcast_ref::<Expr>(info.impl_expr_ast.as_ref());
 
@@ -1543,7 +1543,15 @@ fn eval(
                 .into_res()?
                 .expect("Definition set function body must produce JS code")
                 .clone();
-        def_funcs.push((info.scope_entry_id, Some(arg_id), impl_code));
+        let captured = func_xx.vx.externals.borrow().clone();
+        for ds in ex.ix.definition_sets.borrow().iter() {
+            for func_data in ds.functions.borrow().iter() {
+                if func_data.scope_entry_id.get() == Some(info.scope_entry_id) {
+                    *func_data.captured_externals.borrow_mut() = captured.clone();
+                }
+            }
+        }
+        def_funcs.push((info.scope_entry_id, Some(arg_id), impl_code, captured));
     }
 
     // Compile data type method implementations
@@ -1564,6 +1572,12 @@ fn eval(
     struct CompiledDataMethod {
         body: CompiledDataMethodBody,
         scope_entry_id: ScopeEntryId,
+        /// Externals captured by the body's compile env (Local ids assigned
+        /// fresh from 0 within the body). Rendered as `let a<id> = globalThis[
+        /// "<method-namespaced key>"];` in a block wrapping the function
+        /// definition so the function closes over them; installed as v8
+        /// globals under the method-namespaced keys at call time.
+        captured_externals: Vec<(ScopeEntryId, External)>,
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
@@ -1585,6 +1599,7 @@ fn eval(
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
                         body: CompiledDataMethodBody::Precompiled(compiled_js),
+                        captured_externals: method.captured_externals.borrow().clone(),
                     });
                     continue;
                 }
@@ -1645,6 +1660,12 @@ fn eval(
                         .into_res()?
                         .expect("Method body must produce JS code")
                         .clone();
+                // Snapshot the body's externals — its compiled_js references these
+                // by their Local id (`a##`), and they must be installed as v8
+                // globals whenever the body runs (including after cross-module
+                // import when the original env's globals are gone).
+                let captured = method_xx.vx.externals.borrow().clone();
+                *method.captured_externals.borrow_mut() = captured.clone();
                 def_data_methods.push(CompiledDataMethod {
                     scope_entry_id: method_id,
                     body: CompiledDataMethodBody::Fresh {
@@ -1653,6 +1674,7 @@ fn eval(
                         impl_code,
                         is_arg_method: false,
                     },
+                    captured_externals: captured,
                 });
             }
 
@@ -1666,6 +1688,7 @@ fn eval(
                         def_data_methods.push(CompiledDataMethod {
                             scope_entry_id: method_id,
                             body: CompiledDataMethodBody::Precompiled(compiled_js),
+                            captured_externals: method_impl.captured_externals.borrow().clone(),
                         });
                         continue;
                     }
@@ -1692,13 +1715,19 @@ fn eval(
                         iface_method.ret_type.borrow().clone().expect("Interface method missing return type")
                     };
 
-                    // Reuse the outer EvalContext for the method body so
-                    // externals (e.g. StagedExprCells captured by the user's
-                    // `stage(...)` calls inside the body) and `Local` ID
-                    // allocations stay in a single namespace — they need to
-                    // be emitted as JS globals readable from the body's
-                    // compiled function.
-                    let body_ex = ex.clone();
+                    // Fresh `EvalContext` per body — `next_local_id` starts at 0
+                    // so `compiled_js` is stable across compiles, and the body's
+                    // captured `externals` are stored on the method and replayed
+                    // at v8 call time (rendered as a block-scoped alias from
+                    // method-namespaced globals into the body's bare `a##`
+                    // names).
+                    let body_ex = Rc::new(EvalContext {
+                        ix: ex.ix.clone(),
+                        next_local_id: Counter::default(),
+                        externals: RefCell::new(Vec::new()),
+                        v8_scope: std::cell::Cell::new(None),
+                        v8_dispatcher: std::cell::Cell::new(None),
+                    });
                     // For builtin-`type` interface impls the body sees `arg`
                     // (a record `{xx, source_type, cv}`) instead of `self`.
                     // For source-defined and builtin-`value` impls keep the
@@ -1819,6 +1848,9 @@ fn eval(
                             .into_res()?
                             .expect("Interface method body must produce JS code")
                             .clone();
+                    // Snapshot the body's externals (see same call above).
+                    let captured = method_xx.vx.externals.borrow().clone();
+                    *method_impl.captured_externals.borrow_mut() = captured.clone();
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
                         body: CompiledDataMethodBody::Fresh {
@@ -1830,6 +1862,7 @@ fn eval(
                                 Some(value::type_source_interface::BuiltinInterfaceKind::Type)
                             ),
                         },
+                        captured_externals: captured,
                     });
                 }
             }
@@ -1853,17 +1886,36 @@ fn eval(
         }
     }
 
-    // Render definition set function implementations as JS functions
-    for (scope_id, arg_scope_id, impl_code) in &def_funcs {
+    // Render definition set function implementations as JS functions.
+    // Wrap each in a block so captured externals live as block-scoped `let`s
+    // (closure-captured by the function), and expose the function name via an
+    // outer `var` hoist. See same pattern in the data-type method render below.
+    for (scope_id, arg_scope_id, impl_code, captured_externals) in &def_funcs {
         let start_line = code1.lines.len();
         let func_name = scope_entry_id_dynamic_key(*scope_id);
+        code1.push(root_loc, format!("var {};", func_name));
+        code1.push(root_loc, "{".to_string());
+        for (id, _) in captured_externals {
+            let local_key = scope_entry_id_dynamic_key(*id);
+            code1.push(
+                root_loc,
+                format!(
+                    "let {} = globalThis[\"{}_{}\"];",
+                    local_key, func_name, local_key,
+                ),
+            );
+        }
         if let Some(arg_id) = arg_scope_id {
-            code1.push(root_loc, format!("function {}({}) {{", func_name, scope_entry_id_dynamic_key(*arg_id)));
+            code1.push(
+                root_loc,
+                format!("{} = function({}) {{", func_name, scope_entry_id_dynamic_key(*arg_id)),
+            );
         } else {
-            code1.push(root_loc, format!("function {}() {{", func_name));
+            code1.push(root_loc, format!("{} = function() {{", func_name));
         }
         let body_var = render_code(&mut code1, impl_code);
         code1.push(root_loc, format!("return {};", body_var));
+        code1.push(root_loc, "};".to_string());
         code1.push(root_loc, "}".to_string());
         let compiled = code1.lines[start_line..].join("\n");
         for ds in ex.ix.definition_sets.borrow().iter() {
@@ -1886,14 +1938,32 @@ fn eval(
                 let start_line = code1.lines.len();
                 let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
                 let self_key = scope_entry_id_dynamic_key(*self_scope_entry_id);
+                // Wrap in a block so captured externals live as block-scoped
+                // `let`s — the inner `function ...` closes over them — and the
+                // function name escapes via the outer `var` hoist. This gives
+                // each body its own `a##` namespace without colliding with
+                // sibling bodies' externals.
+                code1.push(root_loc, format!("var {};", func_name));
+                code1.push(root_loc, "{".to_string());
+                for (id, _) in &method.captured_externals {
+                    let local_key = scope_entry_id_dynamic_key(*id);
+                    code1.push(
+                        root_loc,
+                        format!(
+                            "let {} = globalThis[\"{}_{}\"];",
+                            local_key, func_name, local_key,
+                        ),
+                    );
+                }
                 if *is_arg_method {
-                    code1.push(root_loc, format!("function {}({}) {{", func_name, self_key));
+                    code1.push(root_loc, format!("{} = function({}) {{", func_name, self_key));
                 } else {
-                    code1.push(root_loc, format!("function {}() {{", func_name));
+                    code1.push(root_loc, format!("{} = function() {{", func_name));
                     code1.push(root_loc, format!("let {} = this.{};", self_key, data_field));
                 }
                 let body_var = render_code(&mut code1, impl_code);
                 code1.push(root_loc, format!("return {};", body_var));
+                code1.push(root_loc, "};".to_string());
                 code1.push(root_loc, "}".to_string());
 
                 // Store compiled JS for later serialization
@@ -2607,9 +2677,35 @@ fn eval(
         }
     }
 
-    // Set externals as globals before running the script
-    for (id, value) in ex.externals.borrow().iter() {
-        let key = v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(*id)).unwrap().cast();
+    // Set externals as globals before running the script.
+    //
+    // Per-method-body captured externals (stored on the method's data) are
+    // installed under method-namespaced keys (`<func_name>_<local_key>`). The
+    // rendered body's wrapping block aliases each into a bare `a##` binding
+    // the function closes over, so sibling methods can't collide and the
+    // parent's externals stay independent.
+    let mut all_externals: Vec<(String, External)> = ex
+        .externals
+        .borrow()
+        .iter()
+        .map(|(id, v)| (scope_entry_id_dynamic_key(*id), v.clone()))
+        .collect();
+    for method in &def_data_methods {
+        let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
+        for (id, value) in &method.captured_externals {
+            let local_key = scope_entry_id_dynamic_key(*id);
+            all_externals.push((format!("{}_{}", func_name, local_key), value.clone()));
+        }
+    }
+    for (scope_id, _, _, captured) in &def_funcs {
+        let func_name = scope_entry_id_dynamic_key(*scope_id);
+        for (id, value) in captured {
+            let local_key = scope_entry_id_dynamic_key(*id);
+            all_externals.push((format!("{}_{}", func_name, local_key), value.clone()));
+        }
+    }
+    for (key_str, value) in &all_externals {
+        let key = v8::String::new(dynamic_scope, key_str).unwrap().cast();
         match value {
             External::StagedExprCell(cell) => {
                 let ext = to_v8(dynamic_scope, cell.clone());

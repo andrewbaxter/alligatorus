@@ -26,6 +26,10 @@ pub(crate) struct SourceDataMethodData {
     /// Pre-compiled JS function body, set after method compilation in eval(). Format:
     /// complete function definition string (e.g. "function d0_0_0() { ... }")
     pub compiled_js: RefCell<Option<String>>,
+    /// Externals (`a##` bindings) captured by the body's compile environment.
+    /// `compiled_js` references these by their Local id; they must be installed
+    /// as v8 globals before the body runs.
+    pub captured_externals: RefCell<Vec<(ScopeEntryId, crate::langhelp::External)>>,
     pub field_name: String,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: String,
@@ -64,6 +68,9 @@ pub(crate) struct SourceDataTypeInterfaceImplData {
 
 pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub compiled_js: RefCell<Option<String>>,
+    /// Externals (`a##` bindings) captured by the body's compile environment.
+    /// See `SourceDataMethodData::captured_externals`.
+    pub captured_externals: RefCell<Vec<(ScopeEntryId, crate::langhelp::External)>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub impl_expr_artifact: RefCell<Option<crate::eval::expr_artifact::ArtifactExpr>>,
     pub interface_method_index: usize,
