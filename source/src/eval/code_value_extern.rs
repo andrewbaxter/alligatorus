@@ -304,9 +304,46 @@ impl AspectField for TypeCodeValueExternDynamic {
     }
 }
 
+generate_builtin_artifact_type!(TypeCodeValueExternDynamic, ());
+
+pub(crate) struct DeserializerCodeValueExtern;
+
+impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerCodeValueExtern {
+    fn value_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _data: &serde_json::Value,
+    ) -> EvalRes {
+        EvalRes::err(loc, "CodeValueExtern values are not artifact-serializable".to_string())
+    }
+
+    fn type_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(TypeCodeValueExternDynamic), Code { loc, code: Code_::None }))
+    }
+}
+
+pub(crate) fn register_artifact_deserializer(
+    m: &mut std::collections::HashMap<
+        crate::langhelp::ArtifactIdBuiltin,
+        Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>,
+    >,
+) {
+    m.insert(TypeCodeValueExternDynamic::artifact_id(), Rc::new(DeserializerCodeValueExtern));
+}
+
 impl Type for TypeCodeValueExternDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeCodeValueExternDynamic)
+    }
+
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<crate::langhelp::Artifact> {
+        Some(Self::build_type_artifact())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

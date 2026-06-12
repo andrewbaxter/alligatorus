@@ -282,6 +282,100 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
     set.next_interface_method_id.next()
 }
 
+/// Serialize a body's captured `External`s into `ArtifactExternal`s. Each
+/// external's `ScopeEntryId` must be `Local(n)` — body-local IDs.
+pub(crate) fn serialize_captured_externals(
+    xx: &ExprContext,
+    loc: QExprId,
+    externals: &[(crate::langhelp::ScopeEntryId, crate::langhelp::External)],
+) -> Vec<crate::eval::value::type_source_data_type::artifact::ArtifactExternal> {
+    use crate::eval::value::type_source_data_type::artifact::ArtifactExternal;
+    externals
+        .iter()
+        .map(|(id, ext)| {
+            let local_id = match id {
+                crate::langhelp::ScopeEntryId::Local(n) => *n,
+                other => panic!("captured external has non-Local scope entry id: {:?}", other),
+            };
+            match ext {
+                crate::langhelp::External::StagedExprCell(cell) => {
+                    let value =
+                        cell.value.borrow().clone().expect("captured StagedExprCell already consumed");
+                    let expr_ref = crate::invariant::must_downcast_ref::<crate::eval::expr::Expr>(value.as_ref());
+                    let expr = crate::eval::expr_artifact::expr_to_artifact(xx, expr_ref)
+                        .expect("Failed to serialize captured StagedExprCell value");
+                    ArtifactExternal::StagedExpr { local_id, expr }
+                },
+                crate::langhelp::External::StageLiftCell(_cell) => {
+                    // The lift's source type isn't directly recoverable from
+                    // the `Box<dyn AspectLiftDynamic>`, so for now we punt;
+                    // round-trip support for `StageLiftCell` needs the source
+                    // type carried alongside the lift on the cell.
+                    panic!(
+                        "captured StageLiftCell at Local({}) — round-trip not yet implemented",
+                        local_id,
+                    )
+                },
+                crate::langhelp::External::Type(type_) => ArtifactExternal::Type {
+                    local_id,
+                    type_artifact:
+                        crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                            xx,
+                            loc,
+                            type_.as_ref(),
+                        ),
+                },
+            }
+        })
+        .collect()
+}
+
+/// Reconstruct a body's captured `External`s from `ArtifactExternal`s. Used
+/// after cross-module import so the body's `compiled_js` finds its closure
+/// bindings populated at v8 setup. The reconstructed `Local` ids match the
+/// body's original local-id numbering.
+pub(crate) fn deserialize_captured_externals(
+    xx: &ExprContext,
+    loc: QExprId,
+    serial: &[crate::eval::value::type_source_data_type::artifact::ArtifactExternal],
+) -> Vec<(crate::langhelp::ScopeEntryId, crate::langhelp::External)> {
+    use crate::eval::value::type_source_data_type::artifact::ArtifactExternal;
+    serial
+        .iter()
+        .map(|ext| {
+            match ext {
+                ArtifactExternal::StagedExpr { local_id, expr } => {
+                    let expr = crate::eval::expr_artifact::expr_from_artifact(xx, expr)
+                        .expect("Failed to deserialize captured StagedExprCell expr");
+                    let cell = Rc::new(crate::eval::expr::StagedExprCell {
+                        value: RefCell::new(Some(Rc::new(expr) as Rc<dyn crate::langhelp::Value>)),
+                    });
+                    (
+                        crate::langhelp::ScopeEntryId::Local(*local_id),
+                        crate::langhelp::External::StagedExprCell(cell),
+                    )
+                },
+                ArtifactExternal::StageLift { local_id, .. } => {
+                    panic!(
+                        "captured StageLiftCell at Local({}) — round-trip not yet implemented",
+                        local_id,
+                    )
+                },
+                ArtifactExternal::Type { local_id, type_artifact } => {
+                    let (type_, _code) =
+                        crate::eval::util::deserialize_type_artifact(xx, loc, type_artifact)
+                            .into_res()
+                            .expect("Failed to deserialize captured External::Type");
+                    (
+                        crate::langhelp::ScopeEntryId::Local(*local_id),
+                        crate::langhelp::External::Type(type_),
+                    )
+                },
+            }
+        })
+        .collect()
+}
+
 /// Single point of entry for deserializing a `DefinitionSet` and all its
 /// data types and functions. Implements the two-phase pattern:
 /// 1. Build empty `Gc<DefinitionSet>` shell, build all data-type and function
@@ -407,6 +501,8 @@ pub(crate) fn load_def_set(
                             .into_res()
                             .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {:?}", e));
                     codes.push(ret_code);
+                    let captured_externals =
+                        deserialize_captured_externals(xx, loc, &m.captured_externals);
                     SourceDataMethodData {
                         name: m.name.clone(),
                         arg_type: RefCell::new(Some(arg_type)),
@@ -420,7 +516,7 @@ pub(crate) fn load_def_set(
                         self_scope_entry_id: Cell::new(None),
                         field_name: m.field_name.clone(),
                         compiled_js: RefCell::new(Some(m.compiled_js.clone())),
-                        captured_externals: RefCell::new(Vec::new()),
+                        captured_externals: RefCell::new(captured_externals),
                     }
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
@@ -441,6 +537,8 @@ pub(crate) fn load_def_set(
                             let impl_expr =
                                 crate::eval::expr_artifact::expr_from_artifact(xx, &m.impl_expr)
                                     .expect("Failed to deserialize interface method impl_expr");
+                            let captured_externals =
+                                deserialize_captured_externals(xx, loc, &m.captured_externals);
                             SourceDataTypeInterfaceMethodImplData {
                                 interface_method_index: m.interface_method_index,
                                 impl_expr: RefCell::new(
@@ -448,7 +546,7 @@ pub(crate) fn load_def_set(
                                 ),
                                 impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
                                 compiled_js: RefCell::new(Some(m.compiled_js.clone())),
-                                captured_externals: RefCell::new(Vec::new()),
+                                captured_externals: RefCell::new(captured_externals),
                                 scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
                                     import_id,
                                     def_set_id,
@@ -478,6 +576,8 @@ pub(crate) fn load_def_set(
                 codes.push(ret_code);
                 *func_data.arg_type.borrow_mut() = Some(arg_type);
                 *func_data.ret_type.borrow_mut() = Some(ret_type);
+                let captured = deserialize_captured_externals(xx, loc, &func_serial.captured_externals);
+                *func_data.captured_externals.borrow_mut() = captured;
             }
             Ok(codes)
         });
@@ -519,12 +619,15 @@ pub(crate) fn serialize_definition_set(
                     let arg_type: Rc<dyn Type> = m.arg_type.borrow().clone().unwrap_or_else(|| {
                         Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)
                     });
+                    let captured_externals =
+                        serialize_captured_externals(xx, loc, &m.captured_externals.borrow());
                     ArtifactDataDefSetMethod {
                         name: m.name.clone(),
                         field_name: m.field_name.clone(),
                         arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
                         ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
                         compiled_js: compiled_js.clone(),
+                        captured_externals,
                     }
                 }).collect();
                 let interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> =
@@ -564,11 +667,14 @@ pub(crate) fn serialize_definition_set(
                                         ),
                                     }
                                 });
+                                let captured_externals =
+                                    serialize_captured_externals(xx, loc, &m.captured_externals.borrow());
                                 ArtifactDataDefSetInterfaceMethodImpl {
                                     interface_method_index: m.interface_method_index,
                                     entry_id,
                                     compiled_js: compiled_js.clone(),
                                     impl_expr,
+                                    captured_externals,
                                 }
                             }).collect();
                         Some(ArtifactDataDefSetInterfaceImpl {
@@ -600,6 +706,8 @@ pub(crate) fn serialize_definition_set(
                     crate::langhelp::ScopeEntryId::Def(_, _, id) => id,
                     other => panic!("Function has non-Def scope_entry_id: {:?}", other),
                 };
+                let captured_externals =
+                    serialize_captured_externals(xx, loc, &f.captured_externals.borrow());
                 let serial = crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetFunction {
                     name: f.name.clone(),
                     entry_id,
@@ -607,6 +715,7 @@ pub(crate) fn serialize_definition_set(
                     ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
                     compiled_js,
                     def_set: def_set_artifact_id.clone(),
+                    captured_externals,
                 };
                 crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic::build_artifact(
                     serde_json::to_value(&serial).expect("Failed to serialize function"),

@@ -36,6 +36,8 @@ pub(crate) struct ArtifactDataDefSet {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetFunction {
     pub arg_type: Artifact,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
     pub def_set: ArtifactId,
     pub entry_id: usize,
@@ -54,9 +56,37 @@ pub(crate) struct ArtifactDataDefSetDataType {
     pub underlying_type: Artifact,
 }
 
+/// Serialized form of a body's `External`. The body's `compiled_js` references
+/// each by its body-local id (`a##`); at import the cell is reconstructed in
+/// the importing env and installed under `<func_name>_<local_key>` so the
+/// body's wrapping block can `let a## = globalThis["..."];` them.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) enum ArtifactExternal {
+    /// `External::StagedExprCell` wrapping an `Expr`. The expression's AST is
+    /// serialized as `ArtifactExpr`.
+    StagedExpr {
+        local_id: usize,
+        expr: crate::eval::expr_artifact::ArtifactExpr,
+    },
+    /// `External::StageLiftCell`. The source type (whose `AspectLiftDynamic`
+    /// is wrapped) is serialized; the runtime scope/target/vx come from the
+    /// importing env at re-install time.
+    StageLift {
+        local_id: usize,
+        source_type: Artifact,
+    },
+    /// `External::Type`. The type ref is serialized via `serialize_type_ref`.
+    Type {
+        local_id: usize,
+        type_artifact: Artifact,
+    },
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetMethod {
     pub arg_type: Artifact,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
     pub field_name: String,
     pub name: String,
@@ -71,6 +101,8 @@ pub(crate) struct ArtifactDataDefSetInterfaceImpl {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
     pub entry_id: usize,
     /// The user's impl Expr, serialized. Used to reconstruct the staged
