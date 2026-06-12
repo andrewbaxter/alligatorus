@@ -144,6 +144,10 @@ impl Type for TypeSourceTaggedUnionDynamic {
         Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() })
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }))
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == tagged_union_ref_type_identity() {
             return Some(Box::new(true));

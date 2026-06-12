@@ -33,6 +33,11 @@ pub(crate) enum BuiltinInterfaceKind {
     /// trait. A data type implementing this can be used as a compilation
     /// target.
     Target,
+    /// The `code_dyn` interface — empty marker (no methods). Implemented by a
+    /// source-defined type to declare "I am a `Rc<dyn CodeDyn>`-style code
+    /// AST". Used as the target of `dyn_code_handle.cast(T)` to extract a
+    /// specific code-impl from a runtime `Code`.
+    CodeDyn,
 }
 
 pub(crate) struct SourceInterfaceData {
@@ -75,6 +80,14 @@ pub(crate) struct BuiltinInterfaces {
     pub aspect_field: Gc<SourceInterfaceData>,
     pub scope_entry: Gc<SourceInterfaceData>,
     pub target: Gc<SourceInterfaceData>,
+    pub code_dyn: Gc<SourceInterfaceData>,
+}
+
+pub(crate) fn builtin_code_dyn_iface_identity() -> Unique {
+    Unique::Builtin {
+        file: file!().to_string(),
+        line: line!() as usize,
+    }
 }
 
 pub(crate) fn builtin_scope_entry_iface_identity() -> Unique {
@@ -231,12 +244,20 @@ pub(crate) fn build_builtin_interfaces(
         ]),
         identity: builtin_target_iface_identity(),
     });
+    let code_dyn_iface_data = Gc::new(SourceInterfaceData {
+        builtin_kind: Some(BuiltinInterfaceKind::CodeDyn),
+        set: builtin_def_set.clone(),
+        description: RefCell::new(Some("code_dyn".to_string())),
+        methods: RefCell::new(vec![]),
+        identity: builtin_code_dyn_iface_identity(),
+    });
     builtin_def_set.interfaces.borrow_mut().push(value_iface_data.clone());
     builtin_def_set.interfaces.borrow_mut().push(type_iface_data.clone());
     builtin_def_set.interfaces.borrow_mut().push(aspect_function_iface_data.clone());
     builtin_def_set.interfaces.borrow_mut().push(aspect_field_iface_data.clone());
     builtin_def_set.interfaces.borrow_mut().push(scope_entry_iface_data.clone());
     builtin_def_set.interfaces.borrow_mut().push(target_iface_data.clone());
+    builtin_def_set.interfaces.borrow_mut().push(code_dyn_iface_data.clone());
     BuiltinInterfaces {
         value: value_iface_data,
         type_: type_iface_data,
@@ -244,6 +265,7 @@ pub(crate) fn build_builtin_interfaces(
         aspect_field: aspect_field_iface_data,
         scope_entry: scope_entry_iface_data,
         target: target_iface_data,
+        code_dyn: code_dyn_iface_data,
     }
 }
 

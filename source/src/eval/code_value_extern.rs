@@ -251,12 +251,23 @@ impl AspectField for TypeCodeValueExternDynamic {
         return er_seq_cv!(loc, erb, {
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             // The key is always a const string at compile time (record field
-            // access). Extract its content and emit a JS string literal —
-            // const strings lack AspectConsumeDynamic but we have everything
-            // we need to inline the value here.
+            // access).
             let key_type = key.value.type_(xx, loc);
             let aspect_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
+            // Special case: `.code` on a CodeValueExtern surfaces the inner CV's
+            // `Code` struct as a source-level handle (`TypeCodeStructDynamic`),
+            // routing further `.code` access and tagged-union match through the
+            // Code / Code_ / code_dyn types.
+            if key_str == "code" {
+                return Ok(CodeValue {
+                    code: Code { loc, code: Code_::Dyn(Rc::new(self_code)) },
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic),
+                    }),
+                });
+            }
             let key_code = CodeDynamic {
                 loc,
                 type_: CodeDynamicType::Literal(serde_json::Value::String(key_str)),
@@ -283,7 +294,12 @@ impl AspectField for TypeCodeValueExternDynamic {
         });
     }
 
-    fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        if let ConstKey::String(s) = key {
+            if s == "code" {
+                return Some(Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic));
+            }
+        }
         Some(Rc::new(TypeCodeValueExternDynamic))
     }
 }

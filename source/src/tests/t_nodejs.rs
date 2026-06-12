@@ -425,7 +425,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         mb.match_(
             mb.field(mb.scope_use("self"), mb.str("root")),
             mb.str("root"),
-            vec![(mb.str("none"), mb.block(vec![mb.str("")])), (mb.str("some"), mb.block(vec![
+            vec![(mb.str("some"), mb.block(vec![
                 // Build a nodejs `string -> string` function type for `console.log`.
                 mb.bind(
                     "ntype_str_inst",
@@ -510,17 +510,33 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                 ),
                 // Render the resulting code AST as a JS source string.
-                mb.call(
-                    mb.lower(mb.field(mb.scope_use("code"), mb.str("render"))),
-                    mb.call(
-                        mb.field(
-                            mb.field(mb.field(mb.scope_use("res"), mb.str("cv")), mb.str("code")),
-                            mb.str("cast"),
-                        ),
-                        mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
+                // `res.cv.code.code` is a `Code_` tagged union with variants
+                // `none` (no code emitted) and `dyn(handle)` (a `code_dyn`
+                // handle); the `dyn` variant is what the nodejs target's
+                // code-emitting impls produce, and we cast it to the nodejs
+                // `code` tagged union before rendering.
+                mb.match_(
+                    mb.field(
+                        mb.field(mb.field(mb.scope_use("res"), mb.str("cv")), mb.str("code")),
+                        mb.str("code"),
                     ),
+                    mb.str("v"),
+                    vec![
+                        (
+                            mb.str("dyn"),
+                            mb.call(
+                                mb.lower(mb.field(mb.scope_use("code"), mb.str("render"))),
+                                mb.call(
+                                    mb.field(mb.scope_use("v"), mb.str("cast")),
+                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
+                                ),
+                            ),
+                        ),
+                        (mb.str("none"), mb.str("")),
+                    ],
+                    None,
                 ),
-            ]))],
+            ])), (mb.str("none"), mb.block(vec![mb.str("")]))],
             None,
         ),
     ]))));

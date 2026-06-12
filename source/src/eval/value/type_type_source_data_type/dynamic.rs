@@ -173,6 +173,9 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                                 crate::eval::value::type_source_interface::BuiltinInterfaceKind::Target => {
                                     builtin_ifaces.target.clone()
                                 },
+                                crate::eval::value::type_source_interface::BuiltinInterfaceKind::CodeDyn => {
+                                    builtin_ifaces.code_dyn.clone()
+                                },
                             };
                             let method_impls = impl_serial
                                 .method_impls

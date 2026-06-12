@@ -25,6 +25,7 @@ use {
             CodeDynamicType,
         },
         eval::{
+            Erb,
             TUPLE_TO_TYPE_FN_SCOPE_ID,
             TargetBindSub,
             dynamic_util::wrap_with_carry,
@@ -62,6 +63,7 @@ use {
     },
     std::{
         any::Any,
+        mem,
         rc::Rc,
     },
 };
@@ -341,8 +343,57 @@ impl Type for Tuple {
         type_.aspect(_xx, &type_type_identity()).is_some()
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tuple type"))
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+        // Mirror Record.can_cast_from: source must expose `aspect_tuple` and
+        // match the element count; each source element type is left to
+        // typecheck_convert at cast_from time.
+        let Some(source_tuple) = crate::builtin::aspect_tuple_get_maybe(xx, source_type) else {
+            return false;
+        };
+        source_tuple.element_types().len() == self.elements.len()
+    }
+
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        let code = cv.code;
+        let tuple: Tuple = Rc::try_unwrap(downcast_value::<Tuple>(cv.value))
+            .ok()
+            .expect("Tuple cast_from: Rc not unique");
+        return er_seq_cv!(loc, erb, {
+            let mut converted_elements: Vec<TupleElement> = Vec::new();
+            for (i, elem) in tuple.elements.into_iter().enumerate() {
+                let dest_elem_type = match self.elements.get(i) {
+                    Some(TupleElement::Mortar(t)) => t.clone(),
+                    Some(TupleElement::EvalRes(er)) => {
+                        match &er.v {
+                            Some(cv) => cv.value.type_(xx, loc),
+                            None => return erb.err_new(format!("Tuple cast_from: dest element {} missing", i)),
+                        }
+                    },
+                    None => return erb.err_new(format!("Tuple cast_from: dest has no element {}", i)),
+                };
+                let converted = match elem {
+                    TupleElement::EvalRes(elem_res) => {
+                        if let Some(elem_cv) = elem_res.v {
+                            let conv = erb.must_er(
+                                crate::eval::typecheck_convert(xx, loc, dest_elem_type.as_ref(), elem_cv),
+                            )?;
+                            TupleElement::EvalRes(EvalRes::ok(conv))
+                        } else {
+                            TupleElement::EvalRes(EvalRes {
+                                v: None,
+                                errors: elem_res.errors,
+                            })
+                        }
+                    },
+                    TupleElement::Mortar(_) => TupleElement::Mortar(dest_elem_type),
+                };
+                converted_elements.push(converted);
+            }
+            return Ok(CodeValue {
+                code: code,
+                value: Rc::new(Tuple { base: tuple.base, elements: converted_elements }),
+            });
+        });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {

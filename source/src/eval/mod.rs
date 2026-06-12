@@ -1132,6 +1132,56 @@ fn eval(
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             }
         ),
+        // `const_eval`: the user-facing name (same impl as `eval_const`, kept
+        // around for backwards compatibility with `t0120_impl_type`). Takes a
+        // tuple of (ExprContext, expr), runs const-eval, returns the CV.
+        dynamic_wrap!(
+            fn const_eval(
+                ex,
+                dynamic_scope,
+                scope
+            )(
+                xx: crate::eval::code_value_extern::ExprContextRef,
+                staged: crate::eval::dynamic_wrap::StagedExpr,
+            ) -> crate::eval::code_value_extern::CodeValueExtern {
+                let expr_value = staged.0;
+                let expr_ast: Expr =
+                    Rc::try_unwrap(crate::langhelp::downcast_value::<Expr>(expr_value))
+                        .ok()
+                        .expect("const_eval: staged Expr Rc not unique");
+                let res = const_eval(&xx.0, &expr_ast);
+                let cv = res.v.expect("const_eval: const_eval produced no value");
+                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
+            }
+        ),
+        // `new_expr_context(record{target, scope})` — build a fresh
+        // ExprContext layered on the current evaluation context, with the
+        // given target and scope. Used by `napp.build()` to wrap the staged
+        // root expression in an evaluation context that has `console` in
+        // scope and uses the user's `ntarget` for code generation.
+        // TODO: the `scope` arg is currently ignored — a full implementation
+        // would interpret it as a record mapping names to scope entries.
+        dynamic_wrap!(
+            fn new_expr_context(
+                ex,
+                dynamic_scope,
+                scope
+            )(
+                _arg: dynamic_wrap::AnyType,
+            ) -> crate::eval::code_value_extern::ExprContextRef {
+                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let xx = Rc::new(ExprContext {
+                    vx: ex_slot.ex.clone(),
+                    import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
+                    scope: Rc::new(Scope {
+                        values: RefCell::new(HashMap::new()),
+                        parent: None,
+                    }),
+                    target: Rc::new(TargetDynamic) as Rc<dyn Target>,
+                });
+                crate::eval::code_value_extern::ExprContextRef(xx)
+            }
+        ),
     ] {
         if register_v8 {
             dynamic_scope
@@ -1165,6 +1215,7 @@ fn eval(
                 ("aspect_field", builtin_ifaces.aspect_field),
                 ("scope_entry", builtin_ifaces.scope_entry),
                 ("target", builtin_ifaces.target),
+                ("code_dyn", builtin_ifaces.code_dyn),
             ] {
             let iface_ref = Rc::new(SourceInterfaceRef { data });
             let dynamic_key = ScopeEntryId::Builtin(
@@ -1176,11 +1227,12 @@ fn eval(
                     "aspect_field" => 3,
                     "scope_entry" => 4,
                     "target" => 5,
+                    "code_dyn" => 6,
                     _ => unreachable!(),
                 },
             );
             if register_v8 {
-                let v8_val = to_v8(dynamic_scope, iface_ref);
+                let v8_val = to_v8(dynamic_scope, iface_ref.clone());
                 dynamic_scope
                     .get_current_context()
                     .global(dynamic_scope)
@@ -1192,13 +1244,23 @@ fn eval(
                         v8_val.into(),
                     );
             }
-            let ib = aspect_initial_bind_get(&xx, root_loc, iface_dyn_type.as_ref()).into_res()?;
-            builtin_scope_entries.push((name.to_string(), dynamic_key, iface_dyn_type.clone()));
+            // Bind each interface with the specific `Const` wrapper carrying
+            // that interface's data — so `scope_use("type")` etc. have the
+            // specific iface identity statically, and `data_type.cast_to(type)`
+            // works (the data type's "type" interface impl identity matches).
+            let iface_const_type: Rc<dyn Type> = Rc::new(
+                value::type_source_interface::TypeSourceInterfaceConst {
+                    data: iface_ref.data.clone(),
+                },
+            );
+            let ib = aspect_initial_bind_get(&xx, root_loc, iface_const_type.as_ref()).into_res()?;
+            builtin_scope_entries.push((name.to_string(), dynamic_key, iface_const_type.clone()));
             scope
                 .values
                 .borrow_mut()
                 .insert(ConstKey::String(name.to_string()), ib.initial_bind(dynamic_key));
         }
+        let _ = iface_dyn_type; // unused now
     }
 
     // Type references (static scope entries, no JS representation)

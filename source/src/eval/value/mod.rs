@@ -6,6 +6,7 @@ pub mod type_option_aspect;
 pub mod type_ref_v8;
 pub mod type_any;
 pub mod type_bool;
+pub mod type_code_source;
 pub mod type_expr;
 pub mod type_function;
 pub mod type_list;
