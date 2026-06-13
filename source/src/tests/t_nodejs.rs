@@ -32,7 +32,10 @@ fn aspect_dispatch(mb: &ModuleBuilder, aspect_names: Vec<&str>) -> SourceExpr {
     let conditions: Vec<(SourceExpr, SourceExpr)> = aspect_names.into_iter().map(|aspect| {
         (
             mb.operator_eq(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use(aspect)),
-            mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("some")), mb.scope_use("self")),
+            // `outer_self` = the data type instance (`this` at v8). Casting it
+            // to `aspect` via `option.some` emits `__data_instance_to_aspect`
+            // which captures the instance into an `AspectUserDefined` external.
+            mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("some")), mb.scope_use("outer_self")),
         )
     }).collect();
     return mb.if_(conditions, Some(aspect_dispatch_none(mb)));

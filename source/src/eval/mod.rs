@@ -1664,6 +1664,13 @@ fn eval(
             /// interface impl methods. Renders as `function f(a0) { ... }`
             /// instead of `function f() { let a0 = this._data_field; ... }`.
             is_arg_method: bool,
+            /// `outer_self` binding: the v8 instance itself (`this`). Always
+            /// allocated for every method body so the source can address the
+            /// instance via `mb.scope_use("outer_self")` (typed at compile
+            /// time as `TypeSourceDataTypeDynamic`). Used by e.g.
+            /// `type.aspect`: `option(aspect).some(outer_self)` captures the
+            /// instance through `__data_instance_to_aspect(this)`.
+            outer_self_id: ScopeEntryId,
         },
         Precompiled(String),
     }
@@ -1717,10 +1724,22 @@ fn eval(
                 });
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 method.self_scope_entry_id.set(Some(self_id));
+                let outer_self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                     if let Some(self_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                         body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
+                    }
+                    // `outer_self` = the data type instance (`this` at JS time).
+                    let outer_self_type: Rc<dyn Type> = Rc::new(
+                        value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic { data: dt_data.clone() },
+                    );
+                    if let Some(outer_self_ib) =
+                        crate::builtin::aspect_initial_bind_get_maybe(&xx, outer_self_type.as_ref()) {
+                        body_scope.insert(
+                            ConstKey::String("outer_self".to_string()),
+                            outer_self_ib.initial_bind(outer_self_id),
+                        );
                     }
                     if let Some(arg_type) = method.arg_type.borrow().clone() {
                         if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
@@ -1772,6 +1791,7 @@ fn eval(
                         data_field: data_field.clone(),
                         impl_code,
                         is_arg_method: false,
+                        outer_self_id,
                     },
                     captured_externals: captured,
                 });
@@ -1833,8 +1853,27 @@ fn eval(
                     // `self` setup.
                     let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     method_impl.self_scope_entry_id.set(Some(self_id));
+                    let outer_self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
+                        // Universal `outer_self` = the data type instance (JS
+                        // `this`). Bound for every method body so source code
+                        // can address the instance regardless of how `self`
+                        // is bound for that particular interface method.
+                        let outer_self_type: Rc<dyn Type> = Rc::new(
+                            value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                                data: dt_data.clone(),
+                            },
+                        );
+                        if let Some(outer_self_ib) = crate::builtin::aspect_initial_bind_get_maybe(
+                            &xx,
+                            outer_self_type.as_ref(),
+                        ) {
+                            body_scope.insert(
+                                ConstKey::String("outer_self".to_string()),
+                                outer_self_ib.initial_bind(outer_self_id),
+                            );
+                        }
                         match builtin_kind {
                             Some(value::type_source_interface::BuiltinInterfaceKind::Type) => {
                                 let method_name = {
@@ -1877,32 +1916,10 @@ fn eval(
                                         ConstKey::String("arg".to_string()),
                                         arg_ib.initial_bind(self_id),
                                     );
-                                    // For `self`: bind under a different
-                                    // local id. The data type instance is
-                                    // not directly available from the JS
-                                    // function — instead `self` should
-                                    // resolve to a Rust-side TSDT value at
-                                    // const_eval time so `option.some(self)`
-                                    // typechecks. We achieve this via the
-                                    // `bundle.instance` external referenced
-                                    // through binding-use.
-                                    let self_binding_id =
-                                        ScopeEntryId::Local(body_ex.next_local_id.next());
-                                    let self_type: Rc<dyn Type> = Rc::new(
-                                        value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
-                                            data: dt_data.clone(),
-                                        },
-                                    );
-                                    if let Some(self_ib) =
-                                        crate::builtin::aspect_initial_bind_get_maybe(
-                                            &xx,
-                                            self_type.as_ref(),
-                                        ) {
-                                        body_scope.insert(
-                                            ConstKey::String("self".to_string()),
-                                            self_ib.initial_bind(self_binding_id),
-                                        );
-                                    }
+                                    // Source-level `self` is not used by the
+                                    // `aspect` method body — source impls
+                                    // address the data type instance via
+                                    // `outer_self` (universally bound above).
                                 } else {
                                     let arg_record_type = build_cast_arg_record_type();
                                     let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_record_type.as_ref()).into_res()?;
@@ -2028,6 +2045,7 @@ fn eval(
                                 builtin_kind,
                                 Some(value::type_source_interface::BuiltinInterfaceKind::Type)
                             ),
+                            outer_self_id,
                         },
                         captured_externals: captured,
                     });
@@ -2101,7 +2119,7 @@ fn eval(
     // `arg`, not the data type's underlying value.
     for method in &def_data_methods {
         match &method.body {
-            CompiledDataMethodBody::Fresh { self_scope_entry_id, data_field, impl_code, is_arg_method } => {
+            CompiledDataMethodBody::Fresh { self_scope_entry_id, data_field, impl_code, is_arg_method, outer_self_id } => {
                 let start_line = code1.lines.len();
                 let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
                 let self_key = scope_entry_id_dynamic_key(*self_scope_entry_id);
@@ -2134,6 +2152,12 @@ fn eval(
                             serde_json::to_string(&ConstKey::String(data_field.clone()).to_str()).unwrap(),
                         ),
                     );
+                }
+                // `outer_self` binding (the v8 instance itself). Only emit
+                // when the body actually references it — keeps the JS output
+                // unchanged for bodies that don't use it.
+                if code_uses_binding(impl_code, *outer_self_id) {
+                    code1.push(root_loc, format!("let {} = this;", scope_entry_id_dynamic_key(*outer_self_id)));
                 }
                 let body_var = render_code(&mut code1, impl_code);
                 code1.push(root_loc, format!("return {};", body_var));
@@ -3334,6 +3358,45 @@ pub(crate) fn rc_target_to_v8<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Target>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
+}
+
+/// Walk a `CodeDynamic` tree looking for a `BindingUse(target_id)`. Used so
+/// `outer_self`-style scope bindings only emit their `let … = this;` shim
+/// when the body actually references them.
+fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
+    match &code.type_ {
+        CodeDynamicType::BindingUse(b) => b.id == target_id,
+        CodeDynamicType::BindingSet(b) => code_uses_binding(b.value.as_ref(), target_id),
+        CodeDynamicType::Block(b) => b.entries.iter().any(|e| match e {
+            crate::code_dynamic::CodeDynamicBlockEntry::Code(c) => code_uses_binding(c, target_id),
+            crate::code_dynamic::CodeDynamicBlockEntry::Bind(b) =>
+                code_uses_binding(&b.value, target_id),
+        }),
+        CodeDynamicType::Call(c) =>
+            code_uses_binding(&c.func, target_id) || c.args.iter().any(|a| code_uses_binding(a, target_id)),
+        CodeDynamicType::FieldSet(f) =>
+            code_uses_binding(&f.base, target_id) || code_uses_binding(&f.value, target_id),
+        CodeDynamicType::FieldUse(f) => code_uses_binding(&f.base, target_id),
+        CodeDynamicType::Foreach(f) =>
+            code_uses_binding(&f.base, target_id) || code_uses_binding(&f.body, target_id),
+        CodeDynamicType::ForeachMap(f) =>
+            code_uses_binding(&f.base, target_id) || code_uses_binding(&f.body, target_id),
+        CodeDynamicType::If(i) => i.conditions.iter().any(|(c, b)| code_uses_binding(c, target_id) || code_uses_binding(b, target_id))
+            || i.else_.as_ref().map(|e| code_uses_binding(e, target_id)).unwrap_or(false),
+        CodeDynamicType::Literal(_) => false,
+        CodeDynamicType::Match(m) => code_uses_binding(&m.base, target_id)
+            || m.cases.iter().any(|c| code_uses_binding(&c.body, target_id))
+            || m.fallback.as_ref().map(|f| code_uses_binding(f, target_id)).unwrap_or(false),
+        CodeDynamicType::NewArray(n) => n.elements.iter().any(|e| code_uses_binding(e, target_id)),
+        CodeDynamicType::NewMap(n) => n.fields.iter().any(|(k, v)| code_uses_binding(k, target_id) || code_uses_binding(v, target_id)),
+        CodeDynamicType::NewObject(n) => n.fields.iter().any(|(_, v)| code_uses_binding(v, target_id)),
+        CodeDynamicType::OperatorAdd(o) =>
+            code_uses_binding(&o.base, target_id) || code_uses_binding(&o.reference, target_id),
+        CodeDynamicType::OperatorEq(o) =>
+            code_uses_binding(&o.base, target_id) || code_uses_binding(&o.reference, target_id),
+        CodeDynamicType::OperatorLt(o) =>
+            code_uses_binding(&o.base, target_id) || code_uses_binding(&o.reference, target_id),
+    }
 }
 
 pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
