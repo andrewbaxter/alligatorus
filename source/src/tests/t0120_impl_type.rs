@@ -73,6 +73,19 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                                 ),
                             ),
                             ("desc", mb.stage(mb.block(vec![mb.str("upper")]))),
+                            (
+                                "aspect",
+                                mb.stage(mb.call(
+                                    mb.field(
+                                        mb.call(
+                                            mb.scope_use("option"),
+                                            mb.scope_use("aspect"),
+                                        ),
+                                        mb.str("none"),
+                                    ),
+                                    mb.null(),
+                                )),
+                            ),
                         ])]),
                     ),
                     mb.field(mb.scope_use("u"), mb.str("new")),

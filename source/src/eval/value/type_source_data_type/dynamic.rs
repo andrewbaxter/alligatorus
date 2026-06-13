@@ -492,7 +492,36 @@ impl Type for TypeUserDefined {
         Rc::new(TypeUserDefined { data: self.data.clone(), bundle: self.bundle.clone() })
     }
 
-    fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        // Delegate to the source-level `type.aspect(key)` impl. The result is
+        // an `option(aspect)`; on `some`, the wrapped `AspectUserDefined`
+        // implements both `AspectField` and `AspectFunction` (forwarding to
+        // v8 dispatch on the instance), so we cast to whichever trait the
+        // caller asked for via `key`.
+        let bundle = self.bundle.as_ref()?;
+        let dummy_loc: crate::langhelp::QExprId =
+            (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        let aspect = crate::eval::user_defined_type_dispatch::user_defined_aspect_v8(
+            &self.data,
+            bundle,
+            xx,
+            dummy_loc,
+            key,
+        )?;
+        if *key == crate::builtin::aspect_field_aspect_id() {
+            return Some(Box::new(
+                Box::new(crate::eval::value::value_user_defined::aspect::AspectUserDefinedHandle {
+                    inner: aspect,
+                }) as Box<dyn crate::builtin::AspectField>,
+            ));
+        }
+        if *key == crate::builtin::aspect_function_aspect_id() {
+            return Some(Box::new(
+                Box::new(crate::eval::value::value_user_defined::aspect::AspectUserDefinedHandle {
+                    inner: aspect,
+                }) as Box<dyn crate::builtin::AspectFunction>,
+            ));
+        }
         None
     }
 
@@ -656,6 +685,9 @@ impl Type for TypeSourceDataTypeDynamic {
         if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
             return true;
         }
+        if type_.aspect(xx, &crate::eval::value::type_aspect::dynamic::type_aspect_identity()).is_some() {
+            return true;
+        }
         false
     }
 
@@ -762,6 +794,35 @@ impl Type for TypeSourceDataTypeDynamic {
         }
         if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
             return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
+        }
+        if type_.aspect(xx, &crate::eval::value::type_aspect::dynamic::type_aspect_identity()).is_some() {
+            // Emit `__data_instance_to_aspect(<instance>)` — wraps the v8
+            // instance into an `AspectUserDefined` external.
+            let self_code = match cv.code.cast::<CodeDynamic>() {
+                crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+                _ => return EvalRes::err(loc, format!("cast {} → aspect: source has no runtime code", self.desc())),
+            };
+            let call = CodeDynamic {
+                loc,
+                type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
+                        loc,
+                        type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                            crate::code_dynamic::CodeDynamicBindingUse {
+                                id: crate::eval::DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
+                            },
+                        ),
+                    }),
+                    args: vec![self_code],
+                }),
+            };
+            return EvalRes::ok(CodeValue {
+                code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic),
+                }),
+            });
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }

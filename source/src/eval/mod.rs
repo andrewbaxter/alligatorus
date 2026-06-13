@@ -245,6 +245,14 @@ pub(crate) const DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID: ScopeEntryId = ScopeE
 /// type for further `aspect_field` / `aspect_function` routing.
 pub(crate) const DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__data_instance_to_aspect` — wraps the v8
+/// instance in an `AspectUserDefined` external (a `Value` impl that also
+/// satisfies `AspectField` / `AspectFunction` by dispatching the trait
+/// methods to the instance's interface methods). Used by
+/// `TypeSourceDataTypeDynamic::cast_to` when the destination is
+/// `TypeAspectDynamic` (the source-level `aspect` builtin type).
+pub(crate) const DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -1347,6 +1355,7 @@ fn eval(
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
         ("any", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
+        ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
             code: Code {
@@ -1785,12 +1794,64 @@ fn eval(
                         let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                         match builtin_kind {
                             Some(value::type_source_interface::BuiltinInterfaceKind::Type) => {
-                                let arg_record_type = build_cast_arg_record_type();
-                                let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_record_type.as_ref()).into_res()?;
-                                body_scope.insert(
-                                    ConstKey::String("arg".to_string()),
-                                    arg_ib.initial_bind(self_id),
-                                );
+                                let method_name = {
+                                    let iface_methods = impl_data.interface.methods.borrow();
+                                    iface_methods[method_impl.interface_method_index].name.clone()
+                                };
+                                if method_name == "aspect" {
+                                    // `aspect(arg)` takes `{key: Unique}` and
+                                    // returns `option(aspect)`. Bind `self` as
+                                    // the data type itself (so the user can do
+                                    // `option.some(self)` and let
+                                    // `TypeSourceDataTypeDynamic::cast_to(aspect)`
+                                    // emit `__data_instance_to_aspect`), and
+                                    // `arg` to a record with just `key`.
+                                    let self_type: Rc<dyn Type> = Rc::new(
+                                        value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                                            data: dt_data.clone(),
+                                        },
+                                    );
+                                    if let Some(self_ib) =
+                                        crate::builtin::aspect_initial_bind_get_maybe(
+                                            &xx,
+                                            self_type.as_ref(),
+                                        ) {
+                                        body_scope.insert(
+                                            ConstKey::String("self".to_string()),
+                                            self_ib.initial_bind(self_id),
+                                        );
+                                    }
+                                    let mut fields = std::collections::BTreeMap::new();
+                                    fields.insert(
+                                        ConstKey::String("key".to_string()),
+                                        value::record::RecordField::Mortar(
+                                            Rc::new(value::value_unique::TypeUnique) as Rc<dyn Type>,
+                                        ),
+                                    );
+                                    let arg_record_type: Rc<dyn Type> = Rc::new(
+                                        value::record::Record {
+                                            base: Some(Box::new(value::record::RecordBaseDynamic)),
+                                            fields,
+                                        },
+                                    );
+                                    let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                                    let arg_ib = aspect_initial_bind_get(
+                                        &xx,
+                                        root_loc,
+                                        arg_record_type.as_ref(),
+                                    ).into_res()?;
+                                    body_scope.insert(
+                                        ConstKey::String("arg".to_string()),
+                                        arg_ib.initial_bind(arg_id),
+                                    );
+                                } else {
+                                    let arg_record_type = build_cast_arg_record_type();
+                                    let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_record_type.as_ref()).into_res()?;
+                                    body_scope.insert(
+                                        ConstKey::String("arg".to_string()),
+                                        arg_ib.initial_bind(self_id),
+                                    );
+                                }
                             },
                             Some(value::type_source_interface::BuiltinInterfaceKind::AspectFunction)
                             | Some(value::type_source_interface::BuiltinInterfaceKind::AspectField)
@@ -2892,6 +2953,45 @@ fn eval(
                         .cast(),
                     data_instance_to_value_fn.into(),
                 );
+            // `__data_instance_to_aspect(instance)` — wraps an instance into
+            // an `AspectUserDefined` external. Used by source code that
+            // produces an `aspect` (via `option(aspect).some(self)`) from a
+            // data type implementing one of the aspect interfaces.
+            fn data_instance_to_aspect_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let instance = v8::Local::<v8::Object>::try_from(args.get(0))
+                    .expect("__data_instance_to_aspect: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> = Rc::new(
+                    crate::eval::value::value_user_defined::aspect::AspectUserDefined {
+                        bundle: Rc::new(crate::eval::isolate_bundle::IsolateBundle {
+                            instance: instance_global,
+                        }),
+                    },
+                );
+                let ext = to_v8(scope, aspect);
+                rv.set(ext.into());
+            }
+            let data_instance_to_aspect_fn =
+                v8::Function::builder(data_instance_to_aspect_callback)
+                    .build(dynamic_scope)
+                    .unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_instance_to_aspect_fn.into(),
+                );
             cix.builtins_registered.set(true);
         }
     }
@@ -2937,6 +3037,10 @@ fn eval(
             External::Type(type_) => {
                 let ext = rc_type_to_v8(dynamic_scope, type_.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
+            },
+            External::IsolateBundle(b) => {
+                let inst = v8::Local::new(dynamic_scope, &b.instance);
+                dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, inst.into());
             },
         }
     }
@@ -3478,14 +3582,32 @@ impl Target for TargetDynamic {
 
         return er_seq_cv!(loc, erb, {
             let mut dynamic_conditions = Vec::new();
+            // The first branch's body type drives the if's result type; mirrors
+            // `match_`. Subsequent branches & the else are typecheck-converted to
+            // it so the if can stand in for any expression of that type.
+            let mut result_type: Option<Rc<dyn Type>> = None;
             for (cond, body) in conditions {
                 let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
                 let body_cv = erb.must_er(const_eval(xx, body))?;
+                if result_type.is_none() {
+                    result_type = Some(body_cv.value.type_(xx, loc));
+                }
+                let body_cv = if let Some(rt) = &result_type {
+                    erb.must_er(typecheck_convert(xx, loc, rt.as_ref(), body_cv))?
+                } else {
+                    body_cv
+                };
                 let body_js = cv_to_dynamic(&mut erb, xx, loc, body_cv)?;
                 dynamic_conditions.push((cond_js, body_js));
             }
             let dynamic_else = if let Some(else_expr) = else_ {
                 let else_cv = erb.must_er(const_eval(xx, else_expr))?;
+                let else_cv = if let Some(rt) = &result_type {
+                    erb.must_er(typecheck_convert(xx, loc, rt.as_ref(), else_cv))?
+                } else {
+                    result_type = Some(else_cv.value.type_(xx, loc));
+                    else_cv
+                };
                 let else_js = cv_to_dynamic(&mut erb, xx, loc, else_cv)?;
                 Some(Box::new(else_js))
             } else {
@@ -3498,9 +3620,10 @@ impl Target for TargetDynamic {
                     else_: dynamic_else,
                 }),
             };
-            let null_stack = aspect_stack_value_dynamic_get(xx, loc, &TypeNullDynamic as &dyn Type);
-            let null_stack = erb.must_er(null_stack)?;
-            return Ok(null_stack.to_value(loc, if_js));
+            let final_type: Rc<dyn Type> =
+                result_type.unwrap_or_else(|| Rc::new(TypeNullDynamic) as Rc<dyn Type>);
+            let stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, final_type.as_ref()))?;
+            return Ok(stack.to_value(loc, if_js));
         });
     }
 
@@ -3750,6 +3873,7 @@ pub(crate) fn build_builtin_scope(
         ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
+        ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
             code: Code { loc, code: Code_::None },

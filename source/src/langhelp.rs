@@ -386,6 +386,10 @@ pub(crate) enum External {
     StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
     StageLiftCell(Rc<crate::eval::StageLiftCell>),
     Type(Rc<dyn Type>),
+    /// A v8 instance handle, captured by `AspectUserDefined` so its emitted
+    /// JS code can reference the user's aspect-impl instance. Runtime-only:
+    /// never serialized through artifacts (panics if encountered there).
+    IsolateBundle(Rc<crate::eval::isolate_bundle::IsolateBundle>),
 }
 
 pub(crate) struct GlobalContext {

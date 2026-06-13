@@ -286,6 +286,52 @@ pub(crate) fn user_defined_desc(data: &Gc<SourceDataTypeData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
 }
 
+/// Invoke the user-defined `type.aspect` impl (compiled as `_im_t4`) on the
+/// bundled v8 instance with `arg = {key}`. Decode the resulting `option(aspect)`
+/// JS object — on `some`, extract the `Rc<AspectUserDefined>` from the inner
+/// External; on `none`, return `None`. Returns `None` if the user data type
+/// has no `aspect` impl (no `_im_t4` field).
+pub(crate) fn user_defined_aspect_v8(
+    data: &Gc<SourceDataTypeData>,
+    bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    xx: &ExprContext,
+    _loc: QExprId,
+    key: &crate::langhelp::Unique,
+) -> Option<Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>> {
+    let field_name = type_method_field_name(data, "aspect")?;
+    let scope_ptr = xx.vx.v8_scope.get()?;
+    // SAFETY: pointer set by eval() for its full duration. Same pattern as
+    // V8CastDispatcher; only the dispatcher and value/type/scope_entry
+    // lift paths read this slot.
+    let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> =
+        unsafe { &mut *(scope_ptr.as_ptr() as *mut _) };
+    let arg_obj = v8::Object::new(scope);
+    let key_external = crate::eval::to_v8(scope, key.clone());
+    let key_str = v8::String::new(scope, &ConstKey::String("key".to_string()).to_str())?;
+    arg_obj.set(scope, key_str.into(), key_external.into());
+    let instance = v8::Local::new(scope, &bundle.instance);
+    let method_key = v8::String::new(scope, &ConstKey::String(field_name).to_str())?;
+    let method_val = instance.get(scope, method_key.into())?;
+    let method_fn = v8::Local::<v8::Function>::try_from(method_val).ok()?;
+    let recv: v8::Local<v8::Value> = instance.into();
+    let arg_v: v8::Local<v8::Value> = arg_obj.into();
+    let result = method_fn.call(scope, recv, &[arg_v])?;
+    // The result is an `option(aspect)` JS object — `{some: ext}` or
+    // `{none: null}` (see `TypeOptionVariantConstructorDynamic::call`).
+    let result_obj = v8::Local::<v8::Object>::try_from(result).ok()?;
+    let some_key = v8::String::new(scope, &ConstKey::String("some".to_string()).to_str())?;
+    let some_val = result_obj.get(scope, some_key.into())?;
+    if some_val.is_undefined() {
+        return None;
+    }
+    // `some_val` is the v8::External produced by `__data_instance_to_aspect`.
+    let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> =
+        crate::eval::from_v8_ref::<
+            Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>,
+        >(&*some_val).clone();
+    Some(aspect)
+}
+
 /// A `Value` wrapping a `Rc<dyn Type>`, typed as `TypeTypeRef`. Supports
 /// `.aspect(unique) -> Option` field access, delegating to `Type::aspect` on
 /// the inner type.

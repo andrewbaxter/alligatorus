@@ -24,24 +24,24 @@ use {
 };
 
 /// Build an `aspect(arg) -> option<any>` dispatch body that returns
-/// `option_any.some(self)` when `arg.key` (a Unique) equals any of the named
-/// builtin aspect ids, else `option_any.none(())`. The type implementing this must
+/// `option_aspect.some(self)` when `arg.key` (a Unique) equals any of the named
+/// builtin aspect ids, else `option_aspect.none(())`. The type implementing this must
 /// have `impl_interface`'d each named aspect, so returning `self` is sufficient
 /// for the host to invoke the aspect's methods via normal interface dispatch.
 fn aspect_dispatch(mb: &ModuleBuilder, aspect_names: Vec<&str>) -> SourceExpr {
     let conditions: Vec<(SourceExpr, SourceExpr)> = aspect_names.into_iter().map(|aspect| {
         (
-            mb.operator_eq(mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")), mb.scope_use(aspect)),
-            mb.call(mb.lower(mb.field(mb.scope_use("option_any"), mb.str("some"))), mb.scope_use("self")),
+            mb.operator_eq(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use(aspect)),
+            mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("some")), mb.scope_use("self")),
         )
     }).collect();
     return mb.if_(conditions, Some(aspect_dispatch_none(mb)));
 }
 
-/// `option_any.none(())` — the no-aspects-here dispatch body, used by types that
-/// don't expose any aspects.
+/// `option(aspect).none(())` — the no-aspects-here dispatch body, used by types
+/// that don't expose any aspects.
 fn aspect_dispatch_none(mb: &ModuleBuilder) -> SourceExpr {
-    return mb.call(mb.lower(mb.field(mb.scope_use("option_any"), mb.str("none"))), mb.null());
+    return mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("none")), mb.null());
 }
 
 fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
@@ -56,10 +56,11 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     // as a scope entry yet — TODO to register it.
     exprs.push(mb.bind("root", mb.call(mb.scope_use("option"), mb.scope_use("expr"))));
 
-    // `option_any` is used by the `aspect(arg)` dispatch on each type below — the
-    // payload is heterogeneous (a boxed aspect impl, in Rust terms) so we use the
-    // `any` builtin type. Like `option`, `any` is not yet a scope entry — TODO.
-    exprs.push(mb.bind("option_any", mb.call(mb.scope_use("option"), mb.scope_use("any"))));
+    // `option_aspect` is used by the `aspect(arg)` dispatch on each type below — the
+    // payload is the source-language `aspect` builtin type, which wraps a user
+    // data-type instance via `__data_instance_to_aspect` into an
+    // `AspectUserDefined` external.
+    exprs.push(mb.bind("option_aspect", mb.call(mb.scope_use("option"), mb.scope_use("aspect"))));
 
     // # nvalue_base — a tagged union shared between every nodejs value, capturing how
     //

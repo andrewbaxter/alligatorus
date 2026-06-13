@@ -176,6 +176,21 @@ pub(crate) fn build_builtin_interfaces(
                 ),
                 field_name: "_im_t3".to_string(),
             },
+            // `aspect(arg) -> option(aspect)` — the source-language counterpart
+            // of `Type::aspect`. `arg` carries `{key: unique}`; the returned
+            // option wraps an `AspectUserDefined` external when present.
+            SourceInterfaceMethodData {
+                name: "aspect".to_string(),
+                arg_type: RefCell::new(Some(any_type.clone())),
+                ret_type: RefCell::new(Some(
+                    std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+                        element_type: std::rc::Rc::new(
+                            crate::eval::value::type_aspect::dynamic::TypeAspectDynamic,
+                        ),
+                    }) as std::rc::Rc<dyn crate::langhelp::Type>,
+                )),
+                field_name: "_im_t4".to_string(),
+            },
         ]),
         identity: crate::eval::builtin_type_iface_identity(),
     });

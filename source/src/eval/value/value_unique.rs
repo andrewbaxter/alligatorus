@@ -80,13 +80,48 @@ impl AspectConsumeDynamic for TypeUnique {
 }
 
 impl AspectOperatorEq for TypeUnique {
-    fn eq(&self, _xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
-        let base_u = crate::invariant::must_downcast_ref::<Unique>(base.value.as_ref()).clone();
-        let ref_u = crate::invariant::must_downcast_ref::<Unique>(reference.value.as_ref()).clone();
-        EvalRes::ok(CodeValue {
-            code: Code { loc, code: crate::langhelp::Code_::None },
-            value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_u == ref_u)),
-        })
+    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        let base_const = (base.value.as_ref() as &dyn std::any::Any).downcast_ref::<Unique>().cloned();
+        let ref_const = (reference.value.as_ref() as &dyn std::any::Any).downcast_ref::<Unique>().cloned();
+        if let (Some(b), Some(r)) = (&base_const, &ref_const) {
+            return EvalRes::ok(CodeValue {
+                code: Code { loc, code: crate::langhelp::Code_::None },
+                value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(b == r)),
+            });
+        }
+        // At least one side is dynamic — emit a runtime `===` (Unique
+        // externals in v8 are reference-identical for equal Uniques because
+        // they're cached per-Unique by `to_v8`).
+        let base_dyn =
+            match crate::builtin::aspect_consume_dynamic_get(xx, loc, self).into_res() {
+                Ok(c) => match c.to_dynamic(xx, loc, base).into_res() {
+                    Ok(d) => d,
+                    Err(e) => return EvalRes { v: None, errors: Some(e) },
+                },
+                Err(e) => return EvalRes { v: None, errors: Some(e) },
+            };
+        let ref_dyn =
+            match crate::builtin::aspect_consume_dynamic_get(xx, loc, self).into_res() {
+                Ok(c) => match c.to_dynamic(xx, loc, reference).into_res() {
+                    Ok(d) => d,
+                    Err(e) => return EvalRes { v: None, errors: Some(e) },
+                },
+                Err(e) => return EvalRes { v: None, errors: Some(e) },
+            };
+        let bool_type: Rc<dyn Type> = Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic);
+        let stack = match crate::builtin::aspect_stack_value_dynamic_get(xx, loc, bool_type.as_ref()).into_res() {
+            Ok(s) => s,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        EvalRes::ok(stack.to_value(loc, crate::code_dynamic::CodeDynamic {
+            loc,
+            type_: crate::code_dynamic::CodeDynamicType::OperatorEq(
+                crate::code_dynamic::CodeDynamicOperatorEq {
+                    base: Box::new(base_dyn),
+                    reference: Box::new(ref_dyn),
+                },
+            ),
+        }))
     }
 }
 

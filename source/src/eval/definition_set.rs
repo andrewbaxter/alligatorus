@@ -324,6 +324,9 @@ pub(crate) fn serialize_captured_externals(
                             type_.as_ref(),
                         ),
                 },
+                crate::langhelp::External::IsolateBundle(_) => {
+                    panic!("External::IsolateBundle is runtime-only and must not be serialized")
+                },
             }
         })
         .collect()
