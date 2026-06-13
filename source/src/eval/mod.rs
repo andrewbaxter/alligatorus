@@ -222,6 +222,20 @@ pub(crate) const TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = Sc
 /// downstream `__record_to_type` / `__tuple_to_type` shallow extraction).
 pub(crate) const DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__data_instance_to_target` — parallel to
+/// `__data_instance_to_type` but produces a `v8::External` wrapping
+/// `Rc<dyn Target>` (a `UserDefinedTarget`) instead of a Type. Used by
+/// `TypeSourceDataTypeDynamic::cast_to` when the destination interface is
+/// the builtin `target` interface.
+pub(crate) const DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// Well-known scope entry ID for `__data_instance_to_scope_entry` — parallel
+/// to `__data_instance_to_type` but produces a `v8::External` wrapping
+/// `Rc<dyn ScopeEntry>` (a `UserDefinedScopeEntry`) instead of a Type. Used
+/// by `TypeSourceDataTypeDynamic::cast_to` when the destination interface is
+/// the builtin `scope_entry` interface.
+pub(crate) const DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -2750,6 +2764,81 @@ fn eval(
                         .unwrap()
                         .cast(),
                     data_instance_to_type_fn.into(),
+                );
+            // `__data_instance_to_target(type_template, instance)` — parallel to
+            // `__data_instance_to_type`, but returns a `v8::External` wrapping
+            // `Rc<dyn Target>` built from a `UserDefinedTarget` adapter.
+            fn data_instance_to_target_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let _template_type: Rc<dyn Type> =
+                    from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
+                let instance = v8::Local::<v8::Object>::try_from(args.get(1))
+                    .expect("__data_instance_to_target: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let target: Rc<dyn Target> = Rc::new(
+                    crate::eval::user_defined_scope_dispatch::UserDefinedTarget {
+                        instance: instance_global,
+                    },
+                );
+                let ext = rc_target_to_v8(scope, target);
+                rv.set(ext.into());
+            }
+            let data_instance_to_target_fn =
+                v8::Function::builder(data_instance_to_target_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_instance_to_target_fn.into(),
+                );
+            // `__data_instance_to_scope_entry(type_template, instance)` —
+            // parallel to `__data_instance_to_type`, but returns a
+            // `v8::External` wrapping `Rc<dyn ScopeEntry>` built from a
+            // `UserDefinedScopeEntry` adapter.
+            fn data_instance_to_scope_entry_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let _template_type: Rc<dyn Type> =
+                    from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
+                let instance = v8::Local::<v8::Object>::try_from(args.get(1))
+                    .expect("__data_instance_to_scope_entry: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let entry: Rc<dyn crate::langhelp::ScopeEntry> = Rc::new(
+                    crate::eval::user_defined_scope_dispatch::UserDefinedScopeEntry {
+                        instance: instance_global,
+                    },
+                );
+                let ext = rc_scope_entry_to_v8(scope, entry);
+                rv.set(ext.into());
+            }
+            let data_instance_to_scope_entry_fn =
+                v8::Function::builder(data_instance_to_scope_entry_callback)
+                    .build(dynamic_scope)
+                    .unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_instance_to_scope_entry_fn.into(),
                 );
             cix.builtins_registered.set(true);
         }

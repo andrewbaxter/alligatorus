@@ -682,24 +682,35 @@ impl Type for TypeSourceDataTypeDynamic {
                 // `Rc<dyn Type>` external via `__data_instance_to_type` so
                 // downstream `__record_to_type` / `__tuple_to_type` see an
                 // external rather than a raw instance object.
-                if impl_data.interface.builtin_kind
-                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
-                {
+                // For the `Type`/`Target`/`ScopeEntry` builtin interfaces, the
+                // runtime value needs to be a `v8::External` wrapping the
+                // matching `Rc<dyn …>` so downstream `DynamicWrap::from_v8`
+                // (or `__record_to_type` / `__tuple_to_type` for `Type`) sees
+                // an external rather than a raw instance object. The cast
+                // emits a `__data_instance_to_<kind>(template, instance)`
+                // call which the rust-in-v8 callback turns into the matching
+                // external.
+                let runtime_fn_id = match impl_data.interface.builtin_kind {
+                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type) =>
+                        Some(crate::eval::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID),
+                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Target) =>
+                        Some(crate::eval::DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID),
+                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::ScopeEntry) =>
+                        Some(crate::eval::DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID),
+                    _ => None,
+                };
+                if let Some(fn_id) = runtime_fn_id {
                     let source_code = match cv.code.cast::<CodeDynamic>() {
                         crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
                         _ => return EvalRes::err(
                             loc,
-                            format!("cast {} → type: source has no runtime code", self.desc()),
+                            format!("cast {} → interface: source has no runtime code", self.desc()),
                         ),
                     };
                     // Capture a `TypeSourceDataTypeConst` carrying this data
-                    // type as an External::Type; the v8 callback receives it,
-                    // attaches the runtime instance as a `TypeUserDefined`
-                    // bundle, and returns a `Rc<dyn Type>` external.
-                    // (We use `TypeSourceDataTypeConst` rather than
-                    // `TypeUserDefined` because that's what the artifact
-                    // roundtrip produces — the type's AspectType on the
-                    // data-type-type returns a `TypeSourceDataTypeConst`.)
+                    // type as an External::Type; the v8 callback receives it
+                    // alongside the runtime instance and produces the
+                    // appropriate `Rc<dyn …>` external.
                     let template: Rc<dyn Type> =
                         Rc::new(crate::eval::value::type_source_data_type::TypeSourceDataTypeConst {
                             data: self.data.clone(),
@@ -721,9 +732,7 @@ impl Type for TypeSourceDataTypeDynamic {
                             func: Box::new(CodeDynamic {
                                 loc,
                                 type_: CodeDynamicType::BindingUse(
-                                    crate::code_dynamic::CodeDynamicBindingUse {
-                                        id: crate::eval::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
-                                    },
+                                    crate::code_dynamic::CodeDynamicBindingUse { id: fn_id },
                                 ),
                             }),
                             args: vec![template_code, source_code],
