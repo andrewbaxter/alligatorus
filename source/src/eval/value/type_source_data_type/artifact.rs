@@ -80,6 +80,12 @@ pub(crate) enum ArtifactExternal {
         local_id: usize,
         type_artifact: Artifact,
     },
+    /// `External::Unique`. The captured `Unique` is JSON-roundtripped (it's
+    /// already `serde::Serialize` + `Deserialize`).
+    Unique {
+        local_id: usize,
+        unique: crate::langhelp::Unique,
+    },
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

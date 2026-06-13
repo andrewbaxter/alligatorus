@@ -325,6 +325,10 @@ pub(crate) fn serialize_captured_externals(
                             type_.as_ref(),
                         ),
                 },
+                crate::langhelp::External::Unique(u) => ArtifactExternal::Unique {
+                    local_id,
+                    unique: u.clone(),
+                },
                 crate::langhelp::External::IsolateBundle(_) => {
                     panic!("External::IsolateBundle is runtime-only and must not be serialized")
                 },
@@ -386,6 +390,10 @@ pub(crate) fn deserialize_captured_externals(
                         crate::langhelp::External::Type(type_),
                     )
                 },
+                ArtifactExternal::Unique { local_id, unique } => (
+                    crate::langhelp::ScopeEntryId::Local(*local_id),
+                    crate::langhelp::External::Unique(unique.clone()),
+                ),
             }
         })
         .collect()

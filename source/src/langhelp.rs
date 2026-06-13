@@ -395,6 +395,10 @@ pub(crate) enum External {
     StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
     StageLiftCell(Rc<crate::eval::StageLiftCell>),
     Type(Rc<dyn Type>),
+    /// A `Unique` aspect identity captured at compile time so emitted JS
+    /// code can reference it (e.g. for `aspect(base, key)` to pass to
+    /// `base.aspect(<unique>)`).
+    Unique(Unique),
     /// A v8 instance handle, captured by `AspectUserDefined` so its emitted
     /// JS code can reference the user's aspect-impl instance. Runtime-only:
     /// never serialized through artifacts (panics if encountered there).

@@ -193,6 +193,15 @@ pub(crate) const CVE_GET_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin
 /// the result (typed `TypeTypeRefV8Dynamic`).
 pub(crate) const VALUE_GET_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__aspect_lookup` — the runtime hook that
+/// powers the source-level `aspect(base, key)` builtin. Takes a `TypeRefV8`
+/// JS object (the result of `value.type`) and a `Unique` external (the iface
+/// identity), invokes `type_ref.aspect(&xx, &unique)` in Rust, and returns
+/// either `{ "\"some\"": <bundle.instance> }` or `{ "\"none\"": null }` —
+/// matching the JS tagged-union encoding the source-level `option(T)` type
+/// expects for `some`/`none` variants.
+pub(crate) const ASPECT_LOOKUP_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 /// Well-known scope entry ID for __cve_extract mortar function — extracts the
 /// raw runtime JS value from a CodeValueExtern by consuming the wrapped
 /// CodeValue's code (or const value) into a JS value.
@@ -1527,6 +1536,22 @@ fn eval(
         builtin_scope_entries.push((key.to_string(), dynamic_key, constructor_type));
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
     }
+    // `aspect` — the source-level builtin function for aspect lookup.
+    // Pure compile-time dispatch: `TypeFunctionAspectDynamic::call` emits the
+    // JS code that does the runtime lookup, so there's no v8-side function
+    // to register here (no `dynamic_wrap!` companion). The compile-time
+    // scope entry is enough.
+    {
+        let aspect_type: Rc<dyn Type> =
+            Rc::new(value::type_function_aspect::dynamic::TypeFunctionAspectDynamic);
+        let aspect_dynamic_key = ScopeEntryId::Builtin(line!() as usize);
+        let ib = aspect_initial_bind_get(&xx, root_loc, aspect_type.as_ref()).into_res()?;
+        builtin_scope_entries.push(("aspect".to_string(), aspect_dynamic_key, aspect_type));
+        scope
+            .values
+            .borrow_mut()
+            .insert(ConstKey::String("aspect".to_string()), ib.initial_bind(aspect_dynamic_key));
+    }
     // The v8 dispatcher (`StatelessV8CastDispatcher`) is stateless — it
     // reads the active scope from `ex.v8_scope` (installed at the top of
     // `eval()`) on each call, so its lifetime isn't tied to a `&mut` on
@@ -2014,6 +2039,28 @@ fn eval(
                                         ConstKey::String("self".to_string()),
                                         self_ib.initial_bind(self_id),
                                     );
+                                }
+                                // Bind `arg` to the method's declared
+                                // `arg_type` — user-defined (non-builtin)
+                                // interface methods like `to_code(arg: nvalue)`
+                                // dispatch through normal JS call, so `arg` is
+                                // the function parameter at v8.
+                                let iface_method_arg_type = {
+                                    let iface_methods = impl_data.interface.methods.borrow();
+                                    iface_methods[method_impl.interface_method_index]
+                                        .arg_type
+                                        .borrow()
+                                        .clone()
+                                };
+                                if let Some(arg_type) = iface_method_arg_type {
+                                    if let Some(arg_ib) =
+                                        crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref())
+                                    {
+                                        body_scope.insert(
+                                            ConstKey::String("arg".to_string()),
+                                            arg_ib.initial_bind(arg_id),
+                                        );
+                                    }
                                 }
                             },
                         }
@@ -2673,6 +2720,70 @@ fn eval(
             rv.set(type_ref_v8);
         }
 
+        fn aspect_lookup_callback<
+            's,
+        >(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            // arg(0) = a `TypeRefV8` JS external (carries `Rc<dyn Type>`)
+            // arg(1) = a `Unique` external (the aspect identity)
+            let arg0 = args.get(0);
+            let arg1 = args.get(1);
+            let type_ref: Rc<dyn Type> =
+                from_v8_ref::<crate::eval::value::type_ref_v8::TypeRefV8>(&*arg0)
+                    .type_ref
+                    .clone();
+            let unique: crate::langhelp::Unique =
+                from_v8_ref::<crate::langhelp::Unique>(&*arg1).clone();
+            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
+            let xx = Rc::new(ExprContext {
+                vx: ex_slot.ex.clone(),
+                import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
+                scope: Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: None,
+                }),
+                target,
+            });
+            let result = v8::Object::new(scope);
+            match type_ref.aspect(&xx, &unique) {
+                Some(aspect_box) => {
+                    // Invariant (held by `TypeUserDefined::aspect` for
+                    // is_aspect identities, plus all builtin aspect types):
+                    // the inner type is `Box<dyn AspectField>`. We upcast
+                    // to `dyn Aspect` to read `v8_instance()` — no RTTI.
+                    let aspect_field: Box<dyn crate::builtin::AspectField> =
+                        crate::invariant::must_downcast_box::<
+                            Box<dyn crate::builtin::AspectField>,
+                        >(aspect_box);
+                    let aspect_dyn: &dyn crate::langhelp::Aspect = &*aspect_field;
+                    let instance_v8: v8::Local<v8::Value> = match aspect_dyn.v8_instance() {
+                        Some(g) => v8::Local::new(scope, &g).into(),
+                        None => v8::null(scope).into(),
+                    };
+                    let some_key = v8::String::new(
+                        scope,
+                        &ConstKey::String("some".to_string()).to_str(),
+                    )
+                        .unwrap();
+                    result.set(scope, some_key.into(), instance_v8);
+                },
+                None => {
+                    let none_key = v8::String::new(
+                        scope,
+                        &ConstKey::String("none".to_string()).to_str(),
+                    )
+                        .unwrap();
+                    let null_v8: v8::Local<v8::Value> = v8::null(scope).into();
+                    result.set(scope, none_key.into(), null_v8);
+                },
+            }
+            rv.set(result.into());
+        }
+
         if register_v8 {
             let record_to_type_fn = v8::Function::builder(record_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
@@ -2730,6 +2841,18 @@ fn eval(
                         .unwrap()
                         .cast(),
                     value_get_type_fn.into(),
+                );
+            let aspect_lookup_fn =
+                v8::Function::builder(aspect_lookup_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(ASPECT_LOOKUP_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    aspect_lookup_fn.into(),
                 );
             fn data_type_ref_to_type_callback<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
@@ -3239,6 +3362,10 @@ fn eval(
             },
             External::Type(type_) => {
                 let ext = rc_type_to_v8(dynamic_scope, type_.clone());
+                dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
+            },
+            External::Unique(u) => {
+                let ext = to_v8(dynamic_scope, u.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
             External::IsolateBundle(b) => {

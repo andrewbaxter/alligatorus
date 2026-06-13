@@ -61,6 +61,14 @@ pub(crate) struct TypeSourceInterfaceDynamic;
 
 impl Aspect for TypeSourceInterfaceDynamic { }
 
+impl crate::builtin::AspectAspect for TypeSourceInterfaceDynamic {
+    fn get_unique(&self, value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
+        let iface_ref =
+            crate::invariant::must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
+        iface_ref.data.identity.clone()
+    }
+}
+
 impl AspectBind for TypeSourceInterfaceDynamic {
     fn bind(
         &self,
@@ -132,6 +140,11 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == crate::builtin::aspect_aspect_aspect_id() {
+            return Some(Box::new(
+                Box::new(TypeSourceInterfaceDynamic) as Box<dyn crate::builtin::AspectAspect>,
+            ));
+        }
         if *key == interface_ref_type_identity() {
             return Some(Box::new(true));
         }

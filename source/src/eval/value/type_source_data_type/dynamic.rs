@@ -310,8 +310,44 @@ impl AspectField for TypeSourceDataTypeDynamic {
                     // for an nvalue whose underlying is `record(base, type)`,
                     // accessing `.base` reads the underlying record's field
                     // via `instance.<data_field>.<key>`.
+                    //
+                    // `Record::AspectField` has two branches: if `self.base` is
+                    // `Some`, it emits a normal JS field access (good for
+                    // dynamic receivers). If `None`, it tries to downcast the
+                    // receiver value to a const `Record` — which fails for the
+                    // `ValueDynamic` we'd build here. The Record stored as the
+                    // underlying type was constructed by source-level
+                    // `mb.record(...)`, which always sets `base: None`.
+                    // Replace it with a base=Some(RecordBaseDynamic) copy so
+                    // the dispatch lands in the dynamic-friendly branch.
                     let underlying_type = data.underlying_type.get().clone();
-                    let underlying_field = crate::builtin::aspect_field_get_maybe(xx, underlying_type.as_ref());
+                    let dispatch_type: Rc<dyn crate::langhelp::Type> = if let Some(record) =
+                        (underlying_type.as_ref() as &dyn std::any::Any)
+                            .downcast_ref::<crate::eval::value::record::Record>()
+                    {
+                        let mut fields = std::collections::BTreeMap::new();
+                        for (k, f) in &record.fields {
+                            let t = match f {
+                                crate::eval::value::record::RecordField::Mortar(t) => t.clone(),
+                                crate::eval::value::record::RecordField::EvalRes(_) => {
+                                    return erb.err_new(
+                                        "data type underlying record field is non-type".to_string(),
+                                    );
+                                },
+                            };
+                            fields.insert(
+                                k.clone(),
+                                crate::eval::value::record::RecordField::Mortar(t),
+                            );
+                        }
+                        Rc::new(crate::eval::value::record::Record {
+                            base: Some(Box::new(crate::eval::value::record::RecordBaseDynamic)),
+                            fields,
+                        })
+                    } else {
+                        underlying_type.clone()
+                    };
+                    let underlying_field = crate::builtin::aspect_field_get_maybe(xx, dispatch_type.as_ref());
                     if let Some(underlying_field) = underlying_field {
                         let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
                         // Build `instance.<data_field>` as the new receiver,
@@ -327,7 +363,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                             code: Code { loc, code: Code_::Dyn(Rc::new(underlying_access)) },
                             value: Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::Expr,
-                                type_: underlying_type.clone(),
+                                type_: dispatch_type.clone(),
                             }),
                         };
                         let v = erb.must_er(underlying_field.field(xx, loc, underlying_cv, key))?;
@@ -510,7 +546,7 @@ impl Type for TypeUserDefined {
                                     data: impl_data.interface.clone(),
                                 },
                             ),
-                            bundle: bundle.clone(),
+                            bundle: Some(bundle.clone()),
                         },
                     ) as Box<dyn crate::builtin::AspectField>));
                 }

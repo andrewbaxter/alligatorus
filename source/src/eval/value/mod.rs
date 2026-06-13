@@ -14,6 +14,7 @@ pub mod type_bool;
 pub mod type_code_source;
 pub mod type_expr;
 pub mod type_function;
+pub mod type_function_aspect;
 pub mod type_list;
 pub mod type_list_constructor;
 pub mod type_map;

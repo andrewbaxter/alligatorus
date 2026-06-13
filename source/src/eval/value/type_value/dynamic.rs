@@ -171,6 +171,57 @@ impl Type for TypeValueDynamic {
         Rc::new(TypeValueDynamic)
     }
 
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        // A `TypeValueDynamic` is "the v8 representation of some value" —
+        // typically a user data-type instance object the source-language
+        // type system has lost track of. Allow re-typing it to any
+        // clone_rc'able dest: the v8 form is the same JS object, and the
+        // user is asserting "this value really is `T`". (Same shape as
+        // `CodeValueExtern.cast_to` but with no `__cve_extract` — the value
+        // form is already the runtime JS object.)
+        type_.clone_rc().is_some()
+    }
+
+    fn cast_to(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+        type_: &dyn Type,
+    ) -> crate::langhelp::EvalRes {
+        let dest_type_rc = match type_.clone_rc() {
+            Some(rc) => rc,
+            None => {
+                return crate::langhelp::EvalRes::err(
+                    loc,
+                    format!(
+                        "value.cast_to: dest type ({}) doesn't support clone_rc",
+                        type_.desc(),
+                    ),
+                );
+            },
+        };
+        let self_code = match cv.code.cast::<CodeDynamic>().into_res() {
+            Ok(Some(c)) => c.clone(),
+            _ => {
+                return crate::langhelp::EvalRes::err(
+                    loc,
+                    "value.cast_to: receiver has no runtime code".to_string(),
+                );
+            },
+        };
+        crate::langhelp::EvalRes::ok(CodeValue {
+            code: crate::langhelp::Code {
+                loc,
+                code: crate::langhelp::Code_::Dyn(Rc::new(self_code)),
+            },
+            value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                type_: dest_type_rc,
+            }),
+        })
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == crate::eval::builtin_value_iface_identity() {
             return Some(Box::new(true));

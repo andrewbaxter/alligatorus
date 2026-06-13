@@ -172,6 +172,7 @@ pub(crate) fn install_imported_type_iface(
             External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
             External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
             External::Type(t) => crate::eval::rc_type_to_v8(scope, t.clone()).into(),
+            External::Unique(u) => to_v8(scope, u.clone()).into(),
             External::IsolateBundle(b) => v8::Local::new(scope, &b.instance).into(),
         };
         scope.get_current_context().global(scope).set(scope, key.cast(), v8_val);

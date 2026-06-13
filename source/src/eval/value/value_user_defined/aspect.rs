@@ -284,12 +284,17 @@ pub(crate) struct TypeUserDefinedAspect {
     pub iface_ref: Rc<
         crate::eval::value::type_source_interface::SourceInterfaceRef,
     >,
-    pub bundle: Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    /// Some when the handle was looked up via `TypeUserDefined::aspect`
+    /// (bundle came from the type). None when it was minted at compile time
+    /// by `aspect(base, key)` — the bundle then rides in the CV's runtime
+    /// code via the `base` expression, and `Aspect::v8_instance` doesn't
+    /// have one statically.
+    pub bundle: Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>,
 }
 
 impl Aspect for TypeUserDefinedAspect {
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
-        Some(self.bundle.instance.clone())
+        self.bundle.as_ref().map(|b| b.instance.clone())
     }
 }
 
@@ -407,6 +412,11 @@ impl Type for TypeUserDefinedAspect {
                     bundle: self.bundle.clone(),
                 }) as Box<dyn crate::builtin::AspectField>,
             ));
+        }
+        if *key == crate::builtin::aspect_function_aspect_id() {
+            // No-op marker: callers that only check `.is_some()` see this as
+            // an aspect-bearing type without requiring AspectFunction work.
+            return None;
         }
         None
     }

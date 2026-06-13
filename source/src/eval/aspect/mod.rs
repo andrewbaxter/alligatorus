@@ -1,4 +1,5 @@
 mod aspect_artifact;
+mod aspect_aspect;
 mod aspect_bind;
 mod aspect_bool;
 mod aspect_consume;
@@ -24,6 +25,7 @@ mod aspect_type;
 
 pub(crate) use {
     aspect_artifact::*,
+    aspect_aspect::*,
     aspect_bind::{
         dynamic::*,
         *,
