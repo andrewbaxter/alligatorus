@@ -1,0 +1,157 @@
+//! `ScopeEntry` / `Target` adapters whose behavior is delegated to a
+//! source-defined data type instance implementing the builtin `scope_entry`
+//! or `target` interface. Used by `new_expr_context` to install the user's
+//! ntarget instance and per-name scope entries into a child `ExprContext`.
+//!
+//! Each adapter holds a `v8::Global<v8::Object>` to the user's instance. The
+//! current implementation is a minimal placeholder: `ScopeEntry::use_`
+//! produces an opaque `any`-typed CodeValue, and `Target` delegates every
+//! method to `TargetDynamic`. Wiring each method through the corresponding
+//! `_im_*` field on the v8 instance is the next step.
+
+use {
+    crate::{
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicType,
+        },
+        eval::value::{
+            type_any::dynamic::TypeAnyDynamic,
+            value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+            },
+        },
+        langhelp::{
+            Code,
+            CodeValue,
+            Code_,
+            QExprId,
+            ScopeEntry,
+        },
+    },
+    std::rc::Rc,
+};
+
+/// `ScopeEntry` whose `use_` invokes the v8 instance's `_im_se0` method (the
+/// compiled `scope_entry.use_` impl on the user's `nscope_entry`-like data
+/// type). The current placeholder emits a `null` literal typed `any` —
+/// downstream dispatch on the resulting value goes through `TypeAnyDynamic`.
+pub(crate) struct UserDefinedScopeEntry {
+    pub instance: v8::Global<v8::Object>,
+}
+
+impl ScopeEntry for UserDefinedScopeEntry {
+    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+        let _ = &self.instance;
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Literal(serde_json::Value::Null),
+                })),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeAnyDynamic),
+            }),
+        }
+    }
+}
+
+/// `Target` whose methods all dispatch to the v8 instance's `_im_tg{N}`
+/// method fields. The current placeholder delegates each method to
+/// `TargetDynamic`; the v8-side dispatch into the user impls will land
+/// here when wired up.
+pub(crate) struct UserDefinedTarget {
+    pub instance: v8::Global<v8::Object>,
+}
+
+impl crate::eval::Target for UserDefinedTarget {
+    fn bind(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: QExprId,
+        sub: crate::eval::TargetBindSub,
+    ) -> (Code, crate::langhelp::ScopeEntryId) {
+        let _ = &self.instance;
+        crate::eval::TargetDynamic.bind(xx, loc, sub)
+    }
+
+    fn bind_sub_record(
+        &self,
+        loc: QExprId,
+        carry: Code,
+        fields: Vec<(crate::langhelp::ConstKey, crate::eval::TargetBindSub)>,
+    ) -> crate::eval::TargetBindSub {
+        crate::eval::TargetDynamic.bind_sub_record(loc, carry, fields)
+    }
+
+    fn bind_sub_tuple(
+        &self,
+        loc: QExprId,
+        carry: Code,
+        elements: Vec<crate::eval::TargetBindSub>,
+    ) -> crate::eval::TargetBindSub {
+        crate::eval::TargetDynamic.bind_sub_tuple(loc, carry, elements)
+    }
+
+    fn block(
+        &self,
+        loc: QExprId,
+        entries: Vec<Code>,
+    ) -> crate::langhelp::EResult<Code> {
+        crate::eval::TargetDynamic.block(loc, entries)
+    }
+
+    fn code_to_bind_sub(
+        &self,
+        loc: QExprId,
+        code: Code,
+        type_: Rc<dyn crate::langhelp::Type>,
+    ) -> crate::langhelp::EResult<crate::eval::TargetBindSub> {
+        crate::eval::TargetDynamic.code_to_bind_sub(loc, code, type_)
+    }
+
+    fn if_(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: QExprId,
+        conditions: Vec<(crate::langhelp::CodeValue, &crate::eval::expr::Expr)>,
+        else_: Option<&crate::eval::expr::Expr>,
+    ) -> crate::langhelp::EvalRes {
+        crate::eval::TargetDynamic.if_(xx, loc, conditions, else_)
+    }
+
+    fn match_(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: QExprId,
+        base: crate::langhelp::CodeValue,
+        element_key: crate::langhelp::ConstKey,
+        cases: Vec<(String, Rc<dyn crate::langhelp::Type>, &crate::eval::expr::Expr)>,
+        fallback: Option<&crate::eval::expr::Expr>,
+    ) -> crate::langhelp::EvalRes {
+        crate::eval::TargetDynamic.match_(xx, loc, base, element_key, cases, fallback)
+    }
+
+    fn maybe_bind_sub(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: QExprId,
+        cv: crate::langhelp::CodeValue,
+    ) -> crate::langhelp::EResult<Option<crate::eval::TargetBindSub>> {
+        crate::eval::TargetDynamic.maybe_bind_sub(xx, loc, cv)
+    }
+
+    fn stage(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: QExprId,
+        tree: crate::eval::expr::Expr,
+        lower_values: Vec<crate::langhelp::CodeValue>,
+    ) -> crate::langhelp::EvalRes {
+        crate::eval::TargetDynamic.stage(xx, loc, tree, lower_values)
+    }
+}

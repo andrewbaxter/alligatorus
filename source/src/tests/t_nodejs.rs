@@ -488,19 +488,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                             vec![
                                 mb.call(
                                     mb.scope_use("new_expr_context"),
-                                    mb.record(
+                                    mb.tuple(
                                         vec![
-                                            (
-                                                "target",
-                                                mb.call(
-                                                    mb.lower(mb.field(mb.scope_use("ntarget"), mb.str("new"))),
-                                                    mb.null(),
-                                                ),
+                                            mb.call(
+                                                mb.lower(mb.field(mb.scope_use("ntarget"), mb.str("new"))),
+                                                mb.null(),
                                             ),
-                                            (
-                                                "scope",
-                                                mb.record(vec![("console", mb.scope_use("console_entry"))]),
-                                            ),
+                                            mb.record(vec![("console", mb.scope_use("console_entry"))]),
                                         ],
                                     ),
                                 ),

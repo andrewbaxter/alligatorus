@@ -588,6 +588,78 @@ impl DynamicWrap for AnyType {
     }
 }
 
+impl DynamicWrap for Rc<dyn crate::langhelp::ScopeEntry> {
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        super::rc_scope_entry_from_v8(&*value)
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_scope_entry_to_v8(scope, self).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic)
+    }
+}
+
+impl DynamicWrap for Rc<dyn crate::eval::Target> {
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        super::rc_target_from_v8(&*value)
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_target_to_v8(scope, self).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any_target::dynamic::TypeAnyTargetDynamic)
+    }
+}
+
+/// Generic manual `DynamicWrap` for `HashMap<K, V>` over any
+/// `K: DynamicWrapKey + Eq + std::hash::Hash` and `V: DynamicWrap`. Walks the
+/// v8 record's keys and delegates each value's parsing to `V::from_v8`.
+/// `mortar_type` reports `map<string, V::mortar_type()>` since the v8 record
+/// keys are JS strings regardless of `K`.
+impl<K, V> DynamicWrap for std::collections::HashMap<K, V>
+where
+    K: DynamicWrapKey + Eq + std::hash::Hash,
+    V: DynamicWrap,
+{
+    fn from_v8<'s>(
+        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        let obj = v8::Local::<v8::Object>::try_from(value)
+            .expect("HashMap::from_v8: expected JS object");
+        let keys = obj
+            .get_own_property_names(scope, v8::GetPropertyNamesArgs::default())
+            .unwrap();
+        let mut out = std::collections::HashMap::new();
+        for i in 0 .. keys.length() {
+            let key = keys.get_index(scope, i).unwrap();
+            let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+            let parsed_key = K::from_dynamic_key(&key_str)
+                .unwrap_or_else(|e| panic!("HashMap::from_v8: bad key {:?}: {}", key_str, e));
+            let val = obj.get(scope, key).unwrap();
+            let parsed_val = V::from_v8(scope, val);
+            out.insert(parsed_key, parsed_val);
+        }
+        out
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("HashMap should not be sent back to v8")
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(TypeMapDynamic {
+            key_type: Rc::new(TypeStringDynamic),
+            value_type: <V as DynamicWrap>::mortar_type(),
+        })
+    }
+}
+
 pub(crate) fn dynamic_wrap_method_name(s: &str) -> &str {
     s.strip_suffix('_').unwrap_or(s)
 }

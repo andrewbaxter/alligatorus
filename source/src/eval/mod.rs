@@ -10,6 +10,7 @@ pub mod expr;
 pub mod expr_artifact;
 pub mod import_install;
 pub mod isolate_bundle;
+pub mod user_defined_scope_dispatch;
 pub mod user_defined_type_dispatch;
 pub mod value;
 
@@ -1193,30 +1194,41 @@ fn eval(
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             }
         ),
-        // `new_expr_context(record{target, scope})` — build a fresh
-        // ExprContext layered on the current evaluation context, with the
-        // given target and scope. Used by `napp.build()` to wrap the staged
-        // root expression in an evaluation context that has `console` in
-        // scope and uses the user's `ntarget` for code generation.
-        // TODO: the `scope` arg is currently ignored — a full implementation
-        // would interpret it as a record mapping names to scope entries.
+        // `new_expr_context(target, scope)` — build a fresh ExprContext
+        // layered on the current evaluation context. `target` is a value
+        // impl'ing the builtin `target` interface (extracted as
+        // `Rc<dyn Target>` from a v8::External via TypeAnyTargetDynamic);
+        // `scope` is a record `{name: scope_entry_instance, …}` decoded into
+        // a `HashMap<ConstKey, Rc<dyn ScopeEntry>>`.
         dynamic_wrap!(
             fn new_expr_context(
                 ex,
                 dynamic_scope,
                 scope
             )(
-                _arg: dynamic_wrap::AnyType,
+                target_arg: Rc<dyn Target>,
+                scope_arg: std::collections::HashMap<ConstKey, Rc<dyn crate::langhelp::ScopeEntry>>,
             ) -> crate::eval::code_value_extern::ExprContextRef {
                 let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let parent_ex = ex_slot.ex.clone();
+                // Convert `Rc<dyn ScopeEntry>` values into the `Box<dyn ScopeEntry>`
+                // that `Scope.values` stores. Each Rc is unique by construction
+                // (one external per record property), so try_unwrap succeeds;
+                // fall back to a wrapper that defers to the original Rc otherwise.
+                let mut scope_values: HashMap<ConstKey, Box<dyn crate::langhelp::ScopeEntry>> =
+                    HashMap::new();
+                for (k, v) in scope_arg {
+                    scope_values.insert(k, Box::new(RcScopeEntryWrap(v)));
+                }
+                let new_scope = Rc::new(Scope {
+                    values: RefCell::new(scope_values),
+                    parent: None,
+                });
                 let xx = Rc::new(ExprContext {
-                    vx: ex_slot.ex.clone(),
-                    import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
-                    scope: Rc::new(Scope {
-                        values: RefCell::new(HashMap::new()),
-                        parent: None,
-                    }),
-                    target: Rc::new(TargetDynamic) as Rc<dyn Target>,
+                    vx: parent_ex.clone(),
+                    import_state: Rc::new(Cell::new(parent_ex.ix.import_state)),
+                    scope: new_scope,
+                    target: target_arg,
                 });
                 crate::eval::code_value_extern::ExprContextRef(xx)
             }
@@ -2904,6 +2916,41 @@ pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
 pub(crate) fn rc_type_to_v8<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Type>) -> v8::Local<'s, v8::External> {
+    to_v8(scope, value)
+}
+
+/// Thin `Box<dyn ScopeEntry>` wrapper around an `Rc<dyn ScopeEntry>`. Used to
+/// fit `Scope.values` (which stores `Box`es) when the underlying entry was
+/// constructed as a shared `Rc` (e.g. extracted from a v8::External).
+pub(crate) struct RcScopeEntryWrap(pub Rc<dyn crate::langhelp::ScopeEntry>);
+
+impl crate::langhelp::ScopeEntry for RcScopeEntryWrap {
+    fn use_(&self, loc: QExprId, code: Code) -> CodeValue {
+        self.0.use_(loc, code)
+    }
+}
+
+/// Extract a clone of `Rc<dyn crate::langhelp::ScopeEntry>` from a `v8::External`.
+pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn crate::langhelp::ScopeEntry> {
+    from_v8_ref::<Rc<dyn crate::langhelp::ScopeEntry>>(value).clone()
+}
+
+/// Store an `Rc<dyn ScopeEntry>` as a `v8::External`.
+pub(crate) fn rc_scope_entry_to_v8<
+    's,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::langhelp::ScopeEntry>) -> v8::Local<'s, v8::External> {
+    to_v8(scope, value)
+}
+
+/// Extract a clone of `Rc<dyn Target>` from a `v8::External`.
+pub(crate) fn rc_target_from_v8(value: &v8::Value) -> Rc<dyn Target> {
+    from_v8_ref::<Rc<dyn Target>>(value).clone()
+}
+
+/// Store an `Rc<dyn Target>` as a `v8::External`.
+pub(crate) fn rc_target_to_v8<
+    's,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Target>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
