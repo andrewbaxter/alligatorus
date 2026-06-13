@@ -187,7 +187,7 @@ e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {
 d0_0_0 = function() {
-let a0 = this._0;
+let a0 = this["\"_0\""];
 let e0;
 let e1;
 e1 = a0;
@@ -209,7 +209,7 @@ e5 = e6;
 }
 let e7;
 e7 = d0_0_0;
-e4 = { "_0": e5, "_im0": e7 };
+e4 = { "\"_0\"": e5, "\"_im0\"": e7 };
 a0 = e4;
 }
 {
@@ -221,7 +221,7 @@ let e11;
 e11 = a0;
 let e12;
 e12 = null;
-e10 = e11["_im0"](e12);
+e10 = e11["\"_im0\""](e12);
 e8 = (e9)(e10);
 e3 = e8;
 }
@@ -477,7 +477,7 @@ let e3;
 e3 = a0;
 let e4;
 e4 = null;
-e2 = e3["_im0"](e4);
+e2 = e3["\"_im0\""](e4);
 e0 = (e1)(e2);
 return e0;
 };
@@ -485,7 +485,7 @@ return e0;
 var d0_0_0;
 {
 d0_0_0 = function() {
-let a0 = this._0;
+let a0 = this["\"_0\""];
 let e5;
 let e6;
 e6 = a0;
@@ -509,7 +509,7 @@ e12 = e13;
 }
 let e14;
 e14 = d0_0_0;
-e11 = { "_0": e12, "_im0": e14 };
+e11 = { "\"_0\"": e12, "\"_im0\"": e14 };
 e9 = (e10)(e11);
 e8 = e9;
 }

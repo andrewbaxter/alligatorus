@@ -179,7 +179,7 @@ let e3;
 e3 = 7.0;
 e2 = e3;
 }
-e1 = { "t1": e2 };
+e1 = { "\"t1\"": e2 };
 a0 = e1;
 }
 {
@@ -188,7 +188,7 @@ let e5;
 e5 = a0;
 { let [__tag, a1] = Object.entries(e5)[0];
 switch (__tag) {
-case "t0": {
+case "\"t0\"": {
 let e6;
 let e7;
 e7 = BUILTIN;
@@ -197,7 +197,7 @@ e8 = a1;
 e6 = (e7)(e8);
 e4 = e6;
 break; }
-case "t1": {
+case "\"t1\"": {
 let e9;
 let e10;
 e10 = BUILTIN;
@@ -367,7 +367,7 @@ let e3;
 e3 = 7.0;
 e2 = e3;
 }
-e1 = { "t1": e2 };
+e1 = { "\"t1\"": e2 };
 a0 = e1;
 }
 {
@@ -376,7 +376,7 @@ let e5;
 e5 = a0;
 { let [__tag, a1] = Object.entries(e5)[0];
 switch (__tag) {
-case "t0": {
+case "\"t0\"": {
 let e6;
 let e7;
 e7 = BUILTIN;

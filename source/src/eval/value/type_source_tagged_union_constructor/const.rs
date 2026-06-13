@@ -72,7 +72,7 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: vec![(js_tag, underlying_js)], }),
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: vec![(crate::langhelp::ConstKey::String(js_tag).to_str(), underlying_js)], }),
             }));
         });
     }

@@ -191,7 +191,13 @@ pub(crate) fn install_imported_type_iface(
                 code.push(loc, format!("function {}() {{", func_name));
                 code.push(
                     loc,
-                    format!("let {} = this.{};", scope_entry_id_dynamic_key(*self_id), data_field),
+                    format!(
+                        "let {} = this[{}];",
+                        scope_entry_id_dynamic_key(*self_id),
+                        serde_json::to_string(
+                            &crate::langhelp::ConstKey::String(data_field.clone()).to_str(),
+                        ).unwrap(),
+                    ),
                 );
             },
         }
@@ -211,13 +217,17 @@ pub(crate) fn install_imported_type_iface(
     code.push(loc, "(function() {".to_string());
     let underlying_var = render_code(&mut code, &underlying_js);
     let mut field_decls: Vec<(String, String)> = Vec::new();
-    field_decls.push((dt_data.data_field.clone(), underlying_var));
+    field_decls
+        .push((crate::langhelp::ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_var));
     for method in dt_data.methods.borrow().iter() {
         let id = method
             .scope_entry_id
             .get()
             .ok_or_else(|| "Method scope_entry_id not allocated".to_string())?;
-        field_decls.push((method.field_name.clone(), scope_entry_id_dynamic_key(id)));
+        field_decls.push((
+            crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(),
+            scope_entry_id_dynamic_key(id),
+        ));
     }
     for impl_data in dt_data.interface_impls.borrow().iter() {
         let methods = impl_data.interface.methods.borrow();
@@ -227,7 +237,10 @@ pub(crate) fn install_imported_type_iface(
                 .get()
                 .ok_or_else(|| "Interface method impl scope_entry_id not allocated".to_string())?;
             let field_name = methods[m.interface_method_index].field_name.clone();
-            field_decls.push((field_name, scope_entry_id_dynamic_key(id)));
+            field_decls.push((
+                crate::langhelp::ConstKey::String(field_name).to_str(),
+                scope_entry_id_dynamic_key(id),
+            ));
         }
     }
     let obj_lit = field_decls

@@ -323,7 +323,7 @@ impl AspectFunction for TypeOptionVariantConstructorDynamic {
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
                 type_: CodeDynamicType::NewObject(CodeDynamicNewObject {
-                    fields: vec![(js_tag, underlying_js)],
+                    fields: vec![(crate::langhelp::ConstKey::String(js_tag).to_str(), underlying_js)],
                 }),
             }));
         });

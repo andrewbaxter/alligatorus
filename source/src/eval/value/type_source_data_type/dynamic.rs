@@ -320,7 +320,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                             loc,
                             type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                                 base: Box::new(self_code),
-                                field: data.data_field.clone(),
+                                field: crate::langhelp::ConstKey::String(data.data_field.clone()).to_str(),
                             }),
                         };
                         let underlying_cv = CodeValue {
@@ -348,7 +348,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                         loc,
                         type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
-                            field: field_name,
+                            field: crate::langhelp::ConstKey::String(field_name).to_str(),
                         }),
                     })),
                 },
@@ -416,7 +416,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
                 })?;
             let obj =
                 v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lift")?;
-            let data_field = data.data_field.clone();
+            let data_field = crate::langhelp::ConstKey::String(data.data_field.clone()).to_str();
             let key = v8::String::new(scope, &data_field).unwrap();
             let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
             let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;

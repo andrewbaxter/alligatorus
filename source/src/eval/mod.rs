@@ -1177,7 +1177,9 @@ fn eval(
                         .ok()
                         .expect("const_eval: staged Expr Rc not unique");
                 let res = const_eval(&xx.0, &expr_ast);
-                let cv = res.v.expect("const_eval: const_eval produced no value");
+                let cv = res
+                    .v
+                    .unwrap_or_else(|| panic!("const_eval: const_eval produced no value; errors: {:?}", res.errors));
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             }
         ),
@@ -1959,7 +1961,14 @@ fn eval(
                     code1.push(root_loc, format!("{} = function({}) {{", func_name, self_key));
                 } else {
                     code1.push(root_loc, format!("{} = function() {{", func_name));
-                    code1.push(root_loc, format!("let {} = this.{};", self_key, data_field));
+                    code1.push(
+                        root_loc,
+                        format!(
+                            "let {} = this[{}];",
+                            self_key,
+                            serde_json::to_string(&ConstKey::String(data_field.clone()).to_str()).unwrap(),
+                        ),
+                    );
                 }
                 let body_var = render_code(&mut code1, impl_code);
                 code1.push(root_loc, format!("return {};", body_var));
@@ -3008,7 +3017,7 @@ pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> St
             lines.push(code.loc, format!("{{ let [{}, {}] = Object.entries({})[0];", TAG_VAR, elem_key, base_var));
             lines.push(code.loc, format!("switch ({}) {{", TAG_VAR));
             for case in &c.cases {
-                lines.push(code.loc, format!("case \"{}\": {{", case.dynamic_tag));
+                lines.push(code.loc, format!("case {}: {{", serde_json::to_string(&case.dynamic_tag).unwrap()));
                 let body_var = render_code(lines, &case.body);
                 lines.push(code.loc, format!("{} = {};", out, body_var));
                 lines.push(code.loc, "break; }".to_string());
@@ -3287,7 +3296,7 @@ impl Target for TargetDynamic {
                 let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
                 let body_js = erb.must_er(body_consume.to_dynamic(&child_xx, loc, body_cv))?;
                 dynamic_cases.push(CodeDynamicMatchBranch {
-                    dynamic_tag: tag.clone(),
+                    dynamic_tag: ConstKey::String(tag.clone()).to_str(),
                     body: body_js,
                 });
             }
@@ -3635,7 +3644,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
         );
         arg_obj.set(scope, st_key.into(), source_type_v8);
         let instance = v8::Local::new(scope, &bundle.instance);
-        let method_key = v8::String::new(scope, method_field)
+        let method_key = v8::String::new(scope, &ConstKey::String(method_field.to_string()).to_str())
             .ok_or_else(|| "method_field alloc".to_string())?;
         let method_val = instance
             .get(scope, method_key.into())
@@ -3694,7 +3703,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
         let null_for_cv: v8::Local<v8::Value> = v8::null(scope).into();
         arg_obj.set(scope, cv_key.into(), null_for_cv);
         let instance = v8::Local::new(scope, &bundle.instance);
-        let method_key = v8::String::new(scope, method_field)
+        let method_key = v8::String::new(scope, &ConstKey::String(method_field.to_string()).to_str())
             .ok_or_else(|| "method_field alloc".to_string())?;
         let method_val = instance
             .get(scope, method_key.into())

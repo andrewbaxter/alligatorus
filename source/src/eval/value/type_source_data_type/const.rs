@@ -196,10 +196,13 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     sets.push(set.clone());
                 }
             }
-            let mut object_fields = vec![(dt_data.data_field.clone(), underlying_js)];
+            let mut object_fields =
+                vec![
+                    (crate::langhelp::ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)
+                ];
             for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push((method.field_name.clone(), crate::code_dynamic::CodeDynamic {
+                object_fields.push((crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(), crate::code_dynamic::CodeDynamic {
                     loc: loc,
                     type_: crate::code_dynamic::CodeDynamicType::BindingUse(
                         crate::code_dynamic::CodeDynamicBindingUse { id: method_id },
@@ -338,7 +341,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
                 underlying_type.as_ref(),
             ).ok_or_else(|| format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc()))?;
         let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lift")?;
-        let data_field = self.data.data_field.clone();
+        let data_field = crate::langhelp::ConstKey::String(self.data.data_field.clone()).to_str();
         let key = v8::String::new(scope, &data_field).unwrap();
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
         let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;

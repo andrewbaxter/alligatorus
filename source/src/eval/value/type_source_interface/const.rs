@@ -119,7 +119,7 @@ impl AspectField for TypeSourceInterfaceConst {
                         loc,
                         type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
                             base: Box::new(self_code),
-                            field: field_name,
+                            field: crate::langhelp::ConstKey::String(field_name).to_str(),
                         }),
                     })),
                 },

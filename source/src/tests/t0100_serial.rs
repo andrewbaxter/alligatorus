@@ -178,7 +178,7 @@ e0 = (e1)(e2,e3,e4);
 e0;"#, r#"var d0_0_0;
 {
 d0_0_0 = function() {
-let a0 = this._0;
+let a0 = this["\"_0\""];
 let e0;
 let e1;
 e1 = a0;
@@ -199,13 +199,13 @@ e5 = e6;
 }
 let e7;
 e7 = d0_0_0;
-e4 = { "_0": e5, "_1": e7 };
+e4 = { "\"_0\"": e5, "\"_1\"": e7 };
 e3 = e4;
 }
 e3;"#, r#"var d0_0_0;
 {
 d0_0_0 = function() {
-let a0 = this._0;
+let a0 = this["\"_0\""];
 let e0;
 let e1;
 e1 = a0;
@@ -226,10 +226,10 @@ let e5;
 e5 = "hello";
 let e6;
 e6 = d0_0_0;
-e4 = { "_0": e5, "_1": e6 };
+e4 = { "\"_0\"": e5, "\"_1\"": e6 };
 let e7;
 e7 = null;
-e3 = e4["_1"](e7);
+e3 = e4["\"_1\""](e7);
 e1 = (e2)(e3);
 e0 = e1;
 }
@@ -276,7 +276,7 @@ e0;"#]);
             }
           }
         },
-        "compiled_js": "var d0_0_0;\n{\nd0_0_0 = function() {\nlet a0 = this._0;\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
+        "compiled_js": "var d0_0_0;\n{\nd0_0_0 = function() {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
         "field_name": "_1",
         "name": "to_string",
         "ret_type": {
