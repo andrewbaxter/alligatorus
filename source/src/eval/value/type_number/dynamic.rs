@@ -317,7 +317,8 @@ impl Type for TypeNumberDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_number_dynamic_get_maybe(xx, type_).is_some()
+        aspect_number_dynamic_get_maybe(xx, type_).is_some() ||
+            type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -361,7 +362,10 @@ impl Type for TypeNumberDynamic {
         });
     }
 
-    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
+        }
         EvalRes::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {

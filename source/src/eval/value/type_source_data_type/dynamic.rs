@@ -653,6 +653,9 @@ impl Type for TypeSourceDataTypeDynamic {
                 return true;
             }
         }
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+            return true;
+        }
         false
     }
 
@@ -756,6 +759,9 @@ impl Type for TypeSourceDataTypeDynamic {
                     }),
                 });
             }
+        }
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }

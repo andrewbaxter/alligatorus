@@ -209,7 +209,14 @@ impl Type for TypeSourceTaggedUnionConst {
         })
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+    }
+
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
+        }
         EvalRes::err(loc, format!("Cannot convert tagged_union"))
     }
 
