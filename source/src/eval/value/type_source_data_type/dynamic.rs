@@ -499,7 +499,7 @@ impl Type for TypeUserDefined {
         // `aspect_handle.method(arg)` dispatches via the iface's compiled
         // method `field_name` against the bundle's v8 instance).
         let bundle_opt = self.bundle.as_ref();
-        {
+        if let Some(bundle) = bundle_opt {
             let interface_impls = self.data.interface_impls.borrow();
             for impl_data in interface_impls.iter() {
                 if *key == impl_data.interface.identity && impl_data.interface.is_aspect.get() {
@@ -510,6 +510,7 @@ impl Type for TypeUserDefined {
                                     data: impl_data.interface.clone(),
                                 },
                             ),
+                            bundle: bundle.clone(),
                         },
                     ) as Box<dyn crate::builtin::AspectField>));
                 }

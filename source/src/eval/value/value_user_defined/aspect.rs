@@ -275,13 +275,23 @@ impl AspectFunction for AspectUserDefined {
 /// `instance[field_name](arg)` at v8 time, with the result CV typed by the
 /// method's declared `ret_type`. Parallel to how `TypeSourceDataTypeDynamic`
 /// looks up data-type methods.
+///
+/// `bundle` is the v8 instance that backs the impl — the same one
+/// `TypeUserDefined` held. `Aspect::v8_instance` surfaces it so
+/// `TypeRefV8::aspect` (in v8) can put the JS instance into an `OptionV8`
+/// payload without needing to RTTI the `Rc<dyn Type>` it came from.
 pub(crate) struct TypeUserDefinedAspect {
     pub iface_ref: Rc<
         crate::eval::value::type_source_interface::SourceInterfaceRef,
     >,
+    pub bundle: Rc<crate::eval::isolate_bundle::IsolateBundle>,
 }
 
-impl Aspect for TypeUserDefinedAspect { }
+impl Aspect for TypeUserDefinedAspect {
+    fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
+        Some(self.bundle.instance.clone())
+    }
+}
 
 impl Value for TypeUserDefinedAspect {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -379,7 +389,10 @@ impl crate::builtin::AspectField for TypeUserDefinedAspect {
 
 impl Type for TypeUserDefinedAspect {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeUserDefinedAspect { iface_ref: self.iface_ref.clone() })
+        Rc::new(TypeUserDefinedAspect {
+            iface_ref: self.iface_ref.clone(),
+            bundle: self.bundle.clone(),
+        })
     }
 
     fn aspect(
@@ -389,8 +402,10 @@ impl Type for TypeUserDefinedAspect {
     ) -> Option<Box<dyn std::any::Any>> {
         if *key == crate::builtin::aspect_field_aspect_id() {
             return Some(Box::new(
-                Box::new(TypeUserDefinedAspect { iface_ref: self.iface_ref.clone() })
-                    as Box<dyn crate::builtin::AspectField>,
+                Box::new(TypeUserDefinedAspect {
+                    iface_ref: self.iface_ref.clone(),
+                    bundle: self.bundle.clone(),
+                }) as Box<dyn crate::builtin::AspectField>,
             ));
         }
         None

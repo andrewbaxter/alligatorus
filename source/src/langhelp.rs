@@ -30,7 +30,16 @@ pub(crate) trait Artifacts: Send + Sync {
     fn set(&self, id: ArtifactId, data: Artifact);
 }
 
-pub(crate) trait Aspect: Any { }
+pub(crate) trait Aspect: Any {
+    /// Returns the v8 instance that backs this aspect handle, when one
+    /// exists. The default `None` is correct for compile-time-only aspects
+    /// (everything except `TypeUserDefinedAspect`). `TypeRefV8::aspect`
+    /// reads this to surface the instance into source code without RTTI on
+    /// the returned `Box<dyn Aspect>`.
+    fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
+        None
+    }
+}
 
 pub(crate) trait CodeDyn: Any { }
 
