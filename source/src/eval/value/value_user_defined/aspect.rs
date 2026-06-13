@@ -173,9 +173,22 @@ fn dispatch_aspect_method(
     };
     let recv: v8::Local<v8::Value> = instance.into();
     let arg_v: v8::Local<v8::Value> = arg_obj.into();
-    let result = match method_fn.call(scope, recv, &[arg_v]) {
-        Some(r) => r,
-        None => return EvalRes::err(loc, format!("v8 method '{}' returned no value", method_field)),
+    let result = {
+        let tc = std::pin::pin!(v8::TryCatch::new(scope));
+        let mut tc = tc.init();
+        match method_fn.call(&mut tc, recv, &[arg_v]) {
+            Some(r) => r,
+            None => {
+                let msg = tc
+                    .exception()
+                    .map(|e| e.to_rust_string_lossy(&mut tc))
+                    .unwrap_or_else(|| "<no exception>".to_string());
+                return EvalRes::err(
+                    loc,
+                    format!("v8 method '{}' threw: {}", method_field, msg),
+                );
+            },
+        }
     };
     let cell: Rc<RefCell<Option<CodeValue>>> =
         crate::eval::from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
