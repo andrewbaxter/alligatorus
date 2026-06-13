@@ -3572,6 +3572,8 @@ fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
             code_uses_binding(&o.base, target_id) || code_uses_binding(&o.reference, target_id),
         CodeDynamicType::OperatorLt(o) =>
             code_uses_binding(&o.base, target_id) || code_uses_binding(&o.reference, target_id),
+        CodeDynamicType::SubscriptUse(s) =>
+            code_uses_binding(&s.base, target_id) || code_uses_binding(&s.key, target_id),
     }
 }
 
@@ -3638,6 +3640,11 @@ pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> St
                 code.loc,
                 format!("{} = {}[{}];", out, base, serde_json::to_string(&dynamic_code_field.field).unwrap()),
             );
+        },
+        CodeDynamicType::SubscriptUse(s) => {
+            let base = render_code(lines, &s.base);
+            let key = render_code(lines, &s.key);
+            lines.push(code.loc, format!("{} = {}[{}];", out, base, key));
         },
         CodeDynamicType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);

@@ -222,7 +222,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                         ),
                     ),
                 ),
-                // arg_code: aspect-based lookup + dispatch.
+                // arg_code: aspect-based lookup + dispatch via aspect_lookup.
                 mb.bind(
                     "arg_code",
                     mb.match_(
@@ -251,9 +251,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                     ),
                                 ),
                             ),
-                            // none arm: shouldn't happen for well-typed nodejs values.
-                            // `null` as a dynamic value (so it can lift to the
-                            // match's element type same as the some arm result).
                             (mb.str("none"), mb.scope_use("null")),
                         ],
                         None,

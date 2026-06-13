@@ -67,6 +67,12 @@ pub(crate) struct CodeDynamicFieldUse {
 }
 
 #[derive(Clone)]
+pub(crate) struct CodeDynamicSubscriptUse {
+    pub(crate) base: Box<CodeDynamic>,
+    pub(crate) key: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
 pub(crate) struct CodeDynamicForeach {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) body: Box<CodeDynamic>,
@@ -152,4 +158,5 @@ pub(crate) enum CodeDynamicType {
     OperatorAdd(CodeDynamicOperatorAdd),
     OperatorEq(CodeDynamicOperatorEq),
     OperatorLt(CodeDynamicOperatorLt),
+    SubscriptUse(CodeDynamicSubscriptUse),
 }

@@ -141,20 +141,26 @@ impl AspectField for TypeMapDynamic {
                 None => return erb.err_new(format!("Field '{}' not found on map", key_name)),
             };
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            // For known method-shaped fields like "get", render the field as a
-            // JS member access on the JS bracket-form (e.g. `m["get"]`) so the
-            // emitted code remains a callable function.
-            let access_code = if key_name == "get" {
-                CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                    base: Box::new(self_code),
-                    field: key_name.clone(),
-                })
-            } else {
-                CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                    base: Box::new(self_code),
-                    field: key_name.clone(),
-                })
-            };
+            if key_name == "get" {
+                // `.get` returns a `TypeMapGetFnDynamic` carrying the map's
+                // runtime code; calling it emits `<self>[<key>]` (the map's JS
+                // form is a plain object — there's no real `.get` method to
+                // invoke). Wrap in `ValueEmptyConst` so the CV's value-type
+                // resolves to `TypeMapGetFnDynamic` (mirrors how `.new`
+                // returns `ValueEmptyConst { type_: TypeMapNewDynamic }`).
+                return Ok(CodeValue {
+                    code: Code { loc, code: Code_::None },
+                    value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapGetFnDynamic {
+                        self_code: Rc::new(self_code),
+                        key_type: self.key_type.clone(),
+                        value_type: self.value_type.clone(),
+                    }) }),
+                });
+            }
+            let access_code = CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                base: Box::new(self_code),
+                field: key_name.clone(),
+            });
             return Ok(CodeValue {
                 code: Code {
                     loc,
@@ -554,6 +560,68 @@ impl Type for TypeMapNewDynamic {
 impl Value for TypeMapNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(self.clone())
+    }
+}
+
+// --- map .get function ---
+// `.get` on a map returns a value of this type. Calling it emits the JS
+// subscript `<self>[<key>]` rather than a real `.get` method call — the map's
+// runtime form is a plain object, so it has no actual `get` method.
+#[derive(Clone)]
+struct TypeMapGetFnDynamic {
+    self_code: Rc<CodeDynamic>,
+    key_type: Rc<dyn Type>,
+    value_type: Rc<dyn Type>,
+}
+
+impl Aspect for TypeMapGetFnDynamic { }
+
+impl AspectFunction for TypeMapGetFnDynamic {
+    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let argument = erb.must_er(crate::eval::typecheck_convert(xx, loc, self.key_type.as_ref(), argument))?;
+            let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
+            let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, argument))?;
+            let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.value_type.as_ref()))?;
+            return Ok(ret_stack.to_value(loc, CodeDynamic {
+                loc,
+                type_: CodeDynamicType::SubscriptUse(crate::code_dynamic::CodeDynamicSubscriptUse {
+                    base: Box::new((*self.self_code).clone()),
+                    key: Box::new(key_code),
+                }),
+            }));
+        });
+    }
+}
+
+impl Value for TypeMapGetFnDynamic {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
+
+impl Type for TypeMapGetFnDynamic {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(self.clone())
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        None
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to map get fn".to_string())
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert map get fn".to_string())
+    }
+
+    fn desc(&self) -> String {
+        format!("map get fn")
     }
 }
 

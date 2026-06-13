@@ -849,20 +849,38 @@ impl Type for TypeSourceDataTypeDynamic {
                 // emits a `__data_instance_to_<kind>(template, instance)`
                 // call which the rust-in-v8 callback turns into the matching
                 // external.
-                let runtime_fn_id = match impl_data.interface.builtin_kind {
-                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type) =>
-                        Some(crate::eval::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID),
-                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Target) =>
-                        Some(crate::eval::DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID),
-                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::ScopeEntry) =>
-                        Some(crate::eval::DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID),
-                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Value) =>
-                        Some(crate::eval::DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID),
-                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::CodeDyn) =>
-                        Some(crate::eval::DATA_INSTANCE_TO_CODE_FN_SCOPE_ID),
-                    _ => None,
-                };
-                if let Some(fn_id) = runtime_fn_id {
+                // For each builtin iface, the runtime value is `Rc<dyn …>`
+                // wrapped in a `v8::External` — exactly the representation of
+                // the corresponding `…Dynamic` mortar type. The result CV's
+                // static type must match that runtime form (each type has a
+                // single representation, so a Dyn-coded CV cannot be typed
+                // `TypeSourceInterfaceConst`, whose representation is the
+                // compile-time iface ref).
+                let runtime_setup: Option<(crate::langhelp::ScopeEntryId, Rc<dyn crate::langhelp::Type>)> =
+                    match impl_data.interface.builtin_kind {
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type) => Some((
+                            crate::eval::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
+                            Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic),
+                        )),
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Target) => Some((
+                            crate::eval::DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
+                            Rc::new(crate::eval::value::type_any_target::dynamic::TypeAnyTargetDynamic),
+                        )),
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::ScopeEntry) => Some((
+                            crate::eval::DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID,
+                            Rc::new(crate::eval::value::type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic),
+                        )),
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Value) => Some((
+                            crate::eval::DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
+                            Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic),
+                        )),
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::CodeDyn) => Some((
+                            crate::eval::DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
+                            Rc::new(crate::eval::value::type_code_source::TypeCodeDynHandleDynamic),
+                        )),
+                        _ => None,
+                    };
+                if let Some((fn_id, result_type)) = runtime_setup {
                     let source_code = match cv.code.cast::<CodeDynamic>() {
                         crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
                         _ => return EvalRes::err(
@@ -905,7 +923,7 @@ impl Type for TypeSourceDataTypeDynamic {
                         code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
                         value: Rc::new(ValueDynamic {
                             source: ValueDynamicSource::Expr,
-                            type_: Rc::new(TypeSourceInterfaceConst { data: impl_data.interface.clone() }),
+                            type_: result_type,
                         }),
                     });
                 }
