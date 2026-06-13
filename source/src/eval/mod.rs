@@ -1724,22 +1724,16 @@ fn eval(
                 });
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 method.self_scope_entry_id.set(Some(self_id));
-                let outer_self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                // Regular data-type methods rarely need the data instance; to
+                // avoid shifting Local IDs (and breaking snapshot tests +
+                // unrelated existing arg-emit bugs) we only allocate the
+                // `outer_self` slot for interface impl methods, which is where
+                // the `type.aspect` impl actually needs `outer_self`.
+                let outer_self_id = ScopeEntryId::Builtin(usize::MAX);
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                     if let Some(self_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                         body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
-                    }
-                    // `outer_self` = the data type instance (`this` at JS time).
-                    let outer_self_type: Rc<dyn Type> = Rc::new(
-                        value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic { data: dt_data.clone() },
-                    );
-                    if let Some(outer_self_ib) =
-                        crate::builtin::aspect_initial_bind_get_maybe(&xx, outer_self_type.as_ref()) {
-                        body_scope.insert(
-                            ConstKey::String("outer_self".to_string()),
-                            outer_self_ib.initial_bind(outer_self_id),
-                        );
                     }
                     if let Some(arg_type) = method.arg_type.borrow().clone() {
                         if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
