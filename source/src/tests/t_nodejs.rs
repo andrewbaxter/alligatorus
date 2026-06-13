@@ -133,44 +133,61 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         impl_as_self_type(mb, "ntype_func", "nodejs function", aspect_dispatch(mb, vec!["aspect_function_id"])),
     );
 
-    // aspect_function.call — `arg` carries `{self_: cv, argument: cv}` from the
-    // dispatcher; build a new nvalue whose base is `code.call({func, arg})`.
-    // TODO: this body returns an nvalue but the iface contract now requires a
-    // CodeValueExtern; wrap via `eval_const(arg.xx, stage(...))`. Substantial:
-    // adding another stage means the existing `mb.lower(...)` calls (which
-    // target build_nodejs's scope at depth 1) need to be double-wrapped to
-    // target the right depth, and `nvalue_base_to_code` would need a
-    // depth-aware variant.
-    exprs.push(impl_iface(mb, "ntype_func", "aspect_function", vec![("call", mb.block(vec![
-        mb.bind(
-            "func_code",
-            nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base"))),
-        ),
-        mb.bind(
-            "arg_code",
-            nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("argument")), mb.str("base"))),
-        ),
-        mb.call(
-            mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
-            mb.record(
-                vec![
-                    (
-                        "base",
-                        mb.call(
-                            mb.lower(mb.scope_use("nvalue_expr")),
-                            mb.call(
-                                mb.lower(mb.field(mb.scope_use("code"), mb.str("call"))),
-                                mb.record(
-                                    vec![("func", mb.scope_use("func_code")), ("arg", mb.scope_use("arg_code"))],
+    // aspect_function.call — `arg` carries `{self_, argument}` as CodeValueExterns
+    // (the receiver and argument CVs) plus `xx`. Returns a CodeValueExtern (the
+    // result CV). The body uses `new_code_value(code, value)` to explicitly
+    // construct that CV — same shape as the Rust `AspectFunction::call` impl.
+    //
+    // TODO(code-arg): pass the real test-`code` AST as the code arg once the
+    // test's `code` tagged union impls the `code_dyn` builtin interface (so
+    // it casts to `codedyn`). For now the code arg is `option(codedyn).none(())`
+    // — produces a `Code_::None` result, which doesn't match the test's
+    // expected JS output but lets the impl compile against the new contract.
+    exprs.push(impl_iface(mb, "ntype_func", "aspect_function", vec![("call", mb.call(
+        mb.scope_use("new_code_value"),
+        mb.tuple(vec![
+            // code arg: option(codedyn).none(())
+            mb.call(
+                mb.field(
+                    mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
+                    mb.str("none"),
+                ),
+                mb.null(),
+            ),
+            // value arg: original nvalue construction; auto-casts TSDT(nvalue) →
+            // value via __data_instance_to_value (nvalue impls the value iface).
+            mb.block(vec![
+                mb.bind(
+                    "func_code",
+                    nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base"))),
+                ),
+                mb.bind(
+                    "arg_code",
+                    nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("argument")), mb.str("base"))),
+                ),
+                mb.call(
+                    mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
+                    mb.record(
+                        vec![
+                            (
+                                "base",
+                                mb.call(
+                                    mb.lower(mb.scope_use("nvalue_expr")),
+                                    mb.call(
+                                        mb.lower(mb.field(mb.scope_use("code"), mb.str("call"))),
+                                        mb.record(
+                                            vec![("func", mb.scope_use("func_code")), ("arg", mb.scope_use("arg_code"))],
+                                        ),
+                                    ),
                                 ),
                             ),
-                        ),
+                            ("type", mb.field(mb.scope_use("self"), mb.str("ret"))),
+                        ],
                     ),
-                    ("type", mb.field(mb.scope_use("self"), mb.str("ret"))),
-                ],
-            ),
-        ),
-    ]))]));
+                ),
+            ]),
+        ]),
+    ))]));
 
     // # ntype_object — nodejs object type, parameterized by `map(string, type)`. Its
     //
@@ -195,56 +212,69 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         impl_as_self_type(mb, "ntype_object", "nodejs object", aspect_dispatch(mb, vec!["aspect_field_id"])),
     );
 
-    // aspect_field.field — `arg = {self_: cv, key: cv}`. Build an nvalue whose base
-    // is `code.field({base: <self_ as code>, field: code.lit_str(key)})` and whose
-    // type is `self[key]` (the nodejs type stored at that key in the underlying map).
-    // TODO: same eval_const wrap as aspect_function.call above; outer-scope
-    // bindings (nvalue, code, …) need a different access path.
+    // aspect_field.field — same contract as aspect_function.call. arg = {self_,
+    // key, xx} CodeValueExterns/ExprContextRef. Returns CodeValueExtern via
+    // new_code_value. TODO(code-arg): real codedyn arg once test's `code`
+    // impls code_dyn iface.
     exprs.push(
         impl_iface(
             mb,
             "ntype_object",
             "aspect_field",
             vec![
-                ("field", mb.block(vec![
-                    mb.bind(
-                        "base_code",
-                        nvalue_base_to_code(
-                            mb,
-                            mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base")),
+                ("field", mb.call(
+                    mb.scope_use("new_code_value"),
+                    mb.tuple(vec![
+                        // code arg: option(codedyn).none(())
+                        mb.call(
+                            mb.field(
+                                mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
+                                mb.str("none"),
+                            ),
+                            mb.null(),
                         ),
-                    ),
-                    mb.call(mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))), mb.record(vec![
-                        (
-                            "base",
-                            mb.call(
-                                mb.lower(mb.scope_use("nvalue_expr")),
-                                mb.call(
-                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("field"))),
-                                    mb.record(
-                                        vec![
-                                            ("base", mb.scope_use("base_code")),
-                                            (
-                                                "field",
-                                                mb.call(
-                                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
-                                                    mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
-                                                ),
-                                            ),
-                                        ],
-                                    ),
+                        // value arg: original nvalue construction (auto-casts to value)
+                        mb.block(vec![
+                            mb.bind(
+                                "base_code",
+                                nvalue_base_to_code(
+                                    mb,
+                                    mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base")),
                                 ),
                             ),
-                        ),
-                        (
-                            "type",
-                            mb.call(
-                                mb.field(mb.scope_use("self"), mb.str("get")),
-                                mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
-                            ),
-                        ),
-                    ])),
-                ])),
+                            mb.call(mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))), mb.record(vec![
+                                (
+                                    "base",
+                                    mb.call(
+                                        mb.lower(mb.scope_use("nvalue_expr")),
+                                        mb.call(
+                                            mb.lower(mb.field(mb.scope_use("code"), mb.str("field"))),
+                                            mb.record(
+                                                vec![
+                                                    ("base", mb.scope_use("base_code")),
+                                                    (
+                                                        "field",
+                                                        mb.call(
+                                                            mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
+                                                            mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
+                                                        ),
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                (
+                                    "type",
+                                    mb.call(
+                                        mb.field(mb.scope_use("self"), mb.str("get")),
+                                        mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
+                                    ),
+                                ),
+                            ])),
+                        ]),
+                    ]),
+                )),
                 (
                     "field_type_opt",
                     mb.call(

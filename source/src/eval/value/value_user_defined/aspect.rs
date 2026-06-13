@@ -136,10 +136,10 @@ fn dispatch_aspect_method(
         target: xx.target.clone(),
     });
 
-    // Build the v8-side arg object: `xx` external + a `CodeValueExtern` per
-    // named CV field (the user reads them at Rust const_eval time via
-    // `arg.<name>`, not at v8 time, so the JS field values stand in as
-    // opaque placeholders to keep the JS shape consistent).
+    // Build the v8-side arg object: `xx` external + each named CV field as a
+    // `CodeValueExtern` external. The compiled impl body emits JS that does
+    // `__cve_field(arg.<name>, …)` and friends, so the field values must be
+    // real CVE externals at v8 — not placeholders.
     let arg_obj = v8::Object::new(scope);
     let xx_external = to_v8(scope, child_xx.clone());
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
@@ -147,13 +147,15 @@ fn dispatch_aspect_method(
         None => return EvalRes::err(loc, "AspectUserDefined dispatch: xx key alloc failed".to_string()),
     };
     arg_obj.set(scope, xx_key.into(), xx_external.into());
-    let null_for_placeholder: v8::Local<v8::Value> = v8::null(scope).into();
-    for (name, _) in &cv_fields {
+    for (name, cv) in &cv_fields {
         let k = match v8::String::new(scope, &ConstKey::String(name.clone()).to_str()) {
             Some(s) => s,
             None => return EvalRes::err(loc, format!("AspectUserDefined dispatch: '{}' key alloc failed", name)),
         };
-        arg_obj.set(scope, k.into(), null_for_placeholder);
+        let cve_cell: Rc<RefCell<Option<CodeValue>>> =
+            Rc::new(RefCell::new(Some(clone_cv(cv))));
+        let cve_ext = crate::eval::to_v8(scope, cve_cell);
+        arg_obj.set(scope, k.into(), cve_ext.into());
     }
 
     let instance = v8::Local::new(scope, &bundle.instance);

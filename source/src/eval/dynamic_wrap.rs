@@ -727,7 +727,12 @@ impl DynamicWrap for crate::langhelp::Code {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic)
+        // The source-level `Code` is `option(code_dyn)`. The user writes
+        // `option(codedyn).some(<code_dyn>)` / `.none(())` to construct one.
+        Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+            element_type:
+                Rc::new(crate::eval::value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>,
+        })
     }
 }
 
