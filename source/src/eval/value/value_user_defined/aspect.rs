@@ -267,3 +267,144 @@ impl AspectFunction for AspectUserDefined {
         )
     }
 }
+
+/// `TypeUserDefinedAspect` — the source-language type of an aspect handle for
+/// a user-defined `is_aspect` interface. Carries `iface_ref` so `AspectField`
+/// can resolve a source-level method name (`to_code`) to the iface's
+/// `SourceInterfaceMethodData.field_name` (`_im0`/`_im1`/…) and emit
+/// `instance[field_name](arg)` at v8 time, with the result CV typed by the
+/// method's declared `ret_type`. Parallel to how `TypeSourceDataTypeDynamic`
+/// looks up data-type methods.
+pub(crate) struct TypeUserDefinedAspect {
+    pub iface_ref: Rc<
+        crate::eval::value::type_source_interface::SourceInterfaceRef,
+    >,
+}
+
+impl Aspect for TypeUserDefinedAspect { }
+
+impl Value for TypeUserDefinedAspect {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+    }
+}
+
+impl crate::builtin::AspectField for TypeUserDefinedAspect {
+    fn field(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: CodeValue,
+        key: CodeValue,
+    ) -> EvalRes {
+        let self_code = match self_.code.cast::<crate::code_dynamic::CodeDynamic>().into_res() {
+            Ok(Some(c)) => c.clone(),
+            _ => return EvalRes::err(
+                loc,
+                "TypeUserDefinedAspect.field: receiver has no runtime code".to_string(),
+            ),
+        };
+        let key_type = key.value.type_(xx, loc);
+        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+            Ok(s) => s,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let key_name = key_string.get(key.value.as_ref());
+        let methods = self.iface_ref.data.methods.borrow();
+        let method = match methods.iter().find(|m| m.name == key_name) {
+            Some(m) => m,
+            None => return EvalRes::err(
+                loc,
+                format!(
+                    "aspect handle has no method '{}' on interface '{}'",
+                    key_name,
+                    self.iface_ref
+                        .data
+                        .description
+                        .borrow()
+                        .as_deref()
+                        .unwrap_or("?")
+                        .to_string(),
+                ),
+            ),
+        };
+        let arg_type = match method.arg_type.borrow().clone() {
+            Some(t) => t,
+            None => return EvalRes::err(loc, "interface method missing arg type".to_string()),
+        };
+        let ret_type = match method.ret_type.borrow().clone() {
+            Some(t) => t,
+            None => return EvalRes::err(loc, "interface method missing ret type".to_string()),
+        };
+        let field_code = crate::code_dynamic::CodeDynamic {
+            loc,
+            type_: crate::code_dynamic::CodeDynamicType::FieldUse(
+                crate::code_dynamic::CodeDynamicFieldUse {
+                    base: Box::new(self_code),
+                    field: ConstKey::String(method.field_name.clone()).to_str(),
+                },
+            ),
+        };
+        let func_type = Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+            arg: arg_type,
+            ret: ret_type,
+        });
+        EvalRes::ok(CodeValue {
+            code: Code { loc, code: Code_::Dyn(Rc::new(field_code)) },
+            value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                type_: func_type,
+            }),
+        })
+    }
+
+    fn field_type_opt(
+        &self,
+        _xx: &ExprContext,
+        key: &ConstKey,
+    ) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(s) = key else {
+            return None;
+        };
+        let methods = self.iface_ref.data.methods.borrow();
+        let method = methods.iter().find(|m| m.name == *s)?;
+        let arg_type = method.arg_type.borrow().clone()?;
+        let ret_type = method.ret_type.borrow().clone()?;
+        Some(Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+            arg: arg_type,
+            ret: ret_type,
+        }))
+    }
+}
+
+impl Type for TypeUserDefinedAspect {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeUserDefinedAspect { iface_ref: self.iface_ref.clone() })
+    }
+
+    fn aspect(
+        &self,
+        _xx: &ExprContext,
+        key: &crate::langhelp::Unique,
+    ) -> Option<Box<dyn std::any::Any>> {
+        if *key == crate::builtin::aspect_field_aspect_id() {
+            return Some(Box::new(
+                Box::new(TypeUserDefinedAspect { iface_ref: self.iface_ref.clone() })
+                    as Box<dyn crate::builtin::AspectField>,
+            ));
+        }
+        None
+    }
+
+    fn desc(&self) -> String {
+        format!(
+            "aspect<{}>",
+            self.iface_ref
+                .data
+                .description
+                .borrow()
+                .as_deref()
+                .unwrap_or("?")
+        )
+    }
+}

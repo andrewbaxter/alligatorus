@@ -493,12 +493,35 @@ impl Type for TypeUserDefined {
     }
 
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        // Delegate to the source-level `type.aspect(key)` impl. The result is
-        // an `option(aspect)`; on `some`, the wrapped `AspectUserDefined`
-        // implements both `AspectField` and `AspectFunction` (forwarding to
-        // v8 dispatch on the instance), so we cast to whichever trait the
-        // caller asked for via `key`.
-        let bundle = self.bundle.as_ref()?;
+        // First check user-defined `is_aspect` interfaces directly: if this
+        // data type impls one whose identity matches `key`, return a
+        // `TypeUserDefinedAspect` handle (carries the iface ref, so source
+        // `aspect_handle.method(arg)` dispatches via the iface's compiled
+        // method `field_name` against the bundle's v8 instance).
+        let bundle_opt = self.bundle.as_ref();
+        {
+            let interface_impls = self.data.interface_impls.borrow();
+            for impl_data in interface_impls.iter() {
+                if *key == impl_data.interface.identity && impl_data.interface.is_aspect.get() {
+                    return Some(Box::new(Box::new(
+                        crate::eval::value::value_user_defined::aspect::TypeUserDefinedAspect {
+                            iface_ref: std::rc::Rc::new(
+                                crate::eval::value::type_source_interface::SourceInterfaceRef {
+                                    data: impl_data.interface.clone(),
+                                },
+                            ),
+                        },
+                    ) as Box<dyn crate::builtin::AspectField>));
+                }
+            }
+        }
+        // Delegate to the source-level `type.aspect(key)` impl for builtin
+        // aspect_field / aspect_function. The result is an `option(aspect)`;
+        // on `some`, the wrapped `AspectUserDefined` implements both
+        // `AspectField` and `AspectFunction` (forwarding to v8 dispatch on
+        // the instance), so we cast to whichever trait the caller asked for
+        // via `key`.
+        let bundle = bundle_opt?;
         let dummy_loc: crate::langhelp::QExprId =
             (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
         let aspect = crate::eval::user_defined_type_dispatch::user_defined_aspect_v8(
