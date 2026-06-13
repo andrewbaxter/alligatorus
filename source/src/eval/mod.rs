@@ -3902,6 +3902,16 @@ pub(crate) fn build_aspect_arg_record_type(field_names: &[&str]) -> Rc<dyn Type>
             value::record::RecordField::Mortar(cve_type.clone()),
         );
     }
+    // `xx` is the surrounding `ExprContext` — the impl uses it via
+    // `eval_const(arg.xx, stage(...))` to wrap an inner staged expression
+    // into a `CodeValueExtern` return value. Same convention as the `type`
+    // interface impls (see `build_cast_arg_record_type`).
+    fields.insert(
+        ConstKey::String("xx".to_string()),
+        value::record::RecordField::Mortar(
+            Rc::new(crate::eval::code_value_extern::TypeExprContextRefDynamic) as Rc<dyn Type>,
+        ),
+    );
     Rc::new(value::record::Record { base: Some(Box::new(value::record::RecordBaseDynamic)), fields })
 }
 

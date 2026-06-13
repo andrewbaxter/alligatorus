@@ -194,14 +194,22 @@ pub(crate) fn build_builtin_interfaces(
         ]),
         identity: crate::eval::builtin_type_iface_identity(),
     });
+    let cve_type: std::rc::Rc<dyn crate::langhelp::Type> =
+        std::rc::Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic);
     let aspect_function_iface_data = Gc::new(SourceInterfaceData {
         builtin_kind: Some(BuiltinInterfaceKind::AspectFunction),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("aspect_function".to_string())),
+        // `call` mirrors the Rust trait `AspectFunction::call(self_: CodeValue,
+        // argument: CodeValue) -> EvalRes<CodeValue>`. The impl runs at
+        // const-eval (not at JS runtime), receives its inputs as
+        // `CodeValueExtern`s (compile-time CV wrappers), and returns a
+        // `CodeValueExtern` carrying the compiled CV; `AspectUserDefined`
+        // synchronously invokes v8 to drive this and unwraps the result.
         methods: RefCell::new(vec![SourceInterfaceMethodData {
             name: "call".to_string(),
             arg_type: RefCell::new(Some(any_type.clone())),
-            ret_type: RefCell::new(Some(any_type.clone())),
+            ret_type: RefCell::new(Some(cve_type.clone())),
             field_name: "_im_af0".to_string(),
         }]),
         identity: crate::builtin::aspect_function_aspect_id(),
@@ -214,7 +222,8 @@ pub(crate) fn build_builtin_interfaces(
             SourceInterfaceMethodData {
                 name: "field".to_string(),
                 arg_type: RefCell::new(Some(any_type.clone())),
-                ret_type: RefCell::new(Some(any_type.clone())),
+                // See note above on `aspect_function.call` — same rationale.
+                ret_type: RefCell::new(Some(cve_type.clone())),
                 field_name: "_im_afd0".to_string(),
             },
             SourceInterfaceMethodData {

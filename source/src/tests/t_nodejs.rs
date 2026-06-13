@@ -135,12 +135,15 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
 
     // aspect_function.call — `arg` carries `{self_: cv, argument: cv}` from the
     // dispatcher; build a new nvalue whose base is `code.call({func, arg})`.
+    // TODO: this body returns an nvalue but the iface contract now requires a
+    // CodeValueExtern; wrap via `eval_const(arg.xx, stage(...))`. Substantial
+    // because the body references outer-scope bindings (nvalue, code, …) that
+    // aren't reachable from the dispatcher's child scope.
     exprs.push(impl_iface(mb, "ntype_func", "aspect_function", vec![("call", mb.block(vec![
         mb.bind(
             "func_code",
             nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base"))),
         ),
-        // TODO cast to arg type
         mb.bind(
             "arg_code",
             nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("argument")), mb.str("base"))),
@@ -193,6 +196,8 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     // aspect_field.field — `arg = {self_: cv, key: cv}`. Build an nvalue whose base
     // is `code.field({base: <self_ as code>, field: code.lit_str(key)})` and whose
     // type is `self[key]` (the nodejs type stored at that key in the underlying map).
+    // TODO: same eval_const wrap as aspect_function.call above; outer-scope
+    // bindings (nvalue, code, …) need a different access path.
     exprs.push(
         impl_iface(
             mb,
@@ -200,7 +205,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             "aspect_field",
             vec![
                 ("field", mb.block(vec![
-                    //. .
                     mb.bind(
                         "base_code",
                         nvalue_base_to_code(
@@ -209,7 +213,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                         ),
                     ),
                     mb.call(mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))), mb.record(vec![
-                        //. .
                         (
                             "base",
                             mb.call(
