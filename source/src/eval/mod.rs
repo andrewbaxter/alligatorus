@@ -175,10 +175,15 @@ const STAGE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 /// Well-known scope entry ID for __tuple_to_type mortar function.
 pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
-/// Well-known scope entry ID for __cve_field mortar function — performs field
-/// access on the CodeValue carried by a CodeValueExtern, returning a fresh
-/// CodeValueExtern wrapping the field's CodeValue.
-pub(crate) const CVE_FIELD_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+/// Well-known scope entry ID for `__cve_get_value` mortar function — narrow
+/// extractor that takes a CodeValueExtern and returns the v8 representation
+/// of the wrapped CodeValue's `value` slot. For a `ValueUserDefined`, that's
+/// the underlying JS instance object (the same `bundle.instance` the value
+/// holds); other `Value` shapes are not supported because no test exercises
+/// them yet (we'll handle them when they appear). No `AspectField` dispatch
+/// happens here — callers compose further access through normal source-level
+/// typing.
+pub(crate) const CVE_GET_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
 /// Well-known scope entry ID for __cve_extract mortar function — extracts the
 /// raw runtime JS value from a CodeValueExtern by consuming the wrapped
@@ -1671,6 +1676,14 @@ fn eval(
             /// `type.aspect`: `option(aspect).some(outer_self)` captures the
             /// instance through `__data_instance_to_aspect(this)`.
             outer_self_id: ScopeEntryId,
+            /// The function's `arg` parameter. Every method takes an argument
+            /// (null / empty tuple counts), so this is always allocated. For
+            /// non-Type interface methods the emit is
+            /// `function(<arg_key>) { let <self_key> = this[..]; … }`. For
+            /// Type interface methods (where the parameter conceptually IS
+            /// `arg` per `is_arg_method`), it's `function(<self_key>)` and
+            /// `arg_param_id` is unused.
+            arg_param_id: ScopeEntryId,
         },
         Precompiled(String),
     }
@@ -1724,11 +1737,10 @@ fn eval(
                 });
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 method.self_scope_entry_id.set(Some(self_id));
-                // Regular data-type methods rarely need the data instance; to
-                // avoid shifting Local IDs (and breaking snapshot tests +
-                // unrelated existing arg-emit bugs) we only allocate the
-                // `outer_self` slot for interface impl methods, which is where
-                // the `type.aspect` impl actually needs `outer_self`.
+                let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                // Regular data-type methods don't currently need the data
+                // instance via `outer_self` — sentinel id (would shift Local
+                // IDs and break snapshot tests if always allocated here).
                 let outer_self_id = ScopeEntryId::Builtin(usize::MAX);
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
@@ -1737,7 +1749,6 @@ fn eval(
                     }
                     if let Some(arg_type) = method.arg_type.borrow().clone() {
                         if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
-                            let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
                         }
                     }
@@ -1786,6 +1797,7 @@ fn eval(
                         impl_code,
                         is_arg_method: false,
                         outer_self_id,
+                        arg_param_id: arg_id,
                     },
                     captured_externals: captured,
                 });
@@ -1848,6 +1860,7 @@ fn eval(
                     let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     method_impl.self_scope_entry_id.set(Some(self_id));
                     let outer_self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                    let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                         // Universal `outer_self` = the data type instance (JS
@@ -1980,7 +1993,6 @@ fn eval(
                                 let arg_type: Rc<dyn Type> = build_aspect_arg_record_type(&arg_field_names);
                                 if let Some(arg_ib) =
                                     crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
-                                    let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                                     body_scope.insert(
                                         ConstKey::String("arg".to_string()),
                                         arg_ib.initial_bind(arg_id),
@@ -2040,6 +2052,7 @@ fn eval(
                                 Some(value::type_source_interface::BuiltinInterfaceKind::Type)
                             ),
                             outer_self_id,
+                            arg_param_id: arg_id,
                         },
                         captured_externals: captured,
                     });
@@ -2113,7 +2126,7 @@ fn eval(
     // `arg`, not the data type's underlying value.
     for method in &def_data_methods {
         match &method.body {
-            CompiledDataMethodBody::Fresh { self_scope_entry_id, data_field, impl_code, is_arg_method, outer_self_id } => {
+            CompiledDataMethodBody::Fresh { self_scope_entry_id, data_field, impl_code, is_arg_method, outer_self_id, arg_param_id } => {
                 let start_line = code1.lines.len();
                 let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
                 let self_key = scope_entry_id_dynamic_key(*self_scope_entry_id);
@@ -2135,9 +2148,15 @@ fn eval(
                     );
                 }
                 if *is_arg_method {
+                    // Type interface impl methods bind self_key directly to
+                    // the function's argument parameter — `self` IS `arg`
+                    // per that interface's convention.
                     code1.push(root_loc, format!("{} = function({}) {{", func_name, self_key));
                 } else {
-                    code1.push(root_loc, format!("{} = function() {{", func_name));
+                    // Every other method body: function takes `arg` as
+                    // parameter and `self` is read from `this[data_field]`.
+                    let arg_key = scope_entry_id_dynamic_key(*arg_param_id);
+                    code1.push(root_loc, format!("{} = function({}) {{", func_name, arg_key));
                     code1.push(
                         root_loc,
                         format!(
@@ -2576,7 +2595,7 @@ fn eval(
             panic!("__cve_extract: unsupported inner CV value type ({})", value_type.desc());
         }
 
-        fn cve_field_callback<
+        fn cve_get_value_callback<
             's,
         >(
             scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
@@ -2584,46 +2603,27 @@ fn eval(
             mut rv: v8::ReturnValue<'s>,
         ) {
             // arg(0) = the CodeValueExtern (v8 external holding
-            // `Rc<RefCell<Option<CodeValue>>>`).
-            // arg(1) = the field key (a JS string).
+            // `Rc<RefCell<Option<CodeValue>>>`). Returns the v8 form of the
+            // wrapped CV's `value` slot. The only `Value` shape currently
+            // exercised here is `ValueUserDefined` — return its
+            // `bundle.instance`. Adding more `Value` shapes as the tests
+            // require them is fine; we panic loudly so the gap is obvious.
             let cve_v8 = args.get(0);
-            let key_v8 = args.get(1);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
-            let key_str =
-                v8::Local::<v8::String>::try_from(key_v8)
-                    .expect("__cve_field: expected string key")
-                    .to_rust_string_lossy(scope);
-            let inner_cv = cve_cell
-                .borrow_mut()
-                .take()
-                .expect("__cve_field: inner CodeValue already consumed");
-            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
-            let xx = Rc::new(ExprContext {
-                vx: ex_slot.ex.clone(),
-                import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
-                scope: Rc::new(Scope {
-                    values: RefCell::new(HashMap::new()),
-                    parent: None,
-                }),
-                target,
-            });
-            let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
-            let inner_type = inner_cv.value.type_(&xx, loc);
-            let aspect_field = match crate::builtin::aspect_field_get_maybe(&xx, inner_type.as_ref()) {
-                Some(a) => a,
-                None => panic!("__cve_field: inner CodeValue's type ({}) has no AspectField", inner_type.desc()),
+            let value: Rc<dyn crate::langhelp::Value> = {
+                let borrow = cve_cell.borrow();
+                borrow
+                    .as_ref()
+                    .expect("__cve_get_value: inner CodeValue already consumed")
+                    .value
+                    .clone()
             };
-            let key_cv = CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(key_str)),
-            };
-            let res = aspect_field.field(&xx, loc, inner_cv, key_cv);
-            let result_cv = res.v.expect("__cve_field: field access produced no value");
-            let new_cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(result_cv)));
-            let ext = to_v8(scope, new_cve_cell);
-            rv.set(ext.into());
+            let vud = crate::invariant::must_downcast_ref::<
+                crate::eval::value::value_user_defined::dynamic::ValueUserDefined,
+            >(value.as_ref());
+            let instance = v8::Local::new(scope, &vud.bundle.instance);
+            rv.set(instance.into());
         }
 
         if register_v8 {
@@ -2649,16 +2649,17 @@ fn eval(
                         .cast(),
                     tuple_to_type_fn.into(),
                 );
-            let cve_field_fn = v8::Function::builder(cve_field_callback).build(dynamic_scope).unwrap();
+            let cve_get_value_fn =
+                v8::Function::builder(cve_get_value_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CVE_FIELD_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CVE_GET_VALUE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
-                    cve_field_fn.into(),
+                    cve_get_value_fn.into(),
                 );
             let cve_extract_fn = v8::Function::builder(cve_extract_callback).build(dynamic_scope).unwrap();
             dynamic_scope

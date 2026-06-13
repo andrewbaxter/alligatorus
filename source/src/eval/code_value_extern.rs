@@ -250,15 +250,15 @@ impl AspectField for TypeCodeValueExternDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            // The key is always a const string at compile time (record field
-            // access).
             let key_type = key.value.type_(xx, loc);
             let aspect_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
-            // Special case: `.code` on a CodeValueExtern surfaces the inner CV's
-            // `Code` struct as a source-level handle (`TypeCodeStructDynamic`),
-            // routing further `.code` access and tagged-union match through the
-            // Code / Code_ / code_dyn types.
+            // A `CodeValueExtern` wraps a whole `CodeValue` (= `{code, value}`),
+            // so the only two well-defined field accesses are `.code` and
+            // `.value`. Anything else is a source-level mistake. Defaulting to
+            // a generic v8 trampoline used to drive infinite recursion when the
+            // wrapped value's source-language type re-entered the same user
+            // `aspect_field` impl that emitted the access.
             if key_str == "code" {
                 return Ok(CodeValue {
                     code: Code { loc, code: Code_::Dyn(Rc::new(self_code)) },
@@ -268,39 +268,51 @@ impl AspectField for TypeCodeValueExternDynamic {
                     }),
                 });
             }
-            let key_code = CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Literal(serde_json::Value::String(key_str)),
-            };
-            let call_code = CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Call(CodeDynamicCall {
-                    func: Box::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse {
-                            id: crate::eval::CVE_FIELD_FN_SCOPE_ID,
+            if key_str == "value" {
+                // Emit `__cve_get_value(self_)` — at v8 time, the callback
+                // unwraps the inner CV and returns the value's v8 form (the
+                // bundled JS instance for a `ValueUserDefined`). Source typing
+                // here is `any`; the user casts to the concrete data type they
+                // know they constructed, and `.base` etc. then dispatch
+                // through the data type's own `TypeSourceDataTypeDynamic.field`
+                // — no recursion possible, since that path doesn't re-enter
+                // user aspect impls.
+                let call_code = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Call(CodeDynamicCall {
+                        func: Box::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse {
+                                id: crate::eval::CVE_GET_VALUE_FN_SCOPE_ID,
+                            }),
                         }),
+                        args: vec![self_code],
                     }),
-                    args: vec![self_code, key_code],
-                }),
-            };
-            return Ok(CodeValue {
-                code: Code { loc, code: Code_::Dyn(Rc::new(call_code)) },
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeCodeValueExternDynamic),
-                }),
-            });
+                };
+                return Ok(CodeValue {
+                    code: Code { loc, code: Code_::Dyn(Rc::new(call_code)) },
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic),
+                    }),
+                });
+            }
+            return erb.err_new(format!(
+                "CodeValueExtern has no field '{}' (only 'code' and 'value')",
+                key_str
+            ));
         });
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
-        if let ConstKey::String(s) = key {
-            if s == "code" {
-                return Some(Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic));
-            }
+        let ConstKey::String(s) = key else {
+            return None;
+        };
+        match s.as_str() {
+            "code" => Some(Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic)),
+            "value" => Some(Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic)),
+            _ => None,
         }
-        Some(Rc::new(TypeCodeValueExternDynamic))
     }
 }
 

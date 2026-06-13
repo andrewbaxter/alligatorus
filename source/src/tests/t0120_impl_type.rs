@@ -131,7 +131,9 @@ fn test_00100_impl_type() {
     // emitted in the stage where the constructor consumes them (stage 2). value's
     // `type` renders as a `this`-style method; type's three render as `arg`-style
     // functions (one parameter).
-    assert!(scripts[1].contains("d0_0_0 = function() {"), "value.type compiled");
+    // Every method now takes an `arg` parameter (even when unused) — the
+    // function signature is `function(<arg_key>) { let <self_key> = this[..]; … }`.
+    assert!(scripts[1].contains("d0_0_0 = function("), "value.type compiled");
     assert!(scripts[1].contains("d0_0_1 = function("), "type.can_cast_from compiled (arg)");
     assert!(scripts[1].contains("d0_0_2 = function("), "type.cast_from compiled (arg)");
     assert!(scripts[1].contains("d0_0_3 = function("), "type.desc compiled (arg)");

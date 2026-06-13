@@ -186,7 +186,7 @@ e0 = (e1)(e2,e3,e4);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {
-d0_0_0 = function() {
+d0_0_0 = function(a2) {
 let a0 = this["\"_0\""];
 let e0;
 let e1;
@@ -484,7 +484,7 @@ return e0;
 }
 var d0_0_0;
 {
-d0_0_0 = function() {
+d0_0_0 = function(a2) {
 let a0 = this["\"_0\""];
 let e5;
 let e6;

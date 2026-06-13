@@ -162,11 +162,29 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             mb.block(vec![
                 mb.bind(
                     "func_code",
-                    nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base"))),
+                    nvalue_base_to_code(
+                        mb,
+                        mb.field(
+                            mb.field(
+                                mb.field(mb.scope_use("arg"), mb.str("self_")),
+                                mb.str("value"),
+                            ),
+                            mb.str("base"),
+                        ),
+                    ),
                 ),
                 mb.bind(
                     "arg_code",
-                    nvalue_base_to_code(mb, mb.field(mb.field(mb.scope_use("arg"), mb.str("argument")), mb.str("base"))),
+                    nvalue_base_to_code(
+                        mb,
+                        mb.field(
+                            mb.field(
+                                mb.field(mb.scope_use("arg"), mb.str("argument")),
+                                mb.str("value"),
+                            ),
+                            mb.str("base"),
+                        ),
+                    ),
                 ),
                 mb.call(
                     mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
@@ -242,7 +260,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                 "base_code",
                                 nvalue_base_to_code(
                                     mb,
-                                    mb.field(mb.field(mb.scope_use("arg"), mb.str("self_")), mb.str("base")),
+                                    mb.field(
+                                        mb.field(
+                                            mb.field(mb.scope_use("arg"), mb.str("self_")),
+                                            mb.str("value"),
+                                        ),
+                                        mb.str("base"),
+                                    ),
                                 ),
                             ),
                             mb.call(mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))), mb.record(vec![
@@ -570,7 +594,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 // `code` tagged union before rendering.
                 mb.match_(
                     mb.field(
-                        mb.field(mb.field(mb.scope_use("res"), mb.str("cv")), mb.str("code")),
+                        mb.field(mb.scope_use("res"), mb.str("code")),
                         mb.str("code"),
                     ),
                     mb.str("v"),
