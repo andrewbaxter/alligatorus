@@ -441,6 +441,14 @@ impl Type for TypeSourceDataTypeConst {
             );
         }
 
+        if *key == crate::builtin::aspect_field_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }) as
+                        Box<dyn crate::builtin::AspectField>,
+                ),
+            );
+        }
         // Check interface identity aspects + builtin `type` interface
         {
             let interface_impls = self.data.interface_impls.borrow();
