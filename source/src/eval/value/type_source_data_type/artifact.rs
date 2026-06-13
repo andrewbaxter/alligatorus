@@ -30,15 +30,16 @@ pub(crate) struct ArtifactDataDefSet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<ArtifactId>,
     pub import_id: crate::langhelp::ImportStateId,
-    /// User-defined interface signatures, inlined. Builtin interfaces
-    /// don't appear here — `BuiltinInterfaceKind` reconstructs them via
-    /// `build_builtin_interfaces`. Impls reference an entry here by its
-    /// `Unique` identity (see `ArtifactDataDefSetInterfaceImpl`).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub interfaces: Vec<ArtifactDataDefSetInterface>,
     pub source_id: crate::langhelp::SourceId,
 }
 
+/// Inlined iface signature, carried inside `ArtifactDataDefSetInterfaceImpl`
+/// for user-defined ifaces (where `BuiltinInterfaceKind` can't rehydrate
+/// the iface via `build_builtin_interfaces`). The same iface impl'd by
+/// multiple data types gets serialized once per impl — on deserialization
+/// each impl rebuilds its own `Gc<SourceInterfaceData>`; identity equality
+/// is what TypeUserDefinedAspect's source-level dispatch relies on, not
+/// pointer equality.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterface {
     pub identity: crate::langhelp::Unique,
@@ -84,7 +85,7 @@ pub(crate) struct ArtifactDataDefSetDataType {
 /// each by its body-local id (`a##`); at import the cell is reconstructed in
 /// the importing env and installed under `<func_name>_<local_key>` so the
 /// body's wrapping block can `let a## = globalThis["..."];` them.
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) enum ArtifactExternal {
     /// `External::StagedExprCell` wrapping an `Expr`. The expression's AST is
     /// serialized as `ArtifactExpr`.
@@ -124,24 +125,22 @@ pub(crate) struct ArtifactDataDefSetMethod {
     pub ret_type: Artifact,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterfaceImpl {
-    /// `Some` for builtin interfaces (Value, Type, AspectField, …). `None`
-    /// for user-defined interfaces (`d.new_interface()`), which still need
-    /// their method bodies serialized so the data type's constructor JS
-    /// can populate `_imN` slots when re-installed in another stage/isolate.
+    /// `Some` for builtin interfaces (Value, Type, AspectField, …) —
+    /// reconstructed via `build_builtin_interfaces`. Mutually exclusive
+    /// with `user_iface`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub builtin_kind: Option<crate::eval::value::type_source_interface::BuiltinInterfaceKind>,
-    /// Iface identity (the `Unique`). Used at deserialize time to find the
-    /// existing `SourceInterfaceData` in the live def-set (same-isolate
-    /// dispatch) instead of synthesizing one. `impl_interface` already
-    /// stored that ref on the data type — this just lets us recover it
-    /// across the artifact roundtrip.
-    pub iface_identity: crate::langhelp::Unique,
+    /// `Some` for user-defined interfaces — the iface signature is
+    /// inlined here, alongside the impl that uses it (the impl is the
+    /// only thing that needs the iface ref at deserialize time).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_iface: Option<ArtifactDataDefSetInterface>,
     pub method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,

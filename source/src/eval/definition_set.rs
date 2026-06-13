@@ -439,25 +439,6 @@ pub(crate) fn load_def_set(
         let def_set_id = def_set_serial.def_set_id;
         let set =
             Gc::new(DefinitionSet::new(import_id, def_set_id, def_set_serial.source_id));
-        // Reserve `set.interfaces` slots up front with method signatures
-        // left empty — type resolution for the iface methods' arg/ret types
-        // is deferred to the finalizer (running it here would recurse back
-        // into `load_def_set` for any iface arg/ret typed by a data type in
-        // the same def-set, before this def-set's shell has been cached).
-        for iface_serial in &def_set_serial.interfaces {
-            let iface_data = Gc::new(
-                crate::eval::value::type_source_interface::SourceInterfaceData {
-                    builtin_kind: None,
-                    set: set.clone(),
-                    description: RefCell::new(iface_serial.description.clone()),
-                    is_aspect: std::cell::Cell::new(iface_serial.is_aspect),
-                    methods: RefCell::new(vec![]),
-                    identity: iface_serial.identity.clone(),
-                },
-            );
-            set.interfaces.borrow_mut().push(iface_data);
-        }
-        let iface_serials_for_finalizer = def_set_serial.interfaces.clone();
         let mut dt_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
         let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
         for dt_artifact_id in &def_set_serial.data_types {
@@ -520,15 +501,34 @@ pub(crate) fn load_def_set(
         }
         *set.functions.borrow_mut() = func_gcs;
         let set_for_finalizer = set.clone();
+        let user_iface_impls: Vec<(
+            crate::langhelp::ArtifactId,
+            Vec<crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterfaceImpl>,
+        )> = dt_serials
+            .iter()
+            .map(|(id, s)| (id.clone(), s.interface_impls.clone()))
+            .collect();
         let finalizer: crate::langhelp::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
             let set = set_for_finalizer.clone();
-            // Materialise iface method arg/ret types. Done here (not in the
-            // build closure) so type artifacts referring back to data types
-            // in this same def-set find this def-set's shell already cached.
-            {
-                let interfaces = set.interfaces.borrow();
-                for (iface, iface_serial) in interfaces.iter().zip(iface_serials_for_finalizer.iter()) {
-                    let methods = iface_serial
+            // Materialise iface method arg/ret types on each user-defined
+            // iface that an impl on this def-set's data types holds. Done
+            // here (not in the build closure) so type artifacts referring
+            // back to data types in this same def-set find this def-set's
+            // shell already cached.
+            for (dt_artifact_id, dt_impl_serials) in &user_iface_impls {
+                let dt_data = {
+                    let cache = xx.vx.ix.deserialized_artifacts.borrow();
+                    must_downcast_ref::<Gc<SourceDataTypeData>>(cache.get(dt_artifact_id).unwrap().as_ref()).clone()
+                };
+                let impls = dt_data.interface_impls.borrow();
+                for (impl_data, impl_serial) in impls.iter().zip(dt_impl_serials.iter()) {
+                    let Some(user_iface) = impl_serial.user_iface.as_ref() else {
+                        continue;
+                    };
+                    if !impl_data.interface.methods.borrow().is_empty() {
+                        continue;
+                    }
+                    let methods = user_iface
                         .methods
                         .iter()
                         .map(|m| {
@@ -550,7 +550,7 @@ pub(crate) fn load_def_set(
                             }
                         })
                         .collect();
-                    *iface.methods.borrow_mut() = methods;
+                    *impl_data.interface.methods.borrow_mut() = methods;
                 }
             }
             let mut codes: Vec<Code> = Vec::new();
@@ -608,18 +608,26 @@ pub(crate) fn load_def_set(
                             Some(BuiltinInterfaceKind::Target) => builtin_ifaces.target.clone(),
                             Some(BuiltinInterfaceKind::CodeDyn) => builtin_ifaces.code_dyn.clone(),
                             None => {
-                                // User-defined iface — look it up in the
-                                // already-populated `set.interfaces` by
-                                // identity. The iface was deserialized
-                                // earlier from `ArtifactDataDefSet.interfaces`.
-                                set.interfaces
-                                    .borrow()
-                                    .iter()
-                                    .find(|iface| iface.identity == impl_serial.iface_identity)
-                                    .cloned()
-                                    .expect(
-                                        "user-defined iface referenced by impl not present in def-set",
-                                    )
+                                // User-defined iface — the signature was
+                                // serialized inline on the impl. Build a
+                                // shell here with empty methods; the
+                                // finalizer materialises method arg/ret
+                                // types (running it now would recurse for
+                                // any iface method type that's a data type
+                                // in this same, not-yet-cached def-set).
+                                let user_iface = impl_serial.user_iface.as_ref().expect(
+                                    "user-defined interface impl artifact missing inline iface signature",
+                                );
+                                dumpster::unsync::Gc::new(
+                                    crate::eval::value::type_source_interface::SourceInterfaceData {
+                                        builtin_kind: None,
+                                        set: set.clone(),
+                                        description: RefCell::new(user_iface.description.clone()),
+                                        is_aspect: std::cell::Cell::new(user_iface.is_aspect),
+                                        methods: RefCell::new(vec![]),
+                                        identity: user_iface.identity.clone(),
+                                    },
+                                )
                             },
                         };
                         let method_impls = impl_serial.method_impls.iter().map(|m| {
@@ -801,9 +809,46 @@ pub(crate) fn serialize_definition_set(
                                     captured_externals,
                                 }
                             }).collect();
+                        let user_iface = match builtin_kind {
+                            Some(_) => None,
+                            None => {
+                                let iface = &impl_data.interface;
+                                let iface_methods = iface
+                                    .methods
+                                    .borrow()
+                                    .iter()
+                                    .map(|m| {
+                                        let arg_type = m
+                                            .arg_type
+                                            .borrow()
+                                            .clone()
+                                            .expect("iface method missing arg_type");
+                                        let ret_type = m
+                                            .ret_type
+                                            .borrow()
+                                            .clone()
+                                            .expect("iface method missing ret_type");
+                                        crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterfaceMethod {
+                                            name: m.name.clone(),
+                                            field_name: m.field_name.clone(),
+                                            arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
+                                            ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
+                                        }
+                                    })
+                                    .collect();
+                                Some(
+                                    crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterface {
+                                        identity: iface.identity.clone(),
+                                        description: iface.description.borrow().clone(),
+                                        is_aspect: iface.is_aspect.get(),
+                                        methods: iface_methods,
+                                    },
+                                )
+                            },
+                        };
                         ArtifactDataDefSetInterfaceImpl {
                             builtin_kind,
-                            iface_identity: impl_data.interface.identity.clone(),
+                            user_iface,
                             method_impls,
                         }
                     }).collect();
@@ -848,46 +893,11 @@ pub(crate) fn serialize_definition_set(
             })
         }).collect();
         drop(functions);
-        // Serialize user-defined interfaces inline. Builtin interfaces are
-        // reconstructed via `build_builtin_interfaces` and don't need to
-        // travel through the artifact.
-        let interfaces: Vec<
-            crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterface,
-        > = set
-            .interfaces
-            .borrow()
-            .iter()
-            .filter(|iface| iface.builtin_kind.is_none())
-            .map(|iface| {
-                let methods = iface
-                    .methods
-                    .borrow()
-                    .iter()
-                    .map(|m| {
-                        let arg_type = m.arg_type.borrow().clone().expect("iface method missing arg_type");
-                        let ret_type = m.ret_type.borrow().clone().expect("iface method missing ret_type");
-                        crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterfaceMethod {
-                            name: m.name.clone(),
-                            field_name: m.field_name.clone(),
-                            arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
-                            ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                        }
-                    })
-                    .collect();
-                crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterface {
-                    identity: iface.identity.clone(),
-                    description: iface.description.borrow().clone(),
-                    is_aspect: iface.is_aspect.get(),
-                    methods,
-                }
-            })
-            .collect();
         let serial = ArtifactDataDefSet {
             data_types: data_type_ids,
             functions: function_ids,
             import_id: set.import_id,
             def_set_id: set.def_set_id,
-            interfaces,
             source_id: set.source_id,
         };
         crate::langhelp::Artifact {
