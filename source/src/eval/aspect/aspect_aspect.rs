@@ -20,4 +20,8 @@ use {
 
 aspect!(AspectAspect {
     fn get_unique(&self, value: &dyn Value) -> Unique;
+    fn get_iface_data(
+        &self,
+        value: &dyn Value,
+    ) -> dumpster::unsync::Gc<crate::eval::value::type_source_interface::SourceInterfaceData>;
 });

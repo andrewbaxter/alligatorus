@@ -110,12 +110,57 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         impl_iface(mb, "nvalue", "value", vec![("type", mb.field(mb.scope_use("self"), mb.str("type")))]),
     );
 
+    // # aspect_consume_nodejs — source-level `is_aspect` interface.
+    exprs.push(
+        mb.bind(
+            "aspect_consume_nodejs",
+            mb.call(mb.field(mb.scope_use("d"), mb.str("new_interface")), mb.tuple(vec![])),
+        ),
+    );
+    exprs.push(
+        mb.call(
+            mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("set_is_aspect")),
+            mb.bool(true),
+        ),
+    );
+    exprs.push(
+        mb.bind(
+            "acn_to_code",
+            mb.call(
+                mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("new_func")),
+                mb.str("to_code"),
+            ),
+        ),
+    );
+    exprs.push(
+        mb.call(
+            mb.field(mb.scope_use("acn_to_code"), mb.str("arg")),
+            mb.field(mb.scope_use("nvalue"), mb.str("type")),
+        ),
+    );
+    exprs.push(
+        mb.call(
+            mb.field(mb.scope_use("acn_to_code"), mb.str("ret")),
+            mb.scope_use("any"),
+        ),
+    );
+
     // # ntype_str — nodejs string type. Its instances are types.
     exprs.push(
         mb.bind("ntype_str", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs string"))),
     );
     exprs.push(mb.call(mb.field(mb.scope_use("ntype_str"), mb.str("set_underlying")), mb.tuple(vec![])));
     exprs.extend(impl_as_self_type(mb, "ntype_str", "nodejs string", aspect_dispatch_none(mb)));
+    exprs.push(mb.call(
+        mb.field(mb.scope_use("ntype_str"), mb.str("impl_interface")),
+        mb.tuple(vec![
+            mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("type")),
+            iface_methods(mb, vec![(
+                "to_code",
+                nvalue_base_to_code(mb, mb.field(mb.scope_use("arg"), mb.str("base"))),
+            )]),
+        ]),
+    ));
 
     // # ntype_func — nodejs function type `(arg, ret)`. Implements `aspect_function`
     //
@@ -160,30 +205,58 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             // value arg: original nvalue construction; auto-casts TSDT(nvalue) →
             // value via __data_instance_to_value (nvalue impls the value iface).
             mb.block(vec![
+                // func_code: cast .value to nvalue so .base falls through.
                 mb.bind(
                     "func_code",
                     nvalue_base_to_code(
                         mb,
                         mb.field(
-                            mb.field(
-                                mb.field(mb.scope_use("arg"), mb.str("self_")),
-                                mb.str("value"),
+                            mb.as_(
+                                mb.field(
+                                    mb.field(mb.scope_use("arg"), mb.str("self_")),
+                                    mb.str("value"),
+                                ),
+                                mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
                             ),
                             mb.str("base"),
                         ),
                     ),
                 ),
+                // arg_code: aspect-based lookup + dispatch.
                 mb.bind(
                     "arg_code",
-                    nvalue_base_to_code(
-                        mb,
-                        mb.field(
+                    mb.match_(
+                        mb.call(mb.scope_use("aspect_lookup"), mb.tuple(vec![
                             mb.field(
-                                mb.field(mb.scope_use("arg"), mb.str("argument")),
-                                mb.str("value"),
+                                mb.field(
+                                    mb.field(mb.scope_use("arg"), mb.str("argument")),
+                                    mb.str("value"),
+                                ),
+                                mb.str("type"),
                             ),
-                            mb.str("base"),
-                        ),
+                            mb.lower(mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("type"))),
+                        ])),
+                        mb.str("v"),
+                        vec![
+                            (
+                                mb.str("some"),
+                                mb.call(
+                                    mb.field(mb.scope_use("v"), mb.str("to_code")),
+                                    mb.as_(
+                                        mb.field(
+                                            mb.field(mb.scope_use("arg"), mb.str("argument")),
+                                            mb.str("value"),
+                                        ),
+                                        mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                                    ),
+                                ),
+                            ),
+                            // none arm: shouldn't happen for well-typed nodejs values.
+                            // `null` as a dynamic value (so it can lift to the
+                            // match's element type same as the some arm result).
+                            (mb.str("none"), mb.scope_use("null")),
+                        ],
+                        None,
                     ),
                 ),
                 mb.call(
@@ -261,9 +334,12 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                 nvalue_base_to_code(
                                     mb,
                                     mb.field(
-                                        mb.field(
-                                            mb.field(mb.scope_use("arg"), mb.str("self_")),
-                                            mb.str("value"),
+                                        mb.as_(
+                                            mb.field(
+                                                mb.field(mb.scope_use("arg"), mb.str("self_")),
+                                                mb.str("value"),
+                                            ),
+                                            mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
                                         ),
                                         mb.str("base"),
                                     ),

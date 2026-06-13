@@ -69,38 +69,33 @@ impl AspectFunction for TypeFunctionAspectDynamic {
         _function: CodeValue,
         argument: CodeValue,
     ) -> EvalRes {
-        // The argument is a 2-tuple `(base, key)`. We index by tuple element
-        // — keys `_0` and `_1` — using `AspectField`.
+        // Argument is the 2-tuple `(base, key)`. Use `AspectTuple` to
+        // destructure — tuples don't expose `_0`/`_1` via `AspectField`.
         let arg_type = argument.value.type_(xx, loc);
-        let arg_field = match crate::builtin::aspect_field_get_maybe(xx, arg_type.as_ref()) {
-            Some(f) => f,
+        let arg_tuple = match crate::builtin::aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
+            Some(t) => t,
             None => return EvalRes::err(
                 loc,
                 format!(
-                    "aspect(): argument type ({}) is not a record/tuple — expected `(base, key)`",
+                    "aspect(): argument type ({}) is not a tuple — expected `(base, key)`",
                     arg_type.desc(),
                 ),
             ),
         };
-        let arg_for_base = clone_cv(&argument);
-        let key_cv_base = CodeValue {
-            code: Code { loc, code: Code_::None },
-            value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(
-                "_0".to_string(),
-            )),
-        };
-        let base = match arg_field.field(xx, loc, arg_for_base, key_cv_base).into_res() {
+        let CodeValue { code: _argument_code, value: argument_value } = argument;
+        let elements = arg_tuple.take_elements(argument_value);
+        if elements.len() != 2 {
+            return EvalRes::err(
+                loc,
+                format!("aspect(): expected 2-tuple `(base, key)`, got {} elements", elements.len()),
+            );
+        }
+        let mut iter = elements.into_iter();
+        let base = match iter.next().unwrap().into_res() {
             Ok(cv) => cv,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
-        let arg_for_key = clone_cv(&argument);
-        let key_cv_key = CodeValue {
-            code: Code { loc, code: Code_::None },
-            value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(
-                "_1".to_string(),
-            )),
-        };
-        let key = match arg_field.field(xx, loc, arg_for_key, key_cv_key).into_res() {
+        let key = match iter.next().unwrap().into_res() {
             Ok(cv) => cv,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
@@ -122,10 +117,10 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             ),
         };
         let unique = aspect_aspect.get_unique(key.value.as_ref());
-        let iface_ref = crate::invariant::must_downcast_ref::<
-            Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>,
-        >(key.value.as_ref() as &dyn std::any::Any)
-            .clone();
+        let iface_data = aspect_aspect.get_iface_data(key.value.as_ref());
+        let iface_ref = Rc::new(
+            crate::eval::value::type_source_interface::SourceInterfaceRef { data: iface_data },
+        );
 
         // Generate `base_code.aspect(unique_external)` — the `aspect` method
         // on the `TypeRefV8` JS wrapper. `dynamic_wrap!` mangles the method
@@ -232,7 +227,7 @@ impl Type for TypeFunctionAspectDynamic {
     }
 
     fn desc(&self) -> String {
-        "aspect".to_string()
+        "fn-aspect".to_string()
     }
 }
 

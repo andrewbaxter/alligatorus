@@ -392,6 +392,18 @@ impl crate::builtin::AspectField for TypeUserDefinedAspect {
     }
 }
 
+impl crate::builtin::AspectInitialBind for TypeUserDefinedAspect {
+    fn initial_bind(&self, dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
+            dynamic_key,
+            type_: Rc::new(TypeUserDefinedAspect {
+                iface_ref: self.iface_ref.clone(),
+                bundle: self.bundle.clone(),
+            }),
+        })
+    }
+}
+
 impl Type for TypeUserDefinedAspect {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeUserDefinedAspect {
@@ -411,6 +423,14 @@ impl Type for TypeUserDefinedAspect {
                     iface_ref: self.iface_ref.clone(),
                     bundle: self.bundle.clone(),
                 }) as Box<dyn crate::builtin::AspectField>,
+            ));
+        }
+        if *key == crate::builtin::aspect_initial_bind_aspect_id() {
+            return Some(Box::new(
+                Box::new(TypeUserDefinedAspect {
+                    iface_ref: self.iface_ref.clone(),
+                    bundle: self.bundle.clone(),
+                }) as Box<dyn crate::builtin::AspectInitialBind>,
             ));
         }
         if *key == crate::builtin::aspect_function_aspect_id() {

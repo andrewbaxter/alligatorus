@@ -665,7 +665,13 @@ pub(crate) fn serialize_definition_set(
                             impl_data.method_impls.iter().map(|m| {
                                 let compiled_js = m.compiled_js.borrow();
                                 let compiled_js =
-                                    compiled_js.as_ref().expect("Interface method impl missing compiled JS");
+                                    compiled_js.as_ref().unwrap_or_else(|| panic!(
+                                        "Interface method impl missing compiled JS (data={:?}, iface_builtin={:?}, method_index={}, scope_entry_id={:?})",
+                                        dt.name,
+                                        impl_data.interface.builtin_kind,
+                                        m.interface_method_index,
+                                        m.scope_entry_id.get(),
+                                    ));
                                 let entry_id = match m
                                     .scope_entry_id
                                     .get()

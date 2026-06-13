@@ -389,6 +389,10 @@ impl Type for TypeSourceDataTypeConst {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }))
+    }
+
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         // Check own data type identity aspect
         if *key == self.data.identity {

@@ -1546,11 +1546,11 @@ fn eval(
             Rc::new(value::type_function_aspect::dynamic::TypeFunctionAspectDynamic);
         let aspect_dynamic_key = ScopeEntryId::Builtin(line!() as usize);
         let ib = aspect_initial_bind_get(&xx, root_loc, aspect_type.as_ref()).into_res()?;
-        builtin_scope_entries.push(("aspect".to_string(), aspect_dynamic_key, aspect_type));
+        builtin_scope_entries.push(("aspect_lookup".to_string(), aspect_dynamic_key, aspect_type));
         scope
             .values
             .borrow_mut()
-            .insert(ConstKey::String("aspect".to_string()), ib.initial_bind(aspect_dynamic_key));
+            .insert(ConstKey::String("aspect_lookup".to_string()), ib.initial_bind(aspect_dynamic_key));
     }
     // The v8 dispatcher (`StatelessV8CastDispatcher`) is stateless — it
     // reads the active scope from `ex.v8_scope` (installed at the top of
@@ -1853,18 +1853,13 @@ fn eval(
                     let impl_expr_value =
                         method_impl.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
-                    if method_impl.impl_expr_artifact.borrow().is_none() {
-                        // Cross-isolate import re-runs the impl_expr's
-                        // const_eval, so the body's AST needs to round-trip
-                        // through an artifact. Same-isolate dispatch uses
-                        // `compiled_js` directly and never reads the artifact,
-                        // so a failure here is tolerated — the cross-isolate
-                        // import path will surface a clearer error if the
-                        // missing artifact is actually consumed.
-                        if let Ok(serialized) = crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast) {
-                            *method_impl.impl_expr_artifact.borrow_mut() = Some(serialized);
-                        }
-                    }
+                    // Note: impl_expr_artifact serialization deferred to the
+                    // post-render pass below — see the second-pass comment
+                    // after the rendering loop. Serializing here can trigger
+                    // `serialize_definition_set` for types referenced in the
+                    // body (e.g. via `lower(nvalue.type)`), which requires
+                    // every method/impl of those types to have `compiled_js`
+                    // set. That doesn't happen until the rendering loop.
 
                     // Resolve ret type from interface method
                     let ret_type: Rc<dyn Type> = {
@@ -2234,21 +2229,30 @@ fn eval(
 
                 // Store compiled JS for later serialization
                 let compiled = code1.lines[start_line..].join("\n");
+                let mut matched = false;
                 for ds in ex.ix.definition_sets.borrow().iter() {
                     for dt_data in ds.data_types.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
                             if m.scope_entry_id.get() == Some(method.scope_entry_id) {
                                 *m.compiled_js.borrow_mut() = Some(compiled.clone());
+                                matched = true;
                             }
                         }
                         for impl_data in dt_data.interface_impls.borrow().iter() {
                             for m in &impl_data.method_impls {
                                 if m.scope_entry_id.get() == Some(method.scope_entry_id) {
                                     *m.compiled_js.borrow_mut() = Some(compiled.clone());
+                                    matched = true;
                                 }
                             }
                         }
                     }
+                }
+                if !matched {
+                    panic!(
+                        "compiled_js had no home for scope_entry_id={:?}",
+                        method.scope_entry_id,
+                    );
                 }
             },
             CompiledDataMethodBody::Precompiled(js) => {
@@ -2256,6 +2260,39 @@ fn eval(
                     code1.push(root_loc, line.to_string());
                 }
             },
+        }
+    }
+
+    // Second pass: serialize impl_expr_artifacts for interface impls now that
+    // every method/impl's `compiled_js` is set. Done here (not during the
+    // first compile-and-push pass) because `expr_to_artifact` traverses
+    // captured values and calls `type_to_serial` on referenced types — for
+    // a `lower(nvalue.type)` in a body, that triggers
+    // `serialize_definition_set`, which requires every sibling impl's
+    // `compiled_js` to already be present. Failures are tolerated (same as
+    // the original early-pass logic): `compiled_js` is the same-isolate
+    // dispatch path, so the artifact only matters for cross-module import.
+    for ds in ex.ix.definition_sets.borrow().iter() {
+        for dt in ds.data_types.borrow().iter() {
+            for impl_data in dt.interface_impls.borrow().iter() {
+                for method_impl in &impl_data.method_impls {
+                    if method_impl.impl_expr_artifact.borrow().is_some() {
+                        continue;
+                    }
+                    let impl_expr_value =
+                        method_impl.impl_expr.borrow().clone();
+                    let Some(impl_expr_value) = impl_expr_value else {
+                        continue;
+                    };
+                    let impl_expr_ast =
+                        must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
+                    if let Ok(serialized) =
+                        crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast)
+                    {
+                        *method_impl.impl_expr_artifact.borrow_mut() = Some(serialized);
+                    }
+                }
+            }
         }
     }
 

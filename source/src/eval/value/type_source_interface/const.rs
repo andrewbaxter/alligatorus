@@ -61,6 +61,19 @@ use {
 
 impl Aspect for TypeSourceInterfaceConst { }
 
+impl crate::builtin::AspectAspect for TypeSourceInterfaceConst {
+    fn get_unique(&self, _value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
+        self.data.identity.clone()
+    }
+
+    fn get_iface_data(
+        &self,
+        _value: &dyn crate::langhelp::Value,
+    ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+        self.data.clone()
+    }
+}
+
 impl AspectBind for TypeSourceInterfaceConst {
     fn bind(
         &self,
@@ -198,6 +211,12 @@ impl Type for TypeSourceInterfaceConst {
         }
         if *key == interface_const_identity() {
             return Some(Box::new(true));
+        }
+        if *key == crate::builtin::aspect_aspect_aspect_id() {
+            return Some(Box::new(
+                Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
+                    as Box<dyn crate::builtin::AspectAspect>,
+            ));
         }
         if *key == aspect_field_aspect_id() {
             return Some(

@@ -67,6 +67,15 @@ impl crate::builtin::AspectAspect for TypeSourceInterfaceDynamic {
             crate::invariant::must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
         iface_ref.data.identity.clone()
     }
+
+    fn get_iface_data(
+        &self,
+        value: &dyn crate::langhelp::Value,
+    ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+        let iface_ref =
+            crate::invariant::must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
+        iface_ref.data.clone()
+    }
 }
 
 impl AspectBind for TypeSourceInterfaceDynamic {
