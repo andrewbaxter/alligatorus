@@ -665,13 +665,7 @@ pub(crate) fn serialize_definition_set(
                             impl_data.method_impls.iter().map(|m| {
                                 let compiled_js = m.compiled_js.borrow();
                                 let compiled_js =
-                                    compiled_js.as_ref().unwrap_or_else(|| panic!(
-                                        "Interface method impl missing compiled JS (data={:?}, iface_builtin={:?}, method_index={}, scope_entry_id={:?})",
-                                        dt.name,
-                                        impl_data.interface.builtin_kind,
-                                        m.interface_method_index,
-                                        m.scope_entry_id.get(),
-                                    ));
+                                    compiled_js.as_ref().expect("Interface method impl missing compiled JS");
                                 let entry_id = match m
                                     .scope_entry_id
                                     .get()
@@ -682,12 +676,42 @@ pub(crate) fn serialize_definition_set(
                                         other,
                                     ),
                                 };
-                                // Falls back to a placeholder when
-                                // pre-serialization couldn't capture the body
-                                // (e.g. a Literal whose value type lacks
-                                // AspectArtifact). The placeholder won't
-                                // const_eval correctly cross-isolate, but
-                                // same-isolate runtime uses `compiled_js`.
+                                // Lazily serialize `impl_expr` here — every
+                                // method/impl's `compiled_js` is set by the
+                                // time we reach this point (we're inside
+                                // `to_serial`, which only runs once all of
+                                // eval()'s compilation is done). Doing it
+                                // here avoids the order-of-operations problem
+                                // of serializing impl bodies during the
+                                // compilation loop: an impl body's AST may
+                                // contain `lower(some_type)` literals whose
+                                // `type_to_serial` recursively walks back
+                                // into `serialize_definition_set`, and that
+                                // recursion needs every sibling impl's
+                                // `compiled_js` to already exist.
+                                //
+                                // Fallback placeholder for the rare case the
+                                // body genuinely can't be artifactised
+                                // (Literal whose value type lacks
+                                // AspectArtifact, etc.). Same-isolate
+                                // dispatch uses `compiled_js`, so the
+                                // placeholder only matters for cross-module
+                                // import — and in that case the placeholder
+                                // gives a deterministic, debuggable error.
+                                if m.impl_expr_artifact.borrow().is_none() {
+                                    let impl_expr_value = m.impl_expr.borrow().clone();
+                                    if let Some(impl_expr_value) = impl_expr_value {
+                                        let impl_expr_ast =
+                                            crate::invariant::must_downcast_ref::<crate::eval::expr::Expr>(
+                                                impl_expr_value.as_ref(),
+                                            );
+                                        if let Ok(serialized) =
+                                            crate::eval::expr_artifact::expr_to_artifact(xx, impl_expr_ast)
+                                        {
+                                            *m.impl_expr_artifact.borrow_mut() = Some(serialized);
+                                        }
+                                    }
+                                }
                                 let impl_expr = m.impl_expr_artifact.borrow().clone().unwrap_or_else(|| {
                                     crate::eval::expr_artifact::ArtifactExpr {
                                         loc: crate::eval::expr_artifact::ArtifactQExprId(0, 0),
