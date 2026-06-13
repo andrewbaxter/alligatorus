@@ -410,49 +410,34 @@ impl Type for Tuple {
             };
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv_value)).ok().expect("Tuple cast_to: Rc not unique");
-        let needs_runtime = tuple.elements.iter().any(|e| match e {
-            TupleElement::Mortar(_) => true,
-            TupleElement::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
-        });
-        if needs_runtime {
-            // Has mortar or JS-coded elements: build tuple with proper JS codes for all
-            // elements, consume to JS, then wrap with __tuple_to_type().
+        return crate::eval::util::er_seq_cv_inline(loc, |erb| {
+            let any_type: Rc<dyn Type> =
+                Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
             let mut converted_elements = Vec::new();
             let mut converted_type = self.clone_as_type();
             for (i, elem) in tuple.elements.into_iter().enumerate() {
-                let converted = match elem {
-                    TupleElement::Mortar(t) => TupleElement::Mortar(t),
-                    TupleElement::EvalRes(er) => {
-                        if let Some(entry_cv) = er.v {
-                            if matches!(entry_cv.code.code, Code_::None) {
-                                let elem_type =
-                                    tuple_element_type(xx, loc, &TupleElement::EvalRes(EvalRes::ok(CodeValue {
-                                        code: entry_cv.code.clone(),
-                                        value: entry_cv.value,
-                                    })));
-                                let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, External::Type(elem_type)));
-                                converted_type.elements[i] =
-                                    TupleElement::Mortar(Rc::new(TypeAnyConst) as Rc<dyn Type>);
-                                TupleElement::EvalRes(EvalRes::ok(CodeValue {
-                                    code: Code {
-                                        loc,
-                                        code: Code_::Dyn(Rc::new(CodeDynamic {
-                                            loc,
-                                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
-                                        })),
-                                    },
-                                    value: Rc::new(TypeAnyConst),
-                                }))
-                            } else {
-                                TupleElement::EvalRes(EvalRes::ok(entry_cv))
-                            }
-                        } else {
-                            TupleElement::EvalRes(er)
+                let converted_cv = match elem {
+                    TupleElement::Mortar(t) => {
+                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        xx.vx.externals.borrow_mut().push((id, External::Type(t)));
+                        CodeValue {
+                            code: Code {
+                                loc,
+                                code: Code_::Dyn(Rc::new(CodeDynamic {
+                                    loc,
+                                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+                                })),
+                            },
+                            value: any_type.clone().as_value(),
                         }
                     },
+                    TupleElement::EvalRes(er) => {
+                        let entry_cv = erb.must_er(er)?;
+                        erb.must_er(crate::eval::typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
+                    },
                 };
-                converted_elements.push(converted);
+                converted_type.elements[i] = TupleElement::Mortar(any_type.clone());
+                converted_elements.push(TupleElement::EvalRes(EvalRes::ok(converted_cv)));
             }
             let converted_tuple = Tuple {
                 base: tuple.base,
@@ -462,48 +447,27 @@ impl Type for Tuple {
                 code: cv.code,
                 value: Rc::new(converted_tuple),
             };
-            match converted_type.to_dynamic(xx, loc, converted_cv).into_res() {
-                Ok(tuple_js) => {
-                    let call_code = CodeDynamic {
+            let tuple_js = erb.must_er(converted_type.to_dynamic(xx, loc, converted_cv))?;
+            let call_code = CodeDynamic {
+                loc,
+                type_: CodeDynamicType::Call(CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::Call(CodeDynamicCall {
-                            func: Box::new(CodeDynamic {
-                                loc,
-                                type_: CodeDynamicType::BindingUse(
-                                    CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID },
-                                ),
-                            }),
-                            args: vec![tuple_js],
-                        }),
-                    };
-                    EvalRes::ok(CodeValue {
-                        code: Code {
-                            loc,
-                            code: Code_::Dyn(Rc::new(call_code)),
-                        },
-                        value: result_type.as_value(),
-                    })
-                },
-                Err(errors) => EvalRes {
-                    v: None,
-                    errors: Some(errors),
-                },
-            }
-        } else {
-            // No mortar data: all compile-time, store type as external.
-            let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-            xx.vx.externals.borrow_mut().push((id, External::Type(result_type.clone())));
-            EvalRes::ok(CodeValue {
+                        type_: CodeDynamicType::BindingUse(
+                            CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID },
+                        ),
+                    }),
+                    args: vec![tuple_js],
+                }),
+            };
+            return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
-                    })),
+                    code: Code_::Dyn(Rc::new(call_code)),
                 },
-                value: result_type.as_value(),
-            })
-        }
+                value: any_type.as_value(),
+            });
+        });
     }
 
     fn desc(&self) -> String {

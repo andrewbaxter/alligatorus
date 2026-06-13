@@ -516,58 +516,40 @@ impl Type for Record {
         let result_type = cv.value.type_(xx, loc);
         let record: Record =
             Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record cast_to: Rc not unique");
-        let needs_runtime = record.fields.values().any(|f| match f {
-            RecordField::Mortar(_) => true,
-            RecordField::EvalRes(er) => er.v.as_ref().map_or(false, |cv| !matches!(cv.code.code, Code_::None)),
-        });
-        if needs_runtime {
-            // Has mortar or JS-coded fields: build a JS object with all fields having proper
-            // JS code, then wrap with __record_to_type() to convert to Rc`<dyn Type>` at
-            // runtime.
+        return er_seq_cv!(loc, erb, {
+            let any_type: Rc<dyn Type> =
+                Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
             let mut converted_fields = std::collections::BTreeMap::new();
             let mut converted_type = self.clone_as_type();
             for (key, field) in record.fields {
-                let field_with_code = match field {
-                    RecordField::Mortar(t) => RecordField::Mortar(t),
-                    RecordField::EvalRes(er) => {
-                        if let Some(entry_cv) = er.v {
-                            if matches!(entry_cv.code.code, Code_::None) {
-                                // Compile-time value without JS code: store its type as Rc`<dyn Type>` external
-                                // and give it a code reference. Use TypeType as the consumer type so to_dynamic
-                                // passes through the BindingUse code.
-                                let field_type = record_field_type(xx, loc, &RecordField::EvalRes(EvalRes::ok(CodeValue {
-                                    code: entry_cv.code.clone(),
-                                    value: entry_cv.value,
-                                })));
-                                let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-                                xx.vx.externals.borrow_mut().push((id, External::Type(field_type)));
-                                converted_type
-                                    .fields
-                                    .insert(
-                                        key.clone(),
-                                        RecordField::Mortar(Rc::new(TypeAnyConst) as Rc<dyn Type>),
-                                    );
-                                RecordField::EvalRes(EvalRes::ok(CodeValue {
-                                    code: Code {
-                                        loc,
-                                        code: Code_::Dyn(Rc::new(CodeDynamic {
-                                            loc,
-                                            type_: CodeDynamicType::BindingUse(
-                                                crate::code_dynamic::CodeDynamicBindingUse { id },
-                                            ),
-                                        })),
-                                    },
-                                    value: Rc::new(TypeAnyConst),
-                                }))
-                            } else {
-                                RecordField::EvalRes(EvalRes::ok(entry_cv))
-                            }
-                        } else {
-                            RecordField::EvalRes(er)
+                let converted_cv = match field {
+                    RecordField::Mortar(t) => {
+                        // Compile-time type — store as External::Type, produce a BindingUse code
+                        // that resolves to an `Rc<dyn Type>` external at runtime.
+                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        xx.vx.externals.borrow_mut().push((id, External::Type(t)));
+                        CodeValue {
+                            code: Code {
+                                loc,
+                                code: Code_::Dyn(Rc::new(CodeDynamic {
+                                    loc,
+                                    type_: CodeDynamicType::BindingUse(
+                                        crate::code_dynamic::CodeDynamicBindingUse { id },
+                                    ),
+                                })),
+                            },
+                            value: any_type.clone().as_value(),
                         }
                     },
+                    RecordField::EvalRes(er) => {
+                        let entry_cv = erb.must_er(er)?;
+                        // Recursively cast the element value to a type. The conversion
+                        // generates code that produces an `Rc<dyn Type>` external at runtime.
+                        erb.must_er(crate::eval::typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
+                    },
                 };
-                converted_fields.insert(key, field_with_code);
+                converted_type.fields.insert(key.clone(), RecordField::Mortar(any_type.clone()));
+                converted_fields.insert(key, RecordField::EvalRes(EvalRes::ok(converted_cv)));
             }
             let converted_record = Record {
                 base: record.base,
@@ -577,50 +559,29 @@ impl Type for Record {
                 code: cv.code,
                 value: Rc::new(converted_record),
             };
-            match converted_type.to_dynamic(xx, loc, converted_cv).into_res() {
-                Ok(record_js) => {
-                    let call_code = CodeDynamic {
+            let record_js = erb.must_er(converted_type.to_dynamic(xx, loc, converted_cv))?;
+            let call_code = CodeDynamic {
+                loc,
+                type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
                         loc,
-                        type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
-                            func: Box::new(CodeDynamic {
-                                loc,
-                                type_: CodeDynamicType::BindingUse(
-                                    crate::code_dynamic::CodeDynamicBindingUse {
-                                        id: crate::eval::RECORD_TO_TYPE_FN_SCOPE_ID,
-                                    },
-                                ),
-                            }),
-                            args: vec![record_js],
-                        }),
-                    };
-                    EvalRes::ok(CodeValue {
-                        code: Code {
-                            loc,
-                            code: Code_::Dyn(Rc::new(call_code)),
-                        },
-                        value: result_type.as_value(),
-                    })
-                },
-                Err(errors) => EvalRes {
-                    v: None,
-                    errors: Some(errors),
-                },
-            }
-        } else {
-            // No mortar data: all compile-time, store type as external.
-            let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-            xx.vx.externals.borrow_mut().push((id, External::Type(result_type.clone())));
-            EvalRes::ok(CodeValue {
+                        type_: CodeDynamicType::BindingUse(
+                            crate::code_dynamic::CodeDynamicBindingUse {
+                                id: crate::eval::RECORD_TO_TYPE_FN_SCOPE_ID,
+                            },
+                        ),
+                    }),
+                    args: vec![record_js],
+                }),
+            };
+            return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse { id }),
-                    })),
+                    code: Code_::Dyn(Rc::new(call_code)),
                 },
-                value: result_type.as_value(),
-            })
-        }
+                value: any_type.as_value(),
+            });
+        });
     }
 
     fn desc(&self) -> String {

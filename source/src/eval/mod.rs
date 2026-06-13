@@ -2295,39 +2295,7 @@ fn eval(
                 }
                 return from_v8_ref::<Rc<dyn Type>>(&*value).clone();
             }
-            if value.is_array() {
-                let arr = v8::Local::<v8::Array>::try_from(value).unwrap();
-                let len = arr.length();
-                let mut elements = Vec::with_capacity(len as usize);
-                for i in 0 .. len {
-                    let elem = arr.get_index(scope, i).unwrap();
-                    elements.push(TupleElement::Mortar(v8_value_to_type(scope, elem)));
-                }
-                return Rc::new(Tuple {
-                    base: None,
-                    elements,
-                });
-            }
-            if value.is_object() && !value.is_null_or_undefined() {
-                let obj = v8::Local::<v8::Object>::try_from(value).unwrap();
-                let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
-                let mut fields = std::collections::BTreeMap::new();
-                for i in 0 .. keys.length() {
-                    let key = keys.get_index(scope, i).unwrap();
-                    let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
-                    let val = obj.get(scope, key).unwrap();
-                    let const_key =
-                        ConstKey::from_str(
-                            &key_str,
-                        ).expect(&format!("Invalid ConstKey in v8 object property: {}", key_str));
-                    fields.insert(const_key, RecordField::Mortar(v8_value_to_type(scope, val)));
-                }
-                return Rc::new(Record {
-                    base: None,
-                    fields,
-                });
-            }
-            panic!("v8_value_to_type: unexpected v8 value type");
+            panic!("v8_value_to_type: expected `Rc<dyn Type>` external, got something else");
         }
 
         fn record_to_type_callback<
@@ -2337,7 +2305,25 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            let type_ = v8_value_to_type(scope, args.get(0));
+            // Shallow: each property value must already be an `Rc<dyn Type>` external.
+            let value = args.get(0);
+            let obj = v8::Local::<v8::Object>::try_from(value).expect("__record_to_type: expected JS object");
+            let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
+            let mut fields = std::collections::BTreeMap::new();
+            for i in 0 .. keys.length() {
+                let key = keys.get_index(scope, i).unwrap();
+                let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);
+                let val = obj.get(scope, key).unwrap();
+                let const_key =
+                    ConstKey::from_str(
+                        &key_str,
+                    ).expect(&format!("Invalid ConstKey in v8 object property: {}", key_str));
+                fields.insert(const_key, RecordField::Mortar(v8_value_to_type(scope, val)));
+            }
+            let type_: Rc<dyn Type> = Rc::new(Record {
+                base: None,
+                fields,
+            });
             let ext = rc_type_to_v8(scope, type_);
             rv.set(ext.into());
         }
@@ -2349,7 +2335,19 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            let type_ = v8_value_to_type(scope, args.get(0));
+            // Shallow: each element must already be an `Rc<dyn Type>` external.
+            let value = args.get(0);
+            let arr = v8::Local::<v8::Array>::try_from(value).expect("__tuple_to_type: expected JS array");
+            let len = arr.length();
+            let mut elements = Vec::with_capacity(len as usize);
+            for i in 0 .. len {
+                let elem = arr.get_index(scope, i).unwrap();
+                elements.push(TupleElement::Mortar(v8_value_to_type(scope, elem)));
+            }
+            let type_: Rc<dyn Type> = Rc::new(Tuple {
+                base: None,
+                elements,
+            });
             let ext = rc_type_to_v8(scope, type_);
             rv.set(ext.into());
         }

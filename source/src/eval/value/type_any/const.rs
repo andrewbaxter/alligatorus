@@ -121,14 +121,30 @@ impl Type for TypeAnyConst {
         None
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn crate::langhelp::Type) -> bool {
-        false
+    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, source_type: &dyn crate::langhelp::Type) -> bool {
+        // Identity only; other types reach `TypeAny*` via their own `cast_to`.
+        source_type.aspect(_xx, &type_type_identity()).is_some()
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
+    fn cast_from(&self, _xx: &ExprContext, _loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
+        crate::langhelp::EvalRes::ok(cv)
+    }
+
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        // Lower a const type-value into a dynamic type-value (Rc<dyn Type> external).
+        type_.aspect(_xx, &type_type_identity()).is_some()
+    }
+
+    fn cast_to(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: crate::langhelp::CodeValue,
+        _type_: &dyn Type,
+    ) -> crate::langhelp::EvalRes {
         let type_ = cv.value.type_(xx, loc);
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_.clone())));
+        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
         crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
             code: crate::langhelp::Code {
                 loc,
@@ -137,18 +153,8 @@ impl Type for TypeAnyConst {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
-            value: type_.as_value(),
+            value: Rc::new(super::dynamic::TypeAnyDynamic),
         })
-    }
-
-    fn cast_to(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _cv: crate::langhelp::CodeValue,
-        _type_: &dyn Type,
-    ) -> crate::langhelp::EvalRes {
-        crate::langhelp::EvalRes::err(loc, "Cannot convert type".to_string())
     }
 
     fn desc(&self) -> String {
