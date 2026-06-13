@@ -218,7 +218,10 @@ pub(crate) fn build_builtin_interfaces(
         methods: RefCell::new(vec![SourceInterfaceMethodData {
             name: "use_".to_string(),
             arg_type: RefCell::new(Some(any_type.clone())),
-            ret_type: RefCell::new(Some(any_type.clone())),
+            ret_type: RefCell::new(Some(
+                std::rc::Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>,
+            )),
             field_name: "_im_se0".to_string(),
         }]),
         identity: builtin_scope_entry_iface_identity(),

@@ -46,8 +46,36 @@ pub(crate) struct UserDefinedScopeEntry {
 }
 
 impl ScopeEntry for UserDefinedScopeEntry {
-    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        let _ = &self.instance;
+    fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+        // Invoke `_im_se0` (the compiled `scope_entry.use_` impl) on the held
+        // v8 instance. Its `ret_type` is `TypeValueDynamic`, so the source-side
+        // cast chain produces a v8::External wrapping a `Rc<dyn Value>` (a
+        // `ValueUserDefined`). We extract that Rc here and put it into the
+        // CodeValue so downstream Rust dispatch (`aspect_field` on
+        // `console.log` etc.) routes through `ValueUserDefined::type_()`.
+        let scope_ptr = xx.vx.v8_scope.get().expect(
+            "UserDefinedScopeEntry::use_: no active v8 scope",
+        );
+        // SAFETY: pointer set by `eval()` for its full duration; same access
+        // pattern as `dispatch_cast_from` in `eval/mod.rs`.
+        let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> =
+            unsafe { &mut *(scope_ptr.as_ptr() as *mut _) };
+        let instance = v8::Local::new(scope, &self.instance);
+        let method_key = v8::String::new(
+            scope,
+            &crate::langhelp::ConstKey::String("_im_se0".to_string()).to_str(),
+        ).expect("UserDefinedScopeEntry::use_: alloc _im_se0 key");
+        let method_val = instance
+            .get(scope, method_key.into())
+            .expect("UserDefinedScopeEntry::use_: instance missing _im_se0");
+        let method_fn = v8::Local::<v8::Function>::try_from(method_val)
+            .expect("UserDefinedScopeEntry::use_: _im_se0 not a function");
+        let recv: v8::Local<v8::Value> = instance.into();
+        let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
+        let result = method_fn
+            .call(scope, recv, &[null_arg])
+            .expect("UserDefinedScopeEntry::use_: _im_se0 returned no value");
+        let value: Rc<dyn crate::langhelp::Value> = crate::eval::rc_value_from_v8(&*result);
         CodeValue {
             code: Code {
                 loc,
@@ -56,10 +84,7 @@ impl ScopeEntry for UserDefinedScopeEntry {
                     type_: CodeDynamicType::Literal(serde_json::Value::Null),
                 })),
             },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeAnyDynamic),
-            }),
+            value,
         }
     }
 }
