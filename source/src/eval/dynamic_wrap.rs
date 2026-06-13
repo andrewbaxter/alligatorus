@@ -697,6 +697,40 @@ impl DynamicWrap for StagedExpr {
     }
 }
 
+impl DynamicWrap for crate::langhelp::Code {
+    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        // Source-level `Code` is `option(code_dyn)`. The runtime form is a JS
+        // object shaped like option: `{<json-encoded "some">: <External(Rc<dyn CodeDyn>)>}` or
+        // `{<json-encoded "none">: null}`.
+        let dummy_loc: crate::langhelp::QExprId =
+            (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        let obj = v8::Local::<v8::Object>::try_from(value)
+            .expect("Code: expected option-shaped JS object");
+        let some_key = v8::String::new(
+            scope,
+            &crate::langhelp::ConstKey::String("some".to_string()).to_str(),
+        ).expect("Code from_v8: some key alloc");
+        let some_val = obj.get(scope, some_key.into()).expect("Code from_v8: get some");
+        if !some_val.is_undefined() {
+            let code: Rc<dyn crate::langhelp::CodeDyn> =
+                super::from_v8_ref::<Rc<dyn crate::langhelp::CodeDyn>>(&*some_val).clone();
+            return crate::langhelp::Code {
+                loc: dummy_loc,
+                code: crate::langhelp::Code_::Dyn(code),
+            };
+        }
+        crate::langhelp::Code { loc: dummy_loc, code: crate::langhelp::Code_::None }
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("Code should not be sent back to v8 (yet)")
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic)
+    }
+}
+
 impl DynamicWrap for () {
     fn from_v8<
         's,

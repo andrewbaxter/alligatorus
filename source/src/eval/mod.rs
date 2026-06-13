@@ -268,16 +268,6 @@ pub(crate) const DATA_INSTANCE_TO_CODE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId:
 /// externals at each conversion site, so we need value comparison.
 pub(crate) const UNIQUE_EQ_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
-/// `CodeDyn` wrapper used by `new_code_value`: holds an arbitrary
-/// `Rc<dyn Value>` as the code part of a `CodeValue`. The value's runtime
-/// form supplies the JS expression when the surrounding code is rendered.
-pub(crate) struct ValueAsCodeDyn {
-    #[allow(dead_code)]
-    pub(crate) value: Rc<dyn crate::langhelp::Value>,
-}
-
-impl crate::langhelp::CodeDyn for ValueAsCodeDyn { }
-
 /// `CodeDyn` wrapper around a v8 instance of a source data type that
 /// implements the builtin `code_dyn` interface. Parallel to `ValueUserDefined`
 /// (for the `value` interface) and `TypeUserDefined` (for the `type` interface).
@@ -1209,18 +1199,10 @@ fn eval(
         // `CodeValueExtern` so it crosses the v8 boundary back to the Rust
         // dispatcher unchanged.
         dynamic_wrap!(fn new_code_value(ex, dynamic_scope, scope)(
-            code: Rc<dyn crate::langhelp::Value>,
+            code: crate::langhelp::Code,
             value: Rc<dyn crate::langhelp::Value>,
         ) -> crate::eval::code_value_extern::CodeValueExtern {
-            let dummy_loc: crate::langhelp::QExprId =
-                (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-            let cv = crate::langhelp::CodeValue {
-                code: crate::langhelp::Code {
-                    loc: dummy_loc,
-                    code: crate::langhelp::Code_::Dyn(Rc::new(ValueAsCodeDyn { value: code })),
-                },
-                value,
-            };
+            let cv = crate::langhelp::CodeValue { code, value };
             crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
         }),
         // `gen_binding_name(xx)` returns a fresh JS binding name (e.g. "a17")
