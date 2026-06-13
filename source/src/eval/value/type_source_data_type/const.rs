@@ -97,7 +97,7 @@ fn read_artifact_has_type_iface(
         Err(_) => return false,
     };
     dt_serial.interface_impls.iter().any(|i| {
-        i.builtin_kind == crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type
+        i.builtin_kind == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
     })
 }
 

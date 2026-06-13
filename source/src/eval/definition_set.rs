@@ -439,6 +439,25 @@ pub(crate) fn load_def_set(
         let def_set_id = def_set_serial.def_set_id;
         let set =
             Gc::new(DefinitionSet::new(import_id, def_set_id, def_set_serial.source_id));
+        // Reserve `set.interfaces` slots up front with method signatures
+        // left empty — type resolution for the iface methods' arg/ret types
+        // is deferred to the finalizer (running it here would recurse back
+        // into `load_def_set` for any iface arg/ret typed by a data type in
+        // the same def-set, before this def-set's shell has been cached).
+        for iface_serial in &def_set_serial.interfaces {
+            let iface_data = Gc::new(
+                crate::eval::value::type_source_interface::SourceInterfaceData {
+                    builtin_kind: None,
+                    set: set.clone(),
+                    description: RefCell::new(iface_serial.description.clone()),
+                    is_aspect: std::cell::Cell::new(iface_serial.is_aspect),
+                    methods: RefCell::new(vec![]),
+                    identity: iface_serial.identity.clone(),
+                },
+            );
+            set.interfaces.borrow_mut().push(iface_data);
+        }
+        let iface_serials_for_finalizer = def_set_serial.interfaces.clone();
         let mut dt_serials: Vec<(crate::langhelp::ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
         let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
         for dt_artifact_id in &def_set_serial.data_types {
@@ -500,7 +519,40 @@ pub(crate) fn load_def_set(
             func_serials.push((func_artifact_id.clone(), func_serial));
         }
         *set.functions.borrow_mut() = func_gcs;
+        let set_for_finalizer = set.clone();
         let finalizer: crate::langhelp::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+            let set = set_for_finalizer.clone();
+            // Materialise iface method arg/ret types. Done here (not in the
+            // build closure) so type artifacts referring back to data types
+            // in this same def-set find this def-set's shell already cached.
+            {
+                let interfaces = set.interfaces.borrow();
+                for (iface, iface_serial) in interfaces.iter().zip(iface_serials_for_finalizer.iter()) {
+                    let methods = iface_serial
+                        .methods
+                        .iter()
+                        .map(|m| {
+                            let (arg_type, _) = crate::eval::util::deserialize_type_artifact(
+                                xx, loc, &m.arg_type,
+                            )
+                                .into_res()
+                                .expect("Failed to deserialize iface method arg_type");
+                            let (ret_type, _) = crate::eval::util::deserialize_type_artifact(
+                                xx, loc, &m.ret_type,
+                            )
+                                .into_res()
+                                .expect("Failed to deserialize iface method ret_type");
+                            crate::eval::value::type_source_interface::SourceInterfaceMethodData {
+                                name: m.name.clone(),
+                                field_name: m.field_name.clone(),
+                                arg_type: RefCell::new(Some(arg_type)),
+                                ret_type: RefCell::new(Some(ret_type)),
+                            }
+                        })
+                        .collect();
+                    *iface.methods.borrow_mut() = methods;
+                }
+            }
             let mut codes: Vec<Code> = Vec::new();
             for (dt_artifact_id, dt_serial) in &dt_serials {
                 let dt_data = {
@@ -548,13 +600,27 @@ pub(crate) fn load_def_set(
                 let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
                     dt_serial.interface_impls.iter().map(|impl_serial| {
                         let iface = match impl_serial.builtin_kind {
-                            BuiltinInterfaceKind::Value => builtin_ifaces.value.clone(),
-                            BuiltinInterfaceKind::Type => builtin_ifaces.type_.clone(),
-                            BuiltinInterfaceKind::AspectFunction => builtin_ifaces.aspect_function.clone(),
-                            BuiltinInterfaceKind::AspectField => builtin_ifaces.aspect_field.clone(),
-                            BuiltinInterfaceKind::ScopeEntry => builtin_ifaces.scope_entry.clone(),
-                            BuiltinInterfaceKind::Target => builtin_ifaces.target.clone(),
-                            BuiltinInterfaceKind::CodeDyn => builtin_ifaces.code_dyn.clone(),
+                            Some(BuiltinInterfaceKind::Value) => builtin_ifaces.value.clone(),
+                            Some(BuiltinInterfaceKind::Type) => builtin_ifaces.type_.clone(),
+                            Some(BuiltinInterfaceKind::AspectFunction) => builtin_ifaces.aspect_function.clone(),
+                            Some(BuiltinInterfaceKind::AspectField) => builtin_ifaces.aspect_field.clone(),
+                            Some(BuiltinInterfaceKind::ScopeEntry) => builtin_ifaces.scope_entry.clone(),
+                            Some(BuiltinInterfaceKind::Target) => builtin_ifaces.target.clone(),
+                            Some(BuiltinInterfaceKind::CodeDyn) => builtin_ifaces.code_dyn.clone(),
+                            None => {
+                                // User-defined iface — look it up in the
+                                // already-populated `set.interfaces` by
+                                // identity. The iface was deserialized
+                                // earlier from `ArtifactDataDefSet.interfaces`.
+                                set.interfaces
+                                    .borrow()
+                                    .iter()
+                                    .find(|iface| iface.identity == impl_serial.iface_identity)
+                                    .cloned()
+                                    .expect(
+                                        "user-defined iface referenced by impl not present in def-set",
+                                    )
+                            },
                         };
                         let method_impls = impl_serial.method_impls.iter().map(|m| {
                             let impl_expr =
@@ -659,8 +725,8 @@ pub(crate) fn serialize_definition_set(
                     }
                 }).collect();
                 let interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> =
-                    dt.interface_impls.borrow().iter().filter_map(|impl_data| {
-                        let builtin_kind = impl_data.interface.builtin_kind?;
+                    dt.interface_impls.borrow().iter().map(|impl_data| {
+                        let builtin_kind = impl_data.interface.builtin_kind;
                         let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> =
                             impl_data.method_impls.iter().map(|m| {
                                 let compiled_js = m.compiled_js.borrow();
@@ -735,10 +801,11 @@ pub(crate) fn serialize_definition_set(
                                     captured_externals,
                                 }
                             }).collect();
-                        Some(ArtifactDataDefSetInterfaceImpl {
+                        ArtifactDataDefSetInterfaceImpl {
                             builtin_kind,
+                            iface_identity: impl_data.interface.identity.clone(),
                             method_impls,
-                        })
+                        }
                     }).collect();
                 let serial = ArtifactDataDefSetDataType {
                     name: dt.name.clone(),
@@ -781,11 +848,46 @@ pub(crate) fn serialize_definition_set(
             })
         }).collect();
         drop(functions);
+        // Serialize user-defined interfaces inline. Builtin interfaces are
+        // reconstructed via `build_builtin_interfaces` and don't need to
+        // travel through the artifact.
+        let interfaces: Vec<
+            crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterface,
+        > = set
+            .interfaces
+            .borrow()
+            .iter()
+            .filter(|iface| iface.builtin_kind.is_none())
+            .map(|iface| {
+                let methods = iface
+                    .methods
+                    .borrow()
+                    .iter()
+                    .map(|m| {
+                        let arg_type = m.arg_type.borrow().clone().expect("iface method missing arg_type");
+                        let ret_type = m.ret_type.borrow().clone().expect("iface method missing ret_type");
+                        crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterfaceMethod {
+                            name: m.name.clone(),
+                            field_name: m.field_name.clone(),
+                            arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
+                            ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
+                        }
+                    })
+                    .collect();
+                crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterface {
+                    identity: iface.identity.clone(),
+                    description: iface.description.borrow().clone(),
+                    is_aspect: iface.is_aspect.get(),
+                    methods,
+                }
+            })
+            .collect();
         let serial = ArtifactDataDefSet {
             data_types: data_type_ids,
             functions: function_ids,
             import_id: set.import_id,
             def_set_id: set.def_set_id,
+            interfaces,
             source_id: set.source_id,
         };
         crate::langhelp::Artifact {

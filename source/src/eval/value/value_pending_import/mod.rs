@@ -63,7 +63,7 @@ impl PendingImportState {
         > = serde_json::from_value(dt_artifact.data);
         match dt_serial {
             Ok(dt) => dt.interface_impls.iter().any(|i| {
-                i.builtin_kind == crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type
+                i.builtin_kind == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
             }),
             Err(_) => false,
         }

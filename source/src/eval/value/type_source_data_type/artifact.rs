@@ -30,7 +30,31 @@ pub(crate) struct ArtifactDataDefSet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<ArtifactId>,
     pub import_id: crate::langhelp::ImportStateId,
+    /// User-defined interface signatures, inlined. Builtin interfaces
+    /// don't appear here — `BuiltinInterfaceKind` reconstructs them via
+    /// `build_builtin_interfaces`. Impls reference an entry here by its
+    /// `Unique` identity (see `ArtifactDataDefSetInterfaceImpl`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub interfaces: Vec<ArtifactDataDefSetInterface>,
     pub source_id: crate::langhelp::SourceId,
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactDataDefSetInterface {
+    pub identity: crate::langhelp::Unique,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_aspect: bool,
+    pub methods: Vec<ArtifactDataDefSetInterfaceMethod>,
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactDataDefSetInterfaceMethod {
+    pub name: String,
+    pub field_name: String,
+    pub arg_type: Artifact,
+    pub ret_type: Artifact,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -102,7 +126,18 @@ pub(crate) struct ArtifactDataDefSetMethod {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterfaceImpl {
-    pub builtin_kind: crate::eval::value::type_source_interface::BuiltinInterfaceKind,
+    /// `Some` for builtin interfaces (Value, Type, AspectField, …). `None`
+    /// for user-defined interfaces (`d.new_interface()`), which still need
+    /// their method bodies serialized so the data type's constructor JS
+    /// can populate `_imN` slots when re-installed in another stage/isolate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub builtin_kind: Option<crate::eval::value::type_source_interface::BuiltinInterfaceKind>,
+    /// Iface identity (the `Unique`). Used at deserialize time to find the
+    /// existing `SourceInterfaceData` in the live def-set (same-isolate
+    /// dispatch) instead of synthesizing one. `impl_interface` already
+    /// stored that ref on the data type — this just lets us recover it
+    /// across the artifact roundtrip.
+    pub iface_identity: crate::langhelp::Unique,
     pub method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl>,
 }
 
