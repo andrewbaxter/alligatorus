@@ -88,6 +88,7 @@ pub(crate) struct ArtifactDataDefSetMethod {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
+    pub entry_id: usize,
     pub field_name: String,
     pub name: String,
     pub ret_type: Artifact,

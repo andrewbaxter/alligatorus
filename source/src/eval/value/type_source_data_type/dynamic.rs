@@ -692,14 +692,18 @@ impl Type for TypeSourceDataTypeDynamic {
                             format!("cast {} → type: source has no runtime code", self.desc()),
                         ),
                     };
-                    // Capture a bundle-less `TypeUserDefined` carrying this data
+                    // Capture a `TypeSourceDataTypeConst` carrying this data
                     // type as an External::Type; the v8 callback receives it,
-                    // attaches the runtime instance as the bundle, and returns
-                    // a `Rc<dyn Type>` external.
-                    let template: Rc<dyn Type> = Rc::new(super::dynamic::TypeUserDefined {
-                        data: self.data.clone(),
-                        bundle: None,
-                    });
+                    // attaches the runtime instance as a `TypeUserDefined`
+                    // bundle, and returns a `Rc<dyn Type>` external.
+                    // (We use `TypeSourceDataTypeConst` rather than
+                    // `TypeUserDefined` because that's what the artifact
+                    // roundtrip produces — the type's AspectType on the
+                    // data-type-type returns a `TypeSourceDataTypeConst`.)
+                    let template: Rc<dyn Type> =
+                        Rc::new(crate::eval::value::type_source_data_type::TypeSourceDataTypeConst {
+                            data: self.data.clone(),
+                        });
                     let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                     xx.vx.externals.borrow_mut().push((
                         template_id,

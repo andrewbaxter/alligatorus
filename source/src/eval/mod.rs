@@ -2697,9 +2697,10 @@ fn eval(
             // `__data_instance_to_type(type_template, instance)` —
             // wraps a source-defined data type *instance* into an
             // `Rc<dyn Type>` external. arg(0) is a compile-time-captured
-            // bundle-less `TypeUserDefined` external carrying this data
-            // type's `Gc<SourceDataTypeData>`; arg(1) is the runtime
-            // v8 instance whose handle becomes the bundle.
+            // `TypeSourceDataTypeConst` external carrying this data type's
+            // `Gc<SourceDataTypeData>`; arg(1) is the runtime v8 instance
+            // whose handle becomes the bundle of the produced
+            // `TypeUserDefined`.
             fn data_instance_to_type_callback<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 args: v8::FunctionCallbackArguments<'s>,
@@ -2708,7 +2709,7 @@ fn eval(
                 let template_type: Rc<dyn Type> =
                     from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
                 let template = crate::invariant::must_downcast_ref::<
-                    crate::eval::value::type_source_data_type::dynamic::TypeUserDefined,
+                    crate::eval::value::type_source_data_type::TypeSourceDataTypeConst,
                 >(template_type.as_ref());
                 let instance = v8::Local::<v8::Object>::try_from(args.get(1))
                     .expect("__data_instance_to_type: expected JS object for instance");

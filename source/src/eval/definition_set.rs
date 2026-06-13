@@ -501,7 +501,7 @@ pub(crate) fn load_def_set(
                         .map_err(|e| format!("Failed to deserialize underlying type: {:?}", e))?;
                 codes.push(underlying_code);
                 dt_data.underlying_type.set(underlying_type);
-                let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().enumerate().map(|(i, m)| {
+                let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().map(|m| {
                     let (arg_type, arg_code) =
                         crate::eval::util::deserialize_type_artifact(xx, loc, &m.arg_type)
                             .into_res()
@@ -522,7 +522,7 @@ pub(crate) fn load_def_set(
                         scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(
                             import_id,
                             def_set_id,
-                            i,
+                            m.entry_id,
                         ))),
                         self_scope_entry_id: Cell::new(None),
                         field_name: m.field_name.clone(),
@@ -632,8 +632,13 @@ pub(crate) fn serialize_definition_set(
                     });
                     let captured_externals =
                         serialize_captured_externals(xx, loc, &m.captured_externals.borrow());
+                    let entry_id = match m.scope_entry_id.get() {
+                        Some(crate::langhelp::ScopeEntryId::Def(_, _, eid)) => eid,
+                        _ => panic!("Method scope_entry_id missing or not Def"),
+                    };
                     ArtifactDataDefSetMethod {
                         name: m.name.clone(),
+                        entry_id,
                         field_name: m.field_name.clone(),
                         arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
                         ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
