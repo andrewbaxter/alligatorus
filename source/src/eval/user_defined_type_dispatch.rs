@@ -118,7 +118,7 @@ fn clone_cv(cv: &CodeValue) -> CodeValue {
 }
 
 impl ScopeEntry for ArgRecordFactory {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let mut fields = std::collections::BTreeMap::new();
         // `source_type` is wrapped in `ValueTypeRef` so that `.aspect(...)`
         // field access on it is dispatched to the inner Rust `Type::aspect`.

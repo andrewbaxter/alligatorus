@@ -130,7 +130,7 @@ pub(crate) struct ScopeEntryUniqueDualMode {
 }
 
 impl ScopeEntry for ScopeEntryUniqueDualMode {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,

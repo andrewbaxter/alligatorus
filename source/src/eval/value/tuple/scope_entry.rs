@@ -17,7 +17,7 @@ pub(crate) struct ScopeEntryValue {
 }
 
 impl ScopeEntry for ScopeEntryValue {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
                 loc,

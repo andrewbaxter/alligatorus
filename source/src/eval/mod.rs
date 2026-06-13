@@ -486,7 +486,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             };
             let scope = scope.values.borrow();
             let binding = scope.get(&constkey).unwrap();
-            return Ok(binding.use_(expr.loc, key.code));
+            return Ok(binding.use_(xx, expr.loc, key.code));
         }),
         Expr_::Call(p) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
@@ -3014,8 +3014,8 @@ pub(crate) fn rc_type_to_v8<
 pub(crate) struct RcScopeEntryWrap(pub Rc<dyn crate::langhelp::ScopeEntry>);
 
 impl crate::langhelp::ScopeEntry for RcScopeEntryWrap {
-    fn use_(&self, loc: QExprId, code: Code) -> CodeValue {
-        self.0.use_(loc, code)
+    fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, code: Code) -> CodeValue {
+        self.0.use_(xx, loc, code)
     }
 }
 

@@ -35,14 +35,18 @@ use {
 
 /// `ScopeEntry` whose `use_` invokes the v8 instance's `_im_se0` method (the
 /// compiled `scope_entry.use_` impl on the user's `nscope_entry`-like data
-/// type). The current placeholder emits a `null` literal typed `any` —
-/// downstream dispatch on the resulting value goes through `TypeAnyDynamic`.
+/// type). At this point the lookup landed and we know what to dispatch to;
+/// the remaining work is teaching the resulting CodeValue's type how to
+/// route field/call operations back through the user's interface impls so
+/// `console.log(...)` accumulates the user's code AST. For now the produced
+/// value is opaque `TypeAnyDynamic` — sufficient to confirm the scope walk
+/// finds the entry but not yet to render the staged expression.
 pub(crate) struct UserDefinedScopeEntry {
     pub instance: v8::Global<v8::Object>,
 }
 
 impl ScopeEntry for UserDefinedScopeEntry {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let _ = &self.instance;
         CodeValue {
             code: Code {

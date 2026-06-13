@@ -30,7 +30,7 @@ pub(crate) struct ScopeEntryDynamicBinding {
 }
 
 impl ScopeEntry for ScopeEntryDynamicBinding {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         return CodeValue {
             code: Code {
                 loc: loc,

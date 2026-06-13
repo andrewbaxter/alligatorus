@@ -44,7 +44,7 @@ pub(crate) struct ScopeEntryRecordDynamic {
 }
 
 impl ScopeEntry for ScopeEntryRecordDynamic {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
                 loc: loc,
@@ -72,7 +72,7 @@ pub(crate) struct ScopeEntryRecordMortar {
 }
 
 impl ScopeEntry for ScopeEntryRecordMortar {
-    fn use_(&self, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
         let (use_code, base) = if has_mortar {
             let js_key = self.js_key.expect("ScopeEntryRecordMortar with mortar fields must have js_key");
@@ -93,7 +93,7 @@ impl ScopeEntry for ScopeEntryRecordMortar {
         for (key, field) in &self.fields {
             match field {
                 RecordScopeField::Scope(se) => {
-                    let cv = se.use_(loc, Code {
+                    let cv = se.use_(xx, loc, Code {
                         loc: loc,
                         code: Code_::None,
                     });

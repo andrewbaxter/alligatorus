@@ -35,7 +35,7 @@ pub(crate) trait Aspect: Any { }
 pub(crate) trait CodeDyn: Any { }
 
 pub(crate) trait ScopeEntry {
-    fn use_(&self, loc: QExprId, code: Code) -> CodeValue;
+    fn use_(&self, xx: &ExprContext, loc: QExprId, code: Code) -> CodeValue;
 }
 
 pub(crate) trait Sources: Send + Sync {
