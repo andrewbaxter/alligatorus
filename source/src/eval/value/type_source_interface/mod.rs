@@ -4,7 +4,7 @@ pub mod r#const;
 use {
     crate::langhelp::Unique,
     dumpster::unsync::Gc,
-    std::cell::RefCell,
+    std::cell::{Cell, RefCell},
 };
 
 pub mod artifact;
@@ -49,6 +49,14 @@ pub(crate) struct SourceInterfaceData {
     pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
+    /// When `true`, this interface is treated as an aspect at runtime:
+    /// implementers get a `cast_to` path that wraps the value as a
+    /// `Rc<dyn Aspect>` (paralleling the Rust builtin aspects), and the
+    /// implementer's `Type::aspect(iface.identity)` lookup returns a handle
+    /// that dispatches the interface's methods on the v8 instance.
+    /// `Cell` rather than plain field so source code can flip it via
+    /// `iface.set_is_aspect(true)` after `new_interface()`.
+    pub is_aspect: Cell<bool>,
     pub methods: RefCell<Vec<SourceInterfaceMethodData>>,
     pub set: Gc<crate::eval::definition_set::DefinitionSet>,
 }
@@ -127,6 +135,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::Value),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("value".to_string())),
+        is_aspect: Cell::new(false),
         methods: RefCell::new(vec![SourceInterfaceMethodData {
             name: "type".to_string(),
             arg_type: RefCell::new(
@@ -141,6 +150,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::Type),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("type".to_string())),
+        is_aspect: Cell::new(false),
         methods: RefCell::new(vec![
             SourceInterfaceMethodData {
                 name: "can_cast_from".to_string(),
@@ -200,6 +210,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::AspectFunction),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("aspect_function".to_string())),
+        is_aspect: Cell::new(false),
         // `call` mirrors the Rust trait `AspectFunction::call(self_: CodeValue,
         // argument: CodeValue) -> EvalRes<CodeValue>`. The impl runs at
         // const-eval (not at JS runtime), receives its inputs as
@@ -218,6 +229,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::AspectField),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("aspect_field".to_string())),
+        is_aspect: Cell::new(false),
         methods: RefCell::new(vec![
             SourceInterfaceMethodData {
                 name: "field".to_string(),
@@ -239,6 +251,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::ScopeEntry),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("scope_entry".to_string())),
+        is_aspect: Cell::new(false),
         methods: RefCell::new(vec![SourceInterfaceMethodData {
             name: "use_".to_string(),
             arg_type: RefCell::new(Some(any_type.clone())),
@@ -260,6 +273,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::Target),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("target".to_string())),
+        is_aspect: Cell::new(false),
         methods: RefCell::new(vec![
             target_method("bind", 0),
             target_method("bind_sub_record", 1),
@@ -277,6 +291,7 @@ pub(crate) fn build_builtin_interfaces(
         builtin_kind: Some(BuiltinInterfaceKind::CodeDyn),
         set: builtin_def_set.clone(),
         description: RefCell::new(Some("code_dyn".to_string())),
+        is_aspect: Cell::new(false),
         methods: RefCell::new(vec![]),
         identity: builtin_code_dyn_iface_identity(),
     });

@@ -148,6 +148,7 @@ dynamic_wrap!(wrap Gc < DefinitionSet > as DefinitionSet(self_, scope) {
             builtin_kind: None,
             set: ds.clone(),
             description: RefCell::new(None),
+            is_aspect: Cell::new(false),
             methods: RefCell::new(Vec::new()),
             identity: identity,
         });

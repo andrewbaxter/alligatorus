@@ -94,4 +94,7 @@ dynamic_wrap!(struct SourceNewInterfaceResult(self_, scope) {
             method_index,
         }
     }
+    fn set_is_aspect(is_aspect: bool) -> () {
+        self_.interface_ref.data.is_aspect.set(is_aspect);
+    }
 });
