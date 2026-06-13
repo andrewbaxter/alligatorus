@@ -253,6 +253,13 @@ pub(crate) const DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId
 /// `TypeAspectDynamic` (the source-level `aspect` builtin type).
 pub(crate) const DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__unique_eq(a, b)` — Rust-in-v8 helper that
+/// reads two v8::External(Unique) values and returns boolean value equality.
+/// Used by `TypeUnique::eq` when emitting dynamic comparisons: JS `===` on
+/// externals is reference equality, but Uniques are produced as fresh
+/// externals at each conversion site, so we need value comparison.
+pub(crate) const UNIQUE_EQ_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -1800,27 +1807,18 @@ fn eval(
                                 };
                                 if method_name == "aspect" {
                                     // `aspect(arg)` takes `{key: Unique}` and
-                                    // returns `option(aspect)`. Bind `self` as
-                                    // the data type itself (so the user can do
-                                    // `option.some(self)` and let
-                                    // `TypeSourceDataTypeDynamic::cast_to(aspect)`
-                                    // emit `__data_instance_to_aspect`), and
-                                    // `arg` to a record with just `key`.
-                                    let self_type: Rc<dyn Type> = Rc::new(
-                                        value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
-                                            data: dt_data.clone(),
-                                        },
-                                    );
-                                    if let Some(self_ib) =
-                                        crate::builtin::aspect_initial_bind_get_maybe(
-                                            &xx,
-                                            self_type.as_ref(),
-                                        ) {
-                                        body_scope.insert(
-                                            ConstKey::String("self".to_string()),
-                                            self_ib.initial_bind(self_id),
-                                        );
-                                    }
+                                    // returns `option(aspect)`. The compiled
+                                    // JS function takes one parameter (the
+                                    // arg object), bound under `self_id`
+                                    // (whose `scope_entry_id_dynamic_key` is
+                                    // the JS parameter name). To make the
+                                    // source's `arg` access compile to that
+                                    // parameter, bind the `arg` scope entry
+                                    // with `self_id`. Then the data type
+                                    // itself is the `self` for the impl,
+                                    // bound under a fresh local id (so
+                                    // `option.some(self)` can route through
+                                    // `TypeSourceDataTypeDynamic::cast_to(aspect)`).
                                     let mut fields = std::collections::BTreeMap::new();
                                     fields.insert(
                                         ConstKey::String("key".to_string()),
@@ -1834,7 +1832,6 @@ fn eval(
                                             fields,
                                         },
                                     );
-                                    let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                                     let arg_ib = aspect_initial_bind_get(
                                         &xx,
                                         root_loc,
@@ -1842,8 +1839,34 @@ fn eval(
                                     ).into_res()?;
                                     body_scope.insert(
                                         ConstKey::String("arg".to_string()),
-                                        arg_ib.initial_bind(arg_id),
+                                        arg_ib.initial_bind(self_id),
                                     );
+                                    // For `self`: bind under a different
+                                    // local id. The data type instance is
+                                    // not directly available from the JS
+                                    // function — instead `self` should
+                                    // resolve to a Rust-side TSDT value at
+                                    // const_eval time so `option.some(self)`
+                                    // typechecks. We achieve this via the
+                                    // `bundle.instance` external referenced
+                                    // through binding-use.
+                                    let self_binding_id =
+                                        ScopeEntryId::Local(body_ex.next_local_id.next());
+                                    let self_type: Rc<dyn Type> = Rc::new(
+                                        value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                                            data: dt_data.clone(),
+                                        },
+                                    );
+                                    if let Some(self_ib) =
+                                        crate::builtin::aspect_initial_bind_get_maybe(
+                                            &xx,
+                                            self_type.as_ref(),
+                                        ) {
+                                        body_scope.insert(
+                                            ConstKey::String("self".to_string()),
+                                            self_ib.initial_bind(self_binding_id),
+                                        );
+                                    }
                                 } else {
                                     let arg_record_type = build_cast_arg_record_type();
                                     let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_record_type.as_ref()).into_res()?;
@@ -2991,6 +3014,34 @@ fn eval(
                         .unwrap()
                         .cast(),
                     data_instance_to_aspect_fn.into(),
+                );
+            // `__unique_eq(a, b)` — value-equality compare for Unique
+            // externals. Each `Unique` reaches v8 as a fresh `v8::External`,
+            // so JS `===` is unsafe; this helper reads both Rc<Unique> and
+            // returns the boolean comparison.
+            fn unique_eq_callback<'s>(
+                _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let a = from_v8_ref::<crate::langhelp::Unique>(&*args.get(0)).clone();
+                let b = from_v8_ref::<crate::langhelp::Unique>(&*args.get(1)).clone();
+                rv.set_bool(a == b);
+            }
+            let unique_eq_fn =
+                v8::Function::builder(unique_eq_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(UNIQUE_EQ_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    unique_eq_fn.into(),
                 );
             cix.builtins_registered.set(true);
         }

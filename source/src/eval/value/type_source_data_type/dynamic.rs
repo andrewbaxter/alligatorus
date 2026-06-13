@@ -793,6 +793,60 @@ impl Type for TypeSourceDataTypeDynamic {
             }
         }
         if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+            // If the data type implements the `type` interface, this value
+            // is meant to act as a type — preserve the v8 instance by routing
+            // through `__data_instance_to_type` so that `value.type` reads
+            // back the specific `TypeUserDefined{data, bundle}` rather than
+            // a bare `TypeSourceDataTypeDynamic` losing instance identity.
+            let has_type_impl = data.interface_impls.borrow().iter().any(|impl_data| {
+                impl_data.interface.builtin_kind
+                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+            });
+            if has_type_impl {
+                let source_code = match cv.code.cast::<CodeDynamic>() {
+                    crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+                    _ => return EvalRes::err(
+                        loc,
+                        format!("cast {} → any: source has no runtime code", self.desc()),
+                    ),
+                };
+                let template: Rc<dyn Type> =
+                    Rc::new(crate::eval::value::type_source_data_type::TypeSourceDataTypeConst {
+                        data: self.data.clone(),
+                    });
+                let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                xx.vx.externals.borrow_mut().push((
+                    template_id,
+                    crate::langhelp::External::Type(template),
+                ));
+                let template_code = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(
+                        crate::code_dynamic::CodeDynamicBindingUse { id: template_id },
+                    ),
+                };
+                let call = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                        func: Box::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(
+                                crate::code_dynamic::CodeDynamicBindingUse {
+                                    id: crate::eval::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
+                                },
+                            ),
+                        }),
+                        args: vec![template_code, source_code],
+                    }),
+                };
+                return EvalRes::ok(CodeValue {
+                    code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic),
+                    }),
+                });
+            }
             return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
         }
         if type_.aspect(xx, &crate::eval::value::type_aspect::dynamic::type_aspect_identity()).is_some() {

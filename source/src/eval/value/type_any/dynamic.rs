@@ -104,6 +104,87 @@ impl AspectStackValueDynamic for TypeAnyDynamic {
     }
 }
 
+impl crate::builtin::AspectField for TypeAnyDynamic {
+    fn field(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: CodeValue,
+        key: CodeValue,
+    ) -> crate::langhelp::EvalRes {
+        let self_code = match self_.code.cast::<CodeDynamic>().into_res() {
+            Ok(Some(c)) => c.clone(),
+            _ => return crate::langhelp::EvalRes::err(loc, "any.field: receiver has no runtime code".to_string()),
+        };
+        let key_type = key.value.type_(xx, loc);
+        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+            Ok(s) => s,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        let key_name = key_string.get(key.value.as_ref());
+        let access = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::FieldUse(crate::code_dynamic::CodeDynamicFieldUse {
+                base: Box::new(self_code),
+                field: crate::langhelp::ConstKey::String(key_name).to_str(),
+            }),
+        };
+        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+            code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::Dyn(Rc::new(access)) },
+            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                type_: Rc::new(TypeAnyDynamic),
+            }),
+        })
+    }
+
+    fn field_type_opt(
+        &self,
+        _xx: &ExprContext,
+        _key: &crate::langhelp::ConstKey,
+    ) -> Option<Rc<dyn crate::langhelp::Type>> {
+        Some(Rc::new(TypeAnyDynamic))
+    }
+}
+
+impl crate::builtin::AspectFunction for TypeAnyDynamic {
+    fn call(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: CodeValue,
+        argument: CodeValue,
+    ) -> crate::langhelp::EvalRes {
+        let func_code = match self_.code.cast::<CodeDynamic>().into_res() {
+            Ok(Some(c)) => c.clone(),
+            _ => return crate::langhelp::EvalRes::err(loc, "any.call: function has no runtime code".to_string()),
+        };
+        let arg_type = argument.value.type_(xx, loc);
+        let consume = match crate::builtin::aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()).into_res() {
+            Ok(c) => c,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        let arg_code = match consume.to_dynamic(xx, loc, argument).into_res() {
+            Ok(c) => c,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        let call = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                func: Box::new(func_code),
+                args: vec![arg_code],
+            }),
+        };
+        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+            code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::Dyn(Rc::new(call)) },
+            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                type_: Rc::new(TypeAnyDynamic),
+            }),
+        })
+    }
+}
+
 
 impl Type for TypeAnyDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
@@ -135,6 +216,12 @@ impl Type for TypeAnyDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::builtin::aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::builtin::AspectField>));
+        }
+        if *key == crate::builtin::aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::builtin::AspectFunction>));
         }
         None
     }

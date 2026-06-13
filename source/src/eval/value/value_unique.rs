@@ -113,12 +113,23 @@ impl AspectOperatorEq for TypeUnique {
             Ok(s) => s,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
+        // Emit a `__unique_eq(a, b)` call rather than JS `===`: each Unique
+        // reaches v8 as a fresh `v8::External`, so reference equality doesn't
+        // hold across distinct conversion sites.
+        let unique_eq_fn_code = crate::code_dynamic::CodeDynamic {
+            loc,
+            type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                crate::code_dynamic::CodeDynamicBindingUse {
+                    id: crate::eval::UNIQUE_EQ_FN_SCOPE_ID,
+                },
+            ),
+        };
         EvalRes::ok(stack.to_value(loc, crate::code_dynamic::CodeDynamic {
             loc,
-            type_: crate::code_dynamic::CodeDynamicType::OperatorEq(
-                crate::code_dynamic::CodeDynamicOperatorEq {
-                    base: Box::new(base_dyn),
-                    reference: Box::new(ref_dyn),
+            type_: crate::code_dynamic::CodeDynamicType::Call(
+                crate::code_dynamic::CodeDynamicCall {
+                    func: Box::new(unique_eq_fn_code),
+                    args: vec![base_dyn, ref_dyn],
                 },
             ),
         }))

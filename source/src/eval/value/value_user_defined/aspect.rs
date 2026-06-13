@@ -95,6 +95,23 @@ impl Value for AspectUserDefined {
     }
 }
 
+/// Convert a `CodeValue` to a `CodeDynamic` by routing through the value
+/// type's `AspectConsumeDynamic`. Used so const-folded args (where the
+/// CV's `code` is `None`) still produce a runtime expression.
+fn cv_to_dynamic_code(xx: &ExprContext, loc: QExprId, cv: &CodeValue) -> Result<CodeDynamic, String> {
+    if let Some(c) = cv.code.cast::<CodeDynamic>().into_res().ok().flatten() {
+        return Ok(c.clone());
+    }
+    let vtype = cv.value.type_(xx, loc);
+    let consume = crate::builtin::aspect_consume_dynamic_get(xx, loc, vtype.as_ref())
+        .into_res()
+        .map_err(|e| format!("AspectUserDefined: missing consume on {}: {:?}", vtype.desc(), e))?;
+    consume
+        .to_dynamic(xx, loc, CodeValue { code: cv.code.clone(), value: cv.value.clone() })
+        .into_res()
+        .map_err(|e| format!("AspectUserDefined: consume failed on {}: {:?}", vtype.desc(), e))
+}
+
 /// Build a `CodeDynamic` that, at runtime, looks up `field_name` on the
 /// captured `self.bundle.instance` and calls it with `arg_record`.
 /// Returns a `CodeValue` typed as `TypeAnyDynamic` (the static return type of
@@ -151,13 +168,13 @@ fn dispatch_method_call(
 
 impl AspectField for AspectUserDefined {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let self_code = match self_.code.cast::<CodeDynamic>().into_res() {
-            Ok(Some(c)) => c.clone(),
-            _ => return EvalRes::err(loc, "AspectUserDefined.field: receiver has no runtime code".to_string()),
+        let self_code = match cv_to_dynamic_code(xx, loc, &self_) {
+            Ok(c) => c,
+            Err(e) => return EvalRes::err(loc, e),
         };
-        let key_code = match key.code.cast::<CodeDynamic>().into_res() {
-            Ok(Some(c)) => c.clone(),
-            _ => return EvalRes::err(loc, "AspectUserDefined.field: key has no runtime code".to_string()),
+        let key_code = match cv_to_dynamic_code(xx, loc, &key) {
+            Ok(c) => c,
+            Err(e) => return EvalRes::err(loc, e),
         };
         dispatch_method_call(
             loc,
@@ -178,13 +195,13 @@ impl AspectField for AspectUserDefined {
 
 impl AspectFunction for AspectUserDefined {
     fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
-        let self_code = match self_.code.cast::<CodeDynamic>().into_res() {
-            Ok(Some(c)) => c.clone(),
-            _ => return EvalRes::err(loc, "AspectUserDefined.call: receiver has no runtime code".to_string()),
+        let self_code = match cv_to_dynamic_code(xx, loc, &self_) {
+            Ok(c) => c,
+            Err(e) => return EvalRes::err(loc, e),
         };
-        let arg_code = match argument.code.cast::<CodeDynamic>().into_res() {
-            Ok(Some(c)) => c.clone(),
-            _ => return EvalRes::err(loc, "AspectUserDefined.call: argument has no runtime code".to_string()),
+        let arg_code = match cv_to_dynamic_code(xx, loc, &argument) {
+            Ok(c) => c,
+            Err(e) => return EvalRes::err(loc, e),
         };
         dispatch_method_call(
             loc,
