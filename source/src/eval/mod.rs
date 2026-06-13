@@ -253,12 +253,41 @@ pub(crate) const DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId
 /// `TypeAspectDynamic` (the source-level `aspect` builtin type).
 pub(crate) const DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__data_instance_to_code` — parallel to
+/// `__data_instance_to_value`/_type/_aspect, but wraps the v8 instance into
+/// a `Rc<dyn CodeDyn>=CodeUserDefined` external. Used by
+/// `TypeSourceDataTypeDynamic::cast_to` when the destination is the builtin
+/// `code_dyn` interface, so source data types impl'ing `code_dyn` can be
+/// passed as the `code` slot of `new_code_value`.
+pub(crate) const DATA_INSTANCE_TO_CODE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 /// Well-known scope entry ID for `__unique_eq(a, b)` — Rust-in-v8 helper that
 /// reads two v8::External(Unique) values and returns boolean value equality.
 /// Used by `TypeUnique::eq` when emitting dynamic comparisons: JS `===` on
 /// externals is reference equality, but Uniques are produced as fresh
 /// externals at each conversion site, so we need value comparison.
 pub(crate) const UNIQUE_EQ_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
+/// `CodeDyn` wrapper used by `new_code_value`: holds an arbitrary
+/// `Rc<dyn Value>` as the code part of a `CodeValue`. The value's runtime
+/// form supplies the JS expression when the surrounding code is rendered.
+pub(crate) struct ValueAsCodeDyn {
+    #[allow(dead_code)]
+    pub(crate) value: Rc<dyn crate::langhelp::Value>,
+}
+
+impl crate::langhelp::CodeDyn for ValueAsCodeDyn { }
+
+/// `CodeDyn` wrapper around a v8 instance of a source data type that
+/// implements the builtin `code_dyn` interface. Parallel to `ValueUserDefined`
+/// (for the `value` interface) and `TypeUserDefined` (for the `type` interface).
+/// Produced by the `__data_instance_to_code` rust-in-v8 callback.
+pub(crate) struct CodeUserDefined {
+    #[allow(dead_code)]
+    pub(crate) bundle: Rc<crate::eval::isolate_bundle::IsolateBundle>,
+}
+
+impl crate::langhelp::CodeDyn for CodeUserDefined { }
 
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
@@ -1169,6 +1198,30 @@ fn eval(
         }),
         dynamic_wrap!(fn constkey_to_str(ex, dynamic_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
             key.to_str()
+        }),
+        // `new_code_value(code, value)` — explicit constructor for the result
+        // of a const-eval-style interface impl. The Rust counterpart of
+        // `AspectFunction::call` (etc.) explicitly builds a
+        // `CodeValue { code, value }` and returns it; this builtin gives source
+        // impls the same primitive. The `code` arg's runtime form becomes the
+        // result CV's `Code` (wrapped in `Code_::Dyn(ValueAsCodeDyn{...})`),
+        // and the `value` arg becomes the CV's `value`. Wrapped as a
+        // `CodeValueExtern` so it crosses the v8 boundary back to the Rust
+        // dispatcher unchanged.
+        dynamic_wrap!(fn new_code_value(ex, dynamic_scope, scope)(
+            code: Rc<dyn crate::langhelp::Value>,
+            value: Rc<dyn crate::langhelp::Value>,
+        ) -> crate::eval::code_value_extern::CodeValueExtern {
+            let dummy_loc: crate::langhelp::QExprId =
+                (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+            let cv = crate::langhelp::CodeValue {
+                code: crate::langhelp::Code {
+                    loc: dummy_loc,
+                    code: crate::langhelp::Code_::Dyn(Rc::new(ValueAsCodeDyn { value: code })),
+                },
+                value,
+            };
+            crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
         }),
         // `gen_binding_name(xx)` returns a fresh JS binding name (e.g. "a17")
         // unique within this compile. Used by target.bind impls to mint the
@@ -3014,6 +3067,44 @@ fn eval(
                         .unwrap()
                         .cast(),
                     data_instance_to_aspect_fn.into(),
+                );
+            // `__data_instance_to_code(instance)` — wraps an instance into a
+            // `CodeUserDefined` external (an `Rc<dyn CodeDyn>`). Used by
+            // source data types implementing the `code_dyn` builtin interface
+            // so their instances can be passed as the code slot of
+            // `new_code_value`.
+            fn data_instance_to_code_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let instance = v8::Local::<v8::Object>::try_from(args.get(0))
+                    .expect("__data_instance_to_code: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let code: Rc<dyn crate::langhelp::CodeDyn> = Rc::new(CodeUserDefined {
+                    bundle: Rc::new(crate::eval::isolate_bundle::IsolateBundle {
+                        instance: instance_global,
+                    }),
+                });
+                let ext = to_v8(scope, code);
+                rv.set(ext.into());
+            }
+            let data_instance_to_code_fn =
+                v8::Function::builder(data_instance_to_code_callback)
+                    .build(dynamic_scope)
+                    .unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_CODE_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_instance_to_code_fn.into(),
                 );
             // `__unique_eq(a, b)` — value-equality compare for Unique
             // externals. Each `Unique` reaches v8 as a fresh `v8::External`,

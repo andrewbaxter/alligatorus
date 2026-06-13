@@ -616,6 +616,20 @@ impl DynamicWrap for Rc<dyn crate::eval::Target> {
     }
 }
 
+impl DynamicWrap for Rc<dyn crate::langhelp::Value> {
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        super::rc_value_from_v8(&*value)
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_value_to_v8(scope, self).into()
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
+    }
+}
+
 /// Generic manual `DynamicWrap` for `HashMap<K, V>` over any
 /// `K: DynamicWrapKey + Eq + std::hash::Hash` and `V: DynamicWrap`. Walks the
 /// v8 record's keys and delegates each value's parsing to `V::from_v8`.

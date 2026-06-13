@@ -798,6 +798,8 @@ impl Type for TypeSourceDataTypeDynamic {
                         Some(crate::eval::DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID),
                     Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Value) =>
                         Some(crate::eval::DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID),
+                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::CodeDyn) =>
+                        Some(crate::eval::DATA_INSTANCE_TO_CODE_FN_SCOPE_ID),
                     _ => None,
                 };
                 if let Some(fn_id) = runtime_fn_id {

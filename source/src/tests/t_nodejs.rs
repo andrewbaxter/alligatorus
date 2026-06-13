@@ -136,9 +136,11 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     // aspect_function.call — `arg` carries `{self_: cv, argument: cv}` from the
     // dispatcher; build a new nvalue whose base is `code.call({func, arg})`.
     // TODO: this body returns an nvalue but the iface contract now requires a
-    // CodeValueExtern; wrap via `eval_const(arg.xx, stage(...))`. Substantial
-    // because the body references outer-scope bindings (nvalue, code, …) that
-    // aren't reachable from the dispatcher's child scope.
+    // CodeValueExtern; wrap via `eval_const(arg.xx, stage(...))`. Substantial:
+    // adding another stage means the existing `mb.lower(...)` calls (which
+    // target build_nodejs's scope at depth 1) need to be double-wrapped to
+    // target the right depth, and `nvalue_base_to_code` would need a
+    // depth-aware variant.
     exprs.push(impl_iface(mb, "ntype_func", "aspect_function", vec![("call", mb.block(vec![
         mb.bind(
             "func_code",
