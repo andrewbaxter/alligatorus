@@ -91,6 +91,81 @@ impl AspectInitialBind for TypeValueDynamic {
     }
 }
 
+impl crate::builtin::AspectField for TypeValueDynamic {
+    fn field(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: CodeValue,
+        key: CodeValue,
+    ) -> crate::langhelp::EvalRes {
+        let self_code = match self_.code.cast::<CodeDynamic>().into_res() {
+            Ok(Some(c)) => c.clone(),
+            _ => return crate::langhelp::EvalRes::err(
+                loc,
+                "value.field: receiver has no runtime code".to_string(),
+            ),
+        };
+        let key_type = key.value.type_(xx, loc);
+        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+            Ok(s) => s,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        let key_name = key_string.get(key.value.as_ref());
+        if key_name == "type" {
+            // Emit `__value_get_type(<value_code>)`. At v8 time the callback
+            // invokes the user's compiled `value.type` impl on the instance,
+            // unwraps the resulting `Rc<dyn Type>` external, and rebuilds it
+            // as a `TypeRefV8` JS object — supporting `.aspect(unique)` from
+            // source as if it were a Rust `Rc<dyn Type>`.
+            let call = crate::code_dynamic::CodeDynamic {
+                loc,
+                type_: crate::code_dynamic::CodeDynamicType::Call(
+                    crate::code_dynamic::CodeDynamicCall {
+                        func: Box::new(crate::code_dynamic::CodeDynamic {
+                            loc,
+                            type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                                crate::code_dynamic::CodeDynamicBindingUse {
+                                    id: crate::eval::VALUE_GET_TYPE_FN_SCOPE_ID,
+                                },
+                            ),
+                        }),
+                        args: vec![self_code],
+                    },
+                ),
+            };
+            return crate::langhelp::EvalRes::ok(CodeValue {
+                code: crate::langhelp::Code {
+                    loc,
+                    code: crate::langhelp::Code_::Dyn(Rc::new(call)),
+                },
+                value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                    source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                    type_: Rc::new(crate::eval::value::type_ref_v8::TypeTypeRefV8Dynamic),
+                }),
+            });
+        }
+        crate::langhelp::EvalRes::err(
+            loc,
+            format!("value has no field '{}' (only 'type')", key_name),
+        )
+    }
+
+    fn field_type_opt(
+        &self,
+        _xx: &ExprContext,
+        key: &crate::langhelp::ConstKey,
+    ) -> Option<Rc<dyn Type>> {
+        let crate::langhelp::ConstKey::String(s) = key else {
+            return None;
+        };
+        if s == "type" {
+            return Some(Rc::new(crate::eval::value::type_ref_v8::TypeTypeRefV8Dynamic));
+        }
+        None
+    }
+}
+
 impl Type for TypeValueDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeValueDynamic)
@@ -114,6 +189,11 @@ impl Type for TypeValueDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeValueDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::builtin::aspect_field_aspect_id() {
+            return Some(Box::new(
+                Box::new(TypeValueDynamic) as Box<dyn crate::builtin::AspectField>,
+            ));
         }
         None
     }

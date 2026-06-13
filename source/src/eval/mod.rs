@@ -185,6 +185,14 @@ pub(crate) const TUPLE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin
 /// typing.
 pub(crate) const CVE_GET_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__value_get_type` — invoked at v8 time on
+/// a value JS instance (the output of `__cve_get_value`). Calls the user's
+/// compiled `value.type` impl (`_im_v0`) to obtain the source-language type
+/// as a `v8::External` wrapping `Rc<dyn Type>`, then re-wraps it as a
+/// `TypeRefV8` JS object so source-level `.aspect(unique)` lookup works on
+/// the result (typed `TypeTypeRefV8Dynamic`).
+pub(crate) const VALUE_GET_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 /// Well-known scope entry ID for __cve_extract mortar function — extracts the
 /// raw runtime JS value from a CodeValueExtern by consuming the wrapped
 /// CodeValue's code (or const value) into a JS value.
@@ -2626,6 +2634,45 @@ fn eval(
             rv.set(instance.into());
         }
 
+        fn value_get_type_callback<
+            's,
+        >(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            // arg(0) = a JS instance object (the v8 form of a `ValueUserDefined`,
+            // i.e. the same `bundle.instance` `__cve_get_value` would have
+            // returned). Invoke the user-defined `value.type` impl (`_im_v0`)
+            // on it; the result is a `v8::External` wrapping `Rc<dyn Type>`
+            // (placed there by `__data_instance_to_type`). Re-wrap that Type
+            // as a `TypeRefV8` JS object so the source-level result, typed
+            // `TypeTypeRefV8Dynamic`, can `.aspect(unique)` through the
+            // existing `dynamic_wrap!(struct TypeRefV8)` dispatch.
+            let instance = v8::Local::<v8::Object>::try_from(args.get(0))
+                .expect("__value_get_type: expected JS object for instance");
+            let method_key = v8::String::new(
+                scope,
+                &ConstKey::String("_im_v0".to_string()).to_str(),
+            ).expect("__value_get_type: method key alloc");
+            let method_val = instance
+                .get(scope, method_key.into())
+                .expect("__value_get_type: instance missing _im_v0");
+            let method_fn = v8::Local::<v8::Function>::try_from(method_val)
+                .expect("__value_get_type: instance _im_v0 not a function");
+            let recv: v8::Local<v8::Value> = instance.into();
+            let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
+            let result = method_fn
+                .call(scope, recv, &[null_arg])
+                .expect("__value_get_type: _im_v0 returned no value");
+            let type_ref: Rc<dyn Type> = rc_type_from_v8(&*result);
+            let type_ref_v8 = crate::eval::dynamic_wrap::DynamicWrap::into_v8(
+                crate::eval::value::type_ref_v8::TypeRefV8 { type_ref },
+                scope,
+            );
+            rv.set(type_ref_v8);
+        }
+
         if register_v8 {
             let record_to_type_fn = v8::Function::builder(record_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
@@ -2671,6 +2718,18 @@ fn eval(
                         .unwrap()
                         .cast(),
                     cve_extract_fn.into(),
+                );
+            let value_get_type_fn =
+                v8::Function::builder(value_get_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(VALUE_GET_TYPE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    value_get_type_fn.into(),
                 );
             fn data_type_ref_to_type_callback<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
