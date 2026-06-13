@@ -211,6 +211,16 @@ pub(crate) const DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = Scope
 /// rust-in-v8 function — for `Rc<SourceTaggedUnionConstructorRef>`.
 pub(crate) const TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__data_instance_to_type` rust-in-v8
+/// function. Wraps a source-defined data type *instance* (the JS object)
+/// together with its compile-time-known `SourceDataTypeRef` into an
+/// `Rc<dyn Type>` external (a `TypeSourceDataTypeConst` whose
+/// `isolate_bundle` is the v8 instance handle). Used by
+/// `TypeSourceDataTypeDynamic::cast_to` when the destination is the
+/// `type` interface (so the instance acts as a `Rc<dyn Type>` for
+/// downstream `__record_to_type` / `__tuple_to_type` shallow extraction).
+pub(crate) const DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -2683,6 +2693,50 @@ fn eval(
                         .unwrap()
                         .cast(),
                     tagged_union_constructor_to_type_fn.into(),
+                );
+            // `__data_instance_to_type(type_template, instance)` —
+            // wraps a source-defined data type *instance* into an
+            // `Rc<dyn Type>` external. arg(0) is a compile-time-captured
+            // bundle-less `TypeUserDefined` external carrying this data
+            // type's `Gc<SourceDataTypeData>`; arg(1) is the runtime
+            // v8 instance whose handle becomes the bundle.
+            fn data_instance_to_type_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let template_type: Rc<dyn Type> =
+                    from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
+                let template = crate::invariant::must_downcast_ref::<
+                    crate::eval::value::type_source_data_type::dynamic::TypeUserDefined,
+                >(template_type.as_ref());
+                let instance = v8::Local::<v8::Object>::try_from(args.get(1))
+                    .expect("__data_instance_to_type: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let type_: Rc<dyn Type> =
+                    Rc::new(crate::eval::value::type_source_data_type::dynamic::TypeUserDefined {
+                        data: template.data.clone(),
+                        bundle: Some(Rc::new(
+                            crate::eval::isolate_bundle::IsolateBundle { instance: instance_global },
+                        )),
+                    });
+                let ext = rc_type_to_v8(scope, type_);
+                rv.set(ext.into());
+            }
+            let data_instance_to_type_fn =
+                v8::Function::builder(data_instance_to_type_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_instance_to_type_fn.into(),
                 );
             cix.builtins_registered.set(true);
         }
