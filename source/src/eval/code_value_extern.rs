@@ -269,14 +269,13 @@ impl AspectField for TypeCodeValueExternDynamic {
                 });
             }
             if key_str == "value" {
-                // Emit `__cve_get_value(self_)` — at v8 time, the callback
-                // unwraps the inner CV and returns the value's v8 form (the
-                // bundled JS instance for a `ValueUserDefined`). Source typing
-                // here is `any`; the user casts to the concrete data type they
-                // know they constructed, and `.base` etc. then dispatch
-                // through the data type's own `TypeSourceDataTypeDynamic.field`
-                // — no recursion possible, since that path doesn't re-enter
-                // user aspect impls.
+                // Emit `__cve_get_value(self_)`. Source typing is
+                // `TypeValueDynamic` — an opaque value handle with no
+                // `AspectField`. Any further `.<key>` on it is a compile-time
+                // error; this is intentional. To do anything useful with the
+                // returned value, callers go through an aspect interface
+                // (e.g. a source-level `aspect_consume_nodejs`) — mirroring
+                // how Rust uses `AspectConsumeDynamic` on a `dyn Value`.
                 let call_code = CodeDynamic {
                     loc,
                     type_: CodeDynamicType::Call(CodeDynamicCall {
@@ -293,7 +292,7 @@ impl AspectField for TypeCodeValueExternDynamic {
                     code: Code { loc, code: Code_::Dyn(Rc::new(call_code)) },
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
-                        type_: Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic),
+                        type_: Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic),
                     }),
                 });
             }
@@ -310,7 +309,7 @@ impl AspectField for TypeCodeValueExternDynamic {
         };
         match s.as_str() {
             "code" => Some(Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic)),
-            "value" => Some(Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic)),
+            "value" => Some(Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)),
             _ => None,
         }
     }
