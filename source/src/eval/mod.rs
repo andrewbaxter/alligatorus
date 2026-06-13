@@ -236,6 +236,15 @@ pub(crate) const DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID: ScopeEntryId = ScopeEntryI
 /// the builtin `scope_entry` interface.
 pub(crate) const DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__data_instance_to_value` — parallel to
+/// `__data_instance_to_type` but produces a `v8::External` wrapping
+/// `Rc<dyn Value>` (a `ValueUserDefined`) instead of a Type. Used by
+/// `TypeSourceDataTypeDynamic::cast_to` when the destination interface is
+/// the builtin `value` interface — so the downstream Rust dispatch can call
+/// the user's `value.type` impl at v8 to recover the value's source-language
+/// type for further `aspect_field` / `aspect_function` routing.
+pub(crate) const DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 pub(crate) trait Target {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
@@ -2840,6 +2849,49 @@ fn eval(
                         .cast(),
                     data_instance_to_scope_entry_fn.into(),
                 );
+            // `__data_instance_to_value(type_template, instance)` — parallel
+            // to `__data_instance_to_type`, but returns a `v8::External`
+            // wrapping `Rc<dyn Value>` built from a `ValueUserDefined`
+            // holding the v8 instance handle. `ValueUserDefined::type_()`
+            // later invokes `value.type` (`_im_v0`) on this instance to
+            // recover its source-language type.
+            fn data_instance_to_value_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let _template_type: Rc<dyn Type> =
+                    from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
+                let instance = v8::Local::<v8::Object>::try_from(args.get(1))
+                    .expect("__data_instance_to_value: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let value: Rc<dyn crate::langhelp::Value> = Rc::new(
+                    crate::eval::value::value_user_defined::dynamic::ValueUserDefined {
+                        bundle: Rc::new(crate::eval::isolate_bundle::IsolateBundle {
+                            instance: instance_global,
+                        }),
+                    },
+                );
+                let ext = rc_value_to_v8(scope, value);
+                rv.set(ext.into());
+            }
+            let data_instance_to_value_fn =
+                v8::Function::builder(data_instance_to_value_callback)
+                    .build(dynamic_scope)
+                    .unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(
+                        dynamic_scope,
+                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID),
+                    )
+                        .unwrap()
+                        .cast(),
+                    data_instance_to_value_fn.into(),
+                );
             cix.builtins_registered.set(true);
         }
     }
@@ -3028,6 +3080,18 @@ pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn crate::langhel
 pub(crate) fn rc_scope_entry_to_v8<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::langhelp::ScopeEntry>) -> v8::Local<'s, v8::External> {
+    to_v8(scope, value)
+}
+
+/// Extract a clone of `Rc<dyn Value>` from a `v8::External`.
+pub(crate) fn rc_value_from_v8(value: &v8::Value) -> Rc<dyn crate::langhelp::Value> {
+    from_v8_ref::<Rc<dyn crate::langhelp::Value>>(value).clone()
+}
+
+/// Store an `Rc<dyn Value>` as a `v8::External`.
+pub(crate) fn rc_value_to_v8<
+    's,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::langhelp::Value>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
