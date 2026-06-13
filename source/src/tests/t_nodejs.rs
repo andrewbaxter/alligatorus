@@ -95,7 +95,12 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(mb.call(mb.field(mb.scope_use("nvalue"), mb.str("set_underlying")), mb.record(vec![
         //. .
         ("base", mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
-        ("type", mb.scope_use("type")),
+        // `type` field stores the value's source-language type as `any`
+        // (= `Rc<dyn Type>` at runtime). This makes `nvalue.new({type: T})`
+        // accept any type-bearing value `T` uniformly — both concrete
+        // ntype_object instances (via `TypeAnyDynamic::cast_from`) and
+        // already-`any`-typed types like an `nscope_entry`'s stored type.
+        ("type", mb.scope_use("any")),
     ])));
     exprs.push(
         impl_iface(mb, "nvalue", "value", vec![("type", mb.field(mb.scope_use("self"), mb.str("type")))]),
@@ -267,15 +272,38 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.call(
             mb.field(mb.scope_use("nscope_entry"), mb.str("set_underlying")),
-            mb.record(vec![("value", mb.field(mb.scope_use("nvalue"), mb.str("type")))]),
+            mb.record(vec![
+                ("name", mb.scope_use("string")),
+                ("type", mb.scope_use("any")),
+            ]),
         ),
     );
+    // `use_` constructs a fresh `nvalue` at v8 time, with `base =
+    // nvalue_binding(self.name)` and `type = self.type` — both drawn from
+    // the entry's underlying. The new nvalue's value-interface return then
+    // lands in Rust as a `ValueUserDefined` (since `scope_entry.use_`'s
+    // ret_type is `TypeValueDynamic`).
     exprs.push(
         impl_iface(
             mb,
             "nscope_entry",
             "scope_entry",
-            vec![("use_", mb.field(mb.scope_use("self"), mb.str("value")))],
+            vec![(
+                "use_",
+                mb.call(
+                    mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
+                    mb.record(vec![
+                        (
+                            "base",
+                            mb.call(
+                                mb.lower(mb.scope_use("nvalue_binding")),
+                                mb.field(mb.scope_use("self"), mb.str("name")),
+                            ),
+                        ),
+                        ("type", mb.field(mb.scope_use("self"), mb.str("type"))),
+                    ]),
+                ),
+            )],
         ),
     );
 
@@ -457,26 +485,18 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                         ),
                     ),
                 ),
-                // Build the `console` nvalue: a `binding("console")` typed as `ntype_console`.
-                mb.bind(
-                    "console_val",
-                    mb.call(
-                        mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
-                        mb.record(
-                            vec![
-                                ("base", mb.call(mb.lower(mb.scope_use("nvalue_binding")), mb.str("console"))),
-                                ("type", mb.scope_use("ntype_console")),
-                            ],
-                        ),
-                    ),
-                ),
-                // Wrap the nvalue in an `nscope_entry` so the scope record is keyed by names →
-                // scope entries (mirroring the Rust ScopeEntry trait).
+                // Wrap the `console` binding name + type as an `nscope_entry`; the
+                // entry's `use_` constructs the actual nvalue (with
+                // `base = nvalue_binding(name)`, `type = type`) at v8 time when
+                // `console` is resolved from scope.
                 mb.bind(
                     "console_entry",
                     mb.call(
                         mb.lower(mb.field(mb.scope_use("nscope_entry"), mb.str("new"))),
-                        mb.record(vec![("value", mb.scope_use("console_val"))]),
+                        mb.record(vec![
+                            ("name", mb.str("console")),
+                            ("type", mb.scope_use("ntype_console")),
+                        ]),
                     ),
                 ),
                 // const_eval the staged root with an ntarget + a scope containing `console`.
