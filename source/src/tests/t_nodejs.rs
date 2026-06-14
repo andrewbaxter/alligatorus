@@ -956,7 +956,7 @@ fn impl_as_self_type(
     aspect_dispatch: SourceExpr,
 ) -> Vec<SourceExpr> {
     return vec![
-        impl_iface(mb, target_var, "value", vec![("type", mb.scope_use("self"))]),
+        impl_iface(mb, target_var, "value", vec![("type", mb.scope_use("outer_self"))]),
         impl_iface(
             mb,
             target_var,

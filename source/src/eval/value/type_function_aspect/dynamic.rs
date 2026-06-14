@@ -100,12 +100,19 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
 
-        // Pull the iface ref out of `key` for compile-time typing of the
-        // result. Done by invariant downcast — `aspect()` is only meaningful
-        // when key's source type provides `AspectAspect`, and the only
-        // current provider is `TypeSourceInterfaceDynamic` whose values are
-        // `Rc<SourceInterfaceRef>`.
-        let key_type = key.value.type_(xx, loc);
+        // Pull the iface ref out of `key`. Type-of-types values are now
+        // carried as `ValueAnyConst { inner: Rc<dyn Type> }` typed as
+        // `TypeAnyConst`, so `AspectAspect` lives on the inner type rather
+        // than on `key.value.type_()` directly. Extract the inner via
+        // `AspectType`, then look up `AspectAspect` on it. (The `AspectAspect`
+        // methods on `TypeSourceInterfaceConst` ignore the value arg — they
+        // read from the type's own data — so passing the inner type's own
+        // `as_value()` is fine.)
+        let key_meta = key.value.type_(xx, loc);
+        let key_type = match crate::builtin::aspect_type_get_maybe(xx, key_meta.as_ref()) {
+            Some(at) => at.type_(key.value.as_ref()),
+            None => key_meta.clone(),
+        };
         let aspect_aspect = match crate::builtin::aspect_aspect_get_maybe(xx, key_type.as_ref()) {
             Some(a) => a,
             None => return EvalRes::err(
@@ -116,8 +123,9 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 ),
             ),
         };
-        let unique = aspect_aspect.get_unique(key.value.as_ref());
-        let iface_data = aspect_aspect.get_iface_data(key.value.as_ref());
+        let key_as_value = key_type.as_value();
+        let unique = aspect_aspect.get_unique(key_as_value.as_ref());
+        let iface_data = aspect_aspect.get_iface_data(key_as_value.as_ref());
         let iface_ref = Rc::new(
             crate::eval::value::type_source_interface::SourceInterfaceRef { data: iface_data },
         );
