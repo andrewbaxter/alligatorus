@@ -296,7 +296,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.call(
             mb.field(mb.scope_use("ntype_object"), mb.str("set_underlying")),
-            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("type")])),
+            // Stored values are type refs (`Rc<dyn Type>` at runtime = `any`).
+            // Using `type` (the iface) would mismatch — that iface's runtime
+            // form is `Rc<SourceInterfaceRef>`, not `Rc<dyn Type>`. Per the
+            // invariant that each type has a single representation,
+            // type-of-types values must be typed `any` to ride the right
+            // runtime shape.
+            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("any")])),
         ),
     );
     exprs.extend(

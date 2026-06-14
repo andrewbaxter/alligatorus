@@ -3644,7 +3644,12 @@ pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> St
         CodeDynamicType::SubscriptUse(s) => {
             let base = render_code(lines, &s.base);
             let key = render_code(lines, &s.key);
-            lines.push(code.loc, format!("{} = {}[{}];", out, base, key));
+            // Map storage uses canonical-JSON keys (`NewMap` and `cast_from`
+            // emit the key as `serde_json::to_string(&canonical)` — so a
+            // source-level string `"log"` becomes the 4-char JS key `"log"`
+            // including literal quotes). Match that at lookup time by
+            // canonicalizing the runtime key with `JSON.stringify`.
+            lines.push(code.loc, format!("{} = {}[JSON.stringify({})];", out, base, key));
         },
         CodeDynamicType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);
