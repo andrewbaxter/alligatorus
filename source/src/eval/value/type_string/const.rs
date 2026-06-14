@@ -45,7 +45,6 @@ use {
     },
 };
 
-generate_builtin_artifact_type!(TypeStringConst, super::artifact::ArtifactDataString);
 pub(crate) struct TypeStringConst;
 
 impl Aspect for TypeStringConst { }

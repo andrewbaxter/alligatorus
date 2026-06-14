@@ -1,7 +1,7 @@
 //! `TypeAnyTargetDynamic` — the v8/dynamic representation of a value impl'ing
 //! the builtin `target` interface. Parallels `TypeAnyDynamic` for `Rc<dyn Type>`:
-//! a `v8::External` wrapping an `Rc<dyn Target>`. Used as the mortar type of
-//! the `DynamicWrap` impl for `Rc<dyn Target>`.
+//! a `v8::External` wrapping an `Rc<dyn crate::r#gen::Target>`. Used as the mortar type of
+//! the `DynamicWrap` impl for `Rc<dyn crate::r#gen::Target>`.
 
 use crate::r#gen::ScopeEntry;
 use {

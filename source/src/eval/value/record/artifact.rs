@@ -33,7 +33,6 @@ pub(crate) struct ArtifactRecordType {
     pub fields: BTreeMap<ConstKey, Artifact>,
 }
 
-generate_builtin_artifact!(TypeRecordArtifact, serde_json::Value);
 pub(crate) struct TypeRecordArtifact;
 
 pub(crate) struct Deserializer;

@@ -239,7 +239,6 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
     }
 }
 
-generate_builtin_artifact_type!(TypeSourceTaggedUnionRefDynamic, serde_json::Value);
 
 impl Value for TypeSourceTaggedUnionRefDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

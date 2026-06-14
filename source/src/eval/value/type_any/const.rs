@@ -266,7 +266,6 @@ impl Type for TypeAnyConst {
     }
 }
 
-generate_builtin_artifact_type!(TypeAnyConst, serde_json::Value);
 
 impl Value for TypeAnyConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

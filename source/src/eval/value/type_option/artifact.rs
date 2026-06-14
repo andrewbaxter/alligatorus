@@ -29,7 +29,6 @@ pub(crate) struct ArtifactOptionType {
     pub element_type: Artifact,
 }
 
-generate_builtin_artifact!(TypeOptionArtifact, serde_json::Value);
 pub(crate) struct TypeOptionArtifact;
 
 pub(crate) struct Deserializer;

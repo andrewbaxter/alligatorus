@@ -436,6 +436,252 @@ fn generate_local_identities(items: &[(&'static str, usize)]) -> TokenStream {
     quote! { #(#fns)* }
 }
 
+/// Builtin artifact specs — one per artifact-implementing type. Each entry
+/// generates a `pub(crate) fn <name>_artifact_id() -> ArtifactIdBuiltin` and,
+/// when `type_path` is set, an `impl` block on the named type with
+/// `artifact_id()`, `build_artifact(data)`, `build_type_artifact()` and
+/// (when `register` is true) a `register(m)` method. Replaces the
+/// `generate_builtin_artifact!` / `_type!` macros.
+struct ArtifactSpec {
+    /// snake_case slug used in the generated `<name>_artifact_id` function
+    /// name. Doubles as the human label in the duplicate-id check.
+    name: &'static str,
+    id: usize,
+    /// Absolute path of the type that gets the `impl` block. `None` for
+    /// free-standing ids (e.g. `defset` — used by a hand-written wrapper
+    /// function rather than via the `Self::artifact_id()` pattern).
+    type_path: Option<&'static str>,
+    /// Absolute path of the data type for `build_artifact(data: <data_type>)`.
+    /// Only meaningful when `type_path` is `Some`.
+    data_type: Option<&'static str>,
+    /// When true, also generate the `register(m)` method (the `_type!` macro's
+    /// extra body).
+    register: bool,
+}
+
+fn artifact_ids() -> Vec<ArtifactSpec> {
+    vec![
+        // Free-standing id used by `definition_set::defset_artifact_identity()`.
+        ArtifactSpec {
+            name: "defset",
+            id: 7001,
+            type_path: None,
+            data_type: None,
+            register: false,
+        },
+        // _ artifact-only types (no `register`, no `_type` variant) _
+        ArtifactSpec {
+            name: "type_record_artifact",
+            id: 7002,
+            type_path: Some("crate::eval::value::record::artifact::TypeRecordArtifact"),
+            data_type: Some("serde_json::Value"),
+            register: false,
+        },
+        ArtifactSpec {
+            name: "type_tuple_artifact",
+            id: 7003,
+            type_path: Some("crate::eval::value::tuple::artifact::TypeTupleArtifact"),
+            data_type: Some("serde_json::Value"),
+            register: false,
+        },
+        ArtifactSpec {
+            name: "type_map_artifact",
+            id: 7004,
+            type_path: Some("crate::eval::value::type_map::artifact::TypeMapArtifact"),
+            data_type: Some("serde_json::Value"),
+            register: false,
+        },
+        ArtifactSpec {
+            name: "type_option_artifact",
+            id: 7005,
+            type_path: Some("crate::eval::value::type_option::artifact::TypeOptionArtifact"),
+            data_type: Some("serde_json::Value"),
+            register: false,
+        },
+        ArtifactSpec {
+            name: "type_source_interface_const_artifact",
+            id: 7006,
+            type_path: Some(
+                "crate::eval::value::type_source_interface::artifact::TypeSourceInterfaceConstArtifact",
+            ),
+            data_type: Some(
+                "crate::eval::value::type_source_interface::BuiltinInterfaceKind",
+            ),
+            register: false,
+        },
+        // _ artifact-type types (with `register`) _
+        ArtifactSpec {
+            name: "type_type_source_data_type_constructor_dynamic",
+            id: 7007,
+            type_path: Some(
+                "crate::eval::value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic",
+            ),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_code_value_extern_dynamic",
+            id: 7008,
+            type_path: Some("crate::eval::code_value_extern::TypeCodeValueExternDynamic"),
+            data_type: Some("()"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_type_source_data_type_dynamic",
+            id: 7009,
+            type_path: Some(
+                "crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic",
+            ),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_null_const",
+            id: 7010,
+            type_path: Some("crate::eval::value::type_null::r#const::TypeNullConst"),
+            data_type: Some("crate::eval::value::type_null::artifact::ArtifactDataNull"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_any_const",
+            id: 7011,
+            type_path: Some("crate::eval::value::type_any::r#const::TypeAnyConst"),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_string_const",
+            id: 7012,
+            type_path: Some("crate::eval::value::type_string::r#const::TypeStringConst"),
+            data_type: Some(
+                "crate::eval::value::type_string::artifact::ArtifactDataString",
+            ),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_null_dynamic",
+            id: 7013,
+            type_path: Some("crate::eval::value::type_null::dynamic::TypeNullDynamic"),
+            data_type: Some("crate::eval::value::type_null::artifact::ArtifactDataNull"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_source_tagged_union_ref_dynamic",
+            id: 7014,
+            type_path: Some(
+                "crate::eval::value::type_source_tagged_union::dynamic::TypeSourceTaggedUnionRefDynamic",
+            ),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_source_data_type_ref_dynamic",
+            id: 7015,
+            type_path: Some(
+                "crate::eval::value::type_source_data_type::dynamic::TypeSourceDataTypeRefDynamic",
+            ),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_number_const",
+            id: 7016,
+            type_path: Some("crate::eval::value::type_number::r#const::TypeNumberConst"),
+            data_type: Some("f64"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_type_source_function_dynamic",
+            id: 7017,
+            type_path: Some(
+                "crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic",
+            ),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_expr",
+            id: 7018,
+            type_path: Some("crate::eval::value::type_expr::TypeExpr"),
+            data_type: Some("serde_json::Value"),
+            register: true,
+        },
+        ArtifactSpec {
+            name: "type_string_dynamic",
+            id: 7019,
+            type_path: Some("crate::eval::value::type_string::dynamic::TypeStringDynamic"),
+            data_type: Some(
+                "crate::eval::value::type_string::artifact::ArtifactDataString",
+            ),
+            register: true,
+        },
+    ]
+}
+
+fn generate_artifact_ids(items: &[ArtifactSpec]) -> TokenStream {
+    let pieces: Vec<TokenStream> = items
+        .iter()
+        .map(|s| {
+            let id_fn = format_ident!("{}_artifact_id", s.name);
+            let id = s.id;
+            let id_decl = quote! {
+                #[allow(dead_code)]
+                pub(crate) fn #id_fn() -> crate::langhelp::ArtifactIdBuiltin {
+                    crate::langhelp::ArtifactIdBuiltin(#id)
+                }
+            };
+            let impl_block = match (s.type_path, s.data_type) {
+                (Some(tp), Some(dt)) => {
+                    let type_path: TokenStream = tp.parse().unwrap();
+                    let data_type: TokenStream = dt.parse().unwrap();
+                    let register = if s.register {
+                        quote! {
+                            #[allow(dead_code)]
+                            pub(crate) fn register(
+                                m:
+                                    &mut std::collections::HashMap<
+                                        crate::langhelp::ArtifactIdBuiltin,
+                                        std::rc::Rc<dyn crate::langhelp::Type>,
+                                    >,
+                            ) {
+                                m.insert(Self::artifact_id(), std::rc::Rc::new(Self));
+                            }
+                        }
+                    } else {
+                        quote! {}
+                    };
+                    quote! {
+                        impl #type_path {
+                            #[allow(dead_code)]
+                            pub(crate) fn artifact_id() -> crate::langhelp::ArtifactIdBuiltin {
+                                #id_fn()
+                            }
+                            #[allow(dead_code)]
+                            pub(crate) fn build_artifact(data: #data_type) -> crate::langhelp::Artifact {
+                                crate::langhelp::Artifact {
+                                    type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
+                                    data: serde_json::to_value(data).unwrap(),
+                                }
+                            }
+                            #[allow(dead_code)]
+                            pub(crate) fn build_type_artifact() -> crate::langhelp::Artifact {
+                                crate::langhelp::Artifact {
+                                    type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
+                                    data: serde_json::Value::Null,
+                                }
+                            }
+                            #register
+                        }
+                    }
+                }
+                _ => quote! {},
+            };
+            quote! { #id_decl #impl_block }
+        })
+        .collect();
+    quote! { #(#pieces)* }
+}
+
 /// Global id-uniqueness check across every spec category. Each id appears
 /// in exactly one place; collisions would silently make two distinct
 /// `Unique::Builtin(N)`s look equal (or two distinct
@@ -449,6 +695,7 @@ fn check_no_duplicate_ids(
     dw_wraps: &[DynWrapWrapSpec],
     dw_fns: &[DynWrapFnSpec],
     locals: &[(&'static str, usize)],
+    artifacts: &[ArtifactSpec],
 ) {
     let mut seen = std::collections::HashMap::<usize, String>::new();
     let mut all: Vec<(usize, String)> = Vec::new();
@@ -469,6 +716,7 @@ fn check_no_duplicate_ids(
     for s in dw_wraps { all.push((s.id, format!("dyn_wrap_wrap:{}", s.name))); }
     for s in dw_fns { all.push((s.id, format!("dyn_wrap_fn:{}", s.name))); }
     for (name, id) in locals { all.push((*id, format!("local:{}", name))); }
+    for a in artifacts { all.push((a.id, format!("artifact:{}", a.name))); }
     for (id, label) in all {
         if let Some(existing) = seen.insert(id, label.clone()) {
             panic!("duplicate spec id {}: '{}' vs '{}'", id, existing, label);
@@ -1477,7 +1725,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
                 self_: crate::langhelp::CodeValue,
                 key: crate::langhelp::CodeValue,
             ) -> crate::langhelp::EvalRes {
-                er_seq_cv!(loc, erb, {
+                crate::er_seq_cv!(loc, erb, {
                     let key_type = key.value.type_(xx, loc);
                     let key_string = erb
                         .must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
@@ -1823,7 +2071,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
                 self_: crate::langhelp::CodeValue,
                 key: crate::langhelp::CodeValue,
             ) -> crate::langhelp::EvalRes {
-                er_seq_cv!(loc, erb, {
+                crate::er_seq_cv!(loc, erb, {
                     let key_type = key.value.type_(xx, loc);
                     let key_string = erb
                         .must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
@@ -2237,7 +2485,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
             name: "new_expr_context",
             id: 5009,
             args: vec![
-                ("target_arg", "Rc<dyn Target>"),
+                ("target_arg", "Rc<dyn crate::r#gen::Target>"),
                 ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::ScopeEntry>>"),
             ],
             ret: "crate::eval::code_value_extern::ExprContextRef",
@@ -2813,21 +3061,18 @@ fn main() {
     let dw_wraps = dyn_wrap_wraps();
     let dw_fns = dyn_wrap_fns();
     let locals = local_identities();
+    let artifacts = artifact_ids();
     check_no_duplicates(&ifaces);
     check_no_duplicate_aspects(&aspects);
-    check_no_duplicate_ids(&ifaces, &aspects, &dw_structs, &dw_wraps, &dw_fns, &locals);
+    check_no_duplicate_ids(&ifaces, &aspects, &dw_structs, &dw_wraps, &dw_fns, &locals, &artifacts);
     let iface_tokens = generate(&ifaces);
     let aspect_tokens = generate_aspects(&aspects);
     let local_tokens = generate_local_identities(&locals);
-    let fmt = |toks: TokenStream| -> String {
-        match genemichaels_lib::format_str(
-            &toks.to_string(),
-            &genemichaels_lib::FormatConfig::default(),
-        ) {
-            Ok(out) => out.rendered,
-            Err(_) => toks.to_string(),
-        }
-    };
+    let artifact_tokens = generate_artifact_ids(&artifacts);
+    // Skip genemichaels formatting — on a ~270KB / ~6000-line tokenstream it
+    // takes >10 min to format. rustc doesn't care about formatting, and the
+    // user only reads gen.rs when debugging (where they can format on demand).
+    let fmt = |toks: TokenStream| -> String { toks.to_string() };
     // Single-file output: every generated item collected into one
     // `$OUT_DIR/gen.rs`, included from `src/gen.rs` as the `crate::r#gen`
     // module. A narrow `use` prelude up front pulls in just the identifiers
@@ -2836,6 +3081,7 @@ fn main() {
     let mut all = TokenStream::new();
     all.extend(gen_prelude());
     all.extend(local_tokens);
+    all.extend(artifact_tokens);
     all.extend(aspect_tokens);
     all.extend(iface_tokens);
     for s in &dw_structs {

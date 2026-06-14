@@ -106,12 +106,9 @@ pub(crate) enum ArtifactId {
     Source(ArtifactIdSource),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct ArtifactIdBuiltin {
-    pub file: String,
-    pub line: usize,
-}
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+#[serde(transparent)]
+pub(crate) struct ArtifactIdBuiltin(pub usize);
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]

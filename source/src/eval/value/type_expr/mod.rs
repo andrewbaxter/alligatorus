@@ -210,7 +210,6 @@ impl Type for TypeExpr {
     }
 }
 
-generate_builtin_artifact_type!(TypeExpr, serde_json::Value);
 
 pub(crate) struct DeserializerTypeExpr;
 

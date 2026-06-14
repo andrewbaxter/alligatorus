@@ -62,7 +62,6 @@ use {
     },
 };
 
-generate_builtin_artifact_type!(TypeNullDynamic, super::artifact::ArtifactDataNull);
 pub(crate) struct TypeNullDynamic;
 
 impl Aspect for TypeNullDynamic { }

@@ -29,7 +29,6 @@ pub(crate) struct ArtifactTupleType {
     pub elements: Vec<Artifact>,
 }
 
-generate_builtin_artifact!(TypeTupleArtifact, serde_json::Value);
 pub(crate) struct TypeTupleArtifact;
 
 pub(crate) struct Deserializer;

@@ -270,10 +270,7 @@ e0;"#]);
         "arg_type": {
           "data": null,
           "type_": {
-            "builtin": {
-              "file": "src/eval/value/type_null/dynamic.rs",
-              "line": 65
-            }
+            "builtin": 7013
           }
         },
         "compiled_js": "var d0_0_0;\n{\nd0_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
@@ -283,10 +280,7 @@ e0;"#]);
         "ret_type": {
           "data": null,
           "type_": {
-            "builtin": {
-              "file": "src/eval/value/type_string/dynamic.rs",
-              "line": 79
-            }
+            "builtin": 7019
           }
         }
       }
@@ -295,18 +289,12 @@ e0;"#]);
     "underlying_type": {
       "data": null,
       "type_": {
-        "builtin": {
-          "file": "src/eval/value/type_string/dynamic.rs",
-          "line": 79
-        }
+        "builtin": 7019
       }
     }
   },
   "type_": {
-    "builtin": {
-      "file": "src/eval/value/type_type_source_data_type/dynamic.rs",
-      "line": 55
-    }
+    "builtin": 7009
   }
 }"#,
             r#"{
@@ -327,10 +315,7 @@ e0;"#]);
     "source_id": 1
   },
   "type_": {
-    "builtin": {
-      "file": "src/eval/definition_set.rs",
-      "line": 279
-    }
+    "builtin": 7001
   }
 }"#
         ]

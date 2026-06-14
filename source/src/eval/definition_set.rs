@@ -196,7 +196,7 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
 }
 
 pub(crate) fn defset_artifact_identity() -> crate::langhelp::ArtifactIdBuiltin {
-    builtin_artifact_id!()
+    crate::r#gen::defset_artifact_id()
 }
 
 pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
@@ -516,7 +516,7 @@ pub(crate) fn load_def_set(
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
                 let builtin_ifaces =
-                    crate::eval::r#gen::gen_build_builtin_interfaces(import_id);
+                    crate::r#gen::gen_build_builtin_interfaces(import_id);
                 let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
                     dt_serial.interface_impls.iter().map(|impl_serial| {
                         let iface = match impl_serial.builtin_kind {
@@ -843,8 +843,10 @@ impl crate::builtin::AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = crate::eval::from_v8_ref::<Rc<Gc<DefinitionSet>>>(&*ext).as_ref().clone();
         ds.finish()?;
-        Ok(Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst {
-            set: ds,
-        }))
+        let exports_type: Rc<dyn crate::langhelp::Type> =
+            Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                set: ds,
+            });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: exports_type }))
     }
 }

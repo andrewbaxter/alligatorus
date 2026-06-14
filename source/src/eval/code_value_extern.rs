@@ -305,7 +305,6 @@ impl AspectField for TypeCodeValueExternDynamic {
     }
 }
 
-generate_builtin_artifact_type!(TypeCodeValueExternDynamic, ());
 
 pub(crate) struct DeserializerCodeValueExtern;
 

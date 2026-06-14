@@ -219,7 +219,6 @@ impl Value for TypeSourceFunctionDynamic {
     }
 }
 
-generate_builtin_artifact_type!(TypeTypeSourceFunctionDynamic, serde_json::Value);
 pub(crate) struct TypeTypeSourceFunctionDynamic;
 
 impl Aspect for TypeTypeSourceFunctionDynamic { }

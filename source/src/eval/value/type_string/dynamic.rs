@@ -76,7 +76,6 @@ use {
     },
 };
 
-generate_builtin_artifact_type!(TypeStringDynamic, super::artifact::ArtifactDataString);
 pub(crate) struct TypeStringDynamic;
 
 impl Aspect for TypeStringDynamic { }

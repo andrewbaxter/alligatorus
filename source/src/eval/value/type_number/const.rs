@@ -47,7 +47,6 @@ use {
     },
 };
 
-generate_builtin_artifact_type!(TypeNumberConst, f64);
 pub(crate) struct TypeNumberConst;
 
 impl Aspect for TypeNumberConst { }

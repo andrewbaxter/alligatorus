@@ -25,7 +25,6 @@ use {
     },
 };
 
-generate_builtin_artifact!(TypeSourceInterfaceConstArtifact, BuiltinInterfaceKind);
 pub(crate) struct TypeSourceInterfaceConstArtifact;
 
 pub(crate) struct Deserializer;
@@ -33,7 +32,7 @@ pub(crate) struct Deserializer;
 impl Deserializer {
     fn lookup(xx: &ExprContext, kind: BuiltinInterfaceKind) -> Rc<dyn Type> {
         let ifaces =
-            crate::eval::r#gen::gen_build_builtin_interfaces(xx.import_state.get());
+            crate::r#gen::gen_build_builtin_interfaces(xx.import_state.get());
         let data = match kind {
             BuiltinInterfaceKind::Value => ifaces.value,
             BuiltinInterfaceKind::Type => ifaces.type_,

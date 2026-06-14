@@ -52,7 +52,6 @@ use {
     },
 };
 
-generate_builtin_artifact_type!(TypeTypeSourceDataTypeDynamic, serde_json::Value);
 pub(crate) struct TypeTypeSourceDataTypeDynamic;
 
 impl Aspect for TypeTypeSourceDataTypeDynamic { }

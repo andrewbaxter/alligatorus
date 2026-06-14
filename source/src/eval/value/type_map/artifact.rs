@@ -30,7 +30,6 @@ pub(crate) struct ArtifactMapType {
     pub value_type: Artifact,
 }
 
-generate_builtin_artifact!(TypeMapArtifact, serde_json::Value);
 pub(crate) struct TypeMapArtifact;
 
 pub(crate) struct Deserializer;

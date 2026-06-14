@@ -235,7 +235,6 @@ impl Type for TypeSourceDataTypeRefDynamic {
     }
 }
 
-generate_builtin_artifact_type!(TypeSourceDataTypeRefDynamic, serde_json::Value);
 
 impl Value for TypeSourceDataTypeRefDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

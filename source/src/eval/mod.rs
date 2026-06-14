@@ -250,7 +250,7 @@ pub(crate) const DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId:
 
 /// Well-known scope entry ID for `__data_instance_to_target` — parallel to
 /// `__data_instance_to_type` but produces a `v8::External` wrapping
-/// `Rc<dyn Target>` (a `UserDefinedTarget`) instead of a Type. Used by
+/// `Rc<dyn crate::r#gen::Target>` (a `UserDefinedTarget`) instead of a Type. Used by
 /// `TypeSourceDataTypeDynamic::cast_to` when the destination interface is
 /// the builtin `target` interface.
 pub(crate) const DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
@@ -1035,8 +1035,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
 
 /// EvalResBuilder
 pub(crate) struct Erb {
-    errors: Vec<ExprErr>,
-    loc: QExprId,
+    pub(crate) errors: Vec<ExprErr>,
+    pub(crate) loc: QExprId,
 }
 
 impl Erb {
@@ -1148,7 +1148,7 @@ fn eval(
     }
     let _v8_refs_guard = V8RefsGuard(&ex);
     let root_loc = expr.loc;
-    let target: Rc<dyn Target> = Rc::new(TargetDynamic);
+    let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
     let scope = Rc::new(Scope {
         values: RefCell::new(HashMap::new()),
         parent: None,
@@ -1174,7 +1174,7 @@ fn eval(
     // single throwaway DefinitionSet that is never compiled or serialized.
     {
         use value::type_source_interface::SourceInterfaceRef;
-        let builtin_ifaces = r#gen::gen_build_builtin_interfaces(import_state);
+        let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_state);
         let iface_dyn_type: Rc<dyn Type> =
             Rc::new(value::type_source_interface::dynamic::TypeSourceInterfaceDynamic);
         for (name, data) in
@@ -2451,7 +2451,7 @@ fn eval(
                     values: RefCell::new(HashMap::new()),
                     parent: None,
                 }),
-                target: Rc::new(TargetDynamic) as Rc<dyn Target>,
+                target: Rc::new(TargetDynamic) as Rc<dyn crate::r#gen::Target>,
             });
             let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
             let value_type = inner_value.type_(&xx, loc);
@@ -2509,7 +2509,7 @@ fn eval(
             // matching static singleton, etc.
             let value: Rc<dyn crate::langhelp::Value> = rc_value_from_v8(&*args.get(0));
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
+            let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
                 import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
@@ -2557,7 +2557,7 @@ fn eval(
             let unique: crate::langhelp::Unique =
                 from_v8_ref::<crate::langhelp::Unique>(&*arg1).clone();
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
+            let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
                 import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
@@ -2958,7 +2958,7 @@ fn eval(
                 );
             // `__data_instance_to_target(type_template, instance)` — parallel to
             // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn Target>` built from a `UserDefinedTarget` adapter.
+            // `Rc<dyn crate::r#gen::Target>` built from a `UserDefinedTarget` adapter.
             fn data_instance_to_target_callback<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 args: v8::FunctionCallbackArguments<'s>,
@@ -2969,7 +2969,7 @@ fn eval(
                 let instance = v8::Local::<v8::Object>::try_from(args.get(1))
                     .expect("__data_instance_to_target: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let target: Rc<dyn Target> = Rc::new(
+                let target: Rc<dyn crate::r#gen::Target> = Rc::new(
                     crate::eval::user_defined_scope_dispatch::UserDefinedTarget {
                         instance: instance_global,
                     },
@@ -3390,15 +3390,15 @@ pub(crate) fn rc_value_to_v8<
     to_v8(scope, value)
 }
 
-/// Extract a clone of `Rc<dyn Target>` from a `v8::External`.
-pub(crate) fn rc_target_from_v8(value: &v8::Value) -> Rc<dyn Target> {
-    from_v8_ref::<Rc<dyn Target>>(value).clone()
+/// Extract a clone of `Rc<dyn crate::r#gen::Target>` from a `v8::External`.
+pub(crate) fn rc_target_from_v8(value: &v8::Value) -> Rc<dyn crate::r#gen::Target> {
+    from_v8_ref::<Rc<dyn crate::r#gen::Target>>(value).clone()
 }
 
-/// Store an `Rc<dyn Target>` as a `v8::External`.
+/// Store an `Rc<dyn crate::r#gen::Target>` as a `v8::External`.
 pub(crate) fn rc_target_to_v8<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Target>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::r#gen::Target>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
@@ -3657,7 +3657,7 @@ pub(crate) struct StageLiftCell {
     pub loc: QExprId,
     pub source_type: Rc<dyn Type>,
     pub scope: Rc<Scope>,
-    pub target: Rc<dyn Target>,
+    pub target: Rc<dyn crate::r#gen::Target>,
     pub vx: Rc<EvalContext>,
 }
 
@@ -3667,7 +3667,7 @@ pub(crate) struct TargetBindSub {
 }
 pub(crate) struct TargetDynamic;
 
-impl Target for TargetDynamic {
+impl crate::r#gen::Target for TargetDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
         let js =
             sub
