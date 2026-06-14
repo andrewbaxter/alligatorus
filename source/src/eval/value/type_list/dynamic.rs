@@ -118,16 +118,16 @@ impl AspectField for TypeListDynamic {
         };
         let key_name = key_string.get(key.value.as_ref());
         if key_name == "new" {
+            let new_type: Rc<dyn Type> =
+                Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() });
             return EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(
-                    ValueEmptyConst {
-                        type_: Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() }),
-                    },
-                ),
+                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                    inner: new_type,
+                }),
             });
         }
 
@@ -407,6 +407,6 @@ impl Type for TypeListNewDynamic {
 
 impl Value for TypeListNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(self.clone())
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

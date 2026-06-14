@@ -121,21 +121,21 @@ impl AspectField for TypeOptionDynamic {
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
         let key_name = key_string.get(key.value.as_ref());
+        let make = |is_some: bool| -> EvalRes {
+            let var_type: Rc<dyn Type> = Rc::new(TypeOptionVariantConstructorDynamic {
+                element_type: self.element_type.clone(),
+                is_some,
+            });
+            EvalRes::ok(CodeValue {
+                code: Code { loc, code: Code_::None },
+                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                    inner: var_type,
+                }),
+            })
+        };
         match key_name.as_str() {
-            "some" => EvalRes::ok(CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: Rc::new(TypeOptionVariantConstructorDynamic {
-                    element_type: self.element_type.clone(),
-                    is_some: true,
-                }),
-            }),
-            "none" => EvalRes::ok(CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: Rc::new(TypeOptionVariantConstructorDynamic {
-                    element_type: self.element_type.clone(),
-                    is_some: false,
-                }),
-            }),
+            "some" => make(true),
+            "none" => make(false),
             _ => EvalRes::err(loc, format!("Field '{}' not found on option", key_name)),
         }
     }
@@ -363,6 +363,6 @@ impl Type for TypeOptionVariantConstructorDynamic {
 
 impl Value for TypeOptionVariantConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(self.clone())
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

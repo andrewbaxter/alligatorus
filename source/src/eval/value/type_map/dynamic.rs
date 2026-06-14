@@ -121,15 +121,18 @@ impl AspectField for TypeMapDynamic {
         };
         let key_name = key_string.get(key.value.as_ref());
         if key_name == "new" {
+            let new_type: Rc<dyn Type> = Rc::new(TypeMapNewDynamic {
+                key_type: self.key_type.clone(),
+                value_type: self.value_type.clone(),
+            });
             return EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapNewDynamic {
-                    key_type: self.key_type.clone(),
-                    value_type: self.value_type.clone(),
-                }) }),
+                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                    inner: new_type,
+                }),
             });
         }
 
@@ -600,7 +603,7 @@ impl Type for TypeMapNewDynamic {
 
 impl Value for TypeMapNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(self.clone())
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
