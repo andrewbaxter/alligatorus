@@ -79,9 +79,9 @@ pub(crate) fn bind_via_target(
             errors: Some(errs),
         },
         Ok(Some(sub)) => {
-            let r = xx.target.bind(xx, loc, sub);
-            EResult::ok((r.code, Box::new(ScopeEntryDynamicBinding {
-                dynamic_key: r.id,
+            let (code, js_key) = xx.target.bind(xx, loc, sub);
+            EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
+                dynamic_key: js_key,
                 type_: vtype,
             }) as Box<dyn ScopeEntry>))
         },

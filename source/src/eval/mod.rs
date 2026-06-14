@@ -3648,7 +3648,7 @@ pub(crate) struct TargetBindSub {
 pub(crate) struct TargetDynamic;
 
 impl crate::r#gen::Target for TargetDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> crate::langhelp::TargetBindResult {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
         let js =
             sub
                 .data
@@ -3670,7 +3670,7 @@ impl crate::r#gen::Target for TargetDynamic {
                 ),
             })),
         };
-        crate::langhelp::TargetBindResult { code, id: js_key }
+        (code, js_key)
     }
 
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub {

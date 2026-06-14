@@ -195,9 +195,9 @@ impl AspectBind for Tuple {
                 }, Box::new(ScopeEntryEmpty { type_: tuple_type }) as Box<dyn ScopeEntry>))
             },
             Ok(Some(sub)) => {
-                let r = xx.target.bind(xx, loc, sub);
-                EResult::ok((r.code, Box::new(ScopeEntryDynamicBinding {
-                    dynamic_key: r.id,
+                let (code, js_key) = xx.target.bind(xx, loc, sub);
+                EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
+                    dynamic_key: js_key,
                     type_: tuple_type,
                 }) as Box<dyn ScopeEntry>))
             },

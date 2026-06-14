@@ -72,34 +72,24 @@ struct MethodSpec {
     /// `arg` type. Builtin-iface methods that take a record pass
     /// `TypeAnyDynamic` (Rust dispatch builds the record).
     arg_type: TypeRef,
-    /// Source-side return type — the value the user-defined impl body
-    /// must produce.
+    /// Return type. Single source of truth: the Rust trait method's
+    /// return type IS `ret_type.path`, and the source-side mortar Type
+    /// stored in `SourceInterfaceMethodData::ret_type` IS `ret_type.mortar`.
+    /// There is no separate "override" — by construction, the spec
+    /// author cannot specify two different return types that disagree.
     ret_type: TypeRef,
     /// When `Some` *and* the interface spec sets `rust_trait_name`, this
-    /// method contributes a `fn` to the generated trait.
-    ///
-    /// `ret` is the Rust trait method's return type. Ideally this would
-    /// equal `ret_type.path` (so source mortar and Rust dispatch can't
-    /// diverge), but the existing `Target` / `ScopeEntry` impls return
-    /// rich Rust types (`CodeValue`, `(Code, ScopeEntryId)`,
-    /// `TargetBindSub`, `EResult<…>`, `EvalRes`, …) that have no `Type`
-    /// impl. Reconciling that requires either newtype wrappers with
-    /// `impl Type` per shape, or restructuring every caller of these
-    /// traits to use the source-mortar type — substantial work; tracked
-    /// separately.
+    /// method contributes a `fn` to the generated trait. The return type
+    /// of that trait method is always `ret_type.path`.
     rust_trait: Option<RustTrait>,
 }
 
 struct RustTrait {
     /// `(name, rust_type_path)`. `self` is added implicitly as `&self`.
+    /// The return type is not a field of `RustTrait` — it derives from
+    /// `MethodSpec.ret_type.path` so source mortar and Rust trait return
+    /// cannot diverge.
     params: Vec<(&'static str, TokenStream)>,
-    /// Trait method return type override. When `None`, the trait method's
-    /// return type derives from `MethodSpec.ret_type.path` — the
-    /// structurally-correct default. When `Some`, the override takes
-    /// precedence; this is the escape hatch for methods whose Rust trait
-    /// uses a richer type than the source mortar can name (a known design
-    /// hole; see #23 / the `MethodSpec.rust_trait` docstring).
-    ret_override: Option<TokenStream>,
 }
 
 struct InterfaceSpec {
@@ -226,18 +216,17 @@ fn interfaces() -> Vec<InterfaceSpec> {
             description: None,
             rust_trait_name: Some("ScopeEntry"),
             methods: vec![
-                // PROTOTYPE: unified return via `DynamicWrap`. The trait
-                // method's Rust signature stays `-> CodeValue` (impls keep
-                // their original signatures, no churn). `CodeValue`'s
+                // Unified return via `DynamicWrap`. The trait method's
+                // Rust signature stays `-> CodeValue` (impls keep their
+                // original signatures, no churn). `CodeValue`'s
                 // `DynamicWrap::mortar_type()` returns
                 // `TypeCodeValueExternDynamic` — that IS the source-side
-                // Type for this ret_type. `ret_override: None` ⇒ the trait
-                // return derives from `ret_type.path = CodeValue`. The
-                // wrap/unwrap between `CodeValue` and the v8 `CodeValueExtern`
-                // form is handled by `<CodeValue as DynamicWrap>::from_v8 /
+                // Type for this `ret_type`. The wrap/unwrap between
+                // `CodeValue` and the v8 `CodeValueExtern` form is
+                // handled by `<CodeValue as DynamicWrap>::from_v8 /
                 // into_v8` — the user-defined v8 dispatcher (in
-                // `UserDefinedScopeEntry::use_`) just calls `from_v8` on the
-                // v8 result.
+                // `UserDefinedScopeEntry::use_`) just calls `from_v8` on
+                // the v8 result.
                 MethodSpec {
                     name: "use_",
                     arg_type: any(),
@@ -250,7 +239,6 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("code", quote!(crate::langhelp::Code)),
                         ],
-                        ret_override: None,
                     }),
                 },
             ],
@@ -272,81 +260,82 @@ fn interfaces() -> Vec<InterfaceSpec> {
             // is responsible for extracting the real Rust value from the
             // source-side return.
             methods: vec![
-                // TODO: migrate to `via_dynamic_wrap` once the source body
-                // can produce something that impls the source-level
-                // `value` interface (currently it returns
-                // `tuple(code, name)` which doesn't — wrap in a fresh
-                // data type with `impl_iface(…"value"…)`, then this
-                // becomes a straight `via_dynamic_wrap(TargetBindResult)`
-                // mirroring `scope_entry.use_`).
+                // Unified via `DynamicWrap` directly on the natural Rust
+                // tuple type `(Code, ScopeEntryId)` — no wrapper struct
+                // exposed. `mortar_type()` derives the source-side
+                // `tuple(option(code_dyn), string)` from
+                // `Code::mortar_type()` and `ScopeEntryId::mortar_type()`.
                 MethodSpec {
                     name: "bind",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId)),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("sub", quote!(crate::eval::TargetBindSub)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::TargetBindResult)),
                     }),
                 },
                 MethodSpec {
                     name: "bind_sub_record",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("carry", quote!(crate::langhelp::Code)),
                             ("fields", quote!(Vec<(crate::langhelp::ConstKey, crate::eval::TargetBindSub)>)),
                         ],
-                        ret_override: Some(quote!(crate::eval::TargetBindSub)),
                     }),
                 },
                 MethodSpec {
                     name: "bind_sub_tuple",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("carry", quote!(crate::langhelp::Code)),
                             ("elements", quote!(Vec<crate::eval::TargetBindSub>)),
                         ],
-                        ret_override: Some(quote!(crate::eval::TargetBindSub)),
                     }),
                 },
                 MethodSpec {
                     name: "block",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::EResult<crate::langhelp::Code>),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("entries", quote!(Vec<crate::langhelp::Code>)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::Code>)),
                     }),
                 },
                 MethodSpec {
                     name: "code_to_bind_sub",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::EResult<crate::eval::TargetBindSub>),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("code", quote!(crate::langhelp::Code)),
                             ("type_", quote!(std::rc::Rc<dyn crate::langhelp::Type>)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::EResult<crate::eval::TargetBindSub>)),
                     }),
                 },
                 MethodSpec {
                     name: "if_",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
@@ -354,13 +343,14 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("conditions", quote!(Vec<(crate::langhelp::CodeValue, &crate::eval::expr::Expr)>)),
                             ("else_", quote!(Option<&crate::eval::expr::Expr>)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>)),
                     }),
                 },
                 MethodSpec {
                     name: "match_",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
@@ -370,26 +360,28 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("cases", quote!(Vec<(String, std::rc::Rc<dyn crate::langhelp::Type>, &crate::eval::expr::Expr)>)),
                             ("fallback", quote!(Option<&crate::eval::expr::Expr>)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>)),
                     }),
                 },
                 MethodSpec {
                     name: "maybe_bind_sub",
                     arg_type: any(),
-                    ret_type: option_type(&value()),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("cv", quote!(crate::langhelp::CodeValue)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>)),
                     }),
                 },
                 MethodSpec {
                     name: "stage",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
@@ -397,7 +389,6 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("tree", quote!(crate::eval::expr::Expr)),
                             ("lower_values", quote!(Vec<crate::langhelp::CodeValue>)),
                         ],
-                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>)),
                     }),
                 },
             ],
@@ -863,11 +854,8 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
                             quote! { #name: #ty }
                         })
                         .collect();
-                    // Trait ret: structurally-correct default = `ret_type.path`
-                    // (single source of truth). The optional `ret_override` is
-                    // an escape hatch for specs that haven't been migrated to
-                    // the unified design yet.
-                    let ret = rt.ret_override.as_ref().unwrap_or(&m.ret_type.path);
+                    // Single source of truth: trait return = `ret_type.path`.
+                    let ret = &m.ret_type.path;
                     Some(quote! {
                         fn #method_name(&self, #(#params),*) -> #ret;
                     })

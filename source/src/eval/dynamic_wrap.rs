@@ -202,6 +202,130 @@ impl DynamicWrap for crate::langhelp::Code {
     }
 }
 
+/// `DynamicWrap` for `ScopeEntryId` — the source-side representation is
+/// a string (the binding name produced by `gen_binding_name`). Used by the
+/// `Target::bind` ret tuple. `from_v8`/`into_v8` are stubs for now —
+/// user-defined target dispatch isn't yet routed through v8, and the
+/// builtin `TargetDynamic` constructs `ScopeEntryId` directly.
+impl DynamicWrap for crate::langhelp::ScopeEntryId {
+    fn from_v8<'s>(
+        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        _value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        unimplemented!(
+            "ScopeEntryId::from_v8: user-defined target dispatch not yet routed through v8",
+        );
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!(
+            "ScopeEntryId::into_v8: cross-mortar `ScopeEntryId` transfer not yet wired",
+        );
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
+    }
+}
+
+/// Generic `DynamicWrap` for 2-tuples `(A, B)`. The v8 form is a JS
+/// array of length 2. The source-side `Type` is the parameterized
+/// `Tuple` with element types `[A::mortar_type(), B::mortar_type()]` —
+/// the spec author cannot specify a mismatched mortar by construction.
+impl<A, B> DynamicWrap for (A, B)
+where
+    A: DynamicWrap,
+    B: DynamicWrap,
+{
+    fn from_v8<'s>(
+        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        let arr = v8::Local::<v8::Array>::try_from(value)
+            .expect("(A, B)::from_v8: expected JS array of length 2");
+        let a_val = arr.get_index(scope, 0).expect("(A, B)::from_v8: missing element 0");
+        let b_val = arr.get_index(scope, 1).expect("(A, B)::from_v8: missing element 1");
+        let a = <A as DynamicWrap>::from_v8(scope, a_val);
+        let b = <B as DynamicWrap>::from_v8(scope, b_val);
+        (a, b)
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("(A, B) should not be sent back to v8 (yet)");
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::tuple::Tuple {
+            base: None,
+            elements: vec![
+                crate::eval::value::tuple::TupleElement::Mortar(<A as DynamicWrap>::mortar_type()),
+                crate::eval::value::tuple::TupleElement::Mortar(<B as DynamicWrap>::mortar_type()),
+            ],
+        })
+    }
+}
+
+/// `DynamicWrap` for `TargetBindSub`. mortar_type returns `TypeAnyDynamic`
+/// as a placeholder — proper source-side mortar (e.g. a record of
+/// `{data, type}`) is a TODO once user-defined target dispatch is wired.
+impl DynamicWrap for crate::eval::TargetBindSub {
+    fn from_v8<'s>(
+        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        _value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        unimplemented!("TargetBindSub::from_v8: user-defined target dispatch not yet routed through v8");
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("TargetBindSub::into_v8: cross-mortar `TargetBindSub` transfer not yet wired");
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(TypeAnyDynamic)
+    }
+}
+
+/// Generic `DynamicWrap` for `EResult<T>`. The source-side mortar Type
+/// delegates to `T`'s — errors are Rust-side dispatch plumbing, not part
+/// of the source-level type. `from_v8`/`into_v8` are stubs for now;
+/// user-defined dispatch through v8 isn't routed through these.
+impl<T: DynamicWrap> DynamicWrap for crate::langhelp::EResult<T> {
+    fn from_v8<'s>(
+        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        _value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        unimplemented!("EResult<T>::from_v8: not yet wired");
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("EResult<T>::into_v8: not yet wired");
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        <T as DynamicWrap>::mortar_type()
+    }
+}
+
+/// Generic `DynamicWrap` for `Option<T>`. mortar_type = `option(T::mortar_type())`.
+impl<T: DynamicWrap> DynamicWrap for Option<T> {
+    fn from_v8<'s>(
+        _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        _value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        unimplemented!("Option<T>::from_v8: not yet wired");
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("Option<T>::into_v8: not yet wired");
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+            element_type: <T as DynamicWrap>::mortar_type(),
+        })
+    }
+}
+
 impl DynamicWrap for () {
     fn from_v8<
         's,

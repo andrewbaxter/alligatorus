@@ -254,10 +254,10 @@ impl AspectBind for Record {
                 }) as Box<dyn ScopeEntry>))
             },
             Ok((scope_fields, Some(sub))) => {
-                let r = xx.target.bind(xx, loc, sub);
-                EResult::ok((r.code, Box::new(ScopeEntryRecordMortar {
+                let (code, js_key) = xx.target.bind(xx, loc, sub);
+                EResult::ok((code, Box::new(ScopeEntryRecordMortar {
                     fields: scope_fields,
-                    js_key: Some(r.id),
+                    js_key: Some(js_key),
                 }) as Box<dyn ScopeEntry>))
             },
         }
