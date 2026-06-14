@@ -427,9 +427,17 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     );
     // `use_` constructs a fresh `nvalue` at v8 time, with `base =
     // nvalue_binding(self.name)` and `type = self.type` — both drawn from
-    // the entry's underlying. The new nvalue's value-interface return then
-    // lands in Rust as a `ValueUserDefined` (since `scope_entry.use_`'s
-    // ret_type is `TypeValueDynamic`).
+    // the entry's underlying. The ret_type is now `CodeValue` (via the
+    // `<CodeValue as DynamicWrap>::mortar_type()` = `TypeCodeValueExtern`
+    // unification), so the body wraps its produced value in a
+    // `CodeValueExtern` via `new_code_value(code, value)`.
+    //
+    // TODO(code-arg): the function's `code` arg has source-type
+    // `CodeValueExtern` (per `build_aspect_arg_record_type`), but
+    // `new_code_value` expects `option(code_dyn)`. Until either the CVE
+    // can cast through to `option(code_dyn)` or the arg-record exposes
+    // typed-per-Rust-param fields, the code slot uses
+    // `option(codedyn).none(())` (mirrors `aspect_function.call`).
     exprs.push(
         impl_iface(
             mb,
@@ -438,16 +446,30 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             vec![(
                 "use_",
                 mb.call(
-                    mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
-                    mb.record(vec![
-                        (
-                            "base",
-                            mb.call(
-                                mb.lower(mb.scope_use("nvalue_binding")),
-                                mb.field(mb.scope_use("self"), mb.str("name")),
+                    mb.scope_use("new_code_value"),
+                    mb.tuple(vec![
+                        // code arg: `option(codedyn).none(())` placeholder
+                        mb.call(
+                            mb.field(
+                                mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
+                                mb.str("none"),
                             ),
+                            mb.null(),
                         ),
-                        ("type", mb.field(mb.scope_use("self"), mb.str("type"))),
+                        // value arg: the freshly-constructed nvalue
+                        mb.call(
+                            mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
+                            mb.record(vec![
+                                (
+                                    "base",
+                                    mb.call(
+                                        mb.lower(mb.scope_use("nvalue_binding")),
+                                        mb.field(mb.scope_use("self"), mb.str("name")),
+                                    ),
+                                ),
+                                ("type", mb.field(mb.scope_use("self"), mb.str("type"))),
+                            ]),
+                        ),
                     ]),
                 ),
             )],

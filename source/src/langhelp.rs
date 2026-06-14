@@ -157,9 +157,8 @@ pub(crate) struct CodeValue {
 
 /// Return shape of `Target::bind` — the (code, scope_entry_id) pair the
 /// dynamic-target binding produces. A pure data carrier; the source-side
-/// `Type` of a `TargetBindResult` value is `TypeAny` (single
-/// representation invariant — `TargetBindResult` does not store itself,
-/// so it cannot be its own type).
+/// `Type` of a `TargetBindResult` value is sourced via its `DynamicWrap`
+/// impl (see `eval::code_value_extern`).
 pub(crate) struct TargetBindResult {
     pub code: Code,
     pub id: ScopeEntryId,

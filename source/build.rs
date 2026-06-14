@@ -272,6 +272,13 @@ fn interfaces() -> Vec<InterfaceSpec> {
             // is responsible for extracting the real Rust value from the
             // source-side return.
             methods: vec![
+                // TODO: migrate to `via_dynamic_wrap` once the source body
+                // can produce something that impls the source-level
+                // `value` interface (currently it returns
+                // `tuple(code, name)` which doesn't — wrap in a fresh
+                // data type with `impl_iface(…"value"…)`, then this
+                // becomes a straight `via_dynamic_wrap(TargetBindResult)`
+                // mirroring `scope_entry.use_`).
                 MethodSpec {
                     name: "bind",
                     arg_type: any(),
