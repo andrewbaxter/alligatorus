@@ -20,24 +20,49 @@ use {
     std::{env, fs, path::PathBuf},
 };
 
-/// A Rust `Type` impl, in two forms:
+/// Identifies the return / argument type of a spec method. Two TokenStreams:
 ///
-/// * `path` — the bare type (for Rust type annotations, trait method
-///   returns, generic params, `Rc<dyn …>`-style usages).
-/// * `value` — a value-producing expression of that type (for `Rc::new(…)`
-///   in source-mortar construction). For unit structs this is the same as
-///   `path`; for parameterized types like `TypeOptionDynamic` it includes
-///   field initializers.
+/// * `path` — the Rust type (used as the trait method return type, generic
+///   parameter, etc.).
+/// * `mortar` — a value expression evaluating to `Rc<dyn Type>` (the
+///   source-side Type instance stored in `SourceInterfaceMethodData`).
+///   Codegen uses this verbatim — no further wrapping.
+///
+/// For types that are themselves `Type` impls (e.g. `TypeAnyDynamic`),
+/// `mortar` is `Rc::new(T) as Rc<dyn Type>`.
+///
+/// For Rust value-carriers with a `DynamicWrap` impl (e.g.
+/// `CodeValueExtern`), `mortar` is `<T as DynamicWrap>::mortar_type()` —
+/// derived from `path`, so the spec author cannot specify a mismatched
+/// source-side Type.
 #[derive(Clone)]
 struct TypeRef {
     path: TokenStream,
-    value: TokenStream,
+    mortar: TokenStream,
 }
 
 impl TypeRef {
-    /// Unit struct — `path` and `value` are the same `TokenStream`.
+    /// Unit-struct `Type` (`path` impls `Type` directly).
     fn unit(tokens: TokenStream) -> Self {
-        TypeRef { path: tokens.clone(), value: tokens }
+        TypeRef {
+            mortar: quote! {
+                std::rc::Rc::new(#tokens) as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            path: tokens,
+        }
+    }
+
+    /// Rust value-carrier with a `DynamicWrap` impl whose `mortar_type()`
+    /// is the source-side Type. Single source of truth: `path` drives both
+    /// the trait return type and (via `DynamicWrap`) the mortar Type — no
+    /// possibility of mismatch.
+    fn via_dynamic_wrap(tokens: TokenStream) -> Self {
+        TypeRef {
+            mortar: quote! {
+                <#tokens as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type()
+            },
+            path: tokens,
+        }
     }
 }
 
@@ -68,9 +93,13 @@ struct MethodSpec {
 struct RustTrait {
     /// `(name, rust_type_path)`. `self` is added implicitly as `&self`.
     params: Vec<(&'static str, TokenStream)>,
-    /// Trait method return type (`-> #ret`). See `MethodSpec.rust_trait`
-    /// docstring for the unification caveat.
-    ret: TokenStream,
+    /// Trait method return type override. When `None`, the trait method's
+    /// return type derives from `MethodSpec.ret_type.path` — the
+    /// structurally-correct default. When `Some`, the override takes
+    /// precedence; this is the escape hatch for methods whose Rust trait
+    /// uses a richer type than the source mortar can name (a known design
+    /// hole; see #23 / the `MethodSpec.rust_trait` docstring).
+    ret_override: Option<TokenStream>,
 }
 
 struct InterfaceSpec {
@@ -97,18 +126,18 @@ struct InterfaceSpec {
     methods: Vec<MethodSpec>,
 }
 
-/// `TypeOptionDynamic { element_type: <inner> }` as a `TypeRef`. The
-/// trait-return path is the bare `TypeOptionDynamic` (parameterized at
+/// `TypeOptionDynamic { element_type: <inner mortar> }` as a `TypeRef`.
+/// The trait-return path is the bare `TypeOptionDynamic` (parameterized at
 /// runtime via the field, not generically); the source-mortar value
-/// includes the `element_type` initializer.
+/// constructs an instance with the parameterized `element_type`.
 fn option_type(inner: &TypeRef) -> TypeRef {
-    let inner_value = &inner.value;
+    let inner_mortar = &inner.mortar;
     TypeRef {
         path: quote!(crate::eval::value::type_option::dynamic::TypeOptionDynamic),
-        value: quote! {
-            crate::eval::value::type_option::dynamic::TypeOptionDynamic {
-                element_type: std::rc::Rc::new(#inner_value) as std::rc::Rc<dyn crate::langhelp::Type>,
-            }
+        mortar: quote! {
+            std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+                element_type: #inner_mortar,
+            }) as std::rc::Rc<dyn crate::langhelp::Type>
         },
     }
 }
@@ -121,6 +150,10 @@ fn interfaces() -> Vec<InterfaceSpec> {
     let value = || TypeRef::unit(quote!(crate::eval::value::type_value::dynamic::TypeValueDynamic));
     let aspect = || TypeRef::unit(quote!(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic));
     let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
+    // `CodeValue` (impls `Type` since the build.rs unification — see the
+    // CodeValue impl block in `langhelp.rs`). The source-mortar value is
+    // `CodeValue::placeholder()` because Type-identity is what
+    // typechecking consults, not the carried code/value.
     vec![
         InterfaceSpec {
             name: "value",
@@ -193,17 +226,31 @@ fn interfaces() -> Vec<InterfaceSpec> {
             description: None,
             rust_trait_name: Some("ScopeEntry"),
             methods: vec![
+                // PROTOTYPE: unified return via `DynamicWrap`. The trait
+                // method's Rust signature stays `-> CodeValue` (impls keep
+                // their original signatures, no churn). `CodeValue`'s
+                // `DynamicWrap::mortar_type()` returns
+                // `TypeCodeValueExternDynamic` — that IS the source-side
+                // Type for this ret_type. `ret_override: None` ⇒ the trait
+                // return derives from `ret_type.path = CodeValue`. The
+                // wrap/unwrap between `CodeValue` and the v8 `CodeValueExtern`
+                // form is handled by `<CodeValue as DynamicWrap>::from_v8 /
+                // into_v8` — the user-defined v8 dispatcher (in
+                // `UserDefinedScopeEntry::use_`) just calls `from_v8` on the
+                // v8 result.
                 MethodSpec {
                     name: "use_",
                     arg_type: any(),
-                    ret_type: value(),
+                    ret_type: TypeRef::via_dynamic_wrap(
+                        quote!(crate::langhelp::CodeValue),
+                    ),
                     rust_trait: Some(RustTrait {
                         params: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("code", quote!(crate::langhelp::Code)),
                         ],
-                        ret: quote!(crate::langhelp::CodeValue),
+                        ret_override: None,
                     }),
                 },
             ],
@@ -235,7 +282,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("sub", quote!(crate::eval::TargetBindSub)),
                         ],
-                        ret: quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId)),
+                        ret_override: Some(quote!(crate::langhelp::TargetBindResult)),
                     }),
                 },
                 MethodSpec {
@@ -248,7 +295,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("carry", quote!(crate::langhelp::Code)),
                             ("fields", quote!(Vec<(crate::langhelp::ConstKey, crate::eval::TargetBindSub)>)),
                         ],
-                        ret: quote!(crate::eval::TargetBindSub),
+                        ret_override: Some(quote!(crate::eval::TargetBindSub)),
                     }),
                 },
                 MethodSpec {
@@ -261,7 +308,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("carry", quote!(crate::langhelp::Code)),
                             ("elements", quote!(Vec<crate::eval::TargetBindSub>)),
                         ],
-                        ret: quote!(crate::eval::TargetBindSub),
+                        ret_override: Some(quote!(crate::eval::TargetBindSub)),
                     }),
                 },
                 MethodSpec {
@@ -273,7 +320,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("entries", quote!(Vec<crate::langhelp::Code>)),
                         ],
-                        ret: quote!(crate::langhelp::EResult<crate::langhelp::Code>),
+                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::Code>)),
                     }),
                 },
                 MethodSpec {
@@ -286,7 +333,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("code", quote!(crate::langhelp::Code)),
                             ("type_", quote!(std::rc::Rc<dyn crate::langhelp::Type>)),
                         ],
-                        ret: quote!(crate::langhelp::EResult<crate::eval::TargetBindSub>),
+                        ret_override: Some(quote!(crate::langhelp::EResult<crate::eval::TargetBindSub>)),
                     }),
                 },
                 MethodSpec {
@@ -300,7 +347,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("conditions", quote!(Vec<(crate::langhelp::CodeValue, &crate::eval::expr::Expr)>)),
                             ("else_", quote!(Option<&crate::eval::expr::Expr>)),
                         ],
-                        ret: quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
+                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>)),
                     }),
                 },
                 MethodSpec {
@@ -316,7 +363,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("cases", quote!(Vec<(String, std::rc::Rc<dyn crate::langhelp::Type>, &crate::eval::expr::Expr)>)),
                             ("fallback", quote!(Option<&crate::eval::expr::Expr>)),
                         ],
-                        ret: quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
+                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>)),
                     }),
                 },
                 MethodSpec {
@@ -329,7 +376,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("loc", quote!(crate::langhelp::QExprId)),
                             ("cv", quote!(crate::langhelp::CodeValue)),
                         ],
-                        ret: quote!(crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>),
+                        ret_override: Some(quote!(crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>)),
                     }),
                 },
                 MethodSpec {
@@ -343,7 +390,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
                             ("tree", quote!(crate::eval::expr::Expr)),
                             ("lower_values", quote!(Vec<crate::langhelp::CodeValue>)),
                         ],
-                        ret: quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
+                        ret_override: Some(quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>)),
                     }),
                 },
             ],
@@ -722,17 +769,13 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
                 .map(|(idx, m)| {
                     let name = m.name;
                     let field_name = format!("_im_{}{}", prefix, idx);
-                    let arg = &m.arg_type.value;
-                    let ret = &m.ret_type.value;
+                    let arg = &m.arg_type.mortar;
+                    let ret = &m.ret_type.mortar;
                     quote! {
                         crate::eval::value::type_source_interface::SourceInterfaceMethodData {
                             name: #name.to_string(),
-                            arg_type: std::cell::RefCell::new(Some(
-                                std::rc::Rc::new(#arg) as std::rc::Rc<dyn crate::langhelp::Type>,
-                            )),
-                            ret_type: std::cell::RefCell::new(Some(
-                                std::rc::Rc::new(#ret) as std::rc::Rc<dyn crate::langhelp::Type>,
-                            )),
+                            arg_type: std::cell::RefCell::new(Some(#arg)),
+                            ret_type: std::cell::RefCell::new(Some(#ret)),
                             field_name: #field_name.to_string(),
                         }
                     }
@@ -813,7 +856,11 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
                             quote! { #name: #ty }
                         })
                         .collect();
-                    let ret = &rt.ret;
+                    // Trait ret: structurally-correct default = `ret_type.path`
+                    // (single source of truth). The optional `ret_override` is
+                    // an escape hatch for specs that haven't been migrated to
+                    // the unified design yet.
+                    let ret = rt.ret_override.as_ref().unwrap_or(&m.ret_type.path);
                     Some(quote! {
                         fn #method_name(&self, #(#params),*) -> #ret;
                     })

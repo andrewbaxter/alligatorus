@@ -169,6 +169,47 @@ use crate::r#gen::code_value_extern_type_identity;
 
 pub(crate) struct CodeValueExtern(pub Rc<RefCell<Option<CodeValue>>>);
 
+impl CodeValueExtern {
+    /// Wrap a freshly-produced `CodeValue` in the opaque externalised form.
+    pub fn wrap(cv: CodeValue) -> Self {
+        CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
+    }
+
+    /// Take the contained `CodeValue` out, panicking if it's been
+    /// extracted already.
+    pub fn into_inner(self) -> CodeValue {
+        self.0.borrow_mut().take().expect("CodeValueExtern: already taken")
+    }
+}
+
+/// `DynamicWrap` for `CodeValue` itself — the v8 form of a `CodeValue`
+/// return is the externalised `CodeValueExtern`. `from_v8` decodes the
+/// CVE and takes its inner `CodeValue`; `into_v8` wraps a fresh `CodeValue`
+/// as a CVE and emits it. This lets methods like `ScopeEntry::use_` keep
+/// their original `-> CodeValue` signature while their source-side
+/// `ret_type` is the CVE's mortar Type (`TypeCodeValueExternDynamic`),
+/// derived automatically via `<CodeValue as DynamicWrap>::mortar_type()`.
+impl DynamicWrap for CodeValue {
+    fn from_v8<'s>(
+        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        value: v8::Local<'s, v8::Value>,
+    ) -> Self {
+        let cve = <CodeValueExtern as DynamicWrap>::from_v8(scope, value);
+        cve.into_inner()
+    }
+
+    fn into_v8<'s>(
+        self,
+        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+    ) -> v8::Local<'s, v8::Value> {
+        CodeValueExtern::wrap(self).into_v8(scope)
+    }
+
+    fn mortar_type() -> Rc<dyn Type> {
+        Rc::new(TypeCodeValueExternDynamic)
+    }
+}
+
 pub(crate) struct TypeCodeValueExternDynamic;
 
 impl DynamicWrap for CodeValueExtern {

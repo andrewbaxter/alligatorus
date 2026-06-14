@@ -103,7 +103,7 @@ impl crate::r#gen::Target for UserDefinedTarget {
         xx: &crate::langhelp::ExprContext,
         loc: QExprId,
         sub: crate::eval::TargetBindSub,
-    ) -> (Code, crate::langhelp::ScopeEntryId) {
+    ) -> crate::langhelp::TargetBindResult {
         let _ = &self.instance;
         crate::eval::TargetDynamic.bind(xx, loc, sub)
     }
