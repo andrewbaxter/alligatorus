@@ -65,9 +65,7 @@ use {
 
 // ---------- ExprContextRef ----------
 
-fn expr_context_ref_type_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+use crate::r#gen::expr_context_ref_type_identity;
 
 pub(crate) struct ExprContextRef(pub Rc<ExprContext>);
 
@@ -178,9 +176,7 @@ impl Type for TypeExprContextRefDynamic {
 
 // ---------- CodeValueExtern ----------
 
-fn code_value_extern_type_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+use crate::r#gen::code_value_extern_type_identity;
 
 pub(crate) struct CodeValueExtern(pub Rc<RefCell<Option<CodeValue>>>);
 

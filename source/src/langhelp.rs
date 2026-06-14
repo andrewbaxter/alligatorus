@@ -494,32 +494,17 @@ pub(crate) enum ScopeEntryId {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct SourceId(pub usize);
 
-/// A value guaranteed to be unique in the world. `Builtin` ids are assigned
-/// in `build.rs` (`src/iface_gen.rs::Builtin*` constants); macros that need
-/// a unique value (`unique!`, `aspect!`, `dynamic_wrap!` per-struct
-/// identities) call `Unique::from_name`, which folds a stable string name
-/// into a `usize` via FNV-1a. Build.rs verifies its own listed names don't
-/// collide; the runtime path trusts FNV-64-truncated-to-`usize` for the
-/// rest (collision probability negligible in practice).
+/// A value guaranteed to be unique in the world. `Builtin` ids are all
+/// assigned in `build.rs` (interface ids, aspect ids, dyn_wrap struct/wrap
+/// type identities, dyn_wrap fn scope-entry ids, and per-`Type` identity
+/// markers) — `build.rs::check_no_duplicate_ids` panics at build time if
+/// any two specs share an id. Nothing in the runtime creates `Unique`s
+/// from `file!()`/`line!()` or hashed names anymore.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Unique {
     Builtin(usize),
     Source(CompileId, usize),
-}
-
-impl Unique {
-    /// Stable FNV-1a 64-bit hash of `name`, truncated to `usize`. Use a
-    /// distinct stable name (struct path, trait path, etc.) per call site
-    /// so two builtins never collide.
-    pub(crate) fn from_name(name: &str) -> Unique {
-        let mut h: u64 = 0xcbf29ce484222325;
-        for b in name.as_bytes() {
-            h ^= *b as u64;
-            h = h.wrapping_mul(0x100000001b3);
-        }
-        Unique::Builtin(h as usize)
-    }
 }
 
 impl<T> EResult<T> {

@@ -51,9 +51,7 @@ use {
     },
 };
 
-fn interface_ref_type_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::interface_ref_type_identity;
 pub(crate) struct TypeSourceInterfaceDynamic;
 
 impl Aspect for TypeSourceInterfaceDynamic { }

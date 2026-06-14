@@ -59,9 +59,7 @@ use {
     },
 };
 
-fn expr_type_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::expr_type_identity;
 pub(crate) struct TypeExpr;
 
 impl Aspect for TypeExpr { }

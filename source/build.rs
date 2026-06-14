@@ -121,6 +121,10 @@ struct InterfaceSpec {
     /// `BuiltinInterfaceKind` variant (PascalCased), and the description
     /// shown in `desc()` / error messages.
     name: &'static str,
+    /// Explicit `Unique::Builtin(id)` for this interface's identity.
+    /// Must be globally unique across every spec in this file (verified
+    /// by `check_no_duplicate_ids`).
+    id: usize,
     /// Short prefix for generated `field_name`s: e.g. `v` → `_im_v0`,
     /// `tg` → `_im_tg0`. Must be unique across interfaces.
     field_prefix: &'static str,
@@ -128,12 +132,6 @@ struct InterfaceSpec {
     kind: &'static str,
     /// Optional human description (defaults to `name`).
     description: Option<&'static str>,
-    /// Rust path (as a string) to the function returning this interface's
-    /// identity `Unique`. Existing callers (aspect lookup, source-iface
-    /// dispatch) already key off these; the generator emits a thin wrapper
-    /// `gen_builtin_<name>_iface_identity()` that delegates to it so spec
-    /// and consumers stay consistent without rewriting every callsite.
-    identity_fn: &'static str,
     /// When `Some`, generate a `pub(crate) trait <name>` with methods
     /// drawn from each `MethodSpec.rust_sig`. The string is the trait's
     /// PascalCase name (e.g. `"Target"`). Methods whose `rust_sig` is
@@ -146,10 +144,10 @@ fn interfaces() -> Vec<InterfaceSpec> {
     vec![
         InterfaceSpec {
             name: "value",
+            id: 2001,
             field_prefix: "v",
             kind: "Value",
             description: None,
-            identity_fn: "crate::eval::builtin_value_iface_identity",
             rust_trait_name: None,
             methods: vec![
                 MethodSpec {
@@ -162,10 +160,10 @@ fn interfaces() -> Vec<InterfaceSpec> {
         },
         InterfaceSpec {
             name: "type",
+            id: 2002,
             field_prefix: "t",
             kind: "Type",
             description: None,
-            identity_fn: "crate::eval::builtin_type_iface_identity",
             rust_trait_name: None,
             methods: vec![
                 MethodSpec { name: "can_cast_from", arg_type: SrcType::Any, ret_type: SrcType::Bool, rust_sig: None },
@@ -179,23 +177,28 @@ fn interfaces() -> Vec<InterfaceSpec> {
                 },
             ],
         },
+        // Shares id with the `AspectFunction` aspect spec — source-level
+        // `impl_interface(aspect_function, ...)` is found by the same
+        // `aspect_function_aspect_id()` lookup that the Rust trait uses.
         InterfaceSpec {
             name: "aspect_function",
+            id: 1016,
             field_prefix: "af",
             kind: "AspectFunction",
             description: None,
-            identity_fn: "crate::builtin::aspect_function_aspect_id",
             rust_trait_name: None,
             methods: vec![
                 MethodSpec { name: "call", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
             ],
         },
+        // Shares id with the `AspectField` aspect spec — same rationale as
+        // `aspect_function` above.
         InterfaceSpec {
             name: "aspect_field",
+            id: 1015,
             field_prefix: "afd",
             kind: "AspectField",
             description: None,
-            identity_fn: "crate::builtin::aspect_field_aspect_id",
             rust_trait_name: None,
             methods: vec![
                 MethodSpec { name: "field", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
@@ -204,10 +207,10 @@ fn interfaces() -> Vec<InterfaceSpec> {
         },
         InterfaceSpec {
             name: "scope_entry",
+            id: 2005,
             field_prefix: "se",
             kind: "ScopeEntry",
             description: None,
-            identity_fn: "crate::eval::value::type_source_interface::builtin_scope_entry_iface_identity",
             rust_trait_name: Some("ScopeEntry"),
             methods: vec![
                 MethodSpec {
@@ -227,10 +230,10 @@ fn interfaces() -> Vec<InterfaceSpec> {
         },
         InterfaceSpec {
             name: "target",
+            id: 2006,
             field_prefix: "tg",
             kind: "Target",
             description: None,
-            identity_fn: "crate::eval::value::type_source_interface::builtin_target_iface_identity",
             rust_trait_name: Some("Target"),
             // ret_types are `Value` (opaque user-value) rather than `Any`
             // because target methods return runtime values (TargetBindSub,
@@ -363,10 +366,10 @@ fn interfaces() -> Vec<InterfaceSpec> {
         },
         InterfaceSpec {
             name: "code_dyn",
+            id: 2007,
             field_prefix: "cd",
             kind: "CodeDyn",
             description: None,
-            identity_fn: "crate::eval::value::type_source_interface::builtin_code_dyn_iface_identity",
             rust_trait_name: None,
             methods: vec![],
         },
@@ -389,6 +392,86 @@ fn check_no_duplicates(ifaces: &[InterfaceSpec]) {
                 i.name,
                 m.name,
             );
+        }
+    }
+}
+
+/// Per-Type identity markers — small constants used by individual `Type`
+/// impls' `aspect()` to answer "is this my own type?". Each is a
+/// `pub(crate) fn <name>() -> Unique { Unique::Builtin(<id>) }` generated
+/// into `gen_local_identities.rs`. Originals have been removed; callers
+/// reference these via `crate::gen::<name>()`.
+fn local_identities() -> Vec<(&'static str, usize)> {
+    vec![
+        ("expr_context_ref_type_identity", 6001),
+        ("code_value_extern_type_identity", 6002),
+        ("type_unique_identity", 6003),
+        ("interface_const_identity", 6004),
+        ("interface_ref_type_identity", 6005),
+        ("type_type_identity", 6006),
+        ("tagged_union_ref_type_identity", 6007),
+        ("type_option_identity", 6008),
+        ("type_code_struct_identity", 6009),
+        ("type_code_enum_identity", 6010),
+        ("type_code_dyn_handle_identity", 6011),
+        ("type_aspect_identity", 6012),
+        ("expr_type_identity", 6013),
+    ]
+}
+
+fn generate_local_identities(items: &[(&'static str, usize)]) -> TokenStream {
+    let fns: Vec<TokenStream> = items
+        .iter()
+        .map(|(name, id)| {
+            let name = format_ident!("{}", name);
+            let id = *id;
+            quote! {
+                #[allow(dead_code)]
+                pub(crate) fn #name() -> crate::langhelp::Unique {
+                    crate::langhelp::Unique::Builtin(#id)
+                }
+            }
+        })
+        .collect();
+    quote! { #(#fns)* }
+}
+
+/// Global id-uniqueness check across every spec category. Each id appears
+/// in exactly one place; collisions would silently make two distinct
+/// `Unique::Builtin(N)`s look equal (or two distinct
+/// `ScopeEntryId::Builtin(N)`s), so panic at build time if any match.
+/// Reports the conflicting name/id pair so the spec entry to renumber is
+/// obvious from the panic.
+fn check_no_duplicate_ids(
+    ifaces: &[InterfaceSpec],
+    aspects: &[AspectSpec],
+    dw_structs: &[DynWrapStructSpec],
+    dw_wraps: &[DynWrapWrapSpec],
+    dw_fns: &[DynWrapFnSpec],
+    locals: &[(&'static str, usize)],
+) {
+    let mut seen = std::collections::HashMap::<usize, String>::new();
+    let mut all: Vec<(usize, String)> = Vec::new();
+    // `aspects` first; interface ids that intentionally alias an aspect's
+    // id (e.g. source-level `aspect_function` iface = `AspectFunction`
+    // aspect) are skipped. A clean global duplicate-check still runs across
+    // the remaining categories.
+    for a in aspects { all.push((a.id, format!("aspect:{}", a.name))); }
+    for i in ifaces {
+        if aspects.iter().any(|a| a.id == i.id) {
+            // intentional alias — pinned by comment in `interfaces()` next to
+            // the matching iface entry.
+            continue;
+        }
+        all.push((i.id, format!("iface:{}", i.name)));
+    }
+    for s in dw_structs { all.push((s.id, format!("dyn_wrap_struct:{}", s.name))); }
+    for s in dw_wraps { all.push((s.id, format!("dyn_wrap_wrap:{}", s.name))); }
+    for s in dw_fns { all.push((s.id, format!("dyn_wrap_fn:{}", s.name))); }
+    for (name, id) in locals { all.push((*id, format!("local:{}", name))); }
+    for (id, label) in all {
+        if let Some(existing) = seen.insert(id, label.clone()) {
+            panic!("duplicate spec id {}: '{}' vs '{}'", id, existing, label);
         }
     }
 }
@@ -445,7 +528,7 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
             let kind = format_ident!("{}", iface.kind);
             let description = iface.description.unwrap_or(iface.name);
             let methods_expr = &methods_per_iface[i];
-            let identity_fn: TokenStream = iface.identity_fn.parse().unwrap();
+            let id = iface.id;
             quote! {
                 let #f = dumpster::unsync::Gc::new(
                     crate::eval::value::type_source_interface::SourceInterfaceData {
@@ -456,7 +539,7 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
                         description: std::cell::RefCell::new(Some(#description.to_string())),
                         is_aspect: std::cell::Cell::new(false),
                         methods: std::cell::RefCell::new(#methods_expr),
-                        identity: #identity_fn(),
+                        identity: crate::langhelp::Unique::Builtin(#id),
                     },
                 );
                 builtin_def_set.interfaces.borrow_mut().push(#f.clone());
@@ -527,8 +610,15 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
         #(#identity_fns)*
 
         pub(crate) fn gen_build_builtin_interfaces(
-            builtin_def_set: &dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>,
+            import_state: crate::langhelp::ImportStateId,
         ) -> GenBuiltinInterfaces {
+            let builtin_def_set = dumpster::unsync::Gc::new(
+                crate::eval::definition_set::DefinitionSet::new(
+                    import_state,
+                    crate::langhelp::DefSetId(usize::MAX),
+                    crate::langhelp::SourceId(usize::MAX),
+                ),
+            );
             #(#build_entries)*
             GenBuiltinInterfaces {
                 #(#result_fields),*
@@ -543,6 +633,9 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
 struct AspectSpec {
     /// Trait name, PascalCase (e.g. `"AspectType"`).
     name: &'static str,
+    /// Explicit `Unique::Builtin(id)` for this aspect's identity.
+    /// Globally unique (verified by `check_no_duplicate_ids`).
+    id: usize,
     /// Trait methods. Empty `Vec` for marker aspects like `AspectNull`.
     methods: Vec<AspectMethod>,
 }
@@ -557,13 +650,14 @@ struct AspectMethod {
 
 fn aspects() -> Vec<AspectSpec> {
     vec![
-        AspectSpec { name: "AspectNull", methods: vec![] },
-        AspectSpec { name: "AspectRecord", methods: vec![] },
-        AspectSpec { name: "AspectNumberDynamic", methods: vec![] },
-        AspectSpec { name: "AspectBoolDynamic", methods: vec![] },
-        AspectSpec { name: "AspectStringDynamic", methods: vec![] },
+        AspectSpec { name: "AspectNull", id: 1001, methods: vec![] },
+        AspectSpec { name: "AspectRecord", id: 1002, methods: vec![] },
+        AspectSpec { name: "AspectNumberDynamic", id: 1003, methods: vec![] },
+        AspectSpec { name: "AspectBoolDynamic", id: 1004, methods: vec![] },
+        AspectSpec { name: "AspectStringDynamic", id: 1005, methods: vec![] },
         AspectSpec {
             name: "AspectBoolConst",
+            id: 1006,
             methods: vec![AspectMethod {
                 name: "get",
                 params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -572,6 +666,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectNumberConst",
+            id: 1008,
             methods: vec![AspectMethod {
                 name: "get",
                 params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -580,6 +675,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectStringConst",
+            id: 1009,
             methods: vec![AspectMethod {
                 name: "get",
                 params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -588,6 +684,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectType",
+            id: 1010,
             methods: vec![AspectMethod {
                 name: "type_",
                 params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -596,6 +693,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectListDynamic",
+            id: 1011,
             methods: vec![AspectMethod {
                 name: "element_type",
                 params: vec![],
@@ -604,6 +702,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectMapDynamic",
+            id: 1012,
             methods: vec![
                 AspectMethod {
                     name: "key_type",
@@ -619,6 +718,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectTuple",
+            id: 1013,
             methods: vec![
                 AspectMethod {
                     name: "element_types",
@@ -634,6 +734,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectTaggedUnion",
+            id: 1014,
             methods: vec![AspectMethod {
                 name: "variants",
                 params: vec![],
@@ -642,6 +743,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectField",
+            id: 1015,
             methods: vec![
                 AspectMethod {
                     name: "field",
@@ -665,6 +767,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectFunction",
+            id: 1016,
             methods: vec![AspectMethod {
                 name: "call",
                 params: vec![
@@ -678,6 +781,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectSet",
+            id: 1017,
             methods: vec![AspectMethod {
                 name: "set",
                 params: vec![
@@ -691,6 +795,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectOperatorAdd",
+            id: 1018,
             methods: vec![AspectMethod {
                 name: "add",
                 params: vec![
@@ -704,6 +809,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectOperatorEq",
+            id: 1019,
             methods: vec![AspectMethod {
                 name: "eq",
                 params: vec![
@@ -717,6 +823,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectOperatorLt",
+            id: 1020,
             methods: vec![AspectMethod {
                 name: "lt",
                 params: vec![
@@ -730,6 +837,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectInitialBind",
+            id: 1021,
             methods: vec![AspectMethod {
                 name: "initial_bind",
                 params: vec![("dynamic_key", "crate::langhelp::ScopeEntryId")],
@@ -738,6 +846,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectBind",
+            id: 1022,
             methods: vec![AspectMethod {
                 name: "bind",
                 params: vec![
@@ -750,6 +859,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectBindDynamic",
+            id: 1023,
             methods: vec![AspectMethod {
                 name: "bind_dynamic",
                 params: vec![
@@ -762,6 +872,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectConsumeDynamic",
+            id: 1024,
             methods: vec![AspectMethod {
                 name: "to_dynamic",
                 params: vec![
@@ -774,6 +885,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectStackValueDynamic",
+            id: 1025,
             methods: vec![AspectMethod {
                 name: "to_value",
                 params: vec![
@@ -785,6 +897,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectLiftDynamic",
+            id: 1026,
             methods: vec![AspectMethod {
                 name: "lift",
                 params: vec![
@@ -797,6 +910,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectIterable",
+            id: 1027,
             methods: vec![
                 AspectMethod {
                     name: "element_type",
@@ -818,6 +932,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectArtifact",
+            id: 1028,
             methods: vec![
                 AspectMethod {
                     name: "to_serial",
@@ -841,6 +956,7 @@ fn aspects() -> Vec<AspectSpec> {
         },
         AspectSpec {
             name: "AspectAspect",
+            id: 1029,
             methods: vec![
                 AspectMethod {
                     name: "get_unique",
@@ -882,7 +998,7 @@ fn generate_aspects(aspects: &[AspectSpec]) -> TokenStream {
         let id_fn = format_ident!("{}_aspect_id", snake);
         let get_fn = format_ident!("{}_get", snake);
         let get_maybe_fn = format_ident!("{}_get_maybe", snake);
-        let id_name = format!("aspect:{}", a.name);
+        let id = a.id;
         let trait_methods: Vec<TokenStream> = a.methods.iter().map(|m| {
             let name = format_ident!("{}", m.name);
             let params: Vec<TokenStream> = m.params.iter().map(|(n, ty)| {
@@ -906,7 +1022,7 @@ fn generate_aspects(aspects: &[AspectSpec]) -> TokenStream {
             }
             #[allow(dead_code)]
             pub(crate) fn #id_fn() -> crate::langhelp::Unique {
-                crate::langhelp::Unique::from_name(#id_name)
+                crate::langhelp::Unique::Builtin(#id)
             }
             #[allow(dead_code)]
             pub(crate) fn #get_fn(
@@ -959,6 +1075,8 @@ struct DynWrapStructSpec {
     /// Struct name (PascalCase). Produces `struct <name>` and
     /// `struct Type<name>Dynamic`.
     name: &'static str,
+    /// Explicit `Unique::Builtin(id)` for this struct's type identity.
+    id: usize,
     /// `data` fields stored on the Rust struct. `(name, rust_type)`.
     data_fields: Vec<(&'static str, &'static str)>,
     /// `field <name>: <ret_type> { <body> }` — computed at `into_v8` time,
@@ -996,7 +1114,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
     let name = format_ident!("{}", s.name);
     let type_name = format_ident!("Type{}Dynamic", s.name);
     let identity_fn = format_ident!("{}_type_identity", snake_case(s.name));
-    let identity_str = format!("dyn_wrap:{}", s.name);
+    let id = s.id;
     let desc_str = s.name.to_string();
 
     let data_field_decls: Vec<TokenStream> = s
@@ -1217,7 +1335,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
         pub(crate) struct #type_name;
 
         fn #identity_fn() -> crate::langhelp::Unique {
-            crate::langhelp::Unique::from_name(#identity_str)
+            crate::langhelp::Unique::Builtin(#id)
         }
 
         impl crate::langhelp::Value for #type_name {
@@ -1419,6 +1537,8 @@ struct DynWrapWrapSpec {
     /// `<name>_type_identity`/`<name>_extra_aspect` functions are looked
     /// up via snake_case(`<name>`).
     name: &'static str,
+    /// Explicit `Unique::Builtin(id)` for this wrapper's type identity.
+    id: usize,
     /// The Rust type being wrapped (e.g. `"Gc<DefinitionSet>"`). Must
     /// already exist; the generator emits `impl DynamicWrap for <type>`.
     wrapped_type: &'static str,
@@ -1429,7 +1549,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
     let type_name = format_ident!("Type{}Dynamic", s.name);
     let identity_fn = format_ident!("{}_type_identity", snake_case(s.name));
     let extra_aspect_fn = format_ident!("{}_extra_aspect", snake_case(s.name));
-    let identity_str = format!("dyn_wrap:{}", s.name);
+    let id = s.id;
     let desc_str = s.name.to_string();
     let wrapped: TokenStream = s.wrapped_type.parse().unwrap();
 
@@ -1561,7 +1681,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
         pub(crate) struct #type_name;
 
         fn #identity_fn() -> crate::langhelp::Unique {
-            crate::langhelp::Unique::from_name(#identity_str)
+            crate::langhelp::Unique::Builtin(#id)
         }
 
         impl crate::langhelp::Value for #type_name {
@@ -1760,6 +1880,7 @@ fn dyn_wrap_wraps() -> Vec<DynWrapWrapSpec> {
         // `AspectLiftDynamic` on top of the generator's default aspect set.
         DynWrapWrapSpec {
             name: "DefinitionSet",
+            id: 4001,
             wrapped_type: "Gc<DefinitionSet>",
             methods: vec![
                 DynWrapMethod {
@@ -1874,6 +1995,8 @@ struct DynWrapFnSpec {
     /// Function name — both the entry key and the generated fn name
     /// (`gen_fn_<name>`).
     name: &'static str,
+    /// Explicit `ScopeEntryId::Builtin(id)` — usize, globally unique.
+    id: usize,
     /// `(name, rust_type)` args (decoded from v8 via `DynamicWrap::from_v8`).
     args: Vec<(&'static str, &'static str)>,
     /// Rust return type. `"()"` for unit (also encodes "unit" — the macro
@@ -1888,7 +2011,7 @@ struct DynWrapFnSpec {
 fn generate_dyn_wrap_fn(s: &DynWrapFnSpec) -> TokenStream {
     let fn_name = format_ident!("gen_fn_{}", s.name);
     let name_str = s.name;
-    let id_str = format!("dyn_wrap_fn:{}", s.name);
+    let id = s.id;
     let arg_mortar = arg_mortar_expr(&s.args);
     let arg_decls: Vec<TokenStream> = s
         .args
@@ -1930,12 +2053,7 @@ fn generate_dyn_wrap_fn(s: &DynWrapFnSpec) -> TokenStream {
             }
             (
                 #name_str,
-                crate::langhelp::ScopeEntryId::Builtin(
-                    match crate::langhelp::Unique::from_name(#id_str) {
-                        crate::langhelp::Unique::Builtin(n) => n,
-                        _ => unreachable!(),
-                    },
-                ),
+                crate::langhelp::ScopeEntryId::Builtin(#id),
                 std::rc::Rc::new(
                     crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
                         arg: #arg_mortar,
@@ -1948,10 +2066,67 @@ fn generate_dyn_wrap_fn(s: &DynWrapFnSpec) -> TokenStream {
     }
 }
 
+/// Generates the registration loop for every `dyn_wrap_fns()` entry. The
+/// produced `gen_register_builtin_fns` calls each `gen_fn_<name>` in turn,
+/// hooks the result into the v8 global (when `register_v8` is true) and
+/// the source scope, mirroring what the old hand-rolled loop in
+/// `eval/mod.rs` did. Adding a `DynWrapFnSpec` automatically registers it
+/// — no separate callsite to keep in sync.
+fn generate_dyn_wrap_fn_registrar(fns: &[DynWrapFnSpec]) -> TokenStream {
+    let call_exprs: Vec<TokenStream> = fns
+        .iter()
+        .map(|s| {
+            let fn_name = format_ident!("gen_fn_{}", s.name);
+            quote! { #fn_name(dynamic_scope) }
+        })
+        .collect();
+    quote! {
+        pub(crate) fn gen_register_builtin_fns<'s>(
+            xx: &crate::langhelp::ExprContext,
+            root_loc: crate::langhelp::QExprId,
+            register_v8: bool,
+            dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            scope: &crate::langhelp::Scope,
+            builtin_scope_entries: &mut Vec<(
+                String,
+                crate::langhelp::ScopeEntryId,
+                std::rc::Rc<dyn crate::langhelp::Type>,
+            )>,
+        ) -> Result<(), Vec<crate::langhelp::ExprErr>> {
+            for (key, dynamic_key, type_, dynamic_value) in [ #(#call_exprs),* ] {
+                if register_v8 {
+                    dynamic_scope
+                        .get_current_context()
+                        .global(dynamic_scope)
+                        .set(
+                            dynamic_scope,
+                            v8::String::new(
+                                dynamic_scope,
+                                &crate::eval::scope_entry_id_dynamic_key(dynamic_key),
+                            )
+                                .unwrap()
+                                .cast(),
+                            dynamic_value,
+                        );
+                }
+                let ib = crate::builtin::aspect_initial_bind_get(xx, root_loc, type_.as_ref())
+                    .into_res()?;
+                builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
+                scope.values.borrow_mut().insert(
+                    crate::langhelp::ConstKey::String(key.to_string()),
+                    ib.initial_bind(dynamic_key),
+                );
+            }
+            Ok(())
+        }
+    }
+}
+
 fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
     vec![
         DynWrapFnSpec {
             name: "log",
+            id: 5001,
             args: vec![("message", "String")],
             ret: "()",
             body: quote! {
@@ -1967,6 +2142,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "define",
+            id: 5002,
             args: vec![],
             ret: "Gc<DefinitionSet>",
             body: quote! {
@@ -1981,18 +2157,21 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "str_to_json",
+            id: 5003,
             args: vec![("s", "String")],
             ret: "String",
             body: quote! { serde_json::to_string(&s).unwrap() },
         },
         DynWrapFnSpec {
             name: "constkey_to_str",
+            id: 5004,
             args: vec![("key", "crate::langhelp::ConstKey")],
             ret: "String",
             body: quote! { key.to_str() },
         },
         DynWrapFnSpec {
             name: "new_code_value",
+            id: 5005,
             args: vec![
                 ("code", "crate::langhelp::Code"),
                 ("value", "Rc<dyn crate::langhelp::Value>"),
@@ -2005,6 +2184,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "gen_binding_name",
+            id: 5006,
             args: vec![("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
             ret: "String",
             body: quote! {
@@ -2015,6 +2195,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "eval_const",
+            id: 5007,
             args: vec![
                 ("xx", "crate::eval::code_value_extern::ExprContextRef"),
                 ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
@@ -2033,6 +2214,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "const_eval",
+            id: 5008,
             args: vec![
                 ("xx", "crate::eval::code_value_extern::ExprContextRef"),
                 ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
@@ -2053,6 +2235,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "new_expr_context",
+            id: 5009,
             args: vec![
                 ("target_arg", "Rc<dyn Target>"),
                 ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::langhelp::ScopeEntry>>"),
@@ -2081,6 +2264,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "list",
+            id: 5010,
             args: vec![("element_type", "dynamic_wrap::AnyType")],
             ret: "value::type_list::dynamic::TypeListDynamic",
             body: quote! {
@@ -2089,6 +2273,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "map",
+            id: 5011,
             args: vec![
                 ("key_type", "dynamic_wrap::AnyType"),
                 ("value_type", "dynamic_wrap::AnyType"),
@@ -2103,6 +2288,7 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         },
         DynWrapFnSpec {
             name: "option",
+            id: 5012,
             args: vec![("element_type", "dynamic_wrap::AnyType")],
             ret: "value::type_option::dynamic::TypeOptionDynamic",
             body: quote! {
@@ -2151,6 +2337,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
     vec![
         DynWrapStructSpec {
             name: "OptionV8",
+            id: 3001,
             data_fields: vec![("is_some_inner", "bool")],
             fields: vec![],
             methods: vec![DynWrapMethod {
@@ -2167,6 +2354,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // payload wiring is TODO at the JS layer).
         DynWrapStructSpec {
             name: "TypeRefV8",
+            id: 3002,
             data_fields: vec![("type_ref", "Rc<dyn Type>")],
             fields: vec![],
             methods: vec![DynWrapMethod {
@@ -2199,6 +2387,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // ret type. Each setter throws if called twice.
         DynWrapStructSpec {
             name: "SourceNewFuncResult",
+            id: 3003,
             data_fields: vec![("func_ref", "Rc<TypeSourceFunctionConst>")],
             fields: vec![DynWrapField {
                 name: "func",
@@ -2279,6 +2468,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // ret type, and impl body.
         DynWrapStructSpec {
             name: "SourceNewDataMethodResult",
+            id: 3004,
             data_fields: vec![
                 ("data_type_ref", "Rc<SourceDataTypeRef>"),
                 ("method_index", "usize"),
@@ -2344,6 +2534,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // declare a method.
         DynWrapStructSpec {
             name: "SourceNewInterfaceResult",
+            id: 3005,
             data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>")],
             fields: vec![DynWrapField {
                 name: "type_",
@@ -2398,6 +2589,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // for description, underlying type, methods, and interface impls.
         DynWrapStructSpec {
             name: "SourceNewDataResult",
+            id: 3006,
             data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>")],
             fields: vec![
                 DynWrapField {
@@ -2526,6 +2718,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // `.type` (the ref) and `.variant(tag, type)` to add variants.
         DynWrapStructSpec {
             name: "SourceTaggedUnionBuilder",
+            id: 3007,
             data_fields: vec![("data", "Rc<SourceTaggedUnionData>")],
             fields: vec![DynWrapField {
                 name: "type_",
@@ -2565,6 +2758,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         // `iface.new_func(name)`. Lets the caller set arg/ret types.
         DynWrapStructSpec {
             name: "SourceNewInterfaceMethodResult",
+            id: 3008,
             data_fields: vec![
                 ("interface_ref", "Rc<SourceInterfaceRef>"),
                 ("method_index", "usize"),
@@ -2614,11 +2808,17 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let ifaces = interfaces();
-    check_no_duplicates(&ifaces);
     let aspects = aspects();
+    let dw_structs = dyn_wrap_structs();
+    let dw_wraps = dyn_wrap_wraps();
+    let dw_fns = dyn_wrap_fns();
+    let locals = local_identities();
+    check_no_duplicates(&ifaces);
     check_no_duplicate_aspects(&aspects);
+    check_no_duplicate_ids(&ifaces, &aspects, &dw_structs, &dw_wraps, &dw_fns, &locals);
     let iface_tokens = generate(&ifaces);
     let aspect_tokens = generate_aspects(&aspects);
+    let local_tokens = generate_local_identities(&locals);
     let fmt = |toks: TokenStream| -> String {
         match genemichaels_lib::format_str(
             &toks.to_string(),
@@ -2630,26 +2830,24 @@ fn main() {
     };
     fs::write(out_dir.join("gen_builtin_interfaces.rs"), fmt(iface_tokens)).unwrap();
     fs::write(out_dir.join("gen_aspects.rs"), fmt(aspect_tokens)).unwrap();
+    fs::write(out_dir.join("gen_local_identities.rs"), fmt(local_tokens)).unwrap();
     // One gen file per `dynamic_wrap!(struct …)` migrated, included from the
     // original file location so the body's identifier scope (imports, local
     // types) resolves the same way the macro expansion did.
-    for s in dyn_wrap_structs() {
-        let toks = generate_dyn_wrap_struct(&s);
+    for s in &dw_structs {
+        let toks = generate_dyn_wrap_struct(s);
         let filename = format!("gen_dw_{}.rs", s.name);
         fs::write(out_dir.join(filename), fmt(toks)).unwrap();
     }
-    for s in dyn_wrap_wraps() {
-        let toks = generate_dyn_wrap_wrap(&s);
+    for s in &dw_wraps {
+        let toks = generate_dyn_wrap_wrap(s);
         let filename = format!("gen_dw_{}.rs", s.name);
         fs::write(out_dir.join(filename), fmt(toks)).unwrap();
     }
-    // All fn-variant bodies share one gen file included from eval/mod.rs
-    // (where the local identifier scope — `Expr`, `const_eval`, `Gc`,
-    // `DefinitionSet`, `V8LogStore`, etc. — is already in scope via mod.rs's
-    // imports).
     let mut fn_toks = TokenStream::new();
-    for s in dyn_wrap_fns() {
-        fn_toks.extend(generate_dyn_wrap_fn(&s));
+    for s in &dw_fns {
+        fn_toks.extend(generate_dyn_wrap_fn(s));
     }
+    fn_toks.extend(generate_dyn_wrap_fn_registrar(&dw_fns));
     fs::write(out_dir.join("gen_dyn_wrap_fns.rs"), fmt(fn_toks)).unwrap();
 }

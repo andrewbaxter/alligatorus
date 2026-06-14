@@ -67,9 +67,7 @@ use {
     },
 };
 
-pub(crate) fn type_option_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::type_option_identity;
 
 #[derive(Clone)]
 pub(crate) struct TypeOptionDynamic {

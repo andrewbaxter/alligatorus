@@ -188,9 +188,7 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
 /// Marker `Unique` used to identify *any* concrete `TypeSourceInterfaceConst`
 /// instance — distinct from `interface_ref_type_identity()` (which marks the
 /// type-erased dynamic ref) and from each interface's own `data.identity`.
-pub(crate) fn interface_const_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::interface_const_identity;
 
 impl Type for TypeSourceInterfaceConst {
     fn as_value(&self) -> Rc<dyn Value> {

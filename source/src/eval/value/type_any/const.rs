@@ -45,9 +45,7 @@ use {
     },
 };
 
-pub(crate) fn type_type_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::type_type_identity;
 pub(crate) struct TypeAnyConst;
 
 /// Canonical value carrier for `TypeAnyConst`: a type-of-types value carries

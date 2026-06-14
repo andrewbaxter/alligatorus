@@ -88,57 +88,22 @@ pub(crate) struct TypeSourceInterfaceConst {
     pub data: Gc<SourceInterfaceData>,
 }
 
-pub(crate) struct BuiltinInterfaces {
-    pub value: Gc<SourceInterfaceData>,
-    pub type_: Gc<SourceInterfaceData>,
-    pub aspect_function: Gc<SourceInterfaceData>,
-    pub aspect_field: Gc<SourceInterfaceData>,
-    pub scope_entry: Gc<SourceInterfaceData>,
-    pub target: Gc<SourceInterfaceData>,
-    pub code_dyn: Gc<SourceInterfaceData>,
-}
+// `BuiltinInterfaces` struct used to live here; replaced by the
+// build.rs-generated `GenBuiltinInterfaces` (same shape). Callers use
+// `gen_build_builtin_interfaces(import_state)` directly.
+pub(crate) use GenBuiltinInterfaces as BuiltinInterfaces;
 
-pub(crate) fn builtin_code_dyn_iface_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+// Ids match `build.rs::interfaces()` entries for `code_dyn` / `scope_entry`
+// / `target`. Kept here as thin wrappers so existing callers
+// (`type_any_target::dynamic`, etc.) compile unchanged; the canonical
+// source of truth is the spec.
+pub(crate) fn builtin_code_dyn_iface_identity() -> Unique { Unique::Builtin(2007) }
+pub(crate) fn builtin_scope_entry_iface_identity() -> Unique { Unique::Builtin(2005) }
+pub(crate) fn builtin_target_iface_identity() -> Unique { Unique::Builtin(2006) }
 
-pub(crate) fn builtin_scope_entry_iface_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
-
-pub(crate) fn builtin_target_iface_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
-
-/// Build the synthetic builtin `value`/`type`/`aspect_function`/`aspect_field`
-/// interfaces. Delegates to `gen_build_builtin_interfaces` (in `build.rs`-
-/// generated `gen_builtin_interfaces.rs`) so method names + source-side
-/// arg/ret types are defined in one place. The four existing aspect-id
-/// `Unique`s (`crate::eval::builtin_value_iface_identity` etc.) are reused
-/// rather than the generator's so callers that already look up by those
-/// match.
-pub(crate) fn build_builtin_interfaces(
-    import_state: crate::langhelp::ImportStateId,
-) -> BuiltinInterfaces {
-    let builtin_def_set =
-        Gc::new(
-            crate::eval::definition_set::DefinitionSet::new(
-                import_state,
-                crate::langhelp::DefSetId(usize::MAX),
-                crate::langhelp::SourceId(usize::MAX),
-            ),
-        );
-    let g = gen_build_builtin_interfaces(&builtin_def_set);
-    BuiltinInterfaces {
-        value: g.value,
-        type_: g.type_,
-        aspect_function: g.aspect_function,
-        aspect_field: g.aspect_field,
-        scope_entry: g.scope_entry,
-        target: g.target,
-        code_dyn: g.code_dyn,
-    }
-}
+// `build_builtin_interfaces` removed — callers now invoke
+// `gen_build_builtin_interfaces(import_state)` (from `build.rs`'s generated
+// gen_builtin_interfaces.rs) directly.
 
 impl crate::eval::dynamic_wrap::DynamicWrap for std::rc::Rc<SourceInterfaceRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {

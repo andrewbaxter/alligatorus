@@ -521,7 +521,7 @@ pub(crate) fn load_def_set(
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
                 let builtin_ifaces =
-                    crate::eval::value::type_source_interface::build_builtin_interfaces(import_id);
+                    crate::eval::value::type_source_interface::gen_build_builtin_interfaces(import_id);
                 let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
                     dt_serial.interface_impls.iter().map(|impl_serial| {
                         let iface = match impl_serial.builtin_kind {

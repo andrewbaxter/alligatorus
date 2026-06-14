@@ -154,16 +154,12 @@ use {
     },
 };
 
-/// Identity for the builtin `value` interface (every value must implement
-/// `type()`). Stable across compile runs.
+/// Ids match `build.rs::interfaces()` entries for `value` and `type`.
 pub(crate) fn builtin_value_iface_identity() -> crate::langhelp::Unique {
-    crate::langhelp::Unique::from_name(&format!("{}:{}", module_path!(), line!()))
+    crate::langhelp::Unique::Builtin(2001)
 }
-
-/// Identity for the builtin `type` interface (when implemented, instances of
-/// the implementing data type act as types).
 pub(crate) fn builtin_type_iface_identity() -> crate::langhelp::Unique {
-    crate::langhelp::Unique::from_name(&format!("{}:{}", module_path!(), line!()))
+    crate::langhelp::Unique::Builtin(2002)
 }
 
 /// Well-known scope entry ID for __record_to_type mortar function.
@@ -1174,31 +1170,9 @@ fn eval(
     // stage because each stage's top-level `Scope` is fresh.
     let register_v8 = !cix.builtins_registered.get();
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
-    for (key, dynamic_key, type_, dynamic_value) in [
-        gen_fn_log(dynamic_scope),
-        gen_fn_define(dynamic_scope),
-        gen_fn_str_to_json(dynamic_scope),
-        gen_fn_constkey_to_str(dynamic_scope),
-        gen_fn_new_code_value(dynamic_scope),
-        gen_fn_gen_binding_name(dynamic_scope),
-        gen_fn_eval_const(dynamic_scope),
-        gen_fn_const_eval(dynamic_scope),
-        gen_fn_new_expr_context(dynamic_scope),
-    ] {
-        if register_v8 {
-            dynamic_scope
-                .get_current_context()
-                .global(dynamic_scope)
-                .set(
-                    dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                    dynamic_value,
-                );
-        }
-        let ib = aspect_initial_bind_get(&xx, root_loc, type_.as_ref()).into_res()?;
-        builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
-        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
-    }
+    // All `dyn_wrap_fns()` entries registered through this generated
+    // loop — adding a `DynWrapFnSpec` automatically gets it registered.
+    gen_register_builtin_fns(&xx, root_loc, register_v8, dynamic_scope, &scope, &mut builtin_scope_entries)?;
 
     // Synthetic builtin interfaces: `value` and `type`. These are exposed as
     // `Rc<SourceInterfaceRef>` so `impl_interface(value | type, ...)` accepts
@@ -1206,7 +1180,7 @@ fn eval(
     // single throwaway DefinitionSet that is never compiled or serialized.
     {
         use value::type_source_interface::SourceInterfaceRef;
-        let builtin_ifaces = value::type_source_interface::build_builtin_interfaces(import_state);
+        let builtin_ifaces = value::type_source_interface::gen_build_builtin_interfaces(import_state);
         let iface_dyn_type: Rc<dyn Type> =
             Rc::new(value::type_source_interface::dynamic::TypeSourceInterfaceDynamic);
         for (name, data) in

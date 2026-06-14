@@ -75,17 +75,7 @@ use {
     },
 };
 
-fn type_code_struct_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
-
-fn type_code_enum_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
-
-fn type_code_dyn_handle_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+use crate::r#gen::{type_code_struct_identity, type_code_enum_identity, type_code_dyn_handle_identity};
 
 // ---------- TypeCodeStructDynamic ----------
 

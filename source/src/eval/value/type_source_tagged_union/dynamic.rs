@@ -55,9 +55,7 @@ use {
     },
 };
 
-fn tagged_union_ref_type_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::tagged_union_ref_type_identity;
 
 pub(crate) struct TypeSourceTaggedUnionDynamic {
     pub data: Rc<SourceTaggedUnionData>,

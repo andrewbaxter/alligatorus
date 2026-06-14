@@ -192,9 +192,7 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
     }
 }
 
-pub(crate) fn type_unique_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::type_unique_identity;
 
 impl Type for TypeUnique {
     fn as_value(&self) -> Rc<dyn Value> {

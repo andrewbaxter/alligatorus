@@ -2,6 +2,11 @@
 pub mod builtin;
 pub mod code_dynamic;
 pub mod eval;
+// `gen` is a reserved keyword in Rust 2024 (gen blocks/closures), so the
+// module's identifier is raw-form `r#gen`. Paths in callers use
+// `crate::r#gen::xyz` (or `use crate::r#gen as gen;` for local convenience).
+#[path = "gen.rs"]
+pub mod r#gen;
 pub mod invariant;
 pub mod langhelp;
 pub mod syntax;

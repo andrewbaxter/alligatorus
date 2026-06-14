@@ -33,7 +33,7 @@ pub(crate) struct Deserializer;
 impl Deserializer {
     fn lookup(xx: &ExprContext, kind: BuiltinInterfaceKind) -> Rc<dyn Type> {
         let ifaces =
-            crate::eval::value::type_source_interface::build_builtin_interfaces(xx.import_state.get());
+            crate::eval::value::type_source_interface::gen_build_builtin_interfaces(xx.import_state.get());
         let data = match kind {
             BuiltinInterfaceKind::Value => ifaces.value,
             BuiltinInterfaceKind::Type => ifaces.type_,

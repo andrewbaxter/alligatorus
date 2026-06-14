@@ -51,9 +51,7 @@ use {
     },
 };
 
-pub(crate) fn type_aspect_identity() -> Unique {
-    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
-}
+pub(crate) use crate::r#gen::type_aspect_identity;
 
 pub(crate) struct TypeAspectDynamic;
 
