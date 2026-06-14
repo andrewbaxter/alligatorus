@@ -12,6 +12,7 @@ pub mod type_aspect;
 pub mod value_user_defined;
 pub mod type_bool;
 pub mod type_code_source;
+pub mod type_constkey;
 pub mod type_expr;
 pub mod type_function;
 pub mod type_function_aspect;

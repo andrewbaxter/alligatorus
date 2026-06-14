@@ -47,7 +47,7 @@ fn test_00900define_interface() {
                             mb.field(
                                 mb.call(
                                     mb.scope_use("map"),
-                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("expr")]),
+                                    mb.tuple(vec![mb.scope_use("constkey"), mb.scope_use("expr")]),
                                 ),
                                 mb.str("new"),
                             ),
@@ -264,7 +264,7 @@ fn test_00910interface_cast() {
                             mb.field(
                                 mb.call(
                                     mb.scope_use("map"),
-                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("expr")]),
+                                    mb.tuple(vec![mb.scope_use("constkey"), mb.scope_use("expr")]),
                                 ),
                                 mb.str("new"),
                             ),

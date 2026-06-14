@@ -346,7 +346,17 @@ impl Type for TypeMapDynamic {
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
         if let Some(source_map) = aspect_map_dynamic_get_maybe(xx, source_type) {
-            // Map → map: check element types are compatible
+            // Map → map: require identical key types. Differing key types
+            // would need runtime re-encoding (e.g. `string` keys are stored
+            // raw while `constkey` keys are canonical-JSON), and we don't
+            // synthesize that. Identical-type check via `TypeId` —
+            // `types_convertible` would admit one-way-cast pairs (string →
+            // constkey works) which can't reuse the JS object verbatim.
+            let key_match = std::any::Any::type_id(source_map.key_type().as_ref() as &dyn std::any::Any) ==
+                std::any::Any::type_id(self.key_type.as_ref() as &dyn std::any::Any);
+            if !key_match {
+                return false;
+            }
             return types_convertible(xx, loc, source_map.value_type().as_ref(), self.value_type.as_ref());
         }
         if aspect_record_get_maybe(xx, source_type).is_some() &&
@@ -373,6 +383,18 @@ impl Type for TypeMapDynamic {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if let Some(source_map) = aspect_map_dynamic_get_maybe(xx, source_type.as_ref()) {
+            let key_match = std::any::Any::type_id(source_map.key_type().as_ref() as &dyn std::any::Any) ==
+                std::any::Any::type_id(self.key_type.as_ref() as &dyn std::any::Any);
+            if !key_match {
+                return EvalRes::err(
+                    loc,
+                    format!(
+                        "Incompatible map key types: {} cannot convert to {}",
+                        source_map.key_type().desc(),
+                        self.key_type.desc()
+                    ),
+                );
+            }
             if !types_convertible(xx, loc, source_map.value_type().as_ref(), self.value_type.as_ref()) {
                 return EvalRes::err(
                     loc,
@@ -400,9 +422,33 @@ impl Type for TypeMapDynamic {
                 .expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
+            let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
             let mut js_fields = Vec::new();
             for (key, field) in record.fields.into_iter() {
-                let canonical = key.to_str();
+                // Build a CV from the const key and cast it through the map's
+                // key type. `typecheck_convert` performs the actual encoding —
+                // its result already carries the correctly-encoded runtime
+                // form for `key_type`, so we use it verbatim. Record keys are
+                // always const, so this is a per-entry compile-time
+                // reconstruction (no record-dynamic-form passthrough).
+                let display = key.to_str();
+                let key_cv = match &key {
+                    crate::langhelp::ConstKey::String(s) => CodeValue {
+                        code: Code { loc, code: Code_::None },
+                        value: Rc::new(
+                            crate::eval::value::value_string::r#const::ValueStringConst(s.clone()),
+                        ),
+                    },
+                    crate::langhelp::ConstKey::Usize(n) => CodeValue {
+                        code: Code { loc, code: Code_::None },
+                        value: Rc::new(
+                            crate::eval::value::value_number::r#const::ValueNumberConst(*n as f64),
+                        ),
+                    },
+                };
+                let key_cv =
+                    erb.must_er(crate::eval::typecheck_convert(xx, loc, self.key_type.as_ref(), key_cv))?;
+                let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, key_cv))?;
                 let entry_cv = match field {
                     crate::eval::value::record::RecordField::EvalRes(entry_res) => {
                         if let Some(errs) = entry_res.errors {
@@ -411,23 +457,20 @@ impl Type for TypeMapDynamic {
                         match entry_res.v {
                             Some(v) => v,
                             None => {
-                                return erb.err_new(format!("Record entry '{}' failed to evaluate", canonical),);
+                                return erb.err_new(format!("Record entry '{}' failed to evaluate", display),);
                             },
                         }
                     },
                     crate::eval::value::record::RecordField::Mortar(_) => {
                         return erb.err_new(
-                            format!("Record entry '{}' is mortar-only, cannot consume directly to JS", canonical),
+                            format!("Record entry '{}' is mortar-only, cannot consume directly to JS", display),
                         );
                     },
                 };
                 let converted =
                     erb.must_er(crate::eval::typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
                 let js_val = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, converted))?;
-                js_fields.push((CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::Literal(serde_json::Value::String(canonical)),
-                }, js_val));
+                js_fields.push((key_code, js_val));
             }
             return Ok(CodeValue {
                 code: Code {
@@ -581,6 +624,9 @@ impl AspectFunction for TypeMapGetFnDynamic {
         return er_seq_cv!(loc, erb, {
             let argument = erb.must_er(crate::eval::typecheck_convert(xx, loc, self.key_type.as_ref(), argument))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
+            // `typecheck_convert` + `to_dynamic` give the encoded runtime form
+            // for `key_type` — the same shape `new_map`'s cast_from emits when
+            // it stores keys. Use it directly as the subscript.
             let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, argument))?;
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {

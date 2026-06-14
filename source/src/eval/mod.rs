@@ -1391,9 +1391,13 @@ fn eval(
                     );
             }
             // Bind each interface with the specific `Const` wrapper carrying
-            // that interface's data — so `scope_use("type")` etc. have the
-            // specific iface identity statically, and `data_type.cast_to(type)`
-            // works (the data type's "type" interface impl identity matches).
+            // that interface's data. `scope_use("type")` etc. plays double
+            // duty in source: it's a type-of-types value AND the iface ref
+            // that `impl_interface(<iface>, methods)` dispatches on. The
+            // Const wrapper carries the specific iface identity so the
+            // `impl_interface` lookup matches; switching to `TypeAnyDynamic`
+            // breaks `impl_interface(type, …)` and similar (see
+            // `test_00100_impl_type`).
             let iface_const_type: Rc<dyn Type> = Rc::new(
                 value::type_source_interface::TypeSourceInterfaceConst {
                     data: iface_ref.data.clone(),
@@ -1417,6 +1421,7 @@ fn eval(
         ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
         ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
+        ("constkey", Rc::new(value::type_constkey::dynamic::TypeConstkeyDynamic) as Rc<dyn Type>),
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
         ("any", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
@@ -3644,12 +3649,7 @@ pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> St
         CodeDynamicType::SubscriptUse(s) => {
             let base = render_code(lines, &s.base);
             let key = render_code(lines, &s.key);
-            // Map storage uses canonical-JSON keys (`NewMap` and `cast_from`
-            // emit the key as `serde_json::to_string(&canonical)` — so a
-            // source-level string `"log"` becomes the 4-char JS key `"log"`
-            // including literal quotes). Match that at lookup time by
-            // canonicalizing the runtime key with `JSON.stringify`.
-            lines.push(code.loc, format!("{} = {}[JSON.stringify({})];", out, base, key));
+            lines.push(code.loc, format!("{} = {}[{}];", out, base, key));
         },
         CodeDynamicType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);
@@ -4248,6 +4248,7 @@ pub(crate) fn build_builtin_scope(
         ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
         ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
         ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
+        ("constkey", Rc::new(value::type_constkey::dynamic::TypeConstkeyDynamic) as Rc<dyn Type>),
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
         ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),

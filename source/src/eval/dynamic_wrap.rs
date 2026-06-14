@@ -637,7 +637,7 @@ impl DynamicWrap for Rc<dyn crate::langhelp::Value> {
 /// keys are JS strings regardless of `K`.
 impl<K, V> DynamicWrap for std::collections::HashMap<K, V>
 where
-    K: DynamicWrapKey + Eq + std::hash::Hash,
+    K: DynamicWrapKey + DynamicWrap + Eq + std::hash::Hash,
     V: DynamicWrap,
 {
     fn from_v8<'s>(
@@ -668,7 +668,7 @@ where
 
     fn mortar_type() -> Rc<dyn Type> {
         Rc::new(TypeMapDynamic {
-            key_type: Rc::new(TypeStringDynamic),
+            key_type: <K as DynamicWrap>::mortar_type(),
             value_type: <V as DynamicWrap>::mortar_type(),
         })
     }
@@ -770,7 +770,11 @@ impl DynamicWrap for ConstKey {
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(TypeStringDynamic)
+        // Distinct mortar type whose `cast_from` performs canonical-JSON
+        // encoding — matches `ConstKey::from_str` at the v8 boundary. Using
+        // plain `TypeStringDynamic` here was wrong: it left string keys
+        // un-encoded so `BTreeMap<ConstKey, V>::from_v8` couldn't parse them.
+        Rc::new(crate::eval::value::type_constkey::dynamic::TypeConstkeyDynamic)
     }
 }
 

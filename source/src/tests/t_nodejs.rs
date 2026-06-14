@@ -296,13 +296,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.call(
             mb.field(mb.scope_use("ntype_object"), mb.str("set_underlying")),
-            // Stored values are type refs (`Rc<dyn Type>` at runtime = `any`).
-            // Using `type` (the iface) would mismatch — that iface's runtime
-            // form is `Rc<SourceInterfaceRef>`, not `Rc<dyn Type>`. Per the
-            // invariant that each type has a single representation,
-            // type-of-types values must be typed `any` to ride the right
-            // runtime shape.
-            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("any")])),
+            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("type")])),
         ),
     );
     exprs.extend(
@@ -362,7 +356,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                         "field",
                                                         mb.call(
                                                             mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
-                                                            mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
+                                                            mb.field(mb.scope_use("arg"), mb.str("key")),
                                                         ),
                                                     ),
                                                 ],
@@ -374,7 +368,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                     "type",
                                     mb.call(
                                         mb.field(mb.scope_use("self"), mb.str("get")),
-                                        mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
+                                        mb.field(mb.scope_use("arg"), mb.str("key")),
                                     ),
                                 ),
                             ])),
@@ -385,7 +379,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     "field_type_opt",
                     mb.call(
                         mb.field(mb.scope_use("self"), mb.str("get")),
-                        mb.as_(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use("string")),
+                        mb.field(mb.scope_use("arg"), mb.str("key")),
                     ),
                 ),
             ],
@@ -926,7 +920,7 @@ fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> Source
     let entries: Vec<(&str, SourceExpr)> = methods.into_iter().map(|(k, v)| (k, mb.stage(v))).collect();
     return mb.call(
         mb.field(
-            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("expr")])),
+            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("constkey"), mb.scope_use("expr")])),
             mb.str("new"),
         ),
         mb.record(entries),
