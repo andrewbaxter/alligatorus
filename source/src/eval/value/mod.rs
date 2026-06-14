@@ -16,6 +16,7 @@ pub mod type_constkey;
 pub mod type_expr;
 pub mod type_function;
 pub mod type_function_aspect;
+pub mod type_function_cast_value;
 pub mod type_list;
 pub mod type_list_constructor;
 pub mod type_map;

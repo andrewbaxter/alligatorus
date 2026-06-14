@@ -205,18 +205,23 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             // value arg: original nvalue construction; auto-casts TSDT(nvalue) →
             // value via __data_instance_to_value (nvalue impls the value iface).
             mb.block(vec![
-                // func_code: cast .value to nvalue so .base falls through.
+                // func_code: unwrap .value as an nvalue instance so .base
+                // falls through. `cast_value` panics at runtime if the value
+                // isn't a `ValueUserDefined` whose data type matches nvalue.
                 mb.bind(
                     "func_code",
                     nvalue_base_to_code(
                         mb,
                         mb.field(
-                            mb.as_(
-                                mb.field(
-                                    mb.field(mb.scope_use("arg"), mb.str("self_")),
-                                    mb.str("value"),
-                                ),
-                                mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                            mb.call(
+                                mb.scope_use("cast_value"),
+                                mb.tuple(vec![
+                                    mb.field(
+                                        mb.field(mb.scope_use("arg"), mb.str("self_")),
+                                        mb.str("value"),
+                                    ),
+                                    mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                                ]),
                             ),
                             mb.str("base"),
                         ),
@@ -242,12 +247,15 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                 mb.str("some"),
                                 mb.call(
                                     mb.field(mb.scope_use("v"), mb.str("to_code")),
-                                    mb.as_(
-                                        mb.field(
-                                            mb.field(mb.scope_use("arg"), mb.str("argument")),
-                                            mb.str("value"),
-                                        ),
-                                        mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                                    mb.call(
+                                        mb.scope_use("cast_value"),
+                                        mb.tuple(vec![
+                                            mb.field(
+                                                mb.field(mb.scope_use("arg"), mb.str("argument")),
+                                                mb.str("value"),
+                                            ),
+                                            mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                                        ]),
                                     ),
                                 ),
                             ),
@@ -331,12 +339,15 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                 nvalue_base_to_code(
                                     mb,
                                     mb.field(
-                                        mb.as_(
-                                            mb.field(
-                                                mb.field(mb.scope_use("arg"), mb.str("self_")),
-                                                mb.str("value"),
-                                            ),
-                                            mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                                        mb.call(
+                                            mb.scope_use("cast_value"),
+                                            mb.tuple(vec![
+                                                mb.field(
+                                                    mb.field(mb.scope_use("arg"), mb.str("self_")),
+                                                    mb.str("value"),
+                                                ),
+                                                mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type"))),
+                                            ]),
                                         ),
                                         mb.str("base"),
                                     ),

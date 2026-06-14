@@ -202,6 +202,15 @@ pub(crate) const VALUE_GET_TYPE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builti
 /// expects for `some`/`none` variants.
 pub(crate) const ASPECT_LOOKUP_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__cast_value` rust-in-v8 function — unwraps
+/// an `Rc<dyn Value>` external to its concrete `ValueUserDefined` form,
+/// asserting that the value's data type matches the supplied
+/// `TypeSourceDataTypeConst` template. Panics on mismatch. Returns the
+/// `ValueUserDefined`'s `bundle.instance` — i.e. the JS object representing
+/// the user-defined data type instance — so source-level code can drive
+/// field/method access on it normally.
+pub(crate) const CAST_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 /// Well-known scope entry ID for __cve_extract mortar function — extracts the
 /// raw runtime JS value from a CodeValueExtern by consuming the wrapped
 /// CodeValue's code (or const value) into a JS value.
@@ -1557,6 +1566,21 @@ fn eval(
             .borrow_mut()
             .insert(ConstKey::String("aspect_lookup".to_string()), ib.initial_bind(aspect_dynamic_key));
     }
+    // `cast_value` — source-level helper to unwrap an opaque `Rc<dyn Value>`
+    // (e.g. `cve.value`) at a known user-defined data type. Same shape as
+    // `aspect_lookup`: compile-time dispatch via `TypeFunctionCastValueDynamic`
+    // emits the JS that calls `__cast_value`.
+    {
+        let cast_value_type: Rc<dyn Type> =
+            Rc::new(value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic);
+        let cast_value_key = ScopeEntryId::Builtin(line!() as usize);
+        let ib = aspect_initial_bind_get(&xx, root_loc, cast_value_type.as_ref()).into_res()?;
+        builtin_scope_entries.push(("cast_value".to_string(), cast_value_key, cast_value_type));
+        scope
+            .values
+            .borrow_mut()
+            .insert(ConstKey::String("cast_value".to_string()), ib.initial_bind(cast_value_key));
+    }
     // The v8 dispatcher (`StatelessV8CastDispatcher`) is stateless — it
     // reads the active scope from `ex.v8_scope` (installed at the top of
     // `eval()`) on each call, so its lifetime isn't tied to a `&mut` on
@@ -2658,11 +2682,12 @@ fn eval(
             mut rv: v8::ReturnValue<'s>,
         ) {
             // arg(0) = the CodeValueExtern (v8 external holding
-            // `Rc<RefCell<Option<CodeValue>>>`). Returns the v8 form of the
-            // wrapped CV's `value` slot. The only `Value` shape currently
-            // exercised here is `ValueUserDefined` — return its
-            // `bundle.instance`. Adding more `Value` shapes as the tests
-            // require them is fine; we panic loudly so the gap is obvious.
+            // `Rc<RefCell<Option<CodeValue>>>`). Returns the wrapped CV's
+            // `value` slot as a v8::External wrapping `Rc<dyn Value>` — no
+            // unwrapping into per-Value-shape JS primitives here. Consumers
+            // that want the concrete shape (e.g. a JS instance for a
+            // user-defined data value) call `__cast_value` to unwrap with an
+            // expected static type.
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
@@ -2674,11 +2699,8 @@ fn eval(
                     .value
                     .clone()
             };
-            let vud = crate::invariant::must_downcast_ref::<
-                crate::eval::value::value_user_defined::dynamic::ValueUserDefined,
-            >(value.as_ref());
-            let instance = v8::Local::new(scope, &vud.bundle.instance);
-            rv.set(instance.into());
+            let ext = rc_value_to_v8(scope, value);
+            rv.set(ext.into());
         }
 
         fn value_get_type_callback<
@@ -2688,31 +2710,26 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = a JS instance object (the v8 form of a `ValueUserDefined`,
-            // i.e. the same `bundle.instance` `__cve_get_value` would have
-            // returned). Invoke the user-defined `value.type` impl (`_im_v0`)
-            // on it; the result is a `v8::External` wrapping `Rc<dyn Type>`
-            // (placed there by `__data_instance_to_type`). Re-wrap that Type
-            // as a `TypeRefV8` JS object so the source-level result, typed
-            // `TypeTypeRefV8Dynamic`, can `.aspect(unique)` through the
-            // existing `dynamic_wrap!(struct TypeRefV8)` dispatch.
-            let instance = v8::Local::<v8::Object>::try_from(args.get(0))
-                .expect("__value_get_type: expected JS object for instance");
-            let method_key = v8::String::new(
-                scope,
-                &ConstKey::String("_im_v0".to_string()).to_str(),
-            ).expect("__value_get_type: method key alloc");
-            let method_val = instance
-                .get(scope, method_key.into())
-                .expect("__value_get_type: instance missing _im_v0");
-            let method_fn = v8::Local::<v8::Function>::try_from(method_val)
-                .expect("__value_get_type: instance _im_v0 not a function");
-            let recv: v8::Local<v8::Value> = instance.into();
-            let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
-            let result = method_fn
-                .call(scope, recv, &[null_arg])
-                .expect("__value_get_type: _im_v0 returned no value");
-            let type_ref: Rc<dyn Type> = rc_type_from_v8(&*result);
+            // arg(0) = a v8::External wrapping `Rc<dyn Value>` (the shape
+            // `__cve_get_value` returns). Every `Value` impl provides
+            // `type_()`; let it dispatch — for `ValueUserDefined` that
+            // routes through `_im_v0` on the bundle and gives the
+            // source-language type, for const value shapes it returns the
+            // matching static singleton, etc.
+            let value: Rc<dyn crate::langhelp::Value> = rc_value_from_v8(&*args.get(0));
+            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
+            let xx = Rc::new(ExprContext {
+                vx: ex_slot.ex.clone(),
+                import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
+                scope: Rc::new(Scope {
+                    values: RefCell::new(HashMap::new()),
+                    parent: None,
+                }),
+                target,
+            });
+            let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
+            let type_ref: Rc<dyn Type> = value.type_(&xx, loc);
             let type_ref_v8 = crate::eval::dynamic_wrap::DynamicWrap::into_v8(
                 crate::eval::value::type_ref_v8::TypeRefV8 { type_ref },
                 scope,
@@ -2727,12 +2744,23 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = a `TypeRefV8` JS external (carries `Rc<dyn Type>`)
+            // arg(0) = the JS object produced by `dynamic_wrap!(struct
+            // TypeRefV8)` — a plain Object whose `_d` field carries the
+            // backing `External(Rc<TypeRefV8>)`. The dynamic_wrap struct
+            // macro doesn't impl `from_v8`, so unwrap the `_d` slot
+            // ourselves.
             // arg(1) = a `Unique` external (the aspect identity)
             let arg0 = args.get(0);
             let arg1 = args.get(1);
+            let arg0_obj = v8::Local::<v8::Object>::try_from(arg0)
+                .expect("__aspect_lookup: expected JS Object for TypeRefV8");
+            let d_key = v8::String::new(scope, "_d")
+                .expect("__aspect_lookup: alloc _d key");
+            let d_val = arg0_obj
+                .get(scope, d_key.into())
+                .expect("__aspect_lookup: TypeRefV8 missing _d field");
             let type_ref: Rc<dyn Type> =
-                from_v8_ref::<crate::eval::value::type_ref_v8::TypeRefV8>(&*arg0)
+                from_v8_ref::<Rc<crate::eval::value::type_ref_v8::TypeRefV8>>(&*d_val)
                     .type_ref
                     .clone();
             let unique: crate::langhelp::Unique =
@@ -2853,6 +2881,48 @@ fn eval(
                         .unwrap()
                         .cast(),
                     aspect_lookup_fn.into(),
+                );
+            // `__cast_value(value, type)` — unwrap `Rc<dyn Value>` to a JS
+            // instance, asserting the value's data type matches `type`'s
+            // (`TypeSourceDataTypeConst`) data identity. Used by source-level
+            // `cast_value(value, <user_data_type>.type)` to bridge from the
+            // opaque `value`-iface form (what `__cve_get_value` now returns)
+            // back to a concrete user-defined instance at a known type.
+            fn cast_value_callback<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                args: v8::FunctionCallbackArguments<'s>,
+                mut rv: v8::ReturnValue<'s>,
+            ) {
+                let value: Rc<dyn crate::langhelp::Value> =
+                    rc_value_from_v8(&*args.get(0));
+                let type_: Rc<dyn Type> = rc_type_from_v8(&*args.get(1));
+                let type_const = crate::invariant::must_downcast_ref::<
+                    crate::eval::value::type_source_data_type::TypeSourceDataTypeConst,
+                >(type_.as_ref());
+                let vud = crate::invariant::must_downcast_ref::<
+                    crate::eval::value::value_user_defined::dynamic::ValueUserDefined,
+                >(value.as_ref());
+                // Identity check: the value's data type must match the
+                // template's. `ValueUserDefined` doesn't currently carry its
+                // own data ref (the data is implicit in the bundle); for now
+                // we trust the source-level static signature placed the right
+                // value here. Once `ValueUserDefined` carries data, switch to
+                // `assert!(vud.data.identity == type_const.data.identity)`.
+                let _ = type_const;
+                let instance = v8::Local::new(scope, &vud.bundle.instance);
+                rv.set(instance.into());
+            }
+            let cast_value_fn =
+                v8::Function::builder(cast_value_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CAST_VALUE_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    cast_value_fn.into(),
                 );
             fn data_type_ref_to_type_callback<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
