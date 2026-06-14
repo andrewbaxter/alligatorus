@@ -5,6 +5,8 @@
 //! call that wraps the runtime v8 instance into an `AspectUserDefined`
 //! external.
 
+use crate::r#gen::ScopeEntry;
+use crate::r#gen::type_aspect_identity;
 use {
     crate::{
         builtin::{
@@ -38,7 +40,6 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -51,7 +52,6 @@ use {
     },
 };
 
-pub(crate) use crate::r#gen::type_aspect_identity;
 
 pub(crate) struct TypeAspectDynamic;
 

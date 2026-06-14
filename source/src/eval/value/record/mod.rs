@@ -1,6 +1,7 @@
 pub mod artifact;
 pub mod scope_entry;
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -35,10 +36,7 @@ use {
             dynamic_util::wrap_with_carry,
             value::{
                 tuple::Tuple,
-                type_any::r#const::{
-                    TypeAnyConst,
-                    type_type_identity,
-                },
+                type_any::r#const::TypeAnyConst,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
@@ -61,7 +59,6 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -469,7 +466,7 @@ impl Type for Record {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &type_type_identity()).is_some()
+        type_.aspect(_xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

@@ -1,4 +1,9 @@
-pub(crate) use crate::eval::aspect::*;
+// All aspect items (`AspectXxx` traits + `aspect_xxx_aspect_id` /
+// `_get` / `_get_maybe` helpers) live in `crate::r#gen` (build-time
+// generated single-file gen.rs). This wildcard re-export predates the
+// `no-republishing` rule — keeping it minimizes churn at the many
+// existing `crate::builtin::AspectXxx` callsites.
+pub(crate) use crate::r#gen::*;
 #[allow(unused_imports)]
 use {
     crate::langhelp::Unique,

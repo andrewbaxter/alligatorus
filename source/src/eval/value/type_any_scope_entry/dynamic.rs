@@ -3,6 +3,7 @@
 //! for `Rc<dyn Type>`: a `v8::External` wrapping an `Rc<dyn ScopeEntry>`.
 //! Used as the mortar type of the `DynamicWrap` impl for `Rc<dyn ScopeEntry>`.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -34,7 +35,6 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,

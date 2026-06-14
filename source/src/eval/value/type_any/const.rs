@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -32,7 +33,6 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -44,8 +44,8 @@ use {
         rc::Rc,
     },
 };
+use crate::r#gen::type_type_identity;
 
-pub(crate) use crate::r#gen::type_type_identity;
 pub(crate) struct TypeAnyConst;
 
 /// Canonical value carrier for `TypeAnyConst`: a type-of-types value carries
@@ -133,7 +133,7 @@ impl AspectBind for TypeAnyConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }

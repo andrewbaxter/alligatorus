@@ -1,7 +1,10 @@
-//! All build-time generated items. Includes per-Type identity functions
-//! (one `pub(crate) fn xyz_identity() -> Unique` per entry in
-//! `build.rs::local_identities()`). Other generated items still live in
-//! their own gen files (`gen_aspects.rs`, `gen_builtin_interfaces.rs`,
-//! `gen_dw_*.rs`, `gen_dyn_wrap_fns.rs`) included from their original
-//! Rust modules. Consolidating everything here is on the roadmap.
-include!(concat!(env!("OUT_DIR"), "/gen_local_identities.rs"));
+//! Single-file home for every build-time generated item: aspect traits +
+//! helpers (`AspectType`, `aspect_type_aspect_id`, `aspect_type_get`,
+//! `aspect_type_get_maybe`, etc.), builtin source-language interface
+//! registration (`Target` and `ScopeEntry` Rust traits + `BuiltinInterfaces`
+//! + `gen_build_builtin_interfaces`), `dynamic_wrap`-replacement struct/
+//! wrap/fn definitions, the generated registration loop
+//! (`crate::r#gen::gen_register_builtin_fns`), and per-`Type` identity functions
+//! (`xyz_identity`). The spec lives in `build.rs`; every id is checked
+//! globally for uniqueness there.
+include!(concat!(env!("OUT_DIR"), "/gen.rs"));

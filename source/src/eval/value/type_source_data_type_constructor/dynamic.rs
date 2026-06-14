@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -43,7 +44,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -157,7 +157,7 @@ impl AspectBind for TypeSourceDataTypeConstructorDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -255,11 +255,11 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_none() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_none() {
             return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
         }
         let source_code = match cv.code.cast::<CodeDynamic>() {

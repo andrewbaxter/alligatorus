@@ -74,7 +74,7 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::eval::value::type_any::r#const::type_type_identity() {
+        if *key == crate::r#gen::type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_artifact_aspect_id() {

@@ -4,6 +4,7 @@
 //! result `CodeValue` wrapped in an External so it can travel back through
 //! the v8 method's return value and be unwrapped by the v8 dispatcher.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -49,7 +50,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Unique,
             Value,

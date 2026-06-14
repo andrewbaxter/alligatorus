@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -49,7 +50,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -62,4 +62,3 @@ use {
     },
 };
 
-include!(concat!(env!("OUT_DIR"), "/gen_dw_SourceNewDataMethodResult.rs"));

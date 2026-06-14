@@ -1,9 +1,9 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::langhelp::{
         Code,
         CodeValue,
         QExprId,
-        ScopeEntry,
     },
     std::rc::Rc,
     super::PendingImportState,

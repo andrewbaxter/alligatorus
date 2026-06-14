@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::{
@@ -15,7 +16,6 @@ use {
             CodeValue,
             Code_,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
         },

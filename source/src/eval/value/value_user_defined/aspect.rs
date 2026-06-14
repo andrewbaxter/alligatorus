@@ -12,6 +12,7 @@
 //! `TypeSourceDataTypeDynamic::cast_to`) emits a `__data_instance_to_aspect`
 //! v8 call that produces a `v8::External` wrapping `Rc<AspectUserDefined>`.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -32,7 +33,6 @@ use {
             ExprContext,
             QExprId,
             Scope,
-            ScopeEntry,
             Type,
             Value,
         },

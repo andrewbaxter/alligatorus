@@ -51,7 +51,7 @@ impl AspectBind for TypeSourceTaggedUnionConstructorConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }

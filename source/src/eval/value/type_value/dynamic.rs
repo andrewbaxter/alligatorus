@@ -5,6 +5,7 @@
 //! call that wraps the runtime v8 instance into a `ValueUserDefined`
 //! external.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -36,7 +37,6 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -141,7 +141,7 @@ impl crate::builtin::AspectField for TypeValueDynamic {
                 },
                 value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
                     source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::eval::value::type_ref_v8::TypeTypeRefV8Dynamic),
+                    type_: Rc::new(crate::r#gen::TypeTypeRefV8Dynamic),
                 }),
             });
         }
@@ -160,7 +160,7 @@ impl crate::builtin::AspectField for TypeValueDynamic {
             return None;
         };
         if s == "type" {
-            return Some(Rc::new(crate::eval::value::type_ref_v8::TypeTypeRefV8Dynamic));
+            return Some(Rc::new(crate::r#gen::TypeTypeRefV8Dynamic));
         }
         None
     }

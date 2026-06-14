@@ -4,7 +4,6 @@ pub mod r#const;
 // `build.rs` writes per-interface specs (method names + source-side
 // arg/ret types) into `$OUT_DIR/gen_builtin_interfaces.rs` and we include
 // that here so the build runs the spec→Rust generation step every build.
-include!(concat!(env!("OUT_DIR"), "/gen_builtin_interfaces.rs"));
 
 use {
     crate::langhelp::Unique,
@@ -88,10 +87,10 @@ pub(crate) struct TypeSourceInterfaceConst {
     pub data: Gc<SourceInterfaceData>,
 }
 
-// `BuiltinInterfaces` struct used to live here; replaced by the
-// build.rs-generated `GenBuiltinInterfaces` (same shape). Callers use
-// `gen_build_builtin_interfaces(import_state)` directly.
-pub(crate) use GenBuiltinInterfaces as BuiltinInterfaces;
+// `BuiltinInterfaces` struct was replaced by the build.rs-generated
+// `GenBuiltinInterfaces` (at `crate::r#gen::GenBuiltinInterfaces`). The
+// old re-export was removed per the no-republishing rule — no remaining
+// callers referenced the local name anyway.
 
 // Ids match `build.rs::interfaces()` entries for `code_dyn` / `scope_entry`
 // / `target`. Kept here as thin wrappers so existing callers

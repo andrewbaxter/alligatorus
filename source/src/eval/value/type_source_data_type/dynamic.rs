@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -49,7 +50,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -102,7 +102,7 @@ impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
 }
 
 impl AspectBind for TypeSourceDataTypeRefDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -182,11 +182,11 @@ impl Type for TypeSourceDataTypeRefDynamic {
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         // Convert to any type-of-types (e.g. `TypeAnyDynamic`, `TypeAnyConst`).
-        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_none() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_none() {
             return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
         }
         // Emit a call to the `__data_type_ref_to_type` rust-in-v8 function.
@@ -249,7 +249,7 @@ impl AspectBind for TypeSourceDataTypeDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -742,7 +742,7 @@ impl Type for TypeSourceDataTypeDynamic {
                 return true;
             }
         }
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             // Only castable to `any` when this data type implements the
             // `type` interface — instances of non-type data types are JS
             // objects, not `Rc<dyn Type>`, so they can't be represented as
@@ -752,7 +752,7 @@ impl Type for TypeSourceDataTypeDynamic {
                     == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
             });
         }
-        if type_.aspect(xx, &crate::eval::value::type_aspect::dynamic::type_aspect_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_aspect_identity()).is_some() {
             return true;
         }
         false
@@ -783,7 +783,7 @@ impl Type for TypeSourceDataTypeDynamic {
         // rather than letting the loop match `aspect_field`/`aspect_function`
         // aspect identities (now that `TypeAnyDynamic` answers those for
         // dynamic field/call dispatch).
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             let has_type_impl = data.interface_impls.borrow().iter().any(|impl_data| {
                 impl_data.interface.builtin_kind
                     == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
@@ -936,7 +936,7 @@ impl Type for TypeSourceDataTypeDynamic {
                 });
             }
         }
-        if type_.aspect(xx, &crate::eval::value::type_aspect::dynamic::type_aspect_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_aspect_identity()).is_some() {
             // Emit `__data_instance_to_aspect(<instance>)` — wraps the v8
             // instance into an `AspectUserDefined` external.
             let self_code = match cv.code.cast::<CodeDynamic>() {

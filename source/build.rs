@@ -841,7 +841,7 @@ fn aspects() -> Vec<AspectSpec> {
             methods: vec![AspectMethod {
                 name: "initial_bind",
                 params: vec![("dynamic_key", "crate::langhelp::ScopeEntryId")],
-                ret: "Box<dyn crate::langhelp::ScopeEntry>",
+                ret: "Box<dyn crate::r#gen::ScopeEntry>",
             }],
         },
         AspectSpec {
@@ -854,7 +854,7 @@ fn aspects() -> Vec<AspectSpec> {
                     ("loc", "crate::langhelp::QExprId"),
                     ("cv", "crate::langhelp::CodeValue"),
                 ],
-                ret: "crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)>",
+                ret: "crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)>",
             }],
         },
         AspectSpec {
@@ -1445,7 +1445,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
                 xx: &crate::langhelp::ExprContext,
                 loc: crate::langhelp::QExprId,
                 cv: crate::langhelp::CodeValue,
-            ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+            ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
                 crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
             }
         }
@@ -1724,7 +1724,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
                 if *key == crate::builtin::aspect_stack_value_dynamic_aspect_id() {
                     return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectStackValueDynamic>));
                 }
-                #extra_aspect_fn(_xx, key)
+                crate::eval::definition_set::#extra_aspect_fn(_xx, key)
             }
             fn cast_to(
                 &self,
@@ -1791,7 +1791,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
                 xx: &crate::langhelp::ExprContext,
                 loc: crate::langhelp::QExprId,
                 cv: crate::langhelp::CodeValue,
-            ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+            ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
                 crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
             }
         }
@@ -2238,13 +2238,13 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
             id: 5009,
             args: vec![
                 ("target_arg", "Rc<dyn Target>"),
-                ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::langhelp::ScopeEntry>>"),
+                ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::ScopeEntry>>"),
             ],
             ret: "crate::eval::code_value_extern::ExprContextRef",
             body: quote! {
                 let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
                 let parent_ex = ex_slot.ex.clone();
-                let mut scope_values: HashMap<ConstKey, Box<dyn crate::langhelp::ScopeEntry>> =
+                let mut scope_values: HashMap<ConstKey, Box<dyn crate::r#gen::ScopeEntry>> =
                     HashMap::new();
                 for (k, v) in scope_arg {
                     scope_values.insert(k, Box::new(RcScopeEntryWrap(v)));
@@ -2265,22 +2265,22 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         DynWrapFnSpec {
             name: "list",
             id: 5010,
-            args: vec![("element_type", "dynamic_wrap::AnyType")],
-            ret: "value::type_list::dynamic::TypeListDynamic",
+            args: vec![("element_type", "crate::eval::dynamic_wrap::AnyType")],
+            ret: "crate::eval::value::type_list::dynamic::TypeListDynamic",
             body: quote! {
-                value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
+                crate::eval::value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
             },
         },
         DynWrapFnSpec {
             name: "map",
             id: 5011,
             args: vec![
-                ("key_type", "dynamic_wrap::AnyType"),
-                ("value_type", "dynamic_wrap::AnyType"),
+                ("key_type", "crate::eval::dynamic_wrap::AnyType"),
+                ("value_type", "crate::eval::dynamic_wrap::AnyType"),
             ],
-            ret: "value::type_map::dynamic::TypeMapDynamic",
+            ret: "crate::eval::value::type_map::dynamic::TypeMapDynamic",
             body: quote! {
-                value::type_map::dynamic::TypeMapDynamic {
+                crate::eval::value::type_map::dynamic::TypeMapDynamic {
                     key_type: key_type.0,
                     value_type: value_type.0,
                 }
@@ -2289,10 +2289,10 @@ fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
         DynWrapFnSpec {
             name: "option",
             id: 5012,
-            args: vec![("element_type", "dynamic_wrap::AnyType")],
-            ret: "value::type_option::dynamic::TypeOptionDynamic",
+            args: vec![("element_type", "crate::eval::dynamic_wrap::AnyType")],
+            ret: "crate::eval::value::type_option::dynamic::TypeOptionDynamic",
             body: quote! {
-                value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
+                crate::eval::value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
             },
         },
     ]
@@ -2355,7 +2355,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
         DynWrapStructSpec {
             name: "TypeRefV8",
             id: 3002,
-            data_fields: vec![("type_ref", "Rc<dyn Type>")],
+            data_fields: vec![("type_ref", "Rc<dyn crate::langhelp::Type>")],
             fields: vec![],
             methods: vec![DynWrapMethod {
                 name: "aspect",
@@ -2556,7 +2556,7 @@ fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
                     ret: "SourceNewInterfaceMethodResult",
                     body: quote! {
                         let iface_data = &self_.interface_ref.data;
-                        let field_name = format!("_im{}", next_interface_method_id(&iface_data.set));
+                        let field_name = format!("_im{}", crate::eval::definition_set::next_interface_method_id(&iface_data.set));
                         let method_index = {
                             let mut methods = iface_data.methods.borrow_mut();
                             let idx = methods.len();
@@ -2828,26 +2828,68 @@ fn main() {
             Err(_) => toks.to_string(),
         }
     };
-    fs::write(out_dir.join("gen_builtin_interfaces.rs"), fmt(iface_tokens)).unwrap();
-    fs::write(out_dir.join("gen_aspects.rs"), fmt(aspect_tokens)).unwrap();
-    fs::write(out_dir.join("gen_local_identities.rs"), fmt(local_tokens)).unwrap();
-    // One gen file per `dynamic_wrap!(struct …)` migrated, included from the
-    // original file location so the body's identifier scope (imports, local
-    // types) resolves the same way the macro expansion did.
+    // Single-file output: every generated item collected into one
+    // `$OUT_DIR/gen.rs`, included from `src/gen.rs` as the `crate::r#gen`
+    // module. A narrow `use` prelude up front pulls in just the identifiers
+    // the bodies reference (no globs, no re-exports), so each body works
+    // without per-file scope tricks.
+    let mut all = TokenStream::new();
+    all.extend(gen_prelude());
+    all.extend(local_tokens);
+    all.extend(aspect_tokens);
+    all.extend(iface_tokens);
     for s in &dw_structs {
-        let toks = generate_dyn_wrap_struct(s);
-        let filename = format!("gen_dw_{}.rs", s.name);
-        fs::write(out_dir.join(filename), fmt(toks)).unwrap();
+        all.extend(generate_dyn_wrap_struct(s));
     }
     for s in &dw_wraps {
-        let toks = generate_dyn_wrap_wrap(s);
-        let filename = format!("gen_dw_{}.rs", s.name);
-        fs::write(out_dir.join(filename), fmt(toks)).unwrap();
+        all.extend(generate_dyn_wrap_wrap(s));
     }
-    let mut fn_toks = TokenStream::new();
     for s in &dw_fns {
-        fn_toks.extend(generate_dyn_wrap_fn(s));
+        all.extend(generate_dyn_wrap_fn(s));
     }
-    fn_toks.extend(generate_dyn_wrap_fn_registrar(&dw_fns));
-    fs::write(out_dir.join("gen_dyn_wrap_fns.rs"), fmt(fn_toks)).unwrap();
+    all.extend(generate_dyn_wrap_fn_registrar(&dw_fns));
+    fs::write(out_dir.join("gen.rs"), fmt(all)).unwrap();
+}
+
+/// Narrow `use` block at the top of the generated `gen.rs` — every
+/// identifier any body references. No wildcards (so adding a new ident
+/// requires extending this list), no `pub use` re-exports (callers reach
+/// gen items via `crate::r#gen::<name>` directly).
+fn gen_prelude() -> TokenStream {
+    quote! {
+        use std::rc::Rc;
+        use std::cell::{Cell, RefCell};
+        use std::collections::HashMap;
+        use dumpster::unsync::Gc;
+        use crate::langhelp::{
+            Code, CodeValue, ConstKey, DefSetId, ExprContext, QExprId, Scope,
+            ScopeEntryId, Unique, Value,
+        };
+        use crate::eval::TargetDynamic;
+        use crate::eval::V8EvalContextSlot;
+        use crate::eval::V8LogStore;
+        use crate::eval::V8UniqueCounter;
+        use crate::langhelp::LogEntry;
+        use crate::eval::RcScopeEntryWrap;
+        use crate::eval::const_eval;
+        use crate::eval::definition_set::DefinitionSet;
+        use crate::eval::expr::Expr;
+        use crate::eval::value::type_source_function::{SourceFunctionData, TypeSourceFunctionConst};
+        use crate::eval::value::type_source_tagged_union::{
+            SourceTaggedUnionData, SourceTaggedUnionRef,
+            SourceTaggedUnionVariant,
+        };
+        use crate::eval::value::type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef;
+        use crate::eval::value::type_source_data_type::{
+            SourceDataMethodData, SourceDataTypeData, SourceDataTypeInterfaceImplData,
+            SourceDataTypeInterfaceMethodImplData, SourceDataTypeRef,
+        };
+        use crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst;
+        use crate::eval::value::type_source_interface::{
+            SourceInterfaceData, SourceInterfaceMethodData, SourceInterfaceRef,
+            TypeSourceInterfaceConst,
+        };
+        use crate::eval::dynamic_wrap::{AnyType, StagedExpr};
+        use crate::eval::dynamic_util::throw_error;
+    }
 }

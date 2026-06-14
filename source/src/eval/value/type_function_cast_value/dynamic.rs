@@ -10,6 +10,7 @@
 //! want this kind of unwrapping inferred statically end-to-end; for now it's
 //! an explicit construct.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -48,7 +49,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,

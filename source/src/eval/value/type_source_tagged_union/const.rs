@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -33,7 +34,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -59,7 +59,7 @@ impl AspectBind for TypeSourceTaggedUnionConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -212,11 +212,11 @@ impl Type for TypeSourceTaggedUnionConst {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             // The tagged-union ref's v8 form is the runtime ref carried by
             // `TypeSourceTaggedUnionRefDynamic`. Re-type the cv and delegate
             // — that type's `cast_to(any)` emits `__tagged_union_ref_to_type`

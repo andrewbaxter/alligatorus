@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -44,7 +45,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -58,6 +58,7 @@ use {
     },
     super::TypeSourceInterfaceConst,
 };
+use crate::r#gen::interface_const_identity;
 
 impl Aspect for TypeSourceInterfaceConst { }
 
@@ -80,7 +81,7 @@ impl AspectBind for TypeSourceInterfaceConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -188,7 +189,6 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
 /// Marker `Unique` used to identify *any* concrete `TypeSourceInterfaceConst`
 /// instance — distinct from `interface_ref_type_identity()` (which marks the
 /// type-erased dynamic ref) and from each interface's own `data.identity`.
-pub(crate) use crate::r#gen::interface_const_identity;
 
 impl Type for TypeSourceInterfaceConst {
     fn as_value(&self) -> Rc<dyn Value> {
@@ -288,11 +288,11 @@ impl Type for TypeSourceInterfaceConst {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             // The iface ref's v8 form is `External(Rc<SourceInterfaceRef>)`.
             // Re-type the cv as `TypeSourceInterfaceDynamic` (the dynamic
             // representation that carries iface refs) and dispatch through

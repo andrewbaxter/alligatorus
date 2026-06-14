@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -45,7 +46,6 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -58,8 +58,8 @@ use {
         rc::Rc,
     },
 };
+use crate::r#gen::expr_type_identity;
 
-pub(crate) use crate::r#gen::expr_type_identity;
 pub(crate) struct TypeExpr;
 
 impl Aspect for TypeExpr { }
@@ -118,7 +118,7 @@ impl AspectLiftDynamic for TypeExpr {
     }
 }
 
-impl crate::eval::aspect::AspectType for TypeExpr {
+impl crate::r#gen::AspectType for TypeExpr {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeExpr)
     }
@@ -149,7 +149,7 @@ impl Type for TypeExpr {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeExpr) as Box<dyn crate::eval::aspect::AspectType>));
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn crate::r#gen::AspectType>));
         }
         return None;
     }

@@ -1,5 +1,6 @@
 pub mod scope_entry;
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         eval::value::type_any,
@@ -8,7 +9,6 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Value,
         },

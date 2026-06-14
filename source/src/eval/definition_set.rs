@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -47,11 +48,7 @@ use {
                     SourceInterfaceData,
                     SourceInterfaceRef,
                 },
-                type_source_new_data_result::dynamic::SourceNewDataResult,
-                type_source_new_func_result::dynamic::SourceNewFuncResult,
-                type_source_new_interface_result::dynamic::SourceNewInterfaceResult,
                 type_source_tagged_union::SourceTaggedUnionData,
-                type_source_tagged_union_builder::dynamic::SourceTaggedUnionBuilder,
             },
         },
         langhelp::{
@@ -63,7 +60,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -81,9 +77,8 @@ use {
     },
 };
 
-include!(concat!(env!("OUT_DIR"), "/gen_dw_DefinitionSet.rs"));
 
-fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
     if *key == crate::builtin::aspect_lift_dynamic_aspect_id() {
         return Some(
             Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn crate::builtin::AspectLiftDynamic>),
@@ -521,7 +516,7 @@ pub(crate) fn load_def_set(
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
                 let builtin_ifaces =
-                    crate::eval::value::type_source_interface::gen_build_builtin_interfaces(import_id);
+                    crate::eval::r#gen::gen_build_builtin_interfaces(import_id);
                 let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
                     dt_serial.interface_impls.iter().map(|impl_serial| {
                         let iface = match impl_serial.builtin_kind {

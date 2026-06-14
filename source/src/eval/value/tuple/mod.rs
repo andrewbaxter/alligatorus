@@ -1,6 +1,7 @@
 pub mod artifact;
 pub mod scope_entry;
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -31,10 +32,7 @@ use {
             TargetBindSub,
             dynamic_util::wrap_with_carry,
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    type_type_identity,
-                },
+                type_any::r#const::TypeAnyConst,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_empty::scope_entry::ScopeEntryEmpty,
             },
@@ -52,7 +50,6 @@ use {
             ExprSubErr,
             External,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             SourceId,
             Type,
@@ -341,7 +338,7 @@ impl Type for Tuple {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &type_type_identity()).is_some()
+        type_.aspect(_xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {

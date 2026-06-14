@@ -1,10 +1,10 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::langhelp::{
         Code,
         CodeValue,
         Code_,
         QExprId,
-        ScopeEntry,
         Value,
     },
     std::rc::Rc,

@@ -19,6 +19,7 @@
 //! is desugared at compile time into mortar calls and tagged-union matches
 //! against the wrapped value.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -62,7 +63,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,

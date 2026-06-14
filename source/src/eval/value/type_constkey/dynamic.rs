@@ -17,6 +17,7 @@
 //!   `String(n)` at runtime for dynamic — not yet implemented; add when a
 //!   numeric-keyed map first surfaces it in a test)
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -58,7 +59,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,

@@ -1,3 +1,4 @@
+#[macro_export]
 /// Unpacks all EvalRes.
 macro_rules! er_all{
     ($v: ident, {
@@ -9,37 +10,39 @@ macro_rules! er_all{
     };
 }
 
+#[macro_export]
 macro_rules! er_seq{
     ($loc: expr, $v: ident, $t: ty, $($x: tt) *) => {
         {
-            let mut $v = Erb:: new($loc);
-            match(||-> Result < $t, () > {
+            let mut $v = $crate::eval::Erb:: new($loc);
+            match(||-> ::core::result::Result < $t, () > {
                 $($x) *
             })() {
-                Ok(v) => {
-                    let errs = mem:: take(& mut $v.errors);
-                    EResult {
-                        v: Some(v),
+                ::core::result::Result::Ok(v) => {
+                    let errs = ::core::mem::take(& mut $v.errors);
+                    $crate::langhelp::EResult {
+                        v: ::core::option::Option::Some(v),
                         errors: if errs.is_empty() {
-                            None
+                            ::core::option::Option::None
                         } else {
-                            Some(errs)
+                            ::core::option::Option::Some(errs)
                         },
                     }
                 },
-                Err(()) => EResult {
-                    v: None,
-                    errors: Some(mem:: take(& mut $v.errors)),
+                ::core::result::Result::Err(()) => $crate::langhelp::EResult {
+                    v: ::core::option::Option::None,
+                    errors: ::core::option::Option::Some(::core::mem::take(& mut $v.errors)),
                 },
             }
         }
     };
 }
 
+#[macro_export]
 /// Returns final value as EvalRes, or first error EvalRes.
 macro_rules! er_seq_cv{
     ($loc: expr, $v: ident, $($x: tt) *) => {
-        er_seq!($loc, $v, CodeValue, $($x) *)
+        $crate::er_seq!($loc, $v, $crate::langhelp::CodeValue, $($x) *)
     };
 }
 

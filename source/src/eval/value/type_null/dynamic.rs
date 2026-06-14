@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -48,7 +49,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -89,7 +89,7 @@ impl AspectBind for TypeNullDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -154,7 +154,7 @@ impl AspectStackValueDynamic for TypeNullDynamic {
     }
 }
 
-impl crate::eval::aspect::AspectType for TypeNullDynamic {
+impl crate::r#gen::AspectType for TypeNullDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeNullDynamic)
     }
@@ -191,7 +191,7 @@ impl Type for TypeNullDynamic {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn crate::eval::aspect::AspectType>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn crate::r#gen::AspectType>));
         }
         return None;
     }
@@ -202,7 +202,7 @@ impl Type for TypeNullDynamic {
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_null_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+            type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

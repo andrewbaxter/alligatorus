@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -35,7 +36,6 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -60,7 +60,7 @@ impl AspectBind for TypeAnyDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -104,7 +104,7 @@ impl AspectStackValueDynamic for TypeAnyDynamic {
     }
 }
 
-impl crate::eval::aspect::AspectType for TypeAnyDynamic {
+impl crate::r#gen::AspectType for TypeAnyDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeAnyDynamic)
     }
@@ -202,7 +202,7 @@ impl Type for TypeAnyDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == super::r#const::type_type_identity() {
+        if *key == crate::r#gen::type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
@@ -230,7 +230,7 @@ impl Type for TypeAnyDynamic {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::builtin::AspectFunction>));
         }
         if *key == crate::builtin::aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::eval::aspect::AspectType>));
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectType>));
         }
         None
     }
@@ -238,7 +238,7 @@ impl Type for TypeAnyDynamic {
     fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         // Identity only — other source types reach `TypeAnyDynamic` via
         // their own `cast_to(TypeAnyDynamic)` (see `wrap_as_any` helper).
-        source_type.aspect(_xx, &super::r#const::type_type_identity()).is_some()
+        source_type.aspect(_xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {

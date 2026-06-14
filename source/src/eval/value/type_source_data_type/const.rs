@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -47,7 +48,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -295,7 +295,7 @@ impl AspectBind for TypeSourceDataTypeConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -499,7 +499,7 @@ impl Type for TypeSourceDataTypeConst {
                 return true;
             }
         }
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             return true;
         }
         false
@@ -544,7 +544,7 @@ impl Type for TypeSourceDataTypeConst {
                 });
             }
         }
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             // The cv carries a data type instance at the v8 boundary (the JS
             // object form of this data type). Hand off to
             // `TypeSourceDataTypeDynamic::cast_to` — its `(any)` branch

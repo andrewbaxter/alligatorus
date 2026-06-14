@@ -18,8 +18,8 @@ pub mod value;
 // the generated `gen_fn_<name>(dynamic_scope)` helpers live in this module's
 // item scope so they see `Expr`, `const_eval`, `Gc`, `V8LogStore`, etc. via
 // mod.rs's imports.
-include!(concat!(env!("OUT_DIR"), "/gen_dyn_wrap_fns.rs"));
 
+use crate::r#gen::ScopeEntry;
 use {
     core::mem,
     crate::{
@@ -89,7 +89,6 @@ use {
             LogEntry,
             QExprId,
             Scope,
-            ScopeEntry,
             ScopeEntryId,
             SourceId,
             Type,
@@ -305,11 +304,6 @@ pub(crate) struct CodeUserDefined {
 }
 
 impl crate::langhelp::CodeDyn for CodeUserDefined { }
-
-// `Target` trait moved to build.rs spec → generated at
-// `crate::eval::value::type_source_interface::Target`. Re-exported so
-// `crate::eval::Target` callsites still resolve unchanged.
-pub(crate) use crate::eval::value::type_source_interface::Target;
 
 pub(crate) fn compile_importid(
     fx: &Arc<GlobalContext>,
@@ -1172,7 +1166,7 @@ fn eval(
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
     // All `dyn_wrap_fns()` entries registered through this generated
     // loop — adding a `DynWrapFnSpec` automatically gets it registered.
-    gen_register_builtin_fns(&xx, root_loc, register_v8, dynamic_scope, &scope, &mut builtin_scope_entries)?;
+    crate::r#gen::gen_register_builtin_fns(&xx, root_loc, register_v8, dynamic_scope, &scope, &mut builtin_scope_entries)?;
 
     // Synthetic builtin interfaces: `value` and `type`. These are exposed as
     // `Rc<SourceInterfaceRef>` so `impl_interface(value | type, ...)` accepts
@@ -1180,7 +1174,7 @@ fn eval(
     // single throwaway DefinitionSet that is never compiled or serialized.
     {
         use value::type_source_interface::SourceInterfaceRef;
-        let builtin_ifaces = value::type_source_interface::gen_build_builtin_interfaces(import_state);
+        let builtin_ifaces = r#gen::gen_build_builtin_interfaces(import_state);
         let iface_dyn_type: Rc<dyn Type> =
             Rc::new(value::type_source_interface::dynamic::TypeSourceInterfaceDynamic);
         for (name, data) in
@@ -1320,17 +1314,17 @@ fn eval(
         (
             "list",
             Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst) as Rc<dyn Type>,
-            gen_fn_list(dynamic_scope),
+            crate::r#gen::gen_fn_list(dynamic_scope),
         ),
         (
             "map",
             Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst) as Rc<dyn Type>,
-            gen_fn_map(dynamic_scope),
+            crate::r#gen::gen_fn_map(dynamic_scope),
         ),
         (
             "option",
             Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst) as Rc<dyn Type>,
-            gen_fn_option(dynamic_scope),
+            crate::r#gen::gen_fn_option(dynamic_scope),
         ),
     ] {
         if register_v8 {
@@ -2528,7 +2522,7 @@ fn eval(
             let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
             let type_ref: Rc<dyn Type> = value.type_(&xx, loc);
             let type_ref_v8 = crate::eval::dynamic_wrap::DynamicWrap::into_v8(
-                crate::eval::value::type_ref_v8::TypeRefV8 { type_ref },
+                crate::r#gen::TypeRefV8 { type_ref },
                 scope,
             );
             rv.set(type_ref_v8);
@@ -2557,7 +2551,7 @@ fn eval(
                 .get(scope, d_key.into())
                 .expect("__aspect_lookup: TypeRefV8 missing _d field");
             let type_ref: Rc<dyn Type> =
-                from_v8_ref::<Rc<crate::eval::value::type_ref_v8::TypeRefV8>>(&*d_val)
+                from_v8_ref::<Rc<crate::r#gen::TypeRefV8>>(&*d_val)
                     .type_ref
                     .clone();
             let unique: crate::langhelp::Unique =
@@ -3012,7 +3006,7 @@ fn eval(
                 let instance = v8::Local::<v8::Object>::try_from(args.get(1))
                     .expect("__data_instance_to_scope_entry: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let entry: Rc<dyn crate::langhelp::ScopeEntry> = Rc::new(
+                let entry: Rc<dyn crate::r#gen::ScopeEntry> = Rc::new(
                     crate::eval::user_defined_scope_dispatch::UserDefinedScopeEntry {
                         instance: instance_global,
                     },
@@ -3364,23 +3358,23 @@ pub(crate) fn rc_type_to_v8<
 /// Thin `Box<dyn ScopeEntry>` wrapper around an `Rc<dyn ScopeEntry>`. Used to
 /// fit `Scope.values` (which stores `Box`es) when the underlying entry was
 /// constructed as a shared `Rc` (e.g. extracted from a v8::External).
-pub(crate) struct RcScopeEntryWrap(pub Rc<dyn crate::langhelp::ScopeEntry>);
+pub(crate) struct RcScopeEntryWrap(pub Rc<dyn crate::r#gen::ScopeEntry>);
 
-impl crate::langhelp::ScopeEntry for RcScopeEntryWrap {
+impl crate::r#gen::ScopeEntry for RcScopeEntryWrap {
     fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, code: Code) -> CodeValue {
         self.0.use_(xx, loc, code)
     }
 }
 
-/// Extract a clone of `Rc<dyn crate::langhelp::ScopeEntry>` from a `v8::External`.
-pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn crate::langhelp::ScopeEntry> {
-    from_v8_ref::<Rc<dyn crate::langhelp::ScopeEntry>>(value).clone()
+/// Extract a clone of `Rc<dyn crate::r#gen::ScopeEntry>` from a `v8::External`.
+pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn crate::r#gen::ScopeEntry> {
+    from_v8_ref::<Rc<dyn crate::r#gen::ScopeEntry>>(value).clone()
 }
 
 /// Store an `Rc<dyn ScopeEntry>` as a `v8::External`.
 pub(crate) fn rc_scope_entry_to_v8<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::langhelp::ScopeEntry>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::r#gen::ScopeEntry>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
@@ -4070,7 +4064,7 @@ pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     );
     fields.insert(
         ConstKey::String("source_type".to_string()),
-        value::record::RecordField::Mortar(Rc::new(value::type_ref_v8::TypeTypeRefV8Dynamic) as Rc<dyn Type>),
+        value::record::RecordField::Mortar(Rc::new(crate::r#gen::TypeTypeRefV8Dynamic) as Rc<dyn Type>),
     );
     fields.insert(
         ConstKey::String("cv".to_string()),
@@ -4260,7 +4254,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
         let st_key = v8::String::new(scope, &ConstKey::String("source_type".to_string()).to_str())
             .ok_or_else(|| "source_type key alloc".to_string())?;
         let source_type_v8 = crate::eval::dynamic_wrap::DynamicWrap::into_v8(
-            crate::eval::value::type_ref_v8::TypeRefV8 {
+            crate::r#gen::TypeRefV8 {
                 type_ref: cv.value.type_(xx, loc),
             },
             scope,
@@ -4317,7 +4311,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
         let st_key = v8::String::new(scope, &ConstKey::String("source_type".to_string()).to_str())
             .ok_or_else(|| "source_type key alloc".to_string())?;
         let source_type_v8 = crate::eval::dynamic_wrap::DynamicWrap::into_v8(
-            crate::eval::value::type_ref_v8::TypeRefV8 { type_ref: source_type },
+            crate::r#gen::TypeRefV8 { type_ref: source_type },
             scope,
         );
         arg_obj.set(scope, st_key.into(), source_type_v8);

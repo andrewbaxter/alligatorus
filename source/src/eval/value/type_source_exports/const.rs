@@ -88,11 +88,11 @@ impl AspectBind for TypeSourceExportsLiftedConst {
         _xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> crate::langhelp::EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> crate::langhelp::EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         crate::langhelp::EResult::ok((Code {
             loc: loc,
             code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn crate::langhelp::ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn crate::r#gen::ScopeEntry>))
     }
 }
 

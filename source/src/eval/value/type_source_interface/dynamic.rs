@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -34,7 +35,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -50,8 +50,8 @@ use {
         TypeSourceInterfaceConst,
     },
 };
+use crate::r#gen::interface_ref_type_identity;
 
-pub(crate) use crate::r#gen::interface_ref_type_identity;
 pub(crate) struct TypeSourceInterfaceDynamic;
 
 impl Aspect for TypeSourceInterfaceDynamic { }
@@ -79,7 +79,7 @@ impl AspectBind for TypeSourceInterfaceDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -179,7 +179,7 @@ impl Type for TypeSourceInterfaceDynamic {
             || source_type
                 .aspect(
                     xx,
-                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                    &crate::r#gen::interface_const_identity(),
                 )
                 .is_some()
     }
@@ -190,7 +190,7 @@ impl Type for TypeSourceInterfaceDynamic {
             || source_type
                 .aspect(
                     xx,
-                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                    &crate::r#gen::interface_const_identity(),
                 )
                 .is_some()
         {
@@ -214,10 +214,10 @@ impl Type for TypeSourceInterfaceDynamic {
             || type_
                 .aspect(
                     xx,
-                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                    &crate::r#gen::interface_const_identity(),
                 )
                 .is_some()
-            || type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+            || type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -227,7 +227,7 @@ impl Type for TypeSourceInterfaceDynamic {
             || type_
                 .aspect(
                     xx,
-                    &crate::eval::value::type_source_interface::r#const::interface_const_identity(),
+                    &crate::r#gen::interface_const_identity(),
                 )
                 .is_some()
         {
@@ -240,7 +240,7 @@ impl Type for TypeSourceInterfaceDynamic {
                 }),
             });
         }
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
+        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             let source_code = match cv.code.cast::<crate::code_dynamic::CodeDynamic>() {
                 crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
                 _ => return EvalRes::err(loc, format!("cast interface_ref → {}: source has no runtime code", type_.desc())),

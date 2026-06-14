@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -62,7 +63,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -212,7 +212,7 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 
 impl AspectStringDynamic for TypeStringDynamic { }
 
-impl crate::eval::aspect::AspectType for TypeStringDynamic {
+impl crate::r#gen::AspectType for TypeStringDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)
     }
@@ -259,7 +259,7 @@ impl Type for TypeStringDynamic {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn crate::eval::aspect::AspectType>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn crate::r#gen::AspectType>));
         }
         return None;
     }
@@ -271,7 +271,7 @@ impl Type for TypeStringDynamic {
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_string_dynamic_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+            type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

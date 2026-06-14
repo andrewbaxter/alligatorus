@@ -3,6 +3,8 @@
 //! be passed to `.aspect(...)` lookups — both in const-eval and (via
 //! `DynamicWrap`) v8.
 
+use crate::r#gen::ScopeEntry;
+use crate::r#gen::type_unique_identity;
 use {
     crate::{
         builtin::{
@@ -30,7 +32,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -192,7 +193,6 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
     }
 }
 
-pub(crate) use crate::r#gen::type_unique_identity;
 
 impl Type for TypeUnique {
     fn as_value(&self) -> Rc<dyn Value> {

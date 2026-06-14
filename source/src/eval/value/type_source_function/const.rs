@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -28,7 +29,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Unique,
             Value,

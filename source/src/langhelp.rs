@@ -43,11 +43,6 @@ pub(crate) trait Aspect: Any {
 
 pub(crate) trait CodeDyn: Any { }
 
-// `ScopeEntry` trait moved to build.rs spec → generated at
-// `crate::eval::value::type_source_interface::ScopeEntry`. Re-exported here
-// so existing `crate::langhelp::ScopeEntry` paths still resolve.
-pub(crate) use crate::eval::value::type_source_interface::ScopeEntry;
-
 pub(crate) trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
 }
@@ -374,7 +369,7 @@ pub(crate) type EvalRes = EResult<CodeValue>;
 pub(crate) struct ExprContext {
     pub(crate) import_state: Rc<Cell<ImportStateId>>,
     pub(crate) scope: Rc<Scope>,
-    pub(crate) target: Rc<dyn crate::eval::Target>,
+    pub(crate) target: Rc<dyn crate::r#gen::Target>,
     pub(crate) vx: Rc<EvalContext>,
 }
 
@@ -476,7 +471,7 @@ pub(crate) type QExprId = (SourceId, ExprId);
 
 pub(crate) struct Scope {
     pub(crate) parent: Option<Rc<Scope>>,
-    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn ScopeEntry>>>,
+    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn crate::r#gen::ScopeEntry>>>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]

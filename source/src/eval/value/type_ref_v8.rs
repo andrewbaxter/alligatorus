@@ -16,6 +16,7 @@
 //! result of `.aspect`.
 
 #[allow(unused_imports)]
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -66,7 +67,6 @@ use {
             ExprContext,
             QExprId,
             Scope,
-            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -89,5 +89,3 @@ use {
 // pulls them into this file's identifier scope so the bodies' references
 // (`Rc`, `ExprContext`, etc.) resolve via the imports above. As more
 // `dynamic_wrap!(struct …)` invocations migrate, add their `include!` here.
-include!(concat!(env!("OUT_DIR"), "/gen_dw_OptionV8.rs"));
-include!(concat!(env!("OUT_DIR"), "/gen_dw_TypeRefV8.rs"));

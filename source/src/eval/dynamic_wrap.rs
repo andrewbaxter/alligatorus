@@ -54,7 +54,7 @@ impl DynamicWrap for AnyType {
     }
 }
 
-impl DynamicWrap for Rc<dyn crate::langhelp::ScopeEntry> {
+impl DynamicWrap for Rc<dyn crate::r#gen::ScopeEntry> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_scope_entry_from_v8(&*value)
     }
@@ -68,7 +68,7 @@ impl DynamicWrap for Rc<dyn crate::langhelp::ScopeEntry> {
     }
 }
 
-impl DynamicWrap for Rc<dyn crate::eval::Target> {
+impl DynamicWrap for Rc<dyn crate::r#gen::Target> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_target_from_v8(&*value)
     }

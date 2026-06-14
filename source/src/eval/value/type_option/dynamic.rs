@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -53,7 +54,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,
@@ -66,8 +66,8 @@ use {
         rc::Rc,
     },
 };
+use crate::r#gen::type_option_identity;
 
-pub(crate) use crate::r#gen::type_option_identity;
 
 #[derive(Clone)]
 pub(crate) struct TypeOptionDynamic {

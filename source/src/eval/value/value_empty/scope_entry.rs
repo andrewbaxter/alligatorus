@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         eval::value::value_empty::r#const::ValueEmptyConst,
@@ -6,7 +7,6 @@ use {
             CodeValue,
             Code_,
             QExprId,
-            ScopeEntry,
             Type,
         },
     },

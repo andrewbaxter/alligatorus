@@ -1,3 +1,4 @@
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -39,7 +40,6 @@ use {
                     SourceInterfaceMethodData,
                     SourceInterfaceRef,
                 },
-                type_source_new_interface_method_result::dynamic::SourceNewInterfaceMethodResult,
             },
         },
         langhelp::{
@@ -51,7 +51,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             Type,
             Unique,
             Value,
@@ -65,4 +64,3 @@ use {
     },
 };
 
-include!(concat!(env!("OUT_DIR"), "/gen_dw_SourceNewInterfaceResult.rs"));

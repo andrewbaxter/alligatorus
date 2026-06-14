@@ -12,6 +12,7 @@
 //! `.method(arg)` on the unwrapped handle dispatches via the iface's compiled
 //! `field_name` against the bundled instance.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         builtin::{
@@ -43,7 +44,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntry,
             ScopeEntryId,
             Type,
             Unique,

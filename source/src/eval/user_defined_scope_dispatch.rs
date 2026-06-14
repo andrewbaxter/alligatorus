@@ -9,6 +9,7 @@
 //! method to `TargetDynamic`. Wiring each method through the corresponding
 //! `_im_*` field on the v8 instance is the next step.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::{
@@ -27,7 +28,6 @@ use {
             CodeValue,
             Code_,
             QExprId,
-            ScopeEntry,
         },
     },
     std::rc::Rc,
@@ -97,7 +97,7 @@ pub(crate) struct UserDefinedTarget {
     pub instance: v8::Global<v8::Object>,
 }
 
-impl crate::eval::Target for UserDefinedTarget {
+impl crate::r#gen::Target for UserDefinedTarget {
     fn bind(
         &self,
         xx: &crate::langhelp::ExprContext,

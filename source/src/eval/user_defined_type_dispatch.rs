@@ -7,6 +7,7 @@
 //! `stage(...)`). They reference `arg`, which we bind to a record
 //! `{xx, source_type, cv}` before `const_eval`.
 
+use crate::r#gen::ScopeEntry;
 use {
     crate::{
         eval::{
@@ -30,7 +31,6 @@ use {
             ExprContext,
             QExprId,
             Scope,
-            ScopeEntry,
             Type,
             Value,
         },
