@@ -189,10 +189,7 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
 /// instance — distinct from `interface_ref_type_identity()` (which marks the
 /// type-erased dynamic ref) and from each interface's own `data.identity`.
 pub(crate) fn interface_const_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 impl Type for TypeSourceInterfaceConst {

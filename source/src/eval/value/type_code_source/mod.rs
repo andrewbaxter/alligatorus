@@ -76,24 +76,15 @@ use {
 };
 
 fn type_code_struct_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 fn type_code_enum_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 fn type_code_dyn_handle_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 // ---------- TypeCodeStructDynamic ----------

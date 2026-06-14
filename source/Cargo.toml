@@ -18,5 +18,10 @@ regex = "1"
 urlencoding = "2"
 v8 = "146"
 
+[build-dependencies]
+genemichaels-lib = "0.5"
+quote = "1"
+proc-macro2 = "1"
+
 [lints.clippy]
 all = "allow"

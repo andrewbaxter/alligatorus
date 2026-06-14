@@ -65,36 +65,4 @@ use {
     },
 };
 
-dynamic_wrap!(struct SourceNewInterfaceResult(self_, scope) {
-    data {
-        interface_ref: Rc < SourceInterfaceRef >
-    }
-    field type_: Rc < SourceInterfaceRef > {
-        self_.interface_ref.clone()
-    }
-    fn set_description(description: String) -> () {
-        *self_.interface_ref.data.description.borrow_mut() = Some(description);
-    }
-    fn new_func(name: String) -> SourceNewInterfaceMethodResult {
-        let iface_data = &self_.interface_ref.data;
-        let field_name = format!("_im{}", next_interface_method_id(&iface_data.set));
-        let method_index = {
-            let mut methods = iface_data.methods.borrow_mut();
-            let idx = methods.len();
-            methods.push(SourceInterfaceMethodData {
-                name,
-                arg_type: RefCell::new(None),
-                ret_type: RefCell::new(None),
-                field_name,
-            });
-            idx
-        };
-        SourceNewInterfaceMethodResult {
-            interface_ref: self_.interface_ref.clone(),
-            method_index,
-        }
-    }
-    fn set_is_aspect(is_aspect: bool) -> () {
-        self_.interface_ref.data.is_aspect.set(is_aspect);
-    }
-});
+include!(concat!(env!("OUT_DIR"), "/gen_dw_SourceNewInterfaceResult.rs"));

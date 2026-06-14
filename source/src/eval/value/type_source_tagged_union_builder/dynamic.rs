@@ -66,28 +66,4 @@ use {
     },
 };
 
-dynamic_wrap!(struct SourceTaggedUnionBuilder(self_, scope) {
-    data {
-        data: Rc < SourceTaggedUnionData >
-    }
-    field type_: Rc < SourceTaggedUnionRef > {
-        Rc::new(SourceTaggedUnionRef { data: self_.data.clone() })
-    }
-    fn variant(tag: String, type_ref: AnyType) -> Rc<SourceTaggedUnionConstructorRef> {
-        let variant_index = {
-            let mut variants = self_.data.variants.borrow_mut();
-            let idx = variants.len();
-            let js_tag = format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next());
-            variants.push(SourceTaggedUnionVariant {
-                js_tag,
-                tag: crate::langhelp::ConstKey::String(tag),
-                type_: type_ref.0,
-            });
-            idx
-        };
-        Rc::new(SourceTaggedUnionConstructorRef {
-            data: self_.data.clone(),
-            variant_index,
-        })
-    }
-});
+include!(concat!(env!("OUT_DIR"), "/gen_dw_SourceTaggedUnionBuilder.rs"));

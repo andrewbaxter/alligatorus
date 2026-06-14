@@ -85,34 +85,9 @@ use {
     },
 };
 
-dynamic_wrap!(struct OptionV8(self_, scope) {
-    data {
-        is_some_inner: bool
-    }
-    fn is_some_() -> bool {
-        self_.is_some_inner
-    }
-});
-
-dynamic_wrap!(struct TypeRefV8(self_, scope) {
-    data {
-        type_ref: Rc<dyn Type>
-    }
-    fn aspect(unique: Unique) -> OptionV8 {
-        let ex_slot = scope
-            .get_slot::<crate::eval::V8EvalContextSlot>()
-            .expect("TypeRefV8.aspect: V8EvalContextSlot not set");
-        let import_state_id = ex_slot.ex.ix.import_state;
-        let xx = Rc::new(ExprContext {
-            vx: ex_slot.ex.clone(),
-            import_state: Rc::new(Cell::new(import_state_id)),
-            scope: Rc::new(Scope {
-                values: RefCell::new(HashMap::new()),
-                parent: None,
-            }),
-            target: Rc::new(crate::eval::TargetDynamic),
-        });
-        let is_some = self_.type_ref.aspect(&xx, &unique).is_some();
-        OptionV8 { is_some_inner: is_some }
-    }
-});
+// Per-struct gen files from `build.rs::dyn_wrap_structs()`. The `include!`
+// pulls them into this file's identifier scope so the bodies' references
+// (`Rc`, `ExprContext`, etc.) resolve via the imports above. As more
+// `dynamic_wrap!(struct …)` invocations migrate, add their `include!` here.
+include!(concat!(env!("OUT_DIR"), "/gen_dw_OptionV8.rs"));
+include!(concat!(env!("OUT_DIR"), "/gen_dw_TypeRefV8.rs"));

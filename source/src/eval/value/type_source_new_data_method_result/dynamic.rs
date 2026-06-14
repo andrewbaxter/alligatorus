@@ -62,45 +62,4 @@ use {
     },
 };
 
-dynamic_wrap!(struct SourceNewDataMethodResult(self_, scope) {
-    data {
-        data_type_ref: Rc < SourceDataTypeRef >,
-        method_index: usize
-    }
-    fn impl_(staged: StagedExpr) -> () {
-        let methods = self_.data_type_ref.data.methods.borrow();
-        let method = &methods[self_.method_index];
-        let mut impl_expr = method.impl_expr.borrow_mut();
-        if impl_expr.is_some() {
-            drop(impl_expr);
-            drop(methods);
-            throw_error(scope, "Method already has an implementation");
-            return;
-        }
-        *impl_expr = Some(staged.0);
-    }
-    fn ret_(type_ref: AnyType) -> () {
-        let methods = self_.data_type_ref.data.methods.borrow();
-        let method = &methods[self_.method_index];
-        let mut ret_type = method.ret_type.borrow_mut();
-        if ret_type.is_some() {
-            drop(ret_type);
-            drop(methods);
-            throw_error(scope, "Method already has a ret type");
-            return;
-        }
-        *ret_type = Some(type_ref.0);
-    }
-    fn arg_(type_ref: AnyType) -> () {
-        let methods = self_.data_type_ref.data.methods.borrow();
-        let method = &methods[self_.method_index];
-        let mut arg_type = method.arg_type.borrow_mut();
-        if arg_type.is_some() {
-            drop(arg_type);
-            drop(methods);
-            throw_error(scope, "Method already has an arg type");
-            return;
-        }
-        *arg_type = Some(type_ref.0);
-    }
-});
+include!(concat!(env!("OUT_DIR"), "/gen_dw_SourceNewDataMethodResult.rs"));

@@ -14,6 +14,12 @@ pub mod user_defined_scope_dispatch;
 pub mod user_defined_type_dispatch;
 pub mod value;
 
+// `dynamic_wrap!(fn …)` invocations are migrated to `build.rs::dyn_wrap_fns()`;
+// the generated `gen_fn_<name>(dynamic_scope)` helpers live in this module's
+// item scope so they see `Expr`, `const_eval`, `Gc`, `V8LogStore`, etc. via
+// mod.rs's imports.
+include!(concat!(env!("OUT_DIR"), "/gen_dyn_wrap_fns.rs"));
+
 use {
     core::mem,
     crate::{
@@ -151,19 +157,13 @@ use {
 /// Identity for the builtin `value` interface (every value must implement
 /// `type()`). Stable across compile runs.
 pub(crate) fn builtin_value_iface_identity() -> crate::langhelp::Unique {
-    crate::langhelp::Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    crate::langhelp::Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 /// Identity for the builtin `type` interface (when implemented, instances of
 /// the implementing data type act as types).
 pub(crate) fn builtin_type_iface_identity() -> crate::langhelp::Unique {
-    crate::langhelp::Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    crate::langhelp::Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 /// Well-known scope entry ID for __record_to_type mortar function.
@@ -310,31 +310,10 @@ pub(crate) struct CodeUserDefined {
 
 impl crate::langhelp::CodeDyn for CodeUserDefined { }
 
-pub(crate) trait Target {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId);
-    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub;
-    fn bind_sub_tuple(&self, loc: QExprId, carry: Code, elements: Vec<TargetBindSub>) -> TargetBindSub;
-    fn block(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code>;
-    fn code_to_bind_sub(&self, loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub>;
-    fn if_(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        conditions: Vec<(CodeValue, &Expr)>,
-        else_: Option<&Expr>,
-    ) -> EvalRes;
-    fn match_(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        base: CodeValue,
-        element_key: ConstKey,
-        cases: Vec<(String, Rc<dyn Type>, &Expr)>,
-        fallback: Option<&Expr>,
-    ) -> EvalRes;
-    fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>>;
-    fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes;
-}
+// `Target` trait moved to build.rs spec → generated at
+// `crate::eval::value::type_source_interface::Target`. Re-exported so
+// `crate::eval::Target` callsites still resolve unchanged.
+pub(crate) use crate::eval::value::type_source_interface::Target;
 
 pub(crate) fn compile_importid(
     fx: &Arc<GlobalContext>,
@@ -1196,147 +1175,15 @@ fn eval(
     let register_v8 = !cix.builtins_registered.get();
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
     for (key, dynamic_key, type_, dynamic_value) in [
-        //. .
-        dynamic_wrap!(fn log(ex, dynamic_scope, scope)(message: String) ->() {
-            let timestamp_ms =
-                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
-            scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(LogEntry {
-                timestamp_ms,
-                message
-            });
-        }),
-        dynamic_wrap!(fn define(ex, dynamic_scope, scope)() -> Gc < DefinitionSet > {
-            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let def_set_id = DefSetId(ex_slot.ex.ix.def_set_counter.next());
-            let import_id = ex_slot.ex.ix.import_state;
-            let source_id = ex_slot.ex.ix.source_id;
-            let ds = Gc::new(DefinitionSet::new(import_id, def_set_id, source_id));
-            ex_slot.ex.ix.definition_sets.borrow_mut().push(ds.clone());
-            ds
-        }),
-        dynamic_wrap!(fn str_to_json(ex, dynamic_scope, scope)(s: String) -> String {
-            serde_json::to_string(&s).unwrap()
-        }),
-        dynamic_wrap!(fn constkey_to_str(ex, dynamic_scope, scope)(key: crate:: langhelp:: ConstKey) -> String {
-            key.to_str()
-        }),
-        // `new_code_value(code, value)` — explicit constructor for the result
-        // of a const-eval-style interface impl. The Rust counterpart of
-        // `AspectFunction::call` (etc.) explicitly builds a
-        // `CodeValue { code, value }` and returns it; this builtin gives source
-        // impls the same primitive. The `code` arg's runtime form becomes the
-        // result CV's `Code` (wrapped in `Code_::Dyn(ValueAsCodeDyn{...})`),
-        // and the `value` arg becomes the CV's `value`. Wrapped as a
-        // `CodeValueExtern` so it crosses the v8 boundary back to the Rust
-        // dispatcher unchanged.
-        dynamic_wrap!(fn new_code_value(ex, dynamic_scope, scope)(
-            code: crate::langhelp::Code,
-            value: Rc<dyn crate::langhelp::Value>,
-        ) -> crate::eval::code_value_extern::CodeValueExtern {
-            let cv = crate::langhelp::CodeValue { code, value };
-            crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
-        }),
-        // `gen_binding_name(xx)` returns a fresh JS binding name (e.g. "a17")
-        // unique within this compile. Used by target.bind impls to mint the
-        // `let aN; { ... aN = code; }` binding key for a new dynamic binding.
-        // The `xx` argument is ignored — uniqueness comes from `ex.ix`'s
-        // shared counter; the parameter exists so the source-side signature
-        // matches the Rust `bind`'s `xx: &ExprContext` carry.
-        dynamic_wrap!(fn gen_binding_name(ex, dynamic_scope, scope)(
-            _xx: crate::eval::code_value_extern::CodeValueExtern
-        ) -> String {
-            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let id = ex_slot.ex.next_local_id.next();
-            format!("a{}", id)
-        }),
-        // v8-callable `eval_const`: invoked synchronously from a user-defined
-        // `cast_from`'s JS body. Takes the active `ExprContext` (carried as
-        // External via `arg.xx`) and a staged inner expression. Runs Rust
-        // `const_eval` on the staged Expr in the given context and returns
-        // the result `CodeValue` wrapped as a v8 External so the cast_from
-        // method's return travels back through v8 to the Rust dispatcher.
-        dynamic_wrap!(
-            fn eval_const(
-                ex,
-                dynamic_scope,
-                scope
-            )(
-                xx: crate::eval::code_value_extern::ExprContextRef,
-                staged: crate::eval::dynamic_wrap::StagedExpr,
-            ) -> crate::eval::code_value_extern::CodeValueExtern {
-                let expr_value = staged.0;
-                let expr_ast: Expr =
-                    Rc::try_unwrap(crate::langhelp::downcast_value::<Expr>(expr_value))
-                        .ok()
-                        .expect("eval_const: staged Expr Rc not unique");
-                let res = const_eval(&xx.0, &expr_ast);
-                let cv = res.v.expect("eval_const: const_eval produced no value");
-                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
-            }
-        ),
-        // `const_eval`: the user-facing name (same impl as `eval_const`, kept
-        // around for backwards compatibility with `t0120_impl_type`). Takes a
-        // tuple of (ExprContext, expr), runs const-eval, returns the CV.
-        dynamic_wrap!(
-            fn const_eval(
-                ex,
-                dynamic_scope,
-                scope
-            )(
-                xx: crate::eval::code_value_extern::ExprContextRef,
-                staged: crate::eval::dynamic_wrap::StagedExpr,
-            ) -> crate::eval::code_value_extern::CodeValueExtern {
-                let expr_value = staged.0;
-                let expr_ast: Expr =
-                    Rc::try_unwrap(crate::langhelp::downcast_value::<Expr>(expr_value))
-                        .ok()
-                        .expect("const_eval: staged Expr Rc not unique");
-                let res = const_eval(&xx.0, &expr_ast);
-                let cv = res
-                    .v
-                    .unwrap_or_else(|| panic!("const_eval: const_eval produced no value; errors: {:?}", res.errors));
-                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
-            }
-        ),
-        // `new_expr_context(target, scope)` — build a fresh ExprContext
-        // layered on the current evaluation context. `target` is a value
-        // impl'ing the builtin `target` interface (extracted as
-        // `Rc<dyn Target>` from a v8::External via TypeAnyTargetDynamic);
-        // `scope` is a record `{name: scope_entry_instance, …}` decoded into
-        // a `HashMap<ConstKey, Rc<dyn ScopeEntry>>`.
-        dynamic_wrap!(
-            fn new_expr_context(
-                ex,
-                dynamic_scope,
-                scope
-            )(
-                target_arg: Rc<dyn Target>,
-                scope_arg: std::collections::HashMap<ConstKey, Rc<dyn crate::langhelp::ScopeEntry>>,
-            ) -> crate::eval::code_value_extern::ExprContextRef {
-                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-                let parent_ex = ex_slot.ex.clone();
-                // Convert `Rc<dyn ScopeEntry>` values into the `Box<dyn ScopeEntry>`
-                // that `Scope.values` stores. Each Rc is unique by construction
-                // (one external per record property), so try_unwrap succeeds;
-                // fall back to a wrapper that defers to the original Rc otherwise.
-                let mut scope_values: HashMap<ConstKey, Box<dyn crate::langhelp::ScopeEntry>> =
-                    HashMap::new();
-                for (k, v) in scope_arg {
-                    scope_values.insert(k, Box::new(RcScopeEntryWrap(v)));
-                }
-                let new_scope = Rc::new(Scope {
-                    values: RefCell::new(scope_values),
-                    parent: None,
-                });
-                let xx = Rc::new(ExprContext {
-                    vx: parent_ex.clone(),
-                    import_state: Rc::new(Cell::new(parent_ex.ix.import_state)),
-                    scope: new_scope,
-                    target: target_arg,
-                });
-                crate::eval::code_value_extern::ExprContextRef(xx)
-            }
-        ),
+        gen_fn_log(dynamic_scope),
+        gen_fn_define(dynamic_scope),
+        gen_fn_str_to_json(dynamic_scope),
+        gen_fn_constkey_to_str(dynamic_scope),
+        gen_fn_new_code_value(dynamic_scope),
+        gen_fn_gen_binding_name(dynamic_scope),
+        gen_fn_eval_const(dynamic_scope),
+        gen_fn_const_eval(dynamic_scope),
+        gen_fn_new_expr_context(dynamic_scope),
     ] {
         if register_v8 {
             dynamic_scope
@@ -1499,47 +1346,17 @@ fn eval(
         (
             "list",
             Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst) as Rc<dyn Type>,
-            dynamic_wrap!(
-                fn list(
-                    ex,
-                    dynamic_scope,
-                    scope
-                )(element_type: dynamic_wrap:: AnyType) -> value:: type_list:: dynamic:: TypeListDynamic {
-                    value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
-                }
-            ),
+            gen_fn_list(dynamic_scope),
         ),
         (
             "map",
             Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst) as Rc<dyn Type>,
-            dynamic_wrap!(
-                fn map(
-                    ex,
-                    dynamic_scope,
-                    scope
-                )(
-                    key_type: dynamic_wrap:: AnyType,
-                    value_type: dynamic_wrap:: AnyType
-                ) -> value:: type_map:: dynamic:: TypeMapDynamic {
-                    value::type_map::dynamic::TypeMapDynamic {
-                        key_type: key_type.0,
-                        value_type: value_type.0
-                    }
-                }
-            ),
+            gen_fn_map(dynamic_scope),
         ),
         (
             "option",
             Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst) as Rc<dyn Type>,
-            dynamic_wrap!(
-                fn option(
-                    ex,
-                    dynamic_scope,
-                    scope
-                )(element_type: dynamic_wrap:: AnyType) -> value:: type_option:: dynamic:: TypeOptionDynamic {
-                    value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
-                }
-            ),
+            gen_fn_option(dynamic_scope),
         ),
     ] {
         if register_v8 {

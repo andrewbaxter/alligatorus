@@ -52,10 +52,7 @@ use {
 };
 
 fn interface_ref_type_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 pub(crate) struct TypeSourceInterfaceDynamic;
 

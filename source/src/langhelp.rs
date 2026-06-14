@@ -43,9 +43,10 @@ pub(crate) trait Aspect: Any {
 
 pub(crate) trait CodeDyn: Any { }
 
-pub(crate) trait ScopeEntry {
-    fn use_(&self, xx: &ExprContext, loc: QExprId, code: Code) -> CodeValue;
-}
+// `ScopeEntry` trait moved to build.rs spec → generated at
+// `crate::eval::value::type_source_interface::ScopeEntry`. Re-exported here
+// so existing `crate::langhelp::ScopeEntry` paths still resolve.
+pub(crate) use crate::eval::value::type_source_interface::ScopeEntry;
 
 pub(crate) trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
@@ -493,15 +494,32 @@ pub(crate) enum ScopeEntryId {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct SourceId(pub usize);
 
-/// A value guaranteed to be unique in the world
+/// A value guaranteed to be unique in the world. `Builtin` ids are assigned
+/// in `build.rs` (`src/iface_gen.rs::Builtin*` constants); macros that need
+/// a unique value (`unique!`, `aspect!`, `dynamic_wrap!` per-struct
+/// identities) call `Unique::from_name`, which folds a stable string name
+/// into a `usize` via FNV-1a. Build.rs verifies its own listed names don't
+/// collide; the runtime path trusts FNV-64-truncated-to-`usize` for the
+/// rest (collision probability negligible in practice).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Unique {
-    Builtin {
-        file: String,
-        line: usize,
-    },
+    Builtin(usize),
     Source(CompileId, usize),
+}
+
+impl Unique {
+    /// Stable FNV-1a 64-bit hash of `name`, truncated to `usize`. Use a
+    /// distinct stable name (struct path, trait path, etc.) per call site
+    /// so two builtins never collide.
+    pub(crate) fn from_name(name: &str) -> Unique {
+        let mut h: u64 = 0xcbf29ce484222325;
+        for b in name.as_bytes() {
+            h ^= *b as u64;
+            h = h.wrapping_mul(0x100000001b3);
+        }
+        Unique::Builtin(h as usize)
+    }
 }
 
 impl<T> EResult<T> {

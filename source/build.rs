@@ -1,0 +1,2655 @@
+//! Generates source-level interface registration for the builtin interfaces
+//! (`value`, `type`, `aspect_function`, `aspect_field`, `scope_entry`, `target`,
+//! `code_dyn`). Single source of truth for method names + source-language
+//! signatures, paired with each interface's matching Rust trait so the two
+//! can't drift (e.g. `Target` previously had every source method registered as
+//! `ret_type = any` regardless of what the Rust trait actually returned).
+//!
+//! Output: `$OUT_DIR/gen_builtin_interfaces.rs`, included from
+//! `src/eval/value/type_source_interface/mod.rs`.
+//!
+//! NOTE: this generates *registration* only — the Rust traits themselves
+//! still live in `langhelp.rs` / `eval/mod.rs` / `eval/aspect/`. Pulling
+//! the trait defs in here is a follow-up: it needs the spec to also encode
+//! each method's Rust param/return types (a different mapping from the
+//! source-side `SrcType` used here).
+
+use {
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
+    std::{env, fs, path::PathBuf},
+};
+
+/// Source-language type expression. Each variant corresponds to one of the
+/// `Type` impls in `src/eval/value/`; codegen turns these into the matching
+/// `Rc<dyn Type>` constructor call.
+#[derive(Clone)]
+enum SrcType {
+    /// `TypeAnyDynamic` — runtime type-of-types (`Rc<dyn Type>` external).
+    Any,
+    /// `TypeNullDynamic` — `null` source-level type (used for methods that
+    /// take no meaningful arg, by convention).
+    Null,
+    /// `TypeStringDynamic`.
+    String,
+    /// `TypeBoolDynamic`.
+    Bool,
+    /// `TypeValueDynamic` — opaque "any source value" type. Used for ret
+    /// types where the v8-side representation is a user data-type instance
+    /// (a JS object) the source typer has lost track of.
+    Value,
+    /// `TypeAspectDynamic` — opaque aspect handle.
+    Aspect,
+    /// `TypeCodeValueExternDynamic` — compile-time CV wrapper passed through
+    /// v8 for `aspect_function.call` / `aspect_field.field` style methods.
+    CodeValueExtern,
+    /// `TypeOptionDynamic { element_type: ... }`.
+    Option(Box<SrcType>),
+}
+
+impl SrcType {
+    fn codegen(&self) -> TokenStream {
+        match self {
+            SrcType::Any => quote! {
+                std::rc::Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::Null => quote! {
+                std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::String => quote! {
+                std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::Bool => quote! {
+                std::rc::Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::Value => quote! {
+                std::rc::Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::Aspect => quote! {
+                std::rc::Rc::new(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::CodeValueExtern => quote! {
+                std::rc::Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic)
+                    as std::rc::Rc<dyn crate::langhelp::Type>
+            },
+            SrcType::Option(inner) => {
+                let inner = inner.codegen();
+                quote! {
+                    std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+                        element_type: { #inner },
+                    }) as std::rc::Rc<dyn crate::langhelp::Type>
+                }
+            },
+        }
+    }
+}
+
+struct MethodSpec {
+    /// Source-level method name.
+    name: &'static str,
+    /// Source-level `arg` type — for builtin-iface methods that take a record,
+    /// pass `SrcType::Any` (Rust dispatch builds the record).
+    arg_type: SrcType,
+    /// Source-level return type — the value the impl body must produce.
+    ret_type: SrcType,
+    /// Optional Rust-side trait method signature. When `Some` *and* the
+    /// interface spec sets `generate_trait = true`, this contributes a `fn`
+    /// to the generated trait. Each `param` is a `(name, type)` string pair;
+    /// `type` is parsed back into a `TokenStream` so any path/generics
+    /// expression works (e.g. `&ExprContext`, `Vec<(ConstKey, TargetBindSub)>`).
+    /// The Rust signature can differ from the source one — e.g. Rust takes
+    /// `&self, xx, loc, ...` but source sees a single `arg` record built by
+    /// Rust dispatch.
+    rust_sig: Option<RustSig>,
+}
+
+struct RustSig {
+    /// `(name, rust_type_str)`. `self` is added implicitly as `&self`.
+    params: Vec<(&'static str, &'static str)>,
+    /// Rust return type. Empty string = `-> ()`.
+    ret: &'static str,
+}
+
+struct InterfaceSpec {
+    /// Snake-case name used as the field on `BuiltinInterfaces`, the
+    /// `BuiltinInterfaceKind` variant (PascalCased), and the description
+    /// shown in `desc()` / error messages.
+    name: &'static str,
+    /// Short prefix for generated `field_name`s: e.g. `v` → `_im_v0`,
+    /// `tg` → `_im_tg0`. Must be unique across interfaces.
+    field_prefix: &'static str,
+    /// `BuiltinInterfaceKind::<variant>` — Pascal-case name of the variant.
+    kind: &'static str,
+    /// Optional human description (defaults to `name`).
+    description: Option<&'static str>,
+    /// Rust path (as a string) to the function returning this interface's
+    /// identity `Unique`. Existing callers (aspect lookup, source-iface
+    /// dispatch) already key off these; the generator emits a thin wrapper
+    /// `gen_builtin_<name>_iface_identity()` that delegates to it so spec
+    /// and consumers stay consistent without rewriting every callsite.
+    identity_fn: &'static str,
+    /// When `Some`, generate a `pub(crate) trait <name>` with methods
+    /// drawn from each `MethodSpec.rust_sig`. The string is the trait's
+    /// PascalCase name (e.g. `"Target"`). Methods whose `rust_sig` is
+    /// `None` are skipped.
+    rust_trait_name: Option<&'static str>,
+    methods: Vec<MethodSpec>,
+}
+
+fn interfaces() -> Vec<InterfaceSpec> {
+    vec![
+        InterfaceSpec {
+            name: "value",
+            field_prefix: "v",
+            kind: "Value",
+            description: None,
+            identity_fn: "crate::eval::builtin_value_iface_identity",
+            rust_trait_name: None,
+            methods: vec![
+                MethodSpec {
+                    name: "type",
+                    arg_type: SrcType::Null,
+                    ret_type: SrcType::Any,
+                    rust_sig: None,
+                },
+            ],
+        },
+        InterfaceSpec {
+            name: "type",
+            field_prefix: "t",
+            kind: "Type",
+            description: None,
+            identity_fn: "crate::eval::builtin_type_iface_identity",
+            rust_trait_name: None,
+            methods: vec![
+                MethodSpec { name: "can_cast_from", arg_type: SrcType::Any, ret_type: SrcType::Bool, rust_sig: None },
+                MethodSpec { name: "cast_from", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
+                MethodSpec { name: "desc", arg_type: SrcType::Null, ret_type: SrcType::String, rust_sig: None },
+                MethodSpec {
+                    name: "aspect",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Option(Box::new(SrcType::Aspect)),
+                    rust_sig: None,
+                },
+            ],
+        },
+        InterfaceSpec {
+            name: "aspect_function",
+            field_prefix: "af",
+            kind: "AspectFunction",
+            description: None,
+            identity_fn: "crate::builtin::aspect_function_aspect_id",
+            rust_trait_name: None,
+            methods: vec![
+                MethodSpec { name: "call", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
+            ],
+        },
+        InterfaceSpec {
+            name: "aspect_field",
+            field_prefix: "afd",
+            kind: "AspectField",
+            description: None,
+            identity_fn: "crate::builtin::aspect_field_aspect_id",
+            rust_trait_name: None,
+            methods: vec![
+                MethodSpec { name: "field", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
+                MethodSpec { name: "field_type_opt", arg_type: SrcType::Any, ret_type: SrcType::Any, rust_sig: None },
+            ],
+        },
+        InterfaceSpec {
+            name: "scope_entry",
+            field_prefix: "se",
+            kind: "ScopeEntry",
+            description: None,
+            identity_fn: "crate::eval::value::type_source_interface::builtin_scope_entry_iface_identity",
+            rust_trait_name: Some("ScopeEntry"),
+            methods: vec![
+                MethodSpec {
+                    name: "use_",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("xx", "&crate::langhelp::ExprContext"),
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("code", "crate::langhelp::Code"),
+                        ],
+                        ret: "crate::langhelp::CodeValue",
+                    }),
+                },
+            ],
+        },
+        InterfaceSpec {
+            name: "target",
+            field_prefix: "tg",
+            kind: "Target",
+            description: None,
+            identity_fn: "crate::eval::value::type_source_interface::builtin_target_iface_identity",
+            rust_trait_name: Some("Target"),
+            // ret_types are `Value` (opaque user-value) rather than `Any`
+            // because target methods return runtime values (TargetBindSub,
+            // Code, tuples), not types. The old `target_method` helper
+            // mis-registered every ret as `any`, which broke typecheck
+            // for impls returning option/tuple/code values.
+            methods: vec![
+                MethodSpec {
+                    name: "bind",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("xx", "&crate::langhelp::ExprContext"),
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("sub", "crate::eval::TargetBindSub"),
+                        ],
+                        ret: "(crate::langhelp::Code, crate::langhelp::ScopeEntryId)",
+                    }),
+                },
+                MethodSpec {
+                    name: "bind_sub_record",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("carry", "crate::langhelp::Code"),
+                            ("fields", "Vec<(crate::langhelp::ConstKey, crate::eval::TargetBindSub)>"),
+                        ],
+                        ret: "crate::eval::TargetBindSub",
+                    }),
+                },
+                MethodSpec {
+                    name: "bind_sub_tuple",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("carry", "crate::langhelp::Code"),
+                            ("elements", "Vec<crate::eval::TargetBindSub>"),
+                        ],
+                        ret: "crate::eval::TargetBindSub",
+                    }),
+                },
+                MethodSpec {
+                    name: "block",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("entries", "Vec<crate::langhelp::Code>"),
+                        ],
+                        ret: "crate::langhelp::EResult<crate::langhelp::Code>",
+                    }),
+                },
+                MethodSpec {
+                    name: "code_to_bind_sub",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("code", "crate::langhelp::Code"),
+                            ("type_", "std::rc::Rc<dyn crate::langhelp::Type>"),
+                        ],
+                        ret: "crate::langhelp::EResult<crate::eval::TargetBindSub>",
+                    }),
+                },
+                MethodSpec {
+                    name: "if_",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("xx", "&crate::langhelp::ExprContext"),
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("conditions", "Vec<(crate::langhelp::CodeValue, &crate::eval::expr::Expr)>"),
+                            ("else_", "Option<&crate::eval::expr::Expr>"),
+                        ],
+                        ret: "crate::langhelp::EvalRes",
+                    }),
+                },
+                MethodSpec {
+                    name: "match_",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("xx", "&crate::langhelp::ExprContext"),
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("base", "crate::langhelp::CodeValue"),
+                            ("element_key", "crate::langhelp::ConstKey"),
+                            ("cases", "Vec<(String, std::rc::Rc<dyn crate::langhelp::Type>, &crate::eval::expr::Expr)>"),
+                            ("fallback", "Option<&crate::eval::expr::Expr>"),
+                        ],
+                        ret: "crate::langhelp::EvalRes",
+                    }),
+                },
+                MethodSpec {
+                    name: "maybe_bind_sub",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Option(Box::new(SrcType::Value)),
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("xx", "&crate::langhelp::ExprContext"),
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("cv", "crate::langhelp::CodeValue"),
+                        ],
+                        ret: "crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>",
+                    }),
+                },
+                MethodSpec {
+                    name: "stage",
+                    arg_type: SrcType::Any,
+                    ret_type: SrcType::Value,
+                    rust_sig: Some(RustSig {
+                        params: vec![
+                            ("xx", "&crate::langhelp::ExprContext"),
+                            ("loc", "crate::langhelp::QExprId"),
+                            ("tree", "crate::eval::expr::Expr"),
+                            ("lower_values", "Vec<crate::langhelp::CodeValue>"),
+                        ],
+                        ret: "crate::langhelp::EvalRes",
+                    }),
+                },
+            ],
+        },
+        InterfaceSpec {
+            name: "code_dyn",
+            field_prefix: "cd",
+            kind: "CodeDyn",
+            description: None,
+            identity_fn: "crate::eval::value::type_source_interface::builtin_code_dyn_iface_identity",
+            rust_trait_name: None,
+            methods: vec![],
+        },
+    ]
+}
+
+fn check_no_duplicates(ifaces: &[InterfaceSpec]) {
+    let mut names = std::collections::HashSet::new();
+    let mut prefixes = std::collections::HashSet::new();
+    let mut kinds = std::collections::HashSet::new();
+    for i in ifaces {
+        assert!(names.insert(i.name), "duplicate interface name: {}", i.name);
+        assert!(prefixes.insert(i.field_prefix), "duplicate field_prefix: {}", i.field_prefix);
+        assert!(kinds.insert(i.kind), "duplicate kind: {}", i.kind);
+        let mut method_names = std::collections::HashSet::new();
+        for m in &i.methods {
+            assert!(
+                method_names.insert(m.name),
+                "duplicate method name on iface {}: {}",
+                i.name,
+                m.name,
+            );
+        }
+    }
+}
+
+fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
+    let kind_variants: Vec<_> = ifaces.iter().map(|i| format_ident!("{}", i.kind)).collect();
+
+    let methods_per_iface: Vec<TokenStream> = ifaces
+        .iter()
+        .map(|i| {
+            let prefix = i.field_prefix;
+            let items: Vec<TokenStream> = i
+                .methods
+                .iter()
+                .enumerate()
+                .map(|(idx, m)| {
+                    let name = m.name;
+                    let field_name = format!("_im_{}{}", prefix, idx);
+                    let arg = m.arg_type.codegen();
+                    let ret = m.ret_type.codegen();
+                    quote! {
+                        crate::eval::value::type_source_interface::SourceInterfaceMethodData {
+                            name: #name.to_string(),
+                            arg_type: std::cell::RefCell::new(Some({ #arg })),
+                            ret_type: std::cell::RefCell::new(Some({ #ret })),
+                            field_name: #field_name.to_string(),
+                        }
+                    }
+                })
+                .collect();
+            quote! {
+                vec![ #(#items),* ]
+            }
+        })
+        .collect();
+
+    // No generated identity fns — each interface reuses its existing
+    // identity function via the spec's `identity_fn` path.
+    let identity_fns: Vec<TokenStream> = vec![];
+
+    let struct_fields: Vec<TokenStream> = ifaces
+        .iter()
+        .map(|i| {
+            let f = format_ident!("{}", if i.name == "type" { "type_" } else { i.name });
+            quote! { pub #f: dumpster::unsync::Gc<crate::eval::value::type_source_interface::SourceInterfaceData> }
+        })
+        .collect();
+
+    let build_entries: Vec<TokenStream> = ifaces
+        .iter()
+        .enumerate()
+        .map(|(i, iface)| {
+            let f = format_ident!("{}", if iface.name == "type" { "type_" } else { iface.name });
+            let kind = format_ident!("{}", iface.kind);
+            let description = iface.description.unwrap_or(iface.name);
+            let methods_expr = &methods_per_iface[i];
+            let identity_fn: TokenStream = iface.identity_fn.parse().unwrap();
+            quote! {
+                let #f = dumpster::unsync::Gc::new(
+                    crate::eval::value::type_source_interface::SourceInterfaceData {
+                        builtin_kind: Some(
+                            crate::eval::value::type_source_interface::BuiltinInterfaceKind::#kind,
+                        ),
+                        set: builtin_def_set.clone(),
+                        description: std::cell::RefCell::new(Some(#description.to_string())),
+                        is_aspect: std::cell::Cell::new(false),
+                        methods: std::cell::RefCell::new(#methods_expr),
+                        identity: #identity_fn(),
+                    },
+                );
+                builtin_def_set.interfaces.borrow_mut().push(#f.clone());
+            }
+        })
+        .collect();
+
+    let result_fields: Vec<TokenStream> = ifaces
+        .iter()
+        .map(|i| {
+            let f = format_ident!("{}", if i.name == "type" { "type_" } else { i.name });
+            quote! { #f: #f }
+        })
+        .collect();
+
+    let trait_defs: Vec<TokenStream> = ifaces
+        .iter()
+        .filter_map(|i| {
+            let trait_name = format_ident!("{}", i.rust_trait_name?);
+            let methods: Vec<TokenStream> = i
+                .methods
+                .iter()
+                .filter_map(|m| {
+                    let sig = m.rust_sig.as_ref()?;
+                    // Source method names like "type", "if_", "match_",
+                    // "use_" all need to be valid Rust idents on the trait.
+                    // `if_`/`match_`/`use_` already are; map `type` →
+                    // `type_` (the existing trait used `type_` too).
+                    let method_name = format_ident!("{}", if m.name == "type" { "type_" } else { m.name });
+                    let params: Vec<TokenStream> = sig
+                        .params
+                        .iter()
+                        .map(|(n, ty)| {
+                            let name = format_ident!("{}", n);
+                            let ty: TokenStream = ty.parse().unwrap();
+                            quote! { #name: #ty }
+                        })
+                        .collect();
+                    let ret: TokenStream = if sig.ret.is_empty() {
+                        quote! {}
+                    } else {
+                        let ty: TokenStream = sig.ret.parse().unwrap();
+                        quote! { -> #ty }
+                    };
+                    Some(quote! {
+                        fn #method_name(&self, #(#params),*) #ret;
+                    })
+                })
+                .collect();
+            Some(quote! {
+                pub(crate) trait #trait_name {
+                    #(#methods)*
+                }
+            })
+        })
+        .collect();
+
+    quote! {
+        // ---- Generated by build.rs from interface specs. ----
+        // Do not edit; modify build.rs::interfaces() instead.
+
+        #(#trait_defs)*
+
+        pub(crate) struct GenBuiltinInterfaces {
+            #(#struct_fields),*
+        }
+
+        #(#identity_fns)*
+
+        pub(crate) fn gen_build_builtin_interfaces(
+            builtin_def_set: &dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>,
+        ) -> GenBuiltinInterfaces {
+            #(#build_entries)*
+            GenBuiltinInterfaces {
+                #(#result_fields),*
+            }
+        }
+    }
+}
+
+/// Specification for an aspect trait (formerly produced by the `aspect!`
+/// macro). The build emits the trait, the `aspect_<name>_aspect_id()`
+/// identity function, and the `_get` / `_get_maybe` helpers.
+struct AspectSpec {
+    /// Trait name, PascalCase (e.g. `"AspectType"`).
+    name: &'static str,
+    /// Trait methods. Empty `Vec` for marker aspects like `AspectNull`.
+    methods: Vec<AspectMethod>,
+}
+
+struct AspectMethod {
+    name: &'static str,
+    /// `(name, rust_type)`. Receiver `&self` is added implicitly.
+    params: Vec<(&'static str, &'static str)>,
+    /// Rust return type. Empty string = `-> ()`.
+    ret: &'static str,
+}
+
+fn aspects() -> Vec<AspectSpec> {
+    vec![
+        AspectSpec { name: "AspectNull", methods: vec![] },
+        AspectSpec { name: "AspectRecord", methods: vec![] },
+        AspectSpec { name: "AspectNumberDynamic", methods: vec![] },
+        AspectSpec { name: "AspectBoolDynamic", methods: vec![] },
+        AspectSpec { name: "AspectStringDynamic", methods: vec![] },
+        AspectSpec {
+            name: "AspectBoolConst",
+            methods: vec![AspectMethod {
+                name: "get",
+                params: vec![("value", "&dyn crate::langhelp::Value")],
+                ret: "bool",
+            }],
+        },
+        AspectSpec {
+            name: "AspectNumberConst",
+            methods: vec![AspectMethod {
+                name: "get",
+                params: vec![("value", "&dyn crate::langhelp::Value")],
+                ret: "f64",
+            }],
+        },
+        AspectSpec {
+            name: "AspectStringConst",
+            methods: vec![AspectMethod {
+                name: "get",
+                params: vec![("value", "&dyn crate::langhelp::Value")],
+                ret: "String",
+            }],
+        },
+        AspectSpec {
+            name: "AspectType",
+            methods: vec![AspectMethod {
+                name: "type_",
+                params: vec![("value", "&dyn crate::langhelp::Value")],
+                ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectListDynamic",
+            methods: vec![AspectMethod {
+                name: "element_type",
+                params: vec![],
+                ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectMapDynamic",
+            methods: vec![
+                AspectMethod {
+                    name: "key_type",
+                    params: vec![],
+                    ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+                },
+                AspectMethod {
+                    name: "value_type",
+                    params: vec![],
+                    ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+                },
+            ],
+        },
+        AspectSpec {
+            name: "AspectTuple",
+            methods: vec![
+                AspectMethod {
+                    name: "element_types",
+                    params: vec![],
+                    ret: "Vec<std::rc::Rc<dyn crate::langhelp::Type>>",
+                },
+                AspectMethod {
+                    name: "take_elements",
+                    params: vec![("value", "std::rc::Rc<dyn crate::langhelp::Value>")],
+                    ret: "Vec<crate::langhelp::EvalRes>",
+                },
+            ],
+        },
+        AspectSpec {
+            name: "AspectTaggedUnion",
+            methods: vec![AspectMethod {
+                name: "variants",
+                params: vec![],
+                ret: "Vec<(crate::langhelp::ConstKey, String, std::rc::Rc<dyn crate::langhelp::Type>)>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectField",
+            methods: vec![
+                AspectMethod {
+                    name: "field",
+                    params: vec![
+                        ("xx", "&crate::langhelp::ExprContext"),
+                        ("loc", "crate::langhelp::QExprId"),
+                        ("self_", "crate::langhelp::CodeValue"),
+                        ("key", "crate::langhelp::CodeValue"),
+                    ],
+                    ret: "crate::langhelp::EvalRes",
+                },
+                AspectMethod {
+                    name: "field_type_opt",
+                    params: vec![
+                        ("xx", "&crate::langhelp::ExprContext"),
+                        ("key", "&crate::langhelp::ConstKey"),
+                    ],
+                    ret: "Option<std::rc::Rc<dyn crate::langhelp::Type>>",
+                },
+            ],
+        },
+        AspectSpec {
+            name: "AspectFunction",
+            methods: vec![AspectMethod {
+                name: "call",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("self_", "crate::langhelp::CodeValue"),
+                    ("argument", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EvalRes",
+            }],
+        },
+        AspectSpec {
+            name: "AspectSet",
+            methods: vec![AspectMethod {
+                name: "set",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("self_", "crate::langhelp::CodeValue"),
+                    ("value", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EvalRes",
+            }],
+        },
+        AspectSpec {
+            name: "AspectOperatorAdd",
+            methods: vec![AspectMethod {
+                name: "add",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("base", "crate::langhelp::CodeValue"),
+                    ("reference", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EvalRes",
+            }],
+        },
+        AspectSpec {
+            name: "AspectOperatorEq",
+            methods: vec![AspectMethod {
+                name: "eq",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("base", "crate::langhelp::CodeValue"),
+                    ("reference", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EvalRes",
+            }],
+        },
+        AspectSpec {
+            name: "AspectOperatorLt",
+            methods: vec![AspectMethod {
+                name: "lt",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("base", "crate::langhelp::CodeValue"),
+                    ("reference", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EvalRes",
+            }],
+        },
+        AspectSpec {
+            name: "AspectInitialBind",
+            methods: vec![AspectMethod {
+                name: "initial_bind",
+                params: vec![("dynamic_key", "crate::langhelp::ScopeEntryId")],
+                ret: "Box<dyn crate::langhelp::ScopeEntry>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectBind",
+            methods: vec![AspectMethod {
+                name: "bind",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("cv", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectBindDynamic",
+            methods: vec![AspectMethod {
+                name: "bind_dynamic",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("cv", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectConsumeDynamic",
+            methods: vec![AspectMethod {
+                name: "to_dynamic",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("cv", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EResult<crate::code_dynamic::CodeDynamic>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectStackValueDynamic",
+            methods: vec![AspectMethod {
+                name: "to_value",
+                params: vec![
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("self_", "crate::code_dynamic::CodeDynamic"),
+                ],
+                ret: "crate::langhelp::CodeValue",
+            }],
+        },
+        AspectSpec {
+            name: "AspectLiftDynamic",
+            methods: vec![AspectMethod {
+                name: "lift",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("scope", "&v8::PinScope"),
+                    ("self_", "v8::Local<v8::Value>"),
+                ],
+                ret: "Result<std::rc::Rc<dyn crate::langhelp::Value>, String>",
+            }],
+        },
+        AspectSpec {
+            name: "AspectIterable",
+            methods: vec![
+                AspectMethod {
+                    name: "element_type",
+                    params: vec![],
+                    ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+                },
+                AspectMethod {
+                    name: "foreach",
+                    params: vec![
+                        ("xx", "&crate::langhelp::ExprContext"),
+                        ("loc", "crate::langhelp::QExprId"),
+                        ("base", "crate::langhelp::CodeValue"),
+                        ("element_key", "crate::langhelp::ScopeEntryId"),
+                        ("body", "crate::langhelp::CodeValue"),
+                    ],
+                    ret: "crate::langhelp::EvalRes",
+                },
+            ],
+        },
+        AspectSpec {
+            name: "AspectArtifact",
+            methods: vec![
+                AspectMethod {
+                    name: "to_serial",
+                    params: vec![
+                        ("xx", "&crate::langhelp::ExprContext"),
+                        ("loc", "crate::langhelp::QExprId"),
+                        ("self_", "std::rc::Rc<dyn crate::langhelp::Value>"),
+                    ],
+                    ret: "crate::langhelp::EResult<crate::langhelp::Artifact>",
+                },
+                AspectMethod {
+                    name: "from_serial",
+                    params: vec![
+                        ("xx", "&crate::langhelp::ExprContext"),
+                        ("loc", "crate::langhelp::QExprId"),
+                        ("data", "&serde_json::Value"),
+                    ],
+                    ret: "crate::langhelp::EvalRes",
+                },
+            ],
+        },
+        AspectSpec {
+            name: "AspectAspect",
+            methods: vec![
+                AspectMethod {
+                    name: "get_unique",
+                    params: vec![("value", "&dyn crate::langhelp::Value")],
+                    ret: "crate::langhelp::Unique",
+                },
+                AspectMethod {
+                    name: "get_iface_data",
+                    params: vec![("value", "&dyn crate::langhelp::Value")],
+                    ret: "dumpster::unsync::Gc<crate::eval::value::type_source_interface::SourceInterfaceData>",
+                },
+            ],
+        },
+    ]
+}
+
+fn check_no_duplicate_aspects(aspects: &[AspectSpec]) {
+    let mut names = std::collections::HashSet::new();
+    for a in aspects {
+        assert!(names.insert(a.name), "duplicate aspect name: {}", a.name);
+    }
+}
+
+fn snake_case(s: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            out.push('_');
+        }
+        out.push(c.to_ascii_lowercase());
+    }
+    out
+}
+
+fn generate_aspects(aspects: &[AspectSpec]) -> TokenStream {
+    let items: Vec<TokenStream> = aspects.iter().map(|a| {
+        let trait_name = format_ident!("{}", a.name);
+        let snake = snake_case(a.name);
+        let id_fn = format_ident!("{}_aspect_id", snake);
+        let get_fn = format_ident!("{}_get", snake);
+        let get_maybe_fn = format_ident!("{}_get_maybe", snake);
+        let id_name = format!("aspect:{}", a.name);
+        let trait_methods: Vec<TokenStream> = a.methods.iter().map(|m| {
+            let name = format_ident!("{}", m.name);
+            let params: Vec<TokenStream> = m.params.iter().map(|(n, ty)| {
+                let n = format_ident!("{}", n);
+                let ty: TokenStream = ty.parse().unwrap();
+                quote! { #n: #ty }
+            }).collect();
+            let ret: TokenStream = if m.ret.is_empty() {
+                quote!{}
+            } else {
+                let ty: TokenStream = m.ret.parse().unwrap();
+                quote! { -> #ty }
+            };
+            quote! { fn #name(&self, #(#params),*) #ret; }
+        }).collect();
+        let missing_msg = format!("Type ({{}}) is missing aspect {}", a.name);
+        quote! {
+            #[allow(dead_code)]
+            pub(crate) trait #trait_name: crate::langhelp::Aspect {
+                #(#trait_methods)*
+            }
+            #[allow(dead_code)]
+            pub(crate) fn #id_fn() -> crate::langhelp::Unique {
+                crate::langhelp::Unique::from_name(#id_name)
+            }
+            #[allow(dead_code)]
+            pub(crate) fn #get_fn(
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                v: &dyn crate::langhelp::Type,
+            ) -> crate::langhelp::EResult<Box<dyn #trait_name>> {
+                let Some(out) = v.aspect(xx, &#id_fn()) else {
+                    return crate::langhelp::EResult::err(loc, format!(#missing_msg, v.desc()));
+                };
+                return crate::langhelp::EResult::ok(
+                    crate::invariant::must_downcast_box::<Box<dyn #trait_name>>(out)
+                );
+            }
+            #[allow(dead_code)]
+            pub(crate) fn #get_maybe_fn(
+                xx: &crate::langhelp::ExprContext,
+                v: &dyn crate::langhelp::Type,
+            ) -> Option<Box<dyn #trait_name>> {
+                let Some(out) = v.aspect(xx, &#id_fn()) else {
+                    return None;
+                };
+                return Some(crate::invariant::must_downcast_box::<Box<dyn #trait_name>>(out));
+            }
+        }
+    }).collect();
+    quote! {
+        // ---- Generated aspect traits + helpers. ----
+        #(#items)*
+    }
+}
+
+// ============================================================================
+// dynamic_wrap struct generation. Replaces the `dynamic_wrap!` macro's struct
+// variant: declares a Rust struct with `data` fields and a v8-facing type
+// wrapper that exposes computed `fields` and callable `methods`. Each
+// invocation emits the same constellation the macro used to: struct,
+// `TypeXxxDynamic`, identity fn, `Value`/`Type`/`Aspect*` trait impls,
+// `AspectField` with name→idx dispatch, and `DynamicWrap` impl whose
+// `into_v8` builds a JS object containing the fields + method closures
+// keyed `_0`, `_1`, etc.
+//
+// Bodies (`field` accessor and `method` impl) are `TokenStream` values —
+// `quote! { … }` blocks in the spec — so the actual Rust executes when
+// the generated impl is compiled, and `build.rs` itself only validates
+// shape (param/return types parse as rust syntax).
+// ============================================================================
+
+struct DynWrapStructSpec {
+    /// Struct name (PascalCase). Produces `struct <name>` and
+    /// `struct Type<name>Dynamic`.
+    name: &'static str,
+    /// `data` fields stored on the Rust struct. `(name, rust_type)`.
+    data_fields: Vec<(&'static str, &'static str)>,
+    /// `field <name>: <ret_type> { <body> }` — computed at `into_v8` time,
+    /// exposed as a JS object property `_<idx>` (idx is the field's
+    /// position in declaration order across fields+methods).
+    fields: Vec<DynWrapField>,
+    /// `fn <name>(<args>) -> <ret> { <body> }` — exposed as a callable
+    /// JS function on the wrapper object.
+    methods: Vec<DynWrapMethod>,
+}
+
+struct DynWrapField {
+    name: &'static str,
+    /// Rust return type — must impl `DynamicWrap` so `into_v8` can wrap it
+    /// (its `mortar_type()` is also used for the source-side type).
+    ret: &'static str,
+    /// Body — `self_: Rc<Struct>` and `scope: &mut v8::PinnedRef<…>` are
+    /// in scope (from the macro's `($self_, $scope)` binders).
+    body: TokenStream,
+}
+
+struct DynWrapMethod {
+    name: &'static str,
+    /// `(name, rust_type)`. Each type must impl `DynamicWrap` (so
+    /// `from_v8` can decode the call arg).
+    args: Vec<(&'static str, &'static str)>,
+    /// Rust return type — must impl `DynamicWrap`.
+    ret: &'static str,
+    /// Body — `self_: Rc<Struct>`, `scope`, and the decoded args are in
+    /// scope.
+    body: TokenStream,
+}
+
+fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
+    let name = format_ident!("{}", s.name);
+    let type_name = format_ident!("Type{}Dynamic", s.name);
+    let identity_fn = format_ident!("{}_type_identity", snake_case(s.name));
+    let identity_str = format!("dyn_wrap:{}", s.name);
+    let desc_str = s.name.to_string();
+
+    let data_field_decls: Vec<TokenStream> = s
+        .data_fields
+        .iter()
+        .map(|(n, ty)| {
+            let n = format_ident!("{}", n);
+            let ty: TokenStream = ty.parse().unwrap();
+            quote! { pub #n: #ty }
+        })
+        .collect();
+
+    // For `AspectField::field` / `field_type_opt`: each field+method gets
+    // an `_<idx>` JS key. The dynamic_wrap_method_name() helper strips a
+    // trailing underscore (e.g. `is_some_` → `is_some`) for the source-
+    // visible name.
+    let field_dispatch_arms: Vec<TokenStream> = s
+        .fields
+        .iter()
+        .enumerate()
+        .map(|(idx, f)| {
+            let f_name = f.name;
+            let f_ty: TokenStream = f.ret.parse().unwrap();
+            let idx_str = format!("_{}", idx);
+            quote! {
+                if key_name == crate::eval::dynamic_wrap::dynamic_wrap_method_name(#f_name) {
+                    let field_type: std::rc::Rc<dyn crate::langhelp::Type> =
+                        <#f_ty as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type();
+                    let self_code = erb
+                        .must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?
+                        .unwrap()
+                        .clone();
+                    return Ok(crate::langhelp::CodeValue {
+                        code: crate::langhelp::Code {
+                            loc,
+                            code: crate::langhelp::Code_::Dyn(std::rc::Rc::new(
+                                crate::code_dynamic::CodeDynamic {
+                                    loc,
+                                    type_: crate::code_dynamic::CodeDynamicType::FieldUse(
+                                        crate::code_dynamic::CodeDynamicFieldUse {
+                                            base: Box::new(self_code),
+                                            field: #idx_str.to_string(),
+                                        },
+                                    ),
+                                },
+                            )),
+                        },
+                        value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                            type_: field_type,
+                        }),
+                    });
+                }
+            }
+        })
+        .collect();
+    let method_dispatch_arms: Vec<TokenStream> = s
+        .methods
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let m_name = m.name;
+            let idx = s.fields.len() + i;
+            let idx_str = format!("_{}", idx);
+            let arg_mortar = arg_mortar_expr(&m.args);
+            let m_ret: TokenStream = m.ret.parse().unwrap();
+            quote! {
+                if key_name == crate::eval::dynamic_wrap::dynamic_wrap_method_name(#m_name) {
+                    let field_type: std::rc::Rc<dyn crate::langhelp::Type> = std::rc::Rc::new(
+                        crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                            arg: #arg_mortar,
+                            ret: <#m_ret as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type(),
+                        },
+                    );
+                    let self_code = erb
+                        .must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?
+                        .unwrap()
+                        .clone();
+                    return Ok(crate::langhelp::CodeValue {
+                        code: crate::langhelp::Code {
+                            loc,
+                            code: crate::langhelp::Code_::Dyn(std::rc::Rc::new(
+                                crate::code_dynamic::CodeDynamic {
+                                    loc,
+                                    type_: crate::code_dynamic::CodeDynamicType::FieldUse(
+                                        crate::code_dynamic::CodeDynamicFieldUse {
+                                            base: Box::new(self_code),
+                                            field: #idx_str.to_string(),
+                                        },
+                                    ),
+                                },
+                            )),
+                        },
+                        value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                            type_: field_type,
+                        }),
+                    });
+                }
+            }
+        })
+        .collect();
+
+    let field_type_opt_arms: Vec<TokenStream> = s
+        .fields
+        .iter()
+        .map(|f| {
+            let f_name = f.name;
+            let f_ty: TokenStream = f.ret.parse().unwrap();
+            quote! {
+                if key.as_str() == crate::eval::dynamic_wrap::dynamic_wrap_method_name(#f_name) {
+                    return Some(<#f_ty as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type());
+                }
+            }
+        })
+        .chain(s.methods.iter().map(|m| {
+            let m_name = m.name;
+            let arg_mortar = arg_mortar_expr(&m.args);
+            let m_ret: TokenStream = m.ret.parse().unwrap();
+            quote! {
+                if key.as_str() == crate::eval::dynamic_wrap::dynamic_wrap_method_name(#m_name) {
+                    return Some(std::rc::Rc::new(
+                        crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                            arg: #arg_mortar,
+                            ret: <#m_ret as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type(),
+                        },
+                    ));
+                }
+            }
+        }))
+        .collect();
+
+    // `into_v8` field setters and method callbacks.
+    let field_setters: Vec<TokenStream> = s
+        .fields
+        .iter()
+        .enumerate()
+        .map(|(idx, f)| {
+            let f_ty: TokenStream = f.ret.parse().unwrap();
+            let body = &f.body;
+            let key_str = format!("_{}", idx);
+            quote! {
+                {
+                    #[allow(unused_variables)]
+                    let self_ = _jw_self_rc.clone();
+                    let _jw_field_val: #f_ty = { #body };
+                    let _jw_v8_val =
+                        <#f_ty as crate::eval::dynamic_wrap::DynamicWrap>::into_v8(_jw_field_val, scope);
+                    let _jw_key = v8::String::new(scope, #key_str).unwrap();
+                    _jw_obj.set(scope, _jw_key.into(), _jw_v8_val);
+                }
+            }
+        })
+        .collect();
+    let method_setters: Vec<TokenStream> = s
+        .methods
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let idx = s.fields.len() + i;
+            let key_str = format!("_{}", idx);
+            let arg_decls: Vec<TokenStream> = m
+                .args
+                .iter()
+                .map(|(n, ty)| {
+                    let n = format_ident!("{}", n);
+                    let ty: TokenStream = ty.parse().unwrap();
+                    quote! {
+                        let #n: #ty = <#ty as crate::eval::dynamic_wrap::DynamicWrap>::from_v8(
+                            scope, _jw_args.get(_jw_arg_i),
+                        );
+                        _jw_arg_i += 1;
+                    }
+                })
+                .collect();
+            let m_ret: TokenStream = m.ret.parse().unwrap();
+            let body = &m.body;
+            quote! {
+                {
+                    fn _jw_cb<'s>(
+                        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                        _jw_args: v8::FunctionCallbackArguments<'s>,
+                        mut _jw_rv: v8::ReturnValue<'s>,
+                    ) {
+                        let _jw_this = _jw_args.this();
+                        let _jw_dk = v8::String::new(scope, "_d").unwrap();
+                        #[allow(unused_variables)]
+                        let self_: std::rc::Rc<#name> =
+                            crate::eval::from_v8_ref::<std::rc::Rc<#name>>(
+                                &*_jw_this.get(scope, _jw_dk.into()).unwrap(),
+                            )
+                                .clone();
+                        #[allow(unused_mut, unused_variables)]
+                        let mut _jw_arg_i = 0i32;
+                        #(#arg_decls)*
+                        let _jw_result: #m_ret = { #body };
+                        _jw_rv.set(
+                            <#m_ret as crate::eval::dynamic_wrap::DynamicWrap>::into_v8(_jw_result, scope),
+                        );
+                    }
+                    let _jw_method_fn = v8::Function::builder(_jw_cb).build(scope).unwrap();
+                    let _jw_key = v8::String::new(scope, #key_str).unwrap();
+                    _jw_obj.set(scope, _jw_key.into(), _jw_method_fn.into());
+                }
+            }
+        })
+        .collect();
+
+    let no_fields_msg = format!("Cannot convert {}", s.name);
+    let unknown_field_msg = format!("Unknown field '{{}}' on {}", s.name);
+    let from_v8_msg = format!("from_v8 not supported for {}", s.name);
+    let cannot_convert_to_msg = format!("Cannot convert to {}", s.name);
+
+    quote! {
+        pub(crate) struct #name {
+            #(#data_field_decls,)*
+        }
+        pub(crate) struct #type_name;
+
+        fn #identity_fn() -> crate::langhelp::Unique {
+            crate::langhelp::Unique::from_name(#identity_str)
+        }
+
+        impl crate::langhelp::Value for #type_name {
+            fn type_(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                _loc: crate::langhelp::QExprId,
+            ) -> std::rc::Rc<dyn crate::langhelp::Type> {
+                std::rc::Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+            }
+        }
+
+        impl crate::langhelp::Aspect for #type_name {}
+
+        impl crate::langhelp::Type for #type_name {
+            fn desc(&self) -> String { #desc_str.to_string() }
+            fn as_value(&self) -> std::rc::Rc<dyn crate::langhelp::Value> {
+                std::rc::Rc::new(#type_name)
+            }
+            fn aspect(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                key: &crate::langhelp::Unique,
+            ) -> Option<Box<dyn std::any::Any>> {
+                if *key == #identity_fn() {
+                    return Some(Box::new(true));
+                }
+                if *key == crate::builtin::aspect_field_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectField>));
+                }
+                if *key == crate::builtin::aspect_consume_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectConsumeDynamic>));
+                }
+                if *key == crate::builtin::aspect_bind_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBindDynamic>));
+                }
+                if *key == crate::builtin::aspect_bind_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBind>));
+                }
+                if *key == crate::builtin::aspect_stack_value_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectStackValueDynamic>));
+                }
+                None
+            }
+            fn cast_to(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                _cv: crate::langhelp::CodeValue,
+                _type_: &dyn crate::langhelp::Type,
+            ) -> crate::langhelp::EvalRes {
+                crate::langhelp::EvalRes::err(loc, #no_fields_msg.to_string())
+            }
+            fn can_cast_from(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                _loc: crate::langhelp::QExprId,
+                source_type: &dyn crate::langhelp::Type,
+            ) -> bool {
+                source_type.aspect(xx, &#identity_fn()).is_some()
+            }
+            fn cast_from(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EvalRes {
+                let source_type = cv.value.type_(xx, loc);
+                if source_type.aspect(xx, &#identity_fn()).is_some() {
+                    return crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+                        code: cv.code,
+                        value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                            type_: std::rc::Rc::new(#type_name),
+                        }),
+                    });
+                }
+                crate::langhelp::EvalRes::err(loc, #cannot_convert_to_msg.to_string())
+            }
+        }
+
+        impl crate::builtin::AspectConsumeDynamic for #type_name {
+            fn to_dynamic(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                _loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EResult<crate::code_dynamic::CodeDynamic> {
+                cv.code.cast::<crate::code_dynamic::CodeDynamic>().map(|x| x.unwrap().clone())
+            }
+        }
+
+        impl crate::builtin::AspectBindDynamic for #type_name {
+            fn bind_dynamic(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EResult<Option<crate::eval::TargetBindSub>> {
+                crate::eval::dynamic_util::bind_dynamic_default(xx, loc, cv)
+            }
+        }
+
+        impl crate::builtin::AspectBind for #type_name {
+            fn bind(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+                crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
+            }
+        }
+
+        impl crate::builtin::AspectStackValueDynamic for #type_name {
+            fn to_value(
+                &self,
+                loc: crate::langhelp::QExprId,
+                value: crate::code_dynamic::CodeDynamic,
+            ) -> crate::langhelp::CodeValue {
+                crate::langhelp::CodeValue {
+                    code: crate::langhelp::Code {
+                        loc,
+                        code: crate::langhelp::Code_::Dyn(std::rc::Rc::new(value)),
+                    },
+                    value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                        source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                        type_: std::rc::Rc::new(#type_name),
+                    }),
+                }
+            }
+        }
+
+        impl crate::builtin::AspectField for #type_name {
+            fn field(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                self_: crate::langhelp::CodeValue,
+                key: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EvalRes {
+                er_seq_cv!(loc, erb, {
+                    let key_type = key.value.type_(xx, loc);
+                    let key_string = erb
+                        .must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+                    let key_name = key_string.get(key.value.as_ref());
+                    #(#field_dispatch_arms)*
+                    #(#method_dispatch_arms)*
+                    return erb.err_new(format!(#unknown_field_msg, key_name));
+                })
+            }
+            fn field_type_opt(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                key: &crate::langhelp::ConstKey,
+            ) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+                let crate::langhelp::ConstKey::String(key) = key else { return None; };
+                #(#field_type_opt_arms)*
+                None
+            }
+        }
+
+        impl crate::eval::dynamic_wrap::DynamicWrap for #name {
+            fn mortar_type() -> std::rc::Rc<dyn crate::langhelp::Type> {
+                std::rc::Rc::new(#type_name)
+            }
+            fn from_v8<'s>(
+                _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                _value: v8::Local<'s, v8::Value>,
+            ) -> Self {
+                unimplemented!(#from_v8_msg)
+            }
+            fn into_v8<'s>(
+                self,
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            ) -> v8::Local<'s, v8::Value> {
+                let _jw_obj = v8::Object::new(scope);
+                let _jw_self_rc = std::rc::Rc::new(self);
+                let _jw_data_ext = crate::eval::to_v8(scope, _jw_self_rc.clone());
+                _jw_obj.set(
+                    scope,
+                    v8::String::new(scope, "_d").unwrap().into(),
+                    _jw_data_ext.into(),
+                );
+                #(#field_setters)*
+                #(#method_setters)*
+                _jw_obj.into()
+            }
+        }
+    }
+}
+
+/// Spec for `dynamic_wrap!(wrap $type as $name …)` — wraps an existing type
+/// rather than declaring a new struct. The Type wrapper's `aspect()` calls
+/// `<name>_extra_aspect(_xx, key)` as a fallback so external code can add
+/// aspects.
+struct DynWrapWrapSpec {
+    /// Wrapper name (PascalCase) — generates `TypeXxxDynamic` and the
+    /// `<name>_type_identity`/`<name>_extra_aspect` functions are looked
+    /// up via snake_case(`<name>`).
+    name: &'static str,
+    /// The Rust type being wrapped (e.g. `"Gc<DefinitionSet>"`). Must
+    /// already exist; the generator emits `impl DynamicWrap for <type>`.
+    wrapped_type: &'static str,
+    methods: Vec<DynWrapMethod>,
+}
+
+fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
+    let type_name = format_ident!("Type{}Dynamic", s.name);
+    let identity_fn = format_ident!("{}_type_identity", snake_case(s.name));
+    let extra_aspect_fn = format_ident!("{}_extra_aspect", snake_case(s.name));
+    let identity_str = format!("dyn_wrap:{}", s.name);
+    let desc_str = s.name.to_string();
+    let wrapped: TokenStream = s.wrapped_type.parse().unwrap();
+
+    let method_dispatch_arms: Vec<TokenStream> = s
+        .methods
+        .iter()
+        .enumerate()
+        .map(|(idx, m)| {
+            let m_name = m.name;
+            let idx_str = format!("_{}", idx);
+            let arg_mortar = arg_mortar_expr(&m.args);
+            let m_ret: TokenStream = m.ret.parse().unwrap();
+            quote! {
+                if key_name == crate::eval::dynamic_wrap::dynamic_wrap_method_name(#m_name) {
+                    let field_type: std::rc::Rc<dyn crate::langhelp::Type> = std::rc::Rc::new(
+                        crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                            arg: #arg_mortar,
+                            ret: <#m_ret as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type(),
+                        },
+                    );
+                    let self_code = erb
+                        .must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?
+                        .unwrap()
+                        .clone();
+                    return Ok(crate::langhelp::CodeValue {
+                        code: crate::langhelp::Code {
+                            loc,
+                            code: crate::langhelp::Code_::Dyn(std::rc::Rc::new(
+                                crate::code_dynamic::CodeDynamic {
+                                    loc,
+                                    type_: crate::code_dynamic::CodeDynamicType::FieldUse(
+                                        crate::code_dynamic::CodeDynamicFieldUse {
+                                            base: Box::new(self_code),
+                                            field: #idx_str.to_string(),
+                                        },
+                                    ),
+                                },
+                            )),
+                        },
+                        value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                            type_: field_type,
+                        }),
+                    });
+                }
+            }
+        })
+        .collect();
+
+    let field_type_opt_arms: Vec<TokenStream> = s
+        .methods
+        .iter()
+        .map(|m| {
+            let m_name = m.name;
+            let arg_mortar = arg_mortar_expr(&m.args);
+            let m_ret: TokenStream = m.ret.parse().unwrap();
+            quote! {
+                if key.as_str() == crate::eval::dynamic_wrap::dynamic_wrap_method_name(#m_name) {
+                    return Some(std::rc::Rc::new(
+                        crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                            arg: #arg_mortar,
+                            ret: <#m_ret as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type(),
+                        },
+                    ));
+                }
+            }
+        })
+        .collect();
+
+    let method_setters: Vec<TokenStream> = s
+        .methods
+        .iter()
+        .enumerate()
+        .map(|(idx, m)| {
+            let key_str = format!("_{}", idx);
+            let arg_decls: Vec<TokenStream> = m
+                .args
+                .iter()
+                .map(|(n, ty)| {
+                    let n = format_ident!("{}", n);
+                    let ty: TokenStream = ty.parse().unwrap();
+                    quote! {
+                        let #n: #ty = <#ty as crate::eval::dynamic_wrap::DynamicWrap>::from_v8(
+                            scope, _jw_args.get(_jw_arg_i),
+                        );
+                        _jw_arg_i += 1;
+                    }
+                })
+                .collect();
+            let m_ret: TokenStream = m.ret.parse().unwrap();
+            let body = &m.body;
+            quote! {
+                {
+                    fn _jw_cb<'s>(
+                        scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                        _jw_args: v8::FunctionCallbackArguments<'s>,
+                        mut _jw_rv: v8::ReturnValue<'s>,
+                    ) {
+                        let _jw_this = _jw_args.this();
+                        let _jw_dk = v8::String::new(scope, "_d").unwrap();
+                        #[allow(unused_variables)]
+                        let self_: std::rc::Rc<#wrapped> =
+                            crate::eval::from_v8_ref::<std::rc::Rc<#wrapped>>(
+                                &*_jw_this.get(scope, _jw_dk.into()).unwrap(),
+                            )
+                                .clone();
+                        #[allow(unused_mut, unused_variables)]
+                        let mut _jw_arg_i = 0i32;
+                        #(#arg_decls)*
+                        let _jw_result: #m_ret = { #body };
+                        _jw_rv.set(
+                            <#m_ret as crate::eval::dynamic_wrap::DynamicWrap>::into_v8(_jw_result, scope),
+                        );
+                    }
+                    let _jw_method_fn = v8::Function::builder(_jw_cb).build(scope).unwrap();
+                    let _jw_key = v8::String::new(scope, #key_str).unwrap();
+                    _jw_obj.set(scope, _jw_key.into(), _jw_method_fn.into());
+                }
+            }
+        })
+        .collect();
+
+    let cannot_convert_msg = format!("Cannot convert {}", s.name);
+    let cannot_convert_to_msg = format!("Cannot convert to {}", s.name);
+    let unknown_field_msg = format!("Unknown field '{{}}' on {}", s.name);
+    let from_v8_msg = format!("from_v8 not supported for {}", s.name);
+
+    quote! {
+        pub(crate) struct #type_name;
+
+        fn #identity_fn() -> crate::langhelp::Unique {
+            crate::langhelp::Unique::from_name(#identity_str)
+        }
+
+        impl crate::langhelp::Value for #type_name {
+            fn type_(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                _loc: crate::langhelp::QExprId,
+            ) -> std::rc::Rc<dyn crate::langhelp::Type> {
+                std::rc::Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+            }
+        }
+
+        impl crate::langhelp::Aspect for #type_name {}
+
+        impl crate::langhelp::Type for #type_name {
+            fn desc(&self) -> String { #desc_str.to_string() }
+            fn as_value(&self) -> std::rc::Rc<dyn crate::langhelp::Value> {
+                std::rc::Rc::new(#type_name)
+            }
+            fn aspect(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                key: &crate::langhelp::Unique,
+            ) -> Option<Box<dyn std::any::Any>> {
+                if *key == #identity_fn() {
+                    return Some(Box::new(true));
+                }
+                if *key == crate::builtin::aspect_field_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectField>));
+                }
+                if *key == crate::builtin::aspect_consume_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectConsumeDynamic>));
+                }
+                if *key == crate::builtin::aspect_bind_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBindDynamic>));
+                }
+                if *key == crate::builtin::aspect_bind_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBind>));
+                }
+                if *key == crate::builtin::aspect_stack_value_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectStackValueDynamic>));
+                }
+                #extra_aspect_fn(_xx, key)
+            }
+            fn cast_to(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                _cv: crate::langhelp::CodeValue,
+                _type_: &dyn crate::langhelp::Type,
+            ) -> crate::langhelp::EvalRes {
+                crate::langhelp::EvalRes::err(loc, #cannot_convert_msg.to_string())
+            }
+            fn can_cast_from(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                _loc: crate::langhelp::QExprId,
+                source_type: &dyn crate::langhelp::Type,
+            ) -> bool {
+                source_type.aspect(xx, &#identity_fn()).is_some()
+            }
+            fn cast_from(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EvalRes {
+                let source_type = cv.value.type_(xx, loc);
+                if source_type.aspect(xx, &#identity_fn()).is_some() {
+                    return crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+                        code: cv.code,
+                        value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                            type_: std::rc::Rc::new(#type_name),
+                        }),
+                    });
+                }
+                crate::langhelp::EvalRes::err(loc, #cannot_convert_to_msg.to_string())
+            }
+        }
+
+        impl crate::builtin::AspectConsumeDynamic for #type_name {
+            fn to_dynamic(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                _loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EResult<crate::code_dynamic::CodeDynamic> {
+                cv.code.cast::<crate::code_dynamic::CodeDynamic>().map(|x| x.unwrap().clone())
+            }
+        }
+
+        impl crate::builtin::AspectBindDynamic for #type_name {
+            fn bind_dynamic(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EResult<Option<crate::eval::TargetBindSub>> {
+                crate::eval::dynamic_util::bind_dynamic_default(xx, loc, cv)
+            }
+        }
+
+        impl crate::builtin::AspectBind for #type_name {
+            fn bind(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                cv: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::langhelp::ScopeEntry>)> {
+                crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
+            }
+        }
+
+        impl crate::builtin::AspectStackValueDynamic for #type_name {
+            fn to_value(
+                &self,
+                loc: crate::langhelp::QExprId,
+                value: crate::code_dynamic::CodeDynamic,
+            ) -> crate::langhelp::CodeValue {
+                crate::langhelp::CodeValue {
+                    code: crate::langhelp::Code {
+                        loc,
+                        code: crate::langhelp::Code_::Dyn(std::rc::Rc::new(value)),
+                    },
+                    value: std::rc::Rc::new(crate::eval::dynamic_util::ValueDynamic {
+                        source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                        type_: std::rc::Rc::new(#type_name),
+                    }),
+                }
+            }
+        }
+
+        impl crate::builtin::AspectField for #type_name {
+            fn field(
+                &self,
+                xx: &crate::langhelp::ExprContext,
+                loc: crate::langhelp::QExprId,
+                self_: crate::langhelp::CodeValue,
+                key: crate::langhelp::CodeValue,
+            ) -> crate::langhelp::EvalRes {
+                er_seq_cv!(loc, erb, {
+                    let key_type = key.value.type_(xx, loc);
+                    let key_string = erb
+                        .must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+                    let key_name = key_string.get(key.value.as_ref());
+                    #(#method_dispatch_arms)*
+                    return erb.err_new(format!(#unknown_field_msg, key_name));
+                })
+            }
+            fn field_type_opt(
+                &self,
+                _xx: &crate::langhelp::ExprContext,
+                key: &crate::langhelp::ConstKey,
+            ) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+                let crate::langhelp::ConstKey::String(key) = key else { return None; };
+                #(#field_type_opt_arms)*
+                None
+            }
+        }
+
+        impl crate::eval::dynamic_wrap::DynamicWrap for #wrapped {
+            fn mortar_type() -> std::rc::Rc<dyn crate::langhelp::Type> {
+                std::rc::Rc::new(#type_name)
+            }
+            fn from_v8<'s>(
+                _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                _value: v8::Local<'s, v8::Value>,
+            ) -> Self {
+                unimplemented!(#from_v8_msg)
+            }
+            fn into_v8<'s>(
+                self,
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            ) -> v8::Local<'s, v8::Value> {
+                let _jw_obj = v8::Object::new(scope);
+                let _jw_self_rc = std::rc::Rc::new(self);
+                let _jw_data_ext = crate::eval::to_v8(scope, _jw_self_rc.clone());
+                _jw_obj.set(
+                    scope,
+                    v8::String::new(scope, "_d").unwrap().into(),
+                    _jw_data_ext.into(),
+                );
+                #(#method_setters)*
+                _jw_obj.into()
+            }
+        }
+    }
+}
+
+fn dyn_wrap_wraps() -> Vec<DynWrapWrapSpec> {
+    vec![
+        // DefinitionSet wraps `Gc<DefinitionSet>` so the v8-side `define()`
+        // result can dispatch `.new_func` / `.new_data` / `.tagged_union` /
+        // `.new_interface` / `.build`. `definition_set_extra_aspect` adds
+        // `AspectLiftDynamic` on top of the generator's default aspect set.
+        DynWrapWrapSpec {
+            name: "DefinitionSet",
+            wrapped_type: "Gc<DefinitionSet>",
+            methods: vec![
+                DynWrapMethod {
+                    name: "new_func",
+                    args: vec![("name", "String")],
+                    ret: "SourceNewFuncResult",
+                    body: quote! {
+                        let ds = (*self_).clone();
+                        let entry_id = ds.next_entry_id.next();
+                        let func_data = Gc::new(SourceFunctionData {
+                            set: ds.clone(),
+                            name: Some(name),
+                            description: RefCell::new(None),
+                            impl_expr: RefCell::new(None),
+                            arg_type: RefCell::new(None),
+                            ret_type: RefCell::new(None),
+                            scope_entry_id: Cell::new(Some(
+                                crate::langhelp::ScopeEntryId::Def(
+                                    ds.import_id,
+                                    ds.def_set_id,
+                                    entry_id,
+                                ),
+                            )),
+                            artifact_id: RefCell::new(None),
+                            compiled_js: RefCell::new(None),
+                            captured_externals: RefCell::new(Vec::new()),
+                        });
+                        ds.functions.borrow_mut().push(func_data.clone());
+                        let func_ref = Rc::new(TypeSourceFunctionConst { data: func_data });
+                        SourceNewFuncResult { func_ref }
+                    },
+                },
+                DynWrapMethod {
+                    name: "new_data",
+                    args: vec![("name", "String")],
+                    ret: "SourceNewDataResult",
+                    body: quote! {
+                        let ds = (*self_).clone();
+                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
+                        let data_field = format!("_{}", ds.next_field_id.next());
+                        let dt_data = Gc::new(SourceDataTypeData {
+                            set: ds.clone(),
+                            name: Some(name),
+                            description: RefCell::new(None),
+                            underlying_type: crate::invariant::DeserialLazy::new(),
+                            methods: RefCell::new(Vec::new()),
+                            interface_impls: RefCell::new(Vec::new()),
+                            identity,
+                            data_field,
+                            artifact_id: RefCell::new(None),
+                        });
+                        ds.data_types.borrow_mut().push(dt_data.clone());
+                        let data_type_ref = Rc::new(SourceDataTypeRef { data: dt_data });
+                        SourceNewDataResult { data_type_ref }
+                    },
+                },
+                DynWrapMethod {
+                    name: "build",
+                    args: vec![],
+                    ret: "Gc<DefinitionSet>",
+                    body: quote! { (*self_).clone() },
+                },
+                DynWrapMethod {
+                    name: "tagged_union",
+                    args: vec![],
+                    ret: "SourceTaggedUnionBuilder",
+                    body: quote! {
+                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
+                        let data = Rc::new(SourceTaggedUnionData {
+                            variants: RefCell::new(Vec::new()),
+                            identity,
+                            next_tag_id: crate::langhelp::Counter::default(),
+                        });
+                        SourceTaggedUnionBuilder { data }
+                    },
+                },
+                DynWrapMethod {
+                    name: "new_interface",
+                    args: vec![],
+                    ret: "SourceNewInterfaceResult",
+                    body: quote! {
+                        let ds = (*self_).clone();
+                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
+                        let iface_data = Gc::new(SourceInterfaceData {
+                            builtin_kind: None,
+                            set: ds.clone(),
+                            description: RefCell::new(None),
+                            is_aspect: Cell::new(false),
+                            methods: RefCell::new(Vec::new()),
+                            identity,
+                        });
+                        ds.interfaces.borrow_mut().push(iface_data.clone());
+                        let interface_ref = Rc::new(SourceInterfaceRef { data: iface_data });
+                        SourceNewInterfaceResult { interface_ref }
+                    },
+                },
+            ],
+        },
+    ]
+}
+
+/// Spec for `dynamic_wrap!(fn $name(ex, dynamic_scope, scope)(args) -> ret { body })`
+/// — produces a scope-entry tuple `(name: &'static str, ScopeEntryId,
+/// Rc<dyn Type>, v8::Local<v8::Value>)` consumed by `eval/mod.rs`'s
+/// `builtin_scope_entries` setup loop. Each spec becomes a fn
+/// `gen_fn_<name>(dynamic_scope) -> tuple`; callers replace the old
+/// `dynamic_wrap!(fn …)` expression with `gen_fn_<name>(dynamic_scope)`.
+struct DynWrapFnSpec {
+    /// Function name — both the entry key and the generated fn name
+    /// (`gen_fn_<name>`).
+    name: &'static str,
+    /// `(name, rust_type)` args (decoded from v8 via `DynamicWrap::from_v8`).
+    args: Vec<(&'static str, &'static str)>,
+    /// Rust return type. `"()"` for unit (also encodes "unit" — the macro
+    /// returns `Tuple{base:None, elements: vec![]}` mortar arg-type for
+    /// zero-arg fns, matching this).
+    ret: &'static str,
+    /// Body — `scope: &mut PinnedRef<HandleScope>` is in scope, plus
+    /// each decoded arg name.
+    body: TokenStream,
+}
+
+fn generate_dyn_wrap_fn(s: &DynWrapFnSpec) -> TokenStream {
+    let fn_name = format_ident!("gen_fn_{}", s.name);
+    let name_str = s.name;
+    let id_str = format!("dyn_wrap_fn:{}", s.name);
+    let arg_mortar = arg_mortar_expr(&s.args);
+    let arg_decls: Vec<TokenStream> = s
+        .args
+        .iter()
+        .map(|(n, ty)| {
+            let n = format_ident!("{}", n);
+            let ty: TokenStream = ty.parse().unwrap();
+            quote! {
+                let #n: #ty = <#ty as crate::eval::dynamic_wrap::DynamicWrap>::from_v8(
+                    scope, _jw_args.get(_jw_arg_i),
+                );
+                _jw_arg_i += 1;
+            }
+        })
+        .collect();
+    let ret_ty: TokenStream = s.ret.parse().unwrap();
+    let body = &s.body;
+    quote! {
+        pub(crate) fn #fn_name<'s>(
+            dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+        ) -> (
+            &'static str,
+            crate::langhelp::ScopeEntryId,
+            std::rc::Rc<dyn crate::langhelp::Type>,
+            v8::Local<'s, v8::Value>,
+        ) {
+            fn _jw_cb<'s>(
+                scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                _jw_args: v8::FunctionCallbackArguments<'s>,
+                mut _jw_rv: v8::ReturnValue<'s>,
+            ) {
+                #[allow(unused_mut, unused_variables)]
+                let mut _jw_arg_i = 0i32;
+                #(#arg_decls)*
+                let _jw_result: #ret_ty = { #body };
+                _jw_rv.set(
+                    <#ret_ty as crate::eval::dynamic_wrap::DynamicWrap>::into_v8(_jw_result, scope),
+                );
+            }
+            (
+                #name_str,
+                crate::langhelp::ScopeEntryId::Builtin(
+                    match crate::langhelp::Unique::from_name(#id_str) {
+                        crate::langhelp::Unique::Builtin(n) => n,
+                        _ => unreachable!(),
+                    },
+                ),
+                std::rc::Rc::new(
+                    crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                        arg: #arg_mortar,
+                        ret: <#ret_ty as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type(),
+                    },
+                ) as std::rc::Rc<dyn crate::langhelp::Type>,
+                v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
+            )
+        }
+    }
+}
+
+fn dyn_wrap_fns() -> Vec<DynWrapFnSpec> {
+    vec![
+        DynWrapFnSpec {
+            name: "log",
+            args: vec![("message", "String")],
+            ret: "()",
+            body: quote! {
+                let timestamp_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64;
+                scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(LogEntry {
+                    timestamp_ms,
+                    message,
+                });
+            },
+        },
+        DynWrapFnSpec {
+            name: "define",
+            args: vec![],
+            ret: "Gc<DefinitionSet>",
+            body: quote! {
+                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let def_set_id = DefSetId(ex_slot.ex.ix.def_set_counter.next());
+                let import_id = ex_slot.ex.ix.import_state;
+                let source_id = ex_slot.ex.ix.source_id;
+                let ds = Gc::new(DefinitionSet::new(import_id, def_set_id, source_id));
+                ex_slot.ex.ix.definition_sets.borrow_mut().push(ds.clone());
+                ds
+            },
+        },
+        DynWrapFnSpec {
+            name: "str_to_json",
+            args: vec![("s", "String")],
+            ret: "String",
+            body: quote! { serde_json::to_string(&s).unwrap() },
+        },
+        DynWrapFnSpec {
+            name: "constkey_to_str",
+            args: vec![("key", "crate::langhelp::ConstKey")],
+            ret: "String",
+            body: quote! { key.to_str() },
+        },
+        DynWrapFnSpec {
+            name: "new_code_value",
+            args: vec![
+                ("code", "crate::langhelp::Code"),
+                ("value", "Rc<dyn crate::langhelp::Value>"),
+            ],
+            ret: "crate::eval::code_value_extern::CodeValueExtern",
+            body: quote! {
+                let cv = crate::langhelp::CodeValue { code, value };
+                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
+            },
+        },
+        DynWrapFnSpec {
+            name: "gen_binding_name",
+            args: vec![("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
+            ret: "String",
+            body: quote! {
+                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let id = ex_slot.ex.next_local_id.next();
+                format!("a{}", id)
+            },
+        },
+        DynWrapFnSpec {
+            name: "eval_const",
+            args: vec![
+                ("xx", "crate::eval::code_value_extern::ExprContextRef"),
+                ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
+            ],
+            ret: "crate::eval::code_value_extern::CodeValueExtern",
+            body: quote! {
+                let expr_value = staged.0;
+                let expr_ast: Expr =
+                    Rc::try_unwrap(crate::langhelp::downcast_value::<Expr>(expr_value))
+                        .ok()
+                        .expect("eval_const: staged Expr Rc not unique");
+                let res = const_eval(&xx.0, &expr_ast);
+                let cv = res.v.expect("eval_const: const_eval produced no value");
+                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
+            },
+        },
+        DynWrapFnSpec {
+            name: "const_eval",
+            args: vec![
+                ("xx", "crate::eval::code_value_extern::ExprContextRef"),
+                ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
+            ],
+            ret: "crate::eval::code_value_extern::CodeValueExtern",
+            body: quote! {
+                let expr_value = staged.0;
+                let expr_ast: Expr =
+                    Rc::try_unwrap(crate::langhelp::downcast_value::<Expr>(expr_value))
+                        .ok()
+                        .expect("const_eval: staged Expr Rc not unique");
+                let res = const_eval(&xx.0, &expr_ast);
+                let cv = res.v.unwrap_or_else(|| {
+                    panic!("const_eval: const_eval produced no value; errors: {:?}", res.errors)
+                });
+                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
+            },
+        },
+        DynWrapFnSpec {
+            name: "new_expr_context",
+            args: vec![
+                ("target_arg", "Rc<dyn Target>"),
+                ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::langhelp::ScopeEntry>>"),
+            ],
+            ret: "crate::eval::code_value_extern::ExprContextRef",
+            body: quote! {
+                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let parent_ex = ex_slot.ex.clone();
+                let mut scope_values: HashMap<ConstKey, Box<dyn crate::langhelp::ScopeEntry>> =
+                    HashMap::new();
+                for (k, v) in scope_arg {
+                    scope_values.insert(k, Box::new(RcScopeEntryWrap(v)));
+                }
+                let new_scope = Rc::new(Scope {
+                    values: RefCell::new(scope_values),
+                    parent: None,
+                });
+                let xx = Rc::new(ExprContext {
+                    vx: parent_ex.clone(),
+                    import_state: Rc::new(Cell::new(parent_ex.ix.import_state)),
+                    scope: new_scope,
+                    target: target_arg,
+                });
+                crate::eval::code_value_extern::ExprContextRef(xx)
+            },
+        },
+        DynWrapFnSpec {
+            name: "list",
+            args: vec![("element_type", "dynamic_wrap::AnyType")],
+            ret: "value::type_list::dynamic::TypeListDynamic",
+            body: quote! {
+                value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
+            },
+        },
+        DynWrapFnSpec {
+            name: "map",
+            args: vec![
+                ("key_type", "dynamic_wrap::AnyType"),
+                ("value_type", "dynamic_wrap::AnyType"),
+            ],
+            ret: "value::type_map::dynamic::TypeMapDynamic",
+            body: quote! {
+                value::type_map::dynamic::TypeMapDynamic {
+                    key_type: key_type.0,
+                    value_type: value_type.0,
+                }
+            },
+        },
+        DynWrapFnSpec {
+            name: "option",
+            args: vec![("element_type", "dynamic_wrap::AnyType")],
+            ret: "value::type_option::dynamic::TypeOptionDynamic",
+            body: quote! {
+                value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
+            },
+        },
+    ]
+}
+
+/// `dynamic_wrap!(@ arg_mortar_type)` macro arm: zero args → `TypeNullDynamic`,
+/// one → that arg's mortar_type, multi → tuple of them. Mirrors what the
+/// macro does for the function-style arg tuple.
+fn arg_mortar_expr(args: &[(&'static str, &'static str)]) -> TokenStream {
+    match args.len() {
+        0 => quote! {
+            std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)
+                as std::rc::Rc<dyn crate::langhelp::Type>
+        },
+        1 => {
+            let ty: TokenStream = args[0].1.parse().unwrap();
+            quote! { <#ty as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type() }
+        },
+        _ => {
+            let elems: Vec<TokenStream> = args
+                .iter()
+                .map(|(_, ty)| {
+                    let ty: TokenStream = ty.parse().unwrap();
+                    quote! {
+                        crate::eval::value::tuple::TupleElement::Mortar(
+                            <#ty as crate::eval::dynamic_wrap::DynamicWrap>::mortar_type(),
+                        )
+                    }
+                })
+                .collect();
+            quote! {
+                std::rc::Rc::new(crate::eval::value::tuple::Tuple {
+                    base: None,
+                    elements: vec![ #(#elems),* ],
+                }) as std::rc::Rc<dyn crate::langhelp::Type>
+            }
+        },
+    }
+}
+
+fn dyn_wrap_structs() -> Vec<DynWrapStructSpec> {
+    vec![
+        DynWrapStructSpec {
+            name: "OptionV8",
+            data_fields: vec![("is_some_inner", "bool")],
+            fields: vec![],
+            methods: vec![DynWrapMethod {
+                name: "is_some_",
+                args: vec![],
+                ret: "bool",
+                body: quote! { self_.is_some_inner },
+            }],
+        },
+        // `TypeRefV8` — the JS-side wrapper around an `Rc<dyn Type>`. Its
+        // `aspect(unique)` builds a throwaway `ExprContext` and forwards to
+        // the inner type's `aspect()`; the boolean result is wrapped as an
+        // `OptionV8` (sufficient for the existing scaffold — full option
+        // payload wiring is TODO at the JS layer).
+        DynWrapStructSpec {
+            name: "TypeRefV8",
+            data_fields: vec![("type_ref", "Rc<dyn Type>")],
+            fields: vec![],
+            methods: vec![DynWrapMethod {
+                name: "aspect",
+                args: vec![("unique", "Unique")],
+                ret: "OptionV8",
+                body: quote! {
+                    let ex_slot = scope
+                        .get_slot::<crate::eval::V8EvalContextSlot>()
+                        .expect("TypeRefV8.aspect: V8EvalContextSlot not set");
+                    let import_state_id = ex_slot.ex.ix.import_state;
+                    let xx = Rc::new(ExprContext {
+                        vx: ex_slot.ex.clone(),
+                        import_state: Rc::new(Cell::new(import_state_id)),
+                        scope: Rc::new(Scope {
+                            values: RefCell::new(HashMap::new()),
+                            parent: None,
+                        }),
+                        target: Rc::new(crate::eval::TargetDynamic),
+                    });
+                    let is_some = self_.type_ref.aspect(&xx, &unique).is_some();
+                    OptionV8 { is_some_inner: is_some }
+                },
+            }],
+        },
+        // SourceNewFuncResult — the v8-side builder returned by
+        // `definition_set.new_func(name)`. Holds the in-progress
+        // `TypeSourceFunctionConst` and exposes setters for description,
+        // impl body, arg type (two flavors — raw type and iface ref), and
+        // ret type. Each setter throws if called twice.
+        DynWrapStructSpec {
+            name: "SourceNewFuncResult",
+            data_fields: vec![("func_ref", "Rc<TypeSourceFunctionConst>")],
+            fields: vec![DynWrapField {
+                name: "func",
+                ret: "Rc<TypeSourceFunctionConst>",
+                body: quote! { self_.func_ref.clone() },
+            }],
+            methods: vec![
+                DynWrapMethod {
+                    name: "set_description",
+                    args: vec![("description", "String")],
+                    ret: "()",
+                    body: quote! {
+                        *self_.func_ref.data.description.borrow_mut() = Some(description);
+                    },
+                },
+                DynWrapMethod {
+                    name: "impl_",
+                    args: vec![("staged", "StagedExpr")],
+                    ret: "()",
+                    body: quote! {
+                        let mut impl_expr = self_.func_ref.data.impl_expr.borrow_mut();
+                        if impl_expr.is_some() {
+                            drop(impl_expr);
+                            throw_error(scope, "Function already has an implementation");
+                            return;
+                        }
+                        *impl_expr = Some(staged.0);
+                    },
+                },
+                DynWrapMethod {
+                    name: "arg_",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
+                        if arg_type.is_some() {
+                            drop(arg_type);
+                            throw_error(scope, "Function already has an arg type");
+                            return;
+                        }
+                        *arg_type = Some(type_ref.0);
+                    },
+                },
+                DynWrapMethod {
+                    name: "arg_type",
+                    args: vec![("iface_ref", "Rc<SourceInterfaceRef>")],
+                    ret: "()",
+                    body: quote! {
+                        let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
+                        if arg_type.is_some() {
+                            drop(arg_type);
+                            throw_error(scope, "Function already has an arg type");
+                            return;
+                        }
+                        *arg_type = Some(Rc::new(
+                            TypeSourceInterfaceConst { data: iface_ref.data.clone() },
+                        ) as Rc<dyn crate::langhelp::Type>);
+                    },
+                },
+                DynWrapMethod {
+                    name: "ret_",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        let mut ret_type = self_.func_ref.data.ret_type.borrow_mut();
+                        if ret_type.is_some() {
+                            drop(ret_type);
+                            throw_error(scope, "Function already has a ret type");
+                            return;
+                        }
+                        *ret_type = Some(type_ref.0);
+                    },
+                },
+            ],
+        },
+        // SourceNewDataMethodResult — returned by `.new_func(name)` on a
+        // SourceNewDataResult; lets the caller set the method's arg type,
+        // ret type, and impl body.
+        DynWrapStructSpec {
+            name: "SourceNewDataMethodResult",
+            data_fields: vec![
+                ("data_type_ref", "Rc<SourceDataTypeRef>"),
+                ("method_index", "usize"),
+            ],
+            fields: vec![],
+            methods: vec![
+                DynWrapMethod {
+                    name: "impl_",
+                    args: vec![("staged", "StagedExpr")],
+                    ret: "()",
+                    body: quote! {
+                        let methods = self_.data_type_ref.data.methods.borrow();
+                        let method = &methods[self_.method_index];
+                        let mut impl_expr = method.impl_expr.borrow_mut();
+                        if impl_expr.is_some() {
+                            drop(impl_expr);
+                            drop(methods);
+                            throw_error(scope, "Method already has an implementation");
+                            return;
+                        }
+                        *impl_expr = Some(staged.0);
+                    },
+                },
+                DynWrapMethod {
+                    name: "ret_",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        let methods = self_.data_type_ref.data.methods.borrow();
+                        let method = &methods[self_.method_index];
+                        let mut ret_type = method.ret_type.borrow_mut();
+                        if ret_type.is_some() {
+                            drop(ret_type);
+                            drop(methods);
+                            throw_error(scope, "Method already has a ret type");
+                            return;
+                        }
+                        *ret_type = Some(type_ref.0);
+                    },
+                },
+                DynWrapMethod {
+                    name: "arg_",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        let methods = self_.data_type_ref.data.methods.borrow();
+                        let method = &methods[self_.method_index];
+                        let mut arg_type = method.arg_type.borrow_mut();
+                        if arg_type.is_some() {
+                            drop(arg_type);
+                            drop(methods);
+                            throw_error(scope, "Method already has an arg type");
+                            return;
+                        }
+                        *arg_type = Some(type_ref.0);
+                    },
+                },
+            ],
+        },
+        // SourceNewInterfaceResult — v8 builder returned by
+        // `definition_set.new_interface()`. Exposes `.type` (the iface ref),
+        // a description setter, `set_is_aspect`, and `.new_func(name)` to
+        // declare a method.
+        DynWrapStructSpec {
+            name: "SourceNewInterfaceResult",
+            data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>")],
+            fields: vec![DynWrapField {
+                name: "type_",
+                ret: "Rc<SourceInterfaceRef>",
+                body: quote! { self_.interface_ref.clone() },
+            }],
+            methods: vec![
+                DynWrapMethod {
+                    name: "set_description",
+                    args: vec![("description", "String")],
+                    ret: "()",
+                    body: quote! {
+                        *self_.interface_ref.data.description.borrow_mut() = Some(description);
+                    },
+                },
+                DynWrapMethod {
+                    name: "new_func",
+                    args: vec![("name", "String")],
+                    ret: "SourceNewInterfaceMethodResult",
+                    body: quote! {
+                        let iface_data = &self_.interface_ref.data;
+                        let field_name = format!("_im{}", next_interface_method_id(&iface_data.set));
+                        let method_index = {
+                            let mut methods = iface_data.methods.borrow_mut();
+                            let idx = methods.len();
+                            methods.push(SourceInterfaceMethodData {
+                                name,
+                                arg_type: RefCell::new(None),
+                                ret_type: RefCell::new(None),
+                                field_name,
+                            });
+                            idx
+                        };
+                        SourceNewInterfaceMethodResult {
+                            interface_ref: self_.interface_ref.clone(),
+                            method_index,
+                        }
+                    },
+                },
+                DynWrapMethod {
+                    name: "set_is_aspect",
+                    args: vec![("is_aspect", "bool")],
+                    ret: "()",
+                    body: quote! {
+                        self_.interface_ref.data.is_aspect.set(is_aspect);
+                    },
+                },
+            ],
+        },
+        // SourceNewDataResult — v8 builder for new user-defined data
+        // types. Exposes the data type ref, the constructor, plus setters
+        // for description, underlying type, methods, and interface impls.
+        DynWrapStructSpec {
+            name: "SourceNewDataResult",
+            data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>")],
+            fields: vec![
+                DynWrapField {
+                    name: "type_",
+                    ret: "Rc<SourceDataTypeRef>",
+                    body: quote! { self_.data_type_ref.clone() },
+                },
+                DynWrapField {
+                    name: "new_",
+                    ret: "Rc<TypeSourceDataTypeConstructorConst>",
+                    body: quote! {
+                        Rc::new(TypeSourceDataTypeConstructorConst {
+                            data: self_.data_type_ref.data.clone(),
+                        })
+                    },
+                },
+            ],
+            methods: vec![
+                DynWrapMethod {
+                    name: "set_description",
+                    args: vec![("description", "String")],
+                    ret: "()",
+                    body: quote! {
+                        *self_.data_type_ref.data.description.borrow_mut() = Some(description);
+                    },
+                },
+                DynWrapMethod {
+                    name: "set_underlying",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        self_.data_type_ref.data.underlying_type.set(type_ref.0);
+                    },
+                },
+                DynWrapMethod {
+                    name: "new_func",
+                    args: vec![("name", "String")],
+                    ret: "SourceNewDataMethodResult",
+                    body: quote! {
+                        let dt_data = &self_.data_type_ref.data;
+                        let field_name = format!("_{}", dt_data.set.next_field_id.next());
+                        let entry_id = dt_data.set.next_entry_id.next();
+                        let method_index = {
+                            let mut methods = dt_data.methods.borrow_mut();
+                            let idx = methods.len();
+                            methods.push(SourceDataMethodData {
+                                name,
+                                arg_type: RefCell::new(None),
+                                impl_expr: RefCell::new(None),
+                                ret_type: RefCell::new(None),
+                                scope_entry_id: Cell::new(Some(
+                                    crate::langhelp::ScopeEntryId::Def(
+                                        dt_data.set.import_id,
+                                        dt_data.set.def_set_id,
+                                        entry_id,
+                                    ),
+                                )),
+                                self_scope_entry_id: Cell::new(None),
+                                field_name,
+                                compiled_js: RefCell::new(None),
+                                captured_externals: RefCell::new(Vec::new()),
+                            });
+                            idx
+                        };
+                        SourceNewDataMethodResult {
+                            data_type_ref: self_.data_type_ref.clone(),
+                            method_index,
+                        }
+                    },
+                },
+                DynWrapMethod {
+                    name: "impl_interface",
+                    args: vec![
+                        ("iface_ref", "Rc<SourceInterfaceRef>"),
+                        ("record", "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>"),
+                    ],
+                    ret: "()",
+                    body: quote! {
+                        let record_entries = record;
+                        let iface_data = &iface_ref.data;
+                        let iface_method_names: Vec<(usize, String)> = {
+                            let methods = iface_data.methods.borrow();
+                            methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
+                        };
+                        let mut method_impls = Vec::new();
+                        let dt_data = &self_.data_type_ref.data;
+                        for (imethod_idx, imethod_name) in &iface_method_names {
+                            let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
+                            match record_entries.get(&const_key) {
+                                Some(expr) => {
+                                    let entry_id = dt_data.set.next_entry_id.next();
+                                    method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                                        interface_method_index: *imethod_idx,
+                                        impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
+                                        impl_expr_artifact: RefCell::new(None),
+                                        compiled_js: RefCell::new(None),
+                                        captured_externals: RefCell::new(Vec::new()),
+                                        scope_entry_id: Cell::new(Some(
+                                            crate::langhelp::ScopeEntryId::Def(
+                                                dt_data.set.import_id,
+                                                dt_data.set.def_set_id,
+                                                entry_id,
+                                            ),
+                                        )),
+                                        self_scope_entry_id: Cell::new(None),
+                                    });
+                                },
+                                None => {
+                                    throw_error(
+                                        scope,
+                                        &format!("Missing implementation for interface method '{}'", imethod_name),
+                                    );
+                                    return;
+                                },
+                            }
+                        }
+                        dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
+                            interface: iface_data.clone(),
+                            method_impls,
+                        });
+                    },
+                },
+            ],
+        },
+        // SourceTaggedUnionBuilder — v8 builder for tagged unions. Exposes
+        // `.type` (the ref) and `.variant(tag, type)` to add variants.
+        DynWrapStructSpec {
+            name: "SourceTaggedUnionBuilder",
+            data_fields: vec![("data", "Rc<SourceTaggedUnionData>")],
+            fields: vec![DynWrapField {
+                name: "type_",
+                ret: "Rc<SourceTaggedUnionRef>",
+                body: quote! {
+                    Rc::new(SourceTaggedUnionRef { data: self_.data.clone() })
+                },
+            }],
+            methods: vec![DynWrapMethod {
+                name: "variant",
+                args: vec![("tag", "String"), ("type_ref", "AnyType")],
+                ret: "Rc<SourceTaggedUnionConstructorRef>",
+                body: quote! {
+                    let variant_index = {
+                        let mut variants = self_.data.variants.borrow_mut();
+                        let idx = variants.len();
+                        let js_tag = format!(
+                            "{}{}",
+                            crate::code_dynamic::TAG_PREFIX,
+                            self_.data.next_tag_id.next(),
+                        );
+                        variants.push(SourceTaggedUnionVariant {
+                            js_tag,
+                            tag: crate::langhelp::ConstKey::String(tag),
+                            type_: type_ref.0,
+                        });
+                        idx
+                    };
+                    Rc::new(SourceTaggedUnionConstructorRef {
+                        data: self_.data.clone(),
+                        variant_index,
+                    })
+                },
+            }],
+        },
+        // SourceNewInterfaceMethodResult — builder returned by
+        // `iface.new_func(name)`. Lets the caller set arg/ret types.
+        DynWrapStructSpec {
+            name: "SourceNewInterfaceMethodResult",
+            data_fields: vec![
+                ("interface_ref", "Rc<SourceInterfaceRef>"),
+                ("method_index", "usize"),
+            ],
+            fields: vec![],
+            methods: vec![
+                DynWrapMethod {
+                    name: "arg_",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        let methods = self_.interface_ref.data.methods.borrow();
+                        let method = &methods[self_.method_index];
+                        let mut arg_type = method.arg_type.borrow_mut();
+                        if arg_type.is_some() {
+                            drop(arg_type);
+                            drop(methods);
+                            throw_error(scope, "Interface method already has an arg type");
+                            return;
+                        }
+                        *arg_type = Some(type_ref.0);
+                    },
+                },
+                DynWrapMethod {
+                    name: "ret_",
+                    args: vec![("type_ref", "AnyType")],
+                    ret: "()",
+                    body: quote! {
+                        let methods = self_.interface_ref.data.methods.borrow();
+                        let method = &methods[self_.method_index];
+                        let mut ret_type = method.ret_type.borrow_mut();
+                        if ret_type.is_some() {
+                            drop(ret_type);
+                            drop(methods);
+                            throw_error(scope, "Interface method already has a ret type");
+                            return;
+                        }
+                        *ret_type = Some(type_ref.0);
+                    },
+                },
+            ],
+        },
+    ]
+}
+
+fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let ifaces = interfaces();
+    check_no_duplicates(&ifaces);
+    let aspects = aspects();
+    check_no_duplicate_aspects(&aspects);
+    let iface_tokens = generate(&ifaces);
+    let aspect_tokens = generate_aspects(&aspects);
+    let fmt = |toks: TokenStream| -> String {
+        match genemichaels_lib::format_str(
+            &toks.to_string(),
+            &genemichaels_lib::FormatConfig::default(),
+        ) {
+            Ok(out) => out.rendered,
+            Err(_) => toks.to_string(),
+        }
+    };
+    fs::write(out_dir.join("gen_builtin_interfaces.rs"), fmt(iface_tokens)).unwrap();
+    fs::write(out_dir.join("gen_aspects.rs"), fmt(aspect_tokens)).unwrap();
+    // One gen file per `dynamic_wrap!(struct …)` migrated, included from the
+    // original file location so the body's identifier scope (imports, local
+    // types) resolves the same way the macro expansion did.
+    for s in dyn_wrap_structs() {
+        let toks = generate_dyn_wrap_struct(&s);
+        let filename = format!("gen_dw_{}.rs", s.name);
+        fs::write(out_dir.join(filename), fmt(toks)).unwrap();
+    }
+    for s in dyn_wrap_wraps() {
+        let toks = generate_dyn_wrap_wrap(&s);
+        let filename = format!("gen_dw_{}.rs", s.name);
+        fs::write(out_dir.join(filename), fmt(toks)).unwrap();
+    }
+    // All fn-variant bodies share one gen file included from eval/mod.rs
+    // (where the local identifier scope — `Expr`, `const_eval`, `Gc`,
+    // `DefinitionSet`, `V8LogStore`, etc. — is already in scope via mod.rs's
+    // imports).
+    let mut fn_toks = TokenStream::new();
+    for s in dyn_wrap_fns() {
+        fn_toks.extend(generate_dyn_wrap_fn(&s));
+    }
+    fs::write(out_dir.join("gen_dyn_wrap_fns.rs"), fmt(fn_toks)).unwrap();
+}

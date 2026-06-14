@@ -68,10 +68,7 @@ use {
 };
 
 pub(crate) fn type_option_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 #[derive(Clone)]

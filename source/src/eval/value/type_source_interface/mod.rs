@@ -1,6 +1,11 @@
 pub mod dynamic;
 pub mod r#const;
 
+// `build.rs` writes per-interface specs (method names + source-side
+// arg/ret types) into `$OUT_DIR/gen_builtin_interfaces.rs` and we include
+// that here so the build runs the spec→Rust generation step every build.
+include!(concat!(env!("OUT_DIR"), "/gen_builtin_interfaces.rs"));
+
 use {
     crate::langhelp::Unique,
     dumpster::unsync::Gc,
@@ -94,30 +99,24 @@ pub(crate) struct BuiltinInterfaces {
 }
 
 pub(crate) fn builtin_code_dyn_iface_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 pub(crate) fn builtin_scope_entry_iface_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 pub(crate) fn builtin_target_iface_identity() -> Unique {
-    Unique::Builtin {
-        file: file!().to_string(),
-        line: line!() as usize,
-    }
+    Unique::from_name(&format!("{}:{}", module_path!(), line!()))
 }
 
 /// Build the synthetic builtin `value`/`type`/`aspect_function`/`aspect_field`
-/// interfaces. Identities are derived from stable identity helpers so
-/// instances built in different compile contexts compare equal for aspect
-/// lookups.
+/// interfaces. Delegates to `gen_build_builtin_interfaces` (in `build.rs`-
+/// generated `gen_builtin_interfaces.rs`) so method names + source-side
+/// arg/ret types are defined in one place. The four existing aspect-id
+/// `Unique`s (`crate::eval::builtin_value_iface_identity` etc.) are reused
+/// rather than the generator's so callers that already look up by those
+/// match.
 pub(crate) fn build_builtin_interfaces(
     import_state: crate::langhelp::ImportStateId,
 ) -> BuiltinInterfaces {
@@ -129,187 +128,15 @@ pub(crate) fn build_builtin_interfaces(
                 crate::langhelp::SourceId(usize::MAX),
             ),
         );
-    let any_type: std::rc::Rc<dyn crate::langhelp::Type> =
-        std::rc::Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
-    let value_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::Value),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("value".to_string())),
-        is_aspect: Cell::new(false),
-        methods: RefCell::new(vec![SourceInterfaceMethodData {
-            name: "type".to_string(),
-            arg_type: RefCell::new(
-                Some(std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic) as std::rc::Rc<dyn crate::langhelp::Type>),
-            ),
-            ret_type: RefCell::new(Some(any_type.clone())),
-            field_name: "_im_v0".to_string(),
-        }]),
-        identity: crate::eval::builtin_value_iface_identity(),
-    });
-    let type_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::Type),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("type".to_string())),
-        is_aspect: Cell::new(false),
-        methods: RefCell::new(vec![
-            SourceInterfaceMethodData {
-                name: "can_cast_from".to_string(),
-                arg_type: RefCell::new(Some(any_type.clone())),
-                ret_type: RefCell::new(
-                    Some(
-                        std::rc::Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic) as std::rc::Rc<dyn crate::langhelp::Type>,
-                    ),
-                ),
-                field_name: "_im_t1".to_string(),
-            },
-            SourceInterfaceMethodData {
-                name: "cast_from".to_string(),
-                arg_type: RefCell::new(Some(any_type.clone())),
-                ret_type: RefCell::new(
-                    Some(
-                        std::rc::Rc::new(
-                            crate::eval::code_value_extern::TypeCodeValueExternDynamic,
-                        ) as std::rc::Rc<dyn crate::langhelp::Type>,
-                    ),
-                ),
-                field_name: "_im_t2".to_string(),
-            },
-            SourceInterfaceMethodData {
-                name: "desc".to_string(),
-                arg_type: RefCell::new(
-                    Some(std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic) as std::rc::Rc<dyn crate::langhelp::Type>),
-                ),
-                ret_type: RefCell::new(
-                    Some(
-                        std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic) as std::rc::Rc<dyn crate::langhelp::Type>,
-                    ),
-                ),
-                field_name: "_im_t3".to_string(),
-            },
-            // `aspect(arg) -> option(aspect)` — the source-language counterpart
-            // of `Type::aspect`. `arg` carries `{key: unique}`; the returned
-            // option wraps an `AspectUserDefined` external when present.
-            SourceInterfaceMethodData {
-                name: "aspect".to_string(),
-                arg_type: RefCell::new(Some(any_type.clone())),
-                ret_type: RefCell::new(Some(
-                    std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
-                        element_type: std::rc::Rc::new(
-                            crate::eval::value::type_aspect::dynamic::TypeAspectDynamic,
-                        ),
-                    }) as std::rc::Rc<dyn crate::langhelp::Type>,
-                )),
-                field_name: "_im_t4".to_string(),
-            },
-        ]),
-        identity: crate::eval::builtin_type_iface_identity(),
-    });
-    let cve_type: std::rc::Rc<dyn crate::langhelp::Type> =
-        std::rc::Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic);
-    let aspect_function_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::AspectFunction),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("aspect_function".to_string())),
-        is_aspect: Cell::new(false),
-        // `call` mirrors the Rust trait `AspectFunction::call(self_: CodeValue,
-        // argument: CodeValue) -> EvalRes<CodeValue>`. The impl runs at
-        // const-eval (not at JS runtime), receives its inputs as
-        // `CodeValueExtern`s (compile-time CV wrappers), and returns a
-        // `CodeValueExtern` carrying the compiled CV; `AspectUserDefined`
-        // synchronously invokes v8 to drive this and unwraps the result.
-        methods: RefCell::new(vec![SourceInterfaceMethodData {
-            name: "call".to_string(),
-            arg_type: RefCell::new(Some(any_type.clone())),
-            ret_type: RefCell::new(Some(cve_type.clone())),
-            field_name: "_im_af0".to_string(),
-        }]),
-        identity: crate::builtin::aspect_function_aspect_id(),
-    });
-    let aspect_field_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::AspectField),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("aspect_field".to_string())),
-        is_aspect: Cell::new(false),
-        methods: RefCell::new(vec![
-            SourceInterfaceMethodData {
-                name: "field".to_string(),
-                arg_type: RefCell::new(Some(any_type.clone())),
-                // See note above on `aspect_function.call` — same rationale.
-                ret_type: RefCell::new(Some(cve_type.clone())),
-                field_name: "_im_afd0".to_string(),
-            },
-            SourceInterfaceMethodData {
-                name: "field_type_opt".to_string(),
-                arg_type: RefCell::new(Some(any_type.clone())),
-                ret_type: RefCell::new(Some(any_type.clone())),
-                field_name: "_im_afd1".to_string(),
-            },
-        ]),
-        identity: crate::builtin::aspect_field_aspect_id(),
-    });
-    let scope_entry_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::ScopeEntry),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("scope_entry".to_string())),
-        is_aspect: Cell::new(false),
-        methods: RefCell::new(vec![SourceInterfaceMethodData {
-            name: "use_".to_string(),
-            arg_type: RefCell::new(Some(any_type.clone())),
-            ret_type: RefCell::new(Some(
-                std::rc::Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>,
-            )),
-            field_name: "_im_se0".to_string(),
-        }]),
-        identity: builtin_scope_entry_iface_identity(),
-    });
-    let target_method = |name: &str, idx: usize| SourceInterfaceMethodData {
-        name: name.to_string(),
-        arg_type: RefCell::new(Some(any_type.clone())),
-        ret_type: RefCell::new(Some(any_type.clone())),
-        field_name: format!("_im_tg{}", idx),
-    };
-    let target_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::Target),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("target".to_string())),
-        is_aspect: Cell::new(false),
-        methods: RefCell::new(vec![
-            target_method("bind", 0),
-            target_method("bind_sub_record", 1),
-            target_method("bind_sub_tuple", 2),
-            target_method("block", 3),
-            target_method("code_to_bind_sub", 4),
-            target_method("if_", 5),
-            target_method("match_", 6),
-            target_method("maybe_bind_sub", 7),
-            target_method("stage", 8),
-        ]),
-        identity: builtin_target_iface_identity(),
-    });
-    let code_dyn_iface_data = Gc::new(SourceInterfaceData {
-        builtin_kind: Some(BuiltinInterfaceKind::CodeDyn),
-        set: builtin_def_set.clone(),
-        description: RefCell::new(Some("code_dyn".to_string())),
-        is_aspect: Cell::new(false),
-        methods: RefCell::new(vec![]),
-        identity: builtin_code_dyn_iface_identity(),
-    });
-    builtin_def_set.interfaces.borrow_mut().push(value_iface_data.clone());
-    builtin_def_set.interfaces.borrow_mut().push(type_iface_data.clone());
-    builtin_def_set.interfaces.borrow_mut().push(aspect_function_iface_data.clone());
-    builtin_def_set.interfaces.borrow_mut().push(aspect_field_iface_data.clone());
-    builtin_def_set.interfaces.borrow_mut().push(scope_entry_iface_data.clone());
-    builtin_def_set.interfaces.borrow_mut().push(target_iface_data.clone());
-    builtin_def_set.interfaces.borrow_mut().push(code_dyn_iface_data.clone());
+    let g = gen_build_builtin_interfaces(&builtin_def_set);
     BuiltinInterfaces {
-        value: value_iface_data,
-        type_: type_iface_data,
-        aspect_function: aspect_function_iface_data,
-        aspect_field: aspect_field_iface_data,
-        scope_entry: scope_entry_iface_data,
-        target: target_iface_data,
-        code_dyn: code_dyn_iface_data,
+        value: g.value,
+        type_: g.type_,
+        aspect_function: g.aspect_function,
+        aspect_field: g.aspect_field,
+        scope_entry: g.scope_entry,
+        target: g.target,
+        code_dyn: g.code_dyn,
     }
 }
 
