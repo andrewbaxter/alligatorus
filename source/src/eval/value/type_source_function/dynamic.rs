@@ -125,7 +125,9 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
             sets.push(set.clone());
         }
-        Ok(Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() }))
+        let func_type: Rc<dyn crate::langhelp::Type> =
+            Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type }))
     }
 }
 
@@ -248,9 +250,13 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
                 .expect("Function not found in definition set")
                 .clone();
             drop(functions);
+            let func_type: Rc<dyn crate::langhelp::Type> =
+                Rc::new(TypeSourceFunctionConst { data: func_data });
             return Ok(CodeValue {
                 code: Code { loc, code: Code_::None },
-                value: Rc::new(TypeSourceFunctionConst { data: func_data }),
+                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                    inner: func_type,
+                }),
             });
         })
     }

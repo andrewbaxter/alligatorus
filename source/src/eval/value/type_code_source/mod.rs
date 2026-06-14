@@ -174,7 +174,9 @@ impl AspectField for TypeCodeStructDynamic {
 
 impl Type for TypeCodeStructDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeCodeStructDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeCodeStructDynamic),
+        })
     }
 
     fn clone_rc(&self) -> Option<Rc<dyn Type>> {
@@ -221,7 +223,7 @@ impl Type for TypeCodeStructDynamic {
 
 impl Value for TypeCodeStructDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeCodeStructDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -289,7 +291,9 @@ impl AspectTaggedUnion for TypeCodeEnumDynamic {
 
 impl Type for TypeCodeEnumDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeCodeEnumDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeCodeEnumDynamic),
+        })
     }
 
     fn clone_rc(&self) -> Option<Rc<dyn Type>> {
@@ -336,7 +340,7 @@ impl Type for TypeCodeEnumDynamic {
 
 impl Value for TypeCodeEnumDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeCodeEnumDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -404,7 +408,9 @@ impl AspectField for TypeCodeDynHandleDynamic {
                 };
                 EvalRes::ok(CodeValue {
                     code: Code { loc, code: Code_::Dyn(Rc::new(self_code)) },
-                    value: Rc::new(TypeCodeDynCastFn),
+                    value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                        inner: Rc::new(TypeCodeDynCastFn),
+                    }),
                 })
             },
             _ => EvalRes::err(loc, format!("Field '{}' not found on code_dyn handle", key_name)),
@@ -423,7 +429,9 @@ impl AspectField for TypeCodeDynHandleDynamic {
 
 impl Type for TypeCodeDynHandleDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeCodeDynHandleDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeCodeDynHandleDynamic),
+        })
     }
 
     fn clone_rc(&self) -> Option<Rc<dyn Type>> {
@@ -489,7 +497,7 @@ impl Type for TypeCodeDynHandleDynamic {
 
 impl Value for TypeCodeDynHandleDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeCodeDynHandleDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
@@ -529,7 +537,9 @@ impl AspectFunction for TypeCodeDynCastFn {
 
 impl Type for TypeCodeDynCastFn {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeCodeDynCastFn)
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeCodeDynCastFn),
+        })
     }
 
     fn clone_rc(&self) -> Option<Rc<dyn Type>> {
@@ -558,6 +568,6 @@ impl Type for TypeCodeDynCastFn {
 
 impl Value for TypeCodeDynCastFn {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeCodeDynCastFn)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

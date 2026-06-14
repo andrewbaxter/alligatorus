@@ -124,7 +124,8 @@ impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
         iface_ref.data.set.finish()?;
-        Ok(Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() }))
+        let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: iface_type }))
     }
 }
 

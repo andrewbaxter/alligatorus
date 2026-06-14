@@ -119,7 +119,9 @@ impl crate::builtin::AspectType for TypeSourceTaggedUnionConst {
 
 impl Type for TypeSourceTaggedUnionConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -249,6 +251,6 @@ impl Type for TypeSourceTaggedUnionConst {
 
 impl Value for TypeSourceTaggedUnionConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

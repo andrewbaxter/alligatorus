@@ -55,12 +55,16 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
                 sets.push(self.set.clone());
             }
         }
+        let exports_type: Rc<dyn crate::langhelp::Type> =
+            Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc: loc,
                 code: Code_::None,
             },
-            value: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
+            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                inner: exports_type,
+            }),
         })
     }
 
@@ -108,12 +112,16 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 sets.push(self.set.clone());
                             }
                         }
+                        let func_type: Rc<dyn crate::langhelp::Type> =
+                            Rc::new(TypeSourceFunctionConst { data: func_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(TypeSourceFunctionConst { data: func_data.clone() }),
+                            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                                inner: func_type,
+                            }),
                         });
                     }
                 }
@@ -122,12 +130,16 @@ impl AspectField for TypeSourceExportsLiftedConst {
                 let data_types = self.set.data_types.borrow();
                 for dt_data in data_types.iter() {
                     if dt_data.name.as_deref() == Some(&key_name) {
+                        let ctor_type: Rc<dyn crate::langhelp::Type> =
+                            Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() }),
+                            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+                                inner: ctor_type,
+                            }),
                         });
                     }
                 }
@@ -162,7 +174,9 @@ impl AspectField for TypeSourceExportsLiftedConst {
 
 impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -203,6 +217,6 @@ impl Type for TypeSourceExportsLiftedConst {
 
 impl Value for TypeSourceExportsLiftedConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

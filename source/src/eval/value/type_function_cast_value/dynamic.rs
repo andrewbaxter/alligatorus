@@ -174,7 +174,9 @@ impl AspectInitialBind for TypeFunctionCastValueDynamic {
 
 impl Type for TypeFunctionCastValueDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeFunctionCastValueDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeFunctionCastValueDynamic),
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -198,6 +200,6 @@ impl Type for TypeFunctionCastValueDynamic {
 
 impl Value for TypeFunctionCastValueDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeFunctionCastValueDynamic)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

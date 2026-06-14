@@ -151,7 +151,9 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
 
 impl Type for TypeSourceDataTypeConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }),
+        })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -191,6 +193,6 @@ impl Type for TypeSourceDataTypeConstructorConst {
 
 impl Value for TypeSourceDataTypeConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

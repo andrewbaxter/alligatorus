@@ -114,7 +114,8 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionRefDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let tu_ref: &Rc<super::SourceTaggedUnionRef> = from_v8_ref(&value);
-        Ok(Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() }))
+        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: tu_type }))
     }
 }
 
@@ -297,7 +298,8 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
-        Ok(Rc::new(TypeSourceTaggedUnionConst { data: mortar.data.clone() }))
+        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: mortar.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: tu_type }))
     }
 }
 

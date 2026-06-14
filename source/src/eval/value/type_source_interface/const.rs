@@ -197,7 +197,9 @@ pub(crate) fn interface_const_identity() -> Unique {
 
 impl Type for TypeSourceInterfaceConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
+        })
     }
 
     fn clone_rc(&self) -> Option<Rc<dyn Type>> {
@@ -335,7 +337,7 @@ impl Type for TypeSourceInterfaceConst {
 
 impl Value for TypeSourceInterfaceConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 
