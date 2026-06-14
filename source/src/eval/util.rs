@@ -61,7 +61,7 @@ pub(crate) fn deserialize_artifact(
         crate::langhelp::ArtifactId::Source(_) => {
             er_seq_cv_inline(loc, |erb| {
                 let (type_, type_code) = erb.must_er(deserialize_type_artifact(xx, loc, artifact))?;
-                let aspect_artifact = erb.must_er(crate::builtin::aspect_artifact_get(xx, loc, type_.as_ref()))?;
+                let aspect_artifact = erb.must_er(crate::r#gen::aspect_artifact_get(xx, loc, type_.as_ref()))?;
                 let data_cv = erb.must_er(aspect_artifact.from_serial(xx, loc, &artifact.data))?;
                 if matches!(type_code.code, crate::langhelp::Code_::None) {
                     Ok(data_cv)
@@ -106,7 +106,7 @@ pub(crate) fn deserialize_type_artifact(
                 },
             };
             let type_value_type = cv.value.type_(xx, loc);
-            match crate::builtin::aspect_type_get(xx, loc, type_value_type.as_ref()).into_res() {
+            match crate::r#gen::aspect_type_get(xx, loc, type_value_type.as_ref()).into_res() {
                 Ok(aspect_type) => {
                     crate::langhelp::EResult::ok((aspect_type.type_(cv.value.as_ref()), cv.code))
                 },

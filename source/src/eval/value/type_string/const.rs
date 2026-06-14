@@ -1,18 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectArtifact,
-            AspectBind,
-            AspectField,
-            AspectStringConst,
-            aspect_artifact_aspect_id,
-            aspect_bind_aspect_id,
-            aspect_field_aspect_id,
-            aspect_string_const_aspect_id,
-            aspect_string_const_get,
-            aspect_string_const_get_maybe,
-        },
+        r#gen::{AspectArtifact, AspectBind, AspectField, AspectStringConst, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_field_aspect_id, aspect_string_const_aspect_id, aspect_string_const_get, aspect_string_const_get_maybe},
         eval::{
             Erb,
             value::{
@@ -100,7 +89,7 @@ impl AspectStringConst for TypeStringConst {
     }
 }
 
-impl crate::builtin::AspectConsumeDynamic for TypeStringConst {
+impl crate::r#gen::AspectConsumeDynamic for TypeStringConst {
     fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<crate::code_dynamic::CodeDynamic> {
         // Emit a JS string literal for the const value.
         let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
@@ -120,8 +109,8 @@ impl Type for TypeStringConst {
         if *key == aspect_string_const_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectStringConst>));
         }
-        if *key == crate::builtin::aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn crate::builtin::AspectConsumeDynamic>));
+        if *key == crate::r#gen::aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn crate::r#gen::AspectConsumeDynamic>));
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectArtifact>));

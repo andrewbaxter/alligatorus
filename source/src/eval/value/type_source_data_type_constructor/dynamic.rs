@@ -1,20 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             definition_set::DefinitionSet,
@@ -137,7 +124,7 @@ pub(crate) fn serialize_type_ref(xx: &ExprContext, loc: QExprId, type_: &dyn Typ
     }
     let type_type = type_.type_(xx, loc);
     let aspect =
-        crate::builtin::aspect_artifact_get_maybe(
+        crate::r#gen::aspect_artifact_get_maybe(
             xx,
             type_type.as_ref(),
         ).unwrap_or_else(|| panic!("Type ({}) type-type missing AspectArtifact", type_.desc()));

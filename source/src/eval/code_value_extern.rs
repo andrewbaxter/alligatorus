@@ -7,18 +7,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicCall,
@@ -241,7 +230,7 @@ impl AspectField for TypeCodeValueExternDynamic {
         return er_seq_cv!(loc, erb, {
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             let key_type = key.value.type_(xx, loc);
-            let aspect_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let aspect_string = erb.must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
             // A `CodeValueExtern` wraps a whole `CodeValue` (= `{code, value}`),
             // so the only two well-defined field accesses are `.code` and

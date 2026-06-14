@@ -1,23 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectArtifact,
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectStackValueDynamic,
-            aspect_artifact_aspect_id,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_lift_dynamic_get_maybe,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectArtifact, AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_lift_dynamic_get_maybe, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_util::{
@@ -149,7 +133,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
             let underlying_value_type = underlying_cv.value.type_(xx, loc);
             let underlying_js = if let Some(aspect_str) =
-                crate::builtin::aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
+                crate::r#gen::aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
                 let s = aspect_str.get(underlying_cv.value.as_ref());
                 crate::code_dynamic::CodeDynamic {
                     loc: loc,
@@ -266,7 +250,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let lifted = must_downcast_ref::<ValueSourceDataTypeConst>(self_.as_ref());
         let underlying_type = self.data.underlying_type.get();
-        let underlying_aspect = match crate::builtin::aspect_artifact_get_maybe(xx, underlying_type.as_ref()) {
+        let underlying_aspect = match crate::r#gen::aspect_artifact_get_maybe(xx, underlying_type.as_ref()) {
             Some(a) => a,
             None => {
                 return EResult::err(
@@ -445,11 +429,11 @@ impl Type for TypeSourceDataTypeConst {
             );
         }
 
-        if *key == crate::builtin::aspect_field_aspect_id() {
+        if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(
                 Box::new(
                     Box::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }) as
-                        Box<dyn crate::builtin::AspectField>,
+                        Box<dyn crate::r#gen::AspectField>,
                 ),
             );
         }
@@ -464,7 +448,7 @@ impl Type for TypeSourceDataTypeConst {
             // If the data type implements the builtin `type` interface, the
             // instance acts as a Type — provide AspectType that delegates to
             // the user impl.
-            if *key == crate::builtin::aspect_type_aspect_id() {
+            if *key == crate::r#gen::aspect_type_aspect_id() {
                 let has_type_impl = interface_impls.iter().any(|impl_data| {
                     impl_data.interface.builtin_kind
                         == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
@@ -473,7 +457,7 @@ impl Type for TypeSourceDataTypeConst {
                     return Some(
                         Box::new(
                             Box::new(TypeSourceDataTypeConstAspectType { data: self.data.clone() }) as
-                                Box<dyn crate::builtin::AspectType>,
+                                Box<dyn crate::r#gen::AspectType>,
                         ),
                     );
                 }
@@ -590,7 +574,7 @@ pub(crate) struct TypeSourceDataTypeConstAspectType {
 
 impl Aspect for TypeSourceDataTypeConstAspectType { }
 
-impl crate::builtin::AspectType for TypeSourceDataTypeConstAspectType {
+impl crate::r#gen::AspectType for TypeSourceDataTypeConstAspectType {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let bundle = (value as &dyn std::any::Any)
             .downcast_ref::<ValueSourceDataTypeConst>()

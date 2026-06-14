@@ -105,13 +105,13 @@ pub(crate) fn install_imported_type_iface(
                 .map_err(|e| format!("build_builtin_scope: {:?}", e))?;
             let body_shape = if is_type_iface {
                 let arg_record_type = build_cast_arg_record_type();
-                let arg_ib = crate::builtin::aspect_initial_bind_get(xx, loc, arg_record_type.as_ref())
+                let arg_ib = crate::r#gen::aspect_initial_bind_get(xx, loc, arg_record_type.as_ref())
                     .into_res()
                     .map_err(|e| format!("aspect_initial_bind for arg: {:?}", e))?;
                 body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(self_id));
                 BodyShape::ArgMethod(self_id)
             } else {
-                let self_ib = crate::builtin::aspect_initial_bind_get(xx, loc, underlying_type.as_ref())
+                let self_ib = crate::r#gen::aspect_initial_bind_get(xx, loc, underlying_type.as_ref())
                     .into_res()
                     .map_err(|e| format!("aspect_initial_bind for self: {:?}", e))?;
                 body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));

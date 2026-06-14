@@ -7,11 +7,7 @@ pub(crate) use crate::eval::value::value_dynamic::{
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            aspect_bind_dynamic_get_maybe,
-            aspect_consume_dynamic_get,
-            aspect_stack_value_dynamic_get,
-        },
+        r#gen::{aspect_bind_dynamic_get_maybe, aspect_consume_dynamic_get, aspect_stack_value_dynamic_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingSet,

@@ -15,12 +15,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectFunction,
-            AspectInitialBind,
-            aspect_function_aspect_id,
-            aspect_initial_bind_aspect_id,
-        },
+        r#gen::{AspectFunction, AspectInitialBind, aspect_function_aspect_id, aspect_initial_bind_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -72,7 +67,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
         // Argument is the 2-tuple `(base, key)`. Use `AspectTuple` to
         // destructure — tuples don't expose `_0`/`_1` via `AspectField`.
         let arg_type = argument.value.type_(xx, loc);
-        let arg_tuple = match crate::builtin::aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
+        let arg_tuple = match crate::r#gen::aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             Some(t) => t,
             None => return EvalRes::err(
                 loc,
@@ -109,11 +104,11 @@ impl AspectFunction for TypeFunctionAspectDynamic {
         // read from the type's own data — so passing the inner type's own
         // `as_value()` is fine.)
         let key_meta = key.value.type_(xx, loc);
-        let key_type = match crate::builtin::aspect_type_get_maybe(xx, key_meta.as_ref()) {
+        let key_type = match crate::r#gen::aspect_type_get_maybe(xx, key_meta.as_ref()) {
             Some(at) => at.type_(key.value.as_ref()),
             None => key_meta.clone(),
         };
-        let aspect_aspect = match crate::builtin::aspect_aspect_get_maybe(xx, key_type.as_ref()) {
+        let aspect_aspect = match crate::r#gen::aspect_aspect_get_maybe(xx, key_type.as_ref()) {
             Some(a) => a,
             None => return EvalRes::err(
                 loc,

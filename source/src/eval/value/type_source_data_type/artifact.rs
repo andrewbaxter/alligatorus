@@ -1,9 +1,6 @@
 use {
     crate::{
-        builtin::{
-            ArtifactBuiltinDeserializer,
-            AspectArtifact,
-        },
+        r#gen::{AspectArtifact}, builtin::{ArtifactBuiltinDeserializer},
         langhelp::{
             Artifact,
             ArtifactId,

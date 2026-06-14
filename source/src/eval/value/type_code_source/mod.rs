@@ -22,25 +22,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectFunction,
-            AspectInitialBind,
-            AspectStackValueDynamic,
-            AspectTaggedUnion,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_function_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get,
-            aspect_tagged_union_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectFunction, AspectInitialBind, AspectStackValueDynamic, AspectTaggedUnion, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_function_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get, aspect_tagged_union_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_util::{

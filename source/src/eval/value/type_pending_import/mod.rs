@@ -27,7 +27,7 @@ struct PendingImportBind {
     state: Rc<PendingImportState>,
 }
 
-impl crate::builtin::AspectBind for PendingImportBind {
+impl crate::r#gen::AspectBind for PendingImportBind {
     fn bind(
         &self,
         _xx: &ExprContext,
@@ -67,10 +67,10 @@ impl Type for TypePendingImport {
     }
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::builtin::aspect_bind_aspect_id() {
+        if *key == crate::r#gen::aspect_bind_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn crate::builtin::AspectBind>,
+                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn crate::r#gen::AspectBind>,
                 ),
             );
         }

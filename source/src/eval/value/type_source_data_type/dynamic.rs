@@ -1,23 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -346,7 +330,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                     } else {
                         underlying_type.clone()
                     };
-                    let underlying_field = crate::builtin::aspect_field_get_maybe(xx, dispatch_type.as_ref());
+                    let underlying_field = crate::r#gen::aspect_field_get_maybe(xx, dispatch_type.as_ref());
                     if let Some(underlying_field) = underlying_field {
                         let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
                         // Build `instance.<data_field>` as the new receiver,
@@ -446,7 +430,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
             let data = &self.data;
             let underlying_type = data.underlying_type.get().clone();
             let underlying_lift =
-                crate::builtin::aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
+                crate::r#gen::aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
                     format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc())
                 })?;
             let obj =
@@ -495,7 +479,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
     }
 }
 
-impl crate::builtin::AspectType for TypeSourceDataTypeDynamic {
+impl crate::r#gen::AspectType for TypeSourceDataTypeDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let data = self.data.clone();
         // If the value is a `ValueSourceDataTypeConst` (the lifted form of an
@@ -547,7 +531,7 @@ impl Type for TypeUserDefined {
                             ),
                             bundle: Some(bundle.clone()),
                         },
-                    ) as Box<dyn crate::builtin::AspectField>));
+                    ) as Box<dyn crate::r#gen::AspectField>));
                 }
             }
         }
@@ -567,18 +551,18 @@ impl Type for TypeUserDefined {
             dummy_loc,
             key,
         )?;
-        if *key == crate::builtin::aspect_field_aspect_id() {
+        if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(Box::new(
                 Box::new(crate::eval::value::value_user_defined::aspect::AspectUserDefinedHandle {
                     inner: aspect,
-                }) as Box<dyn crate::builtin::AspectField>,
+                }) as Box<dyn crate::r#gen::AspectField>,
             ));
         }
-        if *key == crate::builtin::aspect_function_aspect_id() {
+        if *key == crate::r#gen::aspect_function_aspect_id() {
             return Some(Box::new(
                 Box::new(crate::eval::value::value_user_defined::aspect::AspectUserDefinedHandle {
                     inner: aspect,
-                }) as Box<dyn crate::builtin::AspectFunction>,
+                }) as Box<dyn crate::r#gen::AspectFunction>,
             ));
         }
         None
@@ -712,7 +696,7 @@ impl Type for TypeSourceDataTypeDynamic {
             // of it can be used as types — `AspectType.type_(value)` returns a
             // `TypeUserDefined` that delegates `cast_from`/`can_cast_from`/`desc`
             // to the user-provided impls.
-            if *key == crate::builtin::aspect_type_aspect_id() {
+            if *key == crate::r#gen::aspect_type_aspect_id() {
                 let has_type_impl = interface_impls.iter().any(|impl_data| {
                     impl_data.interface.builtin_kind
                         == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
@@ -721,7 +705,7 @@ impl Type for TypeSourceDataTypeDynamic {
                     return Some(
                         Box::new(
                             Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as
-                                Box<dyn crate::builtin::AspectType>,
+                                Box<dyn crate::r#gen::AspectType>,
                         ),
                     );
                 }

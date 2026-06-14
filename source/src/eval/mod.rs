@@ -23,27 +23,7 @@ use crate::r#gen::ScopeEntry;
 use {
     core::mem,
     crate::{
-        builtin::{
-            AspectLiftDynamic,
-            aspect_artifact_get,
-            aspect_bind_dynamic_get_maybe,
-            aspect_bind_get,
-            aspect_bool_const_get_maybe,
-            aspect_consume_dynamic_get,
-            aspect_field_get,
-            aspect_function_get,
-            aspect_initial_bind_get,
-            aspect_iterable_get,
-            aspect_lift_dynamic_get,
-            aspect_operator_add_get,
-            aspect_operator_eq_get,
-            aspect_operator_lt_get,
-            aspect_set_get,
-            aspect_stack_value_dynamic_get,
-            aspect_string_const_get_maybe,
-            aspect_tagged_union_get,
-            aspect_type_get,
-        },
+        r#gen::{AspectLiftDynamic, aspect_artifact_get, aspect_bind_dynamic_get_maybe, aspect_bind_get, aspect_bool_const_get_maybe, aspect_consume_dynamic_get, aspect_field_get, aspect_function_get, aspect_initial_bind_get, aspect_iterable_get, aspect_lift_dynamic_get, aspect_operator_add_get, aspect_operator_eq_get, aspect_operator_lt_get, aspect_set_get, aspect_stack_value_dynamic_get, aspect_string_const_get_maybe, aspect_tagged_union_get, aspect_type_get},
         code_dynamic::{
             BINDING_PREFIX,
             BUILTIN_PREFIX,
@@ -1277,9 +1257,9 @@ fn eval(
     // and use it directly).
     let unique_type: Rc<dyn Type> = Rc::new(value::value_unique::TypeUnique);
     for (key, unique, line) in [
-        ("aspect_string_dynamic", crate::builtin::aspect_string_dynamic_aspect_id(), line!() as usize),
-        ("aspect_function_id", crate::builtin::aspect_function_aspect_id(), line!() as usize),
-        ("aspect_field_id", crate::builtin::aspect_field_aspect_id(), line!() as usize),
+        ("aspect_string_dynamic", crate::r#gen::aspect_string_dynamic_aspect_id(), line!() as usize),
+        ("aspect_function_id", crate::r#gen::aspect_function_aspect_id(), line!() as usize),
+        ("aspect_field_id", crate::r#gen::aspect_field_aspect_id(), line!() as usize),
     ] {
         let dynamic_key = ScopeEntryId::Builtin(line);
         if register_v8 {
@@ -1466,7 +1446,7 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
-            if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
+            if let Some(arg_ib) = crate::r#gen::aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
                 body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
             }
             Rc::new(ExprContext {
@@ -1597,11 +1577,11 @@ fn eval(
                 let outer_self_id = ScopeEntryId::Builtin(usize::MAX);
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
-                    if let Some(self_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                    if let Some(self_ib) = crate::r#gen::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                         body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
                     }
                     if let Some(arg_type) = method.arg_type.borrow().clone() {
-                        if let Some(arg_ib) = crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                        if let Some(arg_ib) = crate::r#gen::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
                         }
                     }
@@ -1720,7 +1700,7 @@ fn eval(
                                 data: dt_data.clone(),
                             },
                         );
-                        if let Some(outer_self_ib) = crate::builtin::aspect_initial_bind_get_maybe(
+                        if let Some(outer_self_ib) = crate::r#gen::aspect_initial_bind_get_maybe(
                             &xx,
                             outer_self_type.as_ref(),
                         ) {
@@ -1791,7 +1771,7 @@ fn eval(
                                 // `self` = impl data type's underlying, same as
                                 // a regular method.
                                 if let Some(self_ib) =
-                                    crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                                    crate::r#gen::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("self".to_string()),
                                         self_ib.initial_bind(self_id),
@@ -1840,7 +1820,7 @@ fn eval(
                                 };
                                 let arg_type: Rc<dyn Type> = build_aspect_arg_record_type(&arg_field_names);
                                 if let Some(arg_ib) =
-                                    crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                                    crate::r#gen::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("arg".to_string()),
                                         arg_ib.initial_bind(arg_id),
@@ -1849,7 +1829,7 @@ fn eval(
                             },
                             _ => {
                                 if let Some(self_ib) =
-                                    crate::builtin::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                                    crate::r#gen::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("self".to_string()),
                                         self_ib.initial_bind(self_id),
@@ -1869,7 +1849,7 @@ fn eval(
                                 };
                                 if let Some(arg_type) = iface_method_arg_type {
                                     if let Some(arg_ib) =
-                                        crate::builtin::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref())
+                                        crate::r#gen::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref())
                                     {
                                         body_scope.insert(
                                             ConstKey::String("arg".to_string()),
@@ -2457,7 +2437,7 @@ fn eval(
             let value_type = inner_value.type_(&xx, loc);
             // Fast path for const strings — return a v8::String.
             if let Some(aspect_str) =
-                crate::builtin::aspect_string_const_get_maybe(&xx, value_type.as_ref()) {
+                crate::r#gen::aspect_string_const_get_maybe(&xx, value_type.as_ref()) {
                 let s = aspect_str.get(inner_value.as_ref());
                 rv.set(v8::String::new(scope, &s).unwrap().into());
                 return;
@@ -2574,9 +2554,9 @@ fn eval(
                     // is_aspect identities, plus all builtin aspect types):
                     // the inner type is `Box<dyn AspectField>`. We upcast
                     // to `dyn Aspect` to read `v8_instance()` — no RTTI.
-                    let aspect_field: Box<dyn crate::builtin::AspectField> =
+                    let aspect_field: Box<dyn crate::r#gen::AspectField> =
                         crate::invariant::must_downcast_box::<
-                            Box<dyn crate::builtin::AspectField>,
+                            Box<dyn crate::r#gen::AspectField>,
                         >(aspect_box);
                     let aspect_dyn: &dyn crate::langhelp::Aspect = &*aspect_field;
                     let instance_v8: v8::Local<v8::Value> = match aspect_dyn.v8_instance() {

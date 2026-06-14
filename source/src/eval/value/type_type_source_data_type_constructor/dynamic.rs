@@ -1,11 +1,6 @@
 use {
     crate::{
-        builtin::{
-            AspectArtifact,
-            AspectType,
-            aspect_artifact_aspect_id,
-            aspect_type_aspect_id,
-        },
+        r#gen::{AspectArtifact, AspectType, aspect_artifact_aspect_id, aspect_type_aspect_id},
         eval::{
             Erb,
             value::type_source_data_type_constructor::{

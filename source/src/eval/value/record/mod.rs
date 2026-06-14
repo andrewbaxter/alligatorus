@@ -4,27 +4,7 @@ pub mod scope_entry;
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectRecord,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_bind_get,
-            aspect_consume_dynamic_aspect_id,
-            aspect_consume_dynamic_get_maybe,
-            aspect_field_aspect_id,
-            aspect_field_get_maybe,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_record_aspect_id,
-            aspect_record_get_maybe,
-            aspect_string_const_get,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectLiftDynamic, AspectRecord, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_bind_get, aspect_consume_dynamic_aspect_id, aspect_consume_dynamic_get_maybe, aspect_field_aspect_id, aspect_field_get_maybe, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_record_aspect_id, aspect_record_get_maybe, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,

@@ -1,13 +1,6 @@
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectFunction,
-            aspect_bind_aspect_id,
-            aspect_consume_dynamic_get,
-            aspect_function_aspect_id,
-            aspect_stack_value_dynamic_get,
-        },
+        r#gen::{AspectBind, AspectFunction, aspect_bind_aspect_id, aspect_consume_dynamic_get, aspect_function_aspect_id, aspect_stack_value_dynamic_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,

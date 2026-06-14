@@ -1611,20 +1611,20 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
                 if *key == #identity_fn() {
                     return Some(Box::new(true));
                 }
-                if *key == crate::builtin::aspect_field_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectField>));
+                if *key == crate::r#gen::aspect_field_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectField>));
                 }
-                if *key == crate::builtin::aspect_consume_dynamic_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectConsumeDynamic>));
+                if *key == crate::r#gen::aspect_consume_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectConsumeDynamic>));
                 }
-                if *key == crate::builtin::aspect_bind_dynamic_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBindDynamic>));
+                if *key == crate::r#gen::aspect_bind_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectBindDynamic>));
                 }
-                if *key == crate::builtin::aspect_bind_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBind>));
+                if *key == crate::r#gen::aspect_bind_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectBind>));
                 }
-                if *key == crate::builtin::aspect_stack_value_dynamic_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectStackValueDynamic>));
+                if *key == crate::r#gen::aspect_stack_value_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectStackValueDynamic>));
                 }
                 None
             }
@@ -1665,7 +1665,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectConsumeDynamic for #type_name {
+        impl crate::r#gen::AspectConsumeDynamic for #type_name {
             fn to_dynamic(
                 &self,
                 _xx: &crate::langhelp::ExprContext,
@@ -1676,7 +1676,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectBindDynamic for #type_name {
+        impl crate::r#gen::AspectBindDynamic for #type_name {
             fn bind_dynamic(
                 &self,
                 xx: &crate::langhelp::ExprContext,
@@ -1687,7 +1687,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectBind for #type_name {
+        impl crate::r#gen::AspectBind for #type_name {
             fn bind(
                 &self,
                 xx: &crate::langhelp::ExprContext,
@@ -1698,7 +1698,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectStackValueDynamic for #type_name {
+        impl crate::r#gen::AspectStackValueDynamic for #type_name {
             fn to_value(
                 &self,
                 loc: crate::langhelp::QExprId,
@@ -1717,7 +1717,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectField for #type_name {
+        impl crate::r#gen::AspectField for #type_name {
             fn field(
                 &self,
                 xx: &crate::langhelp::ExprContext,
@@ -1728,7 +1728,7 @@ fn generate_dyn_wrap_struct(s: &DynWrapStructSpec) -> TokenStream {
                 crate::er_seq_cv!(loc, erb, {
                     let key_type = key.value.type_(xx, loc);
                     let key_string = erb
-                        .must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+                        .must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
                     let key_name = key_string.get(key.value.as_ref());
                     #(#field_dispatch_arms)*
                     #(#method_dispatch_arms)*
@@ -1957,20 +1957,20 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
                 if *key == #identity_fn() {
                     return Some(Box::new(true));
                 }
-                if *key == crate::builtin::aspect_field_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectField>));
+                if *key == crate::r#gen::aspect_field_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectField>));
                 }
-                if *key == crate::builtin::aspect_consume_dynamic_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectConsumeDynamic>));
+                if *key == crate::r#gen::aspect_consume_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectConsumeDynamic>));
                 }
-                if *key == crate::builtin::aspect_bind_dynamic_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBindDynamic>));
+                if *key == crate::r#gen::aspect_bind_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectBindDynamic>));
                 }
-                if *key == crate::builtin::aspect_bind_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectBind>));
+                if *key == crate::r#gen::aspect_bind_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectBind>));
                 }
-                if *key == crate::builtin::aspect_stack_value_dynamic_aspect_id() {
-                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::builtin::AspectStackValueDynamic>));
+                if *key == crate::r#gen::aspect_stack_value_dynamic_aspect_id() {
+                    return Some(Box::new(Box::new(#type_name) as Box<dyn crate::r#gen::AspectStackValueDynamic>));
                 }
                 crate::eval::definition_set::#extra_aspect_fn(_xx, key)
             }
@@ -2011,7 +2011,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectConsumeDynamic for #type_name {
+        impl crate::r#gen::AspectConsumeDynamic for #type_name {
             fn to_dynamic(
                 &self,
                 _xx: &crate::langhelp::ExprContext,
@@ -2022,7 +2022,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectBindDynamic for #type_name {
+        impl crate::r#gen::AspectBindDynamic for #type_name {
             fn bind_dynamic(
                 &self,
                 xx: &crate::langhelp::ExprContext,
@@ -2033,7 +2033,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectBind for #type_name {
+        impl crate::r#gen::AspectBind for #type_name {
             fn bind(
                 &self,
                 xx: &crate::langhelp::ExprContext,
@@ -2044,7 +2044,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectStackValueDynamic for #type_name {
+        impl crate::r#gen::AspectStackValueDynamic for #type_name {
             fn to_value(
                 &self,
                 loc: crate::langhelp::QExprId,
@@ -2063,7 +2063,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
             }
         }
 
-        impl crate::builtin::AspectField for #type_name {
+        impl crate::r#gen::AspectField for #type_name {
             fn field(
                 &self,
                 xx: &crate::langhelp::ExprContext,
@@ -2074,7 +2074,7 @@ fn generate_dyn_wrap_wrap(s: &DynWrapWrapSpec) -> TokenStream {
                 crate::er_seq_cv!(loc, erb, {
                     let key_type = key.value.type_(xx, loc);
                     let key_string = erb
-                        .must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+                        .must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
                     let key_name = key_string.get(key.value.as_ref());
                     #(#method_dispatch_arms)*
                     return erb.err_new(format!(#unknown_field_msg, key_name));
@@ -2357,7 +2357,7 @@ fn generate_dyn_wrap_fn_registrar(fns: &[DynWrapFnSpec]) -> TokenStream {
                             dynamic_value,
                         );
                 }
-                let ib = crate::builtin::aspect_initial_bind_get(xx, root_loc, type_.as_ref())
+                let ib = crate::r#gen::aspect_initial_bind_get(xx, root_loc, type_.as_ref())
                     .into_res()?;
                 builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
                 scope.values.borrow_mut().insert(

@@ -1,20 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_util::{
@@ -56,7 +43,7 @@ pub(crate) struct TypeSourceInterfaceDynamic;
 
 impl Aspect for TypeSourceInterfaceDynamic { }
 
-impl crate::builtin::AspectAspect for TypeSourceInterfaceDynamic {
+impl crate::r#gen::AspectAspect for TypeSourceInterfaceDynamic {
     fn get_unique(&self, value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
         let iface_ref =
             crate::invariant::must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
@@ -145,9 +132,9 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::builtin::aspect_aspect_aspect_id() {
+        if *key == crate::r#gen::aspect_aspect_aspect_id() {
             return Some(Box::new(
-                Box::new(TypeSourceInterfaceDynamic) as Box<dyn crate::builtin::AspectAspect>,
+                Box::new(TypeSourceInterfaceDynamic) as Box<dyn crate::r#gen::AspectAspect>,
             ));
         }
         if *key == interface_ref_type_identity() {

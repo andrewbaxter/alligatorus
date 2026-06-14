@@ -1,21 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectInitialBind,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -62,7 +48,7 @@ use crate::r#gen::interface_const_identity;
 
 impl Aspect for TypeSourceInterfaceConst { }
 
-impl crate::builtin::AspectAspect for TypeSourceInterfaceConst {
+impl crate::r#gen::AspectAspect for TypeSourceInterfaceConst {
     fn get_unique(&self, _value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
         self.data.identity.clone()
     }
@@ -209,20 +195,20 @@ impl Type for TypeSourceInterfaceConst {
         if *key == interface_const_identity() {
             return Some(Box::new(true));
         }
-        if *key == crate::builtin::aspect_type_aspect_id() {
+        if *key == crate::r#gen::aspect_type_aspect_id() {
             // Iface-ref-as-type: a value of this iface used as a type arg
             // (e.g. `map(string, type)`) resolves to the iface's dynamic
             // representation (`TypeSourceInterfaceDynamic`) so map/list/etc.
             // see a single runtime type for iface-ref-typed entries.
             return Some(Box::new(
                 Box::new(TypeSourceInterfaceConstAspectTypeImpl)
-                    as Box<dyn crate::builtin::AspectType>,
+                    as Box<dyn crate::r#gen::AspectType>,
             ));
         }
-        if *key == crate::builtin::aspect_aspect_aspect_id() {
+        if *key == crate::r#gen::aspect_aspect_aspect_id() {
             return Some(Box::new(
                 Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
-                    as Box<dyn crate::builtin::AspectAspect>,
+                    as Box<dyn crate::r#gen::AspectAspect>,
             ));
         }
         if *key == aspect_field_aspect_id() {
@@ -340,7 +326,7 @@ pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
 
 impl crate::langhelp::Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
 
-impl crate::builtin::AspectType for TypeSourceInterfaceConstAspectTypeImpl {
+impl crate::r#gen::AspectType for TypeSourceInterfaceConstAspectTypeImpl {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
     }

@@ -1,19 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -79,9 +67,9 @@ use {
 
 
 pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-    if *key == crate::builtin::aspect_lift_dynamic_aspect_id() {
+    if *key == crate::r#gen::aspect_lift_dynamic_aspect_id() {
         return Some(
-            Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn crate::builtin::AspectLiftDynamic>),
+            Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn crate::r#gen::AspectLiftDynamic>),
         );
     }
     None
@@ -830,7 +818,7 @@ struct TypeDefinitionSetLiftDynamic;
 
 impl Aspect for TypeDefinitionSetLiftDynamic { }
 
-impl crate::builtin::AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
+impl crate::r#gen::AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,

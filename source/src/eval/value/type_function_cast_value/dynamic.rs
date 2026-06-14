@@ -13,13 +13,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectFunction,
-            AspectInitialBind,
-            aspect_function_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_tuple_get_maybe,
-        },
+        r#gen::{AspectFunction, AspectInitialBind, aspect_function_aspect_id, aspect_initial_bind_aspect_id, aspect_tuple_get_maybe},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,

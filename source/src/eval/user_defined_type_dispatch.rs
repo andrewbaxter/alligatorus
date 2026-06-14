@@ -168,7 +168,7 @@ pub(crate) fn user_defined_can_cast_from(
         return false;
     };
     let v_type = out_cv.value.type_(xx, loc);
-    if let Some(b) = crate::builtin::aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
+    if let Some(b) = crate::r#gen::aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
         return b.get(out_cv.value.as_ref());
     }
     false
@@ -355,7 +355,7 @@ impl crate::langhelp::Value for TypeTypeRef {
     }
 }
 
-impl crate::builtin::AspectField for TypeTypeRef {
+impl crate::r#gen::AspectField for TypeTypeRef {
     fn field(
         &self,
         xx: &ExprContext,
@@ -364,7 +364,7 @@ impl crate::builtin::AspectField for TypeTypeRef {
         key: CodeValue,
     ) -> EvalRes {
         let key_type = key.value.type_(xx, loc);
-        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+        let key_string = match crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
@@ -402,8 +402,8 @@ impl Type for TypeTypeRef {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
-        if *key == crate::builtin::aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeRef) as Box<dyn crate::builtin::AspectField>));
+        if *key == crate::r#gen::aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeTypeRef) as Box<dyn crate::r#gen::AspectField>));
         }
         None
     }
@@ -448,7 +448,7 @@ impl crate::langhelp::Value for TypeAspectLookupFnType {
     }
 }
 
-impl crate::builtin::AspectFunction for TypeAspectLookupFnType {
+impl crate::r#gen::AspectFunction for TypeAspectLookupFnType {
     fn call(
         &self,
         xx: &ExprContext,
@@ -473,9 +473,9 @@ impl Type for TypeAspectLookupFnType {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
-        if *key == crate::builtin::aspect_function_aspect_id() {
+        if *key == crate::r#gen::aspect_function_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeAspectLookupFnType) as Box<dyn crate::builtin::AspectFunction>),
+                Box::new(Box::new(TypeAspectLookupFnType) as Box<dyn crate::r#gen::AspectFunction>),
             );
         }
         None

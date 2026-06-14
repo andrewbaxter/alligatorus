@@ -7,16 +7,7 @@ use crate::r#gen::ScopeEntry;
 use crate::r#gen::type_unique_identity;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectOperatorEq,
-            aspect_bind_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_operator_eq_aspect_id,
-        },
+        r#gen::{AspectBind, AspectConsumeDynamic, AspectInitialBind, AspectOperatorEq, aspect_bind_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_operator_eq_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_wrap::DynamicWrap,
@@ -94,7 +85,7 @@ impl AspectOperatorEq for TypeUnique {
         // externals in v8 are reference-identical for equal Uniques because
         // they're cached per-Unique by `to_v8`).
         let base_dyn =
-            match crate::builtin::aspect_consume_dynamic_get(xx, loc, self).into_res() {
+            match crate::r#gen::aspect_consume_dynamic_get(xx, loc, self).into_res() {
                 Ok(c) => match c.to_dynamic(xx, loc, base).into_res() {
                     Ok(d) => d,
                     Err(e) => return EvalRes { v: None, errors: Some(e) },
@@ -102,7 +93,7 @@ impl AspectOperatorEq for TypeUnique {
                 Err(e) => return EvalRes { v: None, errors: Some(e) },
             };
         let ref_dyn =
-            match crate::builtin::aspect_consume_dynamic_get(xx, loc, self).into_res() {
+            match crate::r#gen::aspect_consume_dynamic_get(xx, loc, self).into_res() {
                 Ok(c) => match c.to_dynamic(xx, loc, reference).into_res() {
                     Ok(d) => d,
                     Err(e) => return EvalRes { v: None, errors: Some(e) },
@@ -110,7 +101,7 @@ impl AspectOperatorEq for TypeUnique {
                 Err(e) => return EvalRes { v: None, errors: Some(e) },
             };
         let bool_type: Rc<dyn Type> = Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic);
-        let stack = match crate::builtin::aspect_stack_value_dynamic_get(xx, loc, bool_type.as_ref()).into_res() {
+        let stack = match crate::r#gen::aspect_stack_value_dynamic_get(xx, loc, bool_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };

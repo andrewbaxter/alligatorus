@@ -1,20 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectStackValueDynamic,
-            AspectTaggedUnion,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_tagged_union_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectStackValueDynamic, AspectTaggedUnion, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_tagged_union_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_util::{
@@ -111,7 +98,7 @@ impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
     }
 }
 
-impl crate::builtin::AspectType for TypeSourceTaggedUnionConst {
+impl crate::r#gen::AspectType for TypeSourceTaggedUnionConst {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
     }
@@ -170,11 +157,11 @@ impl Type for TypeSourceTaggedUnionConst {
                 ),
             );
         }
-        if *key == crate::builtin::aspect_type_aspect_id() {
+        if *key == crate::r#gen::aspect_type_aspect_id() {
             return Some(
                 Box::new(
                     Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
-                        Box<dyn crate::builtin::AspectType>,
+                        Box<dyn crate::r#gen::AspectType>,
                 ),
             );
         }

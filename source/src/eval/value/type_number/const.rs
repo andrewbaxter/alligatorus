@@ -1,22 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectField,
-            AspectNumberConst,
-            AspectOperatorAdd,
-            AspectOperatorEq,
-            AspectOperatorLt,
-            aspect_bind_aspect_id,
-            aspect_field_aspect_id,
-            aspect_number_const_aspect_id,
-            aspect_number_const_get,
-            aspect_number_const_get_maybe,
-            aspect_operator_add_aspect_id,
-            aspect_operator_eq_aspect_id,
-            aspect_operator_lt_aspect_id,
-        },
+        r#gen::{AspectBind, AspectField, AspectNumberConst, AspectOperatorAdd, AspectOperatorEq, AspectOperatorLt, aspect_bind_aspect_id, aspect_field_aspect_id, aspect_number_const_aspect_id, aspect_number_const_get, aspect_number_const_get_maybe, aspect_operator_add_aspect_id, aspect_operator_eq_aspect_id, aspect_operator_lt_aspect_id},
         eval::{
             Erb,
             value::{
@@ -51,7 +36,7 @@ pub(crate) struct TypeNumberConst;
 
 impl Aspect for TypeNumberConst { }
 
-impl crate::builtin::AspectArtifact for TypeNumberConst {
+impl crate::r#gen::AspectArtifact for TypeNumberConst {
     fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match data.as_f64() {
             Some(n) => EvalRes::ok(CodeValue {
@@ -157,8 +142,8 @@ impl Type for TypeNumberConst {
         if *key == aspect_number_const_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectNumberConst>));
         }
-        if *key == crate::builtin::aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn crate::builtin::AspectArtifact>));
+        if *key == crate::r#gen::aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn crate::r#gen::AspectArtifact>));
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectField>));

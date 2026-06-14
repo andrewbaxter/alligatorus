@@ -1,33 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectInitialBind,
-            AspectNumberDynamic,
-            AspectOperatorAdd,
-            AspectOperatorEq,
-            AspectOperatorLt,
-            AspectSet,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_number_const_get_maybe,
-            aspect_number_dynamic_aspect_id,
-            aspect_number_dynamic_get_maybe,
-            aspect_operator_add_aspect_id,
-            aspect_operator_eq_aspect_id,
-            aspect_operator_lt_aspect_id,
-            aspect_set_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_type_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectNumberDynamic, AspectOperatorAdd, AspectOperatorEq, AspectOperatorLt, AspectSet, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_initial_bind_aspect_id, aspect_number_const_get_maybe, aspect_number_dynamic_aspect_id, aspect_number_dynamic_get_maybe, aspect_operator_add_aspect_id, aspect_operator_eq_aspect_id, aspect_operator_lt_aspect_id, aspect_set_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_type_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,
@@ -117,7 +91,7 @@ impl AspectField for TypeNumberDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let key_string = erb.must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {

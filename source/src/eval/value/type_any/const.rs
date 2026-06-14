@@ -1,19 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectType,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_type_aspect_id,
-            aspect_type_get,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectType, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_type_aspect_id, aspect_type_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -78,7 +66,7 @@ impl AspectType for TypeAnyConst {
 /// `AspectField`. Receiver passed down is the original `cv` (so the inner
 /// type's field handler sees the same wrapper-carrying value its dispatch
 /// expects, and `cv.value.type_()` still reports `TypeAnyConst`).
-impl crate::builtin::AspectField for TypeAnyConst {
+impl crate::r#gen::AspectField for TypeAnyConst {
     fn field(
         &self,
         xx: &ExprContext,
@@ -90,7 +78,7 @@ impl crate::builtin::AspectField for TypeAnyConst {
             let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
             wrapper.inner.clone()
         };
-        let field = match crate::builtin::aspect_field_get(xx, loc, inner.as_ref()).into_res() {
+        let field = match crate::r#gen::aspect_field_get(xx, loc, inner.as_ref()).into_res() {
             Ok(f) => f,
             Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
         };
@@ -107,7 +95,7 @@ impl crate::builtin::AspectField for TypeAnyConst {
 }
 
 /// Same delegation for calls (`list(string)`, `option(expr)`, etc.).
-impl crate::builtin::AspectFunction for TypeAnyConst {
+impl crate::r#gen::AspectFunction for TypeAnyConst {
     fn call(
         &self,
         xx: &ExprContext,
@@ -119,7 +107,7 @@ impl crate::builtin::AspectFunction for TypeAnyConst {
             let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
             wrapper.inner.clone()
         };
-        let func = match crate::builtin::aspect_function_get(xx, loc, inner.as_ref()).into_res() {
+        let func = match crate::r#gen::aspect_function_get(xx, loc, inner.as_ref()).into_res() {
             Ok(f) => f,
             Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
         };
@@ -203,11 +191,11 @@ impl Type for TypeAnyConst {
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectType>));
         }
-        if *key == crate::builtin::aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::builtin::AspectField>));
+        if *key == crate::r#gen::aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectField>));
         }
-        if *key == crate::builtin::aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::builtin::AspectFunction>));
+        if *key == crate::r#gen::aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectFunction>));
         }
         None
     }

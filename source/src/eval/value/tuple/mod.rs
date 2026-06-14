@@ -4,21 +4,7 @@ pub mod scope_entry;
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectTuple,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_consume_dynamic_get,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_tuple_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectTuple, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_consume_dynamic_get, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_tuple_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -345,7 +331,7 @@ impl Type for Tuple {
         // Mirror Record.can_cast_from: source must expose `aspect_tuple` and
         // match the element count; each source element type is left to
         // typecheck_convert at cast_from time.
-        let Some(source_tuple) = crate::builtin::aspect_tuple_get_maybe(xx, source_type) else {
+        let Some(source_tuple) = crate::r#gen::aspect_tuple_get_maybe(xx, source_type) else {
             return false;
         };
         source_tuple.element_types().len() == self.elements.len()

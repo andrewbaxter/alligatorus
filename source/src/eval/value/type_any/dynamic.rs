@@ -1,20 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectLiftDynamic,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -110,7 +97,7 @@ impl crate::r#gen::AspectType for TypeAnyDynamic {
     }
 }
 
-impl crate::builtin::AspectField for TypeAnyDynamic {
+impl crate::r#gen::AspectField for TypeAnyDynamic {
     fn field(
         &self,
         xx: &ExprContext,
@@ -123,7 +110,7 @@ impl crate::builtin::AspectField for TypeAnyDynamic {
             _ => return crate::langhelp::EvalRes::err(loc, "any.field: receiver has no runtime code".to_string()),
         };
         let key_type = key.value.type_(xx, loc);
-        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+        let key_string = match crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
         };
@@ -153,7 +140,7 @@ impl crate::builtin::AspectField for TypeAnyDynamic {
     }
 }
 
-impl crate::builtin::AspectFunction for TypeAnyDynamic {
+impl crate::r#gen::AspectFunction for TypeAnyDynamic {
     fn call(
         &self,
         xx: &ExprContext,
@@ -166,7 +153,7 @@ impl crate::builtin::AspectFunction for TypeAnyDynamic {
             _ => return crate::langhelp::EvalRes::err(loc, "any.call: function has no runtime code".to_string()),
         };
         let arg_type = argument.value.type_(xx, loc);
-        let consume = match crate::builtin::aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()).into_res() {
+        let consume = match crate::r#gen::aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()).into_res() {
             Ok(c) => c,
             Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
         };
@@ -223,13 +210,13 @@ impl Type for TypeAnyDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectInitialBind>));
         }
-        if *key == crate::builtin::aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::builtin::AspectField>));
+        if *key == crate::r#gen::aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectField>));
         }
-        if *key == crate::builtin::aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::builtin::AspectFunction>));
+        if *key == crate::r#gen::aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectFunction>));
         }
-        if *key == crate::builtin::aspect_type_aspect_id() {
+        if *key == crate::r#gen::aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectType>));
         }
         None
@@ -252,7 +239,7 @@ impl Type for TypeAnyDynamic {
         // and emit a `BindingUse`.
         let meta_type = cv.value.type_(xx, loc);
         let aspect_type =
-            match crate::builtin::aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
+            match crate::r#gen::aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
                 Ok(at) => at,
                 Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
             };

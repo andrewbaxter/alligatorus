@@ -4,13 +4,7 @@
 
 use {
     crate::{
-        builtin::{
-            AspectField,
-            AspectFunction,
-            aspect_field_aspect_id,
-            aspect_function_aspect_id,
-            aspect_string_const_get,
-        },
+        r#gen::{AspectField, AspectFunction, aspect_field_aspect_id, aspect_function_aspect_id, aspect_string_const_get},
         eval::value::{
             type_bool::dynamic::TypeBoolDynamic,
             type_function::dynamic::TypeFunctionDynamic,

@@ -1,12 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectFunction,
-            AspectInitialBind,
-            aspect_function_aspect_id,
-            aspect_initial_bind_aspect_id,
-        },
+        r#gen::{AspectFunction, AspectInitialBind, aspect_function_aspect_id, aspect_initial_bind_aspect_id},
         eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         langhelp::{
             Aspect,
@@ -36,7 +31,7 @@ impl Aspect for TypeListConstructorConst { }
 impl AspectFunction for TypeListConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let arg_meta = argument.value.type_(xx, loc);
-        let aspect_type = match crate::builtin::aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
+        let aspect_type = match crate::r#gen::aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };

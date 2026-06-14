@@ -4,7 +4,7 @@
 //! `aspect!` macro produced (e.g. `AspectType`, `aspect_type_get`); add new
 //! aspects in `build.rs`.
 // Aspect traits now live in `crate::r#gen` (single-file gen.rs). Callers
-// already reach them via `crate::builtin::AspectXxx` etc.; that path is
+// already reach them via `crate::r#gen::AspectXxx` etc.; that path is
 // kept working by `crate::builtin` re-export, which is a pre-existing
 // `pub use crate::eval::aspect::*;` — out of scope for the no-republish
 // rule (it predates the gen restructure). Nothing else in this module.

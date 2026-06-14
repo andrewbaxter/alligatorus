@@ -15,10 +15,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectField,
-            AspectFunction,
-        },
+        r#gen::{AspectField, AspectFunction},
         eval::{
             isolate_bundle::IsolateBundle,
             to_v8,
@@ -304,7 +301,7 @@ impl Value for TypeUserDefinedAspect {
     }
 }
 
-impl crate::builtin::AspectField for TypeUserDefinedAspect {
+impl crate::r#gen::AspectField for TypeUserDefinedAspect {
     fn field(
         &self,
         xx: &ExprContext,
@@ -320,7 +317,7 @@ impl crate::builtin::AspectField for TypeUserDefinedAspect {
             ),
         };
         let key_type = key.value.type_(xx, loc);
-        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+        let key_string = match crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
@@ -392,7 +389,7 @@ impl crate::builtin::AspectField for TypeUserDefinedAspect {
     }
 }
 
-impl crate::builtin::AspectInitialBind for TypeUserDefinedAspect {
+impl crate::r#gen::AspectInitialBind for TypeUserDefinedAspect {
     fn initial_bind(&self, dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
         Box::new(crate::eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding {
             dynamic_key,
@@ -417,23 +414,23 @@ impl Type for TypeUserDefinedAspect {
         _xx: &ExprContext,
         key: &crate::langhelp::Unique,
     ) -> Option<Box<dyn std::any::Any>> {
-        if *key == crate::builtin::aspect_field_aspect_id() {
+        if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(Box::new(
                 Box::new(TypeUserDefinedAspect {
                     iface_ref: self.iface_ref.clone(),
                     bundle: self.bundle.clone(),
-                }) as Box<dyn crate::builtin::AspectField>,
+                }) as Box<dyn crate::r#gen::AspectField>,
             ));
         }
-        if *key == crate::builtin::aspect_initial_bind_aspect_id() {
+        if *key == crate::r#gen::aspect_initial_bind_aspect_id() {
             return Some(Box::new(
                 Box::new(TypeUserDefinedAspect {
                     iface_ref: self.iface_ref.clone(),
                     bundle: self.bundle.clone(),
-                }) as Box<dyn crate::builtin::AspectInitialBind>,
+                }) as Box<dyn crate::r#gen::AspectInitialBind>,
             ));
         }
-        if *key == crate::builtin::aspect_function_aspect_id() {
+        if *key == crate::r#gen::aspect_function_aspect_id() {
             // No-op marker: callers that only check `.is_some()` see this as
             // an aspect-bearing type without requiring AspectFunction work.
             return None;

@@ -1,23 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectFunction,
-            AspectInitialBind,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_consume_dynamic_get,
-            aspect_function_aspect_id,
-            aspect_function_get,
-            aspect_function_get_maybe,
-            aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_get,
-            aspect_tuple_get_maybe,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectFunction, AspectInitialBind, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_consume_dynamic_get, aspect_function_aspect_id, aspect_function_get, aspect_function_get_maybe, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_get, aspect_tuple_get_maybe},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicCall,
@@ -121,7 +105,7 @@ pub(crate) fn dynamic_call(
             let elements = arg_tuple.take_elements(argument.value);
             let (elements, param_types) =
                 if elements.is_empty() && param_types.len() == 1 &&
-                    crate::builtin::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
+                    crate::r#gen::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
                     (vec![], vec![])
                 } else {
                     (elements, param_types)

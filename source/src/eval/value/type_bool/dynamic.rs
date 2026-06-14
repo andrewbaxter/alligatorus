@@ -1,22 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectBoolDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_bool_const_get_maybe,
-            aspect_bool_dynamic_aspect_id,
-            aspect_bool_dynamic_get_maybe,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectBoolDynamic, AspectConsumeDynamic, AspectInitialBind, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_bool_const_get_maybe, aspect_bool_dynamic_aspect_id, aspect_bool_dynamic_get_maybe, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,

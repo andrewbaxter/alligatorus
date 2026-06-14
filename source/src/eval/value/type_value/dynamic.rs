@@ -8,18 +8,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectInitialBind,
-            AspectStackValueDynamic,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-        },
+        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             TargetBindSub,
@@ -91,7 +80,7 @@ impl AspectInitialBind for TypeValueDynamic {
     }
 }
 
-impl crate::builtin::AspectField for TypeValueDynamic {
+impl crate::r#gen::AspectField for TypeValueDynamic {
     fn field(
         &self,
         xx: &ExprContext,
@@ -107,7 +96,7 @@ impl crate::builtin::AspectField for TypeValueDynamic {
             ),
         };
         let key_type = key.value.type_(xx, loc);
-        let key_string = match crate::builtin::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+        let key_string = match crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
         };
@@ -241,9 +230,9 @@ impl Type for TypeValueDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeValueDynamic) as Box<dyn AspectInitialBind>));
         }
-        if *key == crate::builtin::aspect_field_aspect_id() {
+        if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(Box::new(
-                Box::new(TypeValueDynamic) as Box<dyn crate::builtin::AspectField>,
+                Box::new(TypeValueDynamic) as Box<dyn crate::r#gen::AspectField>,
             ));
         }
         None

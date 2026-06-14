@@ -1,13 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectFunction,
-            AspectInitialBind,
-            aspect_function_aspect_id,
-            aspect_initial_bind_aspect_id,
-            aspect_tuple_get_maybe,
-        },
+        r#gen::{AspectFunction, AspectInitialBind, aspect_function_aspect_id, aspect_initial_bind_aspect_id, aspect_tuple_get_maybe},
         eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         langhelp::{
             Aspect,
@@ -58,13 +52,13 @@ impl AspectFunction for TypeMapConstructorConst {
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
         let key_meta = key_cv.value.type_(xx, loc);
-        let key_at = match crate::builtin::aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
+        let key_at = match crate::r#gen::aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };
         let key_type = key_at.type_(key_cv.value.as_ref());
         let value_meta = value_cv.value.type_(xx, loc);
-        let value_at = match crate::builtin::aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
+        let value_at = match crate::r#gen::aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes { v: None, errors: Some(e) },
         };

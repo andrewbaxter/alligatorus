@@ -1,14 +1,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        builtin::{
-            AspectArtifact,
-            AspectBind,
-            AspectFunction,
-            aspect_artifact_aspect_id,
-            aspect_bind_aspect_id,
-            aspect_function_aspect_id,
-        },
+        r#gen::{AspectArtifact, AspectBind, AspectFunction, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_function_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -113,7 +106,7 @@ impl AspectFunction for TypeSourceFunctionConst {
     }
 }
 
-impl crate::builtin::AspectType for TypeSourceFunctionConst {
+impl crate::r#gen::AspectType for TypeSourceFunctionConst {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let f = crate::invariant::must_downcast_ref::<TypeSourceFunctionConst>(value);
         Rc::new(TypeSourceFunctionConst { data: f.data.clone() })
@@ -143,11 +136,11 @@ impl Type for TypeSourceFunctionConst {
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
             );
         }
-        if *key == crate::builtin::aspect_type_aspect_id() {
+        if *key == crate::r#gen::aspect_type_aspect_id() {
             return Some(
                 Box::new(
                     Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as
-                        Box<dyn crate::builtin::AspectType>,
+                        Box<dyn crate::r#gen::AspectType>,
                 ),
             );
         }

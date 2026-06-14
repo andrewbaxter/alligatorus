@@ -149,7 +149,7 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
         Expr_::Literal(p) => {
             let value = p.peek().ok_or_else(|| "Cannot serialize consumed Literal".to_string())?;
             let value_type = value.type_(xx, expr.loc);
-            let aspect_artifact = crate::builtin::aspect_artifact_get(xx, expr.loc, value_type.as_ref())
+            let aspect_artifact = crate::r#gen::aspect_artifact_get(xx, expr.loc, value_type.as_ref())
                 .into_res()
                 .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?;
             let artifact =
