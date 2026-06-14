@@ -336,20 +336,13 @@ impl Type for TypeMapDynamic {
         }
         if aspect_record_get_maybe(xx, source_type).is_some() &&
             aspect_consume_dynamic_get_maybe(xx, source_type).is_some() {
-            // Record → map: check all field value types are compatible with the map's value
-            // type
-            if let Some(record) = (source_type as &dyn Any).downcast_ref::<crate::eval::value::record::Record>() {
-                return record.fields.values().all(|f| {
-                    let field_type = match f {
-                        crate::eval::value::record::RecordField::Mortar(t) => t.clone(),
-                        crate::eval::value::record::RecordField::EvalRes(er) => match &er.v {
-                            Some(cv) => cv.value.type_(xx, loc),
-                            None => return true,
-                        },
-                    };
-                    types_convertible(xx, loc, field_type.as_ref(), self.value_type.as_ref())
-                });
-            }
+            // Record → map: cast_from performs the real per-entry
+            // `typecheck_convert` to the map's value type (which exercises
+            // each value type's `cast_to`/`cast_from` chain — e.g.
+            // `TypeSourceDataType::cast_to` wrapping an instance as a
+            // `Rc<dyn Type>` when the map's value type is a type-iface
+            // ref). No pre-check here — let the per-entry conversion report
+            // the precise mismatch if one occurs.
             return true;
         }
         false

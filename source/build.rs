@@ -20,100 +20,57 @@ use {
     std::{env, fs, path::PathBuf},
 };
 
-/// Source-language type expression. Each variant corresponds to one of the
-/// `Type` impls in `src/eval/value/`; codegen turns these into the matching
-/// `Rc<dyn Type>` constructor call.
+/// A Rust `Type` impl, in two forms:
+///
+/// * `path` — the bare type (for Rust type annotations, trait method
+///   returns, generic params, `Rc<dyn …>`-style usages).
+/// * `value` — a value-producing expression of that type (for `Rc::new(…)`
+///   in source-mortar construction). For unit structs this is the same as
+///   `path`; for parameterized types like `TypeOptionDynamic` it includes
+///   field initializers.
 #[derive(Clone)]
-enum SrcType {
-    /// `TypeAnyDynamic` — runtime type-of-types (`Rc<dyn Type>` external).
-    Any,
-    /// `TypeNullDynamic` — `null` source-level type (used for methods that
-    /// take no meaningful arg, by convention).
-    Null,
-    /// `TypeStringDynamic`.
-    String,
-    /// `TypeBoolDynamic`.
-    Bool,
-    /// `TypeValueDynamic` — opaque "any source value" type. Used for ret
-    /// types where the v8-side representation is a user data-type instance
-    /// (a JS object) the source typer has lost track of.
-    Value,
-    /// `TypeAspectDynamic` — opaque aspect handle.
-    Aspect,
-    /// `TypeCodeValueExternDynamic` — compile-time CV wrapper passed through
-    /// v8 for `aspect_function.call` / `aspect_field.field` style methods.
-    CodeValueExtern,
-    /// `TypeOptionDynamic { element_type: ... }`.
-    Option(Box<SrcType>),
+struct TypeRef {
+    path: TokenStream,
+    value: TokenStream,
 }
 
-impl SrcType {
-    fn codegen(&self) -> TokenStream {
-        match self {
-            SrcType::Any => quote! {
-                std::rc::Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::Null => quote! {
-                std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::String => quote! {
-                std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::Bool => quote! {
-                std::rc::Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::Value => quote! {
-                std::rc::Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::Aspect => quote! {
-                std::rc::Rc::new(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::CodeValueExtern => quote! {
-                std::rc::Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic)
-                    as std::rc::Rc<dyn crate::langhelp::Type>
-            },
-            SrcType::Option(inner) => {
-                let inner = inner.codegen();
-                quote! {
-                    std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
-                        element_type: { #inner },
-                    }) as std::rc::Rc<dyn crate::langhelp::Type>
-                }
-            },
-        }
+impl TypeRef {
+    /// Unit struct — `path` and `value` are the same `TokenStream`.
+    fn unit(tokens: TokenStream) -> Self {
+        TypeRef { path: tokens.clone(), value: tokens }
     }
 }
 
 struct MethodSpec {
     /// Source-level method name.
     name: &'static str,
-    /// Source-level `arg` type — for builtin-iface methods that take a record,
-    /// pass `SrcType::Any` (Rust dispatch builds the record).
-    arg_type: SrcType,
-    /// Source-level return type — the value the impl body must produce.
-    ret_type: SrcType,
-    /// Optional Rust-side trait method signature. When `Some` *and* the
-    /// interface spec sets `generate_trait = true`, this contributes a `fn`
-    /// to the generated trait. Each `param` is a `(name, type)` string pair;
-    /// `type` is parsed back into a `TokenStream` so any path/generics
-    /// expression works (e.g. `&ExprContext`, `Vec<(ConstKey, TargetBindSub)>`).
-    /// The Rust signature can differ from the source one — e.g. Rust takes
-    /// `&self, xx, loc, ...` but source sees a single `arg` record built by
-    /// Rust dispatch.
-    rust_sig: Option<RustSig>,
+    /// `arg` type. Builtin-iface methods that take a record pass
+    /// `TypeAnyDynamic` (Rust dispatch builds the record).
+    arg_type: TypeRef,
+    /// Source-side return type — the value the user-defined impl body
+    /// must produce.
+    ret_type: TypeRef,
+    /// When `Some` *and* the interface spec sets `rust_trait_name`, this
+    /// method contributes a `fn` to the generated trait.
+    ///
+    /// `ret` is the Rust trait method's return type. Ideally this would
+    /// equal `ret_type.path` (so source mortar and Rust dispatch can't
+    /// diverge), but the existing `Target` / `ScopeEntry` impls return
+    /// rich Rust types (`CodeValue`, `(Code, ScopeEntryId)`,
+    /// `TargetBindSub`, `EResult<…>`, `EvalRes`, …) that have no `Type`
+    /// impl. Reconciling that requires either newtype wrappers with
+    /// `impl Type` per shape, or restructuring every caller of these
+    /// traits to use the source-mortar type — substantial work; tracked
+    /// separately.
+    rust_trait: Option<RustTrait>,
 }
 
-struct RustSig {
-    /// `(name, rust_type_str)`. `self` is added implicitly as `&self`.
-    params: Vec<(&'static str, &'static str)>,
-    /// Rust return type. Empty string = `-> ()`.
-    ret: &'static str,
+struct RustTrait {
+    /// `(name, rust_type_path)`. `self` is added implicitly as `&self`.
+    params: Vec<(&'static str, TokenStream)>,
+    /// Trait method return type (`-> #ret`). See `MethodSpec.rust_trait`
+    /// docstring for the unification caveat.
+    ret: TokenStream,
 }
 
 struct InterfaceSpec {
@@ -133,14 +90,37 @@ struct InterfaceSpec {
     /// Optional human description (defaults to `name`).
     description: Option<&'static str>,
     /// When `Some`, generate a `pub(crate) trait <name>` with methods
-    /// drawn from each `MethodSpec.rust_sig`. The string is the trait's
-    /// PascalCase name (e.g. `"Target"`). Methods whose `rust_sig` is
+    /// drawn from each `MethodSpec.rust_trait`. The string is the trait's
+    /// PascalCase name (e.g. `"Target"`). Methods whose `rust_trait` is
     /// `None` are skipped.
     rust_trait_name: Option<&'static str>,
     methods: Vec<MethodSpec>,
 }
 
+/// `TypeOptionDynamic { element_type: <inner> }` as a `TypeRef`. The
+/// trait-return path is the bare `TypeOptionDynamic` (parameterized at
+/// runtime via the field, not generically); the source-mortar value
+/// includes the `element_type` initializer.
+fn option_type(inner: &TypeRef) -> TypeRef {
+    let inner_value = &inner.value;
+    TypeRef {
+        path: quote!(crate::eval::value::type_option::dynamic::TypeOptionDynamic),
+        value: quote! {
+            crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+                element_type: std::rc::Rc::new(#inner_value) as std::rc::Rc<dyn crate::langhelp::Type>,
+            }
+        },
+    }
+}
+
 fn interfaces() -> Vec<InterfaceSpec> {
+    let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
+    let null = || TypeRef::unit(quote!(crate::eval::value::type_null::dynamic::TypeNullDynamic));
+    let string = || TypeRef::unit(quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic));
+    let bool_ = || TypeRef::unit(quote!(crate::eval::value::type_bool::dynamic::TypeBoolDynamic));
+    let value = || TypeRef::unit(quote!(crate::eval::value::type_value::dynamic::TypeValueDynamic));
+    let aspect = || TypeRef::unit(quote!(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic));
+    let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
     vec![
         InterfaceSpec {
             name: "value",
@@ -152,9 +132,9 @@ fn interfaces() -> Vec<InterfaceSpec> {
             methods: vec![
                 MethodSpec {
                     name: "type",
-                    arg_type: SrcType::Null,
-                    ret_type: SrcType::Any,
-                    rust_sig: None,
+                    arg_type: null(),
+                    ret_type: any(),
+                    rust_trait: None,
                 },
             ],
         },
@@ -166,14 +146,14 @@ fn interfaces() -> Vec<InterfaceSpec> {
             description: None,
             rust_trait_name: None,
             methods: vec![
-                MethodSpec { name: "can_cast_from", arg_type: SrcType::Any, ret_type: SrcType::Bool, rust_sig: None },
-                MethodSpec { name: "cast_from", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
-                MethodSpec { name: "desc", arg_type: SrcType::Null, ret_type: SrcType::String, rust_sig: None },
+                MethodSpec { name: "can_cast_from", arg_type: any(), ret_type: bool_(), rust_trait: None },
+                MethodSpec { name: "cast_from", arg_type: any(), ret_type: cve(), rust_trait: None },
+                MethodSpec { name: "desc", arg_type: null(), ret_type: string(), rust_trait: None },
                 MethodSpec {
                     name: "aspect",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Option(Box::new(SrcType::Aspect)),
-                    rust_sig: None,
+                    arg_type: any(),
+                    ret_type: option_type(&aspect()),
+                    rust_trait: None,
                 },
             ],
         },
@@ -188,7 +168,7 @@ fn interfaces() -> Vec<InterfaceSpec> {
             description: None,
             rust_trait_name: None,
             methods: vec![
-                MethodSpec { name: "call", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
+                MethodSpec { name: "call", arg_type: any(), ret_type: cve(), rust_trait: None },
             ],
         },
         // Shares id with the `AspectField` aspect spec — same rationale as
@@ -201,8 +181,8 @@ fn interfaces() -> Vec<InterfaceSpec> {
             description: None,
             rust_trait_name: None,
             methods: vec![
-                MethodSpec { name: "field", arg_type: SrcType::Any, ret_type: SrcType::CodeValueExtern, rust_sig: None },
-                MethodSpec { name: "field_type_opt", arg_type: SrcType::Any, ret_type: SrcType::Any, rust_sig: None },
+                MethodSpec { name: "field", arg_type: any(), ret_type: cve(), rust_trait: None },
+                MethodSpec { name: "field_type_opt", arg_type: any(), ret_type: any(), rust_trait: None },
             ],
         },
         InterfaceSpec {
@@ -215,15 +195,15 @@ fn interfaces() -> Vec<InterfaceSpec> {
             methods: vec![
                 MethodSpec {
                     name: "use_",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("xx", "&crate::langhelp::ExprContext"),
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("code", "crate::langhelp::Code"),
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("code", quote!(crate::langhelp::Code)),
                         ],
-                        ret: "crate::langhelp::CodeValue",
+                        ret: quote!(crate::langhelp::CodeValue),
                     }),
                 },
             ],
@@ -235,131 +215,135 @@ fn interfaces() -> Vec<InterfaceSpec> {
             kind: "Target",
             description: None,
             rust_trait_name: Some("Target"),
-            // ret_types are `Value` (opaque user-value) rather than `Any`
-            // because target methods return runtime values (TargetBindSub,
-            // Code, tuples), not types. The old `target_method` helper
-            // mis-registered every ret as `any`, which broke typecheck
-            // for impls returning option/tuple/code values.
+            // All `target` methods currently use `TypeValueDynamic` as both
+            // their source-mortar AND Rust-trait return type. That's a
+            // known design issue — see #23 in TaskList: the existing
+            // dispatch bridge wants richer Rust types (`(Code, ScopeEntryId)`,
+            // `TargetBindSub`, `EvalRes`) that don't yet have matching
+            // `Type` impls. Until those wrappers exist, the unified type
+            // here is the lowest common ancestor — `value` — and the bridge
+            // is responsible for extracting the real Rust value from the
+            // source-side return.
             methods: vec![
                 MethodSpec {
                     name: "bind",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("xx", "&crate::langhelp::ExprContext"),
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("sub", "crate::eval::TargetBindSub"),
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("sub", quote!(crate::eval::TargetBindSub)),
                         ],
-                        ret: "(crate::langhelp::Code, crate::langhelp::ScopeEntryId)",
+                        ret: quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId)),
                     }),
                 },
                 MethodSpec {
                     name: "bind_sub_record",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("carry", "crate::langhelp::Code"),
-                            ("fields", "Vec<(crate::langhelp::ConstKey, crate::eval::TargetBindSub)>"),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("carry", quote!(crate::langhelp::Code)),
+                            ("fields", quote!(Vec<(crate::langhelp::ConstKey, crate::eval::TargetBindSub)>)),
                         ],
-                        ret: "crate::eval::TargetBindSub",
+                        ret: quote!(crate::eval::TargetBindSub),
                     }),
                 },
                 MethodSpec {
                     name: "bind_sub_tuple",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("carry", "crate::langhelp::Code"),
-                            ("elements", "Vec<crate::eval::TargetBindSub>"),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("carry", quote!(crate::langhelp::Code)),
+                            ("elements", quote!(Vec<crate::eval::TargetBindSub>)),
                         ],
-                        ret: "crate::eval::TargetBindSub",
+                        ret: quote!(crate::eval::TargetBindSub),
                     }),
                 },
                 MethodSpec {
                     name: "block",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("entries", "Vec<crate::langhelp::Code>"),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("entries", quote!(Vec<crate::langhelp::Code>)),
                         ],
-                        ret: "crate::langhelp::EResult<crate::langhelp::Code>",
+                        ret: quote!(crate::langhelp::EResult<crate::langhelp::Code>),
                     }),
                 },
                 MethodSpec {
                     name: "code_to_bind_sub",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("code", "crate::langhelp::Code"),
-                            ("type_", "std::rc::Rc<dyn crate::langhelp::Type>"),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("code", quote!(crate::langhelp::Code)),
+                            ("type_", quote!(std::rc::Rc<dyn crate::langhelp::Type>)),
                         ],
-                        ret: "crate::langhelp::EResult<crate::eval::TargetBindSub>",
+                        ret: quote!(crate::langhelp::EResult<crate::eval::TargetBindSub>),
                     }),
                 },
                 MethodSpec {
                     name: "if_",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("xx", "&crate::langhelp::ExprContext"),
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("conditions", "Vec<(crate::langhelp::CodeValue, &crate::eval::expr::Expr)>"),
-                            ("else_", "Option<&crate::eval::expr::Expr>"),
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("conditions", quote!(Vec<(crate::langhelp::CodeValue, &crate::eval::expr::Expr)>)),
+                            ("else_", quote!(Option<&crate::eval::expr::Expr>)),
                         ],
-                        ret: "crate::langhelp::EvalRes",
+                        ret: quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
                     }),
                 },
                 MethodSpec {
                     name: "match_",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("xx", "&crate::langhelp::ExprContext"),
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("base", "crate::langhelp::CodeValue"),
-                            ("element_key", "crate::langhelp::ConstKey"),
-                            ("cases", "Vec<(String, std::rc::Rc<dyn crate::langhelp::Type>, &crate::eval::expr::Expr)>"),
-                            ("fallback", "Option<&crate::eval::expr::Expr>"),
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("base", quote!(crate::langhelp::CodeValue)),
+                            ("element_key", quote!(crate::langhelp::ConstKey)),
+                            ("cases", quote!(Vec<(String, std::rc::Rc<dyn crate::langhelp::Type>, &crate::eval::expr::Expr)>)),
+                            ("fallback", quote!(Option<&crate::eval::expr::Expr>)),
                         ],
-                        ret: "crate::langhelp::EvalRes",
+                        ret: quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
                     }),
                 },
                 MethodSpec {
                     name: "maybe_bind_sub",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Option(Box::new(SrcType::Value)),
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: option_type(&value()),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("xx", "&crate::langhelp::ExprContext"),
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("cv", "crate::langhelp::CodeValue"),
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("cv", quote!(crate::langhelp::CodeValue)),
                         ],
-                        ret: "crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>",
+                        ret: quote!(crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>),
                     }),
                 },
                 MethodSpec {
                     name: "stage",
-                    arg_type: SrcType::Any,
-                    ret_type: SrcType::Value,
-                    rust_sig: Some(RustSig {
+                    arg_type: any(),
+                    ret_type: value(),
+                    rust_trait: Some(RustTrait {
                         params: vec![
-                            ("xx", "&crate::langhelp::ExprContext"),
-                            ("loc", "crate::langhelp::QExprId"),
-                            ("tree", "crate::eval::expr::Expr"),
-                            ("lower_values", "Vec<crate::langhelp::CodeValue>"),
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                            ("tree", quote!(crate::eval::expr::Expr)),
+                            ("lower_values", quote!(Vec<crate::langhelp::CodeValue>)),
                         ],
-                        ret: "crate::langhelp::EvalRes",
+                        ret: quote!(crate::langhelp::EResult<crate::langhelp::CodeValue>),
                     }),
                 },
             ],
@@ -738,13 +722,17 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
                 .map(|(idx, m)| {
                     let name = m.name;
                     let field_name = format!("_im_{}{}", prefix, idx);
-                    let arg = m.arg_type.codegen();
-                    let ret = m.ret_type.codegen();
+                    let arg = &m.arg_type.value;
+                    let ret = &m.ret_type.value;
                     quote! {
                         crate::eval::value::type_source_interface::SourceInterfaceMethodData {
                             name: #name.to_string(),
-                            arg_type: std::cell::RefCell::new(Some({ #arg })),
-                            ret_type: std::cell::RefCell::new(Some({ #ret })),
+                            arg_type: std::cell::RefCell::new(Some(
+                                std::rc::Rc::new(#arg) as std::rc::Rc<dyn crate::langhelp::Type>,
+                            )),
+                            ret_type: std::cell::RefCell::new(Some(
+                                std::rc::Rc::new(#ret) as std::rc::Rc<dyn crate::langhelp::Type>,
+                            )),
                             field_name: #field_name.to_string(),
                         }
                     }
@@ -811,29 +799,23 @@ fn generate(ifaces: &[InterfaceSpec]) -> TokenStream {
                 .methods
                 .iter()
                 .filter_map(|m| {
-                    let sig = m.rust_sig.as_ref()?;
+                    let rt = m.rust_trait.as_ref()?;
                     // Source method names like "type", "if_", "match_",
                     // "use_" all need to be valid Rust idents on the trait.
                     // `if_`/`match_`/`use_` already are; map `type` →
                     // `type_` (the existing trait used `type_` too).
                     let method_name = format_ident!("{}", if m.name == "type" { "type_" } else { m.name });
-                    let params: Vec<TokenStream> = sig
+                    let params: Vec<TokenStream> = rt
                         .params
                         .iter()
                         .map(|(n, ty)| {
                             let name = format_ident!("{}", n);
-                            let ty: TokenStream = ty.parse().unwrap();
                             quote! { #name: #ty }
                         })
                         .collect();
-                    let ret: TokenStream = if sig.ret.is_empty() {
-                        quote! {}
-                    } else {
-                        let ty: TokenStream = sig.ret.parse().unwrap();
-                        quote! { -> #ty }
-                    };
+                    let ret = &rt.ret;
                     Some(quote! {
-                        fn #method_name(&self, #(#params),*) #ret;
+                        fn #method_name(&self, #(#params),*) -> #ret;
                     })
                 })
                 .collect();
