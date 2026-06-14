@@ -5,10 +5,13 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
+            AspectType,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
+            aspect_type_aspect_id,
+            aspect_type_get,
         },
         code_dynamic::{
             CodeDynamic,
@@ -50,7 +53,84 @@ pub(crate) fn type_type_identity() -> Unique {
 }
 pub(crate) struct TypeAnyConst;
 
+/// Canonical value carrier for `TypeAnyConst`: a type-of-types value carries
+/// an `Rc<dyn Type>` explicitly so `TypeAnyConst::AspectType::type_` can do
+/// an infallible downcast and read out the inner type without RTTI over the
+/// full list of type singletons. Per "one type = one representation": the
+/// `TypeListDynamic` etc. structs are reserved for their list/map/option
+/// runtime representations and aren't reused as values of `TypeAnyConst`.
+pub(crate) struct ValueAnyConst {
+    pub inner: Rc<dyn Type>,
+}
+
+impl Value for ValueAnyConst {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(TypeAnyConst)
+    }
+}
+
 impl Aspect for TypeAnyConst { }
+
+impl AspectType for TypeAnyConst {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(value);
+        wrapper.inner.clone()
+    }
+}
+
+/// Field access on a type-of-types value (`list(string).new`, `option.some`,
+/// etc.) — extract the inner type via `AspectType` and delegate to its
+/// `AspectField`. Receiver passed down is the original `cv` (so the inner
+/// type's field handler sees the same wrapper-carrying value its dispatch
+/// expects, and `cv.value.type_()` still reports `TypeAnyConst`).
+impl crate::builtin::AspectField for TypeAnyConst {
+    fn field(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: CodeValue,
+        key: CodeValue,
+    ) -> crate::langhelp::EvalRes {
+        let inner = {
+            let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
+            wrapper.inner.clone()
+        };
+        let field = match crate::builtin::aspect_field_get(xx, loc, inner.as_ref()).into_res() {
+            Ok(f) => f,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        field.field(xx, loc, self_, key)
+    }
+
+    fn field_type_opt(
+        &self,
+        _xx: &ExprContext,
+        _key: &crate::langhelp::ConstKey,
+    ) -> Option<Rc<dyn Type>> {
+        None
+    }
+}
+
+/// Same delegation for calls (`list(string)`, `option(expr)`, etc.).
+impl crate::builtin::AspectFunction for TypeAnyConst {
+    fn call(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: CodeValue,
+        argument: CodeValue,
+    ) -> crate::langhelp::EvalRes {
+        let inner = {
+            let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
+            wrapper.inner.clone()
+        };
+        let func = match crate::builtin::aspect_function_get(xx, loc, inner.as_ref()).into_res() {
+            Ok(f) => f,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        func.call(xx, loc, self_, argument)
+    }
+}
 
 impl AspectBind for TypeAnyConst {
     fn bind(
@@ -77,8 +157,15 @@ impl AspectConsumeDynamic for TypeAnyConst {
             return EResult::ok(js.clone());
         }
 
-        // Compile-time: create external from the value's type
-        let type_ = cv.value.type_(xx, loc);
+        // Compile-time: extract the actual `Rc<dyn Type>` via `AspectType` on
+        // the value's meta-type, then push it as an `External::Type` and emit
+        // a `BindingUse` to reach it at runtime.
+        let meta_type = cv.value.type_(xx, loc);
+        let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
+            Ok(at) => at,
+            Err(e) => return EResult { v: None, errors: Some(e) },
+        };
+        let type_ = aspect_type.type_(cv.value.as_ref());
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
         EResult::ok(CodeDynamic {
@@ -118,6 +205,15 @@ impl Type for TypeAnyConst {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectInitialBind>));
         }
+        if *key == aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectType>));
+        }
+        if *key == crate::builtin::aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::builtin::AspectField>));
+        }
+        if *key == crate::builtin::aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::builtin::AspectFunction>));
+        }
         None
     }
 
@@ -142,7 +238,12 @@ impl Type for TypeAnyConst {
         cv: crate::langhelp::CodeValue,
         _type_: &dyn Type,
     ) -> crate::langhelp::EvalRes {
-        let type_ = cv.value.type_(xx, loc);
+        let meta_type = cv.value.type_(xx, loc);
+        let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
+            Ok(at) => at,
+            Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+        };
+        let type_ = aspect_type.type_(cv.value.as_ref());
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
         crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {

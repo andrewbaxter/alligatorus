@@ -1436,14 +1436,20 @@ fn eval(
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
         ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
     ] {
+        // Type-of-types scope entry: value is `ValueAnyConst` carrying the
+        // `Rc<dyn Type>`. Meta-type is `TypeAnyConst`, so cast to `any`,
+        // consume-dynamic, etc. dispatch through `TypeAnyConst` which
+        // extracts the inner type via `AspectType` (infallible downcast to
+        // `ValueAnyConst`).
         let cv = CodeValue {
             code: Code {
                 loc: root_loc,
                 code: Code_::None,
             },
-            value: Rc::new(value::value_empty::r#const::ValueEmptyConst { type_: type_ref.clone() }),
+            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }),
         };
-        let bind = aspect_bind_get(&xx, root_loc, type_ref.as_ref()).into_res()?;
+        let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
+        let bind = aspect_bind_get(&xx, root_loc, any_const_type.as_ref()).into_res()?;
         let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
     }
@@ -4325,9 +4331,10 @@ pub(crate) fn build_builtin_scope(
     ] {
         let cv = CodeValue {
             code: Code { loc, code: Code_::None },
-            value: Rc::new(value::value_empty::r#const::ValueEmptyConst { type_: type_ref.clone() }),
+            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }),
         };
-        let bind = aspect_bind_get(xx, loc, type_ref.as_ref()).into_res()?;
+        let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
+        let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;
         let (_, entry) = bind.bind(xx, loc, cv).into_res()?;
         scope_entries.insert(ConstKey::String(key.to_string()), entry);
     }

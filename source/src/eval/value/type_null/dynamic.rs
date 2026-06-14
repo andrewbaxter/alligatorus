@@ -219,10 +219,8 @@ impl Type for TypeNullDynamic {
         });
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
-            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
-        }
+    fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        // No cast to `any` — `null` is a value, not a type ref. Misuse.
         EvalRes::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {

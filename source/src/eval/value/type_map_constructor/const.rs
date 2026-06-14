@@ -41,24 +41,44 @@ impl AspectFunction for TypeMapConstructorConst {
             Some(t) => t,
             None => return EvalRes::err(loc, "map() requires a tuple of (key_type, value_type)".to_string()),
         };
-        let element_types = arg_tuple.element_types();
-        if element_types.len() != 2 {
+        let elements = arg_tuple.take_elements(argument.value);
+        if elements.len() != 2 {
             return EvalRes::err(
                 loc,
-                format!("map() requires exactly 2 type arguments (key, value), got {}", element_types.len()),
+                format!("map() requires exactly 2 type arguments (key, value), got {}", elements.len()),
             );
         }
-        let key_type = element_types[0].clone();
-        let value_type = element_types[1].clone();
+        let mut iter = elements.into_iter();
+        let key_cv = match iter.next().unwrap().into_res() {
+            Ok(c) => c,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let value_cv = match iter.next().unwrap().into_res() {
+            Ok(c) => c,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let key_meta = key_cv.value.type_(xx, loc);
+        let key_at = match crate::builtin::aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
+            Ok(at) => at,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let key_type = key_at.type_(key_cv.value.as_ref());
+        let value_meta = value_cv.value.type_(xx, loc);
+        let value_at = match crate::builtin::aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
+            Ok(at) => at,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let value_type = value_at.type_(value_cv.value.as_ref());
+        let map_type: Rc<dyn Type> = Rc::new(super::super::type_map::dynamic::TypeMapDynamic {
+            key_type,
+            value_type,
+        });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(super::super::type_map::dynamic::TypeMapDynamic {
-                key_type,
-                value_type,
-            }),
+            value: Rc::new(super::super::type_any::r#const::ValueAnyConst { inner: map_type }),
         })
     }
 }
@@ -102,6 +122,6 @@ impl Type for TypeMapConstructorConst {
 
 impl Value for TypeMapConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeMapConstructorConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

@@ -545,7 +545,24 @@ impl Type for TypeSourceDataTypeConst {
             }
         }
         if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
-            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
+            // The cv carries a data type instance at the v8 boundary (the JS
+            // object form of this data type). Hand off to
+            // `TypeSourceDataTypeDynamic::cast_to` — its `(any)` branch
+            // emits `__data_instance_to_type(template, instance)` which
+            // wraps the runtime instance as `Rc<dyn Type>` and returns a
+            // `TypeAnyDynamic`-typed CV. Discarding the v8 value and
+            // synthesizing an External from static type metadata (what
+            // `wrap_as_any` used to do here) would lose the actual data
+            // type's identity at runtime.
+            let dyn_cv = CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
+                }),
+            };
+            let dyn_type = super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() };
+            return dyn_type.cast_to(xx, loc, dyn_cv, type_);
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }

@@ -35,13 +35,20 @@ impl Aspect for TypeListConstructorConst { }
 
 impl AspectFunction for TypeListConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let element_type = argument.value.type_(xx, loc);
+        let arg_meta = argument.value.type_(xx, loc);
+        let aspect_type = match crate::builtin::aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
+            Ok(at) => at,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let element_type = aspect_type.type_(argument.value.as_ref());
+        let list_type: Rc<dyn Type> =
+            Rc::new(super::super::type_list::dynamic::TypeListDynamic { element_type });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(super::super::type_list::dynamic::TypeListDynamic { element_type }),
+            value: Rc::new(super::super::type_any::r#const::ValueAnyConst { inner: list_type }),
         })
     }
 }
@@ -85,6 +92,6 @@ impl Type for TypeListConstructorConst {
 
 impl Value for TypeListConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeListConstructorConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

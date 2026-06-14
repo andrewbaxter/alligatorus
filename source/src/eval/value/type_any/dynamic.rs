@@ -104,6 +104,12 @@ impl AspectStackValueDynamic for TypeAnyDynamic {
     }
 }
 
+impl crate::eval::aspect::AspectType for TypeAnyDynamic {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(TypeAnyDynamic)
+    }
+}
+
 impl crate::builtin::AspectField for TypeAnyDynamic {
     fn field(
         &self,
@@ -223,6 +229,9 @@ impl Type for TypeAnyDynamic {
         if *key == crate::builtin::aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::builtin::AspectFunction>));
         }
+        if *key == crate::builtin::aspect_type_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::eval::aspect::AspectType>));
+        }
         None
     }
 
@@ -235,12 +244,34 @@ impl Type for TypeAnyDynamic {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
         // Identity case with runtime code: the source's runtime form is
         // already an `Rc<dyn Type>` external, so pass `cv` through unchanged.
-        // No code (compile-time-only value): fall through to `wrap_as_any`
-        // to capture the type as an External and give it a runtime form.
         if matches!(cv.code.code, crate::langhelp::Code_::Dyn(_)) {
             return crate::langhelp::EvalRes::ok(cv);
         }
-        wrap_as_any(xx, loc, cv)
+        // No code (compile-time-only value): extract the actual `Rc<dyn Type>`
+        // via `AspectType` on the value's meta-type, push as `External::Type`,
+        // and emit a `BindingUse`.
+        let meta_type = cv.value.type_(xx, loc);
+        let aspect_type =
+            match crate::builtin::aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
+                Ok(at) => at,
+                Err(e) => return crate::langhelp::EvalRes { v: None, errors: Some(e) },
+            };
+        let type_ = aspect_type.type_(cv.value.as_ref());
+        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
+        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+            code: crate::langhelp::Code {
+                loc,
+                code: crate::langhelp::Code_::Dyn(Rc::new(CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+                })),
+            },
+            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                type_: Rc::new(TypeAnyDynamic),
+            }),
+        })
     }
 
     fn desc(&self) -> String {
@@ -256,48 +287,6 @@ impl Type for TypeAnyDynamic {
     }
 }
 
-/// Helper for concrete types' `cast_to(TypeAnyDynamic)` impls. When the value
-/// already has runtime form (`cv.code` is `Dyn`), preserve that form — just
-/// retype to `TypeAnyDynamic`. When the value is compile-time-only, synthesize
-/// a runtime form from the value's type as an `External::Type` slot.
-///
-/// The Dyn-passthrough mirrors `TypeAnyConst::to_dynamic` (which had the same
-/// short-circuit). Without it, `wrap_as_any` would discard whatever runtime
-/// substance the cv already carries (e.g. `External(Rc<TypeUserDefined>)` from
-/// a preceding `__data_instance_to_type` call) and replace it with an
-/// `External(Rc<cv.value.type_()>)` — i.e. the *type of* the value rather
-/// than the value itself.
-pub(crate) fn wrap_as_any(
-    xx: &ExprContext,
-    loc: QExprId,
-    cv: crate::langhelp::CodeValue,
-) -> crate::langhelp::EvalRes {
-    if matches!(cv.code.code, crate::langhelp::Code_::Dyn(_)) {
-        return crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
-            code: cv.code,
-            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
-                source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
-                type_: Rc::new(TypeAnyDynamic),
-            }),
-        });
-    }
-    let type_ = cv.value.type_(xx, loc);
-    let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-    xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
-    crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
-        code: crate::langhelp::Code {
-            loc,
-            code: crate::langhelp::Code_::Dyn(Rc::new(CodeDynamic {
-                loc,
-                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
-            })),
-        },
-        value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
-            source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
-            type_: Rc::new(TypeAnyDynamic),
-        }),
-    })
-}
 
 impl Value for TypeAnyDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {

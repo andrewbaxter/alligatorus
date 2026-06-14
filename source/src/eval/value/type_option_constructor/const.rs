@@ -35,13 +35,20 @@ impl Aspect for TypeOptionConstructorConst { }
 
 impl AspectFunction for TypeOptionConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let element_type = argument.value.type_(xx, loc);
+        let arg_meta = argument.value.type_(xx, loc);
+        let aspect_type = match crate::builtin::aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
+            Ok(at) => at,
+            Err(e) => return EvalRes { v: None, errors: Some(e) },
+        };
+        let element_type = aspect_type.type_(argument.value.as_ref());
+        let opt_type: Rc<dyn Type> =
+            Rc::new(super::super::type_option::dynamic::TypeOptionDynamic { element_type });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(super::super::type_option::dynamic::TypeOptionDynamic { element_type }),
+            value: Rc::new(super::super::type_any::r#const::ValueAnyConst { inner: opt_type }),
         })
     }
 }
@@ -85,6 +92,6 @@ impl Type for TypeOptionConstructorConst {
 
 impl Value for TypeOptionConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeOptionConstructorConst)
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

@@ -321,14 +321,12 @@ impl Type for TypeListDynamic {
         EvalRes::err(loc, "Cannot convert to list type".to_string())
     }
 
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some()
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        // No cast to `any` — lists aren't types. Misuse.
+        false
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
-            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
-        }
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::err(loc, "Cannot convert list type".to_string())
     }
 
@@ -339,7 +337,7 @@ impl Type for TypeListDynamic {
 
 impl Value for TypeListDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(self.clone())
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
 

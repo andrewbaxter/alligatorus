@@ -212,6 +212,16 @@ impl Type for TypeSourceInterfaceConst {
         if *key == interface_const_identity() {
             return Some(Box::new(true));
         }
+        if *key == crate::builtin::aspect_type_aspect_id() {
+            // Iface-ref-as-type: a value of this iface used as a type arg
+            // (e.g. `map(string, type)`) resolves to the iface's dynamic
+            // representation (`TypeSourceInterfaceDynamic`) so map/list/etc.
+            // see a single runtime type for iface-ref-typed entries.
+            return Some(Box::new(
+                Box::new(TypeSourceInterfaceConstAspectTypeImpl)
+                    as Box<dyn crate::builtin::AspectType>,
+            ));
+        }
         if *key == crate::builtin::aspect_aspect_aspect_id() {
             return Some(Box::new(
                 Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
@@ -286,7 +296,19 @@ impl Type for TypeSourceInterfaceConst {
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         if type_.aspect(xx, &crate::eval::value::type_any::r#const::type_type_identity()).is_some() {
-            return crate::eval::value::type_any::dynamic::wrap_as_any(xx, loc, cv);
+            // The iface ref's v8 form is `External(Rc<SourceInterfaceRef>)`.
+            // Re-type the cv as `TypeSourceInterfaceDynamic` (the dynamic
+            // representation that carries iface refs) and dispatch through
+            // its `cast_to(any)`, which emits `__interface_ref_to_type` to
+            // wrap the iface as `Rc<dyn Type>` at v8.
+            let dyn_cv = CodeValue {
+                code: cv.code,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
+                    type_: Rc::new(super::dynamic::TypeSourceInterfaceDynamic),
+                }),
+            };
+            return super::dynamic::TypeSourceInterfaceDynamic.cast_to(xx, loc, dyn_cv, type_);
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
@@ -314,5 +336,15 @@ impl Type for TypeSourceInterfaceConst {
 impl Value for TypeSourceInterfaceConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeSourceInterfaceConst { data: self.data.clone() })
+    }
+}
+
+pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
+
+impl crate::langhelp::Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
+
+impl crate::builtin::AspectType for TypeSourceInterfaceConstAspectTypeImpl {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
     }
 }
