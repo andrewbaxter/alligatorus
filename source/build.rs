@@ -13,6 +13,7 @@ use {
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let mut builtin_unique_ids = HashSet::new();
+    let mut scope_ids = HashSet::new();
     let mut out = quote!{
         use std::rc::Rc;
         use std::cell::{
@@ -73,7 +74,7 @@ fn main() {
         use crate::eval::dynamic_util::throw_error;
     };
     buildsrc::aspects::build(&mut out, &mut builtin_unique_ids);
-    buildsrc::interfaces::build(&mut out, &mut builtin_unique_ids);
+    buildsrc::interfaces::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
     buildsrc::identities::build(&mut out, &mut builtin_unique_ids);
     buildsrc::artifacts::build(&mut out);
     buildsrc::dyn_wrap_structs::build(&mut out, &mut builtin_unique_ids);

@@ -13,7 +13,7 @@ use {
     std::collections::HashSet,
 };
 
-pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
+pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, scope_ids: &mut HashSet<usize>) {
     let mut iface_names = HashSet::new();
     let mut iface_prefixes = HashSet::new();
     let mut iface_kinds = HashSet::new();
@@ -21,6 +21,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
     let mut iface_build_entries: Vec<TokenStream> = Vec::new();
     let mut iface_result_fields: Vec<TokenStream> = Vec::new();
     let mut iface_trait_defs: Vec<TokenStream> = Vec::new();
+    let mut iface_reg_entries: Vec<TokenStream> = Vec::new();
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
     let null = || TypeRef::unit(quote!(crate::eval::value::type_null::dynamic::TypeNullDynamic));
     let string = || TypeRef::unit(quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic));
@@ -30,6 +31,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
 
     struct InterfaceSpec {
         builtin_unique_id: usize,
+        scope_id: usize,
         description: Option<&'static str>,
         field_prefix: &'static str,
         kind: &'static str,
@@ -43,6 +45,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "value",
             builtin_unique_id: 2001,
+            scope_id: 3001,
             field_prefix: "v",
             kind: "Value",
             description: None,
@@ -59,6 +62,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "type",
             builtin_unique_id: 2002,
+            scope_id: 3002,
             field_prefix: "t",
             kind: "Type",
             description: None,
@@ -100,6 +104,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "aspect_function",
             builtin_unique_id: 1016,
+            scope_id: 3003,
             field_prefix: "af",
             kind: "AspectFunction",
             description: None,
@@ -113,6 +118,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "aspect_field",
             builtin_unique_id: 1030,
+            scope_id: 3004,
             field_prefix: "afd",
             kind: "AspectField",
             description: None,
@@ -134,6 +140,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "scope_entry",
             builtin_unique_id: 2005,
+            scope_id: 3005,
             field_prefix: "se",
             kind: "ScopeEntry",
             description: None,
@@ -153,6 +160,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "target",
             builtin_unique_id: 2006,
+            scope_id: 3006,
             field_prefix: "tg",
             kind: "Target",
             description: None,
@@ -306,6 +314,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         InterfaceSpec {
             name: "code_dyn",
             builtin_unique_id: 2007,
+            scope_id: 3007,
             field_prefix: "cd",
             kind: "CodeDyn",
             description: None,
@@ -356,7 +365,9 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         let kind = format_ident!("{}", iface.kind);
         let description = iface.description.unwrap_or(iface.name);
         assert!(builtin_unique_ids.insert(iface.builtin_unique_id));
+        assert!(scope_ids.insert(iface.scope_id));
         let builtin_unique_id = iface.builtin_unique_id;
+        let scope_id = iface.scope_id;
         iface_build_entries.push(quote!{
             let #f = dumpster:: unsync:: Gc:: new(crate:: eval:: value:: type_source_interface:: SourceInterfaceData {
                 builtin_kind: Some(crate:: eval:: value:: type_source_interface:: BuiltinInterfaceKind::#kind,),
@@ -370,6 +381,38 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         });
         iface_result_fields.push(quote!{
             #f: #f
+        });
+        let name = iface.name;
+        iface_reg_entries.push(quote!{
+            {
+                let iface_ref = Rc:: new(SourceInterfaceRef { data: builtin_ifaces.#f });
+                let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
+                if register_v8 {
+                    let v8_val = crate:: eval:: to_v8(dynamic_scope, iface_ref.clone());
+                    dynamic_scope
+                        .get_current_context()
+                        .global(dynamic_scope)
+                        .set(
+                            dynamic_scope,
+                            v8:: String:: new(
+                                dynamic_scope,
+                                &crate:: eval:: scope_entry_id_dynamic_key(dynamic_key),
+                            )
+                            .unwrap()
+                            .cast(),
+                            v8_val.into(),
+                        );
+                }
+                let iface_const_type: Rc < dyn crate:: langhelp:: Type > =
+                    Rc:: new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
+                let ib =
+                    crate::r#gen:: aspect_initial_bind_get(xx, root_loc, iface_const_type.as_ref()).into_res()?;
+                builtin_scope_entries.push((#name.to_string(), dynamic_key, iface_const_type.clone()));
+                scope
+                    .values
+                    .borrow_mut()
+                    .insert(ConstKey:: String(#name.to_string()), ib.initial_bind(dynamic_key));
+            }
         });
         if let Some(trait_name_str) = iface.rust_trait_name {
             let trait_name = format_ident!("{}", trait_name_str);
@@ -408,6 +451,29 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             });
         }
     }
+    out.extend(quote!{
+        pub(
+            crate
+        ) fn gen_register_builtin_interfaces <'s >(
+            xx: & crate:: langhelp:: ExprContext,
+            root_loc: crate:: langhelp:: QExprId,
+            register_v8: bool,
+            dynamic_scope: & mut v8:: PinnedRef <'s,
+            v8:: HandleScope <'_ >>,
+            scope: & crate:: langhelp:: Scope,
+            builtin_scope_entries: & mut Vec <(
+                String,
+                ScopeEntryId,
+                Rc < dyn crate:: langhelp:: Type >,
+            ) >,
+            import_state: crate:: langhelp:: ImportStateId,
+        ) -> Result <(),
+        Vec < crate:: langhelp:: ExprErr >> {
+            let builtin_ifaces = crate::r#gen:: gen_build_builtin_interfaces(import_state);
+            #(#iface_reg_entries) *
+            Ok(())
+        }
+    });
     out.extend(quote!{
         #(#iface_trait_defs) * pub(crate) struct GenBuiltinInterfaces {
             #(#iface_struct_fields),

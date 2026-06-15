@@ -1344,70 +1344,15 @@ fn eval(
         &mut builtin_scope_entries,
     )?;
 
-    // Synthetic builtin interfaces: `value` and `type`. These are exposed as
-    // `Rc<SourceInterfaceRef>` so `impl_interface(value | type, ...)` accepts them
-    // through the same path as source-defined interfaces. They share a single
-    // throwaway DefinitionSet that is never compiled or serialized.
-    {
-        use value::type_source_interface::SourceInterfaceRef;
-
-        let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_state);
-        let iface_dyn_type: Rc<dyn Type> =
-            Rc::new(value::type_source_interface::dynamic::TypeSourceInterfaceDynamic);
-        for (
-            name,
-            data,
-        ) in [
-            ("value", builtin_ifaces.value),
-            ("type", builtin_ifaces.type_),
-            ("aspect_function", builtin_ifaces.aspect_function),
-            ("aspect_field", builtin_ifaces.aspect_field),
-            ("scope_entry", builtin_ifaces.scope_entry),
-            ("target", builtin_ifaces.target),
-            ("code_dyn", builtin_ifaces.code_dyn),
-        ] {
-            let iface_ref = Rc::new(SourceInterfaceRef { data });
-            let dynamic_key = ScopeEntryId::Builtin(
-                // Distinct ids per name to avoid collisions.
-                line!() as usize + match name {
-                    "value" => 0,
-                    "type" => 1,
-                    "aspect_function" => 2,
-                    "aspect_field" => 3,
-                    "scope_entry" => 4,
-                    "target" => 5,
-                    "code_dyn" => 6,
-                    _ => unreachable!(),
-                },
-            );
-            if register_v8 {
-                let v8_val = to_v8(dynamic_scope, iface_ref.clone());
-                dynamic_scope
-                    .get_current_context()
-                    .global(dynamic_scope)
-                    .set(
-                        dynamic_scope,
-                        v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                        v8_val.into(),
-                    );
-            }
-
-            // Bind each interface with the specific `Const` wrapper carrying that interface's
-            // data. `scope_use("type")` etc. plays double duty in source: it's a
-            // type-of-types value AND the iface ref that `impl_interface(<iface>, methods)`
-            // dispatches on. The Const wrapper carries the specific iface identity so the
-            // `impl_interface` lookup matches; switching to `TypeAnyDynamic` breaks
-            // `impl_interface(type, …)` and similar (see `test_00100_impl_type`).
-            let iface_const_type: Rc<dyn Type> =
-                Rc::new(value::type_source_interface::TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-            let ib = aspect_initial_bind_get(&xx, root_loc, iface_const_type.as_ref()).into_res()?;
-            builtin_scope_entries.push((name.to_string(), dynamic_key, iface_const_type.clone()));
-            scope.values.borrow_mut().insert(ConstKey::String(name.to_string()), ib.initial_bind(dynamic_key));
-        }
-
-        // unused now
-        let _ = iface_dyn_type;
-    }
+    crate::r#gen::gen_register_builtin_interfaces(
+        &xx,
+        root_loc,
+        register_v8,
+        dynamic_scope,
+        &scope,
+        &mut builtin_scope_entries,
+        import_state,
+    )?;
 
     // Type references (static scope entries, no JS representation)
     for (
