@@ -1,6 +1,14 @@
-mod buildsrc;
+pub mod buildsrc;
 
 use {
+    crate::buildsrc::util::{
+        DynWrapMethod,
+        MethodSpec,
+        RustTrait,
+        TypeRef,
+        arg_mortar_expr,
+        snake_case,
+    },
     proc_macro2::TokenStream,
     quote::{
         format_ident,
@@ -13,44 +21,6 @@ use {
         path::PathBuf,
     },
 };
-
-fn arg_mortar_expr(args: &[(&'static str, &'static str)]) -> TokenStream {
-    match args.len() {
-        0 => quote!{
-            std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic) as
-                std::rc::Rc<dyn crate::langhelp::Type>
-        },
-        1 => {
-            let ty: TokenStream = args[0].1.parse().unwrap();
-            quote!{
-                <#ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type()
-            }
-        },
-        _ => {
-            let elems: Vec<TokenStream> = args.iter().map(|(_, ty)| {
-                let ty: TokenStream = ty.parse().unwrap();
-                quote!{
-                    crate:: eval:: value:: tuple:: TupleElement:: Mortar(
-                        <#ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type(),
-                    )
-                }
-            }).collect();
-            quote!{
-                std::rc::Rc::new(crate::eval::value::tuple::Tuple {
-                    base: None,
-                    elements: vec![#(#elems), *],
-                }) as std::rc::Rc<dyn crate::langhelp::Type>
-            }
-        },
-    }
-}
-
-struct DynWrapMethod {
-    args: Vec<(&'static str, &'static str)>,
-    body: TokenStream,
-    name: &'static str,
-    ret: &'static str,
-}
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -1369,70 +1339,77 @@ fn main() {
                     },
                 }],
                 //. .
-                methods: vec![DynWrapMethod {
-                    name: "set_description",
-                    args: vec![("description", "String")],
-                    ret: "()",
-                    body: quote!{
-                        *self_.func_ref.data.description.borrow_mut() = Some(description);
+                methods: vec![
+                    //. .
+                    DynWrapMethod {
+                        name: "set_description",
+                        args: vec![("description", "String")],
+                        ret: "()",
+                        body: quote!{
+                            *self_.func_ref.data.description.borrow_mut() = Some(description);
+                        },
                     },
-                }, DynWrapMethod {
-                    name: "impl_",
-                    args: vec![("staged", "StagedExpr")],
-                    ret: "()",
-                    body: quote!{
-                        let mut impl_expr = self_.func_ref.data.impl_expr.borrow_mut();
-                        if impl_expr.is_some() {
-                            drop(impl_expr);
-                            throw_error(scope, "Function already has an implementation");
-                            return;
-                        }
-                        *impl_expr = Some(staged.0);
+                    DynWrapMethod {
+                        name: "impl_",
+                        args: vec![("staged", "StagedExpr")],
+                        ret: "()",
+                        body: quote!{
+                            let mut impl_expr = self_.func_ref.data.impl_expr.borrow_mut();
+                            if impl_expr.is_some() {
+                                drop(impl_expr);
+                                throw_error(scope, "Function already has an implementation");
+                                return;
+                            }
+                            *impl_expr = Some(staged.0);
+                        },
                     },
-                }, DynWrapMethod {
-                    name: "arg_",
-                    args: vec![("type_ref", "AnyType")],
-                    ret: "()",
-                    body: quote!{
-                        let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
-                        if arg_type.is_some() {
-                            drop(arg_type);
-                            throw_error(scope, "Function already has an arg type");
-                            return;
-                        }
-                        *arg_type = Some(type_ref.0);
+                    DynWrapMethod {
+                        name: "arg_",
+                        args: vec![("type_ref", "AnyType")],
+                        ret: "()",
+                        body: quote!{
+                            let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
+                            if arg_type.is_some() {
+                                drop(arg_type);
+                                throw_error(scope, "Function already has an arg type");
+                                return;
+                            }
+                            *arg_type = Some(type_ref.0);
+                        },
                     },
-                }, DynWrapMethod {
-                    name: "arg_type",
-                    args: vec![("iface_ref", "Rc<SourceInterfaceRef>")],
-                    ret: "()",
-                    body: quote!{
-                        let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
-                        if arg_type.is_some() {
-                            drop(arg_type);
-                            throw_error(scope, "Function already has an arg type");
-                            return;
-                        }
-                        *arg_type =
-                            Some(
-                                Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() },) as
-                                    Rc<dyn crate::langhelp::Type>
-                            );
+                    DynWrapMethod {
+                        name: "arg_type",
+                        args: vec![("iface_ref", "Rc<SourceInterfaceRef>")],
+                        ret: "()",
+                        body: quote!{
+                            let mut arg_type = self_.func_ref.data.arg_type.borrow_mut();
+                            if arg_type.is_some() {
+                                drop(arg_type);
+                                throw_error(scope, "Function already has an arg type");
+                                return;
+                            }
+                            *arg_type =
+                                Some(
+                                    Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() },) as
+                                        Rc<dyn crate::langhelp::Type>
+                                );
+                        },
                     },
-                }, DynWrapMethod {
-                    name: "ret_",
-                    args: vec![("type_ref", "AnyType")],
-                    ret: "()",
-                    body: quote!{
-                        let mut ret_type = self_.func_ref.data.ret_type.borrow_mut();
-                        if ret_type.is_some() {
-                            drop(ret_type);
-                            throw_error(scope, "Function already has a ret type");
-                            return;
-                        }
-                        *ret_type = Some(type_ref.0);
+                    DynWrapMethod {
+                        name: "ret_",
+                        args: vec![("type_ref", "AnyType")],
+                        ret: "()",
+                        body: quote!{
+                            let mut ret_type = self_.func_ref.data.ret_type.borrow_mut();
+                            if ret_type.is_some() {
+                                drop(ret_type);
+                                throw_error(scope, "Function already has a ret type");
+                                return;
+                            }
+                            *ret_type = Some(type_ref.0);
+                        },
                     },
-                }],
+                ],
             },
             DynWrapStructSpec {
                 name: "SourceNewDataMethodResult",
@@ -2846,52 +2823,4 @@ fn main() {
         });
     }
     fs::write(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("gen.rs"), fmt(out)).unwrap();
-}
-
-struct MethodSpec {
-    arg_type: TypeRef,
-    name: &'static str,
-    ret_type: TypeRef,
-    rust_trait: Option<RustTrait>,
-}
-
-struct RustTrait {
-    params: Vec<(&'static str, TokenStream)>,
-}
-
-fn snake_case(s: &str) -> String {
-    let mut out = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c.is_uppercase() && i > 0 {
-            out.push('_');
-        }
-        out.push(c.to_ascii_lowercase());
-    }
-    out
-}
-
-#[derive(Clone)]
-struct TypeRef {
-    mortar: TokenStream,
-    path: TokenStream,
-}
-
-impl TypeRef {
-    fn unit(tokens: TokenStream) -> Self {
-        TypeRef {
-            mortar: quote!{
-                std:: rc:: Rc:: new(#tokens) as std:: rc:: Rc < dyn crate:: langhelp:: Type >
-            },
-            path: tokens,
-        }
-    }
-
-    fn via_dynamic_wrap(tokens: TokenStream) -> Self {
-        TypeRef {
-            mortar: quote!{
-                <#tokens as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type()
-            },
-            path: tokens,
-        }
-    }
 }
