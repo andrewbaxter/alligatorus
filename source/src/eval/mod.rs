@@ -191,6 +191,14 @@ pub(crate) const CAST_VALUE_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(li
 /// CodeValue's code (or const value) into a JS value.
 pub(crate) const CVE_EXTRACT_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
 
+/// Well-known scope entry ID for `__cve_get_code_enum` mortar function —
+/// extracts the inner CodeValue's `Code_` enum from a CVE as a JS
+/// tagged-union object: `{<json-encoded "none">: null}` or
+/// `{<json-encoded "dyn">: <External of Rc<dyn CodeDyn>>}`. Used to
+/// materialize `TypeCodeEnumDynamic` at v8 time so source-level
+/// `cve.code.code` produces a matchable tagged-union shape.
+pub(crate) const CVE_GET_CODE_ENUM_FN_SCOPE_ID: ScopeEntryId = ScopeEntryId::Builtin(line!() as usize);
+
 /// Well-known scope entry ID for `__data_type_ref_to_type` rust-in-v8 function
 /// — `TypeSourceDataTypeRefDynamic::cast_to` (when target is `TypeAnyDynamic`
 /// or another type-of-types) emits a call to this function. It reads the
@@ -2445,6 +2453,48 @@ fn eval(
             panic!("__cve_extract: unsupported inner CV value type ({})", value_type.desc());
         }
 
+        fn cve_get_code_enum_callback<
+            's,
+        >(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            // arg(0) = the CodeValueExtern. Materializes the wrapped
+            // CodeValue's `code.code` (Code_ enum) as a JS tagged-union object
+            // — the shape `TypeCodeEnumDynamic` expects when matched in
+            // source. For `Code_::None` returns `{<"none">: null}`; for
+            // `Code_::Dyn(c)` returns `{<"dyn">: <External of Rc<dyn CodeDyn>>}`.
+            let cve_v8 = args.get(0);
+            let cve_cell: Rc<RefCell<Option<CodeValue>>> =
+                from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
+            let inner_code: crate::langhelp::Code = {
+                let guard = cve_cell.borrow();
+                let cv = guard.as_ref().expect("__cve_get_code_enum: inner CodeValue already consumed");
+                cv.code.clone()
+            };
+            let obj = v8::Object::new(scope);
+            match inner_code.code {
+                crate::langhelp::Code_::None => {
+                    let key = v8::String::new(
+                        scope,
+                        &ConstKey::String("none".to_string()).to_str(),
+                    ).unwrap();
+                    let null: v8::Local<v8::Value> = v8::null(scope).into();
+                    obj.set(scope, key.into(), null);
+                },
+                crate::langhelp::Code_::Dyn(c) => {
+                    let key = v8::String::new(
+                        scope,
+                        &ConstKey::String("dyn".to_string()).to_str(),
+                    ).unwrap();
+                    let ext = to_v8(scope, c);
+                    obj.set(scope, key.into(), ext.into());
+                },
+            }
+            rv.set(obj.into());
+        }
+
         fn cve_get_value_callback<
             's,
         >(
@@ -2628,6 +2678,18 @@ fn eval(
                         .unwrap()
                         .cast(),
                     cve_extract_fn.into(),
+                );
+            let cve_get_code_enum_fn =
+                v8::Function::builder(cve_get_code_enum_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CVE_GET_CODE_ENUM_FN_SCOPE_ID))
+                        .unwrap()
+                        .cast(),
+                    cve_get_code_enum_fn.into(),
                 );
             let value_get_type_fn =
                 v8::Function::builder(value_get_type_callback).build(dynamic_scope).unwrap();
@@ -3255,9 +3317,18 @@ fn eval(
             }
             match dynamic_scope.message().and_then(|e| e.get_line_number(&dynamic_scope)) {
                 Some(dynamic_line) => {
+                    let dl = dynamic_line as usize;
+                    let start = dl.saturating_sub(6);
+                    let end = (dl + 4).min(code1.lines.len());
+                    let mut context = String::new();
+                    for (i, line) in code1.lines[start..end].iter().enumerate() {
+                        let n = start + i + 1;
+                        let marker = if n == dl { ">>" } else { "  " };
+                        context.push_str(&format!("\n{} {}: {}", marker, n, line));
+                    }
                     Err(vec![ExprErr {
                         loc: *code1.mapping.get(&(dynamic_line as usize)).unwrap_or(&root_loc),
-                        errors: vec![ExprSubErr::Opaque(text)],
+                        errors: vec![ExprSubErr::Opaque(format!("{} (at JS line {}):{}", text, dynamic_line, context))],
                     }])
                 },
                 None => {

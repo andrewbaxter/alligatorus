@@ -280,8 +280,27 @@ impl AspectField for TypeCodeValueExternDynamic {
             // wrapped value's source-language type re-entered the same user
             // `aspect_field` impl that emitted the access.
             if key_str == "code" {
+                // Materialize the inner CodeValue's `code.code` (Code_ enum)
+                // as a tagged-union JS object via `__cve_get_code_enum`. The
+                // resulting source-level value is typed as
+                // `TypeCodeStructDynamic` (whose only `.code` field is then
+                // identity — see that file). Skips the abstract intermediate
+                // `Code` struct representation: source-level
+                // `cve.code` already produces the matchable Code_ shape.
+                let call_code = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Call(CodeDynamicCall {
+                        func: Box::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse {
+                                id: crate::eval::CVE_GET_CODE_ENUM_FN_SCOPE_ID,
+                            }),
+                        }),
+                        args: vec![self_code],
+                    }),
+                };
                 return Ok(CodeValue {
-                    code: Code { loc, code: Code_::Dyn(Rc::new(self_code)) },
+                    code: Code { loc, code: Code_::Dyn(Rc::new(call_code)) },
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic),
