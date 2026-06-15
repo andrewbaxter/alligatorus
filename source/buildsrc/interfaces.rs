@@ -1,7 +1,8 @@
 use {
     crate::buildsrc::util::{
-        MethodSpec,
-        RustTrait,
+        Method,
+        MethodArgs,
+        MethodSig,
         TypeRef,
     },
     proc_macro2::TokenStream,
@@ -32,7 +33,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         description: Option<&'static str>,
         field_prefix: &'static str,
         kind: &'static str,
-        methods: Vec<MethodSpec>,
+        methods: Vec<Method>,
         name: &'static str,
         rust_trait_name: Option<&'static str>,
     }
@@ -48,11 +49,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             rust_trait_name: None,
             methods: vec![
                 //. .
-                MethodSpec {
+                Method {
                     name: "type",
-                    arg_type: null(),
                     ret_type: any(),
-                    rust_trait: None,
+                    args: MethodArgs::Source(null()),
                 },
             ],
         },
@@ -65,41 +65,35 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             rust_trait_name: None,
             methods: vec![
                 //. .
-                MethodSpec {
+                Method {
                     name: "can_cast_from",
-                    arg_type: any(),
                     ret_type: bool_(),
-                    rust_trait: None,
+                    args: MethodArgs::Source(any()),
                 },
-                MethodSpec {
+                Method {
                     name: "cast_from",
-                    arg_type: any(),
                     ret_type: cve(),
-                    rust_trait: None,
+                    args: MethodArgs::Source(any()),
                 },
-                MethodSpec {
+                Method {
                     name: "desc",
-                    arg_type: null(),
                     ret_type: string(),
-                    rust_trait: None,
+                    args: MethodArgs::Source(null()),
                 },
-                MethodSpec {
+                Method {
                     name: "aspect",
-                    arg_type: any(),
                     ret_type: {
                         let inner_mortar = &aspect().mortar;
                         TypeRef {
                             path: quote!(crate::eval::value::type_option::dynamic::TypeOptionDynamic),
                             mortar: quote!{
-                                std:: rc:: Rc:: new(
-                                    crate:: eval:: value:: type_option:: dynamic:: TypeOptionDynamic {
-                                        element_type: #inner_mortar,
-                                    }
-                                ) as std:: rc:: Rc < dyn crate:: langhelp:: Type >
+                                std:: rc:: Rc:: new(crate:: eval:: value:: type_option:: dynamic:: TypeOptionDynamic {
+                                    element_type: #inner_mortar,
+                                }) as std:: rc:: Rc < dyn crate:: langhelp:: Type >
                             },
                         }
                     },
-                    rust_trait: None,
+                    args: MethodArgs::Source(any()),
                 },
             ],
         },
@@ -110,33 +104,30 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             kind: "AspectFunction",
             description: None,
             rust_trait_name: None,
-            methods: vec![MethodSpec {
+            methods: vec![Method {
                 name: "call",
-                arg_type: any(),
                 ret_type: cve(),
-                rust_trait: None,
+                args: MethodArgs::Source(any()),
             }],
         },
         InterfaceSpec {
             name: "aspect_field",
-            builtin_unique_id: 1015,
+            builtin_unique_id: 1030,
             field_prefix: "afd",
             kind: "AspectField",
             description: None,
             rust_trait_name: None,
             methods: vec![
                 //. .
-                MethodSpec {
+                Method {
                     name: "field",
-                    arg_type: any(),
                     ret_type: cve(),
-                    rust_trait: None,
+                    args: MethodArgs::Source(any()),
                 },
-                MethodSpec {
+                Method {
                     name: "field_type_opt",
-                    arg_type: any(),
                     ret_type: any(),
-                    rust_trait: None,
+                    args: MethodArgs::Source(any()),
                 },
             ],
         },
@@ -147,16 +138,16 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             kind: "ScopeEntry",
             description: None,
             rust_trait_name: Some("ScopeEntry"),
-            methods: vec![MethodSpec {
+            methods: vec![Method {
                 name: "use_",
-                arg_type: any(),
                 ret_type: TypeRef::via_dynamic_wrap(quote!(crate::langhelp::CodeValue)),
-                rust_trait: Some(RustTrait { params: vec![
-                    //. .
-                    ("xx", quote!(&crate::langhelp::ExprContext)),
-                    ("loc", quote!(crate::langhelp::QExprId)),
-                    ("code", quote!(crate::langhelp::Code)),
-                ] }),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![
+                        ("xx", quote!(&crate::langhelp::ExprContext)),
+                        ("loc", quote!(crate::langhelp::QExprId)),
+                    ],
+                    data: vec![("code", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code)))],
+                }),
             }],
         },
         InterfaceSpec {
@@ -168,110 +159,106 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             rust_trait_name: Some("Target"),
             methods: vec![
                 //. .
-                MethodSpec {
+                Method {
                     name: "bind",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId)),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("xx", quote!(&crate::langhelp::ExprContext)),
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                ("sub", quote!(crate::eval::TargetBindSub)),
-                            ],
-                        },
-                    ),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                        ],
+                        data: vec![("sub", TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)))],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "bind_sub_record",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)),
-                    rust_trait: Some(RustTrait { params: vec![
-                        //. .
-                        ("loc", quote!(crate::langhelp::QExprId)),
-                        ("carry", quote!(crate::langhelp::Code)),
-                        ("fields", quote!(Vec <(crate::langhelp::ConstKey, crate::eval::TargetBindSub) >)),
-                    ] }),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                        data: vec![
+                            ("carry", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code))),
+                            (
+                                "fields",
+                                TypeRef::opaque(
+                                    quote!(Vec <(crate::langhelp::ConstKey, crate::eval::TargetBindSub) >),
+                                ),
+                            ),
+                        ],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "bind_sub_tuple",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)),
-                    rust_trait: Some(RustTrait { params: vec![
-                        //. .
-                        ("loc", quote!(crate::langhelp::QExprId)),
-                        ("carry", quote!(crate::langhelp::Code)),
-                        ("elements", quote!(Vec < crate:: eval:: TargetBindSub >)),
-                    ] }),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                        data: vec![
+                            ("carry", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code))),
+                            ("elements", TypeRef::opaque(quote!(Vec < crate:: eval:: TargetBindSub >))),
+                        ],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "block",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                ("entries", quote!(Vec < crate:: langhelp:: Code >)),
-                            ],
-                        },
-                    ),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                        data: vec![("entries", TypeRef::opaque(quote!(Vec < crate:: langhelp:: Code >)))],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "code_to_bind_sub",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!(crate:: langhelp:: EResult < crate:: eval:: TargetBindSub >),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                ("code", quote!(crate::langhelp::Code)),
-                                ("type_", quote!(std:: rc:: Rc < dyn crate:: langhelp:: Type >)),
-                            ],
-                        },
-                    ),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                        data: vec![
+                            ("code", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code))),
+                            ("type_", TypeRef::opaque(quote!(std:: rc:: Rc < dyn crate:: langhelp:: Type >))),
+                        ],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "if_",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("xx", quote!(&crate::langhelp::ExprContext)),
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                (
-                                    "conditions",
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                        ],
+                        data: vec![
+                            (
+                                "conditions",
+                                TypeRef::opaque(
                                     quote!(Vec <(crate::langhelp::CodeValue, &crate::eval::expr::Expr) >),
                                 ),
-                                ("else_", quote!(Option <& crate:: eval:: expr:: Expr >)),
-                            ],
-                        },
-                    ),
+                            ),
+                            ("else_", TypeRef::opaque(quote!(Option <& crate:: eval:: expr:: Expr >))),
+                        ],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "match_",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("xx", quote!(&crate::langhelp::ExprContext)),
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                ("base", quote!(crate::langhelp::CodeValue)),
-                                ("element_key", quote!(crate::langhelp::ConstKey)),
-                                (
-                                    "cases",
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                        ],
+                        data: vec![
+                            ("base", TypeRef::opaque(quote!(crate::langhelp::CodeValue))),
+                            ("element_key", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::ConstKey))),
+                            (
+                                "cases",
+                                TypeRef::opaque(
                                     quote!(
                                         Vec <(
                                             String,
@@ -280,43 +267,39 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                                         ) >
                                     ),
                                 ),
-                                ("fallback", quote!(Option <& crate:: eval:: expr:: Expr >)),
-                            ],
-                        },
-                    ),
+                            ),
+                            ("fallback", TypeRef::opaque(quote!(Option <& crate:: eval:: expr:: Expr >))),
+                        ],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "maybe_bind_sub",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!(crate:: langhelp:: EResult < Option < crate:: eval:: TargetBindSub >>),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("xx", quote!(&crate::langhelp::ExprContext)),
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                ("cv", quote!(crate::langhelp::CodeValue)),
-                            ],
-                        },
-                    ),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                        ],
+                        data: vec![("cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue)))],
+                    }),
                 },
-                MethodSpec {
+                Method {
                     name: "stage",
-                    arg_type: any(),
                     ret_type: TypeRef::via_dynamic_wrap(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
                     ),
-                    rust_trait: Some(
-                        RustTrait {
-                            params: vec![
-                                ("xx", quote!(&crate::langhelp::ExprContext)),
-                                ("loc", quote!(crate::langhelp::QExprId)),
-                                ("tree", quote!(crate::eval::expr::Expr)),
-                                ("lower_values", quote!(Vec < crate:: langhelp:: CodeValue >)),
-                            ],
-                        },
-                    ),
+                    args: MethodArgs::Rust(MethodSig {
+                        context: vec![
+                            ("xx", quote!(&crate::langhelp::ExprContext)),
+                            ("loc", quote!(crate::langhelp::QExprId)),
+                        ],
+                        data: vec![
+                            ("tree", TypeRef::via_dynamic_wrap(quote!(crate::eval::expr::Expr))),
+                            ("lower_values", TypeRef::opaque(quote!(Vec < crate:: langhelp:: CodeValue >))),
+                        ],
+                    }),
                 },
             ],
         },
@@ -341,12 +324,19 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         let methods_expr_items: Vec<TokenStream> = iface.methods.iter().enumerate().map(|(idx, m)| {
             let name = m.name;
             let field_name = format!("_im_{}{}", prefix, idx);
-            let arg = &m.arg_type.mortar;
+            let arg_mortar = match &m.args {
+                MethodArgs::Source(t) => t.mortar.clone(),
+                MethodArgs::Rust(rs) => {
+                    let mortars: Vec<TokenStream> =
+                        rs.data.iter().map(|(_, t)| t.mortar.clone()).collect();
+                    crate::buildsrc::util::arg_mortar_expr(&mortars)
+                },
+            };
             let ret = &m.ret_type.mortar;
             quote!{
                 crate:: eval:: value:: type_source_interface:: SourceInterfaceMethodData {
                     name: #name.to_string(),
-                    arg_type: std:: cell:: RefCell:: new(Some(#arg)),
+                    arg_type: std:: cell:: RefCell:: new(Some(#arg_mortar)),
                     ret_type: std:: cell:: RefCell:: new(Some(#ret)),
                     field_name: #field_name.to_string(),
                 }
@@ -368,18 +358,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         assert!(builtin_unique_ids.insert(iface.builtin_unique_id));
         let builtin_unique_id = iface.builtin_unique_id;
         iface_build_entries.push(quote!{
-            let #f = dumpster:: unsync:: Gc:: new(
-                crate:: eval:: value:: type_source_interface:: SourceInterfaceData {
-                    builtin_kind: Some(
-                        crate:: eval:: value:: type_source_interface:: BuiltinInterfaceKind::#kind,
-                    ),
-                    set: builtin_def_set.clone(),
-                    description: std:: cell:: RefCell:: new(Some(#description.to_string())),
-                    is_aspect: std:: cell:: Cell:: new(false),
-                    methods: std:: cell:: RefCell:: new(#methods_expr),
-                    identity: crate:: langhelp:: Unique:: Builtin(#builtin_unique_id),
-                },
-            );
+            let #f = dumpster:: unsync:: Gc:: new(crate:: eval:: value:: type_source_interface:: SourceInterfaceData {
+                builtin_kind: Some(crate:: eval:: value:: type_source_interface:: BuiltinInterfaceKind::#kind,),
+                set: builtin_def_set.clone(),
+                description: std:: cell:: RefCell:: new(Some(#description.to_string())),
+                is_aspect: std:: cell:: Cell:: new(false),
+                methods: std:: cell:: RefCell:: new(#methods_expr),
+                identity: crate:: langhelp:: Unique:: Builtin(#builtin_unique_id),
+            },);
             builtin_def_set.interfaces.borrow_mut().push(#f.clone());
         });
         iface_result_fields.push(quote!{
@@ -388,18 +374,28 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         if let Some(trait_name_str) = iface.rust_trait_name {
             let trait_name = format_ident!("{}", trait_name_str);
             let methods: Vec<TokenStream> = iface.methods.iter().filter_map(|m| {
-                let rt = m.rust_trait.as_ref()?;
+                let rs = match &m.args {
+                    MethodArgs::Rust(rs) => rs,
+                    MethodArgs::Source(_) => return None,
+                };
                 let method_name = format_ident!("{}", if m.name == "type" {
                     "type_"
                 } else {
                     m.name
                 });
-                let params: Vec<TokenStream> = rt.params.iter().map(|(n, ty)| {
-                    let name = format_ident!("{}", n);
-                    quote!{
-                        #name: #ty
-                    }
-                }).collect();
+                let params: Vec<TokenStream> =
+                    rs
+                        .context
+                        .iter()
+                        .map(|(n, ty)| (n, ty.clone()))
+                        .chain(rs.data.iter().map(|(n, t)| (n, t.path.clone())))
+                        .map(|(n, ty)| {
+                            let name = format_ident!("{}", n);
+                            quote!{
+                                #name: #ty
+                            }
+                        })
+                        .collect();
                 let ret = &m.ret_type.path;
                 Some(quote!{
                     fn #method_name(&self, #(#params), *) -> #ret;

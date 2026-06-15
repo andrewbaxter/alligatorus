@@ -1,7 +1,7 @@
 use {
     crate::buildsrc::util::{
         DynWrapMethod,
-        arg_mortar_expr,
+        arg_mortar_expr_str,
         snake_case,
     },
     proc_macro2::TokenStream,
@@ -136,7 +136,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         let method_dispatch_arms: Vec<TokenStream> = s.methods.iter().enumerate().map(|(idx, m)| {
             let m_name = m.name;
             let idx_str = format!("_{}", idx);
-            let arg_mortar = arg_mortar_expr(&m.args);
+            let arg_mortar = arg_mortar_expr_str(&m.args);
             let m_ret: TokenStream = m.ret.parse().unwrap();
             quote!{
                 if key_name == crate:: eval:: dynamic_wrap:: dynamic_wrap_method_name(#m_name) {
@@ -173,7 +173,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         }).collect();
         let field_type_opt_arms: Vec<TokenStream> = s.methods.iter().map(|m| {
             let m_name = m.name;
-            let arg_mortar = arg_mortar_expr(&m.args);
+            let arg_mortar = arg_mortar_expr_str(&m.args);
             let m_ret: TokenStream = m.ret.parse().unwrap();
             quote!{
                 if key.as_str() == crate:: eval:: dynamic_wrap:: dynamic_wrap_method_name(#m_name) {

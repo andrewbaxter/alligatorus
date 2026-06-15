@@ -1,5 +1,5 @@
 use {
-    crate::buildsrc::util::arg_mortar_expr,
+    crate::buildsrc::util::arg_mortar_expr_str,
     proc_macro2::TokenStream,
     quote::{
         format_ident,
@@ -200,7 +200,7 @@ pub fn build(out: &mut TokenStream) {
         let name_str = s.name;
         let builtin_scope_id = s.builtin_scope_id;
         assert!(builtin_scope_ids.insert(builtin_scope_id));
-        let arg_mortar = arg_mortar_expr(&s.args);
+        let arg_mortar = arg_mortar_expr_str(&s.args);
         let arg_decls: Vec<TokenStream> = s.args.iter().map(|(n, ty)| {
             let n = format_ident!("{}", n);
             let ty: TokenStream = ty.parse().unwrap();
