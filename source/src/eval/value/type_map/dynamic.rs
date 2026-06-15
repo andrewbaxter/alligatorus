@@ -282,9 +282,11 @@ impl crate::eval::dynamic_wrap::DynamicWrap for TypeMapDynamic {
 
 impl Type for TypeMapDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMapDynamic {
-            key_type: self.key_type.clone(),
-            value_type: self.value_type.clone(),
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeMapDynamic {
+                key_type: self.key_type.clone(),
+                value_type: self.value_type.clone(),
+            }),
         })
     }
 

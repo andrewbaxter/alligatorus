@@ -128,7 +128,15 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
 
 impl Type for TypeSourceInterfaceDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeSourceInterfaceDynamic)
+        // Single-rep invariant: a value with type `TypeAnyConst` is a
+        // `ValueAnyConst { inner }`; the inner is the actual Type.
+        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
+            inner: Rc::new(TypeSourceInterfaceDynamic),
+        })
+    }
+
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceInterfaceDynamic))
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

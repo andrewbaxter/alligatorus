@@ -48,6 +48,31 @@ use crate::r#gen::interface_const_identity;
 
 impl Aspect for TypeSourceInterfaceConst { }
 
+impl crate::r#gen::AspectArtifact for TypeSourceInterfaceConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        // Builtin interfaces deserialize via `TypeSourceInterfaceConstArtifact`'s
+        // `Deserializer` (registered in `artifact.rs`). `from_serial` here is
+        // unreachable on the literal-deserialization path; non-builtin
+        // interfaces aren't yet artifact-serializable.
+        EvalRes::err(loc, "TypeSourceInterfaceConst::from_serial: handled via Deserializer registry".to_string())
+    }
+
+    fn to_serial(&self, _xx: &ExprContext, loc: QExprId, _value: Rc<dyn Value>) -> EResult<crate::langhelp::Artifact> {
+        // Only builtin interfaces are serializable for now (round-tripped
+        // via their `BuiltinInterfaceKind` and rebuilt by
+        // `gen_build_builtin_interfaces` on deserialize).
+        match self.data.builtin_kind {
+            Some(kind) => EResult::ok(
+                super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind),
+            ),
+            None => EResult::err(
+                loc,
+                format!("TypeSourceInterfaceConst::to_serial: non-builtin interfaces not yet artifact-serializable"),
+            ),
+        }
+    }
+}
+
 impl crate::r#gen::AspectAspect for TypeSourceInterfaceConst {
     fn get_unique(&self, _value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
         self.data.identity.clone()
@@ -209,6 +234,12 @@ impl Type for TypeSourceInterfaceConst {
             return Some(Box::new(
                 Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
                     as Box<dyn crate::r#gen::AspectAspect>,
+            ));
+        }
+        if *key == crate::r#gen::aspect_artifact_aspect_id() {
+            return Some(Box::new(
+                Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
+                    as Box<dyn crate::r#gen::AspectArtifact>,
             ));
         }
         if *key == aspect_field_aspect_id() {

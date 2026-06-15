@@ -61,6 +61,37 @@ impl AspectType for TypeAnyConst {
     }
 }
 
+impl crate::r#gen::AspectArtifact for TypeAnyConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> crate::langhelp::EvalRes {
+        // Round-trip happens via the inner type's deserializer (the literal
+        // artifact carries the inner type's `type_id`, so the dispatcher
+        // routes to it directly). `from_serial` on `TypeAnyConst` itself
+        // isn't on the literal-deserialization path.
+        crate::langhelp::EvalRes::err(
+            loc,
+            "TypeAnyConst::from_serial: routed via inner type's deserializer".to_string(),
+        )
+    }
+
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        value: Rc<dyn Value>,
+    ) -> crate::langhelp::EResult<crate::langhelp::Artifact> {
+        // Per single-rep invariant, a value with type `TypeAnyConst` IS a
+        // `ValueAnyConst { inner: Rc<dyn Type> }`. Delegate serialization
+        // to the inner type's own `AspectArtifact::to_serial`.
+        let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(value.as_ref());
+        let inner_type = wrapper.inner.clone();
+        let inner_aspect = match crate::r#gen::aspect_artifact_get(xx, loc, inner_type.as_ref()).into_res() {
+            Ok(a) => a,
+            Err(e) => return crate::langhelp::EResult { v: None, errors: Some(e) },
+        };
+        inner_aspect.to_serial(xx, loc, value)
+    }
+}
+
 /// Field access on a type-of-types value (`list(string).new`, `option.some`,
 /// etc.) — extract the inner type via `AspectType` and delegate to its
 /// `AspectField`. Receiver passed down is the original `cv` (so the inner
@@ -196,6 +227,9 @@ impl Type for TypeAnyConst {
         }
         if *key == crate::r#gen::aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectFunction>));
+        }
+        if *key == crate::r#gen::aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectArtifact>));
         }
         None
     }
