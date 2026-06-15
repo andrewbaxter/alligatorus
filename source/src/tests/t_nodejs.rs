@@ -141,7 +141,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.call(
             mb.field(mb.scope_use("acn_to_code"), mb.str("ret")),
-            mb.scope_use("any"),
+            mb.field(mb.scope_use("code"), mb.str("type")),
         ),
     );
 
@@ -259,7 +259,15 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                     ),
                                 ),
                             ),
-                            (mb.str("none"), mb.scope_use("null")),
+                            // none case: no `aspect_consume_nodejs` on the
+                            // arg's type. Helloworld doesn't hit this — the
+                            // arg is a string and nstring impls the aspect.
+                            // Return a placeholder `code.lit_str("")` so the
+                            // match arms are type-consistent.
+                            (mb.str("none"), mb.call(
+                                mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
+                                mb.str(""),
+                            )),
                         ],
                         None,
                     ),
