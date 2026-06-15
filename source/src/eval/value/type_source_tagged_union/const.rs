@@ -198,28 +198,6 @@ impl Type for TypeSourceTaggedUnionConst {
         })
     }
 
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
-    }
-
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
-            // The tagged-union ref's v8 form is the runtime ref carried by
-            // `TypeSourceTaggedUnionRefDynamic`. Re-type the cv and delegate
-            // — that type's `cast_to(any)` emits `__tagged_union_ref_to_type`
-            // to wrap as `Rc<dyn Type>` at v8.
-            let dyn_cv = CodeValue {
-                code: cv.code,
-                value: Rc::new(ValueDynamic {
-                    source: ValueDynamicSource::Expr,
-                    type_: Rc::new(super::dynamic::TypeSourceTaggedUnionRefDynamic),
-                }),
-            };
-            return super::dynamic::TypeSourceTaggedUnionRefDynamic.cast_to(xx, loc, dyn_cv, type_);
-        }
-        EvalRes::err(loc, format!("Cannot convert tagged_union"))
-    }
-
     fn desc(&self) -> String {
         format!("tagged_union")
     }
