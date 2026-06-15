@@ -391,8 +391,8 @@ impl Type for TypeCodeValueExternDynamic {
         Rc::new(TypeCodeValueExternDynamic)
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<crate::langhelp::Artifact> {
-        Some(Self::build_type_artifact())
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+        Self::build_type_artifact()
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

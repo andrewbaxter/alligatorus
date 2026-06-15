@@ -482,14 +482,14 @@ impl Type for Tuple {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         let mut elements_serial: Vec<crate::langhelp::Artifact> = Vec::new();
         for elem in &self.elements {
             let elem_type = match elem {
                 TupleElement::Mortar(t) => t.clone(),
                 TupleElement::EvalRes(er) => match &er.v {
                     Some(cv) => cv.value.type_(xx, loc),
-                    None => return None,
+                    None => panic!("Tuple::type_to_serial: element has no value"),
                 },
             };
             let elem_artifact =
@@ -501,9 +501,9 @@ impl Type for Tuple {
             elements_serial.push(elem_artifact);
         }
         let payload = artifact::ArtifactTupleType { elements: elements_serial };
-        Some(artifact::TypeTupleArtifact::build_artifact(
+        artifact::TypeTupleArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize tuple type"),
-        ))
+        )
     }
 }
 

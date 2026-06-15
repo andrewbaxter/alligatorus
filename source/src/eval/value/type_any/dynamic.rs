@@ -284,8 +284,8 @@ impl Type for TypeAnyDynamic {
         &self,
         _xx: &ExprContext,
         _loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
-        Some(super::r#const::TypeAnyConst::build_type_artifact())
+    ) -> crate::langhelp::Artifact {
+        super::r#const::TypeAnyConst::build_type_artifact()
     }
 }
 

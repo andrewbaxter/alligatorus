@@ -92,8 +92,8 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
         "definition_set_data_type_constructor_type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::build_type_artifact())
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
+        Self::build_type_artifact()
     }
 }
 

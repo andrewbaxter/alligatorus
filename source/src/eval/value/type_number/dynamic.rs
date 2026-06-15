@@ -351,8 +351,8 @@ impl Type for TypeNumberDynamic {
         return format!("mortar number");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<crate::langhelp::Artifact> {
-        Some(Self::build_type_artifact())
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+        Self::build_type_artifact()
     }
 }
 

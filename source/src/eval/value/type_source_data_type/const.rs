@@ -603,6 +603,16 @@ impl Type for TypeSourceDataTypeConst {
             None => format!("data_type({})", self.data.name.as_deref().unwrap_or("?")),
         }
     }
+
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
+        crate::eval::definition_set::serialize_definition_set(xx, loc, &self.data.set);
+        let artifact_id = self.data.artifact_id.borrow().clone()
+            .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
+        crate::langhelp::Artifact {
+            type_: artifact_id,
+            data: serde_json::Value::Null,
+        }
+    }
 }
 
 impl Value for TypeSourceDataTypeConst {

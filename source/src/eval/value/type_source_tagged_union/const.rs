@@ -206,11 +206,11 @@ impl Type for TypeSourceTaggedUnionConst {
         &self,
         _xx: &ExprContext,
         _loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         // For now we serialize via the ref-form deserializer (loses the specific
         // tagged-union's variants/identity at round-trip; proper per-tagged-union
         // artifact would mirror the per-data-type artifact pattern).
-        Some(super::dynamic::TypeSourceTaggedUnionRefDynamic::build_type_artifact())
+        super::dynamic::TypeSourceTaggedUnionRefDynamic::build_type_artifact()
     }
 }
 

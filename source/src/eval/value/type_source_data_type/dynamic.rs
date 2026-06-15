@@ -230,8 +230,8 @@ impl Type for TypeSourceDataTypeRefDynamic {
         &self,
         _xx: &ExprContext,
         _loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
-        Some(Self::build_type_artifact())
+    ) -> crate::langhelp::Artifact {
+        Self::build_type_artifact()
     }
 }
 
@@ -665,13 +665,14 @@ impl Type for TypeUserDefined {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         crate::eval::definition_set::serialize_definition_set(xx, loc, &self.data.set);
-        let artifact_id = self.data.artifact_id.borrow().clone()?;
-        Some(crate::langhelp::Artifact {
+        let artifact_id = self.data.artifact_id.borrow().clone()
+            .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
+        crate::langhelp::Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
-        })
+        }
     }
 }
 
@@ -1025,14 +1026,15 @@ impl Type for TypeSourceDataTypeDynamic {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         let data = &self.data;
         crate::eval::definition_set::serialize_definition_set(xx, loc, &data.set);
-        let artifact_id = data.artifact_id.borrow().clone()?;
-        Some(crate::langhelp::Artifact {
+        let artifact_id = data.artifact_id.borrow().clone()
+            .expect("type_to_serial: data type artifact_id not set");
+        crate::langhelp::Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
-        })
+        }
     }
 }
 

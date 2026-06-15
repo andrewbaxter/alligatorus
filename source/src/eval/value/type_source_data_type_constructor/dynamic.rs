@@ -119,18 +119,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
 
 // --- Conversion helpers ---
 pub(crate) fn serialize_type_ref(xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> Artifact {
-    if let Some(artifact) = type_.type_to_serial(xx, loc) {
-        return artifact;
-    }
-    let type_type = type_.type_(xx, loc);
-    let aspect =
-        crate::r#gen::aspect_artifact_get_maybe(
-            xx,
-            type_type.as_ref(),
-        ).unwrap_or_else(|| panic!("Type ({}) type-type missing AspectArtifact", type_.desc()));
-    aspect.to_serial(xx, loc, type_.as_value()).into_res().unwrap_or_else(|e| {
-        panic!("Failed to serialize type ref for {}: {:?}", type_.desc(), e)
-    })
+    type_.type_to_serial(xx, loc)
 }
 
 // --- TypeSourceDataTypeConstructorDynamic: eval_half type during JS execution ---

@@ -475,7 +475,7 @@ impl Type for TypeMapDynamic {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         let key_artifact =
             crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
                 xx,
@@ -492,9 +492,9 @@ impl Type for TypeMapDynamic {
             key_type: key_artifact,
             value_type: value_artifact,
         };
-        Some(crate::eval::value::type_map::artifact::TypeMapArtifact::build_artifact(
+        crate::eval::value::type_map::artifact::TypeMapArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize map type"),
-        ))
+        )
     }
 }
 

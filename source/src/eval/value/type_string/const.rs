@@ -159,8 +159,8 @@ impl Type for TypeStringConst {
         return format!("string");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
-        Some(Self::build_type_artifact())
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
+        Self::build_type_artifact()
     }
 }
 

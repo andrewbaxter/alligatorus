@@ -81,8 +81,13 @@ pub(crate) trait Type: Value {
     fn desc(&self) -> String;
 
     /// Serialize this type itself as an artifact (for type references).
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Option<Artifact> {
-        None
+    /// Required — every type that participates in the language must be
+    /// representable as a structural artifact. The aspect-based path
+    /// (`AspectArtifact`) is for serializing *values* of this type and is
+    /// a separate concern. The default impl panics; types must provide a
+    /// real one. (Task #52: ~50 types still need to override this.)
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
+        panic!("type_to_serial not implemented for {}", self.desc())
     }
 }
 
@@ -439,6 +444,7 @@ pub(crate) fn make_builtin_deserializers()
     crate::eval::value::type_source_function::artifact::register(&mut m);
     crate::eval::value::record::artifact::register(&mut m);
     crate::eval::value::tuple::artifact::register(&mut m);
+    crate::eval::value::type_list::artifact::register(&mut m);
     crate::eval::value::type_map::artifact::register(&mut m);
     crate::eval::value::type_option::artifact::register(&mut m);
     crate::eval::value::type_source_data_type::artifact::register(&mut m);

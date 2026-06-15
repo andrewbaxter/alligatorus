@@ -591,7 +591,7 @@ impl Type for Record {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         let mut fields_serial: std::collections::BTreeMap<ConstKey, crate::langhelp::Artifact> =
             std::collections::BTreeMap::new();
         for (key, field) in &self.fields {
@@ -599,7 +599,7 @@ impl Type for Record {
                 RecordField::Mortar(t) => t.clone(),
                 RecordField::EvalRes(er) => match &er.v {
                     Some(cv) => cv.value.type_(xx, loc),
-                    None => return None,
+                    None => panic!("Record::type_to_serial: field '{:?}' has no value", key),
                 },
             };
             let field_artifact =
@@ -611,9 +611,9 @@ impl Type for Record {
             fields_serial.insert(key.clone(), field_artifact);
         }
         let payload = artifact::ArtifactRecordType { fields: fields_serial };
-        Some(artifact::TypeRecordArtifact::build_artifact(
+        artifact::TypeRecordArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize record type"),
-        ))
+        )
     }
 }
 

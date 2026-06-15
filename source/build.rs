@@ -651,6 +651,13 @@ fn artifact_ids() -> Vec<ArtifactSpec> {
             data_type: Some("f64"),
             register: true,
         },
+        ArtifactSpec {
+            name: "type_list_artifact",
+            id: 7021,
+            type_path: Some("crate::eval::value::type_list::artifact::TypeListArtifact"),
+            data_type: Some("crate::eval::value::type_list::artifact::ArtifactListType"),
+            register: false,
+        },
     ]
 }
 

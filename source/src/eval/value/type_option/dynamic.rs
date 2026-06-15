@@ -239,7 +239,7 @@ impl Type for TypeOptionDynamic {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
+    ) -> crate::langhelp::Artifact {
         let elem_artifact =
             crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
                 xx,
@@ -249,9 +249,9 @@ impl Type for TypeOptionDynamic {
         let payload = crate::eval::value::type_option::artifact::ArtifactOptionType {
             element_type: elem_artifact,
         };
-        Some(crate::eval::value::type_option::artifact::TypeOptionArtifact::build_artifact(
+        crate::eval::value::type_option::artifact::TypeOptionArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize option type"),
-        ))
+        )
     }
 }
 

@@ -308,6 +308,19 @@ impl Type for TypeListDynamic {
     fn desc(&self) -> String {
         format!("list({})", self.element_type.desc())
     }
+
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
+        let elem_artifact =
+            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+                xx,
+                loc,
+                self.element_type.as_ref(),
+            );
+        let payload = crate::eval::value::type_list::artifact::ArtifactListType {
+            element_type: elem_artifact,
+        };
+        crate::eval::value::type_list::artifact::TypeListArtifact::build_artifact(payload)
+    }
 }
 
 impl Value for TypeListDynamic {

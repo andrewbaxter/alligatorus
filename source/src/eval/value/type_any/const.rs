@@ -283,8 +283,8 @@ impl Type for TypeAnyConst {
         &self,
         _xx: &ExprContext,
         _loc: QExprId,
-    ) -> Option<crate::langhelp::Artifact> {
-        Some(Self::build_type_artifact())
+    ) -> crate::langhelp::Artifact {
+        Self::build_type_artifact()
     }
 }
 
