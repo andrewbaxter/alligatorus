@@ -725,6 +725,18 @@ impl Type for TypeSourceDataTypeDynamic {
                 return true;
             }
         }
+        // Polymorphic interface ref (e.g. `definition_set_interface_ref`):
+        // the map(string, type) value-type ends up generalised to the
+        // dynamic ref form after going through `AnyType`. Same constraint
+        // as the `type_type_identity` case below — only castable when this
+        // data type acts as a type (impls the `type` interface), since the
+        // wrapping produces a `Rc<dyn Type>` at v8.
+        if type_.aspect(xx, &crate::r#gen::interface_ref_type_identity()).is_some() {
+            return data.interface_impls.borrow().iter().any(|impl_data| {
+                impl_data.interface.builtin_kind
+                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+            });
+        }
         if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
             // Only castable to `any` when this data type implements the
             // `type` interface — instances of non-type data types are JS
@@ -759,6 +771,63 @@ impl Type for TypeSourceDataTypeDynamic {
                     type_: Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() }),
                 }),
             });
+        }
+        // Polymorphic interface ref (e.g. `definition_set_interface_ref`):
+        // same wrapping as the `type_type_identity` case below — emit
+        // `__data_instance_to_type` to produce a `Rc<dyn Type>` v8
+        // external (specifically a `TypeSourceDataTypeConst`). The result
+        // CV is typed as `TypeSourceInterfaceRefDynamic` so downstream
+        // typecheck sees the iface ref form.
+        if type_.aspect(xx, &crate::r#gen::interface_ref_type_identity()).is_some() {
+            let has_type_impl = data.interface_impls.borrow().iter().any(|impl_data| {
+                impl_data.interface.builtin_kind
+                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+            });
+            if has_type_impl {
+                let source_code = match cv.code.cast::<CodeDynamic>() {
+                    crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+                    _ => return EvalRes::err(
+                        loc,
+                        format!("cast {} → interface_ref: source has no runtime code", self.desc()),
+                    ),
+                };
+                let template: Rc<dyn Type> =
+                    Rc::new(crate::eval::value::type_source_data_type::TypeSourceDataTypeConst {
+                        data: self.data.clone(),
+                    });
+                let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                xx.vx.externals.borrow_mut().push((
+                    template_id,
+                    crate::langhelp::External::Type(template),
+                ));
+                let template_code = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(
+                        crate::code_dynamic::CodeDynamicBindingUse { id: template_id },
+                    ),
+                };
+                let call = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+                        func: Box::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(
+                                crate::code_dynamic::CodeDynamicBindingUse {
+                                    id: crate::eval::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
+                                },
+                            ),
+                        }),
+                        args: vec![template_code, source_code],
+                    }),
+                };
+                return EvalRes::ok(CodeValue {
+                    code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
+                    value: Rc::new(ValueDynamic {
+                        source: ValueDynamicSource::Expr,
+                        type_: Rc::new(crate::eval::value::type_source_interface::dynamic::TypeSourceInterfaceDynamic),
+                    }),
+                });
+            }
         }
         // Check `any` BEFORE the interface_impls loop: if dest is the source
         // `any` builtin and this data type acts as a type (impls the `type`
