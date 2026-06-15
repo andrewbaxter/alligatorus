@@ -99,6 +99,21 @@ impl AspectLiftDynamic for TypeAspectDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeAspectDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> =
+            crate::eval::from_v8_ref::<
+                Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>,
+            >(&*value).clone();
+        Ok(aspect)
+    }
+}
+
 impl Type for TypeAspectDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAspectDynamic)
@@ -126,6 +141,9 @@ impl Type for TypeAspectDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectInitialBind>));

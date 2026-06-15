@@ -320,6 +320,22 @@ impl Type for Tuple {
             }).collect();
             return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftDynamic>));
         }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            let element_lowers: Vec<Box<dyn crate::r#gen::AspectLowerDynamic>> = self.elements.iter().map(|e| {
+                let t = match e {
+                    TupleElement::Mortar(t) => t.clone(),
+                    TupleElement::EvalRes(_) => panic!("lower on non-type tuple"),
+                };
+                let a =
+                    t
+                        .aspect(_xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
+                        .expect(&format!("Tuple element type ({}) missing AspectLowerDynamic", t.desc()));
+                must_downcast_box::<Box<dyn crate::r#gen::AspectLowerDynamic>>(a)
+            }).collect();
+            return Some(
+                Box::new(Box::new(TupleLowerJs { element_lowers }) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+            );
+        }
         return None;
     }
 
@@ -572,6 +588,39 @@ impl AspectLiftDynamic for TupleLiftJs {
                     code: Code_::None,
                 },
                 value: lifted,
+            })));
+        }
+        Ok(Rc::new(Tuple {
+            base: None,
+            elements: elements,
+        }))
+    }
+}
+
+struct TupleLowerJs {
+    element_lowers: Vec<Box<dyn crate::r#gen::AspectLowerDynamic>>,
+}
+
+impl Aspect for TupleLowerJs { }
+
+impl crate::r#gen::AspectLowerDynamic for TupleLowerJs {
+    fn lower(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lower");
+        let mut elements = Vec::new();
+        for (i, elem_lower) in self.element_lowers.iter().enumerate() {
+            let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lower");
+            let lowered = elem_lower.lower(xx, scope, elem_v8)?;
+            elements.push(TupleElement::EvalRes(EvalRes::ok(CodeValue {
+                code: Code {
+                    loc: (SourceId(0), ExprId(0)),
+                    code: Code_::None,
+                },
+                value: lowered,
             })));
         }
         Ok(Rc::new(Tuple {

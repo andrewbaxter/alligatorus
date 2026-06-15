@@ -99,6 +99,19 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionRefDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionRefDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let tu_ref: &Rc<super::SourceTaggedUnionRef> = from_v8_ref(&value);
+        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: tu_type }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceTaggedUnionRefDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -138,6 +151,9 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn AspectStackValueDynamic>));
@@ -282,6 +298,20 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
+        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: mortar.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: tu_type }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceTaggedUnionDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -335,6 +365,14 @@ impl Type for TypeSourceTaggedUnionDynamic {
                 Box::new(
                     Box::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }) as
                         Box<dyn AspectStackValueDynamic>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() })
+                        as Box<dyn crate::r#gen::AspectLowerDynamic>,
                 ),
             );
         }

@@ -191,6 +191,22 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        // Same as `lift` but does NOT finalize the def-set.
+        let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
+            from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
+        let ctor_type: Rc<dyn crate::langhelp::Type> =
+            Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -230,6 +246,9 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectInitialBind>));

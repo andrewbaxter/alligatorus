@@ -72,6 +72,11 @@ pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Op
             Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn crate::r#gen::AspectLiftDynamic>),
         );
     }
+    if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+        return Some(
+            Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+        );
+    }
     None
 }
 
@@ -831,6 +836,27 @@ impl crate::r#gen::AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = crate::eval::from_v8_ref::<Rc<Gc<DefinitionSet>>>(&*ext).as_ref().clone();
         ds.finish()?;
+        let exports_type: Rc<dyn crate::langhelp::Type> =
+            Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                set: ds,
+            });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: exports_type }))
+    }
+}
+
+impl crate::r#gen::AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        // Same as `lift` but does NOT finalize the def-set.
+        let obj =
+            v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lower")?;
+        let dk = v8::String::new(scope, "_d").unwrap();
+        let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
+        let ds: Gc<DefinitionSet> = crate::eval::from_v8_ref::<Rc<Gc<DefinitionSet>>>(&*ext).as_ref().clone();
         let exports_type: Rc<dyn crate::langhelp::Type> =
             Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst {
                 set: ds,

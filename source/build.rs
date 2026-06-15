@@ -1180,6 +1180,24 @@ fn aspects() -> Vec<AspectSpec> {
                 ret: "Result<std::rc::Rc<dyn crate::langhelp::Value>, String>",
             }],
         },
+        // `AspectLowerDynamic` — almost identical to `AspectLiftDynamic`,
+        // but does NOT finalize the definition set. Used by staging /
+        // lowering paths where the def-set may still be in flight (sibling
+        // function impls being set). `AspectLiftDynamic` remains the
+        // end-of-eval path and freezes the def-set.
+        AspectSpec {
+            name: "AspectLowerDynamic",
+            id: 1031,
+            methods: vec![AspectMethod {
+                name: "lower",
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("scope", "&v8::PinScope"),
+                    ("self_", "v8::Local<v8::Value>"),
+                ],
+                ret: "Result<std::rc::Rc<dyn crate::langhelp::Value>, String>",
+            }],
+        },
         AspectSpec {
             name: "AspectIterable",
             id: 1027,

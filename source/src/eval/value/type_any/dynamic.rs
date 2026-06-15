@@ -85,6 +85,18 @@ impl AspectLiftDynamic for TypeAnyDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeAnyDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_ = crate::eval::rc_type_from_v8(&*value);
+        Ok(type_.as_value())
+    }
+}
+
 impl AspectStackValueDynamic for TypeAnyDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
@@ -206,6 +218,9 @@ impl Type for TypeAnyDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectInitialBind>));

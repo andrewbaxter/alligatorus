@@ -2117,7 +2117,11 @@ fn eval(
                         values.push(StageLowerValue::Value(value));
                     }
                 } else {
-                    // Lift the raw v8 value
+                    // Lower the raw v8 value. Lower behaves like lift, but
+                    // for types whose lift finalizes the def-set (data-type
+                    // ref/constructor, iface ref), lower omits the
+                    // finalization — staging may reference sibling def-set
+                    // members that haven't had impls set yet.
                     let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
                     let lift_xx = ExprContext {
                         vx: lift_cell.vx.clone(),
@@ -2125,11 +2129,11 @@ fn eval(
                         scope: lift_cell.scope.clone(),
                         target: lift_cell.target.clone(),
                     };
-                    let lift =
-                        aspect_lift_dynamic_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
+                    let lower =
+                        crate::r#gen::aspect_lower_dynamic_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
                             .into_res()
-                            .expect("__stage: source type missing AspectLiftDynamic");
-                    let value = lift.lift(&lift_xx, &*scope, val_arg).expect("__stage: lift failed");
+                            .expect("__stage: source type missing AspectLowerDynamic");
+                    let value = lower.lower(&lift_xx, &*scope, val_arg).expect("__stage: lower failed");
                     values.push(StageLowerValue::Value(value));
                 }
             }

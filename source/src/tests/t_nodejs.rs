@@ -775,33 +775,111 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
 fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
     return mb.block(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-        // # Define "code" tagged union type
-        mb.bind("code_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))),
-        mb.bind("code", mb.field(mb.scope_use("code_builder"), mb.str("type"))),
-        mb.bind("code_call", mb.call(mb.field(mb.scope_use("code_builder"), mb.str("variant")), mb.tuple(vec![
+        // # Internal tagged union of nodejs-code variants. Not exposed
+        // directly — the public `code` binding (below) is a wrapper data type
+        // whose underlying is this tagged union. The wrapper exists so the
+        // type can impl `code_dyn` (only data types can impl interfaces), and
+        // `self` inside iface impls resolves to the underlying tagged-union
+        // value — making `code_dyn.get` body `mb.scope_use("self")` return a
+        // matchable tagged-union value.
+        mb.bind("code_tu_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![]))),
+        mb.bind("code_tu", mb.field(mb.scope_use("code_tu_builder"), mb.str("type"))),
+        // # Wrapper data type — set_underlying first; variants reference
+        // `code` (the wrapper) below, so we need `code` bound before adding
+        // variants. The tagged-union ref is shared by mutable Rc so adding
+        // variants after `set_underlying` is fine.
+        mb.bind("code_data", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("nodejs code"))),
+        mb.call(mb.field(mb.scope_use("code_data"), mb.str("set_underlying")), mb.scope_use("code_tu")),
+        mb.bind("code", mb.field(mb.scope_use("code_data"), mb.str("type"))),
+        // # Variants — payload types reference `code` (the wrapper), so the
+        // AST is recursively built out of wrappers.
+        mb.bind("code_tu_call", mb.call(mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")), mb.tuple(vec![
             //. .
             mb.str("call"),
             mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))]),
         ]))),
         mb.bind(
-            "code_lit_str",
+            "code_tu_lit_str",
             mb.call(
-                mb.field(mb.scope_use("code_builder"), mb.str("variant")),
+                mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")),
                 mb.tuple(vec![mb.str("lit_str"), mb.scope_use("string")]),
             ),
         ),
-        mb.bind("code_field", mb.call(mb.field(mb.scope_use("code_builder"), mb.str("variant")), mb.tuple(vec![
+        mb.bind("code_tu_field", mb.call(mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")), mb.tuple(vec![
             //. .
             mb.str("field"),
             mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))]),
         ]))),
         mb.bind(
-            "code_scope_use",
+            "code_tu_scope_use",
             mb.call(
-                mb.field(mb.scope_use("code_builder"), mb.str("variant")),
+                mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")),
                 mb.tuple(vec![mb.str("scope_use"), mb.scope_use("string")]),
             ),
         ),
+        // # Impl `code_dyn` on the wrapper (empty — the iface has no
+        // methods; impl is what flags the data type as code_dyn-castable).
+        mb.call(
+            mb.field(mb.scope_use("code_data"), mb.str("impl_interface")),
+            mb.tuple(vec![mb.scope_use("code_dyn"), iface_methods(mb, vec![])]),
+        ),
+        // # `code.get()` — a regular data-type method. Body is `self`, which
+        // in method impls resolves to the underlying tagged-union value. The
+        // renderer calls `<code_dyn_handle>.cast(code.type).get()` to recover
+        // the original tagged-union value for matching.
+        mb.bind("code_get_builder", mb.call(mb.field(mb.scope_use("code_data"), mb.str("new_func")), mb.str("get"))),
+        mb.call(mb.field(mb.scope_use("code_get_builder"), mb.str("arg")), mb.tuple(vec![])),
+        mb.call(mb.field(mb.scope_use("code_get_builder"), mb.str("ret")), mb.scope_use("code_tu")),
+        mb.call(mb.field(mb.scope_use("code_get_builder"), mb.str("impl")), mb.stage(mb.scope_use("self"))),
+        // # Standalone construction functions — each builds the tagged-union
+        // variant and wraps in the data type. Re-exposed at the record level
+        // (below) so callers can keep doing `code.call(...)`, etc.
+        mb.bind("code_call_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("code.call"))),
+        mb.bind("code_call", mb.field(mb.scope_use("code_call_builder"), mb.str("func"))),
+        mb.call(mb.field(mb.scope_use("code_call_builder"), mb.str("arg")), mb.record(vec![
+            ("func", mb.scope_use("code")),
+            ("arg", mb.scope_use("code")),
+        ])),
+        mb.call(mb.field(mb.scope_use("code_call_builder"), mb.str("ret")), mb.scope_use("code")),
+        mb.call(mb.field(mb.scope_use("code_call_builder"), mb.str("impl")), mb.stage(
+            mb.call(
+                mb.lower(mb.field(mb.scope_use("code_data"), mb.str("new"))),
+                mb.call(mb.lower(mb.scope_use("code_tu_call")), mb.scope_use("arg")),
+            ),
+        )),
+        mb.bind("code_lit_str_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("code.lit_str"))),
+        mb.bind("code_lit_str", mb.field(mb.scope_use("code_lit_str_builder"), mb.str("func"))),
+        mb.call(mb.field(mb.scope_use("code_lit_str_builder"), mb.str("arg")), mb.scope_use("string")),
+        mb.call(mb.field(mb.scope_use("code_lit_str_builder"), mb.str("ret")), mb.scope_use("code")),
+        mb.call(mb.field(mb.scope_use("code_lit_str_builder"), mb.str("impl")), mb.stage(
+            mb.call(
+                mb.lower(mb.field(mb.scope_use("code_data"), mb.str("new"))),
+                mb.call(mb.lower(mb.scope_use("code_tu_lit_str")), mb.scope_use("arg")),
+            ),
+        )),
+        mb.bind("code_field_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("code.field"))),
+        mb.bind("code_field", mb.field(mb.scope_use("code_field_builder"), mb.str("func"))),
+        mb.call(mb.field(mb.scope_use("code_field_builder"), mb.str("arg")), mb.record(vec![
+            ("base", mb.scope_use("code")),
+            ("field", mb.scope_use("code")),
+        ])),
+        mb.call(mb.field(mb.scope_use("code_field_builder"), mb.str("ret")), mb.scope_use("code")),
+        mb.call(mb.field(mb.scope_use("code_field_builder"), mb.str("impl")), mb.stage(
+            mb.call(
+                mb.lower(mb.field(mb.scope_use("code_data"), mb.str("new"))),
+                mb.call(mb.lower(mb.scope_use("code_tu_field")), mb.scope_use("arg")),
+            ),
+        )),
+        mb.bind("code_scope_use_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("code.scope_use"))),
+        mb.bind("code_scope_use", mb.field(mb.scope_use("code_scope_use_builder"), mb.str("func"))),
+        mb.call(mb.field(mb.scope_use("code_scope_use_builder"), mb.str("arg")), mb.scope_use("string")),
+        mb.call(mb.field(mb.scope_use("code_scope_use_builder"), mb.str("ret")), mb.scope_use("code")),
+        mb.call(mb.field(mb.scope_use("code_scope_use_builder"), mb.str("impl")), mb.stage(
+            mb.call(
+                mb.lower(mb.field(mb.scope_use("code_data"), mb.str("new"))),
+                mb.call(mb.lower(mb.scope_use("code_tu_scope_use")), mb.scope_use("arg")),
+            ),
+        )),
         // # Define render-code function (recursive inner version)
         mb.bind(
             "render_inner_builder",
@@ -864,7 +942,10 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                     mb.tuple(vec![mb.scope_use("key"), mb.str(" = ")]),
                 ),
             ),
-            mb.match_(mb.field(mb.scope_use("arg"), mb.str("code")), mb.str("code"), vec![
+            mb.match_(
+                mb.call(mb.field(mb.field(mb.scope_use("arg"), mb.str("code")), mb.str("get")), mb.tuple(vec![])),
+                mb.str("code"),
+                vec![
                 //. .
                 (mb.str("call"), mb.block(vec![
                     //. .
@@ -913,7 +994,8 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                         vec![mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.scope_use("code"))],
                     ),
                 ),
-            ], None),
+            ], None,
+            ),
             mb.call(
                 mb.field(mb.scope_use("out"), mb.str("push")),
                 mb.call(mb.field(mb.scope_use("value"), mb.str("join")), mb.str("")),
@@ -951,7 +1033,9 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             ),
             mb.call(mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("join")), mb.str("")),
         ]))),
-        // Assemble and return
+        // Assemble and return — `type` is the wrapper data type. The
+        // variant-constructor standalone funcs are re-exposed as record
+        // fields so callers can keep doing `code.call(...)`, etc.
         mb.record(vec![
             //. .
             ("type", mb.scope_use("code")),

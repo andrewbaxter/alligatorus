@@ -116,6 +116,25 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeSourceFunctionDynamic {
+    fn lower(
+        &self,
+        xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
+        let set = &func_ref.data.set;
+        let mut sets = xx.vx.ix.definition_sets.borrow_mut();
+        if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
+            sets.push(set.clone());
+        }
+        let func_type: Rc<dyn crate::langhelp::Type> =
+            Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
+        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -151,6 +170,9 @@ impl Type for TypeSourceFunctionDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectInitialBind>));

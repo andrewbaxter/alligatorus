@@ -116,6 +116,17 @@ impl AspectLiftDynamic for TypeNullDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeNullDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        _value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(ValueNullConst))
+    }
+}
+
 impl AspectNull for TypeNullDynamic { }
 
 impl AspectStackValueDynamic for TypeNullDynamic {
@@ -153,6 +164,9 @@ impl Type for TypeNullDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_null_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectNull>));

@@ -429,6 +429,22 @@ impl Type for Record {
             }).collect();
             return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            let entry_lowers: Vec<(ConstKey, Box<dyn crate::r#gen::AspectLowerDynamic>)> = self.fields.iter().map(|(k, f)| {
+                let t = match f {
+                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::EvalRes(_) => panic!("lower on non-type record"),
+                };
+                let a =
+                    t
+                        .aspect(_xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
+                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLowerDynamic", k, t.desc()));
+                (k.clone(), must_downcast_box::<Box<dyn crate::r#gen::AspectLowerDynamic>>(a))
+            }).collect();
+            return Some(
+                Box::new(Box::new(RecordLowerDynamic { entry_lowers }) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+            );
+        }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
         }
@@ -735,6 +751,40 @@ impl AspectLiftDynamic for RecordLiftDynamic {
                     code: Code_::None,
                 },
                 value: lifted,
+            })));
+        }
+        Ok(Rc::new(Record {
+            base: None,
+            fields: fields,
+        }))
+    }
+}
+
+struct RecordLowerDynamic {
+    entry_lowers: Vec<(ConstKey, Box<dyn crate::r#gen::AspectLowerDynamic>)>,
+}
+
+impl Aspect for RecordLowerDynamic { }
+
+impl crate::r#gen::AspectLowerDynamic for RecordLowerDynamic {
+    fn lower(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lower");
+        let mut fields = BTreeMap::new();
+        for (key, entry_lower) in &self.entry_lowers {
+            let v8_key = v8::String::new(scope, &key.to_str()).unwrap();
+            let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
+            let lowered = entry_lower.lower(xx, scope, v8_val)?;
+            fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(CodeValue {
+                code: Code {
+                    loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
+                    code: Code_::None,
+                },
+                value: lowered,
             })));
         }
         Ok(Rc::new(Record {

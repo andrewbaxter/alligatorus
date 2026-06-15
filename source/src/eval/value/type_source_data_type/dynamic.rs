@@ -113,6 +113,19 @@ impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeRefDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        // Same as `lift` but does NOT finalize the def-set.
+        let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
+        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -149,6 +162,9 @@ impl Type for TypeSourceDataTypeRefDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftDynamic>));
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectStackValueDynamic>));
@@ -464,6 +480,44 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
     }
 }
 
+impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeDynamic {
+    fn lower(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let data = &self.data;
+        let underlying_type = data.underlying_type.get().clone();
+        let underlying_lower =
+            crate::r#gen::aspect_lower_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
+                format!("Underlying type ({}) missing AspectLowerDynamic", underlying_type.desc())
+            })?;
+        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lower")?;
+        let data_field = crate::langhelp::ConstKey::String(data.data_field.clone()).to_str();
+        let key = v8::String::new(scope, &data_field).unwrap();
+        let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
+        let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
+        let has_type_iface = data.interface_impls.borrow().iter().any(|impl_data| {
+            impl_data.interface.builtin_kind
+                == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+        });
+        let isolate_bundle = if has_type_iface {
+            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
+            std::cell::RefCell::new(Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle {
+                instance: instance_global,
+            })))
+        } else {
+            std::cell::RefCell::new(None)
+        };
+        Ok(Rc::new(crate::eval::value::value_source_data_type::r#const::ValueSourceDataTypeConst {
+            underlying: underlying_value,
+            data: data.clone(),
+            isolate_bundle,
+        }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -664,6 +718,14 @@ impl Type for TypeSourceDataTypeDynamic {
             return Some(
                 Box::new(
                     Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() })
+                        as Box<dyn crate::r#gen::AspectLowerDynamic>,
                 ),
             );
         }
