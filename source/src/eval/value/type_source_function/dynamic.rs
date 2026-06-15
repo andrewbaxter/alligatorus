@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             Erb,
@@ -37,6 +35,23 @@ use {
             Unique,
             Value,
             deserialize_independent_artifact,
+        },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
     },
     dumpster::unsync::Gc,
@@ -116,6 +131,21 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
     }
 }
 
+impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceFunctionDynamic),
+            }),
+        }
+    }
+}
+
 impl crate::r#gen::AspectLowerDynamic for TypeSourceFunctionDynamic {
     fn lower(
         &self,
@@ -132,21 +162,6 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceFunctionDynamic {
         let func_type: Rc<dyn crate::langhelp::Type> =
             Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
         Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type }))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceFunctionDynamic),
-            }),
-        }
     }
 }
 
@@ -172,7 +187,9 @@ impl Type for TypeSourceFunctionDynamic {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+            return Some(
+                Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+            );
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectInitialBind>));
@@ -180,12 +197,12 @@ impl Type for TypeSourceFunctionDynamic {
         return None;
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
-    }
-
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to definition_set_function"))
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -194,24 +211,35 @@ impl Type for TypeSourceFunctionDynamic {
         }
         let source_code = match cv.code.cast::<CodeDynamic>() {
             crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
-            _ => return EvalRes::err(loc, format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc())),
+            _ => return EvalRes::err(
+                loc,
+                format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc()),
+            ),
         };
         let call = CodeDynamic {
             loc,
             type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
                 func: Box::new(CodeDynamic {
                     loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse {
-                        id: crate::eval::FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
-                    }),
+                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                        crate::code_dynamic::CodeDynamicBindingUse {
+                            id: crate::eval::FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
+                        },
+                    ),
                 }),
                 args: vec![source_code],
             }),
         };
         let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceFunctionDynamic) as Rc<dyn Type>);
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
-            value: Rc::new(ValueDynamic { source: ValueDynamicSource::Expr, type_: dest_rc }),
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(call)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: dest_rc,
+            }),
         })
     }
 
@@ -225,7 +253,6 @@ impl Value for TypeSourceFunctionDynamic {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
-
 pub(crate) struct TypeTypeSourceFunctionDynamic;
 
 impl Aspect for TypeTypeSourceFunctionDynamic { }
@@ -235,11 +262,9 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
         er_seq_cv!(loc, erb, {
             let serial: ArtifactDataDefSetFunction =
                 erb.must_res(
-                    serde_json::from_value(data.clone())
-                        .map_err(|e| format!("Failed to parse defset function: {}", e)),
+                    serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset function: {}", e)),
                 )?;
-            let def_set =
-                erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
+            let def_set = erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
             {
                 let mut sets = xx.vx.ix.definition_sets.borrow_mut();
                 if !sets.iter().any(|s| s.def_set_id == def_set.def_set_id) {
@@ -247,36 +272,34 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
                 }
             }
             let functions = def_set.functions.borrow();
-            let func_data = functions
-                .iter()
-                .find(|f| match f.scope_entry_id.get() {
-                    Some(crate::langhelp::ScopeEntryId::Def(_, _, id)) => id == serial.entry_id,
-                    _ => false,
-                })
-                .expect("Function not found in definition set")
-                .clone();
+            let func_data = functions.iter().find(|f| match f.scope_entry_id.get() {
+                Some(crate::langhelp::ScopeEntryId::Def(_, _, id)) => id == serial.entry_id,
+                _ => false,
+            }).expect("Function not found in definition set").clone();
             drop(functions);
-            let func_type: Rc<dyn crate::langhelp::Type> =
-                Rc::new(TypeSourceFunctionConst { data: func_data });
+            let func_type: Rc<dyn crate::langhelp::Type> = Rc::new(TypeSourceFunctionConst { data: func_data });
             return Ok(CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-                    inner: func_type,
-                }),
+                code: Code {
+                    loc,
+                    code: Code_::None
+                },
+                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type, }),
             });
         })
     }
 
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let func = must_downcast_ref::<TypeSourceFunctionConst>(self_.as_ref());
+
         // Serializing the def set populates each function's artifact_id.
         crate::eval::definition_set::serialize_definition_set(xx, loc, &func.data.set);
-        let artifact_id = func
-            .data
-            .artifact_id
-            .borrow()
-            .clone()
-            .expect("Function artifact ID should be set by serialize_definition_set");
+        let artifact_id =
+            func
+                .data
+                .artifact_id
+                .borrow()
+                .clone()
+                .expect("Function artifact ID should be set by serialize_definition_set");
         EResult::ok(Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,

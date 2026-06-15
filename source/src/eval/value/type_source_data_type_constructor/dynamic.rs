@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             definition_set::DefinitionSet,
@@ -35,6 +33,21 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
     },
     std::{
@@ -180,6 +193,21 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
+impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
+            }),
+        }
+    }
+}
+
 impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
     fn lower(
         &self,
@@ -193,21 +221,6 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
         let ctor_type: Rc<dyn crate::langhelp::Type> =
             Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
         Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
-            }),
-        }
     }
 }
 
@@ -237,7 +250,11 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>,
+                ),
+            );
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectInitialBind>));
@@ -245,12 +262,12 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
         return None;
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
-    }
-
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -259,24 +276,36 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
         }
         let source_code = match cv.code.cast::<CodeDynamic>() {
             crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
-            _ => return EvalRes::err(loc, format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc())),
+            _ => return EvalRes::err(
+                loc,
+                format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc()),
+            ),
         };
         let call = CodeDynamic {
             loc,
             type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
                 func: Box::new(CodeDynamic {
                     loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse {
-                        id: crate::eval::DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
-                    }),
+                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                        crate::code_dynamic::CodeDynamicBindingUse {
+                            id: crate::eval::DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+                        },
+                    ),
                 }),
                 args: vec![source_code],
             }),
         };
-        let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceDataTypeConstructorDynamic) as Rc<dyn Type>);
+        let dest_rc =
+            type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceDataTypeConstructorDynamic) as Rc<dyn Type>);
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(call)) },
-            value: Rc::new(ValueDynamic { source: ValueDynamicSource::Expr, type_: dest_rc }),
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(call)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: dest_rc,
+            }),
         })
     }
 

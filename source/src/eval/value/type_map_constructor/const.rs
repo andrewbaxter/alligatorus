@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectFunction, AspectInitialBind, aspect_function_aspect_id, aspect_initial_bind_aspect_id, aspect_tuple_get_maybe},
         eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         langhelp::{
             Aspect,
@@ -15,6 +13,14 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectFunction,
+            AspectInitialBind,
+            ScopeEntry,
+            aspect_function_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_tuple_get_maybe,
         },
     },
     std::{
@@ -45,22 +51,34 @@ impl AspectFunction for TypeMapConstructorConst {
         let mut iter = elements.into_iter();
         let key_cv = match iter.next().unwrap().into_res() {
             Ok(c) => c,
-            Err(e) => return EvalRes { v: None, errors: Some(e) },
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
         };
         let value_cv = match iter.next().unwrap().into_res() {
             Ok(c) => c,
-            Err(e) => return EvalRes { v: None, errors: Some(e) },
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
         };
         let key_meta = key_cv.value.type_(xx, loc);
         let key_at = match crate::r#gen::aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
             Ok(at) => at,
-            Err(e) => return EvalRes { v: None, errors: Some(e) },
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
         };
         let key_type = key_at.type_(key_cv.value.as_ref());
         let value_meta = value_cv.value.type_(xx, loc);
         let value_at = match crate::r#gen::aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
             Ok(at) => at,
-            Err(e) => return EvalRes { v: None, errors: Some(e) },
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
         };
         let value_type = value_at.type_(value_cv.value.as_ref());
         let map_type: Rc<dyn Type> = Rc::new(super::super::type_map::dynamic::TypeMapDynamic {

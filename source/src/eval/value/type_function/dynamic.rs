@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectFunction, AspectInitialBind, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_consume_dynamic_get, aspect_function_aspect_id, aspect_function_get, aspect_function_get_maybe, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_get, aspect_tuple_get_maybe},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicCall,
@@ -32,6 +30,24 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectFunction,
+            AspectInitialBind,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
+            aspect_function_aspect_id,
+            aspect_function_get,
+            aspect_function_get_maybe,
+            aspect_initial_bind_aspect_id,
+            aspect_stack_value_dynamic_get,
+            aspect_tuple_get_maybe,
+        },
     },
     std::{
         any::Any,
@@ -39,51 +55,6 @@ use {
         rc::Rc,
     },
 };
-
-#[derive(Clone)]
-pub(crate) struct TypeFunctionDynamic {
-    pub arg: Rc<dyn Type>,
-    pub ret: Rc<dyn Type>,
-}
-
-impl Aspect for TypeFunctionDynamic { }
-
-impl AspectBind for TypeFunctionDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        bind_via_target(xx, loc, cv)
-    }
-}
-
-impl AspectBindDynamic for TypeFunctionDynamic {
-    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
-        bind_dynamic_default(xx, loc, cv)
-    }
-}
-
-impl AspectConsumeDynamic for TypeFunctionDynamic {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
-    }
-}
-
-impl AspectFunction for TypeFunctionDynamic {
-    fn call(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        function: CodeValue,
-        argument: CodeValue,
-    ) -> crate::langhelp::EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let func_type = function.value.type_(xx, loc);
-            let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
-            let func_code = erb.must_er(func_to_dynamic.to_dynamic(xx, loc, function))?;
-            let result =
-                erb.must_er(dynamic_call(xx, loc, func_code, self.arg.clone(), self.ret.clone(), argument))?;
-            return Ok(result);
-        });
-    }
-}
 
 pub(crate) fn dynamic_call(
     xx: &ExprContext,
@@ -111,18 +82,21 @@ pub(crate) fn dynamic_call(
                     (elements, param_types)
                 };
             if elements.len() != param_types.len() {
-                // `tuple()` (empty unit) passed to a single-arg function whose
-                // param accepts anything — pass the empty tuple through as the
-                // single arg rather than unpacking it.
-                if elements.is_empty() &&
-                    param_types.len() == 1 &&
-                    aspect_tuple_get_maybe(xx, arg_type.as_ref()).is_none() {
+                // `tuple()` (empty unit) passed to a single-arg function whose param accepts
+                // anything — pass the empty tuple through as the single arg rather than unpacking
+                // it.
+                if elements.is_empty() && param_types.len() == 1 && aspect_tuple_get_maybe(xx, arg_type.as_ref()).is_none() {
                     let unit_cv = CodeValue {
-                        code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::None },
-                        value: Rc::new(crate::eval::value::tuple::Tuple { base: None, elements: vec![] }),
+                        code: crate::langhelp::Code {
+                            loc,
+                            code: crate::langhelp::Code_::None
+                        },
+                        value: Rc::new(crate::eval::value::tuple::Tuple {
+                            base: None,
+                            elements: vec![]
+                        }),
                     };
-                    let arg_to_dynamic =
-                        erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
+                    let arg_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), unit_cv))?;
                     let arg = erb.must_er(arg_to_dynamic.to_dynamic(xx, loc, converted))?;
                     return Ok(ret_stack.to_value(loc, CodeDynamic {
@@ -175,6 +149,50 @@ pub(crate) fn dynamic_call(
             }),
         }));
     });
+}
+
+#[derive(Clone)]
+pub(crate) struct TypeFunctionDynamic {
+    pub arg: Rc<dyn Type>,
+    pub ret: Rc<dyn Type>,
+}
+
+impl Aspect for TypeFunctionDynamic { }
+
+impl AspectBind for TypeFunctionDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        bind_via_target(xx, loc, cv)
+    }
+}
+
+impl AspectBindDynamic for TypeFunctionDynamic {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
+        bind_dynamic_default(xx, loc, cv)
+    }
+}
+
+impl AspectConsumeDynamic for TypeFunctionDynamic {
+    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
+    }
+}
+
+impl AspectFunction for TypeFunctionDynamic {
+    fn call(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        function: CodeValue,
+        argument: CodeValue,
+    ) -> crate::langhelp::EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let func_type = function.value.type_(xx, loc);
+            let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
+            let func_code = erb.must_er(func_to_dynamic.to_dynamic(xx, loc, function))?;
+            let result = erb.must_er(dynamic_call(xx, loc, func_code, self.arg.clone(), self.ret.clone(), argument))?;
+            return Ok(result);
+        });
+    }
 }
 
 impl AspectInitialBind for TypeFunctionDynamic {

@@ -67,12 +67,6 @@ pub(crate) struct CodeDynamicFieldUse {
 }
 
 #[derive(Clone)]
-pub(crate) struct CodeDynamicSubscriptUse {
-    pub(crate) base: Box<CodeDynamic>,
-    pub(crate) key: Box<CodeDynamic>,
-}
-
-#[derive(Clone)]
 pub(crate) struct CodeDynamicForeach {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) body: Box<CodeDynamic>,
@@ -137,6 +131,12 @@ pub(crate) struct CodeDynamicOperatorEq {
 pub(crate) struct CodeDynamicOperatorLt {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) reference: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicSubscriptUse {
+    pub(crate) base: Box<CodeDynamic>,
+    pub(crate) key: Box<CodeDynamic>,
 }
 
 #[derive(Clone)]

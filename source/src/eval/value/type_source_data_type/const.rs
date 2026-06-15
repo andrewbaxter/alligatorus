@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_lift_dynamic_get_maybe, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_util::{
@@ -37,6 +35,24 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_lift_dynamic_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
+        },
     },
     dumpster::unsync::Gc,
     std::{
@@ -47,28 +63,13 @@ use {
     super::TypeSourceDataTypeConst,
 };
 
-impl TypeSourceDataTypeConst {
-    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        crate::eval::definition_set::serialize_definition_set(xx, loc, &self.data.set);
-        self
-            .data
-            .artifact_id
-            .borrow()
-            .clone()
-            .expect("Data type artifact ID should be set by serialize_definition_set")
-    }
-}
-
-fn read_artifact_has_type_iface(
-    xx: &ExprContext,
-    dt_data: &dumpster::unsync::Gc<super::SourceDataTypeData>,
-) -> bool {
+fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc<super::SourceDataTypeData>) -> bool {
     let id = match dt_data.artifact_id.borrow().clone() {
         Some(id) => id,
         None => {
             return dt_data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind
-                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind ==
+                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
             });
         },
     };
@@ -85,29 +86,62 @@ fn read_artifact_has_type_iface(
     })
 }
 
+/// Carrier for `AspectType` when a data type implements the builtin `type`
+/// interface. `type_(value)` returns a `TypeUserDefined` which delegates to the
+/// user's impl methods.
+pub(crate) struct TypeSourceDataTypeConstAspectType {
+    pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
+}
+
+impl Aspect for TypeSourceDataTypeConstAspectType { }
+
+impl crate::r#gen::AspectType for TypeSourceDataTypeConstAspectType {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let bundle =
+            (value as &dyn std::any::Any)
+                .downcast_ref::<ValueSourceDataTypeConst>()
+                .and_then(|v| v.isolate_bundle.borrow().clone());
+        Rc::new(super::dynamic::TypeUserDefined {
+            data: self.data.clone(),
+            bundle,
+        })
+    }
+}
+
+impl TypeSourceDataTypeConst {
+    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
+        crate::eval::definition_set::serialize_definition_set(xx, loc, &self.data.set);
+        self
+            .data
+            .artifact_id
+            .borrow()
+            .clone()
+            .expect("Data type artifact ID should be set by serialize_definition_set")
+    }
+}
+
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
     fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let dt_data = self.data.clone();
         let data = data.clone();
-        // For data types that implement the builtin `type` interface the
-        // imported instance must reach `TypeUserDefined.cast_from` with a v8
-        // bundle — the user's impls run via the same v8 dispatch the inline
-        // case (`test_00100`) uses. To produce that bundle in the importer's
-        // isolate we re-compile each interface impl's `impl_expr` against
-        // this compile's `ExprContext` (allocating fresh externals) and run
-        // a v8 script eagerly that defines the methods and constructs the
-        // instance object. For non-`type`-interface types nothing special is
-        // needed: add the def_set so its methods get emitted by the normal
-        // end-of-stage pass and build the instance with the same `NewObject`
-        // code an inline definition would emit.
+
+        // For data types that implement the builtin `type` interface the imported
+        // instance must reach `TypeUserDefined.cast_from` with a v8 bundle — the user's
+        // impls run via the same v8 dispatch the inline case (`test_00100`) uses. To
+        // produce that bundle in the importer's isolate we re-compile each interface
+        // impl's `impl_expr` against this compile's `ExprContext` (allocating fresh
+        // externals) and run a v8 script eagerly that defines the methods and constructs
+        // the instance object. For non-`type`-interface types nothing special is needed:
+        // add the def_set so its methods get emitted by the normal end-of-stage pass and
+        // build the instance with the same `NewObject` code an inline definition would
+        // emit.
         //
-        // The branch is decided at from_serial entry by inspecting the
-        // data type artifact directly — `dt_data.interface_impls` isn't
-        // populated until the type's own finalizer runs, which is queued
-        // before ours but only fires when the resolve loop drains pending
-        // finalizers.
+        // The branch is decided at from_serial entry by inspecting the data type artifact
+        // directly — `dt_data.interface_impls` isn't populated until the type's own
+        // finalizer runs, which is queued before ours but only fires when the resolve
+        // loop drains pending finalizers.
         let has_type_iface = read_artifact_has_type_iface(_xx, &dt_data);
         let bundle_cell: Rc<RefCell<Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>>> =
             Rc::new(RefCell::new(None));
@@ -132,46 +166,40 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     .into_res()
                     .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
             let underlying_value_type = underlying_cv.value.type_(xx, loc);
-            let underlying_js = if let Some(aspect_str) =
-                crate::r#gen::aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
-                let s = aspect_str.get(underlying_cv.value.as_ref());
-                crate::code_dynamic::CodeDynamic {
-                    loc: loc,
-                    type_: crate::code_dynamic::CodeDynamicType::Literal(serde_json::Value::String(s)),
-                }
-            } else {
-                crate::code_dynamic::CodeDynamic {
-                    loc: loc,
-                    type_: crate::code_dynamic::CodeDynamicType::Literal(data.clone()),
-                }
-            };
+            let underlying_js =
+                if let Some(aspect_str) =
+                    crate::r#gen::aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
+                    let s = aspect_str.get(underlying_cv.value.as_ref());
+                    crate::code_dynamic::CodeDynamic {
+                        loc: loc,
+                        type_: crate::code_dynamic::CodeDynamicType::Literal(serde_json::Value::String(s)),
+                    }
+                } else {
+                    crate::code_dynamic::CodeDynamic {
+                        loc: loc,
+                        type_: crate::code_dynamic::CodeDynamicType::Literal(data.clone()),
+                    }
+                };
             let has_type_iface = dt_data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind
-                    == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind ==
+                    Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
             });
             if has_type_iface {
-                // The imported instance is used at type-position (as the
-                // target of `as_(_, upper)`) and never as a runtime value
-                // in this compile's JS. Build it eagerly in v8, bundle it,
-                // and return `code=None` — `bind_via_target` then routes
-                // the binding through `ScopeEntryValue` which preserves the
-                // concrete `ValueSourceDataTypeConst` (and thus the
-                // bundle) for later `AspectType.type_` lookup.
-                let instance_global = crate::eval::import_install::install_imported_type_iface(
-                    xx,
-                    loc,
-                    &dt_data,
-                    underlying_js,
-                )?;
-                let bundle = std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle {
-                    instance: instance_global,
-                });
+                // The imported instance is used at type-position (as the target of
+                // `as_(_, upper)`) and never as a runtime value in this compile's JS. Build it
+                // eagerly in v8, bundle it, and return `code=None` — `bind_via_target` then
+                // routes the binding through `ScopeEntryValue` which preserves the concrete
+                // `ValueSourceDataTypeConst` (and thus the bundle) for later `AspectType.type_`
+                // lookup.
+                let instance_global = crate::eval::import_install::install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;
+                let bundle =
+                    std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global });
                 *bundle_cell_for_finalizer.borrow_mut() = Some(bundle);
                 *underlying_cell_for_finalizer.borrow_mut() = Some(underlying_cv.value);
                 return Ok(vec![]);
             }
-            // Non-type-iface: original behaviour — register def_set + build
-            // instance inline.
+
+            // Non-type-iface: original behaviour — register def_set + build instance inline.
             {
                 let set = &dt_data.set;
                 let mut sets = xx.vx.ix.definition_sets.borrow_mut();
@@ -181,17 +209,20 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 }
             }
             let mut object_fields =
-                vec![
-                    (crate::langhelp::ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)
-                ];
+                vec![(crate::langhelp::ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)];
             for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push((crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(), crate::code_dynamic::CodeDynamic {
-                    loc: loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
-                        crate::code_dynamic::CodeDynamicBindingUse { id: method_id },
+                object_fields.push(
+                    (
+                        crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(),
+                        crate::code_dynamic::CodeDynamic {
+                            loc: loc,
+                            type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                                crate::code_dynamic::CodeDynamicBindingUse { id: method_id },
+                            ),
+                        },
                     ),
-                }));
+                );
             }
             let code = crate::code_dynamic::CodeDynamic {
                 loc: loc,
@@ -199,12 +230,16 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     crate::code_dynamic::CodeDynamicNewObject { fields: object_fields },
                 ),
             };
-            Ok(vec![Code { loc: loc, code: Code_::Dyn(Rc::new(code)) }])
+            Ok(vec![Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(code)),
+            }])
         }));
-        // The value's concrete shape depends on the branch the finalizer
-        // takes, but we know it at from_serial entry: type-iface →
-        // `ValueSourceDataTypeConst` (so AspectType picks up the bundle
-        // installed by the finalizer); non-type-iface → `ValueDynamic`.
+
+        // The value's concrete shape depends on the branch the finalizer takes, but we
+        // know it at from_serial entry: type-iface → `ValueSourceDataTypeConst` (so
+        // AspectType picks up the bundle installed by the finalizer); non-type-iface →
+        // `ValueDynamic`.
         let value: Rc<dyn Value> = if has_type_iface {
             Rc::new(ValueSourceDataTypeConst {
                 data: self.data.clone(),
@@ -217,9 +252,10 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
             })
         };
-        // Stash the eventual bundle/underlying into the value once the
-        // finalizer fills them. Since the value is shared via Rc, mutating
-        // its interior cells is observable by anyone holding the value.
+
+        // Stash the eventual bundle/underlying into the value once the finalizer fills
+        // them. Since the value is shared via Rc, mutating its interior cells is
+        // observable by anyone holding the value.
         if has_type_iface {
             let value_clone = value.clone();
             _xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |_xx, _loc| {
@@ -230,19 +266,20 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     *v.isolate_bundle.borrow_mut() = Some(b);
                 }
                 if let Some(u) = underlying {
-                    // SAFETY-ish: the `underlying` field is plain `Rc<dyn
-                    // Value>`, not a `RefCell`. We can't mutate it through
-                    // the shared Rc without unsafe. Skip the underlying
-                    // swap — the import path doesn't read it (the type's
-                    // dispatch uses `bundle`), and the initial null
-                    // placeholder is sufficient.
+                    // SAFETY-ish: the `underlying` field is plain `Rc<dyn Value>`, not a `RefCell`.
+                    // We can't mutate it through the shared Rc without unsafe. Skip the underlying
+                    // swap — the import path doesn't read it (the type's dispatch uses `bundle`), and
+                    // the initial null placeholder is sufficient.
                     let _ = u;
                 }
                 Ok(vec![])
             }));
         }
         EvalRes::ok(CodeValue {
-            code: Code { loc: loc, code: Code_::None },
+            code: Code {
+                loc: loc,
+                code: Code_::None,
+            },
             value,
         })
     }
@@ -330,14 +367,14 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
         let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;
         let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
-            impl_data.interface.builtin_kind
-                == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+            impl_data.interface.builtin_kind ==
+                Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
         });
         let isolate_bundle = if has_type_iface {
             let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle {
-                instance: instance_global,
-            })))
+            std::cell::RefCell::new(
+                Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global })),
+            )
         } else {
             std::cell::RefCell::new(None)
         };
@@ -346,6 +383,25 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
             data: self.data.clone(),
             isolate_bundle,
         }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceDataTypeConst {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        // Instances of the data type (e.g. the result of a function returning this type)
+        // need to support field access; that's on
+        // `TypeSourceDataTypeDynamic { data: Some(_) }`, not `*Const` which is the "type
+        // as value" form.
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
+            }),
+        }
     }
 }
 
@@ -368,14 +424,14 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConst {
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
         let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
         let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
-            impl_data.interface.builtin_kind
-                == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+            impl_data.interface.builtin_kind ==
+                Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
         });
         let isolate_bundle = if has_type_iface {
             let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle {
-                instance: instance_global,
-            })))
+            std::cell::RefCell::new(
+                Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global })),
+            )
         } else {
             std::cell::RefCell::new(None)
         };
@@ -387,32 +443,9 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceDataTypeConst {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        // Instances of the data type (e.g. the result of a function returning
-        // this type) need to support field access; that's on
-        // `TypeSourceDataTypeDynamic { data: Some(_) }`, not `*Const` which is
-        // the "type as value" form.
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
-            }),
-        }
-    }
-}
-
 impl Type for TypeSourceDataTypeConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
-    }
-
-    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
-        Some(Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }))
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -457,8 +490,8 @@ impl Type for TypeSourceDataTypeConst {
         if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() })
-                        as Box<dyn crate::r#gen::AspectLowerDynamic>,
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as
+                        Box<dyn crate::r#gen::AspectLowerDynamic>,
                 ),
             );
         }
@@ -474,7 +507,6 @@ impl Type for TypeSourceDataTypeConst {
                 ),
             );
         }
-
         if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(
                 Box::new(
@@ -483,6 +515,7 @@ impl Type for TypeSourceDataTypeConst {
                 ),
             );
         }
+
         // Check interface identity aspects + builtin `type` interface
         {
             let interface_impls = self.data.interface_impls.borrow();
@@ -491,13 +524,13 @@ impl Type for TypeSourceDataTypeConst {
                     return Some(Box::new(true));
                 }
             }
-            // If the data type implements the builtin `type` interface, the
-            // instance acts as a Type — provide AspectType that delegates to
-            // the user impl.
+
+            // If the data type implements the builtin `type` interface, the instance acts as
+            // a Type — provide AspectType that delegates to the user impl.
             if *key == crate::r#gen::aspect_type_aspect_id() {
                 let has_type_impl = interface_impls.iter().any(|impl_data| {
-                    impl_data.interface.builtin_kind
-                        == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+                    impl_data.interface.builtin_kind ==
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
                 });
                 if has_type_impl {
                     return Some(
@@ -575,15 +608,13 @@ impl Type for TypeSourceDataTypeConst {
             }
         }
         if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
-            // The cv carries a data type instance at the v8 boundary (the JS
-            // object form of this data type). Hand off to
-            // `TypeSourceDataTypeDynamic::cast_to` — its `(any)` branch
-            // emits `__data_instance_to_type(template, instance)` which
-            // wraps the runtime instance as `Rc<dyn Type>` and returns a
-            // `TypeAnyDynamic`-typed CV. Discarding the v8 value and
-            // synthesizing an External from static type metadata (what
-            // `wrap_as_any` used to do here) would lose the actual data
-            // type's identity at runtime.
+            // The cv carries a data type instance at the v8 boundary (the JS object form of
+            // this data type). Hand off to `TypeSourceDataTypeDynamic::cast_to` — its `(any)`
+            // branch emits `__data_instance_to_type(template, instance)` which wraps the
+            // runtime instance as `Rc<dyn Type>` and returns a `TypeAnyDynamic`-typed CV.
+            // Discarding the v8 value and synthesizing an External from static type metadata
+            // (what `wrap_as_any` used to do here) would lose the actual data type's identity
+            // at runtime.
             let dyn_cv = CodeValue {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
@@ -597,6 +628,10 @@ impl Type for TypeSourceDataTypeConst {
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }))
+    }
+
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -606,8 +641,13 @@ impl Type for TypeSourceDataTypeConst {
 
     fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
         crate::eval::definition_set::serialize_definition_set(xx, loc, &self.data.set);
-        let artifact_id = self.data.artifact_id.borrow().clone()
-            .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
+        let artifact_id =
+            self
+                .data
+                .artifact_id
+                .borrow()
+                .clone()
+                .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
         crate::langhelp::Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
@@ -618,23 +658,5 @@ impl Type for TypeSourceDataTypeConst {
 impl Value for TypeSourceDataTypeConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
-    }
-}
-
-/// Carrier for `AspectType` when a data type implements the builtin `type`
-/// interface. `type_(value)` returns a `TypeUserDefined` which delegates to the
-/// user's impl methods.
-pub(crate) struct TypeSourceDataTypeConstAspectType {
-    pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
-}
-
-impl Aspect for TypeSourceDataTypeConstAspectType { }
-
-impl crate::r#gen::AspectType for TypeSourceDataTypeConstAspectType {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let bundle = (value as &dyn std::any::Any)
-            .downcast_ref::<ValueSourceDataTypeConst>()
-            .and_then(|v| v.isolate_bundle.borrow().clone());
-        Rc::new(super::dynamic::TypeUserDefined { data: self.data.clone(), bundle })
     }
 }

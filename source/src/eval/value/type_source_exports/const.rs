@@ -1,6 +1,5 @@
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectField, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_field_aspect_id, aspect_string_const_get},
         eval::{
             Erb,
             definition_set::DefinitionSet,
@@ -22,6 +21,15 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectField,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_field_aspect_id,
+            aspect_string_const_get,
         },
     },
     dumpster::unsync::Gc,
@@ -54,9 +62,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
                 loc: loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-                inner: exports_type,
-            }),
+            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: exports_type }),
         })
     }
 
@@ -111,9 +117,9 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-                                inner: func_type,
-                            }),
+                            value: Rc::new(
+                                crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type, }
+                            ),
                         });
                     }
                 }
@@ -129,9 +135,9 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-                                inner: ctor_type,
-                            }),
+                            value: Rc::new(
+                                crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type, }
+                            ),
                         });
                     }
                 }
@@ -166,17 +172,17 @@ impl AspectField for TypeSourceExportsLiftedConst {
 
 impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-            inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
-        })
+        Rc::new(
+            crate::eval::value::type_any::r#const::ValueAnyConst {
+                inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
+            },
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) as Box<dyn AspectField>,
-                ),
+                Box::new(Box::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) as Box<dyn AspectField>),
             );
         }
         if *key == aspect_bind_aspect_id() {

@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectField, AspectNumberConst, AspectOperatorAdd, AspectOperatorEq, AspectOperatorLt, aspect_bind_aspect_id, aspect_field_aspect_id, aspect_number_const_aspect_id, aspect_number_const_get, aspect_number_const_get_maybe, aspect_operator_add_aspect_id, aspect_operator_eq_aspect_id, aspect_operator_lt_aspect_id},
         eval::{
             Erb,
             value::{
@@ -24,6 +22,23 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectBind,
+            AspectField,
+            AspectNumberConst,
+            AspectOperatorAdd,
+            AspectOperatorEq,
+            AspectOperatorLt,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_field_aspect_id,
+            aspect_number_const_aspect_id,
+            aspect_number_const_get,
+            aspect_number_const_get_maybe,
+            aspect_operator_add_aspect_id,
+            aspect_operator_eq_aspect_id,
+            aspect_operator_lt_aspect_id,
+        },
     },
     std::{
         any::Any,
@@ -35,23 +50,6 @@ use {
 pub(crate) struct TypeNumberConst;
 
 impl Aspect for TypeNumberConst { }
-
-impl crate::r#gen::AspectArtifact for TypeNumberConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        match data.as_f64() {
-            Some(n) => EvalRes::ok(CodeValue {
-                code: Code { loc, code: crate::langhelp::Code_::None },
-                value: Rc::new(ValueNumberConst(n)) as Rc<dyn Value>,
-            }),
-            None => EvalRes::err(loc, "Expected number data for number type".to_string()),
-        }
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, value: Rc<dyn Value>) -> EResult<crate::langhelp::Artifact> {
-        let n = must_downcast_ref::<ValueNumberConst>(value.as_ref()).0;
-        EResult::ok(Self::build_artifact(n))
-    }
-}
 
 impl AspectBind for TypeNumberConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
@@ -99,6 +97,23 @@ impl AspectOperatorAdd for TypeNumberConst {
     }
 }
 
+impl AspectOperatorEq for TypeNumberConst {
+    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+        return er_seq_cv!(loc, erb, {
+            let base_type = base.value.type_(xx, loc);
+            let base_num = erb.must_er(aspect_number_const_get(xx, loc, base_type.as_ref()))?;
+            let base_val = base_num.get(base.value.as_ref());
+            let ref_type = reference.value.type_(xx, loc);
+            let ref_num = erb.must_er(aspect_number_const_get(xx, loc, ref_type.as_ref()))?;
+            let ref_val = ref_num.get(reference.value.as_ref());
+            return Ok(CodeValue {
+                code: base.code.clone(),
+                value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_val == ref_val)),
+            });
+        });
+    }
+}
+
 impl AspectOperatorLt for TypeNumberConst {
     fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
@@ -116,20 +131,28 @@ impl AspectOperatorLt for TypeNumberConst {
     }
 }
 
-impl AspectOperatorEq for TypeNumberConst {
-    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
-        return er_seq_cv!(loc, erb, {
-            let base_type = base.value.type_(xx, loc);
-            let base_num = erb.must_er(aspect_number_const_get(xx, loc, base_type.as_ref()))?;
-            let base_val = base_num.get(base.value.as_ref());
-            let ref_type = reference.value.type_(xx, loc);
-            let ref_num = erb.must_er(aspect_number_const_get(xx, loc, ref_type.as_ref()))?;
-            let ref_val = ref_num.get(reference.value.as_ref());
-            return Ok(CodeValue {
-                code: base.code.clone(),
-                value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_val == ref_val)),
-            });
-        });
+impl crate::r#gen::AspectArtifact for TypeNumberConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        match data.as_f64() {
+            Some(n) => EvalRes::ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: crate::langhelp::Code_::None,
+                },
+                value: Rc::new(ValueNumberConst(n)) as Rc<dyn Value>,
+            }),
+            None => EvalRes::err(loc, "Expected number data for number type".to_string()),
+        }
+    }
+
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+        value: Rc<dyn Value>,
+    ) -> EResult<crate::langhelp::Artifact> {
+        let n = must_downcast_ref::<ValueNumberConst>(value.as_ref()).0;
+        EResult::ok(Self::build_artifact(n))
     }
 }
 

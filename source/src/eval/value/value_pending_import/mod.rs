@@ -34,11 +34,10 @@ pub(crate) struct PendingImportState {
 }
 
 impl PendingImportState {
-    /// True if the imported value is an instance of a data type that
-    /// implements the builtin `type` interface — those imports must be
-    /// resolved against the importing compile's `ExprContext` (we need its
-    /// v8 scope + `builtin_scope_entries` to re-compile the interface impls
-    /// and install the bundle).
+    /// True if the imported value is an instance of a data type that implements the
+    /// builtin `type` interface — those imports must be resolved against the importing
+    /// compile's `ExprContext` (we need its v8 scope + `builtin_scope_entries` to
+    /// re-compile the interface impls and install the bundle).
     pub(crate) fn imported_needs_v8_bundle(&self) -> bool {
         let guard = self.entry.result.read().unwrap();
         let compile_res = match guard.as_ref().and_then(|r| r.as_ref().ok()) {
@@ -57,10 +56,8 @@ impl PendingImportState {
             Ok(a) => a,
             Err(_) => return false,
         };
-        let dt_serial: Result<
-            crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetDataType,
-            _,
-        > = serde_json::from_value(dt_artifact.data);
+        let dt_serial: Result<crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetDataType, _> =
+            serde_json::from_value(dt_artifact.data);
         match dt_serial {
             Ok(dt) => dt.interface_impls.iter().any(|i| {
                 i.builtin_kind == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
@@ -143,8 +140,8 @@ impl PendingImportState {
             ix: cix,
             next_local_id: Default::default(),
             externals: RefCell::new(Vec::new()),
-                v8_scope: std::cell::Cell::new(None),
-                v8_dispatcher: std::cell::Cell::new(None),
+            v8_scope: std::cell::Cell::new(None),
+            v8_dispatcher: std::cell::Cell::new(None),
         });
         let xx = ExprContext {
             vx: ex,

@@ -4,10 +4,8 @@ pub(crate) use crate::eval::value::value_dynamic::{
     ValueDynamicDataScope,
     ValueDynamicSource,
 };
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{aspect_bind_dynamic_get_maybe, aspect_consume_dynamic_get, aspect_stack_value_dynamic_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingSet,
@@ -38,6 +36,12 @@ use {
             ExprSubErr,
             QExprId,
             Type,
+        },
+        r#gen::{
+            ScopeEntry,
+            aspect_bind_dynamic_get_maybe,
+            aspect_consume_dynamic_get,
+            aspect_stack_value_dynamic_get,
         },
     },
     std::{

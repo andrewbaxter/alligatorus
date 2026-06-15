@@ -1,6 +1,5 @@
 use {
     crate::{
-        r#gen::{AspectBoolConst, aspect_bool_const_aspect_id, aspect_bool_const_get, aspect_bool_const_get_maybe},
         eval::{
             Erb,
             value::value_bool::r#const::ValueBoolConst,
@@ -16,6 +15,12 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBoolConst,
+            aspect_bool_const_aspect_id,
+            aspect_bool_const_get,
+            aspect_bool_const_get_maybe,
         },
     },
     std::{

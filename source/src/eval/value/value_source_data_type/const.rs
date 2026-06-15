@@ -23,12 +23,12 @@ use {
 
 pub(crate) struct ValueSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
-    pub underlying: Rc<dyn Value>,
-    /// Set when the data type implements the builtin `type` interface and
-    /// the stage that constructed this instance captured a v8 handle and a
-    /// reference to the shared isolate. `TypeUserDefined.cast_from` uses
-    /// this to dispatch the compiled `cast_from` method via v8.
+    /// Set when the data type implements the builtin `type` interface and the stage
+    /// that constructed this instance captured a v8 handle and a reference to the
+    /// shared isolate. `TypeUserDefined.cast_from` uses this to dispatch the compiled
+    /// `cast_from` method via v8.
     pub isolate_bundle: RefCell<Option<Rc<IsolateBundle>>>,
+    pub underlying: Rc<dyn Value>,
 }
 
 impl Value for ValueSourceDataTypeConst {

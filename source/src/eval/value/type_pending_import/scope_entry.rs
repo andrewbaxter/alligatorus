@@ -1,9 +1,11 @@
-use crate::r#gen::ScopeEntry;
 use {
-    crate::langhelp::{
-        Code,
-        CodeValue,
-        QExprId,
+    crate::{
+        langhelp::{
+            Code,
+            CodeValue,
+            QExprId,
+        },
+        r#gen::ScopeEntry,
     },
     std::rc::Rc,
     super::PendingImportState,

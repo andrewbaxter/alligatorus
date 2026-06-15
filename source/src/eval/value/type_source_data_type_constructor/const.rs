@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectFunction, aspect_bind_aspect_id, aspect_consume_dynamic_get, aspect_function_aspect_id, aspect_stack_value_dynamic_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -29,6 +27,15 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectFunction,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_consume_dynamic_get,
+            aspect_function_aspect_id,
+            aspect_stack_value_dynamic_get,
         },
     },
     std::{
@@ -105,15 +112,15 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
             let mut object_fields =
-                vec![
-                    (crate::langhelp::ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)
-                ];
+                vec![(crate::langhelp::ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
             for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push((crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-                }));
+                object_fields.push(
+                    (crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                    })
+                );
             }
             for impl_data in self.data.interface_impls.borrow().iter() {
                 let iface_methods = impl_data.interface.methods.borrow();
@@ -121,17 +128,17 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
-                    object_fields.push((crate::langhelp::ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-                    }));
+                    object_fields.push(
+                        (crate::langhelp::ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                        })
+                    );
                 }
             }
             let result_type =
                 Rc::new(
-                    super::super::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
-                        data: self.data.clone(),
-                    }
+                    super::super::type_source_data_type::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone(), }
                 );
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
@@ -144,9 +151,11 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
 
 impl Type for TypeSourceDataTypeConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-            inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }),
-        })
+        Rc::new(
+            crate::eval::value::type_any::r#const::ValueAnyConst {
+                inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }),
+            },
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

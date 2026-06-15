@@ -21,13 +21,13 @@ pub(crate) struct SourceFunctionData {
     pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     /// Stable artifact id assigned during serialization.
     pub artifact_id: RefCell<Option<crate::langhelp::ArtifactId>>,
-    /// Rendered JS body (e.g. `function d0_0_0(a0) { ... }`). Populated after
-    /// the def-set's functions are compiled at end-of-stage.
-    pub compiled_js: RefCell<Option<String>>,
     /// Externals (`a##` bindings) captured by the body's compile environment.
-    /// `compiled_js` references these by their Local id; they must be installed
-    /// as v8 globals before the body runs.
+    /// `compiled_js` references these by their Local id; they must be installed as v8
+    /// globals before the body runs.
     pub captured_externals: RefCell<Vec<(ScopeEntryId, crate::langhelp::External)>>,
+    /// Rendered JS body (e.g. `function d0_0_0(a0) { ... }`). Populated after the
+    /// def-set's functions are compiled at end-of-stage.
+    pub compiled_js: RefCell<Option<String>>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,

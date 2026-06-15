@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectFunction, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_function_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -26,6 +24,15 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectFunction,
+            ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_function_aspect_id,
+        },
     },
     std::{
         any::Any,
@@ -41,20 +48,22 @@ impl AspectArtifact for TypeSourceFunctionConst {
         let func_type: Rc<dyn crate::langhelp::Type> =
             Rc::new(TypeSourceFunctionConst { data: self.data.clone() });
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::None },
-            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-                inner: func_type,
-            }),
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
+            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type }),
         })
     }
 
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let wrapper = must_downcast_ref::<crate::eval::value::type_any::r#const::ValueAnyConst>(self_.as_ref());
         let func = must_downcast_ref::<TypeSourceFunctionConst>(wrapper.inner.as_ref());
-        // Ensure the def-set is registered. Bare function references that never
-        // get called or lifted skip the usual registration paths, but their
-        // serialization still requires the def-set's data types / interface
-        // impls to have been compiled in this stage.
+
+        // Ensure the def-set is registered. Bare function references that never get
+        // called or lifted skip the usual registration paths, but their serialization
+        // still requires the def-set's data types / interface impls to have been compiled
+        // in this stage.
         {
             let set = &func.data.set;
             let mut sets = xx.vx.ix.definition_sets.borrow_mut();
@@ -63,12 +72,13 @@ impl AspectArtifact for TypeSourceFunctionConst {
             }
         }
         crate::eval::definition_set::serialize_definition_set(xx, loc, &func.data.set);
-        let artifact_id = func
-            .data
-            .artifact_id
-            .borrow()
-            .clone()
-            .expect("Function artifact ID should be set by serialize_definition_set");
+        let artifact_id =
+            func
+                .data
+                .artifact_id
+                .borrow()
+                .clone()
+                .expect("Function artifact ID should be set by serialize_definition_set");
         EResult::ok(Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
@@ -115,9 +125,11 @@ impl crate::r#gen::AspectType for TypeSourceFunctionConst {
 
 impl Type for TypeSourceFunctionConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-            inner: Rc::new(TypeSourceFunctionConst { data: self.data.clone() }),
-        })
+        Rc::new(
+            crate::eval::value::type_any::r#const::ValueAnyConst {
+                inner: Rc::new(TypeSourceFunctionConst { data: self.data.clone() }),
+            },
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

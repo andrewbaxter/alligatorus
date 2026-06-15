@@ -1,7 +1,6 @@
 //! Artifact-side support for `TypeSourceInterfaceConst`. Only handles builtin
 //! interfaces for now — the artifact data is the `BuiltinInterfaceKind`,
 //! deserialization rebuilds via `build_builtin_interfaces`.
-
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
@@ -25,14 +24,11 @@ use {
     },
 };
 
-pub(crate) struct TypeSourceInterfaceConstArtifact;
-
 pub(crate) struct Deserializer;
 
 impl Deserializer {
     fn lookup(xx: &ExprContext, kind: BuiltinInterfaceKind) -> Rc<dyn Type> {
-        let ifaces =
-            crate::r#gen::gen_build_builtin_interfaces(xx.import_state.get());
+        let ifaces = crate::r#gen::gen_build_builtin_interfaces(xx.import_state.get());
         let data = match kind {
             BuiltinInterfaceKind::Value => ifaces.value,
             BuiltinInterfaceKind::Type => ifaces.type_,
@@ -47,6 +43,22 @@ impl Deserializer {
 }
 
 impl ArtifactBuiltinDeserializer for Deserializer {
+    fn type_from_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
+        let kind: BuiltinInterfaceKind = match serde_json::from_value(data.clone()) {
+            Ok(k) => k,
+            Err(e) => return EResult::err(loc, format!("Failed to parse interface kind: {}", e)),
+        };
+        EResult::ok((Self::lookup(xx, kind), Code {
+            loc,
+            code: Code_::None,
+        }))
+    }
+
     fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let kind: BuiltinInterfaceKind = match serde_json::from_value(data.clone()) {
             Ok(k) => k,
@@ -54,20 +66,16 @@ impl ArtifactBuiltinDeserializer for Deserializer {
         };
         let type_ = Self::lookup(xx, kind);
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::None },
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
             value: type_.as_value(),
         })
-    }
-
-    fn type_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
-        let kind: BuiltinInterfaceKind = match serde_json::from_value(data.clone()) {
-            Ok(k) => k,
-            Err(e) => return EResult::err(loc, format!("Failed to parse interface kind: {}", e)),
-        };
-        EResult::ok((Self::lookup(xx, kind), Code { loc, code: Code_::None }))
     }
 }
 
 pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
     m.insert(TypeSourceInterfaceConstArtifact::artifact_id(), Rc::new(Deserializer));
 }
+pub(crate) struct TypeSourceInterfaceConstArtifact;

@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectNumberDynamic, AspectOperatorAdd, AspectOperatorEq, AspectOperatorLt, AspectSet, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_initial_bind_aspect_id, aspect_number_const_get_maybe, aspect_number_dynamic_aspect_id, aspect_number_dynamic_get_maybe, aspect_operator_add_aspect_id, aspect_operator_eq_aspect_id, aspect_operator_lt_aspect_id, aspect_set_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_type_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,
@@ -45,6 +43,34 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectInitialBind,
+            AspectNumberDynamic,
+            AspectOperatorAdd,
+            AspectOperatorEq,
+            AspectOperatorLt,
+            AspectSet,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_number_const_get_maybe,
+            aspect_number_dynamic_aspect_id,
+            aspect_number_dynamic_get_maybe,
+            aspect_operator_add_aspect_id,
+            aspect_operator_eq_aspect_id,
+            aspect_operator_lt_aspect_id,
+            aspect_set_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_type_aspect_id,
         },
     },
     std::{
@@ -170,8 +196,8 @@ impl AspectOperatorAdd for TypeNumberDynamic {
     }
 }
 
-impl AspectOperatorLt for TypeNumberDynamic {
-    fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+impl AspectOperatorEq for TypeNumberDynamic {
+    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
             let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
@@ -181,7 +207,7 @@ impl AspectOperatorLt for TypeNumberDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::OperatorLt(CodeDynamicOperatorLt {
+                        type_: CodeDynamicType::OperatorEq(CodeDynamicOperatorEq {
                             base: Box::new(base_code),
                             reference: Box::new(ref_code),
                         }),
@@ -196,8 +222,8 @@ impl AspectOperatorLt for TypeNumberDynamic {
     }
 }
 
-impl AspectOperatorEq for TypeNumberDynamic {
-    fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
+impl AspectOperatorLt for TypeNumberDynamic {
+    fn lt(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let base_code = erb.must_er(AspectConsumeDynamic::to_dynamic(&TypeNumberDynamic, xx, loc, base))?;
             let ref_cv = erb.must_er(TypeNumberDynamic.cast_from(xx, loc, reference))?;
@@ -207,7 +233,7 @@ impl AspectOperatorEq for TypeNumberDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::OperatorEq(CodeDynamicOperatorEq {
+                        type_: CodeDynamicType::OperatorLt(CodeDynamicOperatorLt {
                             base: Box::new(base_code),
                             reference: Box::new(ref_code),
                         }),

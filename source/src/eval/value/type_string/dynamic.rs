@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectLiftDynamic, AspectSet, AspectStackValueDynamic, AspectStringDynamic, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_set_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get, aspect_string_const_get_maybe, aspect_string_dynamic_aspect_id, aspect_string_dynamic_get_maybe, aspect_type_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,
@@ -42,6 +40,33 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectSet,
+            AspectStackValueDynamic,
+            AspectStringDynamic,
+            ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_set_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
+            aspect_string_const_get_maybe,
+            aspect_string_dynamic_aspect_id,
+            aspect_string_dynamic_get_maybe,
+            aspect_type_aspect_id,
         },
     },
     std::{
@@ -172,18 +197,6 @@ impl AspectLiftDynamic for TypeStringDynamic {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeStringDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
-    }
-}
-
 impl AspectSet for TypeStringDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
         mortar_set(xx, loc, self_, value)
@@ -198,6 +211,18 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 
 impl AspectStringDynamic for TypeStringDynamic { }
 
+impl crate::r#gen::AspectLowerDynamic for TypeStringDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
+    }
+}
+
 impl crate::r#gen::AspectType for TypeStringDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)
@@ -207,10 +232,6 @@ impl crate::r#gen::AspectType for TypeStringDynamic {
 impl Type for TypeStringDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringDynamic)
-    }
-
-    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
-        Some(Rc::new(TypeStringDynamic))
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -312,6 +333,10 @@ impl Type for TypeStringDynamic {
                 type_: Rc::new(TypeStringDynamic),
             }),
         })
+    }
+
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeStringDynamic))
     }
 
     fn desc(&self) -> String {

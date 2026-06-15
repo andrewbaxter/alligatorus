@@ -1,4 +1,3 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::{
@@ -17,6 +16,7 @@ use {
             ScopeEntryId,
             Type,
         },
+        r#gen::ScopeEntry,
     },
     std::{
         collections::BTreeMap,

@@ -1,21 +1,19 @@
-//! `AspectUserDefined` — Rust-side wrapper around a v8 instance of a source
-//! data type that implements one of the aspect interfaces (`aspect_field`,
+//! `AspectUserDefined` — Rust-side wrapper around a v8 instance of a source data
+//! type that implements one of the aspect interfaces (`aspect_field`,
 //! `aspect_function`). Implements the corresponding Rust aspect traits by
-//! synchronously invoking the v8 instance's interface method at const-eval
-//! time (parallel to `StatelessV8CastDispatcher::dispatch_cast_from`), then
-//! unwrapping the returned `CodeValueExtern` to obtain the inner `CodeValue`.
+//! synchronously invoking the v8 instance's interface method at const-eval time
+//! (parallel to `StatelessV8CastDispatcher::dispatch_cast_from`), then unwrapping
+//! the returned `CodeValueExtern` to obtain the inner `CodeValue`.
 //!
-//! Parallel to `TypeUserDefined` and `ValueUserDefined`. The instance is
-//! held as a v8::Global on `IsolateBundle`. Source-language code constructs
-//! values of source type `aspect` by `option(aspect).some(impl_instance)`;
-//! the `.some` cast (via `TypeAspectDynamic::cast_from` /
-//! `TypeSourceDataTypeDynamic::cast_to`) emits a `__data_instance_to_aspect`
-//! v8 call that produces a `v8::External` wrapping `Rc<AspectUserDefined>`.
-
+//! Parallel to `TypeUserDefined` and `ValueUserDefined`. The instance is held as a
+//! v8::Global on `IsolateBundle`. Source-language code constructs values of source
+//! type `aspect` by `option(aspect).some(impl_instance)`; the `.some` cast (via
+//! `TypeAspectDynamic::cast_from` / `TypeSourceDataTypeDynamic::cast_to`) emits a
+//! `__data_instance_to_aspect` v8 call that produces a `v8::External` wrapping
+//! `Rc<AspectUserDefined>`.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectField, AspectFunction},
         eval::{
             isolate_bundle::IsolateBundle,
             to_v8,
@@ -33,6 +31,10 @@ use {
             Type,
             Value,
         },
+        r#gen::{
+            AspectField,
+            AspectFunction,
+        },
     },
     std::{
         cell::RefCell,
@@ -41,15 +43,86 @@ use {
     },
 };
 
-/// A v8-instance-backed aspect impl. Holds the binding name(s) of the
-/// underlying interface methods (`_im_afd0` for `aspect_field.field`,
-/// `_im_af0` for `aspect_function.call`, etc.) implicitly via convention.
+/// Scope entry that yields a fresh record on each `use_` with the named CV fields
+/// exposed for `arg.<name>` access. Parallel to `ArgRecordFactory` from
+/// `user_defined_type_dispatch`, but with a configurable field set.
+struct AspectArgRecordFactory {
+    cv_fields: Vec<(String, CodeValue)>,
+    loc: QExprId,
+}
+
+impl ScopeEntry for AspectArgRecordFactory {
+    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+        let mut fields = std::collections::BTreeMap::new();
+        for (name, cv) in &self.cv_fields {
+            fields.insert(
+                ConstKey::String(name.clone()),
+                crate::eval::value::record::RecordField::EvalRes(EvalRes::ok(clone_cv(cv))),
+            );
+        }
+        fields.insert(
+            ConstKey::String("xx".to_string()),
+            crate::eval::value::record::RecordField::EvalRes(EvalRes::ok(CodeValue {
+                code: Code {
+                    loc: self.loc,
+                    code: Code_::None,
+                },
+                value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
+            })),
+        );
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
+            value: Rc::new(crate::eval::value::record::Record {
+                base: None,
+                fields,
+            }),
+        }
+    }
+}
+
+/// A v8-instance-backed aspect impl. Holds the binding name(s) of the underlying
+/// interface methods (`_im_afd0` for `aspect_field.field`, `_im_af0` for
+/// `aspect_function.call`, etc.) implicitly via convention.
 #[derive(Clone)]
 pub(crate) struct AspectUserDefined {
     pub bundle: Rc<IsolateBundle>,
 }
 
 impl Aspect for AspectUserDefined { }
+
+impl AspectField for AspectUserDefined {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        dispatch_aspect_method(
+            &self.bundle,
+            xx,
+            loc,
+            "_im_afd0",
+            vec![("self_".to_string(), self_), ("key".to_string(), key)],
+        )
+    }
+
+    fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
+        // `field_type_opt` is a Rust-only fast-path; routing through v8 for every call
+        // would be wasteful. Return None — the caller falls back to treating the field
+        // type as unknown (effectively `any`).
+        None
+    }
+}
+
+impl AspectFunction for AspectUserDefined {
+    fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
+        dispatch_aspect_method(
+            &self.bundle,
+            xx,
+            loc,
+            "_im_af0",
+            vec![("self_".to_string(), self_), ("argument".to_string(), argument)],
+        )
+    }
+}
 
 impl Value for AspectUserDefined {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
@@ -59,19 +132,13 @@ impl Value for AspectUserDefined {
 
 /// Owning handle returned from `TypeUserDefined::aspect` — wraps an
 /// `Rc<AspectUserDefined>` and impls `AspectField` / `AspectFunction` by
-/// forwarding to the inner. Lets the aspect lookup return a `Box<dyn ...>`
-/// holding the `Rc` without cloning the underlying instance.
+/// forwarding to the inner. Lets the aspect lookup return a `Box<dyn ...>` holding
+/// the `Rc` without cloning the underlying instance.
 pub(crate) struct AspectUserDefinedHandle {
     pub inner: Rc<AspectUserDefined>,
 }
 
 impl Aspect for AspectUserDefinedHandle { }
-
-impl Value for AspectUserDefinedHandle {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic)
-    }
-}
 
 impl AspectField for AspectUserDefinedHandle {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
@@ -89,12 +156,25 @@ impl AspectFunction for AspectUserDefinedHandle {
     }
 }
 
+impl Value for AspectUserDefinedHandle {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic)
+    }
+}
+
+fn clone_cv(cv: &CodeValue) -> CodeValue {
+    CodeValue {
+        code: cv.code.clone(),
+        value: cv.value.clone(),
+    }
+}
+
 /// Synchronous v8 dispatch shared by `field` and `call`. Mirrors
-/// `StatelessV8CastDispatcher::dispatch_cast_from`: builds a child
-/// `ExprContext` whose `arg` scope entry yields the named CV record, sets up
-/// the v8 arg object (`xx` external + the named CV fields as `CodeValueExtern`
-/// externals), invokes `instance[method_field](arg_obj)`, and unwraps the
-/// returned `CodeValueExtern` to a `CodeValue`.
+/// `StatelessV8CastDispatcher::dispatch_cast_from`: builds a child `ExprContext`
+/// whose `arg` scope entry yields the named CV record, sets up the v8 arg object
+/// (`xx` external + the named CV fields as `CodeValueExtern` externals), invokes
+/// `instance[method_field](arg_obj)`, and unwraps the returned `CodeValueExtern`
+/// to a `CodeValue`.
 fn dispatch_aspect_method(
     bundle: &IsolateBundle,
     xx: &ExprContext,
@@ -106,14 +186,16 @@ fn dispatch_aspect_method(
         Some(p) => p,
         None => return EvalRes::err(loc, "AspectUserDefined dispatch: no active v8 scope".to_string()),
     };
-    // SAFETY: pointer set by `eval()` for its full duration; same access
-    // pattern as `StatelessV8CastDispatcher::dispatch_cast_from`.
-    let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> =
-        unsafe { &mut *(scope_ptr.as_ptr() as *mut _) };
 
-    // Child ExprContext: bind `arg` so `eval_const(arg.xx, stage(...))` in the
-    // impl can resolve `arg.self_`, `arg.key` / `arg.argument` as the
-    // corresponding CodeValues at Rust const_eval time.
+    // SAFETY: pointer set by `eval()` for its full duration; same access pattern as
+    // `StatelessV8CastDispatcher::dispatch_cast_from`.
+    let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
+        &mut *(scope_ptr.as_ptr() as *mut _)
+    };
+
+    // Child ExprContext: bind `arg` so `eval_const(arg.xx, stage(...))` in the impl
+    // can resolve `arg.self_`, `arg.key` / `arg.argument` as the corresponding
+    // CodeValues at Rust const_eval time.
     let arg_factory = AspectArgRecordFactory {
         loc,
         cv_fields: cv_fields.iter().map(|(k, v)| (k.clone(), clone_cv(v))).collect(),
@@ -122,10 +204,10 @@ fn dispatch_aspect_method(
         values: RefCell::new(HashMap::new()),
         parent: Some(xx.scope.clone()),
     });
-    child_scope.values.borrow_mut().insert(
-        ConstKey::String("arg".to_string()),
-        Box::new(arg_factory) as Box<dyn ScopeEntry>,
-    );
+    child_scope
+        .values
+        .borrow_mut()
+        .insert(ConstKey::String("arg".to_string()), Box::new(arg_factory) as Box<dyn ScopeEntry>);
     let child_xx = Rc::new(ExprContext {
         vx: xx.vx.clone(),
         import_state: xx.import_state.clone(),
@@ -135,8 +217,8 @@ fn dispatch_aspect_method(
 
     // Build the v8-side arg object: `xx` external + each named CV field as a
     // `CodeValueExtern` external. The compiled impl body emits JS that does
-    // `__cve_field(arg.<name>, …)` and friends, so the field values must be
-    // real CVE externals at v8 — not placeholders.
+    // `__cve_field(arg.<name>, …)` and friends, so the field values must be real CVE
+    // externals at v8 — not placeholders.
     let arg_obj = v8::Object::new(scope);
     let xx_external = to_v8(scope, child_xx.clone());
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
@@ -149,12 +231,10 @@ fn dispatch_aspect_method(
             Some(s) => s,
             None => return EvalRes::err(loc, format!("AspectUserDefined dispatch: '{}' key alloc failed", name)),
         };
-        let cve_cell: Rc<RefCell<Option<CodeValue>>> =
-            Rc::new(RefCell::new(Some(clone_cv(cv))));
+        let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(clone_cv(cv))));
         let cve_ext = crate::eval::to_v8(scope, cve_cell);
         arg_obj.set(scope, k.into(), cve_ext.into());
     }
-
     let instance = v8::Local::new(scope, &bundle.instance);
     let method_key = match v8::String::new(scope, &ConstKey::String(method_field.to_string()).to_str()) {
         Some(k) => k,
@@ -176,14 +256,12 @@ fn dispatch_aspect_method(
         match method_fn.call(&mut tc, recv, &[arg_v]) {
             Some(r) => r,
             None => {
-                let msg = tc
-                    .exception()
-                    .map(|e| e.to_rust_string_lossy(&mut tc))
-                    .unwrap_or_else(|| "<no exception>".to_string());
-                return EvalRes::err(
-                    loc,
-                    format!("v8 method '{}' threw: {}", method_field, msg),
-                );
+                let msg =
+                    tc
+                        .exception()
+                        .map(|e| e.to_rust_string_lossy(&mut tc))
+                        .unwrap_or_else(|| "<no exception>".to_string());
+                return EvalRes::err(loc, format!("v8 method '{}' threw: {}", method_field, msg));
             },
         }
     };
@@ -196,97 +274,25 @@ fn dispatch_aspect_method(
     EvalRes::ok(out_cv)
 }
 
-fn clone_cv(cv: &CodeValue) -> CodeValue {
-    CodeValue {
-        code: cv.code.clone(),
-        value: cv.value.clone(),
-    }
-}
-
-/// Scope entry that yields a fresh record on each `use_` with the named CV
-/// fields exposed for `arg.<name>` access. Parallel to `ArgRecordFactory`
-/// from `user_defined_type_dispatch`, but with a configurable field set.
-struct AspectArgRecordFactory {
-    loc: QExprId,
-    cv_fields: Vec<(String, CodeValue)>,
-}
-
-impl ScopeEntry for AspectArgRecordFactory {
-    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        let mut fields = std::collections::BTreeMap::new();
-        for (name, cv) in &self.cv_fields {
-            fields.insert(
-                ConstKey::String(name.clone()),
-                crate::eval::value::record::RecordField::EvalRes(EvalRes::ok(clone_cv(cv))),
-            );
-        }
-        fields.insert(
-            ConstKey::String("xx".to_string()),
-            crate::eval::value::record::RecordField::EvalRes(EvalRes::ok(CodeValue {
-                code: Code { loc: self.loc, code: Code_::None },
-                value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
-            })),
-        );
-        CodeValue {
-            code: Code { loc, code: Code_::None },
-            value: Rc::new(crate::eval::value::record::Record { base: None, fields }),
-        }
-    }
-}
-
-impl AspectField for AspectUserDefined {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        dispatch_aspect_method(
-            &self.bundle,
-            xx,
-            loc,
-            "_im_afd0",
-            vec![("self_".to_string(), self_), ("key".to_string(), key)],
-        )
-    }
-
-    fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
-        // `field_type_opt` is a Rust-only fast-path; routing through v8 for
-        // every call would be wasteful. Return None — the caller falls back
-        // to treating the field type as unknown (effectively `any`).
-        None
-    }
-}
-
-impl AspectFunction for AspectUserDefined {
-    fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
-        dispatch_aspect_method(
-            &self.bundle,
-            xx,
-            loc,
-            "_im_af0",
-            vec![("self_".to_string(), self_), ("argument".to_string(), argument)],
-        )
-    }
-}
-
-/// `TypeUserDefinedAspect` — the source-language type of an aspect handle for
-/// a user-defined `is_aspect` interface. Carries `iface_ref` so `AspectField`
-/// can resolve a source-level method name (`to_code`) to the iface's
+/// `TypeUserDefinedAspect` — the source-language type of an aspect handle for a
+/// user-defined `is_aspect` interface. Carries `iface_ref` so `AspectField` can
+/// resolve a source-level method name (`to_code`) to the iface's
 /// `SourceInterfaceMethodData.field_name` (`_im0`/`_im1`/…) and emit
 /// `instance[field_name](arg)` at v8 time, with the result CV typed by the
-/// method's declared `ret_type`. Parallel to how `TypeSourceDataTypeDynamic`
-/// looks up data-type methods.
+/// method's declared `ret_type`. Parallel to how `TypeSourceDataTypeDynamic` looks
+/// up data-type methods.
 ///
 /// `bundle` is the v8 instance that backs the impl — the same one
 /// `TypeUserDefined` held. `Aspect::v8_instance` surfaces it so
-/// `TypeRefV8::aspect` (in v8) can put the JS instance into an `OptionV8`
-/// payload without needing to RTTI the `Rc<dyn Type>` it came from.
+/// `TypeRefV8::aspect` (in v8) can put the JS instance into an `OptionV8` payload
+/// without needing to RTTI the `Rc<dyn Type>` it came from.
 pub(crate) struct TypeUserDefinedAspect {
-    pub iface_ref: Rc<
-        crate::eval::value::type_source_interface::SourceInterfaceRef,
-    >,
-    /// Some when the handle was looked up via `TypeUserDefined::aspect`
-    /// (bundle came from the type). None when it was minted at compile time
-    /// by `aspect(base, key)` — the bundle then rides in the CV's runtime
-    /// code via the `base` expression, and `Aspect::v8_instance` doesn't
-    /// have one statically.
+    /// Some when the handle was looked up via `TypeUserDefined::aspect` (bundle came
+    /// from the type). None when it was minted at compile time by `aspect(base, key)`
+    /// — the bundle then rides in the CV's runtime code via the `base` expression, and
+    /// `Aspect::v8_instance` doesn't have one statically.
     pub bundle: Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>,
+    pub iface_ref: Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>,
 }
 
 impl Aspect for TypeUserDefinedAspect {
@@ -295,31 +301,19 @@ impl Aspect for TypeUserDefinedAspect {
     }
 }
 
-impl Value for TypeUserDefinedAspect {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
 impl crate::r#gen::AspectField for TypeUserDefinedAspect {
-    fn field(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: CodeValue,
-        key: CodeValue,
-    ) -> EvalRes {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let self_code = match self_.code.cast::<crate::code_dynamic::CodeDynamic>().into_res() {
             Ok(Some(c)) => c.clone(),
-            _ => return EvalRes::err(
-                loc,
-                "TypeUserDefinedAspect.field: receiver has no runtime code".to_string(),
-            ),
+            _ => return EvalRes::err(loc, "TypeUserDefinedAspect.field: receiver has no runtime code".to_string()),
         };
         let key_type = key.value.type_(xx, loc);
         let key_string = match crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
-            Err(e) => return EvalRes { v: None, errors: Some(e) },
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
         };
         let key_name = key_string.get(key.value.as_ref());
         let methods = self.iface_ref.data.methods.borrow();
@@ -330,13 +324,7 @@ impl crate::r#gen::AspectField for TypeUserDefinedAspect {
                 format!(
                     "aspect handle has no method '{}' on interface '{}'",
                     key_name,
-                    self.iface_ref
-                        .data
-                        .description
-                        .borrow()
-                        .as_deref()
-                        .unwrap_or("?")
-                        .to_string(),
+                    self.iface_ref.data.description.borrow().as_deref().unwrap_or("?").to_string(),
                 ),
             ),
         };
@@ -350,19 +338,20 @@ impl crate::r#gen::AspectField for TypeUserDefinedAspect {
         };
         let field_code = crate::code_dynamic::CodeDynamic {
             loc,
-            type_: crate::code_dynamic::CodeDynamicType::FieldUse(
-                crate::code_dynamic::CodeDynamicFieldUse {
-                    base: Box::new(self_code),
-                    field: ConstKey::String(method.field_name.clone()).to_str(),
-                },
-            ),
+            type_: crate::code_dynamic::CodeDynamicType::FieldUse(crate::code_dynamic::CodeDynamicFieldUse {
+                base: Box::new(self_code),
+                field: ConstKey::String(method.field_name.clone()).to_str(),
+            }),
         };
         let func_type = Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
             arg: arg_type,
             ret: ret_type,
         });
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::Dyn(Rc::new(field_code)) },
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(field_code)),
+            },
             value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
                 source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
                 type_: func_type,
@@ -370,11 +359,7 @@ impl crate::r#gen::AspectField for TypeUserDefinedAspect {
         })
     }
 
-    fn field_type_opt(
-        &self,
-        _xx: &ExprContext,
-        key: &ConstKey,
-    ) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         let ConstKey::String(s) = key else {
             return None;
         };
@@ -409,44 +394,34 @@ impl Type for TypeUserDefinedAspect {
         })
     }
 
-    fn aspect(
-        &self,
-        _xx: &ExprContext,
-        key: &crate::langhelp::Unique,
-    ) -> Option<Box<dyn std::any::Any>> {
+    fn aspect(&self, _xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
         if *key == crate::r#gen::aspect_field_aspect_id() {
-            return Some(Box::new(
-                Box::new(TypeUserDefinedAspect {
-                    iface_ref: self.iface_ref.clone(),
-                    bundle: self.bundle.clone(),
-                }) as Box<dyn crate::r#gen::AspectField>,
-            ));
+            return Some(Box::new(Box::new(TypeUserDefinedAspect {
+                iface_ref: self.iface_ref.clone(),
+                bundle: self.bundle.clone(),
+            }) as Box<dyn crate::r#gen::AspectField>));
         }
         if *key == crate::r#gen::aspect_initial_bind_aspect_id() {
-            return Some(Box::new(
-                Box::new(TypeUserDefinedAspect {
-                    iface_ref: self.iface_ref.clone(),
-                    bundle: self.bundle.clone(),
-                }) as Box<dyn crate::r#gen::AspectInitialBind>,
-            ));
+            return Some(Box::new(Box::new(TypeUserDefinedAspect {
+                iface_ref: self.iface_ref.clone(),
+                bundle: self.bundle.clone(),
+            }) as Box<dyn crate::r#gen::AspectInitialBind>));
         }
         if *key == crate::r#gen::aspect_function_aspect_id() {
-            // No-op marker: callers that only check `.is_some()` see this as
-            // an aspect-bearing type without requiring AspectFunction work.
+            // No-op marker: callers that only check `.is_some()` see this as an
+            // aspect-bearing type without requiring AspectFunction work.
             return None;
         }
         None
     }
 
     fn desc(&self) -> String {
-        format!(
-            "aspect<{}>",
-            self.iface_ref
-                .data
-                .description
-                .borrow()
-                .as_deref()
-                .unwrap_or("?")
-        )
+        format!("aspect<{}>", self.iface_ref.data.description.borrow().as_deref().unwrap_or("?"))
+    }
+}
+
+impl Value for TypeUserDefinedAspect {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
+        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

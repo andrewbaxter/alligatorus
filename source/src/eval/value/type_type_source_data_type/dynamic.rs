@@ -1,6 +1,5 @@
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectType, aspect_artifact_aspect_id, aspect_type_aspect_id},
         eval::{
             Erb,
             definition_set::DefinitionSet,
@@ -34,6 +33,12 @@ use {
             Value,
             deserialize_independent_artifact,
         },
+        r#gen::{
+            AspectArtifact,
+            AspectType,
+            aspect_artifact_aspect_id,
+            aspect_type_aspect_id,
+        },
     },
     dumpster::unsync::Gc,
     std::{
@@ -60,8 +65,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         data.clone(),
                     ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
                 )?;
-            let def_set =
-                erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
+            let def_set = erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
             let data_types = def_set.data_types.borrow();
             let dt_data =
                 data_types
@@ -71,7 +75,10 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                     .clone();
             drop(data_types);
             return Ok(CodeValue {
-                code: Code { loc, code: Code_::None },
+                code: Code {
+                    loc,
+                    code: Code_::None
+                },
                 value: Rc::new(TypeSourceDataTypeConst { data: dt_data }),
             });
         })

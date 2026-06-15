@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectFunction, AspectInitialBind, aspect_function_aspect_id, aspect_initial_bind_aspect_id},
         eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         langhelp::{
             Aspect,
@@ -15,6 +13,13 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectFunction,
+            AspectInitialBind,
+            ScopeEntry,
+            aspect_function_aspect_id,
+            aspect_initial_bind_aspect_id,
         },
     },
     std::{
@@ -33,7 +38,10 @@ impl AspectFunction for TypeOptionConstructorConst {
         let arg_meta = argument.value.type_(xx, loc);
         let aspect_type = match crate::r#gen::aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
             Ok(at) => at,
-            Err(e) => return EvalRes { v: None, errors: Some(e) },
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
         };
         let element_type = aspect_type.type_(argument.value.as_ref());
         let opt_type: Rc<dyn Type> =

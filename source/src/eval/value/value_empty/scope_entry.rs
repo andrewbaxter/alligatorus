@@ -1,4 +1,3 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         eval::value::value_empty::r#const::ValueEmptyConst,
@@ -9,6 +8,7 @@ use {
             QExprId,
             Type,
         },
+        r#gen::ScopeEntry,
     },
     std::rc::Rc,
 };

@@ -116,21 +116,6 @@ struct InterfaceSpec {
     methods: Vec<MethodSpec>,
 }
 
-/// `TypeOptionDynamic { element_type: <inner mortar> }` as a `TypeRef`.
-/// The trait-return path is the bare `TypeOptionDynamic` (parameterized at
-/// runtime via the field, not generically); the source-mortar value
-/// constructs an instance with the parameterized `element_type`.
-fn option_type(inner: &TypeRef) -> TypeRef {
-    let inner_mortar = &inner.mortar;
-    TypeRef {
-        path: quote!(crate::eval::value::type_option::dynamic::TypeOptionDynamic),
-        mortar: quote! {
-            std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
-                element_type: #inner_mortar,
-            }) as std::rc::Rc<dyn crate::langhelp::Type>
-        },
-    }
-}
 
 fn interfaces() -> Vec<InterfaceSpec> {
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
@@ -175,7 +160,17 @@ fn interfaces() -> Vec<InterfaceSpec> {
                 MethodSpec {
                     name: "aspect",
                     arg_type: any(),
-                    ret_type: option_type(&aspect()),
+                    ret_type: {
+    let inner_mortar = &aspect().mortar;
+    TypeRef {
+        path: quote!(crate::eval::value::type_option::dynamic::TypeOptionDynamic),
+        mortar: quote! {
+            std::rc::Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+                element_type: #inner_mortar,
+            }) as std::rc::Rc<dyn crate::langhelp::Type>
+        },
+    }
+                    } ,
                     rust_trait: None,
                 },
             ],

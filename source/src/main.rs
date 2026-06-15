@@ -2,13 +2,14 @@
 pub mod builtin;
 pub mod code_dynamic;
 pub mod eval;
-// `gen` is a reserved keyword in Rust 2024 (gen blocks/closures), so the
-// module's identifier is raw-form `r#gen`. Paths in callers use
-// `crate::r#gen::xyz` (or `use crate::r#gen as gen;` for local convenience).
-#[path = "gen.rs"]
-pub mod r#gen;
 pub mod invariant;
 pub mod langhelp;
+
+// `gen` is a reserved keyword in Rust 2024 (gen blocks/closures), so the module's
+// identifier is raw-form `r#gen`. Paths in callers use `crate::r#gen::xyz` (or
+// `use crate::r#gen as gen;` for local convenience).
+#[path = "gen.rs"]
+pub mod r#gen;
 pub mod syntax;
 #[cfg(test)]
 mod tests;
@@ -121,7 +122,8 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
             r#type: match &m.r#type {
                 SourceExpr_::Literal(lit) => Expr_::Literal(crate::eval::expr::make_lit_value(match lit {
                     SourceLiteral::Null => Rc::new(ValueNullConst) as Rc<dyn crate::langhelp::Value>,
-                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as Rc<dyn crate::langhelp::Value>,
+                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as
+                        Rc<dyn crate::langhelp::Value>,
                     SourceLiteral::Number(n) => {
                         Rc::new(ValueNumberConst(n.into_inner())) as Rc<dyn crate::langhelp::Value>
                     },
@@ -147,9 +149,11 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                 SourceExpr_::Bind(expr) => Expr_::Bind(ExprBind {
                     base: Rc::new(Expr {
                         loc: (source_id, m.id),
-                        r#type: Expr_::Literal(crate::eval::expr::make_lit_value(
-                            Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn crate::langhelp::Value>,
-                        )),
+                        r#type: Expr_::Literal(
+                            crate::eval::expr::make_lit_value(
+                                Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn crate::langhelp::Value>,
+                            ),
+                        ),
                     }),
                     value: Rc::new(source_expr_to_expr(source_id, &expr.value)),
                 }),

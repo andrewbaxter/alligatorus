@@ -1,6 +1,5 @@
 use {
     crate::{
-        r#gen::{AspectBind, AspectFunction, aspect_bind_aspect_id, aspect_consume_dynamic_get, aspect_function_aspect_id, aspect_stack_value_dynamic_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,
@@ -22,6 +21,14 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectFunction,
+            aspect_bind_aspect_id,
+            aspect_consume_dynamic_get,
+            aspect_function_aspect_id,
+            aspect_stack_value_dynamic_get,
         },
     },
     std::{
@@ -49,7 +56,6 @@ impl AspectBind for TypeSourceTaggedUnionConstructorConst {
     }
 }
 
-
 impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let variants = self.data.variants.borrow();
@@ -65,7 +71,11 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, result_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: vec![(crate::langhelp::ConstKey::String(js_tag).to_str(), underlying_js)], }),
+                type_: CodeDynamicType::NewObject(
+                    CodeDynamicNewObject {
+                        fields: vec![(crate::langhelp::ConstKey::String(js_tag).to_str(), underlying_js)],
+                    }
+                ),
             }));
         });
     }
@@ -73,12 +83,14 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
 
 impl Type for TypeSourceTaggedUnionConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-            inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
-                data: self.data.clone(),
-                variant_index: self.variant_index,
-            }),
-        })
+        Rc::new(
+            crate::eval::value::type_any::r#const::ValueAnyConst {
+                inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
+                    data: self.data.clone(),
+                    variant_index: self.variant_index,
+                }),
+            },
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -49,6 +47,20 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_field_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
+        },
     },
     std::{
         any::Any,
@@ -60,4 +72,3 @@ use {
         rc::Rc,
     },
 };
-

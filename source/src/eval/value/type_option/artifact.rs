@@ -1,5 +1,4 @@
 //! Option-type artifact: serialized element-type artifact.
-
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
@@ -28,9 +27,6 @@ use {
 pub(crate) struct ArtifactOptionType {
     pub element_type: Artifact,
 }
-
-pub(crate) struct TypeOptionArtifact;
-
 pub(crate) struct Deserializer;
 
 impl Deserializer {
@@ -51,20 +47,37 @@ impl Deserializer {
 }
 
 impl ArtifactBuiltinDeserializer for Deserializer {
-    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn type_from_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
         match Self::decode(xx, loc, data) {
-            Ok(opt_type) => EvalRes::ok(CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: opt_type.as_value(),
-            }),
-            Err(errs) => EvalRes { v: None, errors: Some(errs) },
+            Ok(opt_type) => EResult::ok((opt_type, Code {
+                loc,
+                code: Code_::None,
+            })),
+            Err(errs) => EResult {
+                v: None,
+                errors: Some(errs),
+            },
         }
     }
 
-    fn type_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
+    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match Self::decode(xx, loc, data) {
-            Ok(opt_type) => EResult::ok((opt_type, Code { loc, code: Code_::None })),
-            Err(errs) => EResult { v: None, errors: Some(errs) },
+            Ok(opt_type) => EvalRes::ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::None,
+                },
+                value: opt_type.as_value(),
+            }),
+            Err(errs) => EvalRes {
+                v: None,
+                errors: Some(errs),
+            },
         }
     }
 }
@@ -72,3 +85,4 @@ impl ArtifactBuiltinDeserializer for Deserializer {
 pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
     m.insert(TypeOptionArtifact::artifact_id(), Rc::new(Deserializer));
 }
+pub(crate) struct TypeOptionArtifact;

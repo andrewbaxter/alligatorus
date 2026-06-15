@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectField, AspectStringConst, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_field_aspect_id, aspect_string_const_aspect_id, aspect_string_const_get, aspect_string_const_get_maybe},
         eval::{
             Erb,
             value::{
@@ -25,6 +23,19 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectField,
+            AspectStringConst,
+            ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_field_aspect_id,
+            aspect_string_const_aspect_id,
+            aspect_string_const_get,
+            aspect_string_const_get_maybe,
         },
     },
     std::{
@@ -90,7 +101,12 @@ impl AspectStringConst for TypeStringConst {
 }
 
 impl crate::r#gen::AspectConsumeDynamic for TypeStringConst {
-    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<crate::code_dynamic::CodeDynamic> {
+    fn to_dynamic(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<crate::code_dynamic::CodeDynamic> {
         // Emit a JS string literal for the const value.
         let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
         EResult::ok(crate::code_dynamic::CodeDynamic {

@@ -25,30 +25,51 @@ pub(crate) type ArtifactDataNull = ();
 pub(crate) struct DeserializerConst;
 
 impl ArtifactBuiltinDeserializer for DeserializerConst {
+    fn type_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(super::r#const::TypeNullConst), Code {
+            loc,
+            code: Code_::None,
+        }))
+    }
+
     fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
         EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::None },
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
             value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst) as Rc<dyn Value>,
         })
     }
-
-    fn type_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((Rc::new(super::r#const::TypeNullConst), Code { loc, code: Code_::None }))
-    }
 }
-
 pub(crate) struct DeserializerDynamic;
 
 impl ArtifactBuiltinDeserializer for DeserializerDynamic {
-    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: Code { loc, code: Code_::None },
-            value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
-        })
+    fn type_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(super::dynamic::TypeNullDynamic), Code {
+            loc,
+            code: Code_::None,
+        }))
     }
 
-    fn type_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((Rc::new(super::dynamic::TypeNullDynamic), Code { loc, code: Code_::None }))
+    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
+            value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
+        })
     }
 }
 

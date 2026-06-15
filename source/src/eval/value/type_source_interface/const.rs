@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_field_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -36,6 +34,23 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectInitialBind,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
+            interface_const_identity,
+        },
     },
     std::{
         any::Any,
@@ -44,47 +59,18 @@ use {
     },
     super::TypeSourceInterfaceConst,
 };
-use crate::r#gen::interface_const_identity;
+
+pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
+
+impl crate::langhelp::Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
+
+impl crate::r#gen::AspectType for TypeSourceInterfaceConstAspectTypeImpl {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
+    }
+}
 
 impl Aspect for TypeSourceInterfaceConst { }
-
-impl crate::r#gen::AspectArtifact for TypeSourceInterfaceConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        // Builtin interfaces deserialize via `TypeSourceInterfaceConstArtifact`'s
-        // `Deserializer` (registered in `artifact.rs`). `from_serial` here is
-        // unreachable on the literal-deserialization path; non-builtin
-        // interfaces aren't yet artifact-serializable.
-        EvalRes::err(loc, "TypeSourceInterfaceConst::from_serial: handled via Deserializer registry".to_string())
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, loc: QExprId, _value: Rc<dyn Value>) -> EResult<crate::langhelp::Artifact> {
-        // Only builtin interfaces are serializable for now (round-tripped
-        // via their `BuiltinInterfaceKind` and rebuilt by
-        // `gen_build_builtin_interfaces` on deserialize).
-        match self.data.builtin_kind {
-            Some(kind) => EResult::ok(
-                super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind),
-            ),
-            None => EResult::err(
-                loc,
-                format!("TypeSourceInterfaceConst::to_serial: non-builtin interfaces not yet artifact-serializable"),
-            ),
-        }
-    }
-}
-
-impl crate::r#gen::AspectAspect for TypeSourceInterfaceConst {
-    fn get_unique(&self, _value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
-        self.data.identity.clone()
-    }
-
-    fn get_iface_data(
-        &self,
-        _value: &dyn crate::langhelp::Value,
-    ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
-        self.data.clone()
-    }
-}
 
 impl AspectBind for TypeSourceInterfaceConst {
     fn bind(
@@ -197,19 +183,57 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
     }
 }
 
-/// Marker `Unique` used to identify *any* concrete `TypeSourceInterfaceConst`
-/// instance — distinct from `interface_ref_type_identity()` (which marks the
-/// type-erased dynamic ref) and from each interface's own `data.identity`.
-
-impl Type for TypeSourceInterfaceConst {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-            inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
-        })
+impl crate::r#gen::AspectArtifact for TypeSourceInterfaceConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        // Builtin interfaces deserialize via `TypeSourceInterfaceConstArtifact`'s
+        // `Deserializer` (registered in `artifact.rs`). `from_serial` here is unreachable
+        // on the literal-deserialization path; non-builtin interfaces aren't yet
+        // artifact-serializable.
+        EvalRes::err(loc, "TypeSourceInterfaceConst::from_serial: handled via Deserializer registry".to_string())
     }
 
-    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
-        Some(Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }))
+    fn to_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _value: Rc<dyn Value>,
+    ) -> EResult<crate::langhelp::Artifact> {
+        // Only builtin interfaces are serializable for now (round-tripped via their
+        // `BuiltinInterfaceKind` and rebuilt by `gen_build_builtin_interfaces` on
+        // deserialize).
+        match self.data.builtin_kind {
+            Some(kind) => EResult::ok(super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind)),
+            None => EResult::err(
+                loc,
+                format!("TypeSourceInterfaceConst::to_serial: non-builtin interfaces not yet artifact-serializable"),
+            ),
+        }
+    }
+}
+
+impl crate::r#gen::AspectAspect for TypeSourceInterfaceConst {
+    fn get_iface_data(
+        &self,
+        _value: &dyn crate::langhelp::Value,
+    ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+        self.data.clone()
+    }
+
+    fn get_unique(&self, _value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
+        self.data.identity.clone()
+    }
+}
+
+/// Marker `Unique` used to identify _any_ concrete `TypeSourceInterfaceConst`
+/// instance — distinct from `interface_ref_type_identity()` (which marks the
+/// type-erased dynamic ref) and from each interface's own `data.identity`.
+impl Type for TypeSourceInterfaceConst {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(
+            crate::eval::value::type_any::r#const::ValueAnyConst {
+                inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
+            },
+        )
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -221,26 +245,27 @@ impl Type for TypeSourceInterfaceConst {
             return Some(Box::new(true));
         }
         if *key == crate::r#gen::aspect_type_aspect_id() {
-            // Iface-ref-as-type: a value of this iface used as a type arg
-            // (e.g. `map(string, type)`) resolves to the iface's dynamic
-            // representation (`TypeSourceInterfaceDynamic`) so map/list/etc.
-            // see a single runtime type for iface-ref-typed entries.
-            return Some(Box::new(
-                Box::new(TypeSourceInterfaceConstAspectTypeImpl)
-                    as Box<dyn crate::r#gen::AspectType>,
-            ));
+            // Iface-ref-as-type: a value of this iface used as a type arg (e.g.
+            // `map(string, type)`) resolves to the iface's dynamic representation
+            // (`TypeSourceInterfaceDynamic`) so map/list/etc. see a single runtime type for
+            // iface-ref-typed entries.
+            return Some(Box::new(Box::new(TypeSourceInterfaceConstAspectTypeImpl) as Box<dyn crate::r#gen::AspectType>));
         }
         if *key == crate::r#gen::aspect_aspect_aspect_id() {
-            return Some(Box::new(
-                Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
-                    as Box<dyn crate::r#gen::AspectAspect>,
-            ));
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as
+                        Box<dyn crate::r#gen::AspectAspect>,
+                ),
+            );
         }
         if *key == crate::r#gen::aspect_artifact_aspect_id() {
-            return Some(Box::new(
-                Box::new(TypeSourceInterfaceConst { data: self.data.clone() })
-                    as Box<dyn crate::r#gen::AspectArtifact>,
-            ));
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as
+                        Box<dyn crate::r#gen::AspectArtifact>,
+                ),
+            );
         }
         if *key == aspect_field_aspect_id() {
             return Some(
@@ -289,6 +314,10 @@ impl Type for TypeSourceInterfaceConst {
         source_type.aspect(xx, &identity).is_some()
     }
 
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+    }
+
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let identity = self.data.identity.clone();
         let source_type = cv.value.type_(xx, loc);
@@ -304,17 +333,12 @@ impl Type for TypeSourceInterfaceConst {
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
     }
 
-    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
-    }
-
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
-            // The iface ref's v8 form is `External(Rc<SourceInterfaceRef>)`.
-            // Re-type the cv as `TypeSourceInterfaceDynamic` (the dynamic
-            // representation that carries iface refs) and dispatch through
-            // its `cast_to(any)`, which emits `__interface_ref_to_type` to
-            // wrap the iface as `Rc<dyn Type>` at v8.
+            // The iface ref's v8 form is `External(Rc<SourceInterfaceRef>)`. Re-type the cv
+            // as `TypeSourceInterfaceDynamic` (the dynamic representation that carries iface
+            // refs) and dispatch through its `cast_to(any)`, which emits
+            // `__interface_ref_to_type` to wrap the iface as `Rc<dyn Type>` at v8.
             let dyn_cv = CodeValue {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
@@ -327,6 +351,10 @@ impl Type for TypeSourceInterfaceConst {
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
     }
 
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        Some(Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }))
+    }
+
     fn desc(&self) -> String {
         match self.data.description.borrow().as_deref() {
             Some(d) => d.to_string(),
@@ -334,16 +362,11 @@ impl Type for TypeSourceInterfaceConst {
         }
     }
 
-    fn type_to_serial(
-        &self,
-        _xx: &ExprContext,
-        _loc: QExprId,
-    ) -> crate::langhelp::Artifact {
-        // For now we only round-trip builtin interfaces — `build_builtin_interfaces`
-        // can rebuild them from `BuiltinInterfaceKind`. User-defined interfaces
-        // would need a per-interface artifact stored alongside the def-set.
-        let kind = self.data.builtin_kind
-            .expect("type_to_serial: user-defined iface artifact not implemented");
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+        // For now we only round-trip builtin interfaces — `build_builtin_interfaces` can
+        // rebuild them from `BuiltinInterfaceKind`. User-defined interfaces would need a
+        // per-interface artifact stored alongside the def-set.
+        let kind = self.data.builtin_kind.expect("type_to_serial: user-defined iface artifact not implemented");
         super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind)
     }
 }
@@ -351,15 +374,5 @@ impl Type for TypeSourceInterfaceConst {
 impl Value for TypeSourceInterfaceConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
-    }
-}
-
-pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
-
-impl crate::langhelp::Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
-
-impl crate::r#gen::AspectType for TypeSourceInterfaceConstAspectTypeImpl {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
-        Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
     }
 }

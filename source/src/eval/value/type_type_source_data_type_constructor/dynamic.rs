@@ -1,6 +1,5 @@
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectType, aspect_artifact_aspect_id, aspect_type_aspect_id},
         eval::{
             Erb,
             value::type_source_data_type_constructor::{
@@ -20,6 +19,12 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectArtifact,
+            AspectType,
+            aspect_artifact_aspect_id,
+            aspect_type_aspect_id,
         },
     },
     std::{

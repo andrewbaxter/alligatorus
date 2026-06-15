@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_type_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -39,6 +37,21 @@ use {
             Unique,
             Value,
         },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_type_aspect_id,
+            expr_type_identity,
+        },
     },
     std::{
         any::Any,
@@ -46,8 +59,46 @@ use {
         rc::Rc,
     },
 };
-use crate::r#gen::expr_type_identity;
 
+pub(crate) struct DeserializerTypeExpr;
+
+impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerTypeExpr {
+    fn type_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: crate::langhelp::QExprId,
+        _data: &serde_json::Value,
+    ) -> crate::langhelp::EResult<(Rc<dyn Type>, crate::langhelp::Code)> {
+        crate::langhelp::EResult::ok((Rc::new(TypeExpr), crate::langhelp::Code {
+            loc,
+            code: crate::langhelp::Code_::None,
+        }))
+    }
+
+    fn value_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: crate::langhelp::QExprId,
+        _data: &serde_json::Value,
+    ) -> crate::langhelp::EvalRes {
+        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
+            code: crate::langhelp::Code {
+                loc,
+                code: crate::langhelp::Code_::None,
+            },
+            value: Rc::new(TypeExpr) as Rc<dyn crate::langhelp::Value>,
+        })
+    }
+}
+
+pub(crate) fn register_expr_artifact(
+    m:
+        &mut std
+        ::collections
+        ::HashMap<crate::langhelp::ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
+) {
+    m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
+}
 pub(crate) struct TypeExpr;
 
 impl Aspect for TypeExpr { }
@@ -161,13 +212,17 @@ impl Type for TypeExpr {
         true
     }
 
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        // Expressions are code, not type-of-types — no `cast_to(any)`.
+        false
+    }
+
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
-            // If the value is itself an `Expr` (e.g. from a `stage(...)`
-            // literal), clone it directly; otherwise the static type is
-            // already `expr` (e.g. via a dynamic binding) and we pass through
-            // the CV unchanged.
+            // If the value is itself an `Expr` (e.g. from a `stage(...)` literal), clone it
+            // directly; otherwise the static type is already `expr` (e.g. via a dynamic
+            // binding) and we pass through the CV unchanged.
             if let Some(expr) = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<Expr>() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
@@ -191,11 +246,6 @@ impl Type for TypeExpr {
         });
     }
 
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        // Expressions are code, not type-of-types — no `cast_to(any)`.
-        false
-    }
-
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         return EvalRes::err(loc, format!("Cannot convert expr to other type"));
     }
@@ -204,45 +254,9 @@ impl Type for TypeExpr {
         return format!("expr");
     }
 
-    fn type_to_serial(
-        &self,
-        _xx: &ExprContext,
-        _loc: QExprId,
-    ) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
         Self::build_type_artifact()
     }
-}
-
-
-pub(crate) struct DeserializerTypeExpr;
-
-impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerTypeExpr {
-    fn value_from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: crate::langhelp::QExprId,
-        _data: &serde_json::Value,
-    ) -> crate::langhelp::EvalRes {
-        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
-            code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::None },
-            value: Rc::new(TypeExpr) as Rc<dyn crate::langhelp::Value>,
-        })
-    }
-
-    fn type_from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: crate::langhelp::QExprId,
-        _data: &serde_json::Value,
-    ) -> crate::langhelp::EResult<(Rc<dyn Type>, crate::langhelp::Code)> {
-        crate::langhelp::EResult::ok((Rc::new(TypeExpr), crate::langhelp::Code { loc, code: crate::langhelp::Code_::None }))
-    }
-}
-
-pub(crate) fn register_expr_artifact(
-    m: &mut std::collections::HashMap<crate::langhelp::ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
-) {
-    m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
 }
 
 impl Value for TypeExpr {
@@ -297,7 +311,9 @@ impl Type for TypeExprStagedPlaceholder {
             return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLiftDynamic>));
         }
         if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+            return Some(
+                Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+            );
         }
         None
     }

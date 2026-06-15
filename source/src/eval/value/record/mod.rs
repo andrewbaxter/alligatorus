@@ -1,10 +1,8 @@
 pub mod artifact;
 pub mod scope_entry;
 
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectInitialBind, AspectLiftDynamic, AspectRecord, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_bind_get, aspect_consume_dynamic_aspect_id, aspect_consume_dynamic_get_maybe, aspect_field_aspect_id, aspect_field_get_maybe, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_record_aspect_id, aspect_record_get_maybe, aspect_string_const_get},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,
@@ -44,6 +42,28 @@ use {
             Unique,
             Value,
             downcast_value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectRecord,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_bind_get,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get_maybe,
+            aspect_field_aspect_id,
+            aspect_field_get_maybe,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_record_aspect_id,
+            aspect_record_get_maybe,
+            aspect_string_const_get,
         },
     },
     scope_entry::{
@@ -430,19 +450,24 @@ impl Type for Record {
             return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }
         if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            let entry_lowers: Vec<(ConstKey, Box<dyn crate::r#gen::AspectLowerDynamic>)> = self.fields.iter().map(|(k, f)| {
-                let t = match f {
-                    RecordField::Mortar(t) => t.clone(),
-                    RecordField::EvalRes(_) => panic!("lower on non-type record"),
-                };
-                let a =
-                    t
-                        .aspect(_xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
-                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLowerDynamic", k, t.desc()));
-                (k.clone(), must_downcast_box::<Box<dyn crate::r#gen::AspectLowerDynamic>>(a))
-            }).collect();
+            let entry_lowers: Vec<(ConstKey, Box<dyn crate::r#gen::AspectLowerDynamic>)> =
+                self.fields.iter().map(|(k, f)| {
+                    let t = match f {
+                        RecordField::Mortar(t) => t.clone(),
+                        RecordField::EvalRes(_) => panic!("lower on non-type record"),
+                    };
+                    let a =
+                        t
+                            .aspect(_xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
+                            .expect(
+                                &format!("Record entry '{:?}' type ({}) missing AspectLowerDynamic", k, t.desc()),
+                            );
+                    (k.clone(), must_downcast_box::<Box<dyn crate::r#gen::AspectLowerDynamic>>(a))
+                }).collect();
             return Some(
-                Box::new(Box::new(RecordLowerDynamic { entry_lowers }) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+                Box::new(
+                    Box::new(RecordLowerDynamic { entry_lowers }) as Box<dyn crate::r#gen::AspectLowerDynamic>,
+                ),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
@@ -510,15 +535,14 @@ impl Type for Record {
         let record: Record =
             Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record cast_to: Rc not unique");
         return er_seq_cv!(loc, erb, {
-            let any_type: Rc<dyn Type> =
-                Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
+            let any_type: Rc<dyn Type> = Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
             let mut converted_fields = std::collections::BTreeMap::new();
             let mut converted_type = self.clone_as_type();
             for (key, field) in record.fields {
                 let converted_cv = match field {
                     RecordField::Mortar(t) => {
-                        // Compile-time type — store as External::Type, produce a BindingUse code
-                        // that resolves to an `Rc<dyn Type>` external at runtime.
+                        // Compile-time type — store as External::Type, produce a BindingUse code that
+                        // resolves to an `Rc<dyn Type>` external at runtime.
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::Type(t)));
                         CodeValue {
@@ -536,8 +560,9 @@ impl Type for Record {
                     },
                     RecordField::EvalRes(er) => {
                         let entry_cv = erb.must_er(er)?;
-                        // Recursively cast the element value to a type. The conversion
-                        // generates code that produces an `Rc<dyn Type>` external at runtime.
+
+                        // Recursively cast the element value to a type. The conversion generates code
+                        // that produces an `Rc<dyn Type>` external at runtime.
                         erb.must_er(crate::eval::typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
                     },
                 };
@@ -559,9 +584,7 @@ impl Type for Record {
                     func: Box::new(CodeDynamic {
                         loc,
                         type_: CodeDynamicType::BindingUse(
-                            crate::code_dynamic::CodeDynamicBindingUse {
-                                id: crate::eval::RECORD_TO_TYPE_FN_SCOPE_ID,
-                            },
+                            crate::code_dynamic::CodeDynamicBindingUse { id: crate::eval::RECORD_TO_TYPE_FN_SCOPE_ID, },
                         ),
                     }),
                     args: vec![record_js],
@@ -587,11 +610,7 @@ impl Type for Record {
         }).collect::<Vec<_>>().join(", "))
     }
 
-    fn type_to_serial(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-    ) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
         let mut fields_serial: std::collections::BTreeMap<ConstKey, crate::langhelp::Artifact> =
             std::collections::BTreeMap::new();
         for (key, field) in &self.fields {

@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectArtifact, AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectNull, AspectStackValueDynamic, aspect_artifact_aspect_id, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_null_aspect_id, aspect_null_get, aspect_null_get_maybe, aspect_stack_value_dynamic_aspect_id, aspect_type_aspect_id},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicType,
@@ -33,6 +31,28 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectArtifact,
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectNull,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_null_aspect_id,
+            aspect_null_get,
+            aspect_null_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_type_aspect_id,
         },
     },
     std::{
@@ -116,17 +136,6 @@ impl AspectLiftDynamic for TypeNullDynamic {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeNullDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        _value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNullConst))
-    }
-}
-
 impl AspectNull for TypeNullDynamic { }
 
 impl AspectStackValueDynamic for TypeNullDynamic {
@@ -141,6 +150,17 @@ impl AspectStackValueDynamic for TypeNullDynamic {
                 type_: Rc::new(TypeNullDynamic),
             }),
         }
+    }
+}
+
+impl crate::r#gen::AspectLowerDynamic for TypeNullDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        _value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(ValueNullConst))
     }
 }
 

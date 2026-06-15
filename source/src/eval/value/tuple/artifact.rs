@@ -1,5 +1,4 @@
 //! Tuple-type artifact: a sequence of serialized element-type artifacts.
-
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
@@ -28,9 +27,6 @@ use {
 pub(crate) struct ArtifactTupleType {
     pub elements: Vec<Artifact>,
 }
-
-pub(crate) struct TypeTupleArtifact;
-
 pub(crate) struct Deserializer;
 
 impl Deserializer {
@@ -50,25 +46,45 @@ impl Deserializer {
                 crate::eval::util::deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
             elements.push(crate::eval::value::tuple::TupleElement::Mortar(elem_type));
         }
-        Ok(Rc::new(crate::eval::value::tuple::Tuple { base: None, elements }))
+        Ok(Rc::new(crate::eval::value::tuple::Tuple {
+            base: None,
+            elements,
+        }))
     }
 }
 
 impl ArtifactBuiltinDeserializer for Deserializer {
-    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn type_from_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
         match Self::decode(xx, loc, data) {
-            Ok(tuple_type) => EvalRes::ok(CodeValue {
-                code: Code { loc, code: Code_::None },
-                value: tuple_type.as_value(),
-            }),
-            Err(errs) => EvalRes { v: None, errors: Some(errs) },
+            Ok(tuple_type) => EResult::ok((tuple_type, Code {
+                loc,
+                code: Code_::None,
+            })),
+            Err(errs) => EResult {
+                v: None,
+                errors: Some(errs),
+            },
         }
     }
 
-    fn type_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
+    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match Self::decode(xx, loc, data) {
-            Ok(tuple_type) => EResult::ok((tuple_type, Code { loc, code: Code_::None })),
-            Err(errs) => EResult { v: None, errors: Some(errs) },
+            Ok(tuple_type) => EvalRes::ok(CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::None,
+                },
+                value: tuple_type.as_value(),
+            }),
+            Err(errs) => EvalRes {
+                v: None,
+                errors: Some(errs),
+            },
         }
     }
 }
@@ -76,3 +92,4 @@ impl ArtifactBuiltinDeserializer for Deserializer {
 pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
     m.insert(TypeTupleArtifact::artifact_id(), Rc::new(Deserializer));
 }
+pub(crate) struct TypeTupleArtifact;

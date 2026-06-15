@@ -1,6 +1,6 @@
 use {
     crate::{
-        r#gen::{AspectArtifact}, builtin::{ArtifactBuiltinDeserializer},
+        builtin::ArtifactBuiltinDeserializer,
         langhelp::{
             ArtifactIdBuiltin,
             Code,
@@ -11,6 +11,7 @@ use {
             QExprId,
             Type,
         },
+        r#gen::AspectArtifact,
     },
     std::{
         collections::HashMap,
@@ -21,12 +22,20 @@ use {
 pub(crate) struct Deserializer;
 
 impl ArtifactBuiltinDeserializer for Deserializer {
-    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        super::dynamic::TypeTypeSourceFunctionDynamic.from_serial(xx, loc, data)
+    fn type_from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _data: &serde_json::Value,
+    ) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(super::dynamic::TypeTypeSourceFunctionDynamic), Code {
+            loc,
+            code: Code_::None,
+        }))
     }
 
-    fn type_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((Rc::new(super::dynamic::TypeTypeSourceFunctionDynamic), Code { loc, code: Code_::None }))
+    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        super::dynamic::TypeTypeSourceFunctionDynamic.from_serial(xx, loc, data)
     }
 }
 

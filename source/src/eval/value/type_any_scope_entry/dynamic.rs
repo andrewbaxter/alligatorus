@@ -1,12 +1,10 @@
-//! `TypeAnyScopeEntryDynamic` — the v8/dynamic representation of a value
-//! impl'ing the builtin `scope_entry` interface. Parallels `TypeAnyDynamic`
-//! for `Rc<dyn Type>`: a `v8::External` wrapping an `Rc<dyn ScopeEntry>`.
-//! Used as the mortar type of the `DynamicWrap` impl for `Rc<dyn ScopeEntry>`.
-
+//! `TypeAnyScopeEntryDynamic` — the v8/dynamic representation of a value impl'ing
+//! the builtin `scope_entry` interface. Parallels `TypeAnyDynamic` for
+//! `Rc<dyn Type>`: a `v8::External` wrapping an `Rc<dyn ScopeEntry>`. Used as the
+//! mortar type of the `DynamicWrap` impl for `Rc<dyn ScopeEntry>`.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             TargetBindSub,
@@ -28,6 +26,18 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectStackValueDynamic,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
     },
     std::{
@@ -63,18 +73,18 @@ impl AspectConsumeDynamic for TypeAnyScopeEntryDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeAnyScopeEntryDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyScopeEntryDynamic))
-    }
-}
-
 impl AspectInitialBind for TypeAnyScopeEntryDynamic {
     fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
         Box::new(ScopeEntryDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeAnyScopeEntryDynamic),
         })
+    }
+}
+
+impl AspectStackValueDynamic for TypeAnyScopeEntryDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyScopeEntryDynamic))
     }
 }
 

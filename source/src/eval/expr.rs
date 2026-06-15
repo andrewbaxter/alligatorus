@@ -82,6 +82,11 @@ pub(crate) struct ExprForeach {
 }
 
 #[derive(Clone)]
+pub(crate) struct ExprGraft {
+    pub expr: Rc<Expr>,
+}
+
+#[derive(Clone)]
 pub(crate) struct ExprIf {
     pub conditions: Vec<ExprConditionBranch>,
     pub else_: Option<Rc<Expr>>,
@@ -90,11 +95,6 @@ pub(crate) struct ExprIf {
 #[derive(Clone)]
 pub(crate) struct ExprImport {
     pub spec: Rc<Expr>,
-}
-
-#[derive(Clone)]
-pub(crate) struct ExprGraft {
-    pub expr: Rc<Expr>,
 }
 
 #[derive(Clone)]
@@ -162,17 +162,17 @@ pub(crate) struct ExprTuple {
 
 /// A `Literal`'s payload.
 ///
-/// `Shared` holds an immutable Value that can be cloned on every evaluation
-/// — used for source-derived literals (strings, numbers, null).
+/// `Shared` holds an immutable Value that can be cloned on every evaluation — used
+/// for source-derived literals (strings, numbers, null).
 ///
-/// `Once` is a take-once cell — used when stage lowering hoists a value into
-/// the next stage as a Literal. Downstream code (e.g., `Record::bind_sub`)
-/// relies on `Rc::try_unwrap` succeeding, so the value must not be shared.
-/// Evaluating the same `Once` Literal twice panics.
+/// `Once` is a take-once cell — used when stage lowering hoists a value into the
+/// next stage as a Literal. Downstream code (e.g., `Record::bind_sub`) relies on
+/// `Rc::try_unwrap` succeeding, so the value must not be shared. Evaluating the
+/// same `Once` Literal twice panics.
 #[derive(Clone)]
 pub(crate) enum LitValue {
-    Shared(Rc<dyn Value>),
     Once(Rc<RefCell<Option<Rc<dyn Value>>>>),
+    Shared(Rc<dyn Value>),
 }
 
 impl LitValue {

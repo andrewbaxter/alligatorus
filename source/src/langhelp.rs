@@ -31,11 +31,10 @@ pub(crate) trait Artifacts: Send + Sync {
 }
 
 pub(crate) trait Aspect: Any {
-    /// Returns the v8 instance that backs this aspect handle, when one
-    /// exists. The default `None` is correct for compile-time-only aspects
-    /// (everything except `TypeUserDefinedAspect`). `TypeRefV8::aspect`
-    /// reads this to surface the instance into source code without RTTI on
-    /// the returned `Box<dyn Aspect>`.
+    /// Returns the v8 instance that backs this aspect handle, when one exists. The
+    /// default `None` is correct for compile-time-only aspects (everything except
+    /// `TypeUserDefinedAspect`). `TypeRefV8::aspect` reads this to surface the
+    /// instance into source code without RTTI on the returned `Box<dyn Aspect>`.
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
         None
     }
@@ -49,15 +48,6 @@ pub(crate) trait Sources: Send + Sync {
 
 pub(crate) trait Type: Value {
     fn as_value(&self) -> Rc<dyn Value>;
-
-    /// Default `Type` doesn't know how to clone itself; concrete impls return
-    /// `Rc::new(Self)` (or clone any inner data). Only needed when a caller
-    /// holds `&dyn Type` and must produce an owned `Rc<dyn Type>`. Returning
-    /// `None` here keeps the default cheap and signals "type does not support
-    /// being held as `Rc<dyn Type>` outside its original construction site."
-    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
-        None
-    }
 
     fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
         return None;
@@ -78,14 +68,23 @@ pub(crate) trait Type: Value {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         unimplemented!();
     }
+
+    /// Default `Type` doesn't know how to clone itself; concrete impls return
+    /// `Rc::new(Self)` (or clone any inner data). Only needed when a caller holds
+    /// `&dyn Type` and must produce an owned `Rc<dyn Type>`. Returning `None` here
+    /// keeps the default cheap and signals "type does not support being held as
+    /// `Rc<dyn Type>` outside its original construction site."
+    fn clone_rc(&self) -> Option<Rc<dyn Type>> {
+        None
+    }
     fn desc(&self) -> String;
 
-    /// Serialize this type itself as an artifact (for type references).
-    /// Required — every type that participates in the language must be
-    /// representable as a structural artifact. The aspect-based path
-    /// (`AspectArtifact`) is for serializing *values* of this type and is
-    /// a separate concern. The default impl panics; types must provide a
-    /// real one. (Task #52: ~50 types still need to override this.)
+    /// Serialize this type itself as an artifact (for type references). Required —
+    /// every type that participates in the language must be representable as a
+    /// structural artifact. The aspect-based path (`AspectArtifact`) is for
+    /// serializing _values_ of this type and is a separate concern. The default impl
+    /// panics; types must provide a real one. (Task #52: ~50 types still need to
+    /// override this.)
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         panic!("type_to_serial not implemented for {}", self.desc())
     }
@@ -160,7 +159,6 @@ pub(crate) struct CodeValue {
     pub(crate) value: Rc<dyn Value>,
 }
 
-
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Copy, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
@@ -168,43 +166,40 @@ pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 /// One per module (per import env).
 pub(crate) struct CompileImportContext {
     pub(crate) builtin_deserializers: HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
-    pub(crate) compile_path: Vec<(CompileId, ExprId)>,
-    pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
-    pub(crate) gx: Arc<GlobalContext>,
-    pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
-    /// Shared v8 isolate for all compile stages — one isolate per
-    /// `compile_importid`. Persistent handles (`v8::Global<...>`) captured
-    /// during one stage's lift remain valid in later stages, which is
-    /// essential for `IsolateBundle` to keep a JS instance handle alive
-    /// across stages.
-    pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
-    /// Import id for this compile. Stable across all stages.
-    pub(crate) import_state: ImportStateId,
-    /// Definition sets created via `define()`. Persists across all stages so
-    /// sets from earlier stages remain registered (their v8 closures live on
-    /// the shared `v8_context` global) and visible to later stages.
-    pub(crate) definition_sets: RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
-    /// Monotonic per-compile counter for allocating fresh `DefSetId`s. Never
-    /// resets between stages so `(import_state, def_set_id)` is globally
-    /// unique within this compile.
-    pub(crate) def_set_counter: Counter,
-    /// Persistent v8 context shared by all stages. The global object accumulates
-    /// builtin closures (registered once) and def-set member closures (registered
-    /// in the stage that defines them) so later stages see them without
-    /// re-registration.
-    pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
+    /// Builtin scope entries `(name, scope_entry_id, type)` populated at the start of
+    /// each stage's `eval()`. Read by import-side `from_serial` when re-compiling an
+    /// imported data type's interface impls — it needs the same builtin scope
+    /// (`define`, `eval_const`, type refs, etc.) the originating compile saw, so the
+    /// user's `impl_expr` resolves the same scope references.
+    pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, std::rc::Rc<dyn Type>)>>,
     /// True once builtins have been registered on `v8_context`'s global.
     pub(crate) builtins_registered: Cell<bool>,
-    /// Source id of the module being compiled at this level. Used to derive
-    /// the `CompileId` for cross-compile lookups.
+    pub(crate) compile_path: Vec<(CompileId, ExprId)>,
+    /// Monotonic per-compile counter for allocating fresh `DefSetId`s. Never resets
+    /// between stages so `(import_state, def_set_id)` is globally unique within this
+    /// compile.
+    pub(crate) def_set_counter: Counter,
+    /// Definition sets created via `define()`. Persists across all stages so sets from
+    /// earlier stages remain registered (their v8 closures live on the shared
+    /// `v8_context` global) and visible to later stages.
+    pub(crate) definition_sets: RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
+    pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
+    pub(crate) gx: Arc<GlobalContext>,
+    /// Import id for this compile. Stable across all stages.
+    pub(crate) import_state: ImportStateId,
+    /// Shared v8 isolate for all compile stages — one isolate per `compile_importid`.
+    /// Persistent handles (`v8::Global<...>`) captured during one stage's lift remain
+    /// valid in later stages, which is essential for `IsolateBundle` to keep a JS
+    /// instance handle alive across stages.
+    pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
+    pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
+    /// Source id of the module being compiled at this level. Used to derive the
+    /// `CompileId` for cross-compile lookups.
     pub(crate) source_id: crate::langhelp::SourceId,
-    /// Builtin scope entries `(name, scope_entry_id, type)` populated at
-    /// the start of each stage's `eval()`. Read by import-side `from_serial`
-    /// when re-compiling an imported data type's interface impls — it needs
-    /// the same builtin scope (`define`, `eval_const`, type refs, etc.) the
-    /// originating compile saw, so the user's `impl_expr` resolves the same
-    /// scope references.
-    pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, std::rc::Rc<dyn Type>)>>,
+    /// Persistent v8 context shared by all stages. The global object accumulates
+    /// builtin closures (registered once) and def-set member closures (registered in
+    /// the stage that defines them) so later stages see them without re-registration.
+    pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -346,22 +341,22 @@ pub(crate) struct EvalContext {
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
-    /// Raw pointer to the active v8 scope. `eval()` installs it at the top
-    /// of the function (after creating `dynamic_scope`) and clears it just
-    /// before returning. Stored as a lifetime-erased `NonNull` so it can
-    /// sit in `EvalContext` (which the borrow checker treats as `'static`).
-    /// Re-borrowed in `V8CastDispatcher::dispatch_cast_from` and other v8
-    /// dispatch points; soundness depends on no two re-borrows being live
-    /// at once and on the underlying scope outliving every read.
-    pub(crate) v8_scope: std::cell::Cell<
-        Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>,
-    >,
-    /// Trait-object pointer to a dispatcher for v8-side type interface
-    /// methods (currently `cast_from`). `eval()` constructs a unit impl
-    /// and installs it here for the duration of `eval()`. The dispatcher
-    /// itself stateless — it reads the active scope from `v8_scope` on
-    /// each call, so its lifetime is decoupled from the v8 scope's borrow.
+    /// Trait-object pointer to a dispatcher for v8-side type interface methods
+    /// (currently `cast_from`). `eval()` constructs a unit impl and installs it here
+    /// for the duration of `eval()`. The dispatcher itself stateless — it reads the
+    /// active scope from `v8_scope` on each call, so its lifetime is decoupled from
+    /// the v8 scope's borrow.
     pub(crate) v8_dispatcher: std::cell::Cell<Option<std::ptr::NonNull<dyn crate::eval::V8CastDispatcher>>>,
+    /// Raw pointer to the active v8 scope. `eval()` installs it at the top of the
+    /// function (after creating `dynamic_scope`) and clears it just before returning.
+    /// Stored as a lifetime-erased `NonNull` so it can sit in `EvalContext` (which the
+    /// borrow checker treats as `'static`). Re-borrowed in
+    /// `V8CastDispatcher::dispatch_cast_from` and other v8 dispatch points; soundness
+    /// depends on no two re-borrows being live at once and on the underlying scope
+    /// outliving every read.
+    pub(crate) v8_scope: std
+    ::cell
+    ::Cell<Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>>,
 }
 
 /// If None, it means that the evaluation failed in a way that affects downstream
@@ -391,17 +386,16 @@ pub(crate) enum ExprSubErr {
 
 #[derive(Clone)]
 pub(crate) enum External {
+    /// A v8 instance handle, captured by `AspectUserDefined` so its emitted JS code
+    /// can reference the user's aspect-impl instance. Runtime-only: never serialized
+    /// through artifacts (panics if encountered there).
+    IsolateBundle(Rc<crate::eval::isolate_bundle::IsolateBundle>),
     StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
     StageLiftCell(Rc<crate::eval::StageLiftCell>),
     Type(Rc<dyn Type>),
-    /// A `Unique` aspect identity captured at compile time so emitted JS
-    /// code can reference it (e.g. for `aspect(base, key)` to pass to
-    /// `base.aspect(<unique>)`).
+    /// A `Unique` aspect identity captured at compile time so emitted JS code can
+    /// reference it (e.g. for `aspect(base, key)` to pass to `base.aspect(<unique>)`).
     Unique(Unique),
-    /// A v8 instance handle, captured by `AspectUserDefined` so its emitted
-    /// JS code can reference the user's aspect-impl instance. Runtime-only:
-    /// never serialized through artifacts (panics if encountered there).
-    IsolateBundle(Rc<crate::eval::isolate_bundle::IsolateBundle>),
 }
 
 pub(crate) struct GlobalContext {
@@ -433,8 +427,10 @@ pub(crate) struct LogEntry {
     pub(crate) timestamp_ms: u64,
 }
 
-pub(crate) fn make_builtin_deserializers()
--> HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>> {
+pub(crate) fn make_builtin_deserializers() -> HashMap<
+    ArtifactIdBuiltin,
+    Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>,
+> {
     let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>> = HashMap::new();
     crate::eval::value::type_null::artifact::register(&mut m);
     crate::eval::value::type_string::artifact::register(&mut m);
@@ -493,12 +489,12 @@ pub(crate) enum ScopeEntryId {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct SourceId(pub usize);
 
-/// A value guaranteed to be unique in the world. `Builtin` ids are all
-/// assigned in `build.rs` (interface ids, aspect ids, dyn_wrap struct/wrap
-/// type identities, dyn_wrap fn scope-entry ids, and per-`Type` identity
-/// markers) — `build.rs::check_no_duplicate_ids` panics at build time if
-/// any two specs share an id. Nothing in the runtime creates `Unique`s
-/// from `file!()`/`line!()` or hashed names anymore.
+/// A value guaranteed to be unique in the world. `Builtin` ids are all assigned in
+/// `build.rs` (interface ids, aspect ids, dyn_wrap struct/wrap type identities,
+/// dyn_wrap fn scope-entry ids, and per-`Type` identity markers) —
+/// `build.rs::check_no_duplicate_ids` panics at build time if any two specs share
+/// an id. Nothing in the runtime creates `Unique`s from `file!()`/`line!()` or
+/// hashed names anymore.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Unique {

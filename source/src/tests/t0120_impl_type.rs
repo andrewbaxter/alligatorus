@@ -75,16 +75,15 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                             ("desc", mb.stage(mb.block(vec![mb.str("upper")]))),
                             (
                                 "aspect",
-                                mb.stage(mb.call(
-                                    mb.field(
-                                        mb.call(
-                                            mb.scope_use("option"),
-                                            mb.scope_use("aspect"),
+                                mb.stage(
+                                    mb.call(
+                                        mb.field(
+                                            mb.call(mb.scope_use("option"), mb.scope_use("aspect")),
+                                            mb.str("none"),
                                         ),
-                                        mb.str("none"),
+                                        mb.null(),
                                     ),
-                                    mb.null(),
-                                )),
+                                ),
                             ),
                         ])]),
                     ),
@@ -130,9 +129,9 @@ fn test_00100_impl_type() {
     // `can_cast_from`/`cast_from`/`desc`) compile into JS function definitions
     // emitted in the stage where the constructor consumes them (stage 2). value's
     // `type` renders as a `this`-style method; type's three render as `arg`-style
-    // functions (one parameter).
-    // Every method now takes an `arg` parameter (even when unused) — the
-    // function signature is `function(<arg_key>) { let <self_key> = this[..]; … }`.
+    // functions (one parameter). Every method now takes an `arg` parameter (even when
+    // unused) — the function signature is
+    // `function(<arg_key>) { let <self_key> = this[..]; … }`.
     assert!(scripts[1].contains("d0_0_0 = function("), "value.type compiled");
     assert!(scripts[1].contains("d0_0_1 = function("), "type.can_cast_from compiled (arg)");
     assert!(scripts[1].contains("d0_0_2 = function("), "type.cast_from compiled (arg)");

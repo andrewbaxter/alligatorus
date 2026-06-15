@@ -1,6 +1,5 @@
 pub mod scope_entry;
 
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         eval::value::type_any,
@@ -12,6 +11,7 @@ use {
             Type,
             Value,
         },
+        r#gen::ScopeEntry,
     },
     std::{
         any::Any,
@@ -27,6 +27,8 @@ struct PendingImportBind {
     state: Rc<PendingImportState>,
 }
 
+impl crate::langhelp::Aspect for PendingImportBind { }
+
 impl crate::r#gen::AspectBind for PendingImportBind {
     fn bind(
         &self,
@@ -40,8 +42,6 @@ impl crate::r#gen::AspectBind for PendingImportBind {
         }, Box::new(ScopeEntryPendingImport { state: self.state.clone() }) as Box<dyn ScopeEntry>))
     }
 }
-
-impl crate::langhelp::Aspect for PendingImportBind { }
 
 pub(crate) struct TypePendingImport {
     pub(crate) resolved: Rc<dyn Value>,

@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectLiftDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_lift_dynamic_aspect_id, aspect_stack_value_dynamic_aspect_id},
         code_dynamic::CodeDynamic,
         eval::{
             dynamic_util::{
@@ -27,6 +25,21 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectLiftDynamic,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_lift_dynamic_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
         },
     },
     std::{
@@ -97,6 +110,21 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
+impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
+            }),
+        }
+    }
+}
+
 impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynamic {
     fn lower(
         &self,
@@ -111,21 +139,6 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynami
             variant_index: ctor.variant_index,
         });
         Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
-            }),
-        }
     }
 }
 
@@ -173,12 +186,12 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         return None;
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
-    }
-
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to tagged_union_constructor_ref"))
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
@@ -187,23 +200,32 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         }
         let source_code = match cv.code.cast::<crate::code_dynamic::CodeDynamic>() {
             crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
-            _ => return EvalRes::err(loc, format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc())),
+            _ => return EvalRes::err(
+                loc,
+                format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc()),
+            ),
         };
         let call = crate::code_dynamic::CodeDynamic {
             loc,
             type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
                 func: Box::new(crate::code_dynamic::CodeDynamic {
                     loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(crate::code_dynamic::CodeDynamicBindingUse {
-                        id: crate::eval::TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
-                    }),
+                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
+                        crate::code_dynamic::CodeDynamicBindingUse {
+                            id: crate::eval::TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+                        },
+                    ),
                 }),
                 args: vec![source_code],
             }),
         };
-        let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceTaggedUnionConstructorDynamic) as Rc<dyn Type>);
+        let dest_rc =
+            type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceTaggedUnionConstructorDynamic) as Rc<dyn Type>);
         EvalRes::ok(CodeValue {
-            code: crate::langhelp::Code { loc, code: crate::langhelp::Code_::Dyn(Rc::new(call)) },
+            code: crate::langhelp::Code {
+                loc,
+                code: crate::langhelp::Code_::Dyn(Rc::new(call)),
+            },
             value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
                 source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
                 type_: dest_rc,

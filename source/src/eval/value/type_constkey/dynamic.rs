@@ -1,26 +1,26 @@
-//! `TypeConstkeyDynamic` — runtime form of a `ConstKey` value at the v8
-//! boundary. Used as the `mortar_type` for `ConstKey` (e.g. as the key type
-//! when a Rust function takes `BTreeMap<ConstKey, V>`).
+//! `TypeConstkeyDynamic` — runtime form of a `ConstKey` value at the v8 boundary.
+//! Used as the `mortar_type` for `ConstKey` (e.g. as the key type when a Rust
+//! function takes `BTreeMap<ConstKey, V>`).
 //!
 //! The runtime representation is a JS string carrying the **canonical-JSON**
-//! encoding of the key (matching `ConstKey::to_str` / `ConstKey::from_str`):
-//! a string key `"foo"` becomes the 6-char JS string `"foo"` (with the
-//! literal `"` characters), a numeric key `42` becomes the 2-char JS string
-//! `42`. Distinguishing the variants by their JSON shape is what lets
+//! encoding of the key (matching `ConstKey::to_str` / `ConstKey::from_str`): a
+//! string key `"foo"` becomes the 6-char JS string `"foo"` (with the literal `"`
+//! characters), a numeric key `42` becomes the 2-char JS string `42`.
+//! Distinguishing the variants by their JSON shape is what lets
 //! `BTreeMap<ConstKey, V>::from_v8` recover the original `ConstKey`.
 //!
-//! Casts encode the canonical form at the point a value of source-level
-//! `string` / `number` is converted to `ConstKey`:
-//! * `string`-typed CV: prepend/append literal `"` (compile-time for const
-//!   strings, JS `+` concat at runtime for dynamic strings)
-//! * `number`-typed CV: stringify (compile-time literal for const numbers,
-//!   `String(n)` at runtime for dynamic — not yet implemented; add when a
-//!   numeric-keyed map first surfaces it in a test)
-
+//! Casts encode the canonical form at the point a value of source-level `string` /
+//! `number` is converted to `ConstKey`:
+//!
+//! * `string`-typed CV: prepend/append literal `"` (compile-time for const strings, JS
+//!   `+` concat at runtime for dynamic strings)
+//!
+//! * `number`-typed CV: stringify (compile-time literal for const numbers, `String(n)`
+//!   at runtime for dynamic — not yet implemented; add when a numeric-keyed map first
+//!   surfaces it in a test)
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectInitialBind, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_initial_bind_aspect_id, aspect_stack_value_dynamic_aspect_id, aspect_string_const_get_maybe},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicType,
@@ -51,6 +51,19 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectInitialBind,
+            AspectStackValueDynamic,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get_maybe,
         },
     },
     std::{
@@ -88,18 +101,18 @@ impl AspectConsumeDynamic for TypeConstkeyDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeConstkeyDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeConstkeyDynamic))
-    }
-}
-
 impl AspectInitialBind for TypeConstkeyDynamic {
     fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
         Box::new(ScopeEntryDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeConstkeyDynamic),
         })
+    }
+}
+
+impl AspectStackValueDynamic for TypeConstkeyDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeConstkeyDynamic))
     }
 }
 
@@ -128,12 +141,15 @@ impl Type for TypeConstkeyDynamic {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        // Only compile-time-const sources: encoding to canonical JSON at
-        // runtime requires a true canonicalizer (string concat / JSON.stringify
-        // diverge on `"`, `\`, control chars), and we don't have one. Add a
-        // dynamic source path once a real test needs it AND a proper
-        // canonicalizing helper is wired up.
+        // Only compile-time-const sources: encoding to canonical JSON at runtime requires
+        // a true canonicalizer (string concat / JSON.stringify diverge on `"`, `\`,
+        // control chars), and we don't have one. Add a dynamic source path once a real
+        // test needs it AND a proper canonicalizing helper is wired up.
         aspect_string_const_get_maybe(xx, source_type).is_some()
+    }
+
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        false
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -158,10 +174,6 @@ impl Type for TypeConstkeyDynamic {
             }
             return erb.err_new(format!("Cannot convert {} to constkey", source_type.desc()));
         });
-    }
-
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        false
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {

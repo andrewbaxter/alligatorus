@@ -1,7 +1,5 @@
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        r#gen::{AspectBind, AspectBindDynamic, AspectConsumeDynamic, AspectField, AspectFunction, AspectInitialBind, AspectIterable, AspectListDynamic, AspectStackValueDynamic, aspect_bind_aspect_id, aspect_bind_dynamic_aspect_id, aspect_consume_dynamic_aspect_id, aspect_consume_dynamic_get, aspect_field_aspect_id, aspect_function_aspect_id, aspect_initial_bind_aspect_id, aspect_iterable_aspect_id, aspect_list_dynamic_aspect_id, aspect_list_dynamic_get_maybe, aspect_stack_value_dynamic_aspect_id, aspect_stack_value_dynamic_get, aspect_string_const_get, aspect_string_dynamic_get_maybe, aspect_tuple_get_maybe},
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -41,6 +39,33 @@ use {
             Type,
             Unique,
             Value,
+        },
+        r#gen::{
+            AspectBind,
+            AspectBindDynamic,
+            AspectConsumeDynamic,
+            AspectField,
+            AspectFunction,
+            AspectInitialBind,
+            AspectIterable,
+            AspectListDynamic,
+            AspectStackValueDynamic,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+            aspect_bind_dynamic_aspect_id,
+            aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
+            aspect_field_aspect_id,
+            aspect_function_aspect_id,
+            aspect_initial_bind_aspect_id,
+            aspect_iterable_aspect_id,
+            aspect_list_dynamic_aspect_id,
+            aspect_list_dynamic_get_maybe,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_stack_value_dynamic_get,
+            aspect_string_const_get,
+            aspect_string_dynamic_get_maybe,
+            aspect_tuple_get_maybe,
         },
     },
     std::{
@@ -93,16 +118,13 @@ impl AspectField for TypeListDynamic {
         };
         let key_name = key_string.get(key.value.as_ref());
         if key_name == "new" {
-            let new_type: Rc<dyn Type> =
-                Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() });
+            let new_type: Rc<dyn Type> = Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() });
             return EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst {
-                    inner: new_type,
-                }),
+                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: new_type }),
             });
         }
 
@@ -282,6 +304,11 @@ impl Type for TypeListDynamic {
         aspect_list_dynamic_get_maybe(xx, source_type).is_some()
     }
 
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        // No cast to `any` — lists aren't types. Misuse.
+        false
+    }
+
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(_xx, loc);
         if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
@@ -294,11 +321,6 @@ impl Type for TypeListDynamic {
             });
         }
         EvalRes::err(loc, "Cannot convert to list type".to_string())
-    }
-
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        // No cast to `any` — lists aren't types. Misuse.
-        false
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -316,9 +338,7 @@ impl Type for TypeListDynamic {
                 loc,
                 self.element_type.as_ref(),
             );
-        let payload = crate::eval::value::type_list::artifact::ArtifactListType {
-            element_type: elem_artifact,
-        };
+        let payload = crate::eval::value::type_list::artifact::ArtifactListType { element_type: elem_artifact };
         crate::eval::value::type_list::artifact::TypeListArtifact::build_artifact(payload)
     }
 }

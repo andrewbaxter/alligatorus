@@ -76,6 +76,13 @@ impl ModuleBuilder {
         };
     }
 
+    pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Block(SourceExprBlock { exprs: exprs }),
+        };
+    }
+
     pub fn bool(&self, v: bool) -> SourceExpr {
         // No boolean literal in `SourceLiteral` yet — synthesize via `operator_lt`.
         if v {
@@ -83,13 +90,6 @@ impl ModuleBuilder {
         } else {
             return self.operator_lt(self.num(1.), self.num(0.));
         }
-    }
-
-    pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Block(SourceExprBlock { exprs: exprs }),
-        };
     }
 
     pub fn call(&self, func: SourceExpr, args: SourceExpr) -> SourceExpr {
