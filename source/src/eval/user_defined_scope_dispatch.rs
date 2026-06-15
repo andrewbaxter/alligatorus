@@ -12,21 +12,10 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicType,
-        },
-        eval::value::{
-            type_any::dynamic::TypeAnyDynamic,
-            value_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
-            },
-        },
+        eval::dynamic_wrap::DynamicWrap,
         langhelp::{
             Code,
             CodeValue,
-            Code_,
             QExprId,
         },
     },
@@ -46,18 +35,10 @@ pub(crate) struct UserDefinedScopeEntry {
 }
 
 impl ScopeEntry for UserDefinedScopeEntry {
-    fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        // Invoke `_im_se0` (the compiled `scope_entry.use_` impl) on the held
-        // v8 instance. Its `ret_type` is `TypeValueDynamic`, so the source-side
-        // cast chain produces a v8::External wrapping a `Rc<dyn Value>` (a
-        // `ValueUserDefined`). We extract that Rc here and put it into the
-        // CodeValue so downstream Rust dispatch (`aspect_field` on
-        // `console.log` etc.) routes through `ValueUserDefined::type_()`.
+    fn use_(&self, xx: &crate::langhelp::ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
         let scope_ptr = xx.vx.v8_scope.get().expect(
             "UserDefinedScopeEntry::use_: no active v8 scope",
         );
-        // SAFETY: pointer set by `eval()` for its full duration; same access
-        // pattern as `dispatch_cast_from` in `eval/mod.rs`.
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> =
             unsafe { &mut *(scope_ptr.as_ptr() as *mut _) };
         let instance = v8::Local::new(scope, &self.instance);
@@ -75,17 +56,7 @@ impl ScopeEntry for UserDefinedScopeEntry {
         let result = method_fn
             .call(scope, recv, &[null_arg])
             .expect("UserDefinedScopeEntry::use_: _im_se0 returned no value");
-        let value: Rc<dyn crate::langhelp::Value> = crate::eval::rc_value_from_v8(&*result);
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::Literal(serde_json::Value::Null),
-                })),
-            },
-            value,
-        }
+        <CodeValue as DynamicWrap>::from_v8(scope, result)
     }
 }
 
