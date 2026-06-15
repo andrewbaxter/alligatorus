@@ -174,8 +174,8 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     );
     exprs.push(mb.call(mb.field(mb.scope_use("ntype_func"), mb.str("set_underlying")), mb.record(vec![
         //. .
-        ("arg", mb.scope_use("type")),
-        ("ret", mb.scope_use("type")),
+        ("arg", mb.scope_use("any")),
+        ("ret", mb.scope_use("any")),
     ])));
     exprs.extend(
         impl_as_self_type(mb, "ntype_func", "nodejs function", aspect_dispatch(mb, vec!["aspect_function_id"])),
@@ -304,7 +304,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.call(
             mb.field(mb.scope_use("ntype_object"), mb.str("set_underlying")),
-            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("type")])),
+            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("string"), mb.scope_use("any")])),
         ),
     );
     exprs.extend(
@@ -664,7 +664,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                             mb.field(
                                 mb.call(
                                     mb.scope_use("map"),
-                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("type")]),
+                                    mb.tuple(vec![mb.scope_use("string"), mb.scope_use("any")]),
                                 ),
                                 mb.str("new"),
                             ),
