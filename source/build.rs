@@ -1,3 +1,5 @@
+mod buildsrc;
+
 use {
     proc_macro2::TokenStream,
     quote::{
@@ -5,6 +7,7 @@ use {
         quote,
     },
     std::{
+        collections::HashSet,
         env,
         fs,
         path::PathBuf,
@@ -51,9 +54,8 @@ struct DynWrapMethod {
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-    let mut all = TokenStream::new();
-    all.extend(quote!{
+    let mut builtin_unique_ids = HashSet::new();
+    let mut out = quote!{
         use std::rc::Rc;
         use std::cell::{
             Cell,
@@ -111,11 +113,9 @@ fn main() {
             StagedExpr
         };
         use crate::eval::dynamic_util::throw_error;
-    });
-    let mut all_ids: std::collections::HashMap<usize, String> = std::collections::HashMap::new();
+    };
     {
-        let mut aspect_ids: std::collections::HashSet<usize> = std::collections::HashSet::new();
-        let mut aspect_names = std::collections::HashSet::new();
+        let mut aspect_names = HashSet::new();
         let mut aspect_token_items: Vec<TokenStream> = Vec::new();
 
         struct AspectMethod {
@@ -125,7 +125,7 @@ fn main() {
         }
 
         struct AspectSpec {
-            id: usize,
+            builtin_unique_id: usize,
             methods: Vec<AspectMethod>,
             name: &'static str,
         }
@@ -134,32 +134,32 @@ fn main() {
             //. .
             AspectSpec {
                 name: "AspectNull",
-                id: 1001,
+                builtin_unique_id: 1001,
                 methods: vec![],
             },
             AspectSpec {
                 name: "AspectRecord",
-                id: 1002,
+                builtin_unique_id: 1002,
                 methods: vec![],
             },
             AspectSpec {
                 name: "AspectNumberDynamic",
-                id: 1003,
+                builtin_unique_id: 1003,
                 methods: vec![],
             },
             AspectSpec {
                 name: "AspectBoolDynamic",
-                id: 1004,
+                builtin_unique_id: 1004,
                 methods: vec![],
             },
             AspectSpec {
                 name: "AspectStringDynamic",
-                id: 1005,
+                builtin_unique_id: 1005,
                 methods: vec![],
             },
             AspectSpec {
                 name: "AspectBoolConst",
-                id: 1006,
+                builtin_unique_id: 1006,
                 methods: vec![AspectMethod {
                     name: "get",
                     params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -168,7 +168,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectNumberConst",
-                id: 1008,
+                builtin_unique_id: 1008,
                 methods: vec![AspectMethod {
                     name: "get",
                     params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -177,7 +177,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectStringConst",
-                id: 1009,
+                builtin_unique_id: 1009,
                 methods: vec![AspectMethod {
                     name: "get",
                     params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -186,7 +186,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectType",
-                id: 1010,
+                builtin_unique_id: 1010,
                 methods: vec![AspectMethod {
                     name: "type_",
                     params: vec![("value", "&dyn crate::langhelp::Value")],
@@ -195,7 +195,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectListDynamic",
-                id: 1011,
+                builtin_unique_id: 1011,
                 methods: vec![AspectMethod {
                     name: "element_type",
                     params: vec![],
@@ -204,7 +204,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectMapDynamic",
-                id: 1012,
+                builtin_unique_id: 1012,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -221,7 +221,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectTuple",
-                id: 1013,
+                builtin_unique_id: 1013,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -238,7 +238,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectTaggedUnion",
-                id: 1014,
+                builtin_unique_id: 1014,
                 methods: vec![AspectMethod {
                     name: "variants",
                     params: vec![],
@@ -247,7 +247,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectField",
-                id: 1015,
+                builtin_unique_id: 1015,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -272,7 +272,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectFunction",
-                id: 1016,
+                builtin_unique_id: 1016,
                 methods: vec![AspectMethod {
                     name: "call",
                     params: vec![
@@ -286,7 +286,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectSet",
-                id: 1017,
+                builtin_unique_id: 1017,
                 methods: vec![AspectMethod {
                     name: "set",
                     params: vec![
@@ -300,7 +300,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectOperatorAdd",
-                id: 1018,
+                builtin_unique_id: 1018,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -318,7 +318,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectOperatorEq",
-                id: 1019,
+                builtin_unique_id: 1019,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -336,7 +336,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectOperatorLt",
-                id: 1020,
+                builtin_unique_id: 1020,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -354,7 +354,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectInitialBind",
-                id: 1021,
+                builtin_unique_id: 1021,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -369,7 +369,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectBind",
-                id: 1022,
+                builtin_unique_id: 1022,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -386,7 +386,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectBindDynamic",
-                id: 1023,
+                builtin_unique_id: 1023,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -403,7 +403,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectConsumeDynamic",
-                id: 1024,
+                builtin_unique_id: 1024,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -420,7 +420,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectStackValueDynamic",
-                id: 1025,
+                builtin_unique_id: 1025,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -436,7 +436,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectLiftDynamic",
-                id: 1026,
+                builtin_unique_id: 1026,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -452,7 +452,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectLowerDynamic",
-                id: 1031,
+                builtin_unique_id: 1031,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -468,7 +468,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectIterable",
-                id: 1027,
+                builtin_unique_id: 1027,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -491,7 +491,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectArtifact",
-                id: 1028,
+                builtin_unique_id: 1028,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -516,7 +516,7 @@ fn main() {
             },
             AspectSpec {
                 name: "AspectAspect",
-                id: 1029,
+                builtin_unique_id: 1029,
                 methods: vec![
                     //. .
                     AspectMethod {
@@ -533,14 +533,13 @@ fn main() {
             },
         ] {
             assert!(aspect_names.insert(a.name), "duplicate aspect name: {}", a.name);
-            assert!(aspect_ids.insert(a.id), "duplicate aspect id: {}", a.id);
-            let label = format!("aspect:{}", a.name);
             let trait_name = format_ident!("{}", a.name);
             let snake = snake_case(a.name);
             let id_fn = format_ident!("{}_aspect_id", snake);
             let get_fn = format_ident!("{}_get", snake);
             let get_maybe_fn = format_ident!("{}_get_maybe", snake);
-            let id = a.id;
+            assert!(builtin_unique_ids.insert(a.builtin_unique_id));
+            let builtin_unique_id = a.builtin_unique_id;
             let trait_methods: Vec<TokenStream> = a.methods.iter().map(|m| {
                 let name = format_ident!("{}", m.name);
                 let params: Vec<TokenStream> = m.params.iter().map(|(n, ty)| {
@@ -569,7 +568,7 @@ fn main() {
                     #(#trait_methods) *
                 }
                 #[allow(dead_code)] pub(crate) fn #id_fn() -> crate:: langhelp:: Unique {
-                    crate:: langhelp:: Unique:: Builtin(#id)
+                    crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
                 }
                 #[
                     allow(dead_code)
@@ -602,14 +601,14 @@ fn main() {
                 }
             });
         }
-        all.extend(quote!{
+        out.extend(quote!{
             #(#aspect_token_items) *
         });
     }
     {
-        let mut iface_names = std::collections::HashSet::new();
-        let mut iface_prefixes = std::collections::HashSet::new();
-        let mut iface_kinds = std::collections::HashSet::new();
+        let mut iface_names = HashSet::new();
+        let mut iface_prefixes = HashSet::new();
+        let mut iface_kinds = HashSet::new();
         let mut iface_struct_fields: Vec<TokenStream> = Vec::new();
         let mut iface_build_entries: Vec<TokenStream> = Vec::new();
         let mut iface_result_fields: Vec<TokenStream> = Vec::new();
@@ -618,14 +617,13 @@ fn main() {
         let null = || TypeRef::unit(quote!(crate::eval::value::type_null::dynamic::TypeNullDynamic));
         let string = || TypeRef::unit(quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic));
         let bool_ = || TypeRef::unit(quote!(crate::eval::value::type_bool::dynamic::TypeBoolDynamic));
-        let value = || TypeRef::unit(quote!(crate::eval::value::type_value::dynamic::TypeValueDynamic));
         let aspect = || TypeRef::unit(quote!(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic));
         let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
 
         struct InterfaceSpec {
+            builtin_unique_id: usize,
             description: Option<&'static str>,
             field_prefix: &'static str,
-            id: usize,
             kind: &'static str,
             methods: Vec<MethodSpec>,
             name: &'static str,
@@ -636,7 +634,7 @@ fn main() {
             //. .
             InterfaceSpec {
                 name: "value",
-                id: 2001,
+                builtin_unique_id: 2001,
                 field_prefix: "v",
                 kind: "Value",
                 description: None,
@@ -653,7 +651,7 @@ fn main() {
             },
             InterfaceSpec {
                 name: "type",
-                id: 2002,
+                builtin_unique_id: 2002,
                 field_prefix: "t",
                 kind: "Type",
                 description: None,
@@ -700,7 +698,7 @@ fn main() {
             },
             InterfaceSpec {
                 name: "aspect_function",
-                id: 1016,
+                builtin_unique_id: 1016,
                 field_prefix: "af",
                 kind: "AspectFunction",
                 description: None,
@@ -714,7 +712,7 @@ fn main() {
             },
             InterfaceSpec {
                 name: "aspect_field",
-                id: 1015,
+                builtin_unique_id: 1015,
                 field_prefix: "afd",
                 kind: "AspectField",
                 description: None,
@@ -737,7 +735,7 @@ fn main() {
             },
             InterfaceSpec {
                 name: "scope_entry",
-                id: 2005,
+                builtin_unique_id: 2005,
                 field_prefix: "se",
                 kind: "ScopeEntry",
                 description: None,
@@ -756,7 +754,7 @@ fn main() {
             },
             InterfaceSpec {
                 name: "target",
-                id: 2006,
+                builtin_unique_id: 2006,
                 field_prefix: "tg",
                 kind: "Target",
                 description: None,
@@ -917,7 +915,7 @@ fn main() {
             },
             InterfaceSpec {
                 name: "code_dyn",
-                id: 2007,
+                builtin_unique_id: 2007,
                 field_prefix: "cd",
                 kind: "CodeDyn",
                 description: None,
@@ -928,15 +926,9 @@ fn main() {
             assert!(iface_names.insert(iface.name), "duplicate interface name: {}", iface.name);
             assert!(iface_prefixes.insert(iface.field_prefix), "duplicate field_prefix: {}", iface.field_prefix);
             assert!(iface_kinds.insert(iface.kind), "duplicate kind: {}", iface.kind);
-            let mut method_names = std::collections::HashSet::new();
+            let mut method_names = HashSet::new();
             for m in &iface.methods {
                 assert!(method_names.insert(m.name), "duplicate method name on iface {}: {}", iface.name, m.name,);
-            }
-            if !aspect_ids.contains(&iface.id) {
-                let label = format!("iface:{}", iface.name);
-                if let Some(existing) = all_ids.insert(iface.id, label.clone()) {
-                    panic!("duplicate spec id {}: '{}' vs '{}'", iface.id, existing, label);
-                }
             }
             let prefix = iface.field_prefix;
             let methods_expr_items: Vec<TokenStream> = iface.methods.iter().enumerate().map(|(idx, m)| {
@@ -966,7 +958,8 @@ fn main() {
             });
             let kind = format_ident!("{}", iface.kind);
             let description = iface.description.unwrap_or(iface.name);
-            let id = iface.id;
+            assert!(builtin_unique_ids.insert(iface.builtin_unique_id));
+            let builtin_unique_id = iface.builtin_unique_id;
             iface_build_entries.push(quote!{
                 let #f = dumpster:: unsync:: Gc:: new(
                     crate:: eval:: value:: type_source_interface:: SourceInterfaceData {
@@ -977,7 +970,7 @@ fn main() {
                         description: std:: cell:: RefCell:: new(Some(#description.to_string())),
                         is_aspect: std:: cell:: Cell:: new(false),
                         methods: std:: cell:: RefCell:: new(#methods_expr),
-                        identity: crate:: langhelp:: Unique:: Builtin(#id),
+                        identity: crate:: langhelp:: Unique:: Builtin(#builtin_unique_id),
                     },
                 );
                 builtin_def_set.interfaces.borrow_mut().push(#f.clone());
@@ -1012,7 +1005,7 @@ fn main() {
                 });
             }
         }
-        all.extend(quote!{
+        out.extend(quote!{
             #(#iface_trait_defs) * pub(crate) struct GenBuiltinInterfaces {
                 #(#iface_struct_fields),
                 *
@@ -1037,7 +1030,7 @@ fn main() {
     }
     {
         let mut local_fns: Vec<TokenStream> = Vec::new();
-        for (name, id) in &vec![
+        for (name, builtin_unique_id) in [
             //. .
             ("expr_context_ref_type_identity", 6001),
             ("code_value_extern_type_identity", 6002),
@@ -1053,28 +1046,25 @@ fn main() {
             ("type_aspect_identity", 6012),
             ("expr_type_identity", 6013),
         ] {
-            let label = format!("local:{}", name);
-            if let Some(existing) = all_ids.insert(*id, label.clone()) {
-                panic!("duplicate spec id {}: '{}' vs '{}'", *id, existing, label);
-            }
+            assert!(builtin_unique_ids.insert(builtin_unique_id));
             let name_ident = format_ident!("{}", name);
-            let id = *id;
             local_fns.push(quote!{
                 #[allow(dead_code)] pub(crate) fn #name_ident() -> crate:: langhelp:: Unique {
-                    crate:: langhelp:: Unique:: Builtin(#id)
+                    crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
                 }
             });
         }
-        all.extend(quote!{
+        out.extend(quote!{
             #(#local_fns) *
         });
     }
     {
         let mut artifact_pieces: Vec<TokenStream> = Vec::new();
+        let mut builtin_artifact_ids = HashSet::new();
 
         struct ArtifactSpec {
+            builtin_artifact_id: usize,
             data_type: Option<&'static str>,
-            id: usize,
             name: &'static str,
             register: bool,
             type_path: Option<&'static str>,
@@ -1084,42 +1074,42 @@ fn main() {
             //. .
             ArtifactSpec {
                 name: "defset",
-                id: 7001,
+                builtin_artifact_id: 7001,
                 type_path: None,
                 data_type: None,
                 register: false,
             },
             ArtifactSpec {
                 name: "type_record_artifact",
-                id: 7002,
+                builtin_artifact_id: 7002,
                 type_path: Some("crate::eval::value::record::artifact::TypeRecordArtifact"),
                 data_type: Some("serde_json::Value"),
                 register: false,
             },
             ArtifactSpec {
                 name: "type_tuple_artifact",
-                id: 7003,
+                builtin_artifact_id: 7003,
                 type_path: Some("crate::eval::value::tuple::artifact::TypeTupleArtifact"),
                 data_type: Some("serde_json::Value"),
                 register: false,
             },
             ArtifactSpec {
                 name: "type_map_artifact",
-                id: 7004,
+                builtin_artifact_id: 7004,
                 type_path: Some("crate::eval::value::type_map::artifact::TypeMapArtifact"),
                 data_type: Some("serde_json::Value"),
                 register: false,
             },
             ArtifactSpec {
                 name: "type_option_artifact",
-                id: 7005,
+                builtin_artifact_id: 7005,
                 type_path: Some("crate::eval::value::type_option::artifact::TypeOptionArtifact"),
                 data_type: Some("serde_json::Value"),
                 register: false,
             },
             ArtifactSpec {
                 name: "type_source_interface_const_artifact",
-                id: 7006,
+                builtin_artifact_id: 7006,
                 type_path: Some(
                     "crate::eval::value::type_source_interface::artifact::TypeSourceInterfaceConstArtifact",
                 ),
@@ -1128,7 +1118,7 @@ fn main() {
             },
             ArtifactSpec {
                 name: "type_type_source_data_type_constructor_dynamic",
-                id: 7007,
+                builtin_artifact_id: 7007,
                 type_path: Some(
                     "crate::eval::value::type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic",
                 ),
@@ -1137,14 +1127,14 @@ fn main() {
             },
             ArtifactSpec {
                 name: "type_code_value_extern_dynamic",
-                id: 7008,
+                builtin_artifact_id: 7008,
                 type_path: Some("crate::eval::code_value_extern::TypeCodeValueExternDynamic"),
                 data_type: Some("()"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_type_source_data_type_dynamic",
-                id: 7009,
+                builtin_artifact_id: 7009,
                 type_path: Some(
                     "crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic",
                 ),
@@ -1153,35 +1143,35 @@ fn main() {
             },
             ArtifactSpec {
                 name: "type_null_const",
-                id: 7010,
+                builtin_artifact_id: 7010,
                 type_path: Some("crate::eval::value::type_null::r#const::TypeNullConst"),
                 data_type: Some("crate::eval::value::type_null::artifact::ArtifactDataNull"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_any_const",
-                id: 7011,
+                builtin_artifact_id: 7011,
                 type_path: Some("crate::eval::value::type_any::r#const::TypeAnyConst"),
                 data_type: Some("serde_json::Value"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_string_const",
-                id: 7012,
+                builtin_artifact_id: 7012,
                 type_path: Some("crate::eval::value::type_string::r#const::TypeStringConst"),
                 data_type: Some("crate::eval::value::type_string::artifact::ArtifactDataString"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_null_dynamic",
-                id: 7013,
+                builtin_artifact_id: 7013,
                 type_path: Some("crate::eval::value::type_null::dynamic::TypeNullDynamic"),
                 data_type: Some("crate::eval::value::type_null::artifact::ArtifactDataNull"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_source_tagged_union_ref_dynamic",
-                id: 7014,
+                builtin_artifact_id: 7014,
                 type_path: Some(
                     "crate::eval::value::type_source_tagged_union::dynamic::TypeSourceTaggedUnionRefDynamic",
                 ),
@@ -1190,63 +1180,60 @@ fn main() {
             },
             ArtifactSpec {
                 name: "type_source_data_type_ref_dynamic",
-                id: 7015,
+                builtin_artifact_id: 7015,
                 type_path: Some("crate::eval::value::type_source_data_type::dynamic::TypeSourceDataTypeRefDynamic"),
                 data_type: Some("serde_json::Value"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_number_const",
-                id: 7016,
+                builtin_artifact_id: 7016,
                 type_path: Some("crate::eval::value::type_number::r#const::TypeNumberConst"),
                 data_type: Some("f64"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_type_source_function_dynamic",
-                id: 7017,
+                builtin_artifact_id: 7017,
                 type_path: Some("crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic"),
                 data_type: Some("serde_json::Value"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_expr",
-                id: 7018,
+                builtin_artifact_id: 7018,
                 type_path: Some("crate::eval::value::type_expr::TypeExpr"),
                 data_type: Some("serde_json::Value"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_string_dynamic",
-                id: 7019,
+                builtin_artifact_id: 7019,
                 type_path: Some("crate::eval::value::type_string::dynamic::TypeStringDynamic"),
                 data_type: Some("crate::eval::value::type_string::artifact::ArtifactDataString"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_number_dynamic",
-                id: 7020,
+                builtin_artifact_id: 7020,
                 type_path: Some("crate::eval::value::type_number::dynamic::TypeNumberDynamic"),
                 data_type: Some("f64"),
                 register: true,
             },
             ArtifactSpec {
                 name: "type_list_artifact",
-                id: 7021,
+                builtin_artifact_id: 7021,
                 type_path: Some("crate::eval::value::type_list::artifact::TypeListArtifact"),
                 data_type: Some("crate::eval::value::type_list::artifact::ArtifactListType"),
                 register: false,
             },
         ] {
-            let label = format!("artifact:{}", s.name);
-            if let Some(existing) = all_ids.insert(s.id, label.clone()) {
-                panic!("duplicate spec id {}: '{}' vs '{}'", s.id, existing, label);
-            }
             let id_fn = format_ident!("{}_artifact_id", s.name);
-            let id = s.id;
+            let builtin_artifact_id = s.builtin_artifact_id;
+            assert!(builtin_artifact_ids.insert(builtin_artifact_id));
             let id_decl = quote!{
                 #[allow(dead_code)] pub(crate) fn #id_fn() -> crate:: langhelp:: ArtifactIdBuiltin {
-                    crate:: langhelp:: ArtifactIdBuiltin(#id)
+                    crate:: langhelp:: ArtifactIdBuiltin(#builtin_artifact_id)
                 }
             };
             let impl_block = match (s.type_path, s.data_type) {
@@ -1303,7 +1290,7 @@ fn main() {
                 #id_decl #impl_block
             });
         }
-        all.extend(quote!{
+        out.extend(quote!{
             #(#artifact_pieces) *
         });
     }
@@ -1318,9 +1305,9 @@ fn main() {
         }
 
         struct DynWrapStructSpec {
+            builtin_unique_id: usize,
             data_fields: Vec<(&'static str, &'static str)>,
             fields: Vec<DynWrapField>,
-            id: usize,
             methods: Vec<DynWrapMethod>,
             name: &'static str,
         }
@@ -1329,7 +1316,7 @@ fn main() {
             //. .
             DynWrapStructSpec {
                 name: "OptionV8",
-                id: 3001,
+                builtin_unique_id: 3001,
                 data_fields: vec![("is_some_inner", "bool")],
                 fields: vec![],
                 methods: vec![DynWrapMethod {
@@ -1343,7 +1330,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "TypeRefV8",
-                id: 3002,
+                builtin_unique_id: 3002,
                 data_fields: vec![("type_ref", "Rc<dyn crate::langhelp::Type>")],
                 fields: vec![],
                 methods: vec![DynWrapMethod {
@@ -1372,7 +1359,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "SourceNewFuncResult",
-                id: 3003,
+                builtin_unique_id: 3003,
                 data_fields: vec![("func_ref", "Rc<TypeSourceFunctionConst>")],
                 fields: vec![DynWrapField {
                     name: "func",
@@ -1449,7 +1436,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "SourceNewDataMethodResult",
-                id: 3004,
+                builtin_unique_id: 3004,
                 data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>"), ("method_index", "usize")],
                 fields: vec![],
                 methods: vec![
@@ -1509,7 +1496,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "SourceNewInterfaceResult",
-                id: 3005,
+                builtin_unique_id: 3005,
                 data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>")],
                 fields: vec![DynWrapField {
                     name: "type_",
@@ -1568,7 +1555,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "SourceNewDataResult",
-                id: 3006,
+                builtin_unique_id: 3006,
                 data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>")],
                 fields: vec![
                     //. .
@@ -1704,7 +1691,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "SourceTaggedUnionBuilder",
-                id: 3007,
+                builtin_unique_id: 3007,
                 data_fields: vec![("data", "Rc<SourceTaggedUnionData>")],
                 fields: vec![DynWrapField {
                     name: "type_",
@@ -1739,7 +1726,7 @@ fn main() {
             },
             DynWrapStructSpec {
                 name: "SourceNewInterfaceMethodResult",
-                id: 3008,
+                builtin_unique_id: 3008,
                 data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>"), ("method_index", "usize")],
                 fields: vec![],
                 methods: vec![
@@ -1781,14 +1768,11 @@ fn main() {
                 ],
             },
         ] {
-            let label = format!("dyn_wrap_struct:{}", s.name);
-            if let Some(existing) = all_ids.insert(s.id, label.clone()) {
-                panic!("duplicate spec id {}: '{}' vs '{}'", s.id, existing, label);
-            }
             let name = format_ident!("{}", s.name);
             let type_name = format_ident!("Type{}Dynamic", s.name);
             let identity_fn = format_ident!("{}_type_identity", snake_case(s.name));
-            let id = s.id;
+            let builtin_unique_id = s.builtin_unique_id;
+            assert!(builtin_unique_ids.insert(builtin_unique_id));
             let desc_str = s.name.to_string();
             let data_field_decls: Vec<TokenStream> = s.data_fields.iter().map(|(n, ty)| {
                 let n = format_ident!("{}", n);
@@ -1962,13 +1946,13 @@ fn main() {
             let unknown_field_msg = format!("Unknown field '{{}}' on {}", s.name);
             let from_v8_msg = format!("from_v8 not supported for {}", s.name);
             let cannot_convert_to_msg = format!("Cannot convert to {}", s.name);
-            all.extend(quote!{
+            out.extend(quote!{
                 pub(crate) struct #name {
                     #(#data_field_decls,) *
                 }
                 pub(crate) struct #type_name;
                 fn #identity_fn() -> crate:: langhelp:: Unique {
-                    crate:: langhelp:: Unique:: Builtin(#id)
+                    crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
                 }
                 impl crate:: langhelp:: Value for #type_name {
                     fn type_(
@@ -2159,7 +2143,7 @@ fn main() {
     }
     {
         struct DynWrapWrapSpec {
-            id: usize,
+            builtin_unique_id: usize,
             methods: Vec<DynWrapMethod>,
             name: &'static str,
             wrapped_type: &'static str,
@@ -2169,7 +2153,7 @@ fn main() {
             //. .
             DynWrapWrapSpec {
                 name: "DefinitionSet",
-                id: 4001,
+                builtin_unique_id: 4001,
                 wrapped_type: "Gc<DefinitionSet>",
                 methods: vec![
                     //. .
@@ -2271,14 +2255,11 @@ fn main() {
                 ],
             },
         ] {
-            let label = format!("dyn_wrap_wrap:{}", s.name);
-            if let Some(existing) = all_ids.insert(s.id, label.clone()) {
-                panic!("duplicate spec id {}: '{}' vs '{}'", s.id, existing, label);
-            }
             let type_name = format_ident!("Type{}Dynamic", s.name);
             let identity_fn = format_ident!("{}_type_identity", snake_case(s.name));
             let extra_aspect_fn = format_ident!("{}_extra_aspect", snake_case(s.name));
-            let id = s.id;
+            let builtin_unique_id = s.builtin_unique_id;
+            assert!(builtin_unique_ids.insert(builtin_unique_id));
             let desc_str = s.name.to_string();
             let wrapped: TokenStream = s.wrapped_type.parse().unwrap();
             let method_dispatch_arms: Vec<TokenStream> = s.methods.iter().enumerate().map(|(idx, m)| {
@@ -2383,10 +2364,10 @@ fn main() {
             let cannot_convert_to_msg = format!("Cannot convert to {}", s.name);
             let unknown_field_msg = format!("Unknown field '{{}}' on {}", s.name);
             let from_v8_msg = format!("from_v8 not supported for {}", s.name);
-            all.extend(quote!{
+            out.extend(quote!{
                 pub(crate) struct #type_name;
                 fn #identity_fn() -> crate:: langhelp:: Unique {
-                    crate:: langhelp:: Unique:: Builtin(#id)
+                    crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
                 }
                 impl crate:: langhelp:: Value for #type_name {
                     fn type_(
@@ -2575,11 +2556,12 @@ fn main() {
     }
     {
         let mut dw_fn_call_exprs: Vec<TokenStream> = Vec::new();
+        let mut builtin_scope_ids = HashSet::new();
 
         struct DynWrapFnSpec {
             args: Vec<(&'static str, &'static str)>,
             body: TokenStream,
-            id: usize,
+            builtin_scope_id: usize,
             name: &'static str,
             ret: &'static str,
         }
@@ -2588,7 +2570,7 @@ fn main() {
             //. .
             DynWrapFnSpec {
                 name: "log",
-                id: 5001,
+                builtin_scope_id: 5001,
                 args: vec![("message", "String")],
                 ret: "()",
                 body: quote!{
@@ -2603,7 +2585,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "define",
-                id: 5002,
+                builtin_scope_id: 5002,
                 args: vec![],
                 ret: "Gc<DefinitionSet>",
                 body: quote!{
@@ -2618,7 +2600,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "str_to_json",
-                id: 5003,
+                builtin_scope_id: 5003,
                 args: vec![("s", "String")],
                 ret: "String",
                 body: quote!{
@@ -2627,7 +2609,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "constkey_to_str",
-                id: 5004,
+                builtin_scope_id: 5004,
                 args: vec![("key", "crate::langhelp::ConstKey")],
                 ret: "String",
                 body: quote!{
@@ -2636,7 +2618,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "new_code_value",
-                id: 5005,
+                builtin_scope_id: 5005,
                 args: vec![("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")],
                 ret: "crate::eval::code_value_extern::CodeValueExtern",
                 body: quote!{
@@ -2649,7 +2631,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "gen_binding_name",
-                id: 5006,
+                builtin_scope_id: 5006,
                 args: vec![("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
                 ret: "String",
                 body: quote!{
@@ -2660,7 +2642,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "eval_const",
-                id: 5007,
+                builtin_scope_id: 5007,
                 args: vec![
                     ("xx", "crate::eval::code_value_extern::ExprContextRef"),
                     ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
@@ -2679,7 +2661,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "const_eval",
-                id: 5008,
+                builtin_scope_id: 5008,
                 args: vec![
                     ("xx", "crate::eval::code_value_extern::ExprContextRef"),
                     ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
@@ -2700,7 +2682,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "new_expr_context",
-                id: 5009,
+                builtin_scope_id: 5009,
                 args: vec![
                     ("target_arg", "Rc<dyn crate::r#gen::Target>"),
                     ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::ScopeEntry>>"),
@@ -2728,7 +2710,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "list",
-                id: 5010,
+                builtin_scope_id: 5010,
                 args: vec![("element_type", "crate::eval::dynamic_wrap::AnyType")],
                 ret: "crate::eval::value::type_list::dynamic::TypeListDynamic",
                 body: quote!{
@@ -2737,7 +2719,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "map",
-                id: 5011,
+                builtin_scope_id: 5011,
                 args: vec![
                     ("key_type", "crate::eval::dynamic_wrap::AnyType"),
                     ("value_type", "crate::eval::dynamic_wrap::AnyType"),
@@ -2752,7 +2734,7 @@ fn main() {
             },
             DynWrapFnSpec {
                 name: "option",
-                id: 5012,
+                builtin_scope_id: 5012,
                 args: vec![("element_type", "crate::eval::dynamic_wrap::AnyType")],
                 ret: "crate::eval::value::type_option::dynamic::TypeOptionDynamic",
                 body: quote!{
@@ -2760,13 +2742,10 @@ fn main() {
                 },
             },
         ] {
-            let label = format!("dyn_wrap_fn:{}", s.name);
-            if let Some(existing) = all_ids.insert(s.id, label.clone()) {
-                panic!("duplicate spec id {}: '{}' vs '{}'", s.id, existing, label);
-            }
             let fn_name = format_ident!("gen_fn_{}", s.name);
             let name_str = s.name;
-            let id = s.id;
+            let builtin_scope_id = s.builtin_scope_id;
+            assert!(builtin_scope_ids.insert(builtin_scope_id));
             let arg_mortar = arg_mortar_expr(&s.args);
             let arg_decls: Vec<TokenStream> = s.args.iter().map(|(n, ty)| {
                 let n = format_ident!("{}", n);
@@ -2781,7 +2760,7 @@ fn main() {
             }).collect();
             let ret_ty: TokenStream = s.ret.parse().unwrap();
             let body = &s.body;
-            all.extend(quote!{
+            out.extend(quote!{
                 pub(
                     crate
                 ) fn #fn_name <'s >(
@@ -2811,7 +2790,7 @@ fn main() {
                     }
                     (
                         #name_str,
-                        crate:: langhelp:: ScopeEntryId:: Builtin(#id),
+                        crate:: langhelp:: ScopeEntryId:: Builtin(#builtin_scope_id),
                         std:: rc:: Rc:: new(crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
                             arg: #arg_mortar,
                             ret: <#ret_ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type(),
@@ -2825,7 +2804,7 @@ fn main() {
                 #fn_name(dynamic_scope)
             });
         }
-        all.extend(quote!{
+        out.extend(quote!{
             pub(
                 crate
             ) fn gen_register_builtin_fns <'s >(
@@ -2866,7 +2845,7 @@ fn main() {
             }
         });
     }
-    fs::write(out_dir.join("gen.rs"), fmt(all)).unwrap();
+    fs::write(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("gen.rs"), fmt(out)).unwrap();
 }
 
 struct MethodSpec {
