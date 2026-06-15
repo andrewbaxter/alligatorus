@@ -644,6 +644,13 @@ fn artifact_ids() -> Vec<ArtifactSpec> {
             ),
             register: true,
         },
+        ArtifactSpec {
+            name: "type_number_dynamic",
+            id: 7020,
+            type_path: Some("crate::eval::value::type_number::dynamic::TypeNumberDynamic"),
+            data_type: Some("f64"),
+            register: true,
+        },
     ]
 }
 

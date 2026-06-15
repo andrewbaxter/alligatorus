@@ -39,6 +39,25 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
     }
 }
 
+pub(crate) struct DeserializerDynamic;
+
+impl ArtifactBuiltinDeserializer for DeserializerDynamic {
+    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+        let Some(n) = data.as_f64() else {
+            return EvalRes::err(loc, format!("Expected number data for mortar number, got {:?}", data));
+        };
+        EvalRes::ok(CodeValue {
+            code: Code { loc, code: Code_::None },
+            value: Rc::new(crate::eval::value::value_number::r#const::ValueNumberConst(n)),
+        })
+    }
+
+    fn type_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(super::dynamic::TypeNumberDynamic), Code { loc, code: Code_::None }))
+    }
+}
+
 pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
     m.insert(super::r#const::TypeNumberConst::artifact_id(), Rc::new(DeserializerConst));
+    m.insert(super::dynamic::TypeNumberDynamic::artifact_id(), Rc::new(DeserializerDynamic));
 }
