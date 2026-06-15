@@ -419,7 +419,7 @@ impl Type for Record {
         Rc::new(self.clone_as_type())
     }
 
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectField>));
         }
@@ -443,7 +443,7 @@ impl Type for Record {
                 };
                 let a =
                     t
-                        .aspect(_xx, &aspect_lift_dynamic_aspect_id())
+                        .aspect(xx, &aspect_lift_dynamic_aspect_id())
                         .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftDynamic", k, t.desc()));
                 (k.clone(), must_downcast_box::<Box<dyn AspectLiftDynamic>>(a))
             }).collect();
@@ -458,7 +458,7 @@ impl Type for Record {
                     };
                     let a =
                         t
-                            .aspect(_xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
+                            .aspect(xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
                             .expect(
                                 &format!("Record entry '{:?}' type ({}) missing AspectLowerDynamic", k, t.desc()),
                             );
@@ -486,8 +486,8 @@ impl Type for Record {
         self.fields.keys().all(|k| source_field.field_type_opt(xx, k).is_some())
     }
 
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &crate::r#gen::type_type_identity()).is_some()
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -654,10 +654,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
         RecordField::Mortar(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
             Some(cv) => cv.value.type_(xx, loc),
-            None => Rc::new(Tuple {
-                base: None,
-                elements: vec![],
-            }) as Rc<dyn Type>,
+            None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
         },
     }
 }

@@ -29,8 +29,7 @@ pub fn build(out: &mut TokenStream) {
             ret: "()",
             body: quote!{
                 let timestamp_ms =
-                    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as
-                        u64;
+                    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
                 scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(LogEntry {
                     timestamp_ms,
                     message,
@@ -41,15 +40,15 @@ pub fn build(out: &mut TokenStream) {
             name: "define",
             builtin_scope_id: 5002,
             args: vec![],
-            ret: "Gc<DefinitionSet>",
+            ret: "DefinitionSetBuilder",
             body: quote!{
                 let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
                 let def_set_id = DefSetId(ex_slot.ex.ix.def_set_counter.next());
                 let import_id = ex_slot.ex.ix.import_state;
                 let source_id = ex_slot.ex.ix.source_id;
-                let ds = Gc::new(DefinitionSet::new(import_id, def_set_id, source_id));
-                ex_slot.ex.ix.definition_sets.borrow_mut().push(ds.clone());
-                ds
+                let inner = Gc::new(DefinitionSet::new(import_id, def_set_id, source_id));
+                ex_slot.ex.ix.definition_sets.borrow_mut().push(inner.clone());
+                DefinitionSetBuilder { inner }
             },
         },
         DynWrapFnSpec {
@@ -238,9 +237,7 @@ pub fn build(out: &mut TokenStream) {
                     #(#arg_decls) * let _jw_result: #ret_ty = {
                         #body
                     };
-                    _jw_rv.set(
-                        <#ret_ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: into_v8(_jw_result, scope),
-                    );
+                    _jw_rv.set(<#ret_ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: into_v8(_jw_result, scope),);
                 }
                 (
                     #name_str,

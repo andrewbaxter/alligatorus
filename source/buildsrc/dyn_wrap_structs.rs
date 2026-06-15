@@ -22,6 +22,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
     struct DynWrapStructSpec {
         builtin_unique_id: usize,
         data_fields: Vec<(&'static str, &'static str)>,
+        extra_aspect_fn: Option<&'static str>,
         fields: Vec<DynWrapField>,
         methods: Vec<DynWrapMethod>,
         name: &'static str,
@@ -30,9 +31,115 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
     for s in &vec![
         //. .
         DynWrapStructSpec {
+            name: "DefinitionSetBuilder",
+            builtin_unique_id: 3009,
+            data_fields: vec![("inner", "Gc<DefinitionSet>")],
+            extra_aspect_fn: Some("crate::eval::definition_set::definition_set_extra_aspect"),
+            fields: vec![],
+            methods: vec![
+                //. .
+                DynWrapMethod {
+                    name: "new_func",
+                    args: vec![("name", "String")],
+                    ret: "SourceNewFuncResult",
+                    body: quote!{
+                        let ds = self_.inner.clone();
+                        let entry_id = ds.next_entry_id.next();
+                        let func_data = Gc::new(SourceFunctionData {
+                            set: ds.clone(),
+                            name: Some(name),
+                            description: RefCell::new(None),
+                            impl_expr: RefCell::new(None),
+                            arg_type: RefCell::new(None),
+                            ret_type: RefCell::new(None),
+                            scope_entry_id: Cell::new(
+                                Some(crate::langhelp::ScopeEntryId::Def(ds.import_id, ds.def_set_id, entry_id,),)
+                            ),
+                            artifact_id: RefCell::new(None),
+                            compiled_js: RefCell::new(None),
+                            captured_externals: RefCell::new(Vec::new()),
+                        });
+                        ds.functions.borrow_mut().push(func_data.clone());
+                        let func_ref = Rc::new(TypeSourceFunctionConst { data: func_data });
+                        SourceNewFuncResult { func_ref }
+                    },
+                },
+                DynWrapMethod {
+                    name: "new_data",
+                    args: vec![("name", "String")],
+                    ret: "SourceNewDataResult",
+                    body: quote!{
+                        let ds = self_.inner.clone();
+                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
+                        let data_field = format!("_{}", ds.next_field_id.next());
+                        let dt_data = Gc::new(SourceDataTypeData {
+                            set: ds.clone(),
+                            name: Some(name),
+                            description: RefCell::new(None),
+                            underlying_type: crate::invariant::DeserialLazy::new(),
+                            methods: RefCell::new(Vec::new()),
+                            interface_impls: RefCell::new(Vec::new()),
+                            identity,
+                            data_field,
+                            artifact_id: RefCell::new(None),
+                        });
+                        ds.data_types.borrow_mut().push(dt_data.clone());
+                        let data_type_ref = Rc::new(SourceDataTypeRef { data: dt_data });
+                        SourceNewDataResult { data_type_ref }
+                    },
+                },
+                DynWrapMethod {
+                    name: "build",
+                    args: vec![],
+                    ret: "DefinitionSetBuilder",
+                    body: quote!{
+                        DefinitionSetBuilder { inner: self_.inner.clone() }
+                    },
+                },
+                DynWrapMethod {
+                    name: "tagged_union",
+                    args: vec![],
+                    ret: "SourceTaggedUnionBuilder",
+                    body: quote!{
+                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
+                        let data = Rc::new(SourceTaggedUnionData {
+                            variants: RefCell::new(Vec::new()),
+                            identity,
+                            next_tag_id: crate::langhelp::Counter::default(),
+                        });
+                        SourceTaggedUnionBuilder { data }
+                    },
+                },
+                DynWrapMethod {
+                    name: "new_interface",
+                    args: vec![],
+                    ret: "SourceNewInterfaceResult",
+                    body: quote!{
+                        let ds = self_.inner.clone();
+                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
+                        let iface_data = Gc::new(SourceInterfaceData {
+                            builtin_kind: None,
+                            set: ds.clone(),
+                            description: RefCell::new(None),
+                            is_aspect: Cell::new(false),
+                            methods: RefCell::new(Vec::new()),
+                            identity,
+                        });
+                        ds.interfaces.borrow_mut().push(iface_data.clone());
+                        let interface_ref = Rc::new(SourceInterfaceRef { data: iface_data });
+                        SourceNewInterfaceResult { interface_ref }
+                    },
+                },
+            ],
+        },
+        DynWrapStructSpec {
             name: "OptionV8",
             builtin_unique_id: 3001,
             data_fields: vec![("is_some_inner", "bool")],
+            extra_aspect_fn: None,
             fields: vec![],
             methods: vec![DynWrapMethod {
                 name: "is_some_",
@@ -47,6 +154,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "TypeRefV8",
             builtin_unique_id: 3002,
             data_fields: vec![("type_ref", "Rc<dyn crate::langhelp::Type>")],
+            extra_aspect_fn: None,
             fields: vec![],
             methods: vec![DynWrapMethod {
                 name: "aspect",
@@ -76,6 +184,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "SourceNewFuncResult",
             builtin_unique_id: 3003,
             data_fields: vec![("func_ref", "Rc<TypeSourceFunctionConst>")],
+            extra_aspect_fn: None,
             fields: vec![DynWrapField {
                 name: "func",
                 ret: "Rc<TypeSourceFunctionConst>",
@@ -160,6 +269,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "SourceNewDataMethodResult",
             builtin_unique_id: 3004,
             data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>"), ("method_index", "usize")],
+            extra_aspect_fn: None,
             fields: vec![],
             methods: vec![
                 //. .
@@ -220,6 +330,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "SourceNewInterfaceResult",
             builtin_unique_id: 3005,
             data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>")],
+            extra_aspect_fn: None,
             fields: vec![DynWrapField {
                 name: "type_",
                 ret: "Rc<SourceInterfaceRef>",
@@ -244,10 +355,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                     body: quote!{
                         let iface_data = &self_.interface_ref.data;
                         let field_name =
-                            format!(
-                                "_im{}",
-                                crate::eval::definition_set::next_interface_method_id(&iface_data.set)
-                            );
+                            format!("_im{}", crate::eval::definition_set::next_interface_method_id(&iface_data.set));
                         let method_index = {
                             let mut methods = iface_data.methods.borrow_mut();
                             let idx = methods.len();
@@ -279,6 +387,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "SourceNewDataResult",
             builtin_unique_id: 3006,
             data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>")],
+            extra_aspect_fn: None,
             fields: vec![
                 //. .
                 DynWrapField {
@@ -356,10 +465,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                     name: "impl_interface",
                     args: vec![
                         ("iface_ref", "Rc<SourceInterfaceRef>"),
-                        (
-                            "record",
-                            "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>",
-                        ),
+                        ("record", "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>"),
                     ],
                     ret: "()",
                     body: quote!{
@@ -415,6 +521,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "SourceTaggedUnionBuilder",
             builtin_unique_id: 3007,
             data_fields: vec![("data", "Rc<SourceTaggedUnionData>")],
+            extra_aspect_fn: None,
             fields: vec![DynWrapField {
                 name: "type_",
                 ret: "Rc<SourceTaggedUnionRef>",
@@ -430,8 +537,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                     let variant_index = {
                         let mut variants = self_.data.variants.borrow_mut();
                         let idx = variants.len();
-                        let js_tag =
-                            format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next(),);
+                        let js_tag = format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next(),);
                         variants.push(SourceTaggedUnionVariant {
                             js_tag,
                             tag: crate::langhelp::ConstKey::String(tag),
@@ -450,6 +556,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             name: "SourceNewInterfaceMethodResult",
             builtin_unique_id: 3008,
             data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>"), ("method_index", "usize")],
+            extra_aspect_fn: None,
             fields: vec![],
             methods: vec![
                 //. .
@@ -668,6 +775,17 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         let unknown_field_msg = format!("Unknown field '{{}}' on {}", s.name);
         let from_v8_msg = format!("from_v8 not supported for {}", s.name);
         let cannot_convert_to_msg = format!("Cannot convert to {}", s.name);
+        let extra_aspect_call: TokenStream = match s.extra_aspect_fn {
+            Some(f) => {
+                let f: TokenStream = f.parse().unwrap();
+                quote!{
+                    #f(_xx, key)
+                }
+            },
+            None => quote!{
+                None
+            },
+        };
         out.extend(quote!{
             pub(crate) struct #name {
                 #(#data_field_decls,) *
@@ -711,9 +829,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                         );
                     }
                     if * key == crate:: r#gen:: aspect_bind_dynamic_aspect_id() {
-                        return Some(
-                            Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectBindDynamic >)
-                        );
+                        return Some(Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectBindDynamic >));
                     }
                     if * key == crate:: r#gen:: aspect_bind_aspect_id() {
                         return Some(Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectBind >));
@@ -723,7 +839,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                             Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectStackValueDynamic >)
                         );
                     }
-                    None
+                    #extra_aspect_call
                 }
                 fn cast_to(
                     &self,
@@ -847,11 +963,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                 >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>,) -> Self {
                     unimplemented!(#from_v8_msg)
                 }
-                fn into_v8 <'s >(
-                    self,
-                    scope: & mut v8:: PinnedRef <'s,
-                    v8:: HandleScope <'_ >>,
-                ) -> v8:: Local <'s,
+                fn into_v8 <'s >(self, scope: & mut v8:: PinnedRef <'s, v8:: HandleScope <'_ >>,) -> v8:: Local <'s,
                 v8:: Value > {
                     let _jw_obj = v8::Object::new(scope);
                     let _jw_self_rc = std::rc::Rc::new(self);

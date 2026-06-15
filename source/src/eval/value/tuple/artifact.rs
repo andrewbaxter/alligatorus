@@ -46,10 +46,7 @@ impl Deserializer {
                 crate::eval::util::deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
             elements.push(crate::eval::value::tuple::TupleElement::Mortar(elem_type));
         }
-        Ok(Rc::new(crate::eval::value::tuple::Tuple {
-            base: None,
-            elements,
-        }))
+        Ok(Rc::new(crate::eval::value::tuple::Tuple { elements: elements }))
     }
 }
 

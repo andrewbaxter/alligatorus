@@ -254,10 +254,10 @@ impl Type for TypeAnyDynamic {
         None
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         // Identity only — other source types reach `TypeAnyDynamic` via their own
         // `cast_to(TypeAnyDynamic)` (see `wrap_as_any` helper).
-        source_type.aspect(_xx, &crate::r#gen::type_type_identity()).is_some()
+        source_type.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {

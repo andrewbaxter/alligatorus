@@ -3,19 +3,9 @@ use {
     quote::quote,
 };
 
-/// Convenience over [`arg_mortar_expr`] for args given as `(name, rust-type-as-string)`
-/// where each type implements `DynamicWrap`. Wraps each via `mortar_type()` then combines.
-pub fn arg_mortar_expr_str(args: &[(&'static str, &'static str)]) -> TokenStream {
-    let mortars: Vec<TokenStream> = args.iter().map(|(_, ty)| {
-        let ty: TokenStream = ty.parse().unwrap();
-        quote!(< #ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type())
-    }).collect();
-    arg_mortar_expr(&mortars)
-}
-
 /// Combine per-arg mortar expressions into a single mortar: null for 0 args, the
-/// sole mortar for 1, a `Tuple` mortar for N. Each `mortars[i]` is a
-/// `TokenStream` that evaluates to `Rc<dyn Type>`.
+/// sole mortar for 1, a `Tuple` mortar for N. Each `mortars[i]` is a `TokenStream`
+/// that evaluates to `Rc<dyn Type>`.
 pub fn arg_mortar_expr(mortars: &[TokenStream]) -> TokenStream {
     match mortars.len() {
         0 => quote!{
@@ -28,13 +18,22 @@ pub fn arg_mortar_expr(mortars: &[TokenStream]) -> TokenStream {
                 crate:: eval:: value:: tuple:: TupleElement:: Mortar(#m)
             }).collect();
             quote!{
-                std::rc::Rc::new(crate::eval::value::tuple::Tuple {
-                    base: None,
-                    elements: vec![#(#elems), *],
-                }) as std::rc::Rc<dyn crate::langhelp::Type>
+                std::rc::Rc::new(crate::eval::value::tuple::Tuple { elements: vec![#(#elems), *], }) as
+                    std::rc::Rc<dyn crate::langhelp::Type>
             }
         },
     }
+}
+
+/// Convenience over [`arg_mortar_expr`] for args given as
+/// `(name, rust-type-as-string)` where each type implements `DynamicWrap`. Wraps
+/// each via `mortar_type()` then combines.
+pub fn arg_mortar_expr_str(args: &[(&'static str, &'static str)]) -> TokenStream {
+    let mortars: Vec<TokenStream> = args.iter().map(|(_, ty)| {
+        let ty: TokenStream = ty.parse().unwrap();
+        quote!(< #ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type())
+    }).collect();
+    arg_mortar_expr(&mortars)
 }
 
 pub struct DynWrapMethod {
@@ -42,6 +41,17 @@ pub struct DynWrapMethod {
     pub body: TokenStream,
     pub name: &'static str,
     pub ret: &'static str,
+}
+
+pub struct InterfaceSpec {
+    pub builtin_unique_id: usize,
+    pub description: Option<&'static str>,
+    pub field_prefix: &'static str,
+    pub kind: &'static str,
+    pub methods: Vec<Method>,
+    pub name: &'static str,
+    pub rust_trait_name: Option<&'static str>,
+    pub scope_id: usize,
 }
 
 pub struct Method {

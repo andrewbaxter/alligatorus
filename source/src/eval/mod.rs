@@ -466,10 +466,7 @@ fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
 /// the builtin `code_dyn` interface. Parallel to `ValueUserDefined` (for the
 /// `value` interface) and `TypeUserDefined` (for the `type` interface). Produced
 /// by the `__data_instance_to_code` rust-in-v8 callback.
-pub(crate) struct CodeUserDefined {
-    #[allow(dead_code)]
-    pub(crate) bundle: Rc<crate::eval::isolate_bundle::IsolateBundle>,
-}
+pub(crate) struct CodeUserDefined;
 
 impl crate::langhelp::CodeDyn for CodeUserDefined { }
 
@@ -905,10 +902,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: Rc::new(Tuple {
-                    base: None,
-                    elements,
-                }),
+                value: Rc::new(Tuple { elements: elements }),
             });
         },
         Expr_::Record(r) => {
@@ -1343,7 +1337,6 @@ fn eval(
         &scope,
         &mut builtin_scope_entries,
     )?;
-
     crate::r#gen::gen_register_builtin_interfaces(
         &xx,
         root_loc,
@@ -1384,43 +1377,7 @@ fn eval(
         let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
     }
-
-    // Aspect id scope entries: expose Rust-side aspect ids as `Unique` values so they
-    // can be passed to `.aspect(...)` lookups. Dual-mode — `use_` returns a CodeValue
-    // whose `code` references a v8 External (so the JS path can pass the Unique to
-    // `eval_const_v8` / `.aspect` JS methods) and whose `value` is the actual Unique
-    // (so const-eval consumers can downcast and use it directly).
-    let unique_type: Rc<dyn Type> = Rc::new(value::value_unique::TypeUnique);
-    for (
-        key,
-        unique,
-        line,
-    ) in [
-        ("aspect_string_dynamic", crate::r#gen::aspect_string_dynamic_aspect_id(), line!() as usize),
-        ("aspect_function_id", crate::r#gen::aspect_function_aspect_id(), line!() as usize),
-        ("aspect_field_id", crate::r#gen::aspect_field_aspect_id(), line!() as usize),
-    ] {
-        let dynamic_key = ScopeEntryId::Builtin(line);
-        if register_v8 {
-            let unique_v8 = to_v8(dynamic_scope, unique.clone());
-            dynamic_scope
-                .get_current_context()
-                .global(dynamic_scope)
-                .set(
-                    dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                    unique_v8.into(),
-                );
-        }
-        builtin_scope_entries.push((key.to_string(), dynamic_key, unique_type.clone()));
-        scope
-            .values
-            .borrow_mut()
-            .insert(ConstKey::String(key.to_string()), Box::new(value::value_unique::ScopeEntryUniqueDualMode {
-                dynamic_key,
-                unique,
-            }) as Box<dyn ScopeEntry>);
-    }
+    crate::r#gen::gen_register_builtin_aspect_ids(register_v8, dynamic_scope, &scope, &mut builtin_scope_entries);
 
     // list/map constructors: jswrap fns for v8 with constructor types for half-eval
     for (
@@ -1896,7 +1853,7 @@ fn eval(
                                 }
 
                                 // `arg` = the call's inputs as a record of `CodeValueExtern`s, one per Rust trait
-                                // param (e.g. `{self_, argument}` for aspect_function.call). Field-access on a
+                                // param (e.g. `{self, argument}` for aspect_function.call). Field-access on a
                                 // CodeValueExtern goes through `TypeCodeValueExternDynamic::AspectField`, which
                                 // emits a runtime call to the `__cve_field` mortar fn.
                                 let method_name = {
@@ -1908,14 +1865,14 @@ fn eval(
                                         Some(value::type_source_interface::BuiltinInterfaceKind::AspectFunction),
                                         "call",
                                     ) => vec![
-                                        "self_",
+                                        "self",
                                         "argument",
                                     ],
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::AspectField),
                                         "field",
                                     ) => vec![
-                                        "self_",
+                                        "self",
                                         "key",
                                     ],
                                     (
@@ -1926,7 +1883,7 @@ fn eval(
                                     ],
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::ScopeEntry),
-                                        "use_",
+                                        "use",
                                     ) => vec![
                                         "loc",
                                         "code",
@@ -1970,15 +1927,15 @@ fn eval(
                                         "code",
                                         "type",
                                     ],
-                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "if_") => vec![
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "if") => vec![
                                         "xx",
                                         "loc",
                                         "conditions",
-                                        "else_",
+                                        "else",
                                     ],
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
-                                        "match_",
+                                        "match",
                                     ) => vec![
                                         "xx",
                                         "loc",
@@ -2591,10 +2548,7 @@ fn eval(
                 let elem = arr.get_index(scope, i).unwrap();
                 elements.push(TupleElement::Mortar(v8_value_to_type(scope, elem)));
             }
-            let type_: Rc<dyn Type> = Rc::new(Tuple {
-                base: None,
-                elements,
-            });
+            let type_: Rc<dyn Type> = Rc::new(Tuple { elements: elements });
             let ext = rc_type_to_v8(scope, type_);
             rv.set(ext.into());
         }
@@ -3357,19 +3311,7 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let instance =
-                    v8::Local::<v8::Object>::try_from(
-                        args.get(0),
-                    ).expect("__data_instance_to_code: expected JS object for instance");
-                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let code: Rc<dyn crate::langhelp::CodeDyn> =
-                    Rc::new(
-                        CodeUserDefined {
-                            bundle: Rc::new(
-                                crate::eval::isolate_bundle::IsolateBundle { instance: instance_global },
-                            ),
-                        },
-                    );
+                let code: Rc<dyn crate::langhelp::CodeDyn> = Rc::new(CodeUserDefined);
                 let ext = to_v8(scope, code);
                 rv.set(ext.into());
             }
@@ -4118,10 +4060,7 @@ impl crate::r#gen::Target for TargetDynamic {
             js_elements.push(cd);
             mortar_elements.push(TupleElement::Mortar(sub.type_));
         }
-        let tuple_type = Rc::new(Tuple {
-            base: None,
-            elements: mortar_elements,
-        }) as Rc<dyn Type>;
+        let tuple_type = Rc::new(Tuple { elements: mortar_elements }) as Rc<dyn Type>;
         let js = wrap_with_carry(loc, carry, CodeDynamic {
             loc: loc,
             type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),

@@ -309,9 +309,9 @@ impl Type for TypeListDynamic {
         false
     }
 
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(_xx, loc);
-        if aspect_list_dynamic_get_maybe(_xx, source_type.as_ref()).is_some() {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
+        let source_type = cv.value.type_(xx, loc);
+        if aspect_list_dynamic_get_maybe(xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {

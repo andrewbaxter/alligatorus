@@ -1,5 +1,11 @@
 use {
-    crate::buildsrc::util::snake_case,
+    crate::buildsrc::util::{
+        InterfaceSpec,
+        Method,
+        MethodArgs,
+        TypeRef,
+        snake_case,
+    },
     proc_macro2::TokenStream,
     quote::{
         format_ident,
@@ -8,7 +14,7 @@ use {
     std::collections::HashSet,
 };
 
-pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
+pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, scope_ids: &mut HashSet<usize>) {
     let mut aspect_names = HashSet::new();
     let mut aspect_token_items: Vec<TokenStream> = Vec::new();
 
@@ -27,32 +33,32 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
     for a in &vec![
         //. .
         AspectSpec {
-            name: "AspectNull",
+            name: "Null",
             builtin_unique_id: 1001,
             methods: vec![],
         },
         AspectSpec {
-            name: "AspectRecord",
+            name: "Record",
             builtin_unique_id: 1002,
             methods: vec![],
         },
         AspectSpec {
-            name: "AspectNumberDynamic",
+            name: "NumberDynamic",
             builtin_unique_id: 1003,
             methods: vec![],
         },
         AspectSpec {
-            name: "AspectBoolDynamic",
+            name: "BoolDynamic",
             builtin_unique_id: 1004,
             methods: vec![],
         },
         AspectSpec {
-            name: "AspectStringDynamic",
+            name: "StringDynamic",
             builtin_unique_id: 1005,
             methods: vec![],
         },
         AspectSpec {
-            name: "AspectBoolConst",
+            name: "BoolConst",
             builtin_unique_id: 1006,
             methods: vec![AspectMethod {
                 name: "get",
@@ -61,7 +67,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectNumberConst",
+            name: "NumberConst",
             builtin_unique_id: 1008,
             methods: vec![AspectMethod {
                 name: "get",
@@ -70,7 +76,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectStringConst",
+            name: "StringConst",
             builtin_unique_id: 1009,
             methods: vec![AspectMethod {
                 name: "get",
@@ -79,7 +85,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectType",
+            name: "Type",
             builtin_unique_id: 1010,
             methods: vec![AspectMethod {
                 name: "type_",
@@ -88,7 +94,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectListDynamic",
+            name: "ListDynamic",
             builtin_unique_id: 1011,
             methods: vec![AspectMethod {
                 name: "element_type",
@@ -97,7 +103,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectMapDynamic",
+            name: "MapDynamic",
             builtin_unique_id: 1012,
             methods: vec![
                 //. .
@@ -114,7 +120,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectTuple",
+            name: "Tuple",
             builtin_unique_id: 1013,
             methods: vec![
                 //. .
@@ -131,7 +137,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectTaggedUnion",
+            name: "TaggedUnion",
             builtin_unique_id: 1014,
             methods: vec![AspectMethod {
                 name: "variants",
@@ -140,7 +146,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectField",
+            name: "Field",
             builtin_unique_id: 1015,
             methods: vec![
                 //. .
@@ -162,7 +168,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectFunction",
+            name: "Function",
             builtin_unique_id: 1116,
             methods: vec![AspectMethod {
                 name: "call",
@@ -176,7 +182,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectSet",
+            name: "Set",
             builtin_unique_id: 1017,
             methods: vec![AspectMethod {
                 name: "set",
@@ -190,7 +196,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             }],
         },
         AspectSpec {
-            name: "AspectOperatorAdd",
+            name: "OperatorAdd",
             builtin_unique_id: 1018,
             methods: vec![
                 //. .
@@ -208,7 +214,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectOperatorEq",
+            name: "OperatorEq",
             builtin_unique_id: 1019,
             methods: vec![
                 //. .
@@ -226,7 +232,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectOperatorLt",
+            name: "OperatorLt",
             builtin_unique_id: 1020,
             methods: vec![
                 //. .
@@ -244,7 +250,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectInitialBind",
+            name: "InitialBind",
             builtin_unique_id: 1021,
             methods: vec![
                 //. .
@@ -259,7 +265,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectBind",
+            name: "Bind",
             builtin_unique_id: 1022,
             methods: vec![
                 //. .
@@ -276,7 +282,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectBindDynamic",
+            name: "BindDynamic",
             builtin_unique_id: 1023,
             methods: vec![
                 //. .
@@ -293,7 +299,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectConsumeDynamic",
+            name: "ConsumeDynamic",
             builtin_unique_id: 1024,
             methods: vec![
                 //. .
@@ -310,7 +316,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectStackValueDynamic",
+            name: "StackValueDynamic",
             builtin_unique_id: 1025,
             methods: vec![
                 //. .
@@ -326,7 +332,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectLiftDynamic",
+            name: "LiftDynamic",
             builtin_unique_id: 1026,
             methods: vec![
                 //. .
@@ -342,7 +348,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectLowerDynamic",
+            name: "LowerDynamic",
             builtin_unique_id: 1031,
             methods: vec![
                 //. .
@@ -358,7 +364,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectIterable",
+            name: "Iterable",
             builtin_unique_id: 1027,
             methods: vec![
                 //. .
@@ -381,7 +387,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectArtifact",
+            name: "Artifact",
             builtin_unique_id: 1028,
             methods: vec![
                 //. .
@@ -406,7 +412,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
             ],
         },
         AspectSpec {
-            name: "AspectAspect",
+            name: "Aspect",
             builtin_unique_id: 1029,
             methods: vec![
                 //. .
@@ -424,8 +430,9 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         },
     ] {
         assert!(aspect_names.insert(a.name), "duplicate aspect name: {}", a.name);
-        let trait_name = format_ident!("{}", a.name);
-        let snake = snake_case(a.name);
+        let full_name = format!("Aspect{}", a.name);
+        let trait_name = format_ident!("{}", full_name);
+        let snake = snake_case(&full_name);
         let id_fn = format_ident!("{}_aspect_id", snake);
         let get_fn = format_ident!("{}_get", snake);
         let get_maybe_fn = format_ident!("{}_get_maybe", snake);
@@ -453,17 +460,15 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                 fn #name(&self, #(#params), *) #ret;
             }
         }).collect();
-        let missing_msg = format!("Type ({{}}) is missing aspect {}", a.name);
+        let missing_msg = format!("Type ({{}}) is missing aspect {}", full_name);
         aspect_token_items.push(quote!{
-            #[allow(dead_code)] pub(crate) trait #trait_name: crate:: langhelp:: Aspect {
+            pub(crate) trait #trait_name: crate:: langhelp:: Aspect {
                 #(#trait_methods) *
             }
-            #[allow(dead_code)] pub(crate) fn #id_fn() -> crate:: langhelp:: Unique {
+            pub(crate) fn #id_fn() -> crate:: langhelp:: Unique {
                 crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
             }
-            #[
-                allow(dead_code)
-            ] pub(
+            pub(
                 crate
             ) fn #get_fn(
                 xx: & crate:: langhelp:: ExprContext,
@@ -477,9 +482,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                     crate:: invariant:: must_downcast_box::< Box < dyn #trait_name >>(out)
                 );
             }
-            #[
-                allow(dead_code)
-            ] pub(
+            pub(
                 crate
             ) fn #get_maybe_fn(
                 xx: & crate:: langhelp:: ExprContext,
@@ -495,4 +498,121 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
     out.extend(quote!{
         #(#aspect_token_items) *
     });
+
+    struct AspectScopeEntry {
+        aspect_fn: &'static str,
+        key: &'static str,
+        scope_id: usize,
+    }
+
+    let mut reg_entries: Vec<TokenStream> = Vec::new();
+    for e in &[
+        //. .
+        AspectScopeEntry {
+            key: "aspect_string_dynamic",
+            scope_id: 4001,
+            aspect_fn: "aspect_string_dynamic",
+        },
+        AspectScopeEntry {
+            key: "aspect_function_id",
+            scope_id: 4002,
+            aspect_fn: "aspect_function",
+        },
+        AspectScopeEntry {
+            key: "aspect_field_id",
+            scope_id: 4003,
+            aspect_fn: "aspect_field",
+        },
+    ] {
+        assert!(scope_ids.insert(e.scope_id));
+        let key = e.key;
+        let scope_id = e.scope_id;
+        let aspect_id_fn = format_ident!("{}_aspect_id", e.aspect_fn);
+        reg_entries.push(quote!{
+            {
+                let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
+                let unique = crate:: r#gen:: #aspect_id_fn();
+                if register_v8 {
+                    let unique_v8 = crate::eval::to_v8(dynamic_scope, unique.clone());
+                    dynamic_scope
+                        .get_current_context()
+                        .global(dynamic_scope)
+                        .set(
+                            dynamic_scope,
+                            v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
+                                .unwrap()
+                                .cast(),
+                            unique_v8.into(),
+                        );
+                }
+                builtin_scope_entries.push((#key.to_string(), dynamic_key, unique_type.clone()));
+                scope.values.borrow_mut(
+                ).insert(
+                    ConstKey:: String(#key.to_string()),
+                    Box::new(crate::eval::value::value_unique::ScopeEntryUniqueDualMode {
+                        dynamic_key,
+                        unique,
+                    }) as Box<dyn crate::r#gen::ScopeEntry>,
+                );
+            }
+        });
+    }
+    out.extend(quote!{
+        pub(
+            crate
+        ) fn gen_register_builtin_aspect_ids <'s >(
+            register_v8: bool,
+            dynamic_scope: & mut v8:: PinnedRef <'s,
+            v8:: HandleScope <'_ >>,
+            scope: & crate:: langhelp:: Scope,
+            builtin_scope_entries: & mut Vec <(String, ScopeEntryId, Rc < dyn crate:: langhelp:: Type >,) >,
+        ) {
+            let unique_type: Rc<dyn crate::langhelp::Type> = Rc::new(crate::eval::value::value_unique::TypeUnique);
+            #(#reg_entries) *
+        }
+    });
+}
+
+pub fn interface_specs() -> Vec<InterfaceSpec> {
+    let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
+    let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
+    vec![
+        //. .
+        InterfaceSpec {
+            name: "aspect_function",
+            builtin_unique_id: 1016,
+            scope_id: 3003,
+            field_prefix: "af",
+            kind: "AspectFunction",
+            description: None,
+            rust_trait_name: None,
+            methods: vec![Method {
+                name: "call",
+                ret_type: cve(),
+                args: MethodArgs::Source(any()),
+            }],
+        },
+        InterfaceSpec {
+            name: "aspect_field",
+            builtin_unique_id: 1030,
+            scope_id: 3004,
+            field_prefix: "afd",
+            kind: "AspectField",
+            description: None,
+            rust_trait_name: None,
+            methods: vec![
+                //. .
+                Method {
+                    name: "field",
+                    ret_type: cve(),
+                    args: MethodArgs::Source(any()),
+                },
+                Method {
+                    name: "field_type_opt",
+                    ret_type: any(),
+                    args: MethodArgs::Source(any()),
+                },
+            ],
+        },
+    ]
 }

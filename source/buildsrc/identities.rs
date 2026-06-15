@@ -28,7 +28,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
         assert!(builtin_unique_ids.insert(builtin_unique_id));
         let name_ident = format_ident!("{}", name);
         local_fns.push(quote!{
-            #[allow(dead_code)] pub(crate) fn #name_ident() -> crate:: langhelp:: Unique {
+            pub(crate) fn #name_ident() -> crate:: langhelp:: Unique {
                 crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
             }
         });

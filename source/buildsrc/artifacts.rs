@@ -12,6 +12,8 @@ pub fn build(out: &mut TokenStream) {
     let mut builtin_artifact_ids = HashSet::new();
 
     struct ArtifactSpec {
+        build_artifact: bool,
+        build_type_artifact: bool,
         builtin_artifact_id: usize,
         data_type: Option<&'static str>,
         name: &'static str,
@@ -27,6 +29,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: None,
             data_type: None,
             register: false,
+            build_artifact: false,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_record_artifact",
@@ -34,6 +38,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::record::artifact::TypeRecordArtifact"),
             data_type: Some("serde_json::Value"),
             register: false,
+            build_artifact: true,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_tuple_artifact",
@@ -41,6 +47,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::tuple::artifact::TypeTupleArtifact"),
             data_type: Some("serde_json::Value"),
             register: false,
+            build_artifact: true,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_map_artifact",
@@ -48,6 +56,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_map::artifact::TypeMapArtifact"),
             data_type: Some("serde_json::Value"),
             register: false,
+            build_artifact: true,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_option_artifact",
@@ -55,15 +65,17 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_option::artifact::TypeOptionArtifact"),
             data_type: Some("serde_json::Value"),
             register: false,
+            build_artifact: true,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_source_interface_const_artifact",
             builtin_artifact_id: 7006,
-            type_path: Some(
-                "crate::eval::value::type_source_interface::artifact::TypeSourceInterfaceConstArtifact",
-            ),
+            type_path: Some("crate::eval::value::type_source_interface::artifact::TypeSourceInterfaceConstArtifact"),
             data_type: Some("crate::eval::value::type_source_interface::BuiltinInterfaceKind"),
             register: false,
+            build_artifact: true,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_type_source_data_type_constructor_dynamic",
@@ -73,6 +85,8 @@ pub fn build(out: &mut TokenStream) {
             ),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_code_value_extern_dynamic",
@@ -80,15 +94,17 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::code_value_extern::TypeCodeValueExternDynamic"),
             data_type: Some("()"),
             register: true,
+            build_artifact: false,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_type_source_data_type_dynamic",
             builtin_artifact_id: 7009,
-            type_path: Some(
-                "crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic",
-            ),
+            type_path: Some("crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic"),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_null_const",
@@ -96,6 +112,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_null::r#const::TypeNullConst"),
             data_type: Some("crate::eval::value::type_null::artifact::ArtifactDataNull"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_any_const",
@@ -103,6 +121,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_any::r#const::TypeAnyConst"),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: false,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_string_const",
@@ -110,6 +130,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_string::r#const::TypeStringConst"),
             data_type: Some("crate::eval::value::type_string::artifact::ArtifactDataString"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_null_dynamic",
@@ -117,15 +139,17 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_null::dynamic::TypeNullDynamic"),
             data_type: Some("crate::eval::value::type_null::artifact::ArtifactDataNull"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_source_tagged_union_ref_dynamic",
             builtin_artifact_id: 7014,
-            type_path: Some(
-                "crate::eval::value::type_source_tagged_union::dynamic::TypeSourceTaggedUnionRefDynamic",
-            ),
+            type_path: Some("crate::eval::value::type_source_tagged_union::dynamic::TypeSourceTaggedUnionRefDynamic"),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: false,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_source_data_type_ref_dynamic",
@@ -133,6 +157,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_source_data_type::dynamic::TypeSourceDataTypeRefDynamic"),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: false,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_number_const",
@@ -140,6 +166,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_number::r#const::TypeNumberConst"),
             data_type: Some("f64"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: false,
         },
         ArtifactSpec {
             name: "type_type_source_function_dynamic",
@@ -147,6 +175,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic"),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_expr",
@@ -154,6 +184,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_expr::TypeExpr"),
             data_type: Some("serde_json::Value"),
             register: true,
+            build_artifact: false,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_string_dynamic",
@@ -161,6 +193,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_string::dynamic::TypeStringDynamic"),
             data_type: Some("crate::eval::value::type_string::artifact::ArtifactDataString"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_number_dynamic",
@@ -168,6 +202,8 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_number::dynamic::TypeNumberDynamic"),
             data_type: Some("f64"),
             register: true,
+            build_artifact: true,
+            build_type_artifact: true,
         },
         ArtifactSpec {
             name: "type_list_artifact",
@@ -175,13 +211,15 @@ pub fn build(out: &mut TokenStream) {
             type_path: Some("crate::eval::value::type_list::artifact::TypeListArtifact"),
             data_type: Some("crate::eval::value::type_list::artifact::ArtifactListType"),
             register: false,
+            build_artifact: true,
+            build_type_artifact: false,
         },
     ] {
         let id_fn = format_ident!("{}_artifact_id", s.name);
         let builtin_artifact_id = s.builtin_artifact_id;
         assert!(builtin_artifact_ids.insert(builtin_artifact_id));
         let id_decl = quote!{
-            #[allow(dead_code)] pub(crate) fn #id_fn() -> crate:: langhelp:: ArtifactIdBuiltin {
+            pub(crate) fn #id_fn() -> crate:: langhelp:: ArtifactIdBuiltin {
                 crate:: langhelp:: ArtifactIdBuiltin(#builtin_artifact_id)
             }
         };
@@ -191,15 +229,11 @@ pub fn build(out: &mut TokenStream) {
                 let data_type: TokenStream = dt.parse().unwrap();
                 let register = if s.register {
                     quote!{
-                        #[allow(dead_code)]
                         pub(crate) fn register(
                             m:
                                 &mut std
                                 ::collections
-                                ::HashMap<
-                                    crate::langhelp::ArtifactIdBuiltin,
-                                    std::rc::Rc<dyn crate::langhelp::Type>,
-                                >,
+                                ::HashMap<crate::langhelp::ArtifactIdBuiltin, std::rc::Rc<dyn crate::langhelp::Type>,>,
                         ) {
                             m.insert(Self::artifact_id(), std::rc::Rc::new(Self));
                         }
@@ -208,27 +242,38 @@ pub fn build(out: &mut TokenStream) {
                     quote!{
                     }
                 };
-                quote!{
-                    impl #type_path {
-                        #[allow(dead_code)] pub(crate) fn artifact_id() -> crate:: langhelp:: ArtifactIdBuiltin {
-                            #id_fn()
-                        }
-                        #[
-                            allow(dead_code)
-                        ] pub(crate) fn build_artifact(data: #data_type) -> crate:: langhelp:: Artifact {
+                let build_artifact = if s.build_artifact {
+                    quote!{
+                        pub(crate) fn build_artifact(data: #data_type) -> crate:: langhelp:: Artifact {
                             crate::langhelp::Artifact {
                                 type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
                                 data: serde_json::to_value(data).unwrap(),
                             }
                         }
-                        #[allow(dead_code)]
+                    }
+                } else {
+                    quote!{
+                    }
+                };
+                let build_type_artifact = if s.build_type_artifact {
+                    quote!{
                         pub(crate) fn build_type_artifact() -> crate::langhelp::Artifact {
                             crate::langhelp::Artifact {
                                 type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
                                 data: serde_json::Value::Null,
                             }
                         }
-                        #register
+                    }
+                } else {
+                    quote!{
+                    }
+                };
+                quote!{
+                    impl #type_path {
+                        pub(crate) fn artifact_id() -> crate:: langhelp:: ArtifactIdBuiltin {
+                            #id_fn()
+                        }
+                        #build_artifact #build_type_artifact #register
                     }
                 }
             },

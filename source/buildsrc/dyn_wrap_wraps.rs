@@ -275,9 +275,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                         );
                     }
                     if * key == crate:: r#gen:: aspect_bind_dynamic_aspect_id() {
-                        return Some(
-                            Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectBindDynamic >)
-                        );
+                        return Some(Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectBindDynamic >));
                     }
                     if * key == crate:: r#gen:: aspect_bind_aspect_id() {
                         return Some(Box:: new(Box:: new(#type_name) as Box < dyn crate:: r#gen:: AspectBind >));
@@ -409,11 +407,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>) {
                 >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>,) -> Self {
                     unimplemented!(#from_v8_msg)
                 }
-                fn into_v8 <'s >(
-                    self,
-                    scope: & mut v8:: PinnedRef <'s,
-                    v8:: HandleScope <'_ >>,
-                ) -> v8:: Local <'s,
+                fn into_v8 <'s >(self, scope: & mut v8:: PinnedRef <'s, v8:: HandleScope <'_ >>,) -> v8:: Local <'s,
                 v8:: Value > {
                     let _jw_obj = v8::Object::new(scope);
                     let _jw_self_rc = std::rc::Rc::new(self);

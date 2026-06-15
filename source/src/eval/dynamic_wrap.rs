@@ -114,13 +114,14 @@ where
     }
 
     fn mortar_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::tuple::Tuple {
-            base: None,
-            elements: vec![
-                crate::eval::value::tuple::TupleElement::Mortar(<A as DynamicWrap>::mortar_type()),
-                crate::eval::value::tuple::TupleElement::Mortar(<B as DynamicWrap>::mortar_type()),
-            ],
-        })
+        Rc::new(
+            crate::eval::value::tuple::Tuple {
+                elements: vec![
+                    crate::eval::value::tuple::TupleElement::Mortar(<A as DynamicWrap>::mortar_type()),
+                    crate::eval::value::tuple::TupleElement::Mortar(<B as DynamicWrap>::mortar_type()),
+                ],
+            },
+        )
     }
 }
 

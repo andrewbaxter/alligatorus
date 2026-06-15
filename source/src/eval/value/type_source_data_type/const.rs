@@ -123,7 +123,7 @@ impl TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
+    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let dt_data = self.data.clone();
         let data = data.clone();
 
@@ -142,13 +142,13 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         // directly — `dt_data.interface_impls` isn't populated until the type's own
         // finalizer runs, which is queued before ours but only fires when the resolve
         // loop drains pending finalizers.
-        let has_type_iface = read_artifact_has_type_iface(_xx, &dt_data);
+        let has_type_iface = read_artifact_has_type_iface(xx, &dt_data);
         let bundle_cell: Rc<RefCell<Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>>> =
             Rc::new(RefCell::new(None));
         let underlying_cell: Rc<RefCell<Option<Rc<dyn Value>>>> = Rc::new(RefCell::new(None));
         let bundle_cell_for_finalizer = bundle_cell.clone();
         let underlying_cell_for_finalizer = underlying_cell.clone();
-        _xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, loc| {
+        xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, loc| {
             let underlying_type = dt_data.underlying_type.get();
             let build_type_artifact =
                 crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
@@ -258,7 +258,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         // observable by anyone holding the value.
         if has_type_iface {
             let value_clone = value.clone();
-            _xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |_xx, _loc| {
+            xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |_xx, _loc| {
                 let bundle = bundle_cell.borrow_mut().take();
                 let underlying = underlying_cell.borrow_mut().take();
                 let v = crate::invariant::must_downcast_ref::<ValueSourceDataTypeConst>(value_clone.as_ref());

@@ -66,18 +66,7 @@ use {
     },
 };
 
-pub(crate) trait TupleBase {
-    fn bind_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        carry: Code,
-        tuple_type: Rc<dyn Type>,
-    ) -> EResult<TargetBindSub>;
-}
-
 pub(crate) struct Tuple {
-    pub base: Option<Box<dyn TupleBase>>,
     pub elements: Vec<TupleElement>,
 }
 
@@ -85,10 +74,6 @@ impl Tuple {
     fn bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple bind_sub: Rc not unique");
-        if let Some(base) = &tuple.base {
-            let tuple_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
-            return base.bind_sub(xx, loc, cv.code, tuple_type).map(|sub| Some(sub));
-        }
         let mut errors = vec![];
         let mut bind_results: Vec<TupleBindSubResult> = Vec::new();
         let mut has_target = false;
@@ -180,15 +165,12 @@ impl Tuple {
     }
 
     pub fn clone_as_type(&self) -> Tuple {
-        Tuple {
-            base: None,
-            elements: self.elements.iter().map(|e| {
-                match e {
-                    TupleElement::Mortar(t) => TupleElement::Mortar(t.clone()),
-                    TupleElement::EvalRes(_) => panic!("clone_as_type on non-type tuple"),
-                }
-            }).collect(),
-        }
+        Tuple { elements: self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Mortar(t) => TupleElement::Mortar(t.clone()),
+                TupleElement::EvalRes(_) => panic!("clone_as_type on non-type tuple"),
+            }
+        }).collect() }
     }
 }
 
@@ -302,7 +284,7 @@ impl Type for Tuple {
         Rc::new(self.clone_as_type())
     }
 
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_tuple_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectTuple>));
         }
@@ -326,7 +308,7 @@ impl Type for Tuple {
                 };
                 let a =
                     t
-                        .aspect(_xx, &aspect_lift_dynamic_aspect_id())
+                        .aspect(xx, &aspect_lift_dynamic_aspect_id())
                         .expect(&format!("Tuple element type ({}) missing AspectLiftDynamic", t.desc()));
                 must_downcast_box::<Box<dyn AspectLiftDynamic>>(a)
             }).collect();
@@ -340,7 +322,7 @@ impl Type for Tuple {
                 };
                 let a =
                     t
-                        .aspect(_xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
+                        .aspect(xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
                         .expect(&format!("Tuple element type ({}) missing AspectLowerDynamic", t.desc()));
                 must_downcast_box::<Box<dyn crate::r#gen::AspectLowerDynamic>>(a)
             }).collect();
@@ -361,8 +343,8 @@ impl Type for Tuple {
         source_tuple.element_types().len() == self.elements.len()
     }
 
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(_xx, &crate::r#gen::type_type_identity()).is_some()
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -403,10 +385,7 @@ impl Type for Tuple {
             }
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(Tuple {
-                    base: tuple.base,
-                    elements: converted_elements
-                }),
+                value: Rc::new(Tuple { elements: converted_elements, }),
             });
         });
     }
@@ -454,10 +433,7 @@ impl Type for Tuple {
                 converted_type.elements[i] = TupleElement::Mortar(any_type.clone());
                 converted_elements.push(TupleElement::EvalRes(EvalRes::ok(converted_cv)));
             }
-            let converted_tuple = Tuple {
-                base: tuple.base,
-                elements: converted_elements,
-            };
+            let converted_tuple = Tuple { elements: converted_elements };
             let converted_cv = CodeValue {
                 code: cv.code,
                 value: Rc::new(converted_tuple),
@@ -522,41 +498,17 @@ impl Value for Tuple {
         let elements = self.elements.iter().map(|e| {
             TupleElement::Mortar(tuple_element_type(xx, loc, e))
         }).collect();
-        Rc::new(Tuple {
-            base: None,
-            elements: elements,
-        })
+        Rc::new(Tuple { elements: elements })
     }
 }
 
-fn tuple_element_type(_xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
+fn tuple_element_type(xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
     match e {
         TupleElement::Mortar(t) => t.clone(),
         TupleElement::EvalRes(er) => match &er.v {
-            Some(cv) => cv.value.type_(_xx, loc),
-            None => Rc::new(Tuple {
-                base: None,
-                elements: vec![],
-            }) as Rc<dyn Type>,
+            Some(cv) => cv.value.type_(xx, loc),
+            None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
         },
-    }
-}
-
-// Allowing dead code for now because there's no tests that match this, but it's
-// useful to keep to synchronize changes from Record as work progresses. Remove
-// eventually.
-#[allow(dead_code)]
-pub(crate) struct TupleBaseDynamic;
-
-impl TupleBase for TupleBaseDynamic {
-    fn bind_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        carry: Code,
-        tuple_type: Rc<dyn Type>,
-    ) -> EResult<TargetBindSub> {
-        xx.target.code_to_bind_sub(loc, carry, tuple_type)
     }
 }
 
@@ -600,10 +552,7 @@ impl AspectLiftDynamic for TupleLiftJs {
                 value: lifted,
             })));
         }
-        Ok(Rc::new(Tuple {
-            base: None,
-            elements: elements,
-        }))
+        Ok(Rc::new(Tuple { elements: elements }))
     }
 }
 
@@ -633,9 +582,6 @@ impl crate::r#gen::AspectLowerDynamic for TupleLowerJs {
                 value: lowered,
             })));
         }
-        Ok(Rc::new(Tuple {
-            base: None,
-            elements: elements,
-        }))
+        Ok(Rc::new(Tuple { elements: elements }))
     }
 }

@@ -269,8 +269,8 @@ pub(crate) struct TypeExprStagedPlaceholder;
 impl Aspect for TypeExprStagedPlaceholder { }
 
 impl AspectConsumeDynamic for TypeExprStagedPlaceholder {
-    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(_xx, loc, cv)
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        mortar_consume_to_dynamic(xx, loc, cv)
     }
 }
 

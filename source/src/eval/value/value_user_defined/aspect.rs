@@ -100,7 +100,7 @@ impl AspectField for AspectUserDefined {
             xx,
             loc,
             "_im_afd0",
-            vec![("self_".to_string(), self_), ("key".to_string(), key)],
+            vec![("self".to_string(), self_), ("key".to_string(), key)],
         )
     }
 
@@ -119,7 +119,7 @@ impl AspectFunction for AspectUserDefined {
             xx,
             loc,
             "_im_af0",
-            vec![("self_".to_string(), self_), ("argument".to_string(), argument)],
+            vec![("self".to_string(), self_), ("argument".to_string(), argument)],
         )
     }
 }
@@ -194,7 +194,7 @@ fn dispatch_aspect_method(
     };
 
     // Child ExprContext: bind `arg` so `eval_const(arg.xx, stage(...))` in the impl
-    // can resolve `arg.self_`, `arg.key` / `arg.argument` as the corresponding
+    // can resolve `arg.self`, `arg.key` / `arg.argument` as the corresponding
     // CodeValues at Rust const_eval time.
     let arg_factory = AspectArgRecordFactory {
         loc,

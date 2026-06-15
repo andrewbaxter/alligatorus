@@ -1,68 +1,18 @@
 use {
     crate::{
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicFieldUse,
-            CodeDynamicType,
-        },
-        eval::{
-            Erb,
-            TargetBindSub,
-            dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
-                bind_dynamic_default,
-                bind_via_target,
-            },
-            dynamic_wrap::{
-                DynamicWrap,
-                dynamic_wrap_method_name,
-            },
-            value::{
-                tuple::Tuple,
-                type_any::r#const::TypeAnyConst,
-                type_function::dynamic::TypeFunctionDynamic,
-                type_source_data_type::{
-                    SourceDataTypeData,
-                    SourceDataTypeRef,
-                },
-                type_source_function::{
-                    SourceFunctionData,
-                    TypeSourceFunctionConst,
-                },
-                type_source_interface::{
-                    SourceInterfaceData,
-                    SourceInterfaceRef,
-                },
-                type_source_tagged_union::SourceTaggedUnionData,
-            },
+        eval::value::{
+            type_source_data_type::SourceDataTypeData,
+            type_source_function::SourceFunctionData,
+            type_source_interface::SourceInterfaceData,
         },
         langhelp::{
             Aspect,
             Code,
-            CodeValue,
-            Code_,
-            EResult,
-            EvalRes,
             ExprContext,
             QExprId,
             Type,
             Unique,
             Value,
-        },
-        r#gen::{
-            AspectBind,
-            AspectBindDynamic,
-            AspectConsumeDynamic,
-            AspectField,
-            AspectStackValueDynamic,
-            ScopeEntry,
-            aspect_bind_aspect_id,
-            aspect_bind_dynamic_aspect_id,
-            aspect_consume_dynamic_aspect_id,
-            aspect_field_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get,
         },
     },
     dumpster::unsync::Gc,
@@ -72,7 +22,6 @@ use {
             Cell,
             RefCell,
         },
-        mem,
         rc::Rc,
     },
 };
@@ -821,7 +770,8 @@ impl crate::r#gen::AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
             v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lift")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
-        let ds: Gc<DefinitionSet> = crate::eval::from_v8_ref::<Rc<Gc<DefinitionSet>>>(&*ext).as_ref().clone();
+        let ds: Gc<DefinitionSet> =
+            crate::eval::from_v8_ref::<Rc<crate::r#gen::DefinitionSetBuilder>>(&*ext).inner.clone();
         ds.finish()?;
         let exports_type: Rc<dyn crate::langhelp::Type> =
             Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst { set: ds });
@@ -840,7 +790,8 @@ impl crate::r#gen::AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
         let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lower")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
-        let ds: Gc<DefinitionSet> = crate::eval::from_v8_ref::<Rc<Gc<DefinitionSet>>>(&*ext).as_ref().clone();
+        let ds: Gc<DefinitionSet> =
+            crate::eval::from_v8_ref::<Rc<crate::r#gen::DefinitionSetBuilder>>(&*ext).inner.clone();
         let exports_type: Rc<dyn crate::langhelp::Type> =
             Rc::new(crate::eval::value::type_source_exports::r#const::TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: exports_type }))

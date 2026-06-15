@@ -91,10 +91,7 @@ pub(crate) fn dynamic_call(
                             loc,
                             code: crate::langhelp::Code_::None
                         },
-                        value: Rc::new(crate::eval::value::tuple::Tuple {
-                            base: None,
-                            elements: vec![]
-                        }),
+                        value: Rc::new(crate::eval::value::tuple::Tuple { elements: vec![], }),
                     };
                     let arg_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), unit_cv))?;

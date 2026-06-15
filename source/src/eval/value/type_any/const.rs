@@ -229,14 +229,14 @@ impl Type for TypeAnyConst {
         None
     }
 
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, source_type: &dyn crate::langhelp::Type) -> bool {
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn crate::langhelp::Type) -> bool {
         // Identity only; other types reach `TypeAny*` via their own `cast_to`.
-        source_type.aspect(_xx, &type_type_identity()).is_some()
+        source_type.aspect(xx, &type_type_identity()).is_some()
     }
 
-    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
+    fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         // Lower a const type-value into a dynamic type-value (Rc`<dyn Type>` external).
-        type_.aspect(_xx, &type_type_identity()).is_some()
+        type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, _xx: &ExprContext, _loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
