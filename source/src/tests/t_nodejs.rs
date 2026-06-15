@@ -496,6 +496,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         // binding's ScopeEntryId. For nodejs we do the same shape — using
         // `code.scope_use(name)` as the rebound code, and threading the generated name
         // via `gen_binding_name` (assumed compiler helper).
+        // `target.bind` ret_type is now `(Code, ScopeEntryId)` (via the
+        // generic `<(A, B) as DynamicWrap>::mortar_type()`), so the
+        // source body returns a `tuple(option(code_dyn), string)`. The
+        // first element should ideally be the real test `code` AST cast
+        // to `code_dyn`; until the test's `code` tagged_union impls the
+        // `code_dyn` builtin interface, use the `option(codedyn).none(())`
+        // placeholder pattern (matches `aspect_function.call`).
         (
             "bind",
             mb.block(
@@ -506,9 +513,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                     mb.tuple(
                         vec![
+                            // code arg: `option(codedyn).none(())` placeholder
                             mb.call(
-                                mb.lower(mb.field(mb.scope_use("code"), mb.str("scope_use"))),
-                                mb.scope_use("name"),
+                                mb.field(
+                                    mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
+                                    mb.str("none"),
+                                ),
+                                mb.null(),
                             ),
                             mb.scope_use("name"),
                         ],
@@ -540,13 +551,22 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 ],
             ),
         ),
-        // block(loc, entries) -> Code
-        //
-        // Concatenate the entries' code; the last entry's value (if any) is the block's
-        // result. For nodejs we use a `code.expr_sequence` constructor (assumed; falls
-        // back to the last entry if only one is given).
-        ("block", mb.field(mb.scope_use("arg"), mb.str("entries"))),
-        // code_to_bind_sub(loc, code, type_) -> TargetBindSub
+        // block(loc, entries) -> EResult<Code>. New ret mortar is
+        // `option(code_dyn)` — placeholder until the test's `code` impls
+        // `code_dyn`.
+        (
+            "block",
+            mb.call(
+                mb.field(
+                    mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
+                    mb.str("none"),
+                ),
+                mb.null(),
+            ),
+        ),
+        // code_to_bind_sub(loc, code, type_) -> EResult<TargetBindSub>.
+        // TargetBindSub's mortar is currently `TypeAnyDynamic` (permissive
+        // placeholder), so a record passes the typecheck.
         (
             "code_to_bind_sub",
             mb.record(
@@ -556,14 +576,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 ],
             ),
         ),
-        // if_(xx, loc, conditions, else_) -> EvalRes
-        //
-        // TODO: emit a `code.if` AST. The helloworld test doesn't exercise this.
-        ("if_", mb.scope_use("null")),
-        // match_(xx, loc, base, element_key, cases, fallback) -> EvalRes
-        //
-        // TODO: emit a `code.switch` AST. The helloworld test doesn't exercise this.
-        ("match_", mb.scope_use("null")),
+        // if_(xx, loc, conditions, else_) -> EResult<CodeValue>. Ret
+        // mortar is `TypeCodeValueExternDynamic` — `arg.xx` is already
+        // CVE-typed, so return it as a stub. helloworld doesn't exercise
+        // this body.
+        ("if_", mb.field(mb.scope_use("arg"), mb.str("xx"))),
+        // match_: same story as `if_`.
+        ("match_", mb.field(mb.scope_use("arg"), mb.str("xx"))),
         // maybe_bind_sub(xx, loc, cv) -> Option`<TargetBindSub>`
         //
         // The dynamic target wraps the cv's code into a bind sub if it's CodeDynamic;
@@ -575,11 +594,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 mb.field(mb.scope_use("arg"), mb.str("cv")),
             ),
         ),
-        // stage(xx, loc, tree, lower_values) -> EvalRes
-        //
-        // For nodejs we never need to re-stage (the compile-time `stage` machinery is
-        // handled by the host v8 isolate), so return null.
-        ("stage", mb.scope_use("null")),
+        // stage(xx, loc, tree, lower_values) -> EResult<CodeValue>. Same
+        // CVE-typed stub pattern as `if_`/`match_`. helloworld doesn't
+        // re-stage.
+        ("stage", mb.field(mb.scope_use("arg"), mb.str("xx"))),
     ]));
 
     // # napp — the nodejs app object. Holds the staged root expression (as
