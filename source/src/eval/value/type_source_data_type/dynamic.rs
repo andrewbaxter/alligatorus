@@ -988,14 +988,21 @@ impl Type for TypePull {
         let dummy_loc: crate::langhelp::QExprId = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
         let aspect =
             crate::eval::pull_type_dispatch::pull_aspect_v8(&self.data, bundle, xx, dummy_loc, key)?;
+        // `__data_instance_to_aspect` is the sole producer of the underlying v8
+        // External — the concrete `dyn Aspect` is always `AspectPull`.
+        let aspect_pull =
+            (&*aspect as &dyn std::any::Any)
+                .downcast_ref::<crate::eval::value::value_pull::aspect::AspectPull>()
+                .unwrap()
+                .clone();
         if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(
-                Box::new(Box::new(aspect) as Box<dyn crate::r#gen::AspectField>),
+                Box::new(Box::new(aspect_pull) as Box<dyn crate::r#gen::AspectField>),
             );
         }
         if *key == crate::r#gen::aspect_function_aspect_id() {
             return Some(
-                Box::new(Box::new(aspect) as Box<dyn crate::r#gen::AspectFunction>),
+                Box::new(Box::new(aspect_pull) as Box<dyn crate::r#gen::AspectFunction>),
             );
         }
         None

@@ -322,16 +322,17 @@ impl Type for TypeTypeRef {
 
 /// Invoke the user-defined `type.aspect` impl (compiled as `_im_t4`) on the
 /// bundled v8 instance with `arg = {key}`. Decode the resulting `option(aspect)`
-/// JS object — on `some`, extract the `Rc<AspectPull>` from the inner
-/// External; on `none`, return `None`. Returns `None` if the user data type has no
-/// `aspect` impl (no `_im_t4` field).
+/// JS object — on `some`, extract the `Rc<dyn Aspect>` from the inner
+/// External (the canonical v8 representation of `TypeAspectDynamic`-typed values,
+/// produced by `__data_instance_to_aspect`); on `none`, return `None`. Returns
+/// `None` if the user data type has no `aspect` impl (no `_im_t4` field).
 pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     _loc: QExprId,
     key: &crate::langhelp::Unique,
-) -> Option<crate::eval::value::value_pull::aspect::AspectPull> {
+) -> Option<std::rc::Rc<dyn crate::langhelp::Aspect>> {
     let field_name = type_method_field_name(data, "aspect")?;
     let scope_ptr = xx.vx.v8_scope.get()?;
 
@@ -362,9 +363,10 @@ pub(crate) fn pull_aspect_v8(
         return None;
     }
 
-    // `some_val` is the v8::External produced by `__data_instance_to_aspect`.
-    let aspect: crate::eval::value::value_pull::aspect::AspectPull =
-        crate::eval::from_v8_ref::<crate::eval::value::value_pull::aspect::AspectPull>(
+    // `some_val` is the v8::External produced by `__data_instance_to_aspect`,
+    // which stores the canonical `Rc<dyn Aspect>` representation.
+    let aspect: std::rc::Rc<dyn crate::langhelp::Aspect> =
+        crate::eval::from_v8_ref::<std::rc::Rc<dyn crate::langhelp::Aspect>>(
             &*some_val,
         ).clone();
     Some(aspect)

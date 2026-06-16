@@ -3143,8 +3143,10 @@ fn eval(
                         args.get(0),
                     ).expect("__data_instance_to_aspect: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let aspect =
-                    crate::eval::value::value_pull::aspect::AspectPull { bundle: instance_global };
+                let aspect: std::rc::Rc<dyn crate::langhelp::Aspect> =
+                    std::rc::Rc::new(
+                        crate::eval::value::value_pull::aspect::AspectPull { bundle: instance_global },
+                    );
                 let ext = to_v8(scope, aspect);
                 rv.set(ext.into());
             }

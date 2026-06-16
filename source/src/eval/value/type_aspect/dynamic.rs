@@ -93,13 +93,18 @@ impl AspectLiftDynamic for TypeAspectDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        // The v8 representation is a v8::External wrapping an
-        // `crate::eval::value::value_pull::aspect::AspectPull`.
-        let aspect: crate::eval::value::value_pull::aspect::AspectPull =
-            crate::eval::from_v8_ref::<crate::eval::value::value_pull::aspect::AspectPull>(
-                &*value,
-            ).clone();
-        Ok(Rc::new(aspect))
+        // The v8 representation of a `TypeAspectDynamic` value is a v8::External
+        // wrapping `Rc<dyn Aspect>` (produced by `__data_instance_to_aspect`).
+        // Downcast to the concrete `AspectPull` — the sole producer — to obtain a
+        // `Value` impl.
+        let aspect: Rc<dyn crate::langhelp::Aspect> =
+            crate::eval::from_v8_ref::<Rc<dyn crate::langhelp::Aspect>>(&*value).clone();
+        let aspect_pull =
+            (&*aspect as &dyn std::any::Any)
+                .downcast_ref::<crate::eval::value::value_pull::aspect::AspectPull>()
+                .unwrap()
+                .clone();
+        Ok(Rc::new(aspect_pull))
     }
 }
 
@@ -116,11 +121,14 @@ impl crate::r#gen::AspectLowerDynamic for TypeAspectDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let aspect: crate::eval::value::value_pull::aspect::AspectPull =
-            crate::eval::from_v8_ref::<crate::eval::value::value_pull::aspect::AspectPull>(
-                &*value,
-            ).clone();
-        Ok(Rc::new(aspect))
+        let aspect: Rc<dyn crate::langhelp::Aspect> =
+            crate::eval::from_v8_ref::<Rc<dyn crate::langhelp::Aspect>>(&*value).clone();
+        let aspect_pull =
+            (&*aspect as &dyn std::any::Any)
+                .downcast_ref::<crate::eval::value::value_pull::aspect::AspectPull>()
+                .unwrap()
+                .clone();
+        Ok(Rc::new(aspect_pull))
     }
 }
 
