@@ -143,8 +143,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         // finalizer runs, which is queued before ours but only fires when the resolve
         // loop drains pending finalizers.
         let has_type_iface = read_artifact_has_type_iface(xx, &dt_data);
-        let bundle_cell: Rc<RefCell<Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>>> =
-            Rc::new(RefCell::new(None));
+        let bundle_cell: Rc<RefCell<Option<v8::Global<v8::Object>>>> = Rc::new(RefCell::new(None));
         let underlying_cell: Rc<RefCell<Option<Rc<dyn Value>>>> = Rc::new(RefCell::new(None));
         let bundle_cell_for_finalizer = bundle_cell.clone();
         let underlying_cell_for_finalizer = underlying_cell.clone();
@@ -192,9 +191,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 // `ValueSourceDataTypeConst` (and thus the bundle) for later `AspectType.type_`
                 // lookup.
                 let instance_global = crate::eval::import_install::install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;
-                let bundle =
-                    std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global });
-                *bundle_cell_for_finalizer.borrow_mut() = Some(bundle);
+                *bundle_cell_for_finalizer.borrow_mut() = Some(instance_global);
                 *underlying_cell_for_finalizer.borrow_mut() = Some(underlying_cv.value);
                 return Ok(vec![]);
             }
@@ -372,9 +369,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         });
         let isolate_bundle = if has_type_iface {
             let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(
-                Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global })),
-            )
+            std::cell::RefCell::new(Some(instance_global))
         } else {
             std::cell::RefCell::new(None)
         };
@@ -429,9 +424,7 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConst {
         });
         let isolate_bundle = if has_type_iface {
             let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(
-                Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global })),
-            )
+            std::cell::RefCell::new(Some(instance_global))
         } else {
             std::cell::RefCell::new(None)
         };

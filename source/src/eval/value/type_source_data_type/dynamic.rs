@@ -295,9 +295,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
             });
             let isolate_bundle = if has_type_iface {
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-                std::cell::RefCell::new(
-                    Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global })),
-                )
+                std::cell::RefCell::new(Some(instance_global))
             } else {
                 std::cell::RefCell::new(None)
             };
@@ -349,9 +347,7 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeDynamic {
         });
         let isolate_bundle = if has_type_iface {
             let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(
-                Some(std::rc::Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global })),
-            )
+            std::cell::RefCell::new(Some(instance_global))
         } else {
             std::cell::RefCell::new(None)
         };
@@ -940,12 +936,12 @@ impl Value for TypeSourceDataTypeRefDynamic {
 
 /// A type produced by `AspectType.type_` on a data-type instance whose data type
 /// implements the builtin `type` interface. When the instance carries an
-/// `IsolateBundle`, `cast_from` emits JS that re-enters the shared v8 isolate and
+/// bundle handle, `cast_from` emits JS that re-enters the shared v8 isolate and
 /// invokes the compiled `_im2` method on the original JS instance. Without a
 /// bundle (e.g. for newly-constructed const values that haven't been through v8),
 /// falls back to the const-eval dispatch in `pull_type_dispatch`.
 pub(crate) struct TypePull {
-    pub bundle: Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>,
+    pub bundle: Option<v8::Global<v8::Object>>,
     pub data: Gc<SourceDataTypeData>,
 }
 
@@ -994,22 +990,12 @@ impl Type for TypePull {
             crate::eval::pull_type_dispatch::pull_aspect_v8(&self.data, bundle, xx, dummy_loc, key)?;
         if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(
-                        crate::eval::value::value_pull::aspect::AspectPullHandle { inner: aspect },
-                    ) as
-                        Box<dyn crate::r#gen::AspectField>,
-                ),
+                Box::new(Box::new(aspect) as Box<dyn crate::r#gen::AspectField>),
             );
         }
         if *key == crate::r#gen::aspect_function_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(
-                        crate::eval::value::value_pull::aspect::AspectPullHandle { inner: aspect },
-                    ) as
-                        Box<dyn crate::r#gen::AspectFunction>,
-                ),
+                Box::new(Box::new(aspect) as Box<dyn crate::r#gen::AspectFunction>),
             );
         }
         None

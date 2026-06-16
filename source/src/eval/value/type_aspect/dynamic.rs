@@ -94,12 +94,12 @@ impl AspectLiftDynamic for TypeAspectDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         // The v8 representation is a v8::External wrapping an
-        // `Rc<crate::eval::value::value_pull::aspect::AspectPull>`.
-        let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
-            crate::eval::from_v8_ref::<Rc<crate::eval::value::value_pull::aspect::AspectPull>>(
+        // `crate::eval::value::value_pull::aspect::AspectPull`.
+        let aspect: crate::eval::value::value_pull::aspect::AspectPull =
+            crate::eval::from_v8_ref::<crate::eval::value::value_pull::aspect::AspectPull>(
                 &*value,
             ).clone();
-        Ok(aspect)
+        Ok(Rc::new(aspect))
     }
 }
 
@@ -116,11 +116,11 @@ impl crate::r#gen::AspectLowerDynamic for TypeAspectDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
-            crate::eval::from_v8_ref::<Rc<crate::eval::value::value_pull::aspect::AspectPull>>(
+        let aspect: crate::eval::value::value_pull::aspect::AspectPull =
+            crate::eval::from_v8_ref::<crate::eval::value::value_pull::aspect::AspectPull>(
                 &*value,
             ).clone();
-        Ok(aspect)
+        Ok(Rc::new(aspect))
     }
 }
 

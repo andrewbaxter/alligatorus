@@ -1,17 +1,14 @@
-//! `ValuePull` — parallel to `TypePull` but on the value side. Holds
-//! an `IsolateBundle` to a v8 instance of a source data type that implements the
+//! `ValuePull` — parallel to `TypePull` but on the value side. Holds a v8::Global
+//! handle to a v8 instance of a source data type that implements the
 //! `value` builtin interface. `type_()` invokes the user's compiled `value.type`
 //! impl (`_im_v0`) on the held instance at v8 to recover the value's
 //! source-language type (an `Rc<dyn Type>` external), and returns it directly.
 use {
-    crate::{
-        eval::isolate_bundle::IsolateBundle,
-        langhelp::{
-            ExprContext,
-            QExprId,
-            Type,
-            Value,
-        },
+    crate::langhelp::{
+        ExprContext,
+        QExprId,
+        Type,
+        Value,
     },
     std::rc::Rc,
 };
@@ -19,7 +16,7 @@ use {
 /// A v8-instance-backed `Value` whose Rust-side type query routes through the
 /// user's `value.type` impl in v8.
 pub(crate) struct ValuePull {
-    pub bundle: Rc<IsolateBundle>,
+    pub bundle: v8::Global<v8::Object>,
 }
 
 impl Value for ValuePull {
@@ -36,7 +33,7 @@ impl Value for ValuePull {
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };
-        let instance = v8::Local::new(scope, &self.bundle.instance);
+        let instance = v8::Local::new(scope, &self.bundle);
         let method_key =
             match v8::String::new(scope, &crate::langhelp::ConstKey::String("_im_v0".to_string()).to_str()) {
                 Some(k) => k,

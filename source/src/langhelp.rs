@@ -189,8 +189,8 @@ pub(crate) struct CompileImportContext {
     pub(crate) import_state: ImportStateId,
     /// Shared v8 isolate for all compile stages — one isolate per `compile_importid`.
     /// Persistent handles (`v8::Global<...>`) captured during one stage's lift remain
-    /// valid in later stages, which is essential for `IsolateBundle` to keep a JS
-    /// instance handle alive across stages.
+    /// valid in later stages, which is essential for keeping cross-stage JS instance
+    /// handles alive.
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
     pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
     /// Source id of the module being compiled at this level. Used to derive the
@@ -389,7 +389,7 @@ pub(crate) enum External {
     /// A v8 instance handle, captured by `AspectPull` so its emitted JS code
     /// can reference the user's aspect-impl instance. Runtime-only: never serialized
     /// through artifacts (panics if encountered there).
-    IsolateBundle(Rc<crate::eval::isolate_bundle::IsolateBundle>),
+    JsInstance(v8::Global<v8::Object>),
     StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
     StageLiftCell(Rc<crate::eval::StageLiftCell>),
     Type(Rc<dyn Type>),

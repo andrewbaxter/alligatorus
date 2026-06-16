@@ -9,7 +9,6 @@ pub mod dynamic_util;
 pub mod expr;
 pub mod expr_artifact;
 pub mod import_install;
-pub mod isolate_bundle;
 pub mod pull_scope_dispatch;
 pub mod pull_type_dispatch;
 pub mod value;
@@ -185,7 +184,7 @@ pub(crate) trait V8CastDispatcher {
     /// body accesses `arg.source_type` (a `TypeRefPush`) and returns a boolean.
     fn dispatch_can_cast_from(
         &mut self,
-        bundle: &crate::eval::isolate_bundle::IsolateBundle,
+        bundle: &v8::Global<v8::Object>,
         method_field: &str,
         xx: &ExprContext,
         loc: QExprId,
@@ -200,7 +199,7 @@ pub(crate) trait V8CastDispatcher {
     /// unwraps it and returns it directly, no lifting.
     fn dispatch_cast_from(
         &mut self,
-        bundle: &crate::eval::isolate_bundle::IsolateBundle,
+        bundle: &v8::Global<v8::Object>,
         method_field: &str,
         xx: &ExprContext,
         loc: QExprId,
@@ -2730,7 +2729,7 @@ fn eval(
                 // placed the right value here. Once `ValuePull` carries data, switch to
                 // `assert!(vud.data.identity == type_const.data.identity)`.
                 let _ = type_const;
-                let instance = v8::Local::new(scope, &vud.bundle.instance);
+                let instance = v8::Local::new(scope, &vud.bundle);
                 rv.set(instance.into());
             }
 
@@ -2995,9 +2994,7 @@ fn eval(
                 let type_: Rc<dyn Type> =
                     Rc::new(crate::eval::value::type_source_data_type::dynamic::TypePull {
                         data: template.data.clone(),
-                        bundle: Some(
-                            Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global }),
-                        ),
+                        bundle: Some(instance_global),
                     });
                 let ext = rc_type_to_v8(scope, type_);
                 rv.set(ext.into());
@@ -3112,13 +3109,7 @@ fn eval(
                     ).expect("__data_instance_to_value: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let value: Rc<dyn crate::langhelp::Value> =
-                    Rc::new(
-                        crate::eval::value::value_pull::dynamic::ValuePull {
-                            bundle: Rc::new(
-                                crate::eval::isolate_bundle::IsolateBundle { instance: instance_global },
-                            ),
-                        },
-                    );
+                    Rc::new(crate::eval::value::value_pull::dynamic::ValuePull { bundle: instance_global });
                 let ext = rc_value_to_v8(scope, value);
                 rv.set(ext.into());
             }
@@ -3152,14 +3143,8 @@ fn eval(
                         args.get(0),
                     ).expect("__data_instance_to_aspect: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
-                    Rc::new(
-                        crate::eval::value::value_pull::aspect::AspectPull {
-                            bundle: Rc::new(
-                                crate::eval::isolate_bundle::IsolateBundle { instance: instance_global },
-                            ),
-                        },
-                    );
+                let aspect =
+                    crate::eval::value::value_pull::aspect::AspectPull { bundle: instance_global };
                 let ext = to_v8(scope, aspect);
                 rv.set(ext.into());
             }
@@ -3277,8 +3262,8 @@ fn eval(
                 let ext = to_v8(dynamic_scope, u.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
-            External::IsolateBundle(b) => {
-                let inst = v8::Local::new(dynamic_scope, &b.instance);
+            External::JsInstance(b) => {
+                let inst = v8::Local::new(dynamic_scope, b);
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, inst.into());
             },
         }
@@ -3689,7 +3674,7 @@ pub(crate) struct StatelessV8CastDispatcher;
 impl V8CastDispatcher for StatelessV8CastDispatcher {
     fn dispatch_can_cast_from(
         &mut self,
-        bundle: &crate::eval::isolate_bundle::IsolateBundle,
+        bundle: &v8::Global<v8::Object>,
         method_field: &str,
         xx: &ExprContext,
         loc: QExprId,
@@ -3732,7 +3717,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
             ).ok_or_else(|| "cv key alloc".to_string())?;
         let null_for_cv: v8::Local<v8::Value> = v8::null(scope).into();
         arg_obj.set(scope, cv_key.into(), null_for_cv);
-        let instance = v8::Local::new(scope, &bundle.instance);
+        let instance = v8::Local::new(scope, bundle);
         let method_key =
             v8::String::new(
                 scope,
@@ -3757,7 +3742,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
 
     fn dispatch_cast_from(
         &mut self,
-        bundle: &crate::eval::isolate_bundle::IsolateBundle,
+        bundle: &v8::Global<v8::Object>,
         method_field: &str,
         xx: &ExprContext,
         loc: QExprId,
@@ -3830,7 +3815,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
                 scope,
             );
         arg_obj.set(scope, st_key.into(), source_type_v8);
-        let instance = v8::Local::new(scope, &bundle.instance);
+        let instance = v8::Local::new(scope, bundle);
         let method_key =
             v8::String::new(
                 scope,

@@ -5,19 +5,15 @@
 //! (parallel to `StatelessV8CastDispatcher::dispatch_cast_from`), then unwrapping
 //! the returned `CodeValueExtern` to obtain the inner `CodeValue`.
 //!
-//! Parallel to `TypePull` and `ValuePull`. The instance is held as a
-//! v8::Global on `IsolateBundle`. Source-language code constructs values of source
-//! type `aspect` by `option(aspect).some(impl_instance)`; the `.some` cast (via
-//! `TypeAspectDynamic::cast_from` / `TypeSourceDataTypeDynamic::cast_to`) emits a
-//! `__data_instance_to_aspect` v8 call that produces a `v8::External` wrapping
-//! `Rc<AspectPull>`.
+//! Parallel to `TypePull` and `ValuePull`. Source-language code constructs values
+//! of source type `aspect` by `option(aspect).some(impl_instance)`; the `.some`
+//! cast (via `TypeAspectDynamic::cast_from` / `TypeSourceDataTypeDynamic::cast_to`)
+//! emits a `__data_instance_to_aspect` v8 call that produces a `v8::External`
+//! wrapping `AspectPull`.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        eval::{
-            isolate_bundle::IsolateBundle,
-            to_v8,
-        },
+        eval::to_v8,
         langhelp::{
             Aspect,
             Code,
@@ -88,7 +84,7 @@ impl ScopeEntry for AspectArgRecordFactory {
 /// `aspect_function.call`, etc.) implicitly via convention.
 #[derive(Clone)]
 pub(crate) struct AspectPull {
-    pub bundle: Rc<IsolateBundle>,
+    pub bundle: v8::Global<v8::Object>,
 }
 
 impl Aspect for AspectPull { }
@@ -130,38 +126,6 @@ impl Value for AspectPull {
     }
 }
 
-/// Owning handle returned from `TypePull::aspect` — wraps an
-/// `Rc<AspectPull>` and impls `AspectField` / `AspectFunction` by
-/// forwarding to the inner. Lets the aspect lookup return a `Box<dyn ...>` holding
-/// the `Rc` without cloning the underlying instance.
-pub(crate) struct AspectPullHandle {
-    pub inner: Rc<AspectPull>,
-}
-
-impl Aspect for AspectPullHandle { }
-
-impl AspectField for AspectPullHandle {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        self.inner.field(xx, loc, self_, key)
-    }
-
-    fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
-        self.inner.field_type_opt(xx, key)
-    }
-}
-
-impl AspectFunction for AspectPullHandle {
-    fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
-        self.inner.call(xx, loc, self_, argument)
-    }
-}
-
-impl Value for AspectPullHandle {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic)
-    }
-}
-
 fn clone_cv(cv: &CodeValue) -> CodeValue {
     CodeValue {
         code: cv.code.clone(),
@@ -176,7 +140,7 @@ fn clone_cv(cv: &CodeValue) -> CodeValue {
 /// `instance[method_field](arg_obj)`, and unwraps the returned `CodeValueExtern`
 /// to a `CodeValue`.
 fn dispatch_aspect_method(
-    bundle: &IsolateBundle,
+    bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     loc: QExprId,
     method_field: &str,
@@ -235,7 +199,7 @@ fn dispatch_aspect_method(
         let cve_ext = crate::eval::to_v8(scope, cve_cell);
         arg_obj.set(scope, k.into(), cve_ext.into());
     }
-    let instance = v8::Local::new(scope, &bundle.instance);
+    let instance = v8::Local::new(scope, bundle);
     let method_key = match v8::String::new(scope, &ConstKey::String(method_field.to_string()).to_str()) {
         Some(k) => k,
         None => return EvalRes::err(loc, "AspectPull dispatch: method key alloc failed".to_string()),
@@ -291,13 +255,13 @@ pub(crate) struct TypePullAspect {
     /// from the type). None when it was minted at compile time by `aspect(base, key)`
     /// — the bundle then rides in the CV's runtime code via the `base` expression, and
     /// `Aspect::v8_instance` doesn't have one statically.
-    pub bundle: Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>,
+    pub bundle: Option<v8::Global<v8::Object>>,
     pub iface_ref: Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>,
 }
 
 impl Aspect for TypePullAspect {
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
-        self.bundle.as_ref().map(|b| b.instance.clone())
+        self.bundle.clone()
     }
 }
 

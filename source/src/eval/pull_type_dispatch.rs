@@ -327,11 +327,11 @@ impl Type for TypeTypeRef {
 /// `aspect` impl (no `_im_t4` field).
 pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceDataTypeData>,
-    bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     _loc: QExprId,
     key: &crate::langhelp::Unique,
-) -> Option<Rc<crate::eval::value::value_pull::aspect::AspectPull>> {
+) -> Option<crate::eval::value::value_pull::aspect::AspectPull> {
     let field_name = type_method_field_name(data, "aspect")?;
     let scope_ptr = xx.vx.v8_scope.get()?;
 
@@ -345,7 +345,7 @@ pub(crate) fn pull_aspect_v8(
     let key_push = crate::eval::to_v8(scope, key.clone());
     let key_str = v8::String::new(scope, &ConstKey::String("key".to_string()).to_str())?;
     arg_obj.set(scope, key_str.into(), key_push.into());
-    let instance = v8::Local::new(scope, &bundle.instance);
+    let instance = v8::Local::new(scope, bundle);
     let method_key = v8::String::new(scope, &ConstKey::String(field_name).to_str())?;
     let method_val = instance.get(scope, method_key.into())?;
     let method_fn = v8::Local::<v8::Function>::try_from(method_val).ok()?;
@@ -363,8 +363,8 @@ pub(crate) fn pull_aspect_v8(
     }
 
     // `some_val` is the v8::External produced by `__data_instance_to_aspect`.
-    let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
-        crate::eval::from_v8_ref::<Rc<crate::eval::value::value_pull::aspect::AspectPull>>(
+    let aspect: crate::eval::value::value_pull::aspect::AspectPull =
+        crate::eval::from_v8_ref::<crate::eval::value::value_pull::aspect::AspectPull>(
             &*some_val,
         ).clone();
     Some(aspect)
@@ -402,7 +402,7 @@ pub(crate) fn pull_can_cast_from(
 
 pub(crate) fn pull_can_cast_from_v8(
     data: &Gc<SourceDataTypeData>,
-    bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     loc: QExprId,
     source_type: &dyn Type,
@@ -449,7 +449,7 @@ pub(crate) fn pull_cast_from(
 /// caller's evaluation without any lift through a fixed type.
 pub(crate) fn pull_cast_from_v8(
     data: &Gc<SourceDataTypeData>,
-    bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
+    bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     loc: QExprId,
     cv: CodeValue,
