@@ -6,6 +6,7 @@ use {
             build_builtin_scope,
             build_cast_arg_record_type,
             const_eval,
+            definition_set::DefinitionSet,
             expr::Expr,
             rc_type_to_v8,
             render_code,
@@ -37,6 +38,98 @@ use {
         rc::Rc,
     },
 };
+
+pub(crate) fn install_def_set_to_v8(
+    xx: &ExprContext,
+    loc: QExprId,
+    set: &Gc<DefinitionSet>,
+) -> Result<(), String> {
+    let Some(scope_ptr) = xx.vx.v8_scope.get() else {
+        return Ok(());
+    };
+    let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
+        &mut *(scope_ptr.as_ptr() as *mut _)
+    };
+    let mut installed_externals: Vec<(String, External)> = Vec::new();
+    let mut collect_externals = |func_name: &str, captured: &[(ScopeEntryId, External)]| {
+        for (id, value) in captured {
+            let local_key = scope_entry_id_dynamic_key(*id);
+            installed_externals.push((format!("{}_{}", func_name, local_key), value.clone()));
+        }
+    };
+    for func_data in set.functions.borrow().iter() {
+        let func_name = scope_entry_id_dynamic_key(
+            func_data.scope_entry_id.get().ok_or_else(|| "func missing scope_entry_id".to_string())?,
+        );
+        collect_externals(&func_name, &func_data.captured_externals.borrow());
+    }
+    for dt in set.data_types.borrow().iter() {
+        for method in dt.methods.borrow().iter() {
+            let func_name = scope_entry_id_dynamic_key(
+                method.scope_entry_id.get().ok_or_else(|| "method missing scope_entry_id".to_string())?,
+            );
+            collect_externals(&func_name, &method.captured_externals.borrow());
+        }
+        for impl_data in dt.interface_impls.borrow().iter() {
+            for m in &impl_data.method_impls {
+                let func_name = scope_entry_id_dynamic_key(
+                    m.scope_entry_id.get().ok_or_else(|| "iface method missing scope_entry_id".to_string())?,
+                );
+                collect_externals(&func_name, &m.captured_externals.borrow());
+            }
+        }
+    }
+    for (key_str, value) in &installed_externals {
+        let key =
+            v8::String::new(scope, key_str).ok_or_else(|| "install_def_set_to_v8: key alloc".to_string())?.cast();
+        let v8_val: v8::Local<v8::Value> = match value {
+            External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
+            External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
+            External::CodeValueExternCell(cell) => to_v8(scope, cell.clone()).into(),
+            External::Type(t) => rc_type_to_v8(scope, t.clone()).into(),
+            External::Unique(u) => to_v8(scope, *u).into(),
+        };
+        scope.get_current_context().global(scope).set(scope, key, v8_val);
+    }
+    let mut code = JsSourceBuilder::default();
+    for func_data in set.functions.borrow().iter() {
+        if let Some(js) = func_data.compiled_js.borrow().clone() {
+            for line in js.lines() {
+                code.push(loc, line.to_string());
+            }
+        }
+    }
+    for dt in set.data_types.borrow().iter() {
+        for method in dt.methods.borrow().iter() {
+            if let Some(js) = method.compiled_js.borrow().clone() {
+                for line in js.lines() {
+                    code.push(loc, line.to_string());
+                }
+            }
+        }
+        for impl_data in dt.interface_impls.borrow().iter() {
+            for m in &impl_data.method_impls {
+                if let Some(js) = m.compiled_js.borrow().clone() {
+                    for line in js.lines() {
+                        code.push(loc, line.to_string());
+                    }
+                }
+            }
+        }
+    }
+    if code.lines.is_empty() {
+        return Ok(());
+    }
+    let source = code.lines.join("\n");
+    let script =
+        v8::Script::compile(
+            scope,
+            v8::String::new(scope, &source).ok_or_else(|| "install_def_set_to_v8: source alloc".to_string())?,
+            None,
+        ).ok_or_else(|| "install_def_set_to_v8: compile failed".to_string())?;
+    script.run(scope).ok_or_else(|| "install_def_set_to_v8: run failed".to_string())?;
+    Ok(())
+}
 
 pub(crate) fn install_imported_type_iface(
     xx: &ExprContext,

@@ -35,6 +35,8 @@ pub(crate) struct ArtifactDataDefSet {
     pub data_types: Vec<ArtifactId>,
     pub def_set_id: DefSetId,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<ArtifactId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<ArtifactId>,
     pub import_id: ImportStateId,
     pub source_id: SourceId,

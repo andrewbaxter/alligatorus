@@ -166,12 +166,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             let has_type_iface = dt_data.interface_impls.borrow().iter().any(|impl_data| {
                 impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
             });
-            if has_type_iface {
-                let instance_global = install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;
-                *bundle_cell_for_finalizer.borrow_mut() = Some(instance_global);
-                *underlying_cell_for_finalizer.borrow_mut() = Some(underlying_cv.value);
-                return Ok(vec![]);
-            }
             {
                 let set = &dt_data.set;
                 let mut sets = xx.vx.ix.definition_sets.borrow_mut();
@@ -179,6 +173,12 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 if !already {
                     sets.push(set.clone());
                 }
+            }
+            if has_type_iface {
+                let instance_global = install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;
+                *bundle_cell_for_finalizer.borrow_mut() = Some(instance_global);
+                *underlying_cell_for_finalizer.borrow_mut() = Some(underlying_cv.value);
+                return Ok(vec![]);
             }
             let mut object_fields = vec![(ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)];
             for method in dt_data.methods.borrow().iter() {

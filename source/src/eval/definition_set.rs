@@ -438,6 +438,11 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                 let captured = deserialize_captured_externals(xx, loc, &func_serial.captured_externals);
                 *func_data.captured_externals.borrow_mut() = captured;
             }
+            for dep_id in &def_set_serial.dependencies {
+                let dep_set = load_def_set(xx, dep_id).map_err(|e| format!("dep load: {}", e))?;
+                crate::eval::import_install::install_def_set_to_v8(xx, loc, &dep_set)?;
+            }
+            crate::eval::import_install::install_def_set_to_v8(xx, loc, &set)?;
             Ok(codes)
         });
         Ok((set, finalizer))
@@ -643,11 +648,24 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
             })
         }).collect();
         drop(functions);
+        let dependencies: Vec<ArtifactId> = {
+            let dep_sets: Vec<Gc<DefinitionSet>> = xx
+                .vx
+                .ix
+                .definition_sets
+                .borrow()
+                .iter()
+                .filter(|s| s.def_set_id != set.def_set_id)
+                .cloned()
+                .collect();
+            dep_sets.iter().map(|s| serialize_definition_set(xx, loc, s)).collect()
+        };
         let serial = ArtifactDataDefSet {
             data_types: data_type_ids,
             functions: function_ids,
             import_id: set.import_id,
             def_set_id: set.def_set_id,
+            dependencies,
             source_id: set.source_id,
         };
         Artifact {
