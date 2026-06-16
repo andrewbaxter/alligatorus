@@ -512,6 +512,17 @@ impl Type for TypeSourceDataTypeConst {
         }
         for (iface_data, identity) in iface_data {
             if type_.aspect(xx, &identity).is_some() {
+                if iface_data.builtin_kind.is_some() {
+                    let dyn_cv = CodeValue {
+                        code: cv.code,
+                        value: Rc::new(ValueDynamic {
+                            source: ValueDynamicSource::Expr,
+                            type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
+                        }),
+                    };
+                    let dyn_type = super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() };
+                    return dyn_type.cast_to(xx, loc, dyn_cv, type_);
+                }
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
                     value: Rc::new(ValueDynamic {

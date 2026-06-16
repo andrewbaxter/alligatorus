@@ -329,7 +329,9 @@ fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
             code_uses_binding(&s.key, target_id),
     }
 }
-pub(crate) struct CodePull;
+pub(crate) struct CodePull {
+    pub instance: v8::Global<v8::Object>,
+}
 
 impl CodeDyn for CodePull { }
 
@@ -2329,8 +2331,13 @@ fn eval(
                 },
                 Code_::Dyn(c) => {
                     let key = v8::String::new(scope, &ConstKey::String("dyn".to_string()).to_str()).unwrap();
-                    let ext = to_v8(scope, c);
-                    obj.set(scope, key.into(), ext.into());
+                    let v8_val: v8::Local<v8::Value> =
+                        if let Some(pull) = (c.as_ref() as &dyn std::any::Any).downcast_ref::<CodePull>() {
+                            v8::Local::new(scope, &pull.instance).into()
+                        } else {
+                            to_v8(scope, c).into()
+                        };
+                    obj.set(scope, key.into(), v8_val);
                 },
             }
             rv.set(obj.into());
@@ -2879,10 +2886,15 @@ fn eval(
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-                _args: v8::FunctionCallbackArguments<'s>,
+                args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let code: Rc<dyn CodeDyn> = Rc::new(CodePull);
+                let instance =
+                    v8::Local::<v8::Object>::try_from(
+                        args.get(1),
+                    ).expect("__data_instance_to_code: expected JS object for instance");
+                let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
+                let code: Rc<dyn CodeDyn> = Rc::new(CodePull { instance: instance_global });
                 let ext = to_v8(scope, code);
                 rv.set(ext.into());
             }

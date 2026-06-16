@@ -137,111 +137,120 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             vec![
                 (
                     "call",
-                    mb.call(
-                        mb.scope_use("new_code_value"),
-                        mb.tuple(
-                            vec![
-                                mb.call(
+                    mb.seq(
+                        vec![
+                            mb.bind(
+                                "func_code",
+                                nvalue_base_to_code(
+                                    mb,
                                     mb.field(
-                                        mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
-                                        mb.str("none"),
-                                    ),
-                                    mb.null(),
-                                ),
-                                mb.seq(
-                                    vec![
-                                        mb.bind(
-                                            "func_code",
-                                            nvalue_base_to_code(
-                                                mb,
-                                                mb.field(
-                                                    mb.call(
-                                                        mb.scope_use("cast_value"),
-                                                        mb.tuple(
-                                                            vec![
-                                                                mb.field(
-                                                                    mb.field(mb.scope_use("arg"), mb.str("inner")),
-                                                                    mb.str("value"),
-                                                                ),
-                                                                mb.lower(
-                                                                    mb.field(
-                                                                        mb.scope_use("nvalue"),
-                                                                        mb.str("type_ref"),
-                                                                    ),
-                                                                ),
-                                                            ],
-                                                        ),
+                                        mb.call(
+                                            mb.scope_use("cast_value"),
+                                            mb.tuple(
+                                                vec![
+                                                    mb.field(
+                                                        mb.field(mb.scope_use("arg"), mb.str("inner")),
+                                                        mb.str("value"),
                                                     ),
-                                                    mb.str("base"),
-                                                ),
+                                                    mb.lower(
+                                                        mb.field(mb.scope_use("nvalue"), mb.str("type_ref")),
+                                                    ),
+                                                ],
                                             ),
                                         ),
-                                        mb.bind(
-                                            "arg_code",
-                                            mb.match_(
+                                        mb.str("base"),
+                                    ),
+                                ),
+                            ),
+                            mb.bind(
+                                "arg_code",
+                                mb.match_(
+                                    mb.call(
+                                        mb.scope_use("aspect_lookup"),
+                                        mb.tuple(
+                                            vec![
+                                                mb.field(
+                                                    mb.field(
+                                                        mb.field(mb.scope_use("arg"), mb.str("argument")),
+                                                        mb.str("value"),
+                                                    ),
+                                                    mb.str("type"),
+                                                ),
+                                                mb.lower(
+                                                    mb.field(
+                                                        mb.scope_use("aspect_consume_nodejs"),
+                                                        mb.str("type"),
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    mb.str("v"),
+                                    vec![
+                                        (
+                                            mb.str("some"),
+                                            mb.call(
+                                                mb.field(mb.scope_use("v"), mb.str("to_code")),
                                                 mb.call(
-                                                    mb.scope_use("aspect_lookup"),
+                                                    mb.scope_use("cast_value"),
                                                     mb.tuple(
                                                         vec![
                                                             mb.field(
                                                                 mb.field(
-                                                                    mb.field(
-                                                                        mb.scope_use("arg"),
-                                                                        mb.str("argument"),
-                                                                    ),
-                                                                    mb.str("value"),
+                                                                    mb.scope_use("arg"),
+                                                                    mb.str("argument"),
                                                                 ),
-                                                                mb.str("type"),
+                                                                mb.str("value"),
                                                             ),
                                                             mb.lower(
                                                                 mb.field(
-                                                                    mb.scope_use("aspect_consume_nodejs"),
-                                                                    mb.str("type"),
+                                                                    mb.scope_use("nvalue"),
+                                                                    mb.str("type_ref"),
                                                                 ),
                                                             ),
                                                         ],
                                                     ),
                                                 ),
-                                                mb.str("v"),
-                                                vec![
-                                                    (
-                                                        mb.str("some"),
-                                                        mb.call(
-                                                            mb.field(mb.scope_use("v"), mb.str("to_code")),
-                                                            mb.call(
-                                                                mb.scope_use("cast_value"),
-                                                                mb.tuple(
-                                                                    vec![
-                                                                        mb.field(
-                                                                            mb.field(
-                                                                                mb.scope_use("arg"),
-                                                                                mb.str("argument"),
-                                                                            ),
-                                                                            mb.str("value"),
-                                                                        ),
-                                                                        mb.lower(
-                                                                            mb.field(
-                                                                                mb.scope_use("nvalue"),
-                                                                                mb.str("type_ref"),
-                                                                            ),
-                                                                        ),
-                                                                    ],
-                                                                ),
-                                                            ),
-                                                        ),
-                                                    ),
-                                                    (
-                                                        mb.str("none"),
-                                                        mb.call(
-                                                            mb.lower(
-                                                                mb.field(mb.scope_use("code"), mb.str("lit_str")),
-                                                            ),
-                                                            mb.str(""),
-                                                        ),
-                                                    ),
-                                                ],
-                                                None,
                                             ),
+                                        ),
+                                        (
+                                            mb.str("none"),
+                                            mb.call(
+                                                mb.lower(
+                                                    mb.field(mb.scope_use("code"), mb.str("lit_str")),
+                                                ),
+                                                mb.as_(
+                                                    mb.field(mb.scope_use("arg"), mb.str("argument")),
+                                                    mb.scope_use("string"),
+                                                ),
+                                            ),
+                                        ),
+                                    ],
+                                    None,
+                                ),
+                            ),
+                            mb.bind(
+                                "call_code",
+                                mb.call(
+                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("call"))),
+                                    mb.record(
+                                        vec![
+                                            ("func", mb.scope_use("func_code")),
+                                            ("arg", mb.scope_use("arg_code")),
+                                        ],
+                                    ),
+                                ),
+                            ),
+                            mb.call(
+                                mb.scope_use("new_code_value"),
+                                mb.tuple(
+                                    vec![
+                                        mb.call(
+                                            mb.field(
+                                                mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
+                                                mb.str("some"),
+                                            ),
+                                            mb.scope_use("call_code"),
                                         ),
                                         mb.call(
                                             mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
@@ -251,17 +260,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                         "base",
                                                         mb.call(
                                                             mb.lower(mb.scope_use("nvalue_expr")),
-                                                            mb.call(
-                                                                mb.lower(
-                                                                    mb.field(mb.scope_use("code"), mb.str("call")),
-                                                                ),
-                                                                mb.record(
-                                                                    vec![
-                                                                        ("func", mb.scope_use("func_code")),
-                                                                        ("arg", mb.scope_use("arg_code")),
-                                                                    ],
-                                                                ),
-                                                            ),
+                                                            mb.scope_use("call_code"),
                                                         ),
                                                     ),
                                                     ("type", mb.field(mb.scope_use("inner"), mb.str("ret"))),
@@ -270,8 +269,8 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                         ),
                                     ],
                                 ),
-                            ],
-                        ),
+                            ),
+                        ],
                     ),
                 ),
             ],

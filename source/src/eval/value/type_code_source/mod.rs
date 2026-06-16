@@ -56,6 +56,7 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
             aspect_tagged_union_aspect_id,
+            builtin_code_dyn_iface_identity,
             type_code_dyn_handle_identity,
             type_code_enum_identity,
             type_code_struct_identity,
@@ -204,6 +205,9 @@ impl Type for TypeCodeDynHandleDynamic {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == type_code_dyn_handle_identity() {
+            return Some(Box::new(true));
+        }
+        if *key == builtin_code_dyn_iface_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
