@@ -288,7 +288,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
 
             // If this data type implements the builtin `type` interface, the instance acts as
             // a Type at use sites — capture the JS handle and a clone of the shared isolate
-            // so `TypeUserDefined.cast_from` can re-enter the isolate at as-time.
+            // so `TypePull.cast_from` can re-enter the isolate at as-time.
             let has_type_iface = data.interface_impls.borrow().iter().any(|impl_data| {
                 impl_data.interface.builtin_kind ==
                     Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
@@ -373,7 +373,7 @@ impl crate::r#gen::AspectType for TypeSourceDataTypeDynamic {
             (value as &dyn std::any::Any)
                 .downcast_ref::<crate::eval::value::value_source_data_type::r#const::ValueSourceDataTypeConst>()
                 .and_then(|v| v.isolate_bundle.borrow().clone());
-        Rc::new(TypeUserDefined {
+        Rc::new(TypePull {
             data,
             bundle,
         })
@@ -455,7 +455,7 @@ impl Type for TypeSourceDataTypeDynamic {
             }
 
             // If the data type implements the builtin `type` interface, instances of it can
-            // be used as types — `AspectType.type_(value)` returns a `TypeUserDefined` that
+            // be used as types — `AspectType.type_(value)` returns a `TypePull` that
             // delegates `cast_from`/`can_cast_from`/`desc` to the user-provided impls.
             if *key == crate::r#gen::aspect_type_aspect_id() {
                 let has_type_impl = interface_impls.iter().any(|impl_data| {
@@ -685,7 +685,7 @@ impl Type for TypeSourceDataTypeDynamic {
         }
         if type_.aspect(xx, &crate::r#gen::type_aspect_identity()).is_some() {
             // Emit `__data_instance_to_aspect(<instance>)` — wraps the v8 instance into an
-            // `AspectUserDefined` external.
+            // `AspectPull` external.
             let self_code = match cv.code.cast::<CodeDynamic>() {
                 crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
                 _ => return EvalRes::err(loc, format!("cast {} → aspect: source has no runtime code", self.desc())),
@@ -943,17 +943,17 @@ impl Value for TypeSourceDataTypeRefDynamic {
 /// `IsolateBundle`, `cast_from` emits JS that re-enters the shared v8 isolate and
 /// invokes the compiled `_im2` method on the original JS instance. Without a
 /// bundle (e.g. for newly-constructed const values that haven't been through v8),
-/// falls back to the const-eval dispatch in `user_defined_type_dispatch`.
-pub(crate) struct TypeUserDefined {
+/// falls back to the const-eval dispatch in `pull_type_dispatch`.
+pub(crate) struct TypePull {
     pub bundle: Option<Rc<crate::eval::isolate_bundle::IsolateBundle>>,
     pub data: Gc<SourceDataTypeData>,
 }
 
-impl Aspect for TypeUserDefined { }
+impl Aspect for TypePull { }
 
-impl Type for TypeUserDefined {
+impl Type for TypePull {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeUserDefined {
+        Rc::new(TypePull {
             data: self.data.clone(),
             bundle: self.bundle.clone(),
         })
@@ -961,7 +961,7 @@ impl Type for TypeUserDefined {
 
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         // First check user-defined `is_aspect` interfaces directly: if this data type
-        // impls one whose identity matches `key`, return a `TypeUserDefinedAspect` handle
+        // impls one whose identity matches `key`, return a `TypePullAspect` handle
         // (carries the iface ref, so source `aspect_handle.method(arg)` dispatches via
         // the iface's compiled method `field_name` against the bundle's v8 instance).
         let bundle_opt = self.bundle.as_ref();
@@ -970,7 +970,7 @@ impl Type for TypeUserDefined {
             for impl_data in interface_impls.iter() {
                 if *key == impl_data.interface.identity && impl_data.interface.is_aspect.get() {
                     return Some(
-                        Box::new(Box::new(crate::eval::value::value_user_defined::aspect::TypeUserDefinedAspect {
+                        Box::new(Box::new(crate::eval::value::value_pull::aspect::TypePullAspect {
                             iface_ref: std::rc::Rc::new(
                                 crate::eval::value::type_source_interface::SourceInterfaceRef {
                                     data: impl_data.interface.clone(),
@@ -985,18 +985,18 @@ impl Type for TypeUserDefined {
 
         // Delegate to the source-level `type.aspect(key)` impl for builtin aspect_field /
         // aspect_function. The result is an `option(aspect)`; on `some`, the wrapped
-        // `AspectUserDefined` implements both `AspectField` and `AspectFunction`
+        // `AspectPull` implements both `AspectField` and `AspectFunction`
         // (forwarding to v8 dispatch on the instance), so we cast to whichever trait the
         // caller asked for via `key`.
         let bundle = bundle_opt?;
         let dummy_loc: crate::langhelp::QExprId = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
         let aspect =
-            crate::eval::user_defined_type_dispatch::user_defined_aspect_v8(&self.data, bundle, xx, dummy_loc, key)?;
+            crate::eval::pull_type_dispatch::pull_aspect_v8(&self.data, bundle, xx, dummy_loc, key)?;
         if *key == crate::r#gen::aspect_field_aspect_id() {
             return Some(
                 Box::new(
                     Box::new(
-                        crate::eval::value::value_user_defined::aspect::AspectUserDefinedHandle { inner: aspect },
+                        crate::eval::value::value_pull::aspect::AspectPullHandle { inner: aspect },
                     ) as
                         Box<dyn crate::r#gen::AspectField>,
                 ),
@@ -1006,7 +1006,7 @@ impl Type for TypeUserDefined {
             return Some(
                 Box::new(
                     Box::new(
-                        crate::eval::value::value_user_defined::aspect::AspectUserDefinedHandle { inner: aspect },
+                        crate::eval::value::value_pull::aspect::AspectPullHandle { inner: aspect },
                     ) as
                         Box<dyn crate::r#gen::AspectFunction>,
                 ),
@@ -1017,7 +1017,7 @@ impl Type for TypeUserDefined {
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
         if let Some(bundle) = &self.bundle {
-            return crate::eval::user_defined_type_dispatch::user_defined_can_cast_from_v8(
+            return crate::eval::pull_type_dispatch::pull_can_cast_from_v8(
                 &self.data,
                 bundle,
                 xx,
@@ -1025,12 +1025,12 @@ impl Type for TypeUserDefined {
                 source_type,
             );
         }
-        crate::eval::user_defined_type_dispatch::user_defined_can_cast_from(&self.data, xx, loc, source_type)
+        crate::eval::pull_type_dispatch::pull_can_cast_from(&self.data, xx, loc, source_type)
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         if let Some(bundle) = &self.bundle {
-            return crate::eval::user_defined_type_dispatch::user_defined_cast_from_v8(
+            return crate::eval::pull_type_dispatch::pull_cast_from_v8(
                 &self.data,
                 bundle,
                 xx,
@@ -1038,7 +1038,7 @@ impl Type for TypeUserDefined {
                 cv,
             );
         }
-        crate::eval::user_defined_type_dispatch::user_defined_cast_from(&self.data, xx, loc, cv)
+        crate::eval::pull_type_dispatch::pull_cast_from(&self.data, xx, loc, cv)
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
@@ -1046,7 +1046,7 @@ impl Type for TypeUserDefined {
     }
 
     fn desc(&self) -> String {
-        crate::eval::user_defined_type_dispatch::user_defined_desc(&self.data)
+        crate::eval::pull_type_dispatch::pull_desc(&self.data)
     }
 
     fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
@@ -1065,7 +1065,7 @@ impl Type for TypeUserDefined {
     }
 }
 
-impl Value for TypeUserDefined {
+impl Value for TypePull {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }

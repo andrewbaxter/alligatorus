@@ -87,7 +87,7 @@ fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc
 }
 
 /// Carrier for `AspectType` when a data type implements the builtin `type`
-/// interface. `type_(value)` returns a `TypeUserDefined` which delegates to the
+/// interface. `type_(value)` returns a `TypePull` which delegates to the
 /// user's impl methods.
 pub(crate) struct TypeSourceDataTypeConstAspectType {
     pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
@@ -101,7 +101,7 @@ impl crate::r#gen::AspectType for TypeSourceDataTypeConstAspectType {
             (value as &dyn std::any::Any)
                 .downcast_ref::<ValueSourceDataTypeConst>()
                 .and_then(|v| v.isolate_bundle.borrow().clone());
-        Rc::new(super::dynamic::TypeUserDefined {
+        Rc::new(super::dynamic::TypePull {
             data: self.data.clone(),
             bundle,
         })
@@ -128,7 +128,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         let data = data.clone();
 
         // For data types that implement the builtin `type` interface the imported
-        // instance must reach `TypeUserDefined.cast_from` with a v8 bundle — the user's
+        // instance must reach `TypePull.cast_from` with a v8 bundle — the user's
         // impls run via the same v8 dispatch the inline case (`test_00100`) uses. To
         // produce that bundle in the importer's isolate we re-compile each interface
         // impl's `impl_expr` against this compile's `ExprContext` (allocating fresh

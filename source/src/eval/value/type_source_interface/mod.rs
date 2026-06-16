@@ -120,7 +120,7 @@ pub(crate) struct TypeSourceInterfaceConst {
 // `build_builtin_interfaces` removed — callers now invoke
 // `gen_build_builtin_interfaces(import_state)` (from `build.rs`'s generated
 // gen_builtin_interfaces.rs) directly.
-impl crate::eval::pull::Pull for std::rc::Rc<SourceInterfaceRef> {
+impl crate::eval::push::Push for std::rc::Rc<SourceInterfaceRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<std::rc::Rc<SourceInterfaceRef>>(&*value).clone()
     }

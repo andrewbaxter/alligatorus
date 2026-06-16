@@ -252,7 +252,7 @@ impl AspectStackValueDynamic for TypeListDynamic {
     }
 }
 
-impl crate::eval::pull::Pull for TypeListDynamic {
+impl crate::eval::push::Push for TypeListDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeListDynamic> = crate::eval::from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
         (*rc).clone()

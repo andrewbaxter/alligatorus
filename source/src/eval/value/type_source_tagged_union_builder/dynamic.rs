@@ -14,10 +14,10 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            pull::{
+            push::{
                 AnyType,
-                Pull,
-                pull_method_name,
+                Push,
+                push_method_name,
             },
             value::{
                 tuple::Tuple,

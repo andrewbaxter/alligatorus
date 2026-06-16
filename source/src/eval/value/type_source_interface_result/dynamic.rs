@@ -15,9 +15,9 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            pull::{
-                Pull,
-                pull_method_name,
+            push::{
+                Push,
+                push_method_name,
             },
             value::{
                 type_any::r#const::TypeAnyConst,

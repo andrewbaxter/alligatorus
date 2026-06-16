@@ -33,7 +33,7 @@ pub(crate) trait Artifacts: Send + Sync {
 pub(crate) trait Aspect: Any {
     /// Returns the v8 instance that backs this aspect handle, when one exists. The
     /// default `None` is correct for compile-time-only aspects (everything except
-    /// `TypeUserDefinedAspect`). `TypeRefPull::aspect` reads this to surface the
+    /// `TypePullAspect`). `TypeRefPush::aspect` reads this to surface the
     /// instance into source code without RTTI on the returned `Box<dyn Aspect>`.
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
         None
@@ -386,7 +386,7 @@ pub(crate) enum ExprSubErr {
 
 #[derive(Clone)]
 pub(crate) enum External {
-    /// A v8 instance handle, captured by `AspectUserDefined` so its emitted JS code
+    /// A v8 instance handle, captured by `AspectPull` so its emitted JS code
     /// can reference the user's aspect-impl instance. Runtime-only: never serialized
     /// through artifacts (panics if encountered there).
     IsolateBundle(Rc<crate::eval::isolate_bundle::IsolateBundle>),
@@ -490,8 +490,8 @@ pub(crate) enum ScopeEntryId {
 pub(crate) struct SourceId(pub usize);
 
 /// A value guaranteed to be unique in the world. `Builtin` ids are all assigned in
-/// `build.rs` (interface ids, aspect ids, dyn_wrap struct/wrap type identities,
-/// dyn_wrap fn scope-entry ids, and per-`Type` identity markers) —
+/// `build.rs` (interface ids, aspect ids, push struct/wrap type identities,
+/// push fn scope-entry ids, and per-`Type` identity markers) —
 /// `build.rs::check_no_duplicate_ids` panics at build time if any two specs share
 /// an id. Nothing in the runtime creates `Unique`s from `file!()`/`line!()` or
 /// hashed names anymore.

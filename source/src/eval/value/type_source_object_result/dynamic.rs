@@ -15,10 +15,10 @@ use {
                 bind_via_target,
                 throw_error,
             },
-            pull::{
+            push::{
                 AnyType,
-                Pull,
-                pull_method_name,
+                Push,
+                push_method_name,
             },
             value::{
                 tuple::Tuple,

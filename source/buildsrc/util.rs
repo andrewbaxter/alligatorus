@@ -31,12 +31,12 @@ pub fn arg_dynamic_type_expr(dynamic_types: &[TokenStream]) -> TokenStream {
 pub fn arg_dynamic_type_expr_str(args: &[(&'static str, &'static str)]) -> TokenStream {
     let dynamic_types: Vec<TokenStream> = args.iter().map(|(_, ty)| {
         let ty: TokenStream = ty.parse().unwrap();
-        quote!(< #ty as crate:: eval:: pull:: Pull >:: dynamic_type())
+        quote!(< #ty as crate:: eval:: push:: Push >:: dynamic_type())
     }).collect();
     arg_dynamic_type_expr(&dynamic_types)
 }
 
-pub struct DynWrapMethod {
+pub struct PushMethod {
     pub args: Vec<(&'static str, &'static str)>,
     pub body: TokenStream,
     pub name: &'static str,
@@ -124,7 +124,7 @@ impl TypeRef {
     pub fn via_push(tokens: TokenStream) -> Self {
         TypeRef {
             dynamic_type: quote!{
-                <#tokens as crate:: eval:: pull:: Pull >:: dynamic_type()
+                <#tokens as crate:: eval:: push:: Push >:: dynamic_type()
             },
             path: tokens,
         }

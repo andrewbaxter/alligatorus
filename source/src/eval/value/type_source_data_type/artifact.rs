@@ -58,7 +58,7 @@ pub(crate) struct ArtifactDataDefSetFunction {
 /// user-defined ifaces (where `BuiltinInterfaceKind` can't rehydrate the iface via
 /// `build_builtin_interfaces`). The same iface impl'd by multiple data types gets
 /// serialized once per impl — on deserialization each impl rebuilds its own
-/// `Gc<SourceInterfaceData>`; identity equality is what TypeUserDefinedAspect's
+/// `Gc<SourceInterfaceData>`; identity equality is what TypePullAspect's
 /// source-level dispatch relies on, not pointer equality.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterface {

@@ -1,6 +1,6 @@
 use {
     crate::buildsrc::util::{
-        DynWrapMethod,
+        PushMethod,
         InterfaceSpec,
         arg_dynamic_type_expr_str,
         snake_case,
@@ -66,18 +66,18 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
 }
 
 pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, trait_specs: Vec<InterfaceSpec>) {
-    struct DynWrapField {
+    struct PushField {
         body: TokenStream,
         name: &'static str,
         ret: &'static str,
     }
 
-    struct DynWrapStructSpec {
+    struct PushStructSpec {
         builtin_unique_id: usize,
         data_fields: Vec<(&'static str, &'static str)>,
         extra_aspect_fn: Option<&'static str>,
-        fields: Vec<DynWrapField>,
-        methods: Vec<DynWrapMethod>,
+        fields: Vec<PushField>,
+        methods: Vec<PushMethod>,
         name: &'static str,
         extra_dispatch_arms: Vec<TokenStream>,
         extra_method_setters: Vec<TokenStream>,
@@ -86,7 +86,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
 
     macro_rules! spec{
         ($name: expr, $uid: expr, $data_fields: expr, $extra_aspect: expr, $fields: expr, $methods: expr) => {
-            DynWrapStructSpec {
+            PushStructSpec {
                 name: $name,
                 builtin_unique_id: $uid,
                 data_fields: $data_fields,
@@ -118,11 +118,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
         let body = gen_builtin_impl_body(&field_ident.to_string());
         let record_arg_ty: TokenStream = record_arg_type.parse().unwrap();
         source_object_extra_dispatch.push(quote!{
-            if key_name == crate:: eval:: pull:: pull_method_name(#method_name) {
+            if key_name == crate:: eval:: push:: push_method_name(#method_name) {
                 let field_type: std:: rc:: Rc < dyn crate:: langhelp:: Type > = std:: rc:: Rc:: new(
                     crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
-                        arg: <#record_arg_ty as crate:: eval:: pull:: Pull >:: dynamic_type(),
-                        ret: <() as crate:: eval:: pull:: Pull >:: dynamic_type(),
+                        arg: <#record_arg_ty as crate:: eval:: push:: Push >:: dynamic_type(),
+                        ret: <() as crate:: eval:: push:: Push >:: dynamic_type(),
                     },
                 );
                 let self_code = erb.must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?.unwrap().clone();
@@ -147,10 +147,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             }
         });
         source_object_extra_field_type_opt.push(quote!{
-            if key.as_str() == crate:: eval:: pull:: pull_method_name(#method_name) {
+            if key.as_str() == crate:: eval:: push:: push_method_name(#method_name) {
                 return Some(std:: rc:: Rc:: new(crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
-                    arg: <#record_arg_ty as crate:: eval:: pull:: Pull >:: dynamic_type(),
-                    ret: <() as crate:: eval:: pull:: Pull >:: dynamic_type(),
+                    arg: <#record_arg_ty as crate:: eval:: push:: Push >:: dynamic_type(),
+                    ret: <() as crate:: eval:: push:: Push >:: dynamic_type(),
                 },));
             }
         });
@@ -171,7 +171,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         ).clone();
                     #[allow(unused_mut, unused_variables)]
                     let mut _jw_arg_i = 0i32;
-                    let record: #record_arg_ty = <#record_arg_ty as crate:: eval:: pull:: Pull >:: from_v8(
+                    let record: #record_arg_ty = <#record_arg_ty as crate:: eval:: push:: Push >:: from_v8(
                         scope,
                         _jw_args.get(_jw_arg_i),
                     );
@@ -179,7 +179,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let _jw_result:() = {
                         #body
                     };
-                    _jw_rv.set(<() as crate::eval::pull::Pull>::into_v8(_jw_result, scope),);
+                    _jw_rv.set(<() as crate::eval::push::Push>::into_v8(_jw_result, scope),);
                 }
                 let _jw_method_fn = v8::Function::builder(_jw_cb).build(scope).unwrap();
                 let _jw_key = v8:: String:: new(scope, #method_idx_str).unwrap();
@@ -187,9 +187,9 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             }
         });
     }
-    let mut specs: Vec<DynWrapStructSpec> = vec![
+    let mut specs: Vec<PushStructSpec> = vec![
         //. .
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "DefinitionSetBuilder",
             builtin_unique_id: 3009,
             data_fields: vec![("inner", "Gc<DefinitionSet>")],
@@ -197,7 +197,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             fields: vec![],
             methods: vec![
                 //. .
-                DynWrapMethod {
+                PushMethod {
                     name: "func",
                     args: vec![("name", "String")],
                     ret: "SourceFuncResult",
@@ -223,7 +223,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         SourceFuncResult { func_ref }
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "object",
                     args: vec![("name", "String")],
                     ret: "SourceObjectResult",
@@ -248,7 +248,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         SourceObjectResult { data_type_ref }
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "build",
                     args: vec![],
                     ret: "DefinitionSetBuilder",
@@ -256,7 +256,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         DefinitionSetBuilder { inner: self_.inner.clone() }
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "union",
                     args: vec![],
                     ret: "SourceTaggedUnionBuilder",
@@ -271,7 +271,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         SourceTaggedUnionBuilder { data }
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "interface",
                     args: vec![],
                     ret: "SourceInterfaceResult",
@@ -297,13 +297,13 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
-            name: "OptionPull",
+        PushStructSpec {
+            name: "OptionPush",
             builtin_unique_id: 3001,
             data_fields: vec![("is_some_inner", "bool")],
             extra_aspect_fn: None,
             fields: vec![],
-            methods: vec![DynWrapMethod {
+            methods: vec![PushMethod {
                 name: "is_some_",
                 args: vec![],
                 ret: "bool",
@@ -315,21 +315,21 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
-            name: "TypeRefPull",
+        PushStructSpec {
+            name: "TypeRefPush",
             builtin_unique_id: 3002,
             data_fields: vec![("type_ref", "Rc<dyn crate::langhelp::Type>")],
             extra_aspect_fn: None,
             fields: vec![],
-            methods: vec![DynWrapMethod {
+            methods: vec![PushMethod {
                 name: "aspect",
                 args: vec![("unique", "Unique")],
-                ret: "OptionPull",
+                ret: "OptionPush",
                 body: quote!{
                     let ex_slot =
                         scope
                             .get_slot::<crate::eval::V8EvalContextSlot>()
-                            .expect("TypeRefPull.aspect: V8EvalContextSlot not set");
+                            .expect("TypeRefPush.aspect: V8EvalContextSlot not set");
                     let import_state_id = ex_slot.ex.ix.import_state;
                     let xx = Rc::new(ExprContext {
                         vx: ex_slot.ex.clone(),
@@ -341,19 +341,19 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         target: Rc::new(crate::eval::TargetDynamic),
                     });
                     let is_some = self_.type_ref.aspect(&xx, &unique).is_some();
-                    OptionPull { is_some_inner: is_some }
+                    OptionPush { is_some_inner: is_some }
                 },
             }],
             extra_dispatch_arms: vec![],
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "SourceFuncResult",
             builtin_unique_id: 3003,
             data_fields: vec![("func_ref", "Rc<TypeSourceFunctionConst>")],
             extra_aspect_fn: None,
-            fields: vec![DynWrapField {
+            fields: vec![PushField {
                 name: "func",
                 ret: "Rc<TypeSourceFunctionConst>",
                 body: quote!{
@@ -363,7 +363,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             //. .
             methods: vec![
                 //. .
-                DynWrapMethod {
+                PushMethod {
                     name: "set_description",
                     args: vec![("description", "String")],
                     ret: "()",
@@ -371,7 +371,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         *self_.func_ref.data.description.borrow_mut() = Some(description);
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "impl_",
                     args: vec![("arg", "AnyType"), ("ret", "AnyType"), ("impl_body", "StagedExpr"),],
                     ret: "()",
@@ -410,7 +410,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "SourceObjectMethodResult",
             builtin_unique_id: 3004,
             data_fields: vec![("method", "Rc<SourceDataMethodData>")],
@@ -418,7 +418,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             fields: vec![],
             methods: vec![
                 //. .
-                DynWrapMethod {
+                PushMethod {
                     name: "impl_",
                     args: vec![("arg", "AnyType"), ("ret", "AnyType"), ("impl_body", "StagedExpr"),],
                     ret: "()",
@@ -457,12 +457,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "SourceInterfaceResult",
             builtin_unique_id: 3005,
             data_fields: vec![("interface_ref", "Rc<SourceInterfaceRef>")],
             extra_aspect_fn: None,
-            fields: vec![DynWrapField {
+            fields: vec![PushField {
                 name: "type_",
                 ret: "Rc<SourceInterfaceRef>",
                 body: quote!{
@@ -471,7 +471,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             }],
             methods: vec![
                 //. .
-                DynWrapMethod {
+                PushMethod {
                     name: "set_description",
                     args: vec![("description", "String")],
                     ret: "()",
@@ -479,7 +479,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         *self_.interface_ref.data.description.borrow_mut() = Some(description);
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "func",
                     args: vec![("name", "String")],
                     ret: "SourceInterfaceMethodResult",
@@ -497,7 +497,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         SourceInterfaceMethodResult { method, }
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "set_is_aspect",
                     args: vec![("is_aspect", "bool")],
                     ret: "()",
@@ -510,21 +510,21 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "SourceObjectResult",
             builtin_unique_id: 3006,
             data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>")],
             extra_aspect_fn: None,
             fields: vec![
                 //. .
-                DynWrapField {
+                PushField {
                     name: "type_ref_",
                     ret: "Rc<SourceDataTypeRef>",
                     body: quote!{
                         self_.data_type_ref.clone()
                     },
                 },
-                DynWrapField {
+                PushField {
                     name: "new_",
                     ret: "Rc<TypeSourceDataTypeConstructorConst>",
                     body: quote!{
@@ -534,7 +534,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             ],
             methods: vec![
                 //. .
-                DynWrapMethod {
+                PushMethod {
                     name: "set_description",
                     args: vec![("description", "String")],
                     ret: "()",
@@ -542,7 +542,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         *self_.data_type_ref.data.description.borrow_mut() = Some(description);
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "set_inner",
                     args: vec![("type_ref", "AnyType")],
                     ret: "()",
@@ -550,7 +550,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         self_.data_type_ref.data.underlying_type.set(type_ref.0);
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "func",
                     args: vec![("name", "String")],
                     ret: "SourceObjectMethodResult",
@@ -581,7 +581,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         SourceObjectMethodResult { method, }
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "impl_interface",
                     args: vec![
                         ("iface_ref", "Rc<SourceInterfaceRef>"),
@@ -635,7 +635,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         });
                     },
                 },
-                DynWrapMethod {
+                PushMethod {
                     name: "aspect",
                     args: vec![
                         ("record", "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>")
@@ -766,19 +766,19 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "SourceTaggedUnionBuilder",
             builtin_unique_id: 3007,
             data_fields: vec![("data", "Rc<SourceTaggedUnionData>")],
             extra_aspect_fn: None,
-            fields: vec![DynWrapField {
+            fields: vec![PushField {
                 name: "type_",
                 ret: "Rc<SourceTaggedUnionRef>",
                 body: quote!{
                     Rc::new(SourceTaggedUnionRef { data: self_.data.clone() })
                 },
             }],
-            methods: vec![DynWrapMethod {
+            methods: vec![PushMethod {
                 name: "variant",
                 args: vec![("tag", "String"), ("type_ref", "AnyType")],
                 ret: "Rc<SourceTaggedUnionConstructorRef>",
@@ -804,13 +804,13 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
         },
-        DynWrapStructSpec {
+        PushStructSpec {
             name: "SourceInterfaceMethodResult",
             builtin_unique_id: 3008,
             data_fields: vec![("method", "Rc<SourceInterfaceMethodData>")],
             extra_aspect_fn: None,
             fields: vec![],
-            methods: vec![DynWrapMethod {
+            methods: vec![PushMethod {
                 name: "impl_",
                 args: vec![("arg", "AnyType"), ("ret", "AnyType"),],
                 ret: "()",
@@ -866,8 +866,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             let f_ty: TokenStream = f.ret.parse().unwrap();
             let idx_str = format!("_{}", idx);
             quote!{
-                if key_name == crate:: eval:: pull:: pull_method_name(#f_name) {
-                    let field_type: std:: rc:: Rc < dyn crate:: langhelp:: Type > = <#f_ty as crate:: eval:: pull:: Pull >:: dynamic_type(
+                if key_name == crate:: eval:: push:: push_method_name(#f_name) {
+                    let field_type: std:: rc:: Rc < dyn crate:: langhelp:: Type > = <#f_ty as crate:: eval:: push:: Push >:: dynamic_type(
                     );
                     let self_code =
                         erb.must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?.unwrap().clone();
@@ -901,11 +901,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             let arg_dynamic_type = arg_dynamic_type_expr_str(&m.args);
             let m_ret: TokenStream = m.ret.parse().unwrap();
             quote!{
-                if key_name == crate:: eval:: pull:: pull_method_name(#m_name) {
+                if key_name == crate:: eval:: push:: push_method_name(#m_name) {
                     let field_type: std:: rc:: Rc < dyn crate:: langhelp:: Type > = std:: rc:: Rc:: new(
                         crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
                             arg: #arg_dynamic_type,
-                            ret: <#m_ret as crate:: eval:: pull:: Pull >:: dynamic_type(),
+                            ret: <#m_ret as crate:: eval:: push:: Push >:: dynamic_type(),
                         },
                     );
                     let self_code =
@@ -937,8 +937,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             let f_name = f.name;
             let f_ty: TokenStream = f.ret.parse().unwrap();
             quote!{
-                if key.as_str() == crate:: eval:: pull:: pull_method_name(#f_name) {
-                    return Some(<#f_ty as crate:: eval:: pull:: Pull >:: dynamic_type());
+                if key.as_str() == crate:: eval:: push:: push_method_name(#f_name) {
+                    return Some(<#f_ty as crate:: eval:: push:: Push >:: dynamic_type());
                 }
             }
         }).chain(s.methods.iter().map(|m| {
@@ -946,11 +946,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             let arg_dynamic_type = arg_dynamic_type_expr_str(&m.args);
             let m_ret: TokenStream = m.ret.parse().unwrap();
             quote!{
-                if key.as_str() == crate:: eval:: pull:: pull_method_name(#m_name) {
+                if key.as_str() == crate:: eval:: push:: push_method_name(#m_name) {
                     return Some(
                         std:: rc:: Rc:: new(crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
                             arg: #arg_dynamic_type,
-                            ret: <#m_ret as crate:: eval:: pull:: Pull >:: dynamic_type(),
+                            ret: <#m_ret as crate:: eval:: push:: Push >:: dynamic_type(),
                         },)
                     );
                 }
@@ -967,7 +967,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let _jw_field_val: #f_ty = {
                         #body
                     };
-                    let _jw_v8_val = <#f_ty as crate:: eval:: pull:: Pull >:: into_v8(_jw_field_val, scope);
+                    let _jw_v8_val = <#f_ty as crate:: eval:: push:: Push >:: into_v8(_jw_field_val, scope);
                     let _jw_key = v8:: String:: new(scope, #key_str).unwrap();
                     _jw_obj.set(scope, _jw_key.into(), _jw_v8_val);
                 }
@@ -980,7 +980,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 let n = format_ident!("{}", n);
                 let ty: TokenStream = ty.parse().unwrap();
                 quote!{
-                    let #n: #ty = <#ty as crate:: eval:: pull:: Pull >:: from_v8(scope, _jw_args.get(_jw_arg_i),);
+                    let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_v8(scope, _jw_args.get(_jw_arg_i),);
                     _jw_arg_i += 1;
                 }
             }).collect();
@@ -1006,7 +1006,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         #(#arg_decls) * let _jw_result: #m_ret = {
                             #body
                         };
-                        _jw_rv.set(<#m_ret as crate:: eval:: pull:: Pull >:: into_v8(_jw_result, scope),);
+                        _jw_rv.set(<#m_ret as crate:: eval:: push:: Push >:: into_v8(_jw_result, scope),);
                     }
                     let _jw_method_fn = v8::Function::builder(_jw_cb).build(scope).unwrap();
                     let _jw_key = v8:: String:: new(scope, #key_str).unwrap();
@@ -1202,7 +1202,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     #(#field_type_opt_arms) * #(#extra_field_type_opt_arms) * None
                 }
             }
-            impl crate:: eval:: pull:: Pull for #name {
+            impl crate:: eval:: push:: Push for #name {
                 fn dynamic_type() -> std:: rc:: Rc < dyn crate:: langhelp:: Type > {
                     std:: rc:: Rc:: new(#type_name)
                 }

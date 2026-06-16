@@ -192,7 +192,7 @@ impl AspectTaggedUnion for TypeOptionDynamic {
     }
 }
 
-impl crate::eval::pull::Pull for TypeOptionDynamic {
+impl crate::eval::push::Push for TypeOptionDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeOptionDynamic> = crate::eval::from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
         (*rc).clone()

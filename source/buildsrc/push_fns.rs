@@ -12,7 +12,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
     let mut dw_fn_call_exprs: Vec<TokenStream> = Vec::new();
     let builtin_scope_ids = scope_ids;
 
-    struct DynWrapFnSpec {
+    struct PushFnSpec {
         args: Vec<(&'static str, &'static str)>,
         body: TokenStream,
         builtin_scope_id: usize,
@@ -22,7 +22,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
 
     for s in &vec![
         //. .
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "log",
             builtin_scope_id: 5001,
             args: vec![("message", "String")],
@@ -36,7 +36,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 });
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "define",
             builtin_scope_id: 5002,
             args: vec![],
@@ -51,7 +51,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 DefinitionSetBuilder { inner }
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "str_to_json",
             builtin_scope_id: 5003,
             args: vec![("s", "String")],
@@ -60,7 +60,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 serde_json::to_string(&s).unwrap()
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "constkey_to_str",
             builtin_scope_id: 5004,
             args: vec![("key", "crate::langhelp::ConstKey")],
@@ -69,7 +69,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 key.to_str()
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "new_code_value",
             builtin_scope_id: 5005,
             args: vec![("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")],
@@ -82,7 +82,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "gen_binding_name",
             builtin_scope_id: 5006,
             args: vec![("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
@@ -93,12 +93,12 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 format!("a{}", id)
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "eval_const",
             builtin_scope_id: 5007,
             args: vec![
-                ("xx", "crate::eval::code_value_extern::ExprContextPull"),
-                ("staged", "crate::eval::pull::StagedExpr"),
+                ("xx", "crate::eval::code_value_extern::ExprContextPush"),
+                ("staged", "crate::eval::push::StagedExpr"),
             ],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
             body: quote!{
@@ -112,12 +112,12 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "const_eval",
             builtin_scope_id: 5008,
             args: vec![
-                ("xx", "crate::eval::code_value_extern::ExprContextPull"),
-                ("staged", "crate::eval::pull::StagedExpr"),
+                ("xx", "crate::eval::code_value_extern::ExprContextPush"),
+                ("staged", "crate::eval::push::StagedExpr"),
             ],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
             body: quote!{
@@ -133,14 +133,14 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "new_expr_context",
             builtin_scope_id: 5009,
             args: vec![
                 ("target_arg", "Rc<dyn crate::r#gen::Target>"),
                 ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::ScopeEntry>>"),
             ],
-            ret: "crate::eval::code_value_extern::ExprContextPull",
+            ret: "crate::eval::code_value_extern::ExprContextPush",
             body: quote!{
                 let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
                 let parent_ex = ex_slot.ex.clone();
@@ -158,24 +158,24 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                     scope: new_scope,
                     target: target_arg,
                 });
-                crate::eval::code_value_extern::ExprContextPull(xx)
+                crate::eval::code_value_extern::ExprContextPush(xx)
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "list",
             builtin_scope_id: 5010,
-            args: vec![("element_type", "crate::eval::pull::AnyType")],
+            args: vec![("element_type", "crate::eval::push::AnyType")],
             ret: "crate::eval::value::type_list::dynamic::TypeListDynamic",
             body: quote!{
                 crate::eval::value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "map",
             builtin_scope_id: 5011,
             args: vec![
-                ("key_type", "crate::eval::pull::AnyType"),
-                ("value_type", "crate::eval::pull::AnyType"),
+                ("key_type", "crate::eval::push::AnyType"),
+                ("value_type", "crate::eval::push::AnyType"),
             ],
             ret: "crate::eval::value::type_map::dynamic::TypeMapDynamic",
             body: quote!{
@@ -185,10 +185,10 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 }
             },
         },
-        DynWrapFnSpec {
+        PushFnSpec {
             name: "option",
             builtin_scope_id: 5012,
-            args: vec![("element_type", "crate::eval::pull::AnyType")],
+            args: vec![("element_type", "crate::eval::push::AnyType")],
             ret: "crate::eval::value::type_option::dynamic::TypeOptionDynamic",
             body: quote!{
                 crate::eval::value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
@@ -204,7 +204,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             let n = format_ident!("{}", n);
             let ty: TokenStream = ty.parse().unwrap();
             quote!{
-                let #n: #ty = <#ty as crate:: eval:: pull:: Pull >:: from_v8(
+                let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_v8(
                     scope,
                     _jw_args.get(_jw_arg_i),
                 );
@@ -237,14 +237,14 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                     #(#arg_decls) * let _jw_result: #ret_ty = {
                         #body
                     };
-                    _jw_rv.set(<#ret_ty as crate:: eval:: pull:: Pull >:: into_v8(_jw_result, scope),);
+                    _jw_rv.set(<#ret_ty as crate:: eval:: push:: Push >:: into_v8(_jw_result, scope),);
                 }
                 (
                     #name_str,
                     crate:: langhelp:: ScopeEntryId:: Builtin(#builtin_scope_id),
                     std:: rc:: Rc:: new(crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
                         arg: #arg_dynamic_type,
-                        ret: <#ret_ty as crate:: eval:: pull:: Pull >:: dynamic_type(),
+                        ret: <#ret_ty as crate:: eval:: push:: Push >:: dynamic_type(),
                     },) as std:: rc:: Rc < dyn crate:: langhelp:: Type >,
                     v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
                 )

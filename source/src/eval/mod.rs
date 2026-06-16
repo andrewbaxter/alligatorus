@@ -1,5 +1,5 @@
 #[macro_use]
-pub mod pull;
+pub mod push;
 #[macro_use]
 pub mod util;
 pub mod aspect;
@@ -10,11 +10,11 @@ pub mod expr;
 pub mod expr_artifact;
 pub mod import_install;
 pub mod isolate_bundle;
-pub mod user_defined_scope_dispatch;
-pub mod user_defined_type_dispatch;
+pub mod pull_scope_dispatch;
+pub mod pull_type_dispatch;
 pub mod value;
 
-// `dynamic_wrap!(fn …)` invocations are migrated to `build.rs::dyn_wrap_fns()`;
+// `push_fns(fn …)` invocations are migrated to `build.rs::push_fns()`;
 // the generated `gen_fn_<name>(dynamic_scope)` helpers live in this module's item
 // scope so they see `Expr`, `const_eval`, `Gc`, `V8LogStore`, etc. via mod.rs's
 // imports.
@@ -102,7 +102,7 @@ use {
     },
     definition_set::DefinitionSet,
     dumpster::unsync::Gc,
-    pull::Pull,
+    push::Push,
     expr::{
         Expr,
         ExprAs,
@@ -182,7 +182,7 @@ pub(crate) use crate::r#gen::VALUE_GET_TYPE_FN_SCOPE_ID;
 /// pointer (data + vtable) is preserved.
 pub(crate) trait V8CastDispatcher {
     /// Dispatch `instance[method_field](arg_obj)` for `can_cast_from`. The method's JS
-    /// body accesses `arg.source_type` (a `TypeRefPull`) and returns a boolean.
+    /// body accesses `arg.source_type` (a `TypeRefPush`) and returns a boolean.
     fn dispatch_can_cast_from(
         &mut self,
         bundle: &crate::eval::isolate_bundle::IsolateBundle,
@@ -273,12 +273,12 @@ pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     fields.insert(
         ConstKey::String("xx".to_string()),
         value::record::RecordField::Dynamic(
-            Rc::new(crate::eval::code_value_extern::TypeExprContextPullDynamic) as Rc<dyn Type>,
+            Rc::new(crate::eval::code_value_extern::TypeExprContextPushDynamic) as Rc<dyn Type>,
         ),
     );
     fields.insert(
         ConstKey::String("source_type".to_string()),
-        value::record::RecordField::Dynamic(Rc::new(crate::r#gen::TypeTypeRefPullDynamic) as Rc<dyn Type>),
+        value::record::RecordField::Dynamic(Rc::new(crate::r#gen::TypeTypeRefPushDynamic) as Rc<dyn Type>),
     );
     fields.insert(
         ConstKey::String("cv".to_string()),
@@ -342,12 +342,12 @@ fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
 }
 
 /// `CodeDyn` wrapper around a v8 instance of a source data type that implements
-/// the builtin `code_dyn` interface. Parallel to `ValueUserDefined` (for the
-/// `value` interface) and `TypeUserDefined` (for the `type` interface). Produced
+/// the builtin `code_dyn` interface. Parallel to `ValuePull` (for the
+/// `value` interface) and `TypePull` (for the `type` interface). Produced
 /// by the `__data_instance_to_code` rust-in-v8 callback.
-pub(crate) struct CodeUserDefined;
+pub(crate) struct CodePull;
 
-impl crate::langhelp::CodeDyn for CodeUserDefined { }
+impl crate::langhelp::CodeDyn for CodePull { }
 
 pub(crate) fn compile_importid(
     fx: &Arc<GlobalContext>,
@@ -1206,8 +1206,8 @@ fn eval(
     let register_v8 = !cix.builtins_registered.get();
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
 
-    // All `dyn_wrap_fns()` entries registered through this generated loop — adding a
-    // `DynWrapFnSpec` automatically gets it registered.
+    // All `push_fns()` entries registered through this generated loop — adding a
+    // `PushFnSpec` automatically gets it registered.
     crate::r#gen::gen_register_builtin_fns(
         &xx,
         root_loc,
@@ -2538,7 +2538,7 @@ fn eval(
         ) {
             // arg(0) = a v8::External wrapping `Rc<dyn Value>` (the shape `__cve_get_value`
             // returns). Every `Value` impl provides `type_()`; let it dispatch — for
-            // `ValueUserDefined` that routes through `_im_v0` on the bundle and gives the
+            // `ValuePull` that routes through `_im_v0` on the bundle and gives the
             // source-language type, for const value shapes it returns the matching static
             // singleton, etc.
             let value: Rc<dyn crate::langhelp::Value> = rc_value_from_v8(&*args.get(0));
@@ -2556,7 +2556,7 @@ fn eval(
             let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
             let type_ref: Rc<dyn Type> = value.type_(&xx, loc);
             let type_ref_push =
-                crate::eval::pull::Pull::into_v8(crate::r#gen::TypeRefPull { type_ref }, scope);
+                crate::eval::push::Push::into_v8(crate::r#gen::TypeRefPush { type_ref }, scope);
             rv.set(type_ref_push);
         }
 
@@ -2567,8 +2567,8 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = the JS object produced by `dynamic_wrap!(struct TypeRefPull)` — a plain
-            // Object whose `_d` field carries the backing `External(Rc<TypeRefPull>)`. The
+            // arg(0) = the JS object produced by `dynamic_wrap!(struct TypeRefPush)` — a plain
+            // Object whose `_d` field carries the backing `External(Rc<TypeRefPush>)`. The
             // dynamic_wrap struct macro doesn't impl `from_v8`, so unwrap the `_d` slot
             // ourselves. arg(1) = a `Unique` external (the aspect identity)
             let arg0 = args.get(0);
@@ -2576,10 +2576,10 @@ fn eval(
             let arg0_obj =
                 v8::Local::<v8::Object>::try_from(
                     arg0,
-                ).expect("__aspect_lookup: expected JS Object for TypeRefPull");
+                ).expect("__aspect_lookup: expected JS Object for TypeRefPush");
             let d_key = v8::String::new(scope, "_d").expect("__aspect_lookup: alloc _d key");
-            let d_val = arg0_obj.get(scope, d_key.into()).expect("__aspect_lookup: TypeRefPull missing _d field");
-            let type_ref: Rc<dyn Type> = from_v8_ref::<Rc<crate::r#gen::TypeRefPull>>(&*d_val).type_ref.clone();
+            let d_val = arg0_obj.get(scope, d_key.into()).expect("__aspect_lookup: TypeRefPush missing _d field");
+            let type_ref: Rc<dyn Type> = from_v8_ref::<Rc<crate::r#gen::TypeRefPush>>(&*d_val).type_ref.clone();
             let unique: crate::langhelp::Unique = *from_v8_ref::<crate::langhelp::Unique>(&*arg1);
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
             let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
@@ -2595,7 +2595,7 @@ fn eval(
             let result = v8::Object::new(scope);
             match type_ref.aspect(&xx, &unique) {
                 Some(aspect_box) => {
-                    // Invariant (held by `TypeUserDefined::aspect` for is_aspect identities, plus all
+                    // Invariant (held by `TypePull::aspect` for is_aspect identities, plus all
                     // builtin aspect types): the inner type is `Box<dyn AspectField>`. We upcast to
                     // `dyn Aspect` to read `v8_instance()` — no RTTI.
                     let aspect_field: Box<dyn crate::r#gen::AspectField> =
@@ -2720,14 +2720,14 @@ fn eval(
                 let vud =
                     crate
                     ::invariant
-                    ::must_downcast_ref::<crate::eval::value::value_user_defined::dynamic::ValueUserDefined>(
+                    ::must_downcast_ref::<crate::eval::value::value_pull::dynamic::ValuePull>(
                         value.as_ref(),
                     );
 
                 // Identity check: the value's data type must match the template's.
-                // `ValueUserDefined` doesn't currently carry its own data ref (the data is
+                // `ValuePull` doesn't currently carry its own data ref (the data is
                 // implicit in the bundle); for now we trust the source-level static signature
-                // placed the right value here. Once `ValueUserDefined` carries data, switch to
+                // placed the right value here. Once `ValuePull` carries data, switch to
                 // `assert!(vud.data.identity == type_const.data.identity)`.
                 let _ = type_const;
                 let instance = v8::Local::new(scope, &vud.bundle.instance);
@@ -2972,7 +2972,7 @@ fn eval(
             // data type _instance_ into an `Rc<dyn Type>` external. arg(0) is a
             // compile-time-captured `TypeSourceDataTypeConst` external carrying this data
             // type's `Gc<SourceDataTypeData>`; arg(1) is the runtime v8 instance whose handle
-            // becomes the bundle of the produced `TypeUserDefined`.
+            // becomes the bundle of the produced `TypePull`.
             fn data_instance_to_type_callback<
                 's,
             >(
@@ -2993,7 +2993,7 @@ fn eval(
                     ).expect("__data_instance_to_type: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let type_: Rc<dyn Type> =
-                    Rc::new(crate::eval::value::type_source_data_type::dynamic::TypeUserDefined {
+                    Rc::new(crate::eval::value::type_source_data_type::dynamic::TypePull {
                         data: template.data.clone(),
                         bundle: Some(
                             Rc::new(crate::eval::isolate_bundle::IsolateBundle { instance: instance_global }),
@@ -3018,7 +3018,7 @@ fn eval(
 
             // `__data_instance_to_target(type_template, instance)` — parallel to
             // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn crate::r#gen::Target>` built from a `UserDefinedTarget` adapter.
+            // `Rc<dyn crate::r#gen::Target>` built from a `PullTarget` adapter.
             fn data_instance_to_target_callback<
                 's,
             >(
@@ -3034,7 +3034,7 @@ fn eval(
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let target: Rc<dyn crate::r#gen::Target> =
                     Rc::new(
-                        crate::eval::user_defined_scope_dispatch::UserDefinedTarget { instance: instance_global },
+                        crate::eval::pull_scope_dispatch::PullTarget { instance: instance_global },
                     );
                 let ext = rc_target_to_v8(scope, target);
                 rv.set(ext.into());
@@ -3055,7 +3055,7 @@ fn eval(
 
             // `__data_instance_to_scope_entry(type_template, instance)` — parallel to
             // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn ScopeEntry>` built from a `UserDefinedScopeEntry` adapter.
+            // `Rc<dyn ScopeEntry>` built from a `PullScopeEntry` adapter.
             fn data_instance_to_scope_entry_callback<
                 's,
             >(
@@ -3071,7 +3071,7 @@ fn eval(
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let entry: Rc<dyn crate::r#gen::ScopeEntry> =
                     Rc::new(
-                        crate::eval::user_defined_scope_dispatch::UserDefinedScopeEntry { instance: instance_global },
+                        crate::eval::pull_scope_dispatch::PullScopeEntry { instance: instance_global },
                     );
                 let ext = rc_scope_entry_to_v8(scope, entry);
                 rv.set(ext.into());
@@ -3095,8 +3095,8 @@ fn eval(
 
             // `__data_instance_to_value(type_template, instance)` — parallel to
             // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn Value>` built from a `ValueUserDefined` holding the v8 instance handle.
-            // `ValueUserDefined::type_()` later invokes `value.type` (`_im_v0`) on this
+            // `Rc<dyn Value>` built from a `ValuePull` holding the v8 instance handle.
+            // `ValuePull::type_()` later invokes `value.type` (`_im_v0`) on this
             // instance to recover its source-language type.
             fn data_instance_to_value_callback<
                 's,
@@ -3113,7 +3113,7 @@ fn eval(
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let value: Rc<dyn crate::langhelp::Value> =
                     Rc::new(
-                        crate::eval::value::value_user_defined::dynamic::ValueUserDefined {
+                        crate::eval::value::value_pull::dynamic::ValuePull {
                             bundle: Rc::new(
                                 crate::eval::isolate_bundle::IsolateBundle { instance: instance_global },
                             ),
@@ -3137,7 +3137,7 @@ fn eval(
                 );
 
             // `__data_instance_to_aspect(instance)` — wraps an instance into an
-            // `AspectUserDefined` external. Used by source code that produces an `aspect`
+            // `AspectPull` external. Used by source code that produces an `aspect`
             // (via `option(aspect).some(self)`) from a data type implementing one of the
             // aspect interfaces.
             fn data_instance_to_aspect_callback<
@@ -3152,9 +3152,9 @@ fn eval(
                         args.get(0),
                     ).expect("__data_instance_to_aspect: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> =
+                let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
                     Rc::new(
-                        crate::eval::value::value_user_defined::aspect::AspectUserDefined {
+                        crate::eval::value::value_pull::aspect::AspectPull {
                             bundle: Rc::new(
                                 crate::eval::isolate_bundle::IsolateBundle { instance: instance_global },
                             ),
@@ -3178,7 +3178,7 @@ fn eval(
                 );
 
             // `__data_instance_to_code(instance)` — wraps an instance into a
-            // `CodeUserDefined` external (an `Rc<dyn CodeDyn>`). Used by source data types
+            // `CodePull` external (an `Rc<dyn CodeDyn>`). Used by source data types
             // implementing the `code_dyn` builtin interface so their instances can be passed
             // as the code slot of `new_code_value`.
             fn data_instance_to_code_callback<
@@ -3188,7 +3188,7 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let code: Rc<dyn crate::langhelp::CodeDyn> = Rc::new(CodeUserDefined);
+                let code: Rc<dyn crate::langhelp::CodeDyn> = Rc::new(CodePull);
                 let ext = to_v8(scope, code);
                 rv.set(ext.into());
             }
@@ -3720,8 +3720,8 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
                 &ConstKey::String("source_type".to_string()).to_str(),
             ).ok_or_else(|| "source_type key alloc".to_string())?;
         let source_type_v8 =
-            crate::eval::pull::Pull::into_v8(
-                crate::r#gen::TypeRefPull { type_ref: source_type },
+            crate::eval::push::Push::into_v8(
+                crate::r#gen::TypeRefPush { type_ref: source_type },
                 scope,
             );
         arg_obj.set(scope, st_key.into(), source_type_v8);
@@ -3777,7 +3777,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
         // Build a child ExprContext with `arg` bound in scope so the user's staged inner
         // expr (passed to `eval_const`) can resolve `arg.cv` etc. through Rust
         // `const_eval` at v8 invocation time.
-        let arg_factory = crate::eval::user_defined_type_dispatch::ArgRecordFactory {
+        let arg_factory = crate::eval::pull_type_dispatch::ArgRecordFactory {
             loc,
             source_type: cv.value.type_(xx, loc),
             cv: CodeValue {
@@ -3801,7 +3801,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
         });
 
         // Build the v8-side arg object: `xx` carries the child_xx as External (for the
-        // user's body to pass to `eval_const`), `source_type` is a `TypeRefPull` wrapping
+        // user's body to pass to `eval_const`), `source_type` is a `TypeRefPush` wrapping
         // the source type (for user can_cast_from impls), `cv` is null (the user impl
         // reads `arg.cv` at Rust const_eval time, not v8 time).
         let arg_obj = v8::Object::new(scope);
@@ -3825,8 +3825,8 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
                 &ConstKey::String("source_type".to_string()).to_str(),
             ).ok_or_else(|| "source_type key alloc".to_string())?;
         let source_type_v8 =
-            crate::eval::pull::Pull::into_v8(
-                crate::r#gen::TypeRefPull { type_ref: cv.value.type_(xx, loc) },
+            crate::eval::push::Push::into_v8(
+                crate::r#gen::TypeRefPush { type_ref: cv.value.type_(xx, loc) },
                 scope,
             );
         arg_obj.set(scope, st_key.into(), source_type_v8);

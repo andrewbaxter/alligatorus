@@ -63,7 +63,7 @@ pub(crate) struct TypeSourceFunctionConst {
     pub data: Gc<SourceFunctionData>,
 }
 
-impl crate::eval::pull::Pull for Rc<TypeSourceFunctionConst> {
+impl crate::eval::push::Push for Rc<TypeSourceFunctionConst> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
     }

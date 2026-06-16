@@ -1,6 +1,6 @@
 //! `IsolateBundle` carries a `v8::Global<v8::Object>` handle to a JS instance
 //! built in an earlier stage. Bundled with a `ValueSourceDataTypeConst`, it lets
-//! `TypeUserDefined.cast_from` reach the original JS instance — with its compiled
+//! `TypePull.cast_from` reach the original JS instance — with its compiled
 //! `_im0`…`_imN` method fields intact — at as-time.
 //!
 //! The handle is valid because all stages of one compile share a single v8 isolate

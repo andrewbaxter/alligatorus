@@ -35,7 +35,7 @@ fn aspect_dispatch(mb: &ModuleBuilder, aspect_names: Vec<&str>) -> SourceExpr {
             mb.operator_eq(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use(aspect)),
             // `outer_self` = the data type instance (`this` at v8). Casting it to `aspect`
             // via `option.some` emits `__data_instance_to_aspect` which captures the instance
-            // into an `AspectUserDefined` external.
+            // into an `AspectPull` external.
             mb.call(
                 mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("some")),
                 mb.scope_use("outer"),
@@ -68,7 +68,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
 
     // `option_aspect` is used by the `aspect(arg)` dispatch on each type below — the
     // payload is the source-language `aspect` builtin type, which wraps a user
-    // data-type instance via `__data_instance_to_aspect` into an `AspectUserDefined`
+    // data-type instance via `__data_instance_to_aspect` into an `AspectPull`
     // external.
     exprs.push(mb.bind("option_aspect", mb.call(mb.scope_use("option"), mb.scope_use("aspect"))));
 
@@ -206,7 +206,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 // __data_instance_to_value (nvalue impls the value iface).
                 mb.seq(vec![
                     // func_code: unwrap .value as an nvalue instance so .base falls through.
-                    // `cast_value` panics at runtime if the value isn't a `ValueUserDefined` whose
+                    // `cast_value` panics at runtime if the value isn't a `ValuePull` whose
                     // data type matches nvalue.
                     mb.bind(
                         "func_code",

@@ -2,7 +2,7 @@
 //! Source-data-type instances implementing some aspect interface (e.g.
 //! `aspect_field`, `aspect_function`) cast to this; the cast (in
 //! `TypeSourceDataTypeDynamic::cast_to`) emits a `__data_instance_to_aspect` call
-//! that wraps the runtime v8 instance into an `AspectUserDefined` external.
+//! that wraps the runtime v8 instance into an `AspectPull` external.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
@@ -94,9 +94,9 @@ impl AspectLiftDynamic for TypeAspectDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         // The v8 representation is a v8::External wrapping an
-        // `Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>`.
-        let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> =
-            crate::eval::from_v8_ref::<Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>>(
+        // `Rc<crate::eval::value::value_pull::aspect::AspectPull>`.
+        let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
+            crate::eval::from_v8_ref::<Rc<crate::eval::value::value_pull::aspect::AspectPull>>(
                 &*value,
             ).clone();
         Ok(aspect)
@@ -116,8 +116,8 @@ impl crate::r#gen::AspectLowerDynamic for TypeAspectDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> =
-            crate::eval::from_v8_ref::<Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>>(
+        let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
+            crate::eval::from_v8_ref::<Rc<crate::eval::value::value_pull::aspect::AspectPull>>(
                 &*value,
             ).clone();
         Ok(aspect)

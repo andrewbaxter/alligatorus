@@ -322,16 +322,16 @@ impl Type for TypeTypeRef {
 
 /// Invoke the user-defined `type.aspect` impl (compiled as `_im_t4`) on the
 /// bundled v8 instance with `arg = {key}`. Decode the resulting `option(aspect)`
-/// JS object — on `some`, extract the `Rc<AspectUserDefined>` from the inner
+/// JS object — on `some`, extract the `Rc<AspectPull>` from the inner
 /// External; on `none`, return `None`. Returns `None` if the user data type has no
 /// `aspect` impl (no `_im_t4` field).
-pub(crate) fn user_defined_aspect_v8(
+pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
     xx: &ExprContext,
     _loc: QExprId,
     key: &crate::langhelp::Unique,
-) -> Option<Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>> {
+) -> Option<Rc<crate::eval::value::value_pull::aspect::AspectPull>> {
     let field_name = type_method_field_name(data, "aspect")?;
     let scope_ptr = xx.vx.v8_scope.get()?;
 
@@ -363,14 +363,14 @@ pub(crate) fn user_defined_aspect_v8(
     }
 
     // `some_val` is the v8::External produced by `__data_instance_to_aspect`.
-    let aspect: Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined> =
-        crate::eval::from_v8_ref::<Rc<crate::eval::value::value_user_defined::aspect::AspectUserDefined>>(
+    let aspect: Rc<crate::eval::value::value_pull::aspect::AspectPull> =
+        crate::eval::from_v8_ref::<Rc<crate::eval::value::value_pull::aspect::AspectPull>>(
             &*some_val,
         ).clone();
     Some(aspect)
 }
 
-pub(crate) fn user_defined_can_cast_from(
+pub(crate) fn pull_can_cast_from(
     data: &Gc<SourceDataTypeData>,
     xx: &ExprContext,
     loc: QExprId,
@@ -400,7 +400,7 @@ pub(crate) fn user_defined_can_cast_from(
     false
 }
 
-pub(crate) fn user_defined_can_cast_from_v8(
+pub(crate) fn pull_can_cast_from_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
     xx: &ExprContext,
@@ -427,7 +427,7 @@ pub(crate) fn user_defined_can_cast_from_v8(
     }
 }
 
-pub(crate) fn user_defined_cast_from(
+pub(crate) fn pull_cast_from(
     data: &Gc<SourceDataTypeData>,
     xx: &ExprContext,
     loc: QExprId,
@@ -440,14 +440,14 @@ pub(crate) fn user_defined_cast_from(
     run_impl(impl_expr, xx, loc, source_type, cv)
 }
 
-/// v8 dispatch for `TypeUserDefined.cast_from`. Synchronously invokes the compiled
+/// v8 dispatch for `TypePull.cast_from`. Synchronously invokes the compiled
 /// JS method on the bundled instance via the active v8 scope (threaded through
 /// `EvalContext.v8_dispatcher` as a `NonNull<dyn ..>` trait-object pointer set up
 /// by `eval()` for the duration of `const_eval`). The method returns an
 /// External-wrapped `CodeValue` built by the user impl (via `eval_const`); the
 /// dispatcher unwraps and returns it as-is, so the produced code flows into the
 /// caller's evaluation without any lift through a fixed type.
-pub(crate) fn user_defined_cast_from_v8(
+pub(crate) fn pull_cast_from_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &Rc<crate::eval::isolate_bundle::IsolateBundle>,
     xx: &ExprContext,
@@ -479,7 +479,7 @@ pub(crate) fn user_defined_cast_from_v8(
     }
 }
 
-pub(crate) fn user_defined_desc(data: &Gc<SourceDataTypeData>) -> String {
+pub(crate) fn pull_desc(data: &Gc<SourceDataTypeData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
 }
 

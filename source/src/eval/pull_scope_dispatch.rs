@@ -11,7 +11,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        eval::pull::Pull,
+        eval::push::Push,
         langhelp::{
             Code,
             CodeValue,
@@ -29,13 +29,13 @@ use {
 /// accumulates the user's code AST. For now the produced value is opaque
 /// `TypeAnyDynamic` — sufficient to confirm the scope walk finds the entry but not
 /// yet to render the staged expression.
-pub(crate) struct UserDefinedScopeEntry {
+pub(crate) struct PullScopeEntry {
     pub instance: v8::Global<v8::Object>,
 }
 
-impl ScopeEntry for UserDefinedScopeEntry {
+impl ScopeEntry for PullScopeEntry {
     fn use_(&self, xx: &crate::langhelp::ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
-        let scope_ptr = xx.vx.v8_scope.get().expect("UserDefinedScopeEntry::use_: no active v8 scope");
+        let scope_ptr = xx.vx.v8_scope.get().expect("PullScopeEntry::use_: no active v8 scope");
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };
@@ -44,31 +44,31 @@ impl ScopeEntry for UserDefinedScopeEntry {
             v8::String::new(
                 scope,
                 &crate::langhelp::ConstKey::String("_im_se0".to_string()).to_str(),
-            ).expect("UserDefinedScopeEntry::use_: alloc _im_se0 key");
+            ).expect("PullScopeEntry::use_: alloc _im_se0 key");
         let method_val =
-            instance.get(scope, method_key.into()).expect("UserDefinedScopeEntry::use_: instance missing _im_se0");
+            instance.get(scope, method_key.into()).expect("PullScopeEntry::use_: instance missing _im_se0");
         let method_fn =
             v8::Local::<v8::Function>::try_from(
                 method_val,
-            ).expect("UserDefinedScopeEntry::use_: _im_se0 not a function");
+            ).expect("PullScopeEntry::use_: _im_se0 not a function");
         let recv: v8::Local<v8::Value> = instance.into();
         let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
         let result =
             method_fn
                 .call(scope, recv, &[null_arg])
-                .expect("UserDefinedScopeEntry::use_: _im_se0 returned no value");
-        <CodeValue as Pull>::from_v8(scope, result)
+                .expect("PullScopeEntry::use_: _im_se0 returned no value");
+        <CodeValue as Push>::from_v8(scope, result)
     }
 }
 
 /// `Target` whose methods all dispatch to the v8 instance's `_im_tg{N}` method
 /// fields. The current placeholder delegates each method to `TargetDynamic`; the
 /// v8-side dispatch into the user impls will land here when wired up.
-pub(crate) struct UserDefinedTarget {
+pub(crate) struct PullTarget {
     pub instance: v8::Global<v8::Object>,
 }
 
-impl crate::r#gen::Target for UserDefinedTarget {
+impl crate::r#gen::Target for PullTarget {
     fn bind(
         &self,
         xx: &crate::langhelp::ExprContext,

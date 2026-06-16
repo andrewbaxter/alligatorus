@@ -1,7 +1,7 @@
 // ---------- CodeValueExtern ----------
 use crate::r#gen::code_value_extern_type_identity;
 
-// ---------- ExprContextPull ----------
+// ---------- ExprContextPush ----------
 use crate::r#gen::expr_context_ref_type_identity;
 use {
     crate::{
@@ -22,7 +22,7 @@ use {
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            pull::Pull,
+            push::Push,
             from_v8_ref,
             to_v8,
         },
@@ -76,7 +76,7 @@ impl CodeValueExtern {
     }
 }
 
-impl Pull for CodeValueExtern {
+impl Push for CodeValueExtern {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<RefCell<Option<CodeValue>>> =
             from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone();
@@ -111,11 +111,11 @@ impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerCodeValueExtern
     }
 }
 
-pub(crate) struct ExprContextPull(pub Rc<ExprContext>);
+pub(crate) struct ExprContextPush(pub Rc<ExprContext>);
 
-impl Pull for ExprContextPull {
+impl Push for ExprContextPush {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        ExprContextPull(from_v8_ref::<Rc<ExprContext>>(&*value).clone())
+        ExprContextPush(from_v8_ref::<Rc<ExprContext>>(&*value).clone())
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
@@ -123,7 +123,7 @@ impl Pull for ExprContextPull {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeExprContextPullDynamic)
+        Rc::new(TypeExprContextPushDynamic)
     }
 }
 
@@ -354,37 +354,37 @@ impl Value for TypeCodeValueExternDynamic {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
-pub(crate) struct TypeExprContextPullDynamic;
+pub(crate) struct TypeExprContextPushDynamic;
 
-impl Aspect for TypeExprContextPullDynamic { }
+impl Aspect for TypeExprContextPushDynamic { }
 
-impl AspectBind for TypeExprContextPullDynamic {
+impl AspectBind for TypeExprContextPushDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamic for TypeExprContextPullDynamic {
+impl AspectBindDynamic for TypeExprContextPushDynamic {
     fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
 
-impl AspectConsumeDynamic for TypeExprContextPullDynamic {
+impl AspectConsumeDynamic for TypeExprContextPushDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
-impl AspectStackValueDynamic for TypeExprContextPullDynamic {
+impl AspectStackValueDynamic for TypeExprContextPushDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        dynamic_stack_to_value(loc, value, Rc::new(TypeExprContextPullDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeExprContextPushDynamic))
     }
 }
 
-impl Type for TypeExprContextPullDynamic {
+impl Type for TypeExprContextPushDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeExprContextPullDynamic)
+        Rc::new(TypeExprContextPushDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -392,16 +392,16 @@ impl Type for TypeExprContextPullDynamic {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprContextPullDynamic) as Box<dyn AspectConsumeDynamic>));
+            return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprContextPullDynamic) as Box<dyn AspectBindDynamic>));
+            return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprContextPullDynamic) as Box<dyn AspectBind>));
+            return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectBind>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprContextPullDynamic) as Box<dyn AspectStackValueDynamic>));
+            return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         None
     }
@@ -417,23 +417,23 @@ impl Type for TypeExprContextPullDynamic {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(TypeExprContextPullDynamic),
+                    type_: Rc::new(TypeExprContextPushDynamic),
                 }),
             });
         }
-        EvalRes::err(loc, "Cannot convert to ExprContextPull".to_string())
+        EvalRes::err(loc, "Cannot convert to ExprContextPush".to_string())
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert from ExprContextPull".to_string())
+        EvalRes::err(loc, "Cannot convert from ExprContextPush".to_string())
     }
 
     fn desc(&self) -> String {
-        "ExprContextPull".to_string()
+        "ExprContextPush".to_string()
     }
 }
 
-impl Value for TypeExprContextPullDynamic {
+impl Value for TypeExprContextPushDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
@@ -445,10 +445,10 @@ impl Value for TypeExprContextPullDynamic {
 /// This lets methods like `ScopeEntry::use_` keep their original `-> CodeValue`
 /// signature while their source-side `ret_type` is the CVE's dynamic Type
 /// (`TypeCodeValueExternDynamic`), derived automatically via
-/// `<CodeValue as Pull>::dynamic_type()`.
-impl Pull for CodeValue {
+/// `<CodeValue as Push>::dynamic_type()`.
+impl Push for CodeValue {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cve = <CodeValueExtern as Pull>::from_v8(scope, value);
+        let cve = <CodeValueExtern as Push>::from_v8(scope, value);
         cve.into_inner()
     }
 

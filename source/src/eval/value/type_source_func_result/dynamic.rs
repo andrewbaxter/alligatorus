@@ -15,11 +15,11 @@ use {
                 bind_via_target,
                 throw_error,
             },
-            pull::{
+            push::{
                 AnyType,
-                Pull,
+                Push,
                 StagedExpr,
-                pull_method_name,
+                push_method_name,
             },
             value::{
                 type_any::r#const::TypeAnyConst,

@@ -295,7 +295,7 @@ impl AspectStackValueDynamic for TypeMapDynamic {
     }
 }
 
-impl crate::eval::pull::Pull for TypeMapDynamic {
+impl crate::eval::push::Push for TypeMapDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeMapDynamic> = crate::eval::from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()

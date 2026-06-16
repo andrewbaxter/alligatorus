@@ -108,7 +108,7 @@ pub(crate) struct TypeSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
 }
 
-impl crate::eval::pull::Pull for Rc<SourceDataTypeRef> {
+impl crate::eval::push::Push for Rc<SourceDataTypeRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
     }

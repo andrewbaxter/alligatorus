@@ -1,7 +1,7 @@
 //! `TypeFunctionCastValueDynamic` — the source-level `cast_value(value, type)`
 //! builtin. Takes an opaque `Rc<dyn Value>` (e.g. what `cve.value` /
 //! `__cve_get_value` returns) and a `TypeSourceDataTypeConst` template, and
-//! asserts at runtime that the value is a `ValueUserDefined` whose data type
+//! asserts at runtime that the value is a `ValuePull` whose data type
 //! matches the template — returning the data-type instance form so source code can
 //! drive field/method access on it normally.
 //!
@@ -116,8 +116,8 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
         };
         return er_seq_cv!(loc, erb, {
             // Emit `__cast_value(value_code, type_template)` — the v8 callback extracts the
-            // value's `ValueUserDefined.bundle.instance` and panics if the value isn't a
-            // `ValueUserDefined` matching the type template.
+            // value's `ValuePull.bundle.instance` and panics if the value isn't a
+            // `ValuePull` matching the type template.
             let value_code = erb.must_er(value.code.cast::<CodeDynamic>())?.unwrap().clone();
 
             // The type argument is compile-time only (a `TypeSourceDataTypeConst` singleton

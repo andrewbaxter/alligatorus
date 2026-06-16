@@ -145,7 +145,7 @@ fn test_00100_impl_type() {
     assert!(scripts[1].contains("source_type"), "can_cast_from accesses arg.source_type");
 
     // (Strict stage-1 snapshot retained below for reference; will need to be replaced
-    // once the v8 dispatch in TypeUserDefined.cast_from no longer delegates to
+    // once the v8 dispatch in TypePull.cast_from no longer delegates to
     // const-eval. The original strict comparison was:)
     let _stage1_snapshot_for_reference = r#"let e0;
 let e1;

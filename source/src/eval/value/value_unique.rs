@@ -6,7 +6,7 @@ use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
-            pull::Pull,
+            push::Push,
             from_v8_ref,
             to_v8,
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
@@ -217,7 +217,7 @@ impl Value for TypeUnique {
     }
 }
 
-impl Pull for Unique {
+impl Push for Unique {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         *from_v8_ref::<Unique>(&*value)
     }

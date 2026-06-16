@@ -8,7 +8,7 @@ pub(crate) struct TypeSourceDataTypeConstructorConst {
     pub data: dumpster::unsync::Gc<super::type_source_data_type::SourceDataTypeData>,
 }
 
-impl crate::eval::pull::Pull for Rc<TypeSourceDataTypeConstructorConst> {
+impl crate::eval::push::Push for Rc<TypeSourceDataTypeConstructorConst> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&*value).clone()
     }

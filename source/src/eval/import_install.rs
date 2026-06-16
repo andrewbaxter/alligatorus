@@ -9,7 +9,7 @@
 //! against this compile's `ExprContext` (which allocates fresh `Local` ids and
 //! adds the externals to this compile's `ex.externals`), render the same JS the
 //! def-set pass would render, and run it eagerly so the methods + their externals
-//! are live in this isolate's globals before `TypeUserDefined.cast_from`
+//! are live in this isolate's globals before `TypePull.cast_from`
 //! dispatches.
 use {
     crate::{

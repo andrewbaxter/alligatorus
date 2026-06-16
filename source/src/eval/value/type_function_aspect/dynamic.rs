@@ -8,7 +8,7 @@
 //! `AspectAspect::get_unique` on its source type — no RTTI on `dyn Value`, the
 //! invariant lives in the trait. We then emit code calling `.aspect(unique)` on
 //! the `base` handle at v8 time, and type the result CV as
-//! `option(TypeUserDefinedAspect { iface_ref })` so source-level `.method(arg)` on
+//! `option(TypePullAspect { iface_ref })` so source-level `.method(arg)` on
 //! the unwrapped handle dispatches via the iface's compiled `field_name` against
 //! the bundled instance.
 use crate::r#gen::ScopeEntry;
@@ -102,7 +102,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             },
         };
 
-        // Pull the iface ref out of `key`. Type-of-types values are now carried as
+        // Push the iface ref out of `key`. Type-of-types values are now carried as
         // `ValueAnyConst { inner: Rc<dyn Type> }` typed as `TypeAnyConst`, so
         // `AspectAspect` lives on the inner type rather than on `key.value.type_()`
         // directly. Extract the inner via `AspectType`, then look up `AspectAspect` on
@@ -157,20 +157,20 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             }),
         };
 
-        // Result CV: value-type is `option(TypeUserDefinedAspect{iface_ref})`, with
+        // Result CV: value-type is `option(TypePullAspect{iface_ref})`, with
         // bundle filled at runtime when the OptionPush unwraps to the JS instance. The
-        // compile-time `bundle` slot on `TypeUserDefinedAspect` is only consulted via
+        // compile-time `bundle` slot on `TypePullAspect` is only consulted via
         // `Aspect::v8_instance` at `TypeRefPush.aspect` time, so we put a placeholder here
         // — source-level field access on the unwrapped handle uses the CV's runtime code,
         // not the type's bundle.
         //
         // TODO: when `OptionPush.get()` lands, ensure the bundle propagated by
         // `Aspect::v8_instance` is the same one the source-level CV code references. The
-        // compile-time `bundle` slot on `TypeUserDefinedAspect` is only consulted via
+        // compile-time `bundle` slot on `TypePullAspect` is only consulted via
         // `Aspect::v8_instance` at `TypeRefPush.aspect` time, not for AspectField field
         // access on this CV. Stash a "no bundle" sentinel here — see
-        // `TypeUserDefinedAspect.bundle` doc.
-        let handle_type: Rc<dyn Type> = Rc::new(crate::eval::value::value_user_defined::aspect::TypeUserDefinedAspect {
+        // `TypePullAspect.bundle` doc.
+        let handle_type: Rc<dyn Type> = Rc::new(crate::eval::value::value_pull::aspect::TypePullAspect {
             iface_ref,
             bundle: None,
         });

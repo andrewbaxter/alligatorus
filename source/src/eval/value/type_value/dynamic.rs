@@ -2,7 +2,7 @@
 //! interface" as a cast destination. Source-data-type instances impl'ing the
 //! builtin `value` interface cast to this; the cast (in
 //! `TypeSourceDataTypeDynamic::cast_to`) emits a `__data_instance_to_value` call
-//! that wraps the runtime v8 instance into a `ValueUserDefined` external.
+//! that wraps the runtime v8 instance into a `ValuePull` external.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
@@ -107,7 +107,7 @@ impl crate::r#gen::AspectField for TypeValueDynamic {
         if key_name == "type" {
             // Emit `__value_get_type(<value_code>)`. At v8 time the callback invokes the
             // user's compiled `value.type` impl on the instance, unwraps the resulting
-            // `Rc<dyn Type>` external, and rebuilds it as a `TypeRefPull` JS object —
+            // `Rc<dyn Type>` external, and rebuilds it as a `TypeRefPush` JS object —
             // supporting `.aspect(unique)` from source as if it were a Rust `Rc<dyn Type>`.
             let call = crate::code_dynamic::CodeDynamic {
                 loc,
@@ -128,7 +128,7 @@ impl crate::r#gen::AspectField for TypeValueDynamic {
                 },
                 value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
                     source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::r#gen::TypeTypeRefPullDynamic),
+                    type_: Rc::new(crate::r#gen::TypeTypeRefPushDynamic),
                 }),
             });
         }
@@ -140,7 +140,7 @@ impl crate::r#gen::AspectField for TypeValueDynamic {
             return None;
         };
         if s == "type" {
-            return Some(Rc::new(crate::r#gen::TypeTypeRefPullDynamic));
+            return Some(Rc::new(crate::r#gen::TypeTypeRefPushDynamic));
         }
         None
     }

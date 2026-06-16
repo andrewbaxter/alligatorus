@@ -1,4 +1,4 @@
-//! `ValueUserDefined` — parallel to `TypeUserDefined` but on the value side. Holds
+//! `ValuePull` — parallel to `TypePull` but on the value side. Holds
 //! an `IsolateBundle` to a v8 instance of a source data type that implements the
 //! `value` builtin interface. `type_()` invokes the user's compiled `value.type`
 //! impl (`_im_v0`) on the held instance at v8 to recover the value's
@@ -18,11 +18,11 @@ use {
 
 /// A v8-instance-backed `Value` whose Rust-side type query routes through the
 /// user's `value.type` impl in v8.
-pub(crate) struct ValueUserDefined {
+pub(crate) struct ValuePull {
     pub bundle: Rc<IsolateBundle>,
 }
 
-impl Value for ValueUserDefined {
+impl Value for ValuePull {
     fn type_(&self, xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         // Invoke `_im_v0` (the compiled `value.type` impl) on `self.bundle.instance` and
         // extract the resulting `Rc<dyn Type>` from the returned v8::External.
