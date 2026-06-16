@@ -334,9 +334,12 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                 mb.call(
                                     mb.field(
                                         mb.call(mb.scope_use("option"), mb.scope_use("codedyn")),
-                                        mb.str("none"),
+                                        mb.str("some"),
                                     ),
-                                    mb.null(),
+                                    mb.call(
+                                        mb.lower(mb.field(mb.scope_use("code"), mb.str("scope_use"))),
+                                        mb.field(mb.scope_use("inner"), mb.str("name")),
+                                    ),
                                 ),
                                 mb.call(
                                     mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
@@ -978,62 +981,20 @@ fn impl_iface(mb: &ModuleBuilder, target_var: &str, iface: &str, methods: Vec<(&
 
 #[allow(dead_code)]
 fn nvalue_to_code(mb: &ModuleBuilder, cve_expr: SourceExpr) -> SourceExpr {
-    return mb.seq(
+    return mb.match_(
+        mb.field(mb.field(cve_expr, mb.str("code")), mb.str("code")),
+        mb.str("c"),
         vec![
-            mb.bind("__cve", cve_expr),
-            mb.match_(
-                mb.as_(
-                    mb.field(
-                        mb.call(
-                            mb.scope_use("cast_value"),
-                            mb.tuple(
-                                vec![
-                                    mb.field(mb.scope_use("__cve"), mb.str("value")),
-                                    mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type_ref"))),
-                                ],
-                            ),
-                        ),
-                        mb.str("base"),
-                    ),
-                    mb.lower(mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
+            (
+                mb.str("dyn"),
+                mb.call(
+                    mb.field(mb.scope_use("c"), mb.str("cast")),
+                    mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
                 ),
-                mb.str("v"),
-                vec![
-                    (
-                        mb.str("binding"),
-                        mb.call(
-                            mb.lower(mb.field(mb.scope_use("code"), mb.str("scope_use"))),
-                            mb.scope_use("v"),
-                        ),
-                    ),
-                    (
-                        mb.str("expr"),
-                        mb.match_(
-                            mb.field(mb.field(mb.scope_use("__cve"), mb.str("code")), mb.str("code")),
-                            mb.str("c"),
-                            vec![
-                                (
-                                    mb.str("dyn"),
-                                    mb.call(
-                                        mb.field(mb.scope_use("c"), mb.str("cast")),
-                                        mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
-                                    ),
-                                ),
-                                (
-                                    mb.str("none"),
-                                    mb.call(
-                                        mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
-                                        mb.str(""),
-                                    ),
-                                ),
-                            ],
-                            None,
-                        ),
-                    ),
-                ],
-                None,
             ),
+            (mb.str("none"), mb.call(mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))), mb.str(""))),
         ],
+        None,
     );
 }
 
