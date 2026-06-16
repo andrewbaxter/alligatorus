@@ -210,51 +210,53 @@ e1 = BUILTIN;
 let e2;
 e2 = a5;
 let e3;
-e3 = a6;
+e3 = 1;
 let e4;
+e4 = a6;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
 let e9;
-{
+e9 = a0;
 let e10;
-e10 = "maybe add 7";
-e9 = e10;
-}
-e7 = e8["_0"](e9);
-a1 = e7;
-}
 {
 let e11;
-let e12;
-e12 = a1;
-let e13;
-e13 = a2;
-let e14;
-e14 = a3;
-let e15;
-e15 = a4;
-e11 = e12["_2"](e13,e14,e15);
-e4 = e11;
+e11 = "maybe add 7";
+e10 = e11;
+}
+e8 = e9["_0"](e10);
+a1 = e8;
 }
 {
+let e12;
+let e13;
+e13 = a1;
+let e14;
+e14 = a2;
+let e15;
+e15 = a3;
 let e16;
-let e17;
-e17 = a1;
-e16 = e17["_0"];
-e4 = e16;
+e16 = a4;
+e12 = e13["_2"](e14,e15,e16);
+e5 = e12;
 }
-e0 = (e1)(e2,e3,e4);
+{
+let e17;
+let e18;
+e18 = a1;
+e17 = e18["_0"];
+e5 = e17;
+}
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {

@@ -96,74 +96,76 @@ e1 = BUILTIN;
 let e2;
 e2 = a7;
 let e3;
-e3 = a8;
+e3 = 1;
 let e4;
+e4 = a8;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
 let e9;
-{
+e9 = a0;
 let e10;
-e10 = "upper";
-e9 = e10;
-}
-e7 = e8["_1"](e9);
-a1 = e7;
-}
 {
 let e11;
+e11 = "upper";
+e10 = e11;
+}
+e8 = e9["_1"](e10);
+a1 = e8;
+}
+{
 let e12;
-e12 = a1;
 let e13;
-e13 = a2;
-e11 = e12["_3"](e13);
-e4 = e11;
+e13 = a1;
+let e14;
+e14 = a2;
+e12 = e13["_3"](e14);
+e5 = e12;
 }
 let a3;
 {
-let e14;
 let e15;
-e15 = a1;
 let e16;
-{
+e16 = a1;
 let e17;
-e17 = "to_string";
-e16 = e17;
-}
-e14 = e15["_4"](e16);
-a3 = e14;
-}
 {
 let e18;
-let e19;
-e19 = a3;
-let e20;
-e20 = a4;
-let e21;
-e21 = a5;
-let e22;
-e22 = a6;
-e18 = e19["_0"](e20,e21,e22);
-e4 = e18;
+e18 = "to_string";
+e17 = e18;
+}
+e15 = e16["_4"](e17);
+a3 = e15;
 }
 {
+let e19;
+let e20;
+e20 = a3;
+let e21;
+e21 = a4;
+let e22;
+e22 = a5;
 let e23;
-let e24;
-e24 = a1;
-e23 = e24["_1"];
-e4 = e23;
+e23 = a6;
+e19 = e20["_0"](e21,e22,e23);
+e5 = e19;
 }
-e0 = (e1)(e2,e3,e4);
+{
+let e24;
+let e25;
+e25 = a1;
+e24 = e25["_1"];
+e5 = e24;
+}
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {

@@ -1165,593 +1165,607 @@ e1 = BUILTIN;
 let e2;
 e2 = a50;
 let e3;
-e3 = a51;
+e3 = 1;
 let e4;
+e4 = a51;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
-e7 = e8["_3"]();
-a1 = e7;
+let e9;
+e9 = a0;
+e8 = e9["_3"]();
+a1 = e8;
 }
 let a2;
 {
-let e9;
 let e10;
-e10 = a1;
-e9 = e10["_0"];
-a2 = e9;
+let e11;
+e11 = a1;
+e10 = e11["_0"];
+a2 = e10;
 }
 let a3;
 {
-let e11;
 let e12;
-e12 = a0;
 let e13;
-{
+e13 = a0;
 let e14;
-e14 = "nodejs code";
-e13 = e14;
-}
-e11 = e12["_1"](e13);
-a3 = e11;
-}
 {
 let e15;
+e15 = "nodejs code";
+e14 = e15;
+}
+e12 = e13["_1"](e14);
+a3 = e12;
+}
+{
 let e16;
-e16 = a3;
 let e17;
+e17 = a3;
 let e18;
-e18 = BUILTIN;
 let e19;
-e19 = a2;
-e17 = (e18)(e19);
-e15 = e16["_3"](e17);
-e4 = e15;
+e19 = BUILTIN;
+let e20;
+e20 = a2;
+e18 = (e19)(e20);
+e16 = e17["_3"](e18);
+e5 = e16;
 }
 let a4;
 {
-let e20;
 let e21;
-e21 = a3;
-e20 = e21["_0"];
-a4 = e20;
+let e22;
+e22 = a3;
+e21 = e22["_0"];
+a4 = e21;
 }
 let a5;
 {
-let e22;
 let e23;
-e23 = a1;
 let e24;
-{
+e24 = a1;
 let e25;
-e25 = "call";
-e24 = e25;
-}
+{
 let e26;
+e26 = "call";
+e25 = e26;
+}
 let e27;
-e27 = BUILTIN;
 let e28;
+e28 = BUILTIN;
 let e29;
 let e30;
-e30 = BUILTIN;
 let e31;
-e31 = a4;
-e29 = (e30)(e31);
+e31 = BUILTIN;
 let e32;
+e32 = a4;
+e30 = (e31)(e32);
 let e33;
-e33 = BUILTIN;
 let e34;
-e34 = a4;
-e32 = (e33)(e34);
-e28 = { "\"arg\"": e29, "\"func\"": e32 };
-e26 = (e27)(e28);
-e22 = e23["_1"](e24,e26);
-a5 = e22;
+e34 = BUILTIN;
+let e35;
+e35 = a4;
+e33 = (e34)(e35);
+e29 = { "\"arg\"": e30, "\"func\"": e33 };
+e27 = (e28)(e29);
+e23 = e24["_1"](e25,e27);
+a5 = e23;
 }
 let a7;
 {
-let e35;
 let e36;
-e36 = a1;
 let e37;
-{
+e37 = a1;
 let e38;
-e38 = "lit_str";
-e37 = e38;
-}
+{
 let e39;
-e39 = a6;
-e35 = e36["_1"](e37,e39);
-a7 = e35;
+e39 = "lit_str";
+e38 = e39;
+}
+let e40;
+e40 = a6;
+e36 = e37["_1"](e38,e40);
+a7 = e36;
 }
 let a8;
 {
-let e40;
 let e41;
-e41 = a1;
 let e42;
-{
+e42 = a1;
 let e43;
-e43 = "field";
-e42 = e43;
-}
+{
 let e44;
+e44 = "field";
+e43 = e44;
+}
 let e45;
-e45 = BUILTIN;
 let e46;
+e46 = BUILTIN;
 let e47;
 let e48;
-e48 = BUILTIN;
 let e49;
-e49 = a4;
-e47 = (e48)(e49);
+e49 = BUILTIN;
 let e50;
+e50 = a4;
+e48 = (e49)(e50);
 let e51;
-e51 = BUILTIN;
 let e52;
-e52 = a4;
-e50 = (e51)(e52);
-e46 = { "\"base\"": e47, "\"field\"": e50 };
-e44 = (e45)(e46);
-e40 = e41["_1"](e42,e44);
-a8 = e40;
+e52 = BUILTIN;
+let e53;
+e53 = a4;
+e51 = (e52)(e53);
+e47 = { "\"base\"": e48, "\"field\"": e51 };
+e45 = (e46)(e47);
+e41 = e42["_1"](e43,e45);
+a8 = e41;
 }
 let a10;
 {
-let e53;
 let e54;
-e54 = a1;
 let e55;
-{
+e55 = a1;
 let e56;
-e56 = "scope_use";
-e55 = e56;
-}
+{
 let e57;
-e57 = a9;
-e53 = e54["_1"](e55,e57);
-a10 = e53;
+e57 = "scope_use";
+e56 = e57;
+}
+let e58;
+e58 = a9;
+e54 = e55["_1"](e56,e58);
+a10 = e54;
 }
 {
-let e58;
 let e59;
-e59 = a3;
 let e60;
-e60 = BUILTIN;
+e60 = a3;
 let e61;
-e61 = {  };
-e58 = e59["_5"](e60,e61);
-e4 = e58;
+e61 = BUILTIN;
+let e62;
+e62 = {  };
+e59 = e60["_5"](e61,e62);
+e5 = e59;
 }
 let a11;
 {
-let e62;
 let e63;
-e63 = a3;
 let e64;
-{
+e64 = a3;
 let e65;
-e65 = "get";
-e64 = e65;
-}
-e62 = e63["_4"](e64);
-a11 = e62;
-}
 {
 let e66;
+e66 = "get";
+e65 = e66;
+}
+e63 = e64["_4"](e65);
+a11 = e63;
+}
+{
 let e67;
-e67 = a11;
 let e68;
+e68 = a11;
 let e69;
-e69 = BUILTIN;
 let e70;
-e70 = [];
-e68 = (e69)(e70);
+e70 = BUILTIN;
 let e71;
+e71 = [];
+e69 = (e70)(e71);
 let e72;
-e72 = BUILTIN;
 let e73;
-e73 = a2;
-e71 = (e72)(e73);
+e73 = BUILTIN;
 let e74;
-e74 = a12;
-e66 = e67["_0"](e68,e71,e74);
-e4 = e66;
+e74 = a2;
+e72 = (e73)(e74);
+let e75;
+e75 = a12;
+e67 = e68["_0"](e69,e72,e75);
+e5 = e67;
 }
 let a13;
 {
-let e75;
 let e76;
-e76 = a0;
 let e77;
-{
+e77 = a0;
 let e78;
-e78 = "code.call";
-e77 = e78;
+{
+let e79;
+e79 = "code.call";
+e78 = e79;
 }
-e75 = e76["_0"](e77);
-a13 = e75;
+e76 = e77["_0"](e78);
+a13 = e76;
 }
 let a14;
 {
-let e79;
 let e80;
-e80 = a13;
-e79 = e80["_0"];
-a14 = e79;
+let e81;
+e81 = a13;
+e80 = e81["_0"];
+a14 = e80;
 }
 {
-let e81;
 let e82;
-e82 = a13;
 let e83;
+e83 = a13;
 let e84;
-e84 = BUILTIN;
 let e85;
+e85 = BUILTIN;
 let e86;
 let e87;
-e87 = BUILTIN;
 let e88;
-e88 = a4;
-e86 = (e87)(e88);
+e88 = BUILTIN;
 let e89;
+e89 = a4;
+e87 = (e88)(e89);
 let e90;
-e90 = BUILTIN;
 let e91;
-e91 = a4;
-e89 = (e90)(e91);
-e85 = { "\"arg\"": e86, "\"func\"": e89 };
-e83 = (e84)(e85);
+e91 = BUILTIN;
 let e92;
+e92 = a4;
+e90 = (e91)(e92);
+e86 = { "\"arg\"": e87, "\"func\"": e90 };
+e84 = (e85)(e86);
 let e93;
-e93 = BUILTIN;
 let e94;
-e94 = a4;
-e92 = (e93)(e94);
+e94 = BUILTIN;
 let e95;
+e95 = a4;
+e93 = (e94)(e95);
 let e96;
-e96 = BUILTIN;
 let e97;
-e97 = a15;
+e97 = BUILTIN;
 let e98;
-e98 = a16;
+e98 = a15;
 let e99;
+e99 = 2;
 let e100;
-e100 = a3;
-e99 = e100["_1"];
+e100 = a16;
 let e101;
-e101 = a17;
 let e102;
-e102 = a5;
-e95 = (e96)(e97,e98,e99,e101,e102);
-e81 = e82["_2"](e83,e92,e95);
-e4 = e81;
+e102 = a3;
+e101 = e102["_1"];
+let e103;
+e103 = a17;
+let e104;
+e104 = a5;
+e96 = (e97)(e98,e99,e100,e101,e103,e104);
+e82 = e83["_2"](e84,e93,e96);
+e5 = e82;
 }
 let a18;
 {
-let e103;
-let e104;
-e104 = a0;
 let e105;
-{
 let e106;
-e106 = "code.lit_str";
-e105 = e106;
+e106 = a0;
+let e107;
+{
+let e108;
+e108 = "code.lit_str";
+e107 = e108;
 }
-e103 = e104["_0"](e105);
-a18 = e103;
+e105 = e106["_0"](e107);
+a18 = e105;
 }
 let a19;
-{
-let e107;
-let e108;
-e108 = a18;
-e107 = e108["_0"];
-a19 = e107;
-}
 {
 let e109;
 let e110;
 e110 = a18;
+e109 = e110["_0"];
+a19 = e109;
+}
+{
 let e111;
-e111 = a23;
 let e112;
+e112 = a18;
 let e113;
-e113 = BUILTIN;
+e113 = a23;
 let e114;
-e114 = a4;
-e112 = (e113)(e114);
 let e115;
+e115 = BUILTIN;
 let e116;
-e116 = BUILTIN;
+e116 = a4;
+e114 = (e115)(e116);
 let e117;
-e117 = a20;
 let e118;
-e118 = a21;
+e118 = BUILTIN;
 let e119;
+e119 = a20;
 let e120;
-e120 = a3;
-e119 = e120["_1"];
+e120 = 2;
 let e121;
-e121 = a22;
+e121 = a21;
 let e122;
-e122 = a7;
-e115 = (e116)(e117,e118,e119,e121,e122);
-e109 = e110["_2"](e111,e112,e115);
-e4 = e109;
+let e123;
+e123 = a3;
+e122 = e123["_1"];
+let e124;
+e124 = a22;
+let e125;
+e125 = a7;
+e117 = (e118)(e119,e120,e121,e122,e124,e125);
+e111 = e112["_2"](e113,e114,e117);
+e5 = e111;
 }
 let a24;
 {
-let e123;
-let e124;
-e124 = a0;
-let e125;
-{
 let e126;
-e126 = "code.field";
-e125 = e126;
+let e127;
+e127 = a0;
+let e128;
+{
+let e129;
+e129 = "code.field";
+e128 = e129;
 }
-e123 = e124["_0"](e125);
-a24 = e123;
+e126 = e127["_0"](e128);
+a24 = e126;
 }
 let a25;
 {
-let e127;
-let e128;
-e128 = a24;
-e127 = e128["_0"];
-a25 = e127;
+let e130;
+let e131;
+e131 = a24;
+e130 = e131["_0"];
+a25 = e130;
 }
 {
-let e129;
-let e130;
-e130 = a24;
-let e131;
 let e132;
-e132 = BUILTIN;
 let e133;
+e133 = a24;
 let e134;
 let e135;
 e135 = BUILTIN;
 let e136;
-e136 = a4;
-e134 = (e135)(e136);
 let e137;
 let e138;
 e138 = BUILTIN;
 let e139;
 e139 = a4;
 e137 = (e138)(e139);
-e133 = { "\"base\"": e134, "\"field\"": e137 };
-e131 = (e132)(e133);
 let e140;
 let e141;
 e141 = BUILTIN;
 let e142;
 e142 = a4;
 e140 = (e141)(e142);
+e136 = { "\"base\"": e137, "\"field\"": e140 };
+e134 = (e135)(e136);
 let e143;
 let e144;
 e144 = BUILTIN;
 let e145;
-e145 = a26;
+e145 = a4;
+e143 = (e144)(e145);
 let e146;
-e146 = a27;
 let e147;
+e147 = BUILTIN;
 let e148;
-e148 = a3;
-e147 = e148["_1"];
+e148 = a26;
 let e149;
-e149 = a28;
+e149 = 2;
 let e150;
-e150 = a8;
-e143 = (e144)(e145,e146,e147,e149,e150);
-e129 = e130["_2"](e131,e140,e143);
-e4 = e129;
+e150 = a27;
+let e151;
+let e152;
+e152 = a3;
+e151 = e152["_1"];
+let e153;
+e153 = a28;
+let e154;
+e154 = a8;
+e146 = (e147)(e148,e149,e150,e151,e153,e154);
+e132 = e133["_2"](e134,e143,e146);
+e5 = e132;
 }
 let a29;
 {
-let e151;
-let e152;
-e152 = a0;
-let e153;
+let e155;
+let e156;
+e156 = a0;
+let e157;
 {
-let e154;
-e154 = "code.scope_use";
-e153 = e154;
+let e158;
+e158 = "code.scope_use";
+e157 = e158;
 }
-e151 = e152["_0"](e153);
-a29 = e151;
+e155 = e156["_0"](e157);
+a29 = e155;
 }
 let a30;
 {
-let e155;
-let e156;
-e156 = a29;
-e155 = e156["_0"];
-a30 = e155;
+let e159;
+let e160;
+e160 = a29;
+e159 = e160["_0"];
+a30 = e159;
 }
 {
-let e157;
-let e158;
-e158 = a29;
-let e159;
-e159 = a34;
-let e160;
 let e161;
-e161 = BUILTIN;
 let e162;
-e162 = a4;
-e160 = (e161)(e162);
+e162 = a29;
 let e163;
+e163 = a34;
 let e164;
-e164 = BUILTIN;
 let e165;
-e165 = a31;
+e165 = BUILTIN;
 let e166;
-e166 = a32;
+e166 = a4;
+e164 = (e165)(e166);
 let e167;
 let e168;
-e168 = a3;
-e167 = e168["_1"];
+e168 = BUILTIN;
 let e169;
-e169 = a33;
+e169 = a31;
 let e170;
-e170 = a10;
-e163 = (e164)(e165,e166,e167,e169,e170);
-e157 = e158["_2"](e159,e160,e163);
-e4 = e157;
+e170 = 2;
+let e171;
+e171 = a32;
+let e172;
+let e173;
+e173 = a3;
+e172 = e173["_1"];
+let e174;
+e174 = a33;
+let e175;
+e175 = a10;
+e167 = (e168)(e169,e170,e171,e172,e174,e175);
+e161 = e162["_2"](e163,e164,e167);
+e5 = e161;
 }
 let a35;
 {
-let e171;
-let e172;
-e172 = a0;
-let e173;
+let e176;
+let e177;
+e177 = a0;
+let e178;
 {
-let e174;
-e174 = "Render Node.js code (inner)";
-e173 = e174;
+let e179;
+e179 = "Render Node.js code (inner)";
+e178 = e179;
 }
-e171 = e172["_0"](e173);
-a35 = e171;
+e176 = e177["_0"](e178);
+a35 = e176;
 }
 let a36;
 {
-let e175;
-let e176;
-e176 = a35;
-e175 = e176["_0"];
-a36 = e175;
+let e180;
+let e181;
+e181 = a35;
+e180 = e181["_0"];
+a36 = e180;
 }
 {
-let e177;
-let e178;
-e178 = a35;
-let e179;
-let e180;
-e180 = BUILTIN;
-let e181;
 let e182;
 let e183;
-e183 = BUILTIN;
+e183 = a35;
 let e184;
-e184 = a4;
-e182 = (e183)(e184);
 let e185;
+e185 = BUILTIN;
 let e186;
-e186 = BUILTIN;
 let e187;
 let e188;
-e188 = a42;
+e188 = BUILTIN;
 let e189;
-e189 = a43;
-e187 = { "\"expr_count\"": e188, "\"out\"": e189 };
-e185 = (e186)(e187);
-e181 = { "\"code\"": e182, "\"context\"": e185 };
-e179 = (e180)(e181);
+e189 = a4;
+e187 = (e188)(e189);
 let e190;
-e190 = a44;
 let e191;
+e191 = BUILTIN;
 let e192;
-e192 = BUILTIN;
 let e193;
-e193 = a37;
+e193 = a42;
 let e194;
-e194 = a38;
+e194 = a43;
+e192 = { "\"expr_count\"": e193, "\"out\"": e194 };
+e190 = (e191)(e192);
+e186 = { "\"code\"": e187, "\"context\"": e190 };
+e184 = (e185)(e186);
 let e195;
-e195 = a36;
+e195 = a44;
 let e196;
-e196 = a39;
 let e197;
-e197 = a36;
+e197 = BUILTIN;
 let e198;
-e198 = a40;
+e198 = a37;
 let e199;
-e199 = a36;
+e199 = 4;
 let e200;
-e200 = a41;
+e200 = a38;
 let e201;
 e201 = a36;
-e191 = (e192)(e193,e194,e195,e196,e197,e198,e199,e200,e201);
-e177 = e178["_2"](e179,e190,e191);
-e4 = e177;
+let e202;
+e202 = a39;
+let e203;
+e203 = a36;
+let e204;
+e204 = a40;
+let e205;
+e205 = a36;
+let e206;
+e206 = a41;
+let e207;
+e207 = a36;
+e196 = (e197)(e198,e199,e200,e201,e202,e203,e204,e205,e206,e207);
+e182 = e183["_2"](e184,e195,e196);
+e5 = e182;
 }
 let a45;
 {
-let e202;
-let e203;
-e203 = a0;
-let e204;
+let e208;
+let e209;
+e209 = a0;
+let e210;
 {
-let e205;
-e205 = "Render Node.js code";
-e204 = e205;
+let e211;
+e211 = "Render Node.js code";
+e210 = e211;
 }
-e202 = e203["_0"](e204);
-a45 = e202;
+e208 = e209["_0"](e210);
+a45 = e208;
 }
 let a46;
 {
-let e206;
-let e207;
-e207 = a45;
-e206 = e207["_0"];
-a46 = e206;
+let e212;
+let e213;
+e213 = a45;
+e212 = e213["_0"];
+a46 = e212;
 }
 {
-let e208;
-let e209;
-e209 = a45;
-let e210;
-let e211;
-e211 = BUILTIN;
-let e212;
-e212 = a4;
-e210 = (e211)(e212);
-let e213;
-e213 = a49;
 let e214;
 let e215;
-e215 = BUILTIN;
+e215 = a45;
 let e216;
-e216 = a47;
 let e217;
-e217 = a48;
+e217 = BUILTIN;
 let e218;
-e218 = a36;
-e214 = (e215)(e216,e217,e218);
-e208 = e209["_2"](e210,e213,e214);
-e4 = e208;
+e218 = a4;
+e216 = (e217)(e218);
+let e219;
+e219 = a49;
+let e220;
+let e221;
+e221 = BUILTIN;
+let e222;
+e222 = a47;
+let e223;
+e223 = 1;
+let e224;
+e224 = a48;
+let e225;
+e225 = a36;
+e220 = (e221)(e222,e223,e224,e225);
+e214 = e215["_2"](e216,e219,e220);
+e5 = e214;
 }
 {
-let e219;
-let e220;
-e220 = a14;
-let e221;
-e221 = a25;
-let e222;
-e222 = a19;
-let e223;
-e223 = a46;
-let e224;
-e224 = a30;
-let e225;
-e225 = a4;
-e219 = { "\"call\"": e220, "\"field\"": e221, "\"lit_str\"": e222, "\"render\"": e223, "\"scope_use\"": e224, "\"type\"": e225 };
-e4 = e219;
+let e226;
+let e227;
+e227 = a14;
+let e228;
+e228 = a25;
+let e229;
+e229 = a19;
+let e230;
+e230 = a46;
+let e231;
+e231 = a30;
+let e232;
+e232 = a4;
+e226 = { "\"call\"": e227, "\"field\"": e228, "\"lit_str\"": e229, "\"render\"": e230, "\"scope_use\"": e231, "\"type\"": e232 };
+e5 = e226;
 }
-e0 = (e1)(e2,e3,e4);
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#
     );
     assert_eq!(js_sources[1], r#"var d0_0_1;

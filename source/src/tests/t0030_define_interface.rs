@@ -127,97 +127,99 @@ e1 = BUILTIN;
 let e2;
 e2 = a8;
 let e3;
-e3 = a9;
+e3 = 1;
 let e4;
+e4 = a9;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
-e7 = e8["_4"]();
-a1 = e7;
+let e9;
+e9 = a0;
+e8 = e9["_4"]();
+a1 = e8;
 }
 let a2;
 {
-let e9;
 let e10;
-e10 = a1;
 let e11;
-{
+e11 = a1;
 let e12;
-e12 = "to_string";
-e11 = e12;
-}
-e9 = e10["_2"](e11);
-a2 = e9;
-}
 {
 let e13;
+e13 = "to_string";
+e12 = e13;
+}
+e10 = e11["_2"](e12);
+a2 = e10;
+}
+{
 let e14;
-e14 = a2;
 let e15;
-e15 = a3;
+e15 = a2;
 let e16;
-e16 = a4;
-e13 = e14["_0"](e15,e16);
-e4 = e13;
+e16 = a3;
+let e17;
+e17 = a4;
+e14 = e15["_0"](e16,e17);
+e5 = e14;
 }
 let a5;
 {
-let e17;
 let e18;
-e18 = a0;
 let e19;
-{
+e19 = a0;
 let e20;
-e20 = "upper";
-e19 = e20;
-}
-e17 = e18["_1"](e19);
-a5 = e17;
-}
 {
 let e21;
+e21 = "upper";
+e20 = e21;
+}
+e18 = e19["_1"](e20);
+a5 = e18;
+}
+{
 let e22;
-e22 = a5;
 let e23;
-e23 = a6;
-e21 = e22["_3"](e23);
-e4 = e21;
-}
-{
+e23 = a5;
 let e24;
-let e25;
-e25 = a5;
-let e26;
-let e27;
-e27 = a1;
-e26 = e27["_0"];
-let e28;
-let e29;
-e29 = "\"to_string\"";
-let e30;
-e30 = a7;
-e28 = { [e29]: e30 };
-e24 = e25["_5"](e26,e28);
-e4 = e24;
+e24 = a6;
+e22 = e23["_3"](e24);
+e5 = e22;
 }
 {
+let e25;
+let e26;
+e26 = a5;
+let e27;
+let e28;
+e28 = a1;
+e27 = e28["_0"];
+let e29;
+let e30;
+e30 = "\"to_string\"";
 let e31;
-let e32;
-e32 = a5;
-e31 = e32["_1"];
-e4 = e31;
+e31 = a7;
+e29 = { [e30]: e31 };
+e25 = e26["_5"](e27,e29);
+e5 = e25;
 }
-e0 = (e1)(e2,e3,e4);
+{
+let e32;
+let e33;
+e33 = a5;
+e32 = e33["_1"];
+e5 = e32;
+}
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {
@@ -408,130 +410,132 @@ e1 = BUILTIN;
 let e2;
 e2 = a11;
 let e3;
-e3 = a12;
+e3 = 1;
 let e4;
+e4 = a12;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
-e7 = e8["_4"]();
-a1 = e7;
+let e9;
+e9 = a0;
+e8 = e9["_4"]();
+a1 = e8;
 }
 let a2;
 {
-let e9;
 let e10;
-e10 = a1;
 let e11;
-{
+e11 = a1;
 let e12;
-e12 = "to_string";
-e11 = e12;
-}
-e9 = e10["_2"](e11);
-a2 = e9;
-}
 {
 let e13;
+e13 = "to_string";
+e12 = e13;
+}
+e10 = e11["_2"](e12);
+a2 = e10;
+}
+{
 let e14;
-e14 = a2;
 let e15;
-e15 = a3;
+e15 = a2;
 let e16;
-e16 = a4;
-e13 = e14["_0"](e15,e16);
-e4 = e13;
+e16 = a3;
+let e17;
+e17 = a4;
+e14 = e15["_0"](e16,e17);
+e5 = e14;
 }
 let a5;
 {
-let e17;
 let e18;
-e18 = a0;
 let e19;
-{
+e19 = a0;
 let e20;
-e20 = "upper";
-e19 = e20;
-}
-e17 = e18["_1"](e19);
-a5 = e17;
-}
 {
 let e21;
-let e22;
-e22 = a5;
-let e23;
-e23 = a6;
-e21 = e22["_3"](e23);
-e4 = e21;
+e21 = "upper";
+e20 = e21;
+}
+e18 = e19["_1"](e20);
+a5 = e18;
 }
 {
+let e22;
+let e23;
+e23 = a5;
 let e24;
+e24 = a6;
+e22 = e23["_3"](e24);
+e5 = e22;
+}
+{
 let e25;
-e25 = a5;
 let e26;
+e26 = a5;
 let e27;
-e27 = a1;
-e26 = e27["_0"];
 let e28;
+e28 = a1;
+e27 = e28["_0"];
 let e29;
-e29 = "\"to_string\"";
 let e30;
-e30 = a7;
-e28 = { [e29]: e30 };
-e24 = e25["_5"](e26,e28);
-e4 = e24;
+e30 = "\"to_string\"";
+let e31;
+e31 = a7;
+e29 = { [e30]: e31 };
+e25 = e26["_5"](e27,e29);
+e5 = e25;
 }
 let a8;
 {
-let e31;
 let e32;
-e32 = a0;
 let e33;
-{
+e33 = a0;
 let e34;
-e34 = "do_log";
-e33 = e34;
-}
-e31 = e32["_0"](e33);
-a8 = e31;
-}
 {
 let e35;
-let e36;
-e36 = a8;
-let e37;
-let e38;
-e38 = BUILTIN;
-let e39;
-let e40;
-e40 = a1;
-e39 = e40["_0"];
-e37 = (e38)(e39);
-let e41;
-e41 = a9;
-let e42;
-e42 = a10;
-e35 = e36["_2"](e37,e41,e42);
-e4 = e35;
+e35 = "do_log";
+e34 = e35;
+}
+e32 = e33["_0"](e34);
+a8 = e32;
 }
 {
+let e36;
+let e37;
+e37 = a8;
+let e38;
+let e39;
+e39 = BUILTIN;
+let e40;
+let e41;
+e41 = a1;
+e40 = e41["_0"];
+e38 = (e39)(e40);
+let e42;
+e42 = a9;
 let e43;
-let e44;
-e44 = a0;
-e43 = e44["_2"]();
-e4 = e43;
+e43 = a10;
+e36 = e37["_2"](e38,e42,e43);
+e5 = e36;
 }
-e0 = (e1)(e2,e3,e4);
+{
+let e44;
+let e45;
+e45 = a0;
+e44 = e45["_2"]();
+e5 = e44;
+}
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_1;
 {

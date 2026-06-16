@@ -76,57 +76,59 @@ e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
-e3 = a7;
+e3 = 1;
 let e4;
+e4 = a7;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
 let e9;
-{
+e9 = a0;
 let e10;
-e10 = "f";
-e9 = e10;
+{
+let e11;
+e11 = "f";
+e10 = e11;
 }
-e7 = e8["_0"](e9);
-a1 = e7;
+e8 = e9["_0"](e10);
+a1 = e8;
 }
 let a2;
 {
-let e11;
 let e12;
-e12 = a1;
-e11 = e12["_0"];
-a2 = e11;
-}
-{
 let e13;
-let e14;
-e14 = a1;
-let e15;
-e15 = a3;
-let e16;
-e16 = a4;
-let e17;
-e17 = a5;
-e13 = e14["_2"](e15,e16,e17);
-e4 = e13;
+e13 = a1;
+e12 = e13["_0"];
+a2 = e12;
 }
 {
+let e14;
+let e15;
+e15 = a1;
+let e16;
+e16 = a3;
+let e17;
+e17 = a4;
 let e18;
-e18 = a2;
-e4 = e18;
+e18 = a5;
+e14 = e15["_2"](e16,e17,e18);
+e5 = e14;
 }
-e0 = (e1)(e2,e3,e4);
+{
+let e19;
+e19 = a2;
+e5 = e19;
+}
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {
@@ -226,57 +228,59 @@ e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
-e3 = a7;
+e3 = 1;
 let e4;
+e4 = a7;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
 let e9;
-{
+e9 = a0;
 let e10;
-e10 = "f";
-e9 = e10;
+{
+let e11;
+e11 = "f";
+e10 = e11;
 }
-e7 = e8["_0"](e9);
-a1 = e7;
+e8 = e9["_0"](e10);
+a1 = e8;
 }
 let a2;
 {
-let e11;
 let e12;
-e12 = a1;
-e11 = e12["_0"];
-a2 = e11;
-}
-{
 let e13;
-let e14;
-e14 = a1;
-let e15;
-e15 = a3;
-let e16;
-e16 = a4;
-let e17;
-e17 = a5;
-e13 = e14["_2"](e15,e16,e17);
-e4 = e13;
+e13 = a1;
+e12 = e13["_0"];
+a2 = e12;
 }
 {
+let e14;
+let e15;
+e15 = a1;
+let e16;
+e16 = a3;
+let e17;
+e17 = a4;
 let e18;
-e18 = a2;
-e4 = e18;
+e18 = a5;
+e14 = e15["_2"](e16,e17,e18);
+e5 = e14;
 }
-e0 = (e1)(e2,e3,e4);
+{
+let e19;
+e19 = a2;
+e5 = e19;
+}
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"var d0_0_0;
 {

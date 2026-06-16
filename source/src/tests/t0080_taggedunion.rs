@@ -104,70 +104,72 @@ e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
-e3 = a7;
+e3 = 1;
 let e4;
+e4 = a7;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
-e7 = e8["_3"]();
-a1 = e7;
+let e9;
+e9 = a0;
+e8 = e9["_3"]();
+a1 = e8;
 }
 let a3;
 {
-let e9;
 let e10;
-e10 = a1;
 let e11;
-{
+e11 = a1;
 let e12;
-e12 = "strtag";
-e11 = e12;
-}
+{
 let e13;
-e13 = a2;
-e9 = e10["_1"](e11,e13);
-a3 = e9;
+e13 = "strtag";
+e12 = e13;
+}
+let e14;
+e14 = a2;
+e10 = e11["_1"](e12,e14);
+a3 = e10;
 }
 let a5;
 {
-let e14;
 let e15;
-e15 = a1;
 let e16;
-{
+e16 = a1;
 let e17;
-e17 = "numtag";
-e16 = e17;
-}
+{
 let e18;
-e18 = a4;
-e14 = e15["_1"](e16,e18);
-a5 = e14;
+e18 = "numtag";
+e17 = e18;
+}
+let e19;
+e19 = a4;
+e15 = e16["_1"](e17,e19);
+a5 = e15;
 }
 {
-let e19;
 let e20;
-e20 = a5;
 let e21;
-e21 = a3;
+e21 = a5;
 let e22;
+e22 = a3;
 let e23;
-e23 = a1;
-e22 = e23["_0"];
-e19 = { "\"num\"": e20, "\"str\"": e21, "\"type\"": e22 };
-e4 = e19;
+let e24;
+e24 = a1;
+e23 = e24["_0"];
+e20 = { "\"num\"": e21, "\"str\"": e22, "\"type\"": e23 };
+e5 = e20;
 }
-e0 = (e1)(e2,e3,e4);
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"let e0;
 let a0;
@@ -292,70 +294,72 @@ e1 = BUILTIN;
 let e2;
 e2 = a6;
 let e3;
-e3 = a7;
+e3 = 1;
 let e4;
+e4 = a7;
+let e5;
 let a0;
 {
-let e5;
 let e6;
-e6 = BUILTIN;
-e5 = (e6)();
-a0 = e5;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
 }
 let a1;
 {
-let e7;
 let e8;
-e8 = a0;
-e7 = e8["_3"]();
-a1 = e7;
+let e9;
+e9 = a0;
+e8 = e9["_3"]();
+a1 = e8;
 }
 let a3;
 {
-let e9;
 let e10;
-e10 = a1;
 let e11;
-{
+e11 = a1;
 let e12;
-e12 = "strtag";
-e11 = e12;
-}
+{
 let e13;
-e13 = a2;
-e9 = e10["_1"](e11,e13);
-a3 = e9;
+e13 = "strtag";
+e12 = e13;
+}
+let e14;
+e14 = a2;
+e10 = e11["_1"](e12,e14);
+a3 = e10;
 }
 let a5;
 {
-let e14;
 let e15;
-e15 = a1;
 let e16;
-{
+e16 = a1;
 let e17;
-e17 = "numtag";
-e16 = e17;
-}
+{
 let e18;
-e18 = a4;
-e14 = e15["_1"](e16,e18);
-a5 = e14;
+e18 = "numtag";
+e17 = e18;
+}
+let e19;
+e19 = a4;
+e15 = e16["_1"](e17,e19);
+a5 = e15;
 }
 {
-let e19;
 let e20;
-e20 = a5;
 let e21;
-e21 = a3;
+e21 = a5;
 let e22;
+e22 = a3;
 let e23;
-e23 = a1;
-e22 = e23["_0"];
-e19 = { "\"num\"": e20, "\"str\"": e21, "\"type\"": e22 };
-e4 = e19;
+let e24;
+e24 = a1;
+e23 = e24["_0"];
+e20 = { "\"num\"": e21, "\"str\"": e22, "\"type\"": e23 };
+e5 = e20;
 }
-e0 = (e1)(e2,e3,e4);
+e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
     assert_eq!(js_sources[1], r#"let e0;
 let a0;
