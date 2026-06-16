@@ -7,14 +7,24 @@ use {
         },
         eval::{
             EResult,
-            Erb,
             dynamic_util::bind_via_target,
             typecheck_convert,
-            value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
+            value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_source_tagged_union::{
+                    SourceTaggedUnionData,
+                    r#const::TypeSourceTaggedUnionConst,
+                },
+            },
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
+            ConstKey,
             EvalRes,
             ExprContext,
             QExprId,
@@ -25,6 +35,7 @@ use {
         r#gen::{
             AspectBind,
             AspectFunction,
+            ScopeEntry,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_get,
             aspect_function_aspect_id,
@@ -33,13 +44,12 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
 
 pub(crate) struct TypeSourceTaggedUnionConstructorConst {
-    pub data: Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionData>,
+    pub data: Rc<SourceTaggedUnionData>,
     pub variant_index: usize,
 }
 
@@ -51,7 +61,7 @@ impl AspectBind for TypeSourceTaggedUnionConstructorConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -73,7 +83,7 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
                 loc,
                 type_: CodeDynamicType::NewObject(
                     CodeDynamicNewObject {
-                        fields: vec![(crate::langhelp::ConstKey::String(js_tag).to_str(), underlying_js)],
+                        fields: vec![(ConstKey::String(js_tag).to_str(), underlying_js)],
                     }
                 ),
             }));
@@ -84,7 +94,7 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
 impl Type for TypeSourceTaggedUnionConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(
-            crate::eval::value::type_any::r#const::ValueAnyConst {
+            ValueAnyConst {
                 inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
                     data: self.data.clone(),
                     variant_index: self.variant_index,
@@ -126,6 +136,6 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
 
 impl Value for TypeSourceTaggedUnionConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

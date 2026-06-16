@@ -16,14 +16,11 @@ use {
 
 #[test]
 fn test_00900define_interface() {
-    //! Define a "to_string" interface with a single method, create an "uppercase
-    //! string" data type that implements it, construct one, call to_string, and log.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx = new_gx([("main", SourceModule::V1(mb.seq(vec![
         mb.bind("make_upper", mb.lower(mb.seq(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-            // Create interface with a to_string method
             mb.bind("iface", mb.call(mb.field(mb.scope_use("d"), mb.str("interface")), mb.tuple(vec![]))),
             mb.bind(
                 "iface_meth",
@@ -33,10 +30,8 @@ fn test_00900define_interface() {
                 mb.field(mb.scope_use("iface_meth"), mb.str("impl")),
                 mb.tuple(vec![mb.scope_use("null"), mb.scope_use("string")]),
             ),
-            // Create data type with string underlying
             mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
             mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-            // Implement interface on data type
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
                 mb.tuple(
@@ -67,10 +62,8 @@ fn test_00900define_interface() {
                     ],
                 ),
             ),
-            // Return the constructor
             mb.field(mb.scope_use("ndr"), mb.str("new")),
         ]))),
-        // Create an instance and call to_string
         mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
         mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null())),
     ])))].into_iter().collect());
@@ -222,17 +215,11 @@ e3;"#);
 
 #[test]
 fn test_00910interface_cast() {
-    //! Like test_00900 but also defines a standalone `do_log` function that takes a
-    //! `to_string` interface argument, calls `.to_string()` on it, and logs the
-    //! result. The data type is passed to `do_log`, requiring an implicit cast from
-    //! the data type to the interface.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx = new_gx([("main", SourceModule::V1(mb.seq(vec![
-        // Lower block defines interface, data type, and function; returns exports
         mb.bind("defs", mb.lower(mb.seq(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-            // Create interface with a to_string method
             mb.bind("iface", mb.call(mb.field(mb.scope_use("d"), mb.str("interface")), mb.tuple(vec![]))),
             mb.bind(
                 "iface_meth",
@@ -242,10 +229,8 @@ fn test_00910interface_cast() {
                 mb.field(mb.scope_use("iface_meth"), mb.str("impl")),
                 mb.tuple(vec![mb.scope_use("null"), mb.scope_use("string")]),
             ),
-            // Create data type with string underlying
             mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
             mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-            // Implement interface on data type
             mb.call(
                 mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
                 mb.tuple(
@@ -276,7 +261,6 @@ fn test_00910interface_cast() {
                     ],
                 ),
             ),
-            // Define do_log: takes a to_string interface arg, calls .to_string(), logs result
             mb.bind("do_log_fn", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("do_log"))),
             mb.call(
                 mb.field(mb.scope_use("do_log_fn"), mb.str("impl")),
@@ -293,13 +277,10 @@ fn test_00910interface_cast() {
                     ],
                 ),
             ),
-            // Return exports (contains both "do_log" and "upper")
             mb.call(mb.field(mb.scope_use("d"), mb.str("build")), mb.tuple(vec![])),
         ]))),
-        // Extract do_log function and upper constructor from exports
         mb.bind("do_log", mb.field(mb.scope_use("defs"), mb.str("do_log"))),
         mb.bind("make_upper", mb.field(mb.scope_use("defs"), mb.str("upper"))),
-        // Call do_log with a new upper value - requires implicit cast to interface
         mb.call(mb.scope_use("do_log"), mb.tuple(vec![mb.call(mb.scope_use("make_upper"), mb.str("hello"))])),
     ])))].into_iter().collect());
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
@@ -489,8 +470,6 @@ e8;"#);
 
 #[test]
 fn test_00920interface_wrong_map_value_type() {
-    //! Using map(string, null) for impl_interface should be rejected because the
-    //! record values are Expr, not null.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx = new_gx([("main", SourceModule::V1(mb.seq(vec![mb.bind("make_upper", mb.lower(mb.seq(vec![
@@ -503,7 +482,6 @@ fn test_00920interface_wrong_map_value_type() {
         ),
         mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
         mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-        // Use map(string, null) — wrong value type, should be expr
         mb.call(
             mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
             mb.tuple(

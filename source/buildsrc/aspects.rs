@@ -468,6 +468,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             pub(crate) fn #id_fn() -> crate:: langhelp:: Unique {
                 crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
             }
+            #[allow(dead_code)]
             pub(
                 crate
             ) fn #get_fn(
@@ -482,6 +483,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                     crate:: invariant:: must_downcast_box::< Box < dyn #trait_name >>(out)
                 );
             }
+            #[allow(dead_code)]
             pub(
                 crate
             ) fn #get_maybe_fn(

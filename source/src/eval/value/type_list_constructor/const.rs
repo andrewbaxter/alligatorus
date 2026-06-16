@@ -1,6 +1,12 @@
 use {
     crate::{
-        eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+        eval::value::{
+            type_any::r#const::{
+                TypeAnyConst,
+                ValueAnyConst,
+            },
+            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+        },
         langhelp::{
             Aspect,
             Code,
@@ -20,6 +26,7 @@ use {
             ScopeEntry,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
+            aspect_type_get,
         },
     },
     std::{
@@ -36,7 +43,7 @@ impl Aspect for TypeListConstructorConst { }
 impl AspectFunction for TypeListConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         let arg_meta = argument.value.type_(xx, loc);
-        let aspect_type = match crate::r#gen::aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
+        let aspect_type = match aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {
                 v: None,
@@ -50,7 +57,7 @@ impl AspectFunction for TypeListConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(super::super::type_any::r#const::ValueAnyConst { inner: list_type }),
+            value: Rc::new(ValueAnyConst { inner: list_type }),
         })
     }
 }
@@ -94,6 +101,6 @@ impl Type for TypeListConstructorConst {
 
 impl Value for TypeListConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

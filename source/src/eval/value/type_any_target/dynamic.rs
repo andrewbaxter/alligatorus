@@ -1,8 +1,3 @@
-//! `TypeAnyTargetDynamic` — the v8/dynamic representation of a value impl'ing the
-//! builtin `target` interface. Parallels `TypeAnyDynamic` for `Rc<dyn Type>`: a
-//! `v8::External` wrapping an `Rc<dyn crate::r#gen::Target>`. Used as the dynamic type
-//! type of the `Push` impl for `Rc<dyn crate::r#gen::Target>`.
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::CodeDynamic,
@@ -14,10 +9,14 @@ use {
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                type_any::r#const::TypeAnyConst,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            },
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
             EResult,
             ExprContext,
@@ -33,11 +32,13 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectStackValueDynamic,
+            ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            builtin_target_iface_identity,
         },
     },
     std::{
@@ -56,7 +57,7 @@ impl AspectBind for TypeAnyTargetDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -94,7 +95,7 @@ impl Type for TypeAnyTargetDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::eval::value::type_source_interface::builtin_target_iface_identity() {
+        if *key == builtin_target_iface_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
@@ -122,6 +123,6 @@ impl Type for TypeAnyTargetDynamic {
 
 impl Value for TypeAnyTargetDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

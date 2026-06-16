@@ -1,10 +1,6 @@
-// ---------- CodeValueExtern ----------
-use crate::r#gen::code_value_extern_type_identity;
-
-// ---------- ExprContextPush ----------
-use crate::r#gen::expr_context_ref_type_identity;
 use {
     crate::{
+        builtin::ArtifactBuiltinDeserializer,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -12,11 +8,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
             TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -25,8 +18,19 @@ use {
             push::Push,
             from_v8_ref,
             to_v8,
+            value::{
+                type_any::r#const::TypeAnyConst,
+                type_code_source::TypeCodeStructDynamic,
+                type_value::dynamic::TypeValueDynamic,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         langhelp::{
+            Artifact,
+            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,
@@ -46,18 +50,24 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectStackValueDynamic,
+            CVE_EXTRACT_FN_SCOPE_ID,
+            CVE_GET_CODE_ENUM_FN_SCOPE_ID,
+            CVE_GET_VALUE_FN_SCOPE_ID,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
+            code_value_extern_type_identity,
+            expr_context_ref_type_identity,
         },
     },
     std::{
         any::Any,
         cell::RefCell,
-        mem,
+        collections::HashMap,
         rc::Rc,
     },
 };
@@ -65,12 +75,10 @@ use {
 pub(crate) struct CodeValueExtern(pub Rc<RefCell<Option<CodeValue>>>);
 
 impl CodeValueExtern {
-    /// Take the contained `CodeValue` out, panicking if it's been extracted already.
     pub fn into_inner(self) -> CodeValue {
         self.0.borrow_mut().take().expect("CodeValueExtern: already taken")
     }
 
-    /// Wrap a freshly-produced `CodeValue` in the opaque externalised form.
     pub fn wrap(cv: CodeValue) -> Self {
         CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
     }
@@ -93,7 +101,7 @@ impl Push for CodeValueExtern {
 }
 pub(crate) struct DeserializerCodeValueExtern;
 
-impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerCodeValueExtern {
+impl ArtifactBuiltinDeserializer for DeserializerCodeValueExtern {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -128,10 +136,7 @@ impl Push for ExprContextPush {
 }
 
 pub(crate) fn register_artifact_deserializer(
-    m:
-        &mut std
-        ::collections
-        ::HashMap<crate::langhelp::ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
+    m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>,
 ) {
     m.insert(TypeCodeValueExternDynamic::artifact_id(), Rc::new(DeserializerCodeValueExtern));
 }
@@ -162,27 +167,17 @@ impl AspectField for TypeCodeValueExternDynamic {
         return er_seq_cv!(loc, erb, {
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             let key_type = key.value.type_(xx, loc);
-            let aspect_string = erb.must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
 
-            // A `CodeValueExtern` wraps a whole `CodeValue` (= `{code, value}`), so the only
-            // two well-defined field accesses are `.code` and `.value`. Anything else is a
-            // source-level mistake. Defaulting to a generic v8 trampoline used to drive
-            // infinite recursion when the wrapped value's source-language type re-entered the
-            // same user `aspect_field` impl that emitted the access.
             if key_str == "code" {
-                // Materialize the inner CodeValue's `code.code` (Code_ enum) as a tagged-union JS
-                // object via `__cve_get_code_enum`. The resulting source-level value is typed as
-                // `TypeCodeStructDynamic` (whose only `.code` field is then identity — see that
-                // file). Skips the abstract intermediate `Code` struct representation:
-                // source-level `cve.code` already produces the matchable Code_ shape.
                 let call_code = CodeDynamic {
                     loc,
                     type_: CodeDynamicType::Call(CodeDynamicCall {
                         func: Box::new(CodeDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(
-                                CodeDynamicBindingUse { id: crate::eval::CVE_GET_CODE_ENUM_FN_SCOPE_ID, }
+                                CodeDynamicBindingUse { id: CVE_GET_CODE_ENUM_FN_SCOPE_ID, }
                             ),
                         }),
                         args: vec![self_code],
@@ -195,24 +190,18 @@ impl AspectField for TypeCodeValueExternDynamic {
                     },
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
-                        type_: Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic),
+                        type_: Rc::new(TypeCodeStructDynamic),
                     }),
                 });
             }
             if key_str == "value" {
-                // Emit `__cve_get_value(self_)`. Source typing is `TypeValueDynamic` — an opaque
-                // value handle with no `AspectField`. Any further `.<key>` on it is a
-                // compile-time error; this is intentional. To do anything useful with the
-                // returned value, callers go through an aspect interface (e.g. a source-level
-                // `aspect_consume_nodejs`) — mirroring how Rust uses `AspectConsumeDynamic` on a
-                // `dyn Value`.
                 let call_code = CodeDynamic {
                     loc,
                     type_: CodeDynamicType::Call(CodeDynamicCall {
                         func: Box::new(CodeDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(
-                                CodeDynamicBindingUse { id: crate::eval::CVE_GET_VALUE_FN_SCOPE_ID, }
+                                CodeDynamicBindingUse { id: CVE_GET_VALUE_FN_SCOPE_ID, }
                             ),
                         }),
                         args: vec![self_code],
@@ -225,7 +214,7 @@ impl AspectField for TypeCodeValueExternDynamic {
                     },
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
-                        type_: Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic),
+                        type_: Rc::new(TypeValueDynamic),
                     }),
                 });
             }
@@ -238,8 +227,8 @@ impl AspectField for TypeCodeValueExternDynamic {
             return None;
         };
         match s.as_str() {
-            "code" => Some(Rc::new(crate::eval::value::type_code_source::TypeCodeStructDynamic)),
-            "value" => Some(Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)),
+            "code" => Some(Rc::new(TypeCodeStructDynamic)),
+            "value" => Some(Rc::new(TypeValueDynamic)),
             _ => None,
         }
     }
@@ -283,10 +272,6 @@ impl Type for TypeCodeValueExternDynamic {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        // A `CodeValueExtern` can be unwrapped to any dest type whose owned
-        // `Rc<dyn Type>` we can construct. `as_ T` emits a `__cve_extract` call that
-        // returns the inner CV's raw JS value, and we re-type the result as the requested
-        // `T`.
         type_.clone_rc().is_some()
     }
 
@@ -322,7 +307,7 @@ impl Type for TypeCodeValueExternDynamic {
                 func: Box::new(CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse { id: crate::eval::CVE_EXTRACT_FN_SCOPE_ID },
+                        CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID },
                     ),
                 }),
                 args: vec![self_code],
@@ -344,14 +329,14 @@ impl Type for TypeCodeValueExternDynamic {
         "CodeValueExtern".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         Self::build_type_artifact()
     }
 }
 
 impl Value for TypeCodeValueExternDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 pub(crate) struct TypeExprContextPushDynamic;
@@ -435,17 +420,10 @@ impl Type for TypeExprContextPushDynamic {
 
 impl Value for TypeExprContextPushDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-/// `Push` for `CodeValue` itself — the v8 form of a `CodeValue` return is
-/// the externalised `CodeValueExtern`. `from_v8` decodes the CVE and takes its
-/// inner `CodeValue`; `into_v8` wraps a fresh `CodeValue` as a CVE and emits it.
-/// This lets methods like `ScopeEntry::use_` keep their original `-> CodeValue`
-/// signature while their source-side `ret_type` is the CVE's dynamic Type
-/// (`TypeCodeValueExternDynamic`), derived automatically via
-/// `<CodeValue as Push>::dynamic_type()`.
 impl Push for CodeValue {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cve = <CodeValueExtern as Push>::from_v8(scope, value);

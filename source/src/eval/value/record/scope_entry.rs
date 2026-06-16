@@ -11,6 +11,7 @@ use {
             Code_,
             ConstKey,
             EvalRes,
+            ExprContext,
             ExprErr,
             QExprId,
             ScopeEntryId,
@@ -29,9 +30,6 @@ use {
     },
 };
 
-/// Scope entry for a bound record. Maps each key to one of: a DynamicScopeEntry
-/// (for fields that were dynamic-only), a ScopeEntry (for fields that were fully
-/// evaluated), or an error.
 pub(crate) enum RecordScopeField {
     Error(Vec<ExprErr>),
     Dynamic(Rc<dyn Type>),
@@ -44,7 +42,7 @@ pub(crate) struct ScopeEntryRecordDynamic {
 }
 
 impl ScopeEntry for ScopeEntryRecordDynamic {
-    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
                 loc: loc,
@@ -63,16 +61,13 @@ impl ScopeEntry for ScopeEntryRecordDynamic {
     }
 }
 
-/// ScopeEntry adapter for bound records (used by bind_dynamic when
-/// record has no JS code). On use_, constructs a Record from the stored scope
-/// entries.
 pub(crate) struct ScopeEntryRecordBound {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
     pub js_key: Option<ScopeEntryId>,
 }
 
 impl ScopeEntry for ScopeEntryRecordBound {
-    fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let has_dynamic = self.fields.values().any(|f| matches!(f, RecordScopeField::Dynamic(_)));
         let (use_code, base) = if has_dynamic {
             let js_key = self.js_key.expect("ScopeEntryRecordDynamic with dynamic fields must have js_key");

@@ -1,6 +1,7 @@
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::value::value_number::r#const::ValueNumberConst,
         langhelp::{
             ArtifactIdBuiltin,
             Code,
@@ -42,7 +43,7 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::value_number::r#const::ValueNumberConst(n)) as Rc<dyn Value>,
+                value: Rc::new(ValueNumberConst(n)) as Rc<dyn Value>,
             }),
             None => EvalRes::err(loc, "Expected number data for number type".to_string()),
         }
@@ -72,7 +73,7 @@ impl ArtifactBuiltinDeserializer for DeserializerDynamic {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::value_number::r#const::ValueNumberConst(n)),
+            value: Rc::new(ValueNumberConst(n)),
         })
     }
 }

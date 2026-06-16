@@ -2,19 +2,30 @@ use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -31,6 +42,7 @@ use {
             AspectInitialBind,
             AspectStackValueDynamic,
             AspectTaggedUnion,
+            AspectType,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -38,6 +50,7 @@ use {
             aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
+            aspect_type_aspect_id,
         },
     },
     std::{
@@ -59,7 +72,7 @@ impl AspectBind for TypeSourceTaggedUnionConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -70,7 +83,7 @@ impl AspectBindDynamic for TypeSourceTaggedUnionConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -106,12 +119,12 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
 }
 
 impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
-    fn variants(&self) -> Vec<(crate::langhelp::ConstKey, String, Rc<dyn Type>)> {
+    fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
         self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
     }
 }
 
-impl crate::r#gen::AspectType for TypeSourceTaggedUnionConst {
+impl AspectType for TypeSourceTaggedUnionConst {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
     }
@@ -120,7 +133,7 @@ impl crate::r#gen::AspectType for TypeSourceTaggedUnionConst {
 impl Type for TypeSourceTaggedUnionConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(
-            crate::eval::value::type_any::r#const::ValueAnyConst {
+            ValueAnyConst {
                 inner: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
             },
         )
@@ -172,11 +185,11 @@ impl Type for TypeSourceTaggedUnionConst {
                 ),
             );
         }
-        if *key == crate::r#gen::aspect_type_aspect_id() {
+        if *key == aspect_type_aspect_id() {
             return Some(
                 Box::new(
                     Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
-                        Box<dyn crate::r#gen::AspectType>,
+                        Box<dyn AspectType>,
                 ),
             );
         }
@@ -188,26 +201,21 @@ impl Type for TypeSourceTaggedUnionConst {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        // Cast from another value to this tagged union type — accept any source whose
-        // runtime structure already matches (the JS object representation is the same; we
-        // just rewrap the value with the more specific type).
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &self.data.identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
-                    source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                value: Rc::new(ValueDynamic {
+                    source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
                 }),
             });
         }
 
-        // From AnyType (or other loose typing): trust the caller — the runtime value is
-        // expected to be a JS object that matches this tagged union's structure.
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
-                source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
             }),
         })
@@ -217,16 +225,13 @@ impl Type for TypeSourceTaggedUnionConst {
         format!("tagged_union")
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
-        // For now we serialize via the ref-form deserializer (loses the specific
-        // tagged-union's variants/identity at round-trip; proper per-tagged-union
-        // artifact would mirror the per-data-type artifact pattern).
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         super::dynamic::TypeSourceTaggedUnionRefDynamic::build_type_artifact()
     }
 }
 
 impl Value for TypeSourceTaggedUnionConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

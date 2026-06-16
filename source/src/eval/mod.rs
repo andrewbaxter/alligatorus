@@ -13,11 +13,6 @@ pub mod pull_scope_dispatch;
 pub mod pull_type_dispatch;
 pub mod value;
 
-// `push_fns(fn …)` invocations are migrated to `build.rs::push_fns()`;
-// the generated `gen_fn_<name>(dynamic_scope)` helpers live in this module's item
-// scope so they see `Expr`, `const_eval`, `Gc`, `V8LogStore`, etc. via mod.rs's
-// imports.
-use crate::r#gen::ScopeEntry;
 use {
     core::mem,
     crate::{
@@ -40,10 +35,47 @@ use {
             EXPR_PREFIX,
             TAG_VAR,
         },
-        eval::dynamic_util::wrap_with_carry,
-        invariant::must_downcast_ref,
+        eval::{
+            aspect::AspectPull,
+            code_value_extern::{
+                TypeCodeValueExternDynamic,
+                TypeExprContextPushDynamic,
+            },
+            dynamic_util::wrap_with_carry,
+            expr::make_lit_value_once,
+            pull_scope_dispatch::{
+                PullScopeEntry,
+                PullTarget,
+            },
+            value::{
+                type_pull::TypePull,
+                type_source_data_type::{
+                    SourceDataTypeRef,
+                    r#const::TypeSourceDataTypeConst,
+                    dynamic::TypeSourceDataTypeDynamic,
+                },
+                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+                type_source_function::r#const::TypeSourceFunctionConst,
+                type_source_interface::{
+                    SourceInterfaceRef,
+                    r#const::TypeSourceInterfaceConst,
+                },
+                type_source_tagged_union::{
+                    SourceTaggedUnionRef,
+                    r#const::TypeSourceTaggedUnionConst,
+                },
+                type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
+                value_pull::dynamic::ValuePull,
+            },
+        },
+        invariant::{
+            must_downcast_box,
+            must_downcast_ref,
+        },
         langhelp::{
+            Aspect,
             Code,
+            CodeDyn,
             CodeValue,
             Code_,
             CompileId,
@@ -53,7 +85,6 @@ use {
             CompileResultEntry,
             ConstKey,
             Counter,
-            DefSetId,
             EResult,
             EvalContext,
             EvalRes,
@@ -69,12 +100,41 @@ use {
             ScopeEntryId,
             SourceId,
             Type,
+            Unique,
             Value,
             downcast_value,
             make_builtin_deserializers,
         },
         r#gen::{
-            AspectLiftDynamic,
+            ASPECT_COMPILE_SCOPE_ID,
+            ASPECT_LOOKUP_FN_SCOPE_ID,
+            CAST_VALUE_COMPILE_SCOPE_ID,
+            CAST_VALUE_FN_SCOPE_ID,
+            CVE_EXTRACT_FN_SCOPE_ID,
+            CVE_GET_CODE_ENUM_FN_SCOPE_ID,
+            CVE_GET_VALUE_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
+            DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+            DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID,
+            FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
+            INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
+            RECORD_TO_TYPE_FN_SCOPE_ID,
+            STAGE_FN_SCOPE_ID,
+            TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+            TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID,
+            TUPLE_TO_TYPE_FN_SCOPE_ID,
+            UNIQUE_EQ_FN_SCOPE_ID,
+            VALUE_GET_TYPE_FN_SCOPE_ID,
+            AspectField,
+            ScopeEntry,
+            Target,
+            TypeRefPush,
+            TypeTypeRefPushDynamic,
             aspect_artifact_get,
             aspect_bind_dynamic_get_maybe,
             aspect_bind_get,
@@ -83,8 +143,10 @@ use {
             aspect_field_get,
             aspect_function_get,
             aspect_initial_bind_get,
+            aspect_initial_bind_get_maybe,
             aspect_iterable_get,
             aspect_lift_dynamic_get,
+            aspect_lower_dynamic_get,
             aspect_operator_add_get,
             aspect_operator_eq_get,
             aspect_operator_lt_get,
@@ -93,14 +155,19 @@ use {
             aspect_string_const_get_maybe,
             aspect_tagged_union_get,
             aspect_type_get,
+            gen_fn_list,
+            gen_fn_map,
+            gen_fn_option,
+            gen_register_builtin_aspect_ids,
+            gen_register_builtin_fns,
+            gen_register_builtin_interfaces,
         },
+        source_module_to_module,
         syntax::{
             ExprId,
             SourceSpecAbsolute,
         },
     },
-    definition_set::DefinitionSet,
-    dumpster::unsync::Gc,
     push::Push,
     expr::{
         Expr,
@@ -143,7 +210,6 @@ use {
             Tuple,
             TupleElement,
         },
-        type_function::dynamic::TypeFunctionDynamic,
         type_null::dynamic::TypeNullDynamic,
         type_number::dynamic::TypeNumberDynamic,
         type_string::dynamic::TypeStringDynamic,
@@ -151,36 +217,9 @@ use {
     },
 };
 
-pub(crate) use crate::r#gen::ASPECT_LOOKUP_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::CAST_VALUE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::CVE_EXTRACT_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::CVE_GET_CODE_ENUM_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::CVE_GET_VALUE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_INSTANCE_TO_CODE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::INTERFACE_REF_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::RECORD_TO_TYPE_FN_SCOPE_ID;
-use crate::r#gen::STAGE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::TUPLE_TO_TYPE_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::UNIQUE_EQ_FN_SCOPE_ID;
-pub(crate) use crate::r#gen::VALUE_GET_TYPE_FN_SCOPE_ID;
-
-/// Build the `arg` record type for a builtin-interface impl method on the new
-/// aspect_function / aspect_field / scope_entry / target kinds. Each field is a
-/// `CodeValueExtern` wrapping the corresponding Rust trait param's CodeValue (or
-/// other appropriate type).
 pub(crate) fn build_aspect_arg_record_type(field_names: &[&str]) -> Rc<dyn Type> {
     let mut fields = std::collections::BTreeMap::new();
-    let cve_type: Rc<dyn Type> = Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic);
+    let cve_type: Rc<dyn Type> = Rc::new(TypeCodeValueExternDynamic);
     for name in field_names {
         fields.insert(ConstKey::String(name.to_string()), value::record::RecordField::Dynamic(cve_type.clone()));
     }
@@ -190,10 +229,6 @@ pub(crate) fn build_aspect_arg_record_type(field_names: &[&str]) -> Rc<dyn Type>
     })
 }
 
-/// Build the scope a def-set method body sees: builtins + type-ref bindings
-/// (`null`, `string`, `number`, `expr`). Same shape `eval()` constructs for its
-/// impl-compilation pass; factored out so import-side `from_serial` can re-compile
-/// an imported interface impl with the same scope.
 pub(crate) fn build_builtin_scope(
     xx: &ExprContext,
     loc: QExprId,
@@ -232,24 +267,22 @@ pub(crate) fn build_builtin_scope(
     Ok(scope_entries)
 }
 
-/// `arg = { xx, source_type, cv }` as seen inside builtin-`type` interface method
-/// bodies. Used to typecheck the user's impl_expr.
 pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     let mut fields = std::collections::BTreeMap::new();
     fields.insert(
         ConstKey::String("xx".to_string()),
         value::record::RecordField::Dynamic(
-            Rc::new(crate::eval::code_value_extern::TypeExprContextPushDynamic) as Rc<dyn Type>,
+            Rc::new(TypeExprContextPushDynamic) as Rc<dyn Type>,
         ),
     );
     fields.insert(
         ConstKey::String("source_type".to_string()),
-        value::record::RecordField::Dynamic(Rc::new(crate::r#gen::TypeTypeRefPushDynamic) as Rc<dyn Type>),
+        value::record::RecordField::Dynamic(Rc::new(TypeTypeRefPushDynamic) as Rc<dyn Type>),
     );
     fields.insert(
         ConstKey::String("cv".to_string()),
         value::record::RecordField::Dynamic(
-            Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic) as Rc<dyn Type>,
+            Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>,
         ),
     );
     Rc::new(value::record::Record {
@@ -258,19 +291,13 @@ pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     })
 }
 
-pub(crate) use crate::r#gen::builtin_type_iface_identity;
-pub(crate) use crate::r#gen::builtin_value_iface_identity;
-
-/// Walk a `CodeDynamic` tree looking for a `BindingUse(target_id)`. Used so
-/// `outer_self`-style scope bindings only emit their `let … = this;` shim when the
-/// body actually references them.
 fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
     match &code.type_ {
         CodeDynamicType::BindingUse(b) => b.id == target_id,
         CodeDynamicType::BindingSet(b) => code_uses_binding(b.value.as_ref(), target_id),
         CodeDynamicType::Block(b) => b.entries.iter().any(|e| match e {
-            crate::code_dynamic::CodeDynamicBlockEntry::Code(c) => code_uses_binding(c, target_id),
-            crate::code_dynamic::CodeDynamicBlockEntry::Bind(b) => code_uses_binding(&b.value, target_id),
+            CodeDynamicBlockEntry::Code(c) => code_uses_binding(c, target_id),
+            CodeDynamicBlockEntry::Bind(b) => code_uses_binding(&b.value, target_id),
         }),
         CodeDynamicType::Call(c) => code_uses_binding(&c.func, target_id) ||
             c.args.iter().any(|a| code_uses_binding(a, target_id)),
@@ -307,13 +334,9 @@ fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
     }
 }
 
-/// `CodeDyn` wrapper around a v8 instance of a source data type that implements
-/// the builtin `code_dyn` interface. Parallel to `ValuePull` (for the
-/// `value` interface) and `TypePull` (for the `type` interface). Produced
-/// by the `__data_instance_to_code` rust-in-v8 callback.
 pub(crate) struct CodePull;
 
-impl crate::langhelp::CodeDyn for CodePull { }
+impl CodeDyn for CodePull { }
 
 pub(crate) fn compile_importid(
     fx: &Arc<GlobalContext>,
@@ -341,12 +364,7 @@ pub(crate) fn compile_importid(
         builtin_scope_entries: RefCell::new(Vec::new()),
     });
 
-    // Step 1: Count lower excess and wrap root in stage layers Root is treated as
-    // implicit stage (stage_depth=1)
     fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
-        //! Walk the expression tree counting stage/lower nesting depths. Returns the max
-        //! (lower_depth - stage_depth) where lower_depth > stage_depth. This tells us how
-        //! many extra `stage` wrappers are needed at the root.
         fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
             match &expr.r#type {
                 Expr_::Lower(e) => {
@@ -436,14 +454,6 @@ pub(crate) fn compile_importid(
         };
     }
 
-    // Step 2: Repeatedly eval until root is no longer a Stage, then once more.
-    //
-    // The shared v8 isolate (created in `cix.isolate`) spans all stages — slots and
-    // builtin globals are set per-stage but `v8::Global<...>` handles captured during
-    // one stage remain valid in later stages. This sidesteps v8's strict
-    // reverse-creation drop ordering for multiple `OwnedIsolate` instances, which
-    // would otherwise be triggered by per-stage isolates outliving their stage frames
-    // via persistent bundles.
     let mut all_logs = Vec::new();
     loop {
         let is_stage = matches!(&root_expr.r#type, Expr_::Stage(_));
@@ -458,7 +468,6 @@ pub(crate) fn compile_importid(
         let eval_value = eval_result.value;
         all_logs.extend(eval_result.logs);
         if !is_stage {
-            // This was the final eval (root was not a stage) Serialize result
             let logs = all_logs;
             let ex = Rc::new(EvalContext {
                 ix: cix.clone(),
@@ -500,7 +509,6 @@ pub(crate) fn compile_importid(
             };
         }
 
-        // Result is an Expr (from stage eval) - use it as next expression
         let next_expr = Rc::try_unwrap(downcast_value::<Expr>(eval_value)).ok().expect("Stage eval Expr: Rc not unique");
         root_expr = next_expr;
     }
@@ -621,7 +629,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     Expr_::Lower(e) => {
                         let new_ld = ld + 1;
                         if new_ld - sd == 1 {
-                            // Matched! Collect the inner expression. Don't descend further.
                             out.push(&e.expr);
                         } else {
                             find_matched_lowers_inner(&e.expr, sd, new_ld, out);
@@ -709,12 +716,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
             }
 
-            // Like `find_matched_lowers_inner` but for Pending grafts at the current
-            // stage level (sd == 0, not nested inside another `Stage`). Each graft's
-            // inner is const-evaluated against the surrounding `xx`; the resulting CV is
-            // handed to v8 via `__stage`, which substitutes the `Pending` graft for an
-            // `Evaluated(cv)` in the staged tree. Evaluated grafts are skipped — they
-            // already carry a CV that the v8-side stage callback will preserve.
             fn find_matched_grafts_inner<'a>(expr: &'a Expr, sd: usize, out: &mut Vec<&'a Expr>) {
                 match &expr.r#type {
                     Expr_::Graft(g) => match g {
@@ -832,15 +833,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
         },
         Expr_::Lower(e) => {
-            // Transparently evaluate inner expression
             return const_eval(xx, &e.expr);
         },
         Expr_::Graft(e) => {
-            // Stage processing rewrites each Pending graft (at the current stage level) to
-            // an Evaluated graft carrying the CV that the inner expression produced against
-            // the surrounding xx. `const_eval` just returns the stored CV. A Pending graft
-            // here means stage processing never reached it — graft has no meaning outside a
-            // stage and `const_eval` must not evaluate its inner.
             return match e {
                 expr::ExprGraft::Evaluated(cv) => EvalRes::ok(cv.clone()),
                 expr::ExprGraft::Pending(_) => EvalRes::err(
@@ -954,7 +949,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let base_type = base.value.type_(xx, expr.loc);
             let iterable = erb.must_er(aspect_iterable_get(xx, expr.loc, base_type.as_ref()))?;
 
-            // Create child scope with element bound, then eval body
             let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             let child_scope = Rc::new(Scope {
                 values: RefCell::new(HashMap::new()),
@@ -983,7 +977,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let tagged_union = erb.must_er(aspect_tagged_union_get(xx, expr.loc, base_type.as_ref()))?;
             let variants = tagged_union.variants();
 
-            // Validate case tags against variant tags
             let mut case_tags: Vec<ConstKey> = Vec::new();
             for case in &e.cases {
                 let cond_cv = erb.must_er(const_eval(xx, &case.condition))?;
@@ -994,7 +987,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 case_tags.push(tag);
             }
 
-            // Check exhaustiveness
             let is_exhaustive = variants.iter().all(|(vt, _, _)| case_tags.contains(vt));
             if !is_exhaustive && e.fallback.is_none() {
                 for (variant_tag, _, _) in &variants {
@@ -1007,7 +999,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 return erb.err_new("Exhaustive match must not have a fallback");
             }
 
-            // Delegate code generation to target
             let mut cases = Vec::new();
             for (i, case) in e.cases.iter().enumerate() {
                 let tag = &case_tags[i];
@@ -1028,9 +1019,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let (source_id, source_module) = erb.must_res(xx.vx.ix.gx.sources.get(source_spec.clone()))?;
             let compile_id = CompileId(xx.import_state.get(), source_id);
 
-            // Check if already compiling/compiled; spawn thread if new. (v8 requires each
-            // isolate be entered by at most one thread, so the imported module's compile runs
-            // on its own thread.)
             let entry = {
                 let mut results = xx.vx.ix.gx.compile_results.lock().unwrap();
                 if let Some(entry) = results.get(&compile_id) {
@@ -1049,7 +1037,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                             *lock.lock().unwrap() = true;
                             cvar.notify_one();
                         }
-                        let module = crate::source_module_to_module(source_id, &source_module);
+                        let module = source_module_to_module(source_id, &source_module);
                         let result = compile_importid(&gx, import_state, module, vec![]);
                         *write_guard = Some(Ok(result));
                     });
@@ -1067,13 +1055,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 gx: xx.vx.ix.gx.clone(),
             });
 
-            // Imports of data types that implement the builtin `type` interface must resolve
-            // eagerly against the importer's `ExprContext` — re-compiling each interface
-            // impl's `impl_expr` in this isolate (so its captured externals land in this
-            // compile's `ex.externals`) and running an eager v8 script that defines the
-            // methods and constructs the instance object requires access to this compile's v8
-            // scope and the same builtin scope entries the originating compile saw. Other
-            // imports use the lazy proxy as before, preserving existing test fixtures.
             if state.imported_needs_v8_bundle() {
                 return Ok(state.resolve(xx));
             }
@@ -1089,7 +1070,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
-            // Try constant folding first: check if all conditions resolve to constant bools
             let mut conditions_evaluated = Vec::new();
             let mut all_const = true;
             for branch in &e.conditions {
@@ -1104,7 +1084,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
             }
             if all_const {
-                // Constant folding: find the first true branch
                 for (val, _cond, body) in &conditions_evaluated {
                     if *val {
                         let body_cv = erb.must_er(const_eval(xx, body))?;
@@ -1112,7 +1091,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     }
                 }
 
-                // No true branch; use else or null
                 if let Some(else_expr) = &e.else_ {
                     let else_cv = erb.must_er(const_eval(xx, else_expr))?;
                     return Ok(else_cv);
@@ -1125,7 +1103,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     value: Rc::new(ValueNullConst),
                 });
             } else {
-                // Delegate code generation to target
                 let conditions: Vec<(CodeValue, &Expr)> =
                     conditions_evaluated.into_iter().map(|(_, cond, body)| (cond, body as &Expr)).collect();
                 let v = erb.must_er(xx.target.if_(xx, expr.loc, conditions, e.else_.as_deref(),))?;
@@ -1146,7 +1123,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
     }
 }
 
-/// EvalResBuilder
 pub(crate) struct Erb {
     pub(crate) errors: Vec<ExprErr>,
     pub(crate) loc: QExprId,
@@ -1238,11 +1214,6 @@ fn eval(
     let dynamic_scope_context2 = &mut v8::ContextScope::new(&mut dynamic_scope_handle2, dynamic_scope_context);
     tc_scope!(let dynamic_scope, dynamic_scope_context2);
 
-    // Install the active v8 scope on EvalContext as a raw `NonNull`. Anyone reaching
-    // v8 from `const_eval` (the `pull_*_v8` dispatch paths in `pull_type_dispatch`)
-    // reads this and re-borrows. A drop guard clears it on `eval()` exit (early
-    // returns included) so a stale pointer can't outlive this function via
-    // Rc-shared `EvalContext`.
     {
         let scope_ref: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = &mut **dynamic_scope;
         let scope_ptr = std::ptr::NonNull::from(scope_ref);
@@ -1263,7 +1234,7 @@ fn eval(
 
     let _v8_refs_guard = V8RefsGuard(&ex);
     let root_loc = expr.loc;
-    let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
+    let target: Rc<dyn Target> = Rc::new(TargetDynamic);
     let scope = Rc::new(Scope {
         values: RefCell::new(HashMap::new()),
         parent: None,
@@ -1275,15 +1246,10 @@ fn eval(
         target: target.clone(),
     });
 
-    // First stage registers builtin v8 closures on the (now-persistent) context's
-    // global; later stages reuse them. ScopeEntry/scope.values are rebuilt every
-    // stage because each stage's top-level `Scope` is fresh.
     let register_v8 = !cix.builtins_registered.get();
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
 
-    // All `push_fns()` entries registered through this generated loop — adding a
-    // `PushFnSpec` automatically gets it registered.
-    crate::r#gen::gen_register_builtin_fns(
+    gen_register_builtin_fns(
         &xx,
         root_loc,
         register_v8,
@@ -1291,7 +1257,7 @@ fn eval(
         &scope,
         &mut builtin_scope_entries,
     )?;
-    crate::r#gen::gen_register_builtin_interfaces(
+    gen_register_builtin_interfaces(
         &xx,
         root_loc,
         register_v8,
@@ -1301,7 +1267,6 @@ fn eval(
         import_state,
     )?;
 
-    // Type references (static scope entries, no JS representation)
     for (
         key,
         type_ref,
@@ -1315,10 +1280,6 @@ fn eval(
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
         ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
     ] {
-        // Type-of-types scope entry: value is `ValueAnyConst` carrying the
-        // `Rc<dyn Type>`. Meta-type is `TypeAnyConst`, so cast to `any`, consume-dynamic,
-        // etc. dispatch through `TypeAnyConst` which extracts the inner type via
-        // `AspectType` (infallible downcast to `ValueAnyConst`).
         let cv = CodeValue {
             code: Code {
                 loc: root_loc,
@@ -1331,9 +1292,8 @@ fn eval(
         let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
     }
-    crate::r#gen::gen_register_builtin_aspect_ids(register_v8, dynamic_scope, &scope, &mut builtin_scope_entries);
+    gen_register_builtin_aspect_ids(register_v8, dynamic_scope, &scope, &mut builtin_scope_entries);
 
-    // list/map constructors: jswrap fns for v8 with constructor types for half-eval
     for (
         key,
         constructor_type,
@@ -1342,17 +1302,17 @@ fn eval(
         (
             "list",
             Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst) as Rc<dyn Type>,
-            crate::r#gen::gen_fn_list(dynamic_scope),
+            gen_fn_list(dynamic_scope),
         ),
         (
             "map",
             Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst) as Rc<dyn Type>,
-            crate::r#gen::gen_fn_map(dynamic_scope),
+            gen_fn_map(dynamic_scope),
         ),
         (
             "option",
             Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst) as Rc<dyn Type>,
-            crate::r#gen::gen_fn_option(dynamic_scope),
+            gen_fn_option(dynamic_scope),
         ),
     ] {
         if register_v8 {
@@ -1370,44 +1330,28 @@ fn eval(
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
     }
 
-    // `aspect` — the source-level builtin function for aspect lookup. Pure
-    // compile-time dispatch: `TypeFunctionAspectDynamic::call` emits the JS code that
-    // does the runtime lookup, so there's no v8-side function to register here (no
-    // `dynamic_wrap!` companion). The compile-time scope entry is enough.
     {
         let aspect_type: Rc<dyn Type> = Rc::new(value::type_function_aspect::dynamic::TypeFunctionAspectDynamic);
         let ib = aspect_initial_bind_get(&xx, root_loc, aspect_type.as_ref()).into_res()?;
-        builtin_scope_entries.push(("aspect_lookup".to_string(), crate::r#gen::ASPECT_COMPILE_SCOPE_ID, aspect_type));
+        builtin_scope_entries.push(("aspect_lookup".to_string(), ASPECT_COMPILE_SCOPE_ID, aspect_type));
         scope
             .values
             .borrow_mut()
-            .insert(ConstKey::String("aspect_lookup".to_string()), ib.initial_bind(crate::r#gen::ASPECT_COMPILE_SCOPE_ID));
+            .insert(ConstKey::String("aspect_lookup".to_string()), ib.initial_bind(ASPECT_COMPILE_SCOPE_ID));
     }
 
-    // `cast_value` — source-level helper to unwrap an opaque `Rc<dyn Value>` (e.g.
-    // `cve.value`) at a known user-defined data type. Same shape as `aspect_lookup`:
-    // compile-time dispatch via `TypeFunctionCastValueDynamic` emits the JS that
-    // calls `__cast_value`.
     {
         let cast_value_type: Rc<dyn Type> =
             Rc::new(value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic);
         let ib = aspect_initial_bind_get(&xx, root_loc, cast_value_type.as_ref()).into_res()?;
-        builtin_scope_entries.push(("cast_value".to_string(), crate::r#gen::CAST_VALUE_COMPILE_SCOPE_ID, cast_value_type));
+        builtin_scope_entries.push(("cast_value".to_string(), CAST_VALUE_COMPILE_SCOPE_ID, cast_value_type));
         scope
             .values
             .borrow_mut()
-            .insert(ConstKey::String("cast_value".to_string()), ib.initial_bind(crate::r#gen::CAST_VALUE_COMPILE_SCOPE_ID));
+            .insert(ConstKey::String("cast_value".to_string()), ib.initial_bind(CAST_VALUE_COMPILE_SCOPE_ID));
     }
 
     *cix.builtin_scope_entries.borrow_mut() = builtin_scope_entries.clone();
-    // Register __stage v8 function. Signature:
-    //   __stage(tree, lower_count, lift1, val1, …, graft_val1, graft_val2, …)
-    // After `lower_count`, the next `lower_count` arg pairs are lowers; any
-    // remaining single args are graft CV cells. For a lower: if lift is null, val is
-    // already a StagedExprCell external; if lift is a StageLiftCell external, val is
-    // a raw v8 value to lift. For a graft: the arg is a v8 external pointing at a
-    // `Rc<RefCell<Option<CodeValue>>>` cell whose contained CV replaces the matched
-    // `ExprGraft::Pending` node with `ExprGraft::Evaluated(cv)`.
     {
         fn stage_callback<
             's,
@@ -1434,7 +1378,6 @@ fn eval(
                 let val_arg = args.get(i + 1);
                 i += 2;
                 if lift_arg.is_null_or_undefined() {
-                    // Already a StagedExprCell external
                     let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
                     let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
                     if (value.as_ref() as &dyn Any).is::<Expr>() {
@@ -1447,10 +1390,6 @@ fn eval(
                         values.push(StageLowerValue::Value(value));
                     }
                 } else {
-                    // Lower the raw v8 value. Lower behaves like lift, but for types whose lift
-                    // finalizes the def-set (data-type ref/constructor, iface ref), lower omits the
-                    // finalization — staging may reference sibling def-set members that haven't had
-                    // impls set yet.
                     let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
                     let lift_xx = ExprContext {
                         vx: lift_cell.vx.clone(),
@@ -1459,7 +1398,7 @@ fn eval(
                         target: lift_cell.target.clone(),
                     };
                     let lower =
-                        crate::r#gen::aspect_lower_dynamic_get(
+                        aspect_lower_dynamic_get(
                             &lift_xx,
                             lift_cell.loc,
                             lift_cell.source_type.as_ref(),
@@ -1471,9 +1410,6 @@ fn eval(
                 }
             }
 
-            // After lowers come graft args — one v8 external per matched graft, each
-            // pointing at an `Rc<RefCell<Option<CodeValue>>>` cell whose contained CV
-            // replaces the corresponding `ExprGraft::Pending` with `ExprGraft::Evaluated`.
             let mut graft_values: Vec<CodeValue> = Vec::new();
             while i < args.length() {
                 let graft_arg = args.get(i);
@@ -1484,10 +1420,6 @@ fn eval(
                 graft_values.push(cv);
             }
 
-            /// Clone an expression tree, replacing Lower nodes at net depth 1 (lower_depth -
-            /// stage_depth == 1) with Expr values from the lower iterator, and replacing
-            /// `Pending` graft nodes at the current stage level (sd == 0) with
-            /// `Evaluated(cv)` from the graft iterator.
             fn clone_with_lower_substitutions(
                 expr: &Expr,
                 sd: usize,
@@ -1503,7 +1435,7 @@ fn eval(
                                 StageLowerValue::Expr(expr_val) => expr_val,
                                 StageLowerValue::Value(value) => Expr {
                                     loc: expr.loc,
-                                    r#type: Expr_::Literal(crate::eval::expr::make_lit_value_once(value)),
+                                    r#type: Expr_::Literal(make_lit_value_once(value)),
                                 },
                             }
                         } else {
@@ -1705,9 +1637,6 @@ fn eval(
         },
     };
 
-    // Compile definition set implementations Collect function data first to release
-    // the borrow on definition_sets, since eval_half may trigger function calls that
-    // re-borrow it.
     struct DefFuncInfo {
         arg_type: Rc<dyn Type>,
         impl_expr_ast: Rc<dyn Value>,
@@ -1722,9 +1651,6 @@ fn eval(
         for ds in sets.iter() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.impl_expr.borrow().is_none() {
-                    // Either compiled in an earlier stage of this compile (v8 closure persists on the
-                    // shared `v8_context` global) or imported from another compile (compiled_js needs
-                    // emitting in this stage).
                     if let Some(js) = func_data.compiled_js.borrow().clone() {
                         precompiled_def_funcs.push(js);
                     }
@@ -1747,14 +1673,10 @@ fn eval(
         infos
     };
 
-    // (factored out: see top-level `build_cast_arg_record_type` and
-    // `build_builtin_scope` below — used here for compiling def-set bodies, and from
-    // import-side `from_serial` for re-compiling imported interface impls.)
     let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic, Vec<(ScopeEntryId, External)>)> = vec![];
     for info in &def_func_infos {
         let impl_expr_ast = must_downcast_ref::<Expr>(info.impl_expr_ast.as_ref());
 
-        // Create a separate evaluation context for the function body
         let body_ex = Rc::new(EvalContext {
             ix: ex.ix.clone(),
             next_local_id: Counter::default(),
@@ -1764,7 +1686,7 @@ fn eval(
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
-            if let Some(arg_ib) = crate::r#gen::aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
+            if let Some(arg_ib) = aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
                 body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
             }
             Rc::new(ExprContext {
@@ -1783,7 +1705,6 @@ fn eval(
         }
         let impl_cv = impl_result.v.unwrap();
 
-        // Type check return value against ret type
         let impl_cv = {
             let r = typecheck_convert(&func_xx, root_loc, info.ret_type.as_ref(), impl_cv);
             if let Some(errs) = r.errors {
@@ -1809,29 +1730,13 @@ fn eval(
         def_funcs.push((info.scope_entry_id, Some(arg_id), impl_code, captured));
     }
 
-    // Compile data type method implementations
     enum CompiledDataMethodBody {
         Fresh {
             inner_scope_entry_id: ScopeEntryId,
             data_field: String,
             impl_code: CodeDynamic,
-            /// True when the method body's "self" binding actually represents a function
-            /// argument (`arg`), as is the case for builtin-`type` interface impl methods.
-            /// Renders as `function f(a0) { ... }` instead of
-            /// `function f() { let a0 = this._data_field; ... }`.
             is_arg_method: bool,
-            /// `outer_self` binding: the v8 instance itself (`this`). Always allocated for
-            /// every method body so the source can address the instance via
-            /// `mb.scope_use("outer_self")` (typed at compile time as
-            /// `TypeSourceDataTypeDynamic`). Used by e.g. `type.aspect`:
-            /// `option(aspect).some(outer_self)` captures the instance through
-            /// `__data_instance_to_aspect(this)`.
             outer_id: ScopeEntryId,
-            /// The function's `arg` parameter. Every method takes an argument (null / empty
-            /// tuple counts), so this is always allocated. For non-Type interface methods the
-            /// emit is `function(<arg_key>) { let <self_key> = this[..]; … }`. For Type
-            /// interface methods (where the parameter conceptually IS `arg` per
-            /// `is_arg_method`), it's `function(<self_key>)` and `arg_param_id` is unused.
             arg_param_id: ScopeEntryId,
         },
         Precompiled(String),
@@ -1839,20 +1744,12 @@ fn eval(
 
     struct CompiledDataMethod {
         body: CompiledDataMethodBody,
-        /// Externals captured by the body's compile env (Local ids assigned fresh from 0
-        /// within the body). Rendered as
-        /// `let a<id> = globalThis[ "<method-namespaced key>"];` in a block wrapping the
-        /// function definition so the function closes over them; installed as v8 globals
-        /// under the method-namespaced keys at call time.
         captured_externals: Vec<(ScopeEntryId, External)>,
         scope_entry_id: ScopeEntryId,
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
 
-    // Snapshot definition sets and their data types up front so we don't hold a
-    // RefCell borrow on `definition_sets` across const_eval / typecheck calls — those
-    // paths can invoke constructors that need `borrow_mut()` on the same RefCell.
     let dss: Vec<_> = ex.ix.definition_sets.borrow().iter().cloned().collect();
     for ds in &dss {
         let dts: Vec<_> = ds.data_types.borrow().iter().cloned().collect();
@@ -1862,7 +1759,6 @@ fn eval(
             for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
 
-                // Check for pre-compiled JS first
                 if let Some(compiled_js) = method.compiled_js.borrow().clone() {
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
@@ -1876,7 +1772,6 @@ fn eval(
                 let ret_type: Rc<dyn Type> =
                     method.ret_type.borrow().clone().expect("Data type method missing return type");
 
-                // Create a separate evaluation context for the method body
                 let body_ex = Rc::new(EvalContext {
                     ix: ex.ix.clone(),
                     next_local_id: Counter::default(),
@@ -1887,18 +1782,15 @@ fn eval(
                 method.inner_scope_entry_id.set(Some(self_id));
                 let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
 
-                // Regular data-type methods don't currently need the data instance via
-                // `outer_self` — sentinel id (would shift Local IDs and break snapshot tests if
-                // always allocated here).
                 let outer_id = ScopeEntryId::Builtin(usize::MAX);
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                     if let Some(self_ib) =
-                        crate::r#gen::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                        aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                         body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
                     }
                     if let Some(arg_type) = method.arg_type.borrow().clone() {
-                        if let Some(arg_ib) = crate::r#gen::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                        if let Some(arg_ib) = aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
                         }
                     }
@@ -1918,7 +1810,6 @@ fn eval(
                 }
                 let impl_cv = impl_result.v.unwrap();
 
-                // Type check return value
                 let impl_cv = {
                     let r = typecheck_convert(&method_xx, root_loc, ret_type.as_ref(), impl_cv);
                     if let Some(errs) = r.errors {
@@ -1934,9 +1825,6 @@ fn eval(
                         .expect("Method body must produce JS code")
                         .clone();
 
-                // Snapshot the body's externals — its compiled_js references these by their Local
-                // id (`a##`), and they must be installed as v8 globals whenever the body runs
-                // (including after cross-module import when the original env's globals are gone).
                 let captured = method_xx.vx.externals.borrow().clone();
                 *method.captured_externals.borrow_mut() = captured.clone();
                 def_data_methods.push(CompiledDataMethod {
@@ -1953,7 +1841,6 @@ fn eval(
                 });
             }
 
-            // Compile interface method implementations
             for impl_data in dt_data.interface_impls.borrow().iter() {
                 let builtin_kind = impl_data.interface.builtin_kind;
                 for method_impl in &impl_data.method_impls {
@@ -1971,22 +1858,12 @@ fn eval(
                         method_impl.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
 
-                    // Note: impl_expr_artifact serialization deferred to the post-render pass below —
-                    // see the second-pass comment after the rendering loop. Serializing here can
-                    // trigger `serialize_definition_set` for types referenced in the body (e.g. via
-                    // `lower(nvalue.type)`), which requires every method/impl of those types to have
-                    // `compiled_js` set. That doesn't happen until the rendering loop. Resolve ret
-                    // type from interface method
                     let ret_type: Rc<dyn Type> = {
                         let iface_methods = impl_data.interface.methods.borrow();
                         let iface_method = &iface_methods[method_impl.interface_method_index];
                         iface_method.ret_type.borrow().clone().expect("Interface method missing return type")
                     };
 
-                    // Fresh `EvalContext` per body — `next_local_id` starts at 0 so `compiled_js` is
-                    // stable across compiles, and the body's captured `externals` are stored on the
-                    // method and replayed at v8 call time (rendered as a block-scoped alias from
-                    // method-namespaced globals into the body's bare `a##` names).
                     let body_ex = Rc::new(EvalContext {
                         ix: ex.ix.clone(),
                         next_local_id: Counter::default(),
@@ -1994,9 +1871,6 @@ fn eval(
                         v8_scope: std::cell::Cell::new(None),
                     });
 
-                    // For builtin-`type` interface impls the body sees `arg` (a record
-                    // `{xx, source_type, cv}`) instead of `self`. For source-defined and
-                    // builtin-`value` impls keep the `self` setup.
                     let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     method_impl.inner_scope_entry_id.set(Some(self_id));
                     let outer_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -2004,9 +1878,6 @@ fn eval(
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
 
-                        // Universal `outer_self` = the data type instance (JS `this`). Bound for every
-                        // method body so source code can address the instance regardless of how `self` is
-                        // bound for that particular interface method.
                         let outer_type: Rc<dyn Type> =
                             Rc::new(
                                 value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
@@ -2014,7 +1885,7 @@ fn eval(
                                 },
                             );
                         if let Some(outer_self_ib) =
-                            crate::r#gen::aspect_initial_bind_get_maybe(&xx, outer_type.as_ref()) {
+                            aspect_initial_bind_get_maybe(&xx, outer_type.as_ref()) {
                             body_scope.insert(
                                 ConstKey::String("outer".to_string()),
                                 outer_self_ib.initial_bind(outer_id),
@@ -2027,13 +1898,6 @@ fn eval(
                                     iface_methods[method_impl.interface_method_index].name.clone()
                                 };
                                 if method_name == "aspect" {
-                                    // `aspect(arg)` takes `{key: Unique}` and returns `option(aspect)`. The compiled
-                                    // JS function takes one parameter (the arg object), bound under `self_id` (whose
-                                    // `scope_entry_id_dynamic_key` is the JS parameter name). To make the source's
-                                    // `arg` access compile to that parameter, bind the `arg` scope entry with
-                                    // `self_id`. Then the data type itself is the `self` for the impl, bound under a
-                                    // fresh local id (so `option.some(self)` can route through
-                                    // `TypeSourceDataTypeDynamic::cast_to(aspect)`).
                                     let mut fields = std::collections::BTreeMap::new();
                                     fields.insert(
                                         ConstKey::String("key".to_string()),
@@ -2051,8 +1915,6 @@ fn eval(
                                         ConstKey::String("arg".to_string()),
                                         arg_ib.initial_bind(self_id),
                                     );
-                                    // Source-level `self` is not used by the `aspect` method body — source impls
-                                    // address the data type instance via `outer_self` (universally bound above).
                                 } else {
                                     let arg_record_type = build_cast_arg_record_type();
                                     let arg_ib =
@@ -2067,18 +1929,13 @@ fn eval(
                             Some(value::type_source_interface::BuiltinInterfaceKind::AspectField) |
                             Some(value::type_source_interface::BuiltinInterfaceKind::ScopeEntry) |
                             Some(value::type_source_interface::BuiltinInterfaceKind::Target) => {
-                                // `self` = impl data type's underlying, same as a regular method.
-                                if let Some(self_ib) = crate::r#gen::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                                if let Some(self_ib) = aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("inner".to_string()),
                                         self_ib.initial_bind(self_id),
                                     );
                                 }
 
-                                // `arg` = the call's inputs as a record of `CodeValueExtern`s, one per Rust trait
-                                // param (e.g. `{self, argument}` for aspect_function.call). Field-access on a
-                                // CodeValueExtern goes through `TypeCodeValueExternDynamic::AspectField`, which
-                                // emits a runtime call to the `__cve_field` dynamic fn.
                                 let method_name = {
                                     let iface_methods = impl_data.interface.methods.borrow();
                                     iface_methods[method_impl.interface_method_index].name.clone()
@@ -2188,7 +2045,7 @@ fn eval(
                                 };
                                 let arg_type: Rc<dyn Type> = build_aspect_arg_record_type(&arg_field_names);
                                 if let Some(arg_ib) =
-                                    crate::r#gen::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                                    aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("arg".to_string()),
                                         arg_ib.initial_bind(arg_id),
@@ -2197,23 +2054,20 @@ fn eval(
                             },
                             _ => {
                                 if let Some(self_ib) =
-                                    crate::r#gen::aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
+                                    aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("inner".to_string()),
                                         self_ib.initial_bind(self_id),
                                     );
                                 }
 
-                                // Bind `arg` to the method's declared `arg_type` — user-defined (non-builtin)
-                                // interface methods like `to_code(arg: nvalue)` dispatch through normal JS call,
-                                // so `arg` is the function parameter at v8.
                                 let iface_method_arg_type = {
                                     let iface_methods = impl_data.interface.methods.borrow();
                                     iface_methods[method_impl.interface_method_index].arg_type.borrow().clone()
                                 };
                                 if let Some(arg_type) = iface_method_arg_type {
                                     if let Some(arg_ib) =
-                                        crate::r#gen::aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
+                                        aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                                         body_scope.insert(
                                             ConstKey::String("arg".to_string()),
                                             arg_ib.initial_bind(arg_id),
@@ -2252,7 +2106,6 @@ fn eval(
                             .expect("Interface method body must produce JS code")
                             .clone();
 
-                    // Snapshot the body's externals (see same call above).
                     let captured = method_xx.vx.externals.borrow().clone();
                     *method_impl.captured_externals.borrow_mut() = captured.clone();
                     def_data_methods.push(CompiledDataMethod {
@@ -2284,18 +2137,12 @@ fn eval(
     }
     let mut code1 = JsSourceBuilder::default();
 
-    // Emit precompiled (imported) functions first so their JS bindings exist before
-    // any fresh function body that might reference them.
     for js in &precompiled_def_funcs {
         for line in js.lines() {
             code1.push(root_loc, line.to_string());
         }
     }
 
-    // Render definition set function implementations as JS functions. Wrap each in a
-    // block so captured externals live as block-scoped `let`s (closure-captured by
-    // the function), and expose the function name via an outer `var` hoist. See same
-    // pattern in the data-type method render below.
     for (scope_id, arg_scope_id, impl_code, captured_externals) in &def_funcs {
         let start_line = code1.lines.len();
         let func_name = scope_entry_id_dynamic_key(*scope_id);
@@ -2324,11 +2171,6 @@ fn eval(
         }
     }
 
-    // Render data type method implementations as JS functions. Normal methods use
-    // `this` to access the wrapper object (self = this.<data_field>). builtin-`type`
-    // interface methods take their `self`-bound entry as a direct function parameter
-    // — that entry actually represents the cast `arg`, not the data type's underlying
-    // value.
     for method in &def_data_methods {
         match &method.body {
             CompiledDataMethodBody
@@ -2344,10 +2186,6 @@ fn eval(
                 let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
                 let self_key = scope_entry_id_dynamic_key(*inner_scope_entry_id);
 
-                // Wrap in a block so captured externals live as block-scoped `let`s — the inner
-                // `function ...` closes over them — and the function name escapes via the outer
-                // `var` hoist. This gives each body its own `a##` namespace without colliding
-                // with sibling bodies' externals.
                 code1.push(root_loc, format!("var {};", func_name));
                 code1.push(root_loc, "{".to_string());
                 for (id, _) in &method.captured_externals {
@@ -2358,12 +2196,8 @@ fn eval(
                     );
                 }
                 if *is_arg_method {
-                    // Type interface impl methods bind self_key directly to the function's argument
-                    // parameter — `self` IS `arg` per that interface's convention.
                     code1.push(root_loc, format!("{} = function({}) {{", func_name, self_key));
                 } else {
-                    // Every other method body: function takes `arg` as parameter and `self` is read
-                    // from `this[data_field]`.
                     let arg_key = scope_entry_id_dynamic_key(*arg_param_id);
                     code1.push(root_loc, format!("{} = function({}) {{", func_name, arg_key));
                     code1.push(
@@ -2376,8 +2210,6 @@ fn eval(
                     );
                 }
 
-                // `outer_self` binding (the v8 instance itself). Only emit when the body actually
-                // references it — keeps the JS output unchanged for bodies that don't use it.
                 if code_uses_binding(impl_code, *outer_id) {
                     code1.push(root_loc, format!("let {} = this;", scope_entry_id_dynamic_key(*outer_id)));
                 }
@@ -2386,7 +2218,6 @@ fn eval(
                 code1.push(root_loc, "};".to_string());
                 code1.push(root_loc, "}".to_string());
 
-                // Store compiled JS for later serialization
                 let compiled = code1.lines[start_line..].join("\n");
                 for ds in ex.ix.definition_sets.borrow().iter() {
                     for dt_data in ds.data_types.borrow().iter() {
@@ -2413,11 +2244,6 @@ fn eval(
         }
     }
 
-    // Render main code. Wrap the main body in a block scope so its top-level
-    // `let eN;` declarations don't collide across stages on the shared v8 context.
-    // The block's completion value is the last expression statement inside, which v8
-    // returns as the script result. The `/*main*/` marker lets test helpers identify
-    // and strip this wrapping unambiguously.
     code1.push(root_loc, "{/*main*/".to_string());
     if let Some(code) = stage1_code {
         let root_var = render_code(&mut code1, &code);
@@ -2428,37 +2254,33 @@ fn eval(
     code1.push(root_loc, "}/*main*/".to_string());
 
 
-    // Register __record_to_type and __tuple_to_type dynamic functions. These convert
-    // JS objects/arrays into Rc`<dyn Type>` externals at runtime.
     {
-        /// Recursively convert a v8 value (external, object, or array) to Rc`<dyn Type>`.
-        fn v8_value_to_type(scope: &mut v8::PinnedRef<v8::HandleScope>, value: v8::Local<v8::Value>) -> Rc<dyn Type> {
+        fn v8_value_to_type(_scope: &mut v8::PinnedRef<v8::HandleScope>, value: v8::Local<v8::Value>) -> Rc<dyn Type> {
             if value.is_external() {
                 let any = from_v8_any(&*value);
                 if any.is::<Rc<dyn Type>>() {
-                    return crate::invariant::must_downcast_ref::<Rc<dyn Type>>(any).clone();
+                    return must_downcast_ref::<Rc<dyn Type>>(any).clone();
                 }
 
-                // Source-defined ref wrappers — promote each to the matching `dyn Type`.
-                if let Some(iface_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>>() {
+                if let Some(iface_ref) = any.downcast_ref::<Rc<SourceInterfaceRef>>() {
                     return Rc::new(
-                        crate::eval::value::type_source_interface::TypeSourceInterfaceConst {
+                        TypeSourceInterfaceConst {
                             data: iface_ref.data.clone(),
                         },
                     );
                 }
                 if let Some(tu_ref) =
-                    any.downcast_ref::<Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionRef>>() {
+                    any.downcast_ref::<Rc<SourceTaggedUnionRef>>() {
                     return Rc::new(
-                        crate::eval::value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst {
+                        TypeSourceTaggedUnionConst {
                             data: tu_ref.data.clone(),
                         },
                     );
                 }
                 if let Some(dt_ref) =
-                    any.downcast_ref::<Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef>>() {
+                    any.downcast_ref::<Rc<SourceDataTypeRef>>() {
                     return Rc::new(
-                        crate::eval::value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                        TypeSourceDataTypeDynamic {
                             data: dt_ref.data.clone(),
                         },
                     );
@@ -2475,7 +2297,6 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // Shallow: each property value must already be an `Rc<dyn Type>` external.
             let value = args.get(0);
             let obj = v8::Local::<v8::Object>::try_from(value).expect("__record_to_type: expected JS object");
             let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
@@ -2505,7 +2326,6 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // Shallow: each element must already be an `Rc<dyn Type>` external.
             let value = args.get(0);
             let arr = v8::Local::<v8::Array>::try_from(value).expect("__tuple_to_type: expected JS array");
             let len = arr.length();
@@ -2526,13 +2346,10 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = the CodeValueExtern. Return the raw JS value carried by the inner CV —
-            // for const string values, the JS string; for dynamic values, the v8 value
-            // produced by evaluating the CV's code.
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
-            let inner_value: Rc<dyn crate::langhelp::Value> = {
+            let inner_value: Rc<dyn Value> = {
                 let guard = cve_cell.borrow();
                 let cv = guard.as_ref().expect("__cve_extract: inner CodeValue already consumed");
                 cv.value.clone()
@@ -2545,13 +2362,12 @@ fn eval(
                     values: RefCell::new(HashMap::new()),
                     parent: None,
                 }),
-                target: Rc::new(TargetDynamic) as Rc<dyn crate::r#gen::Target>,
+                target: Rc::new(TargetDynamic) as Rc<dyn Target>,
             });
-            let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
+            let loc = (ex_slot.ex.ix.source_id, ExprId(0));
             let value_type = inner_value.type_(&xx, loc);
 
-            // Fast path for const strings — return a v8::String.
-            if let Some(aspect_str) = crate::r#gen::aspect_string_const_get_maybe(&xx, value_type.as_ref()) {
+            if let Some(aspect_str) = aspect_string_const_get_maybe(&xx, value_type.as_ref()) {
                 let s = aspect_str.get(inner_value.as_ref());
                 rv.set(v8::String::new(scope, &s).unwrap().into());
                 return;
@@ -2566,26 +2382,22 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = the CodeValueExtern. Materializes the wrapped CodeValue's `code.code`
-            // (Code_ enum) as a JS tagged-union object — the shape `TypeCodeEnumDynamic`
-            // expects when matched in source. For `Code_::None` returns `{<"none">: null}`;
-            // for `Code_::Dyn(c)` returns `{<"dyn">: <External of Rc<dyn CodeDyn>>}`.
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
-            let inner_code: crate::langhelp::Code = {
+            let inner_code: Code = {
                 let guard = cve_cell.borrow();
                 let cv = guard.as_ref().expect("__cve_get_code_enum: inner CodeValue already consumed");
                 cv.code.clone()
             };
             let obj = v8::Object::new(scope);
             match inner_code.code {
-                crate::langhelp::Code_::None => {
+                Code_::None => {
                     let key = v8::String::new(scope, &ConstKey::String("none".to_string()).to_str()).unwrap();
                     let null: v8::Local<v8::Value> = v8::null(scope).into();
                     obj.set(scope, key.into(), null);
                 },
-                crate::langhelp::Code_::Dyn(c) => {
+                Code_::Dyn(c) => {
                     let key = v8::String::new(scope, &ConstKey::String("dyn".to_string()).to_str()).unwrap();
                     let ext = to_v8(scope, c);
                     obj.set(scope, key.into(), ext.into());
@@ -2601,16 +2413,10 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = the CodeValueExtern (v8 external holding
-            // `Rc<RefCell<Option<CodeValue>>>`). Returns the wrapped CV's `value` slot as a
-            // v8::External wrapping `Rc<dyn Value>` — no unwrapping into per-Value-shape JS
-            // primitives here. Consumers that want the concrete shape (e.g. a JS instance for
-            // a user-defined data value) call `__cast_value` to unwrap with an expected
-            // static type.
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
-            let value: Rc<dyn crate::langhelp::Value> = {
+            let value: Rc<dyn Value> = {
                 let borrow = cve_cell.borrow();
                 borrow.as_ref().expect("__cve_get_value: inner CodeValue already consumed").value.clone()
             };
@@ -2625,14 +2431,9 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = a v8::External wrapping `Rc<dyn Value>` (the shape `__cve_get_value`
-            // returns). Every `Value` impl provides `type_()`; let it dispatch — for
-            // `ValuePull` that routes through `_im_v0` on the bundle and gives the
-            // source-language type, for const value shapes it returns the matching static
-            // singleton, etc.
-            let value: Rc<dyn crate::langhelp::Value> = rc_value_from_v8(&*args.get(0));
+            let value: Rc<dyn Value> = rc_value_from_v8(&*args.get(0));
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
+            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
                 import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
@@ -2642,10 +2443,10 @@ fn eval(
                 }),
                 target,
             });
-            let loc = (ex_slot.ex.ix.source_id, crate::syntax::ExprId(0));
+            let loc = (ex_slot.ex.ix.source_id, ExprId(0));
             let type_ref: Rc<dyn Type> = value.type_(&xx, loc);
             let type_ref_push =
-                crate::eval::push::Push::into_v8(crate::r#gen::TypeRefPush { type_ref }, scope);
+                Push::into_v8(TypeRefPush { type_ref }, scope);
             rv.set(type_ref_push);
         }
 
@@ -2656,10 +2457,6 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            // arg(0) = the JS object produced by `dynamic_wrap!(struct TypeRefPush)` — a plain
-            // Object whose `_d` field carries the backing `External(Rc<TypeRefPush>)`. The
-            // dynamic_wrap struct macro doesn't impl `from_v8`, so unwrap the `_d` slot
-            // ourselves. arg(1) = a `Unique` external (the aspect identity)
             let arg0 = args.get(0);
             let arg1 = args.get(1);
             let arg0_obj =
@@ -2668,10 +2465,10 @@ fn eval(
                 ).expect("__aspect_lookup: expected JS Object for TypeRefPush");
             let d_key = v8::String::new(scope, "_d").expect("__aspect_lookup: alloc _d key");
             let d_val = arg0_obj.get(scope, d_key.into()).expect("__aspect_lookup: TypeRefPush missing _d field");
-            let type_ref: Rc<dyn Type> = from_v8_ref::<Rc<crate::r#gen::TypeRefPush>>(&*d_val).type_ref.clone();
-            let unique: crate::langhelp::Unique = *from_v8_ref::<crate::langhelp::Unique>(&*arg1);
+            let type_ref: Rc<dyn Type> = from_v8_ref::<Rc<TypeRefPush>>(&*d_val).type_ref.clone();
+            let unique: Unique = *from_v8_ref::<Unique>(&*arg1);
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-            let target: Rc<dyn crate::r#gen::Target> = Rc::new(TargetDynamic);
+            let target: Rc<dyn Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
                 import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
@@ -2684,12 +2481,9 @@ fn eval(
             let result = v8::Object::new(scope);
             match type_ref.aspect(&xx, &unique) {
                 Some(aspect_box) => {
-                    // Invariant (held by `TypePull::aspect` for is_aspect identities, plus all
-                    // builtin aspect types): the inner type is `Box<dyn AspectField>`. We upcast to
-                    // `dyn Aspect` to read `v8_instance()` — no RTTI.
-                    let aspect_field: Box<dyn crate::r#gen::AspectField> =
-                        crate::invariant::must_downcast_box::<Box<dyn crate::r#gen::AspectField>>(aspect_box);
-                    let aspect_dyn: &dyn crate::langhelp::Aspect = &*aspect_field;
+                    let aspect_field: Box<dyn AspectField> =
+                        must_downcast_box::<Box<dyn AspectField>>(aspect_box);
+                    let aspect_dyn: &dyn Aspect = &*aspect_field;
                     let instance_v8: v8::Local<v8::Value> = match aspect_dyn.v8_instance() {
                         Some(g) => v8::Local::new(scope, &g).into(),
                         None => v8::null(scope).into(),
@@ -2786,11 +2580,6 @@ fn eval(
                     aspect_lookup_fn.into(),
                 );
 
-            // `__cast_value(value, type)` — unwrap `Rc<dyn Value>` to a JS instance,
-            // asserting the value's data type matches `type`'s (`TypeSourceDataTypeConst`)
-            // data identity. Used by source-level `cast_value(value, <user_data_type>.type)`
-            // to bridge from the opaque `value`-iface form (what `__cve_get_value` now
-            // returns) back to a concrete user-defined instance at a known type.
             fn cast_value_callback<
                 's,
             >(
@@ -2798,26 +2587,21 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let value: Rc<dyn crate::langhelp::Value> = rc_value_from_v8(&*args.get(0));
+                let value: Rc<dyn Value> = rc_value_from_v8(&*args.get(0));
                 let type_: Rc<dyn Type> = rc_type_from_v8(&*args.get(1));
                 let type_const =
                     crate
                     ::invariant
-                    ::must_downcast_ref::<crate::eval::value::type_source_data_type::TypeSourceDataTypeConst>(
+                    ::must_downcast_ref::<TypeSourceDataTypeConst>(
                         type_.as_ref(),
                     );
                 let vud =
                     crate
                     ::invariant
-                    ::must_downcast_ref::<crate::eval::value::value_pull::dynamic::ValuePull>(
+                    ::must_downcast_ref::<ValuePull>(
                         value.as_ref(),
                     );
 
-                // Identity check: the value's data type must match the template's.
-                // `ValuePull` doesn't currently carry its own data ref (the data is
-                // implicit in the bundle); for now we trust the source-level static signature
-                // placed the right value here. Once `ValuePull` carries data, switch to
-                // `assert!(vud.data.identity == type_const.data.identity)`.
                 let _ = type_const;
                 let instance = v8::Local::new(scope, &vud.bundle);
                 rv.set(instance.into());
@@ -2842,13 +2626,13 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let dt_ref: Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef> =
-                    from_v8_ref::<Rc<crate::eval::value::type_source_data_type::SourceDataTypeRef>>(
+                let dt_ref: Rc<SourceDataTypeRef> =
+                    from_v8_ref::<Rc<SourceDataTypeRef>>(
                         &*args.get(0),
                     ).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
-                        crate::eval::value::type_source_data_type::TypeSourceDataTypeConst {
+                        TypeSourceDataTypeConst {
                             data: dt_ref.data.clone(),
                         },
                     );
@@ -2876,13 +2660,13 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let tu_ref: Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionRef> =
-                    from_v8_ref::<Rc<crate::eval::value::type_source_tagged_union::SourceTaggedUnionRef>>(
+                let tu_ref: Rc<SourceTaggedUnionRef> =
+                    from_v8_ref::<Rc<SourceTaggedUnionRef>>(
                         &*args.get(0),
                     ).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
-                        crate::eval::value::type_source_tagged_union::r#const::TypeSourceTaggedUnionConst {
+                        TypeSourceTaggedUnionConst {
                             data: tu_ref.data.clone(),
                         },
                     );
@@ -2910,13 +2694,13 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let iface_ref: Rc<crate::eval::value::type_source_interface::SourceInterfaceRef> =
-                    from_v8_ref::<Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>>(
+                let iface_ref: Rc<SourceInterfaceRef> =
+                    from_v8_ref::<Rc<SourceInterfaceRef>>(
                         &*args.get(0),
                     ).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
-                        crate::eval::value::type_source_interface::TypeSourceInterfaceConst {
+                        TypeSourceInterfaceConst {
                             data: iface_ref.data.clone(),
                         },
                     );
@@ -2944,13 +2728,13 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let func_ref: Rc<crate::eval::value::type_source_function::TypeSourceFunctionConst> =
-                    from_v8_ref::<Rc<crate::eval::value::type_source_function::TypeSourceFunctionConst>>(
+                let func_ref: Rc<TypeSourceFunctionConst> =
+                    from_v8_ref::<Rc<TypeSourceFunctionConst>>(
                         &*args.get(0),
                     ).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
-                        crate::eval::value::type_source_function::TypeSourceFunctionConst {
+                        TypeSourceFunctionConst {
                             data: func_ref.data.clone(),
                         },
                     );
@@ -2979,15 +2763,15 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let ctor_ref:
-                    Rc<crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst> =
+                    Rc<TypeSourceDataTypeConstructorConst> =
                     from_v8_ref::<
-                        Rc<crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst>,
+                        Rc<TypeSourceDataTypeConstructorConst>,
                     >(
                         &*args.get(0),
                     ).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
-                        crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst {
+                        TypeSourceDataTypeConstructorConst {
                             data: ctor_ref.data.clone(),
                         },
                     );
@@ -3019,9 +2803,9 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let ctor_ref:
-                    Rc<crate::eval::value::type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef> =
+                    Rc<SourceTaggedUnionConstructorRef> =
                     from_v8_ref::<
-                        Rc<crate::eval::value::type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef>,
+                        Rc<SourceTaggedUnionConstructorRef>,
                     >(
                         &*args.get(0),
                     ).clone();
@@ -3057,11 +2841,6 @@ fn eval(
                     tagged_union_constructor_to_type_fn.into(),
                 );
 
-            // `__data_instance_to_type(type_template, instance)` — wraps a source-defined
-            // data type _instance_ into an `Rc<dyn Type>` external. arg(0) is a
-            // compile-time-captured `TypeSourceDataTypeConst` external carrying this data
-            // type's `Gc<SourceDataTypeData>`; arg(1) is the runtime v8 instance whose handle
-            // becomes the bundle of the produced `TypePull`.
             fn data_instance_to_type_callback<
                 's,
             >(
@@ -3073,7 +2852,7 @@ fn eval(
                 let template =
                     crate
                     ::invariant
-                    ::must_downcast_ref::<crate::eval::value::type_source_data_type::TypeSourceDataTypeConst>(
+                    ::must_downcast_ref::<TypeSourceDataTypeConst>(
                         template_type.as_ref(),
                     );
                 let instance =
@@ -3082,7 +2861,7 @@ fn eval(
                     ).expect("__data_instance_to_type: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let type_: Rc<dyn Type> =
-                    Rc::new(crate::eval::value::type_source_data_type::dynamic::TypePull {
+                    Rc::new(TypePull {
                         data: template.data.clone(),
                         bundle: Some(instance_global),
                     });
@@ -3103,9 +2882,6 @@ fn eval(
                     data_instance_to_type_fn.into(),
                 );
 
-            // `__data_instance_to_target(type_template, instance)` — parallel to
-            // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn crate::r#gen::Target>` built from a `PullTarget` adapter.
             fn data_instance_to_target_callback<
                 's,
             >(
@@ -3113,15 +2889,14 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let _template_type: Rc<dyn Type> = from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
                     ).expect("__data_instance_to_target: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let target: Rc<dyn crate::r#gen::Target> =
+                let target: Rc<dyn Target> =
                     Rc::new(
-                        crate::eval::pull_scope_dispatch::PullTarget { instance: instance_global },
+                        PullTarget { instance: instance_global },
                     );
                 let ext = rc_target_to_v8(scope, target);
                 rv.set(ext.into());
@@ -3140,9 +2915,6 @@ fn eval(
                     data_instance_to_target_fn.into(),
                 );
 
-            // `__data_instance_to_scope_entry(type_template, instance)` — parallel to
-            // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn ScopeEntry>` built from a `PullScopeEntry` adapter.
             fn data_instance_to_scope_entry_callback<
                 's,
             >(
@@ -3150,15 +2922,14 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let _template_type: Rc<dyn Type> = from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
                     ).expect("__data_instance_to_scope_entry: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let entry: Rc<dyn crate::r#gen::ScopeEntry> =
+                let entry: Rc<dyn ScopeEntry> =
                     Rc::new(
-                        crate::eval::pull_scope_dispatch::PullScopeEntry { instance: instance_global },
+                        PullScopeEntry { instance: instance_global },
                     );
                 let ext = rc_scope_entry_to_v8(scope, entry);
                 rv.set(ext.into());
@@ -3180,11 +2951,6 @@ fn eval(
                     data_instance_to_scope_entry_fn.into(),
                 );
 
-            // `__data_instance_to_value(type_template, instance)` — parallel to
-            // `__data_instance_to_type`, but returns a `v8::External` wrapping
-            // `Rc<dyn Value>` built from a `ValuePull` holding the v8 instance handle.
-            // `ValuePull::type_()` later invokes `value.type` (`_im_v0`) on this
-            // instance to recover its source-language type.
             fn data_instance_to_value_callback<
                 's,
             >(
@@ -3192,14 +2958,13 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let _template_type: Rc<dyn Type> = from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
                     ).expect("__data_instance_to_value: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let value: Rc<dyn crate::langhelp::Value> =
-                    Rc::new(crate::eval::value::value_pull::dynamic::ValuePull { bundle: instance_global });
+                let value: Rc<dyn Value> =
+                    Rc::new(ValuePull { bundle: instance_global });
                 let ext = rc_value_to_v8(scope, value);
                 rv.set(ext.into());
             }
@@ -3217,10 +2982,6 @@ fn eval(
                     data_instance_to_value_fn.into(),
                 );
 
-            // `__data_instance_to_aspect(instance)` — wraps an instance into an
-            // `AspectPull` external. Used by source code that produces an `aspect`
-            // (via `option(aspect).some(self)`) from a data type implementing one of the
-            // aspect interfaces.
             fn data_instance_to_aspect_callback<
                 's,
             >(
@@ -3233,9 +2994,9 @@ fn eval(
                         args.get(0),
                     ).expect("__data_instance_to_aspect: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let aspect: std::rc::Rc<dyn crate::langhelp::Aspect> =
+                let aspect: Rc<dyn Aspect> =
                     std::rc::Rc::new(
-                        crate::eval::value::value_pull::aspect::AspectPull { bundle: instance_global },
+                        AspectPull { bundle: instance_global },
                     );
                 let ext = to_v8(scope, aspect);
                 rv.set(ext.into());
@@ -3254,18 +3015,14 @@ fn eval(
                     data_instance_to_aspect_fn.into(),
                 );
 
-            // `__data_instance_to_code(instance)` — wraps an instance into a
-            // `CodePull` external (an `Rc<dyn CodeDyn>`). Used by source data types
-            // implementing the `code_dyn` builtin interface so their instances can be passed
-            // as the code slot of `new_code_value`.
             fn data_instance_to_code_callback<
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-                args: v8::FunctionCallbackArguments<'s>,
+                _args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let code: Rc<dyn crate::langhelp::CodeDyn> = Rc::new(CodePull);
+                let code: Rc<dyn CodeDyn> = Rc::new(CodePull);
                 let ext = to_v8(scope, code);
                 rv.set(ext.into());
             }
@@ -3283,9 +3040,6 @@ fn eval(
                     data_instance_to_code_fn.into(),
                 );
 
-            // `__unique_eq(a, b)` — value-equality compare for Unique externals. Each
-            // `Unique` reaches v8 as a fresh `v8::External`, so JS `===` is unsafe; this
-            // helper reads both Rc`<Unique>` and returns the boolean comparison.
             fn unique_eq_callback<
                 's,
             >(
@@ -3293,8 +3047,8 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let a = *from_v8_ref::<crate::langhelp::Unique>(&*args.get(0));
-                let b = *from_v8_ref::<crate::langhelp::Unique>(&*args.get(1));
+                let a = *from_v8_ref::<Unique>(&*args.get(0));
+                let b = *from_v8_ref::<Unique>(&*args.get(1));
                 rv.set_bool(a == b);
             }
 
@@ -3313,12 +3067,6 @@ fn eval(
         }
     }
 
-    // Set externals as globals before running the script.
-    //
-    // Per-method-body captured externals (stored on the method's data) are installed
-    // under method-namespaced keys (`<func_name>_<local_key>`). The rendered body's
-    // wrapping block aliases each into a bare `a##` binding the function closes over,
-    // so sibling methods can't collide and the parent's externals stay independent.
     let mut all_externals: Vec<(String, External)> =
         ex.externals.borrow().iter().map(|(id, v)| (scope_entry_id_dynamic_key(*id), v.clone())).collect();
     for method in &def_data_methods {
@@ -3358,10 +3106,6 @@ fn eval(
                 let ext = to_v8(dynamic_scope, u.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
-            External::JsInstance(b) => {
-                let inst = v8::Local::new(dynamic_scope, b);
-                dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, inst.into());
-            },
         }
     }
     let dynamic_source = code1.lines.join("\n");
@@ -3371,9 +3115,6 @@ fn eval(
         v8::Script::compile(dynamic_scope, v8::String::new(dynamic_scope, &dynamic_source).unwrap(), None).unwrap();
     match script.run(dynamic_scope) {
         Some(stage2) => {
-            // If the const_eval value was already concrete (`Code_::None`) and JS only ran
-            // for side effects (def-set methods, etc.), use the fallback value directly — its
-            // type may not have AspectLiftDynamic and there's nothing to lift anyway.
             let value: Rc<dyn Value> = match fallback_value {
                 Some(v) => v,
                 None => {
@@ -3457,7 +3198,6 @@ fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
     }
 }
 
-/// Get a reference to the value inside a `v8::External` created by `to_v8`.
 pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
     must_downcast_ref::<T>(from_v8_any(value))
 }
@@ -3483,63 +3223,50 @@ impl JsSourceBuilder {
     }
 }
 
-/// Extract a clone of `Rc<dyn crate::r#gen::ScopeEntry>` from a `v8::External`.
-pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn crate::r#gen::ScopeEntry> {
-    from_v8_ref::<Rc<dyn crate::r#gen::ScopeEntry>>(value).clone()
+pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn ScopeEntry> {
+    from_v8_ref::<Rc<dyn ScopeEntry>>(value).clone()
 }
 
-/// Store an `Rc<dyn ScopeEntry>` as a `v8::External`.
 pub(crate) fn rc_scope_entry_to_v8<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::r#gen::ScopeEntry>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn ScopeEntry>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
-/// Extract a clone of `Rc<dyn crate::r#gen::Target>` from a `v8::External`.
-pub(crate) fn rc_target_from_v8(value: &v8::Value) -> Rc<dyn crate::r#gen::Target> {
-    from_v8_ref::<Rc<dyn crate::r#gen::Target>>(value).clone()
+pub(crate) fn rc_target_from_v8(value: &v8::Value) -> Rc<dyn Target> {
+    from_v8_ref::<Rc<dyn Target>>(value).clone()
 }
 
-/// Store an `Rc<dyn crate::r#gen::Target>` as a `v8::External`.
 pub(crate) fn rc_target_to_v8<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::r#gen::Target>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Target>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
-/// Extract a clone of `Rc<dyn Type>` from a `v8::External`. Only operates on
-/// `dyn Type` — for concrete `Rc<T>`, use `from_v8_ref` directly.
 pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
     from_v8_ref::<Rc<dyn Type>>(value).clone()
 }
 
-/// Store an `Rc<dyn Type>` as a `v8::External`. Only operates on `dyn Type` — for
-/// concrete `Rc<T>`, use `to_v8` directly.
 pub(crate) fn rc_type_to_v8<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Type>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
-/// Extract a clone of `Rc<dyn Value>` from a `v8::External`.
-pub(crate) fn rc_value_from_v8(value: &v8::Value) -> Rc<dyn crate::langhelp::Value> {
-    from_v8_ref::<Rc<dyn crate::langhelp::Value>>(value).clone()
+pub(crate) fn rc_value_from_v8(value: &v8::Value) -> Rc<dyn Value> {
+    from_v8_ref::<Rc<dyn Value>>(value).clone()
 }
 
-/// Store an `Rc<dyn Value>` as a `v8::External`.
 pub(crate) fn rc_value_to_v8<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn crate::langhelp::Value>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Value>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
-/// Thin `Box<dyn ScopeEntry>` wrapper around an `Rc<dyn ScopeEntry>`. Used to fit
-/// `Scope.values` (which stores `Box`es) when the underlying entry was constructed
-/// as a shared `Rc` (e.g. extracted from a v8::External).
-pub(crate) struct RcScopeEntryWrap(pub Rc<dyn crate::r#gen::ScopeEntry>);
+pub(crate) struct RcScopeEntryWrap(pub Rc<dyn ScopeEntry>);
 
-impl crate::r#gen::ScopeEntry for RcScopeEntryWrap {
-    fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, code: Code) -> CodeValue {
+impl ScopeEntry for RcScopeEntryWrap {
+    fn use_(&self, xx: &ExprContext, loc: QExprId, code: Code) -> CodeValue {
         self.0.use_(xx, loc, code)
     }
 }
@@ -3575,7 +3302,6 @@ pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> St
             lines.push(code.loc, format!("{} = {};", out, scope_entry_id_dynamic_key(c.id)));
         },
         CodeDynamicType::Call(c) => {
-            // Special case: method call preserves `this` binding
             if let CodeDynamicType::FieldUse(f) = &c.func.type_ {
                 let base_var = render_code(lines, &f.base);
                 let mut arg_vars = vec![];
@@ -3749,15 +3475,12 @@ pub fn setup_v8() {
     });
 }
 
-/// Stored as a v8::External so __stage can lift raw values. The source type's
-/// `AspectLiftDynamic` is looked up at lift time so the cell stays
-/// artifact-serializable (the boxed aspect was not).
 pub(crate) struct StageLiftCell {
     pub import_state: Rc<Cell<ImportStateId>>,
     pub loc: QExprId,
     pub scope: Rc<Scope>,
     pub source_type: Rc<dyn Type>,
-    pub target: Rc<dyn crate::r#gen::Target>,
+    pub target: Rc<dyn Target>,
     pub vx: Rc<EvalContext>,
 }
 
@@ -3767,7 +3490,7 @@ pub(crate) struct TargetBindSub {
 }
 pub(crate) struct TargetDynamic;
 
-impl crate::r#gen::Target for TargetDynamic {
+impl Target for TargetDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
         let js =
             sub
@@ -3917,9 +3640,6 @@ impl crate::r#gen::Target for TargetDynamic {
         return er_seq_cv!(loc, erb, {
             let mut dynamic_conditions = Vec::new();
 
-            // The first branch's body type drives the if's result type; mirrors `match_`.
-            // Subsequent branches & the else are typecheck-converted to it so the if can
-            // stand in for any expression of that type.
             let mut result_type: Option<Rc<dyn Type>> = None;
             for (cond, body) in conditions {
                 let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
@@ -3976,8 +3696,6 @@ impl crate::r#gen::Target for TargetDynamic {
             let base_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, base))?;
             let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
 
-            // The first branch's value type drives the match's result type; all other
-            // branches (and the fallback) are typecheck-converted to it.
             let mut dynamic_cases = Vec::new();
             let mut result_type: Option<Rc<dyn Type>> = None;
             for (tag, variant_type, body_expr) in &cases {
@@ -4037,8 +3755,6 @@ impl crate::r#gen::Target for TargetDynamic {
                 }),
             };
 
-            // Fall back to null if there were no branches (shouldn't happen — match requires
-            // at least one case or a fallback — but keeps the type signature total).
             let stack_type: Rc<dyn Type> = result_type.unwrap_or_else(|| Rc::new(TypeNullDynamic) as Rc<dyn Type>);
             let stack = aspect_stack_value_dynamic_get(xx, loc, stack_type.as_ref());
             let stack = erb.must_er(stack)?;
@@ -4062,7 +3778,6 @@ impl crate::r#gen::Target for TargetDynamic {
         lower_values: Vec<CodeValue>,
         graft_values: Vec<CodeValue>,
     ) -> EvalRes {
-        // Store tree as external
         let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
@@ -4071,17 +3786,6 @@ impl crate::r#gen::Target for TargetDynamic {
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: tree_id }),
         };
 
-        // Build args for __stage(tree, lower_count, lower_pairs..., graft_values...). For
-        // each lower value, pass a (lift, value) pair:
-        //
-        // * Code_::None: lift=null, value=StagedExprCell external
-        //
-        // * Code_::Dyn:  lift=StageLiftCell external, value=raw v8 result __stage handles
-        //   the lifting internally.
-        //
-        // After the lower pairs come `graft_values.len()` single args, each a v8 external
-        // pointing to a `Rc<RefCell<Option<CodeValue>>>` cell — the CV stored there
-        // replaces the matched `Pending` graft with `Evaluated(cv)` in the staged tree.
         let lower_count = lower_values.len();
         let mut stage_args = vec![tree_js, CodeDynamic {
             loc,
@@ -4143,9 +3847,6 @@ impl crate::r#gen::Target for TargetDynamic {
                         });
                     },
                     Code_::Dyn(_) => {
-                        // The graft's inner expression already compiles to JS that yields a
-                        // v8 external pointing at a `Rc<RefCell<Option<CodeValue>>>` cell — the
-                        // source-level representation of a CodeValueExtern.
                         let vtype = cv.value.type_(xx, loc);
                         let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
                         let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
@@ -4177,10 +3878,6 @@ impl crate::r#gen::Target for TargetDynamic {
     }
 }
 
-/// Store a value as a `v8::External`. The value is boxed as `dyn Any` so that
-/// `from_v8_ref` can safely downcast to any type, including trait object wrappers
-/// like `Rc<dyn Type>`. A guaranteed finalizer drops the value when the isolate is
-/// disposed.
 pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
     let any: Box<dyn std::any::Any> = Box::new(value);
     let ptr = Box::into_raw(Box::new(any)) as *mut std::ffi::c_void;
@@ -4209,9 +3906,6 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
     });
 }
 
-/// v8 slot carrying the current stage's `EvalContext`. Read by v8 callbacks like
-/// `eval_const_v8` so they can reconstruct an `ExprContext` for nested Rust
-/// `const_eval` calls.
 pub(crate) struct V8EvalContextSlot {
     pub(crate) ex: Rc<EvalContext>,
 }
@@ -4220,11 +3914,6 @@ pub(crate) struct V8LogStore {
     pub(crate) logs: RefCell<Vec<LogEntry>>,
 }
 
-// --- Rc`<T>` ↔ v8::External helpers ---
-/// Weak handle storage, set as an isolate slot. During dispose_annex(), slots are
-/// cleared first (Weak handles dropped — but isolate ptr is already null so
-/// finalizers can't be cancelled), then finalizer_map is drained, running our
-/// guaranteed finalizer callbacks.
 pub(crate) struct V8RcStore {
     weaks: RefCell<Vec<v8::Weak<v8::External>>>,
 }

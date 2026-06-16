@@ -3,9 +3,6 @@ use {
     quote::quote,
 };
 
-/// Combine per-arg dynamic type expressions into a single dynamic type: null for 0 args, the
-/// sole dynamic type for 1, a `Tuple` dynamic type for N. Each `dynamic_types[i]` is a `TokenStream`
-/// that evaluates to `Rc<dyn Type>`.
 pub fn arg_dynamic_type_expr(dynamic_types: &[TokenStream]) -> TokenStream {
     match dynamic_types.len() {
         0 => quote!{
@@ -25,9 +22,6 @@ pub fn arg_dynamic_type_expr(dynamic_types: &[TokenStream]) -> TokenStream {
     }
 }
 
-/// Convenience over [`arg_dynamic_type_expr`] for args given as
-/// `(name, rust-type-as-string)` where each type implements `Push`. Wraps
-/// each via `dynamic_type()` then combines.
 pub fn arg_dynamic_type_expr_str(args: &[(&'static str, &'static str)]) -> TokenStream {
     let dynamic_types: Vec<TokenStream> = args.iter().map(|(_, ty)| {
         let ty: TokenStream = ty.parse().unwrap();
@@ -62,21 +56,12 @@ pub struct Method {
 }
 
 pub enum MethodArgs {
-    /// Method with a generated Rust trait method counterpart. The source-language
-    /// `arg_type` is derived from `data`, keeping the two views in sync.
     Rust(MethodSig),
-    /// Source-language only method (no Rust trait method generated).
     Source(TypeRef),
 }
 
 pub struct MethodSig {
-    /// Params that appear in the Rust trait method signature but not in the
-    /// source-language arg type (e.g. `xx: &ExprContext`, `loc: QExprId`).
     pub context: Vec<(&'static str, TokenStream)>,
-    /// Data params. Each `TypeRef`'s `path` is used for the Rust trait method
-    /// signature; its `dynamic_type` contributes to the derived source-language arg type
-    /// (null dynamic type for 0 params, the single param's dynamic type for 1, a tuple dynamic type for
-    /// N).
     pub data: Vec<(&'static str, TypeRef)>,
 }
 
@@ -98,10 +83,6 @@ pub struct TypeRef {
 }
 
 impl TypeRef {
-    /// `path` is the Rust type used in the trait method signature; the source-language
-    /// dynamic type is `TypeAnyDynamic`. Use when the Rust type has no `Push` impl
-    /// (e.g. references, `Vec<...>` of compiler-internal types) so the source-language
-    /// side falls back to `any` while the Rust signature still carries the real type.
     pub fn opaque(path: TokenStream) -> Self {
         TypeRef {
             dynamic_type: quote!{

@@ -1,6 +1,3 @@
-//! Artifact-side support for `TypeSourceInterfaceConst`. Only handles builtin
-//! interfaces for now — the artifact data is the `BuiltinInterfaceKind`,
-//! deserialization rebuilds via `build_builtin_interfaces`.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
@@ -15,8 +12,8 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value,
         },
+        r#gen::gen_build_builtin_interfaces,
     },
     std::{
         collections::HashMap,
@@ -28,7 +25,7 @@ pub(crate) struct Deserializer;
 
 impl Deserializer {
     fn lookup(xx: &ExprContext, kind: BuiltinInterfaceKind) -> Rc<dyn Type> {
-        let ifaces = crate::r#gen::gen_build_builtin_interfaces(xx.import_state.get());
+        let ifaces = gen_build_builtin_interfaces(xx.import_state.get());
         let data = match kind {
             BuiltinInterfaceKind::Value => ifaces.value,
             BuiltinInterfaceKind::Type => ifaces.type_,
@@ -38,7 +35,7 @@ impl Deserializer {
             BuiltinInterfaceKind::Target => ifaces.target,
             BuiltinInterfaceKind::CodeDyn => ifaces.code_dyn,
         };
-        Rc::new(super::TypeSourceInterfaceConst { data })
+        Rc::new(super::r#const::TypeSourceInterfaceConst { data })
     }
 }
 

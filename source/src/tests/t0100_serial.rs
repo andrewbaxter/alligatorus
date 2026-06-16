@@ -49,13 +49,10 @@ fn test_00200_import_definitionset() {
         ("other", {
             let mb = ModuleBuilder::default();
             SourceModule::V1(mb.seq(vec![
-                // First lower: create the definition set and get the constructor
                 mb.bind("ctor", mb.lower(mb.seq(vec![
                     mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                     mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
-                    // Set underlying type to string
                     mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-                    // Define to_string method
                     mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("func")), mb.str("to_string"))),
                     mb.call(
                         mb.field(mb.scope_use("mnfr"), mb.str("impl")),
@@ -69,10 +66,8 @@ fn test_00200_import_definitionset() {
                             ],
                         ),
                     ),
-                    // Return the constructor
                     mb.field(mb.scope_use("ndr"), mb.str("new")),
                 ]))),
-                // Call the constructor to create an instance
                 mb.call(mb.scope_use("ctor"), mb.str("hello")),
             ]))
         }),
@@ -228,7 +223,6 @@ e0 = e1;
 }
 e0;"#]);
 
-    // Assert on serialized artifacts
     let arts = test_artifacts.data.lock().unwrap();
     assert_eq!(arts.len(), 2);
     let mut art_jsons: Vec<String> = arts.values().map(|a| serde_json::to_string_pretty(a).unwrap()).collect();

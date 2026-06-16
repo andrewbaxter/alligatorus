@@ -2,7 +2,7 @@ use {
     crate::{
         eval::value::type_source_data_type::{
             SourceDataTypeData,
-            TypeSourceDataTypeConst,
+            r#const::TypeSourceDataTypeConst,
         },
         langhelp::{
             ExprContext,
@@ -20,10 +20,6 @@ use {
 
 pub(crate) struct ValueSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
-    /// Set when the data type implements the builtin `type` interface and the stage
-    /// that constructed this instance captured a v8 handle to the shared isolate.
-    /// `TypePull.cast_from` uses this to dispatch the compiled `cast_from` method
-    /// via v8.
     pub isolate_bundle: RefCell<Option<v8::Global<v8::Object>>>,
     pub underlying: Rc<dyn Value>,
 }

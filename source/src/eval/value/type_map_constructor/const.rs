@@ -1,6 +1,12 @@
 use {
     crate::{
-        eval::value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+        eval::value::{
+            type_any::r#const::{
+                TypeAnyConst,
+                ValueAnyConst,
+            },
+            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+        },
         langhelp::{
             Aspect,
             Code,
@@ -21,6 +27,7 @@ use {
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_tuple_get_maybe,
+            aspect_type_get,
         },
     },
     std::{
@@ -64,7 +71,7 @@ impl AspectFunction for TypeMapConstructorConst {
             },
         };
         let key_meta = key_cv.value.type_(xx, loc);
-        let key_at = match crate::r#gen::aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
+        let key_at = match aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {
                 v: None,
@@ -73,7 +80,7 @@ impl AspectFunction for TypeMapConstructorConst {
         };
         let key_type = key_at.type_(key_cv.value.as_ref());
         let value_meta = value_cv.value.type_(xx, loc);
-        let value_at = match crate::r#gen::aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
+        let value_at = match aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {
                 v: None,
@@ -90,7 +97,7 @@ impl AspectFunction for TypeMapConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(super::super::type_any::r#const::ValueAnyConst { inner: map_type }),
+            value: Rc::new(ValueAnyConst { inner: map_type }),
         })
     }
 }
@@ -134,6 +141,6 @@ impl Type for TypeMapConstructorConst {
 
 impl Value for TypeMapConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

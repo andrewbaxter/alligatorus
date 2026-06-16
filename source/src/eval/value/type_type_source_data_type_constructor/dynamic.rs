@@ -1,12 +1,12 @@
 use {
     crate::{
-        eval::{
-            Erb,
-            value::type_source_data_type_constructor::{
-                TypeSourceDataTypeConstructorConst,
-                dynamic::deserialize_defset_ctor_as_type,
+        eval::value::{
+                type_any::r#const::TypeAnyConst,
+                type_source_data_type_constructor::{
+                    TypeSourceDataTypeConstructorConst,
+                    dynamic::deserialize_defset_ctor_as_type,
+                },
             },
-        },
         invariant::must_downcast_ref,
         langhelp::{
             Artifact,
@@ -25,11 +25,11 @@ use {
             AspectType,
             aspect_artifact_aspect_id,
             aspect_type_aspect_id,
+            type_type_identity,
         },
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -73,7 +73,7 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::r#gen::type_type_identity() {
+        if *key == type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_artifact_aspect_id() {
@@ -104,6 +104,6 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
 
 impl Value for TypeTypeSourceDataTypeConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

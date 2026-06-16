@@ -11,18 +11,23 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
-            TUPLE_TO_TYPE_FN_SCOPE_ID,
             TargetBindSub,
             dynamic_util::wrap_with_carry,
+            typecheck_convert,
+            util::er_seq_cv_inline,
             value::{
-                type_any::r#const::TypeAnyConst,
+                type_any::dynamic::TypeAnyDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                value_empty::scope_entry::ScopeEntryEmpty,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
+                value_empty::{
+                    r#const::ValueEmptyConst,
+                    scope_entry::ScopeEntryEmpty,
+                },
             },
         },
         invariant::must_downcast_box,
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -47,21 +52,25 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectTuple,
             ScopeEntry,
+            TUPLE_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_tuple_aspect_id,
+            aspect_tuple_get_maybe,
+            type_type_identity,
         },
         syntax::ExprId,
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -252,7 +261,7 @@ impl AspectConsumeDynamic for Tuple {
 }
 
 impl AspectInitialBind for Tuple {
-    fn initial_bind(&self, _dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
+    fn initial_bind(&self, _dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
         Box::new(ScopeEntryEmpty { type_: Rc::new(self.clone_as_type()) as Rc<dyn Type> })
     }
 }
@@ -314,37 +323,34 @@ impl Type for Tuple {
             }).collect();
             return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            let element_lowers: Vec<Box<dyn crate::r#gen::AspectLowerDynamic>> = self.elements.iter().map(|e| {
+        if *key == aspect_lower_dynamic_aspect_id() {
+            let element_lowers: Vec<Box<dyn AspectLowerDynamic>> = self.elements.iter().map(|e| {
                 let t = match e {
                     TupleElement::Dynamic(t) => t.clone(),
                     TupleElement::EvalRes(_) => panic!("lower on non-type tuple"),
                 };
                 let a =
                     t
-                        .aspect(xx, &crate::r#gen::aspect_lower_dynamic_aspect_id())
+                        .aspect(xx, &aspect_lower_dynamic_aspect_id())
                         .expect(&format!("Tuple element type ({}) missing AspectLowerDynamic", t.desc()));
-                must_downcast_box::<Box<dyn crate::r#gen::AspectLowerDynamic>>(a)
+                must_downcast_box::<Box<dyn AspectLowerDynamic>>(a)
             }).collect();
             return Some(
-                Box::new(Box::new(TupleLowerJs { element_lowers }) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+                Box::new(Box::new(TupleLowerJs { element_lowers }) as Box<dyn AspectLowerDynamic>),
             );
         }
         return None;
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        // Mirror Record.can_cast_from: source must expose `aspect_tuple` and match the
-        // element count; each source element type is left to typecheck_convert at
-        // cast_from time.
-        let Some(source_tuple) = crate::r#gen::aspect_tuple_get_maybe(xx, source_type) else {
+        let Some(source_tuple) = aspect_tuple_get_maybe(xx, source_type) else {
             return false;
         };
         source_tuple.element_types().len() == self.elements.len()
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+        type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -369,7 +375,7 @@ impl Type for Tuple {
                         if let Some(elem_cv) = elem_res.v {
                             let conv =
                                 erb.must_er(
-                                    crate::eval::typecheck_convert(xx, loc, dest_elem_type.as_ref(), elem_cv),
+                                    typecheck_convert(xx, loc, dest_elem_type.as_ref(), elem_cv),
                                 )?;
                             TupleElement::EvalRes(EvalRes::ok(conv))
                         } else {
@@ -391,22 +397,17 @@ impl Type for Tuple {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        let result_type = cv.value.type_(xx, loc);
-
-        // `cv.value` may be a `ValueEmptyConst` placeholder (e.g. when `self` is bound to
-        // a tuple-typed underlying via `ScopeEntryEmpty`). Synthesize a fresh empty Tuple
-        // value in that case.
         let cv_value: Rc<dyn Value> =
             if (cv.value.as_ref() as
-                &dyn std::any::Any).is::<crate::eval::value::value_empty::r#const::ValueEmptyConst>() {
+                &dyn std::any::Any).is::<ValueEmptyConst>() {
                 Rc::new(self.clone_as_type())
             } else {
                 cv.value
             };
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv_value)).ok().expect("Tuple cast_to: Rc not unique");
-        return crate::eval::util::er_seq_cv_inline(loc, |erb| {
-            let any_type: Rc<dyn Type> = Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
+        return er_seq_cv_inline(loc, |erb| {
+            let any_type: Rc<dyn Type> = Rc::new(TypeAnyDynamic);
             let mut converted_elements = Vec::new();
             let mut converted_type = self.clone_as_type();
             for (i, elem) in tuple.elements.into_iter().enumerate() {
@@ -427,7 +428,7 @@ impl Type for Tuple {
                     },
                     TupleElement::EvalRes(er) => {
                         let entry_cv = erb.must_er(er)?;
-                        erb.must_er(crate::eval::typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
+                        erb.must_er(typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
                     },
                 };
                 converted_type.elements[i] = TupleElement::Dynamic(any_type.clone());
@@ -468,8 +469,8 @@ impl Type for Tuple {
         }).collect::<Vec<_>>().join(", "))
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
-        let mut elements_serial: Vec<crate::langhelp::Artifact> = Vec::new();
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
+        let mut elements_serial: Vec<Artifact> = Vec::new();
         for elem in &self.elements {
             let elem_type = match elem {
                 TupleElement::Dynamic(t) => t.clone(),
@@ -478,12 +479,7 @@ impl Type for Tuple {
                     None => panic!("Tuple::type_to_serial: element has no value"),
                 },
             };
-            let elem_artifact =
-                crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
-                    xx,
-                    loc,
-                    elem_type.as_ref(),
-                );
+            let elem_artifact = serialize_type_ref(xx, loc, elem_type.as_ref());
             elements_serial.push(elem_artifact);
         }
         let payload = artifact::ArtifactTupleType { elements: elements_serial };
@@ -517,12 +513,8 @@ enum TupleBindSubResult {
     Target(TargetBindSub),
 }
 
-/// Represents a single element entry in a Tuple.
 pub(crate) enum TupleElement {
-    /// Element has been fully evaluated and is available immediately.
     EvalRes(EvalRes),
-    /// Element available only via the dynamic source. Type is known but value is
-    /// deferred to runtime.
     Dynamic(Rc<dyn Type>),
 }
 
@@ -557,12 +549,12 @@ impl AspectLiftDynamic for TupleLiftJs {
 }
 
 struct TupleLowerJs {
-    element_lowers: Vec<Box<dyn crate::r#gen::AspectLowerDynamic>>,
+    element_lowers: Vec<Box<dyn AspectLowerDynamic>>,
 }
 
 impl Aspect for TupleLowerJs { }
 
-impl crate::r#gen::AspectLowerDynamic for TupleLowerJs {
+impl AspectLowerDynamic for TupleLowerJs {
     fn lower(
         &self,
         xx: &ExprContext,

@@ -7,10 +7,13 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
             typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
                 type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
         },
@@ -20,6 +23,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -27,6 +31,7 @@ use {
             Type,
             Unique,
             Value,
+            produce_independent_artifact,
         },
         r#gen::{
             AspectBind,
@@ -40,7 +45,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
     super::{
@@ -55,7 +59,7 @@ use {
 
 impl TypeSourceDataTypeConstructorConst {
     pub(crate) fn serialize_ctor(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        crate::langhelp::produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.data.artifact_id, || {
+        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.data.artifact_id, || {
             let underlying_type = self.data.underlying_type.get();
             let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
                 let compiled_js = m.compiled_js.borrow();
@@ -112,11 +116,11 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
             let mut object_fields =
-                vec![(crate::langhelp::ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
+                vec![(ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
             for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
                 object_fields.push(
-                    (crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
+                    (ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
                         loc,
                         type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
                     })
@@ -129,7 +133,7 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
                     object_fields.push(
-                        (crate::langhelp::ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
+                        (ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
                         })
@@ -152,7 +156,7 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
 impl Type for TypeSourceDataTypeConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(
-            crate::eval::value::type_any::r#const::ValueAnyConst {
+            ValueAnyConst {
                 inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }),
             },
         )
@@ -195,6 +199,6 @@ impl Type for TypeSourceDataTypeConstructorConst {
 
 impl Value for TypeSourceDataTypeConstructorConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

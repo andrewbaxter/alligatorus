@@ -1,11 +1,3 @@
-//! One of the first milestones of this project is to generate a `nodejs` target
-//! within the language.
-//!
-//! These tests break this down into:
-//!
-//! * Chunks of the `nodejs` target AST
-//!
-//! * Tests to confirm the chunks work
 use {
     crate::{
         compile,
@@ -23,19 +15,11 @@ use {
     },
 };
 
-/// Build an `aspect(arg) -> option<any>` dispatch body that returns
-/// `option_aspect.some(self)` when `arg.key` (a Unique) equals any of the named
-/// builtin aspect ids, else `option_aspect.none(())`. The type implementing this
-/// must have `impl_interface`'d each named aspect, so returning `self` is
-/// sufficient for the host to invoke the aspect's methods via normal interface
-/// dispatch.
+#[allow(dead_code)]
 fn aspect_dispatch(mb: &ModuleBuilder, aspect_names: Vec<&str>) -> SourceExpr {
     let conditions: Vec<(SourceExpr, SourceExpr)> = aspect_names.into_iter().map(|aspect| {
         (
             mb.operator_eq(mb.field(mb.scope_use("arg"), mb.str("key")), mb.scope_use(aspect)),
-            // `outer_self` = the data type instance (`this` at v8). Casting it to `aspect`
-            // via `option.some` emits `__data_instance_to_aspect` which captures the instance
-            // into an `AspectPull` external.
             mb.call(
                 mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("some")),
                 mb.scope_use("outer"),
@@ -45,8 +29,7 @@ fn aspect_dispatch(mb: &ModuleBuilder, aspect_names: Vec<&str>) -> SourceExpr {
     return mb.if_(conditions, Some(aspect_dispatch_none(mb)));
 }
 
-/// `option(aspect).none(())` — the no-aspects-here dispatch body, used by types
-/// that don't expose any aspects.
+#[allow(dead_code)]
 fn aspect_dispatch_none(mb: &ModuleBuilder) -> SourceExpr {
     return mb.call(
         mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("none")),
@@ -54,31 +37,17 @@ fn aspect_dispatch_none(mb: &ModuleBuilder) -> SourceExpr {
     );
 }
 
+#[allow(dead_code)]
 fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     let mut exprs: Vec<SourceExpr> = Vec::new();
 
-    // # Code AST + helpers (build_nodejs_code) and a definition set.
     exprs.push(mb.bind("code", build_nodejs_code(mb)));
     exprs.push(mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))));
 
-    // `option` is treated here as a builtin type constructor (like `list` / `map`),
-    // taking a payload type and exposing `.some` / `.none` constructors. Not exposed
-    // as a scope entry yet — TODO to register it.
     exprs.push(mb.bind("root", mb.call(mb.scope_use("option"), mb.scope_use("expr"))));
 
-    // `option_aspect` is used by the `aspect(arg)` dispatch on each type below — the
-    // payload is the source-language `aspect` builtin type, which wraps a user
-    // data-type instance via `__data_instance_to_aspect` into an `AspectPull`
-    // external.
     exprs.push(mb.bind("option_aspect", mb.call(mb.scope_use("option"), mb.scope_use("aspect"))));
 
-    // # nvalue_base — a tagged union shared between every nodejs value, capturing how
-    //
-    // the value materializes into JS code:
-    //
-    // * `binding(name)` — references an existing JS binding (e.g. `e3`)
-    //
-    // * `expr(code)`    — inlines a `code` AST fragment
     exprs.push(
         mb.bind("nvalue_base", mb.call(mb.field(mb.scope_use("d"), mb.str("union")), mb.tuple(vec![]))),
     );
@@ -97,20 +66,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ]))),
     );
 
-    // # nvalue — universal carrier for every nodejs value: `(base, type)` where
-    //
-    // `type` is the nodejs type the value has at use-time. nvalue's `value.type`
-    // returns `self.type`, so aspect lookups on an nvalue dispatch through that
-    // contained type (ntype_str / ntype_func / ntype_object / ...).
     exprs.push(mb.bind("nvalue", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs value"))));
     exprs.push(mb.call(mb.field(mb.scope_use("nvalue"), mb.str("set_inner")), mb.record(vec![
         //. .
         ("base", mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
-        // `type` field stores the value's source-language type as `any` (= `Rc<dyn Type>`
-        // at runtime). This makes `nvalue.new({type: T})` accept any type-bearing value
-        // `T` uniformly — both concrete ntype_object instances (via
-        // `TypeAnyDynamic::cast_from`) and already-`any`-typed types like an
-        // `nscope_entry`'s stored type.
         ("type", mb.scope_use("type")),
     ])));
     exprs.push(mb.call(
@@ -118,7 +77,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         iface_methods(mb, vec![("type", mb.field(mb.scope_use("inner"), mb.str("type")))]),
     ));
 
-    // # aspect_consume_nodejs — source-level `is_aspect` interface.
     exprs.push(
         mb.bind(
             "aspect_consume_nodejs",
@@ -142,7 +100,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // # ntype_str — nodejs string type. Its instances are types.
     exprs.push(
         mb.bind("ntype_str", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs string"))),
     );
@@ -165,10 +122,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // # ntype_func — nodejs function type `(arg, ret)`. Implements `aspect_function`
-    //
-    // so calling an nvalue of this type produces a `code.call` AST node wrapped in a
-    // new nvalue whose type is `self.ret`.
     exprs.push(
         mb.bind(
             "ntype_func",
@@ -184,30 +137,14 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         impl_as_self_type(mb, "ntype_func", "nodejs function", aspect_dispatch(mb, vec!["aspect_function_id"])),
     );
 
-    // aspect_function.call — `arg` carries `{self, argument}` as CodeValueExterns
-    // (the receiver and argument CVs) plus `xx`. Returns a CodeValueExtern (the
-    // result CV). The body uses `new_code_value(code, value)` to explicitly construct
-    // that CV — same shape as the Rust `AspectFunction::call` impl.
-    //
-    // TODO(code-arg): pass the real test-`code` AST as the code arg once the test's
-    // `code` tagged union impls the `code_dyn` builtin interface (so it casts to
-    // `codedyn`). For now the code arg is `option(codedyn).none(())` — produces a
-    // `Code_::None` result, which doesn't match the test's expected JS output but
-    // lets the impl compile against the new contract.
     exprs.push(
         impl_iface(
             mb,
             "ntype_func",
             "aspect_function",
             vec![("call", mb.call(mb.scope_use("new_code_value"), mb.tuple(vec![
-                // code arg: option(codedyn).none(())
                 mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("codedyn")), mb.str("none")), mb.null()),
-                // value arg: original nvalue construction; auto-casts TSDT(nvalue) → value via
-                // __data_instance_to_value (nvalue impls the value iface).
                 mb.seq(vec![
-                    // func_code: unwrap .value as an nvalue instance so .base falls through.
-                    // `cast_value` panics at runtime if the value isn't a `ValuePull` whose
-                    // data type matches nvalue.
                     mb.bind(
                         "func_code",
                         nvalue_base_to_code(
@@ -229,7 +166,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                             ),
                         ),
                     ),
-                    // arg_code: aspect-based lookup + dispatch via aspect_lookup.
                     mb.bind(
                         "arg_code",
                         mb.match_(
@@ -268,9 +204,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                         ),
                                     ),
                                 ),
-                                // none case: no `aspect_consume_nodejs` on the arg's type. Helloworld doesn't hit
-                                // this — the arg is a string and nstring impls the aspect. Return a placeholder
-                                // `code.lit_str("")` so the match arms are type-consistent.
                                 (mb.str("none"), mb.call(mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))), mb.str(""))),
                             ],
                             None,
@@ -304,13 +237,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // # ntype_object — nodejs object type, parameterized by `map(string, type)`. Its
-    //
-    // instances are types. Implements `aspect_field` (look up a field by name).
-    //
-    // Scope initialization (turning a type + a binding name into a ScopeEntry) is
-    // done by the napp.build code below directly constructing nvalues — not via
-    // `aspect_initial_bind`, which is dynamic-/v8-specific.
     exprs.push(
         mb.bind(
             "ntype_object",
@@ -327,10 +253,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         impl_as_self_type(mb, "ntype_object", "nodejs object", aspect_dispatch(mb, vec!["aspect_field_id"])),
     );
 
-    // aspect_field.field — same contract as aspect_function.call. arg = {self, key,
-    // xx} CodeValueExterns/ExprContextPush. Returns CodeValueExtern via
-    // new_code_value. TODO(code-arg): real codedyn arg once test's `code` impls
-    // code_dyn iface.
     exprs.push(
         impl_iface(
             mb,
@@ -338,9 +260,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             "aspect_field",
             vec![
                 ("field", mb.call(mb.scope_use("new_code_value"), mb.tuple(vec![
-                    // code arg: option(codedyn).none(())
                     mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("codedyn")), mb.str("none")), mb.null()),
-                    // value arg: original nvalue construction (auto-casts to value)
                     mb.seq(
                         vec![
                             mb.bind(
@@ -418,19 +338,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // # nscope_entry — what a `new_expr_context` scope record maps names to.
-    //
-    // The dynamic target uses Rust-side `ScopeEntry` trait objects with an
-    // `aspect_initial_bind` flow; nodejs needs its own equivalent. An nscope_entry
-    // wraps an nvalue (the value the binding resolves to) and is produced directly
-    // when the scope is populated — no `aspect_initial_bind` dance. When `const_eval`
-    // encounters a `scope_use` and looks up the entry, it calls `use(loc) -> nvalue`,
-    // which just hands back the wrapped value (cf. `TypeUnique`'s `AspectBind` impl
-    // in Rust).
-    //
-    // TODO: a builtin `scope_entry` interface (mirroring the Rust trait) doesn't
-    // exist yet — see open work on that. For now the impl is sketched out under a
-    // placeholder interface name.
     exprs.push(
         mb.bind(
             "nscope_entry",
@@ -444,27 +351,13 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // `use` constructs a fresh `nvalue` at v8 time, with
-    // `base = nvalue_binding(self.name)` and `type = self.type` — both drawn from the
-    // entry's underlying. The ret_type is now `CodeValue` (via the
-    // `<CodeValue as Push>::dynamic_type()` = `TypeCodeValueExtern`
-    // unification), so the body wraps its produced value in a `CodeValueExtern` via
-    // `new_code_value(code, value)`.
-    //
-    // TODO(code-arg): the function's `code` arg has source-type `CodeValueExtern`
-    // (per `build_aspect_arg_record_type`), but `new_code_value` expects
-    // `option(code_dyn)`. Until either the CVE can cast through to `option(code_dyn)`
-    // or the arg-record exposes typed-per-Rust-param fields, the code slot uses
-    // `option(codedyn).none(())` (mirrors `aspect_function.call`).
     exprs.push(
         impl_iface(
             mb,
             "nscope_entry",
             "scope_entry",
             vec![("use", mb.call(mb.scope_use("new_code_value"), mb.tuple(vec![
-                // code arg: `option(codedyn).none(())` placeholder
                 mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("codedyn")), mb.str("none")), mb.null()),
-                // value arg: the freshly-constructed nvalue
                 mb.call(
                     mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("new"))),
                     mb.record(
@@ -484,32 +377,11 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // # ntarget — the nodejs target. Implements the builtin `target` interface so
-    //
-    // that `const_eval` with an ntarget instance as `target` walks the staged AST
-    // through these method bodies, accumulating nodejs `code` instead of v8 JS.
-    //
-    // Bodies below are intentionally minimal: each constructs the smallest plausible
-    // `code` fragment, enough to thread `console.log("Hello world (node)")` through
-    // const_eval. They mirror the shape of the Rust `TargetDynamic` impl but produce
-    // nodejs `code` AST nodes instead of `CodeDynamic`.
     exprs.push(
         mb.bind("ntarget", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs target"))),
     );
     exprs.push(mb.call(mb.field(mb.scope_use("ntarget"), mb.str("set_inner")), mb.scope_use("null")));
     exprs.push(impl_iface(mb, "ntarget", "target", vec![
-        // bind(xx, loc, sub) -> (Code, ScopeEntryId)
-        //
-        // The dynamic target emits `let aN; { ... aN = code; }` and returns the fresh
-        // binding's ScopeEntryId. For nodejs we do the same shape — using
-        // `code.scope_use(name)` as the rebound code, and threading the generated name
-        // via `gen_binding_name` (assumed compiler helper). `target.bind` ret_type is now
-        // `(Code, ScopeEntryId)` (via the generic
-        // `<(A, B) as Push>::dynamic_type()`), so the source body returns a
-        // `tuple(option(code_dyn), string)`. The first element should ideally be the real
-        // test `code` AST cast to `code_dyn`; until the test's `code` tagged_union impls
-        // the `code_dyn` builtin interface, use the `option(codedyn).none(())`
-        // placeholder pattern (matches `aspect_function.call`).
         (
             "bind",
             mb.seq(
@@ -519,18 +391,12 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                         mb.call(mb.scope_use("gen_binding_name"), mb.field(mb.scope_use("arg"), mb.str("xx"))),
                     ),
                     mb.tuple(vec![
-                        // code arg: `option(codedyn).none(())` placeholder
                         mb.call(mb.field(mb.call(mb.scope_use("option"), mb.scope_use("codedyn")), mb.str("none")), mb.null()),
                         mb.scope_use("name"),
                     ]),
                 ],
             ),
         ),
-        // bind_sub_record(loc, carry, fields) -> TargetBindSub
-        //
-        // The dynamic target produces a record literal `{f1: ..., f2: ...}`. We build the
-        // equivalent in nodejs as a record carried through the bind sub so it can be
-        // materialized later when a real binding is requested.
         (
             "bind_sub_record",
             mb.record(
@@ -540,7 +406,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 ],
             ),
         ),
-        // bind_sub_tuple(loc, carry, elements) -> TargetBindSub
         (
             "bind_sub_tuple",
             mb.record(
@@ -550,8 +415,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 ],
             ),
         ),
-        // seq(loc, entries) -> EResult`<Code>`. New ret dynamic type is `option(code_dyn)` —
-        // placeholder until the test's `code` impls `code_dyn`.
         (
             "seq",
             mb.call(
@@ -559,9 +422,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 mb.null(),
             ),
         ),
-        // code_to_bind_sub(loc, code, type_) -> EResult`<TargetBindSub>`. TargetBindSub's
-        // dynamic type is currently `TypeAnyDynamic` (permissive placeholder), so a record
-        // passes the typecheck.
         (
             "code_to_bind_sub",
             mb.record(
@@ -571,16 +431,8 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 ],
             ),
         ),
-        // if(xx, loc, conditions, else) -> EResult`<CodeValue>`. Ret dynamic type is
-        // `TypeCodeValueExternDynamic` — `arg.xx` is already CVE-typed, so return it as a
-        // stub. helloworld doesn't exercise this body.
         ("if", mb.field(mb.scope_use("arg"), mb.str("xx"))),
-        // match: same story as `if`.
         ("match", mb.field(mb.scope_use("arg"), mb.str("xx"))),
-        // maybe_bind_sub(xx, loc, cv) -> Option`<TargetBindSub>`
-        //
-        // The dynamic target wraps the cv's code into a bind sub if it's CodeDynamic;
-        // here every cv carries nodejs code so we always succeed.
         (
             "maybe_bind_sub",
             mb.call(
@@ -588,14 +440,9 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                 mb.field(mb.scope_use("arg"), mb.str("cv")),
             ),
         ),
-        // stage(xx, loc, tree, lower_values) -> EResult`<CodeValue>`. Same CVE-typed stub
-        // pattern as `if`/`match`. helloworld doesn't re-stage.
         ("stage", mb.field(mb.scope_use("arg"), mb.str("xx"))),
     ]));
 
-    // # napp — the nodejs app object. Holds the staged root expression (as
-    //
-    // `option<expr>`) and exposes `root(expr)` / `build()` methods.
     exprs.push(mb.bind("napp", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs app"))));
     exprs.push(
         mb.call(
@@ -604,7 +451,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // napp.root(expr) — stash `arg` into `self.root` as `option.some(arg)`.
     exprs.push(mb.bind("napp_root", mb.call(mb.field(mb.scope_use("napp"), mb.str("func")), mb.str("root"))));
     exprs.push(
         mb.call(
@@ -622,11 +468,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ),
     );
 
-    // napp.build() — match on `self.root`. For `some(expr)`, const_eval the staged
-    // expression under a fresh ExprContext with an ntarget instance as target and a
-    // scope pre-populated with `console` (an nvalue referencing the JS global binding
-    // `console`, typed as a nodejs object with a `log` field of type
-    // `string -> string`). Then `code.render(...)` the resulting CodeValue.code.
     exprs.push(mb.bind("napp_build", mb.call(mb.field(mb.scope_use("napp"), mb.str("func")), mb.str("build"))));
     exprs.push(mb.call(mb.field(mb.scope_use("napp_build"), mb.str("impl")), mb.tuple(vec![
         mb.tuple(vec![]),
@@ -634,7 +475,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         mb.stage(mb.seq(vec![
         //. .
         mb.match_(mb.field(mb.scope_use("inner"), mb.str("root")), mb.str("root"), vec![(mb.str("some"), mb.seq(vec![
-            // Build a nodejs `string -> string` function type for `console.log`.
             mb.bind(
                 "ntype_str_inst",
                 mb.call(mb.lower(mb.field(mb.scope_use("ntype_str"), mb.str("new"))), mb.tuple(vec![])),
@@ -648,7 +488,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                 ),
             ),
-            // Build the `console` nodejs object type: `{ log: ntype_log }`.
             mb.bind(
                 "ntype_console",
                 mb.call(
@@ -665,9 +504,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                 ),
             ),
-            // Wrap the `console` binding name + type as an `nscope_entry`; the entry's `use`
-            // constructs the actual nvalue (with `base = nvalue_binding(name)`,
-            // `type = type`) at v8 time when `console` is resolved from scope.
             mb.bind(
                 "console_entry",
                 mb.call(
@@ -675,7 +511,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     mb.record(vec![("name", mb.str("console")), ("type", mb.scope_use("ntype_console"))]),
                 ),
             ),
-            // const_eval the staged root with an ntarget + a scope containing `console`.
             mb.bind(
                 "res",
                 mb.call(
@@ -699,11 +534,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                 ),
             ),
-            // Render the resulting code AST as a JS source string. `res.cv.code.code` is a
-            // `Code_` tagged union with variants `none` (no code emitted) and `dyn(handle)`
-            // (a `code_dyn` handle); the `dyn` variant is what the nodejs target's
-            // code-emitting impls produce, and we cast it to the nodejs `code` tagged union
-            // before rendering.
             mb.match_(
                 mb.field(mb.field(mb.scope_use("res"), mb.str("code")), mb.str("code")),
                 mb.str("v"),
@@ -725,9 +555,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         ])), (mb.str("none"), mb.seq(vec![mb.str("")]))], None),
     ])),])));
 
-    // # nodejs() — public constructor that returns a fresh napp with `root` set to
-    //
-    // `option.none(())`.
     exprs.push(mb.bind("nodejs", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("nodejs"))));
     exprs.push(
         mb.call(
@@ -758,26 +585,11 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
 fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
     return mb.seq(vec![
         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-        // # Internal tagged union of nodejs-code variants. Not exposed
-        //
-        // directly — the public `code` binding (below) is a wrapper data type whose
-        // underlying is this tagged union. The wrapper exists so the type can impl
-        // `code_dyn` (only data types can impl interfaces), and `self` inside iface impls
-        // resolves to the underlying tagged-union value — making `code_dyn.get` body
-        // `mb.scope_use("inner")` return a matchable tagged-union value.
         mb.bind("code_tu_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("union")), mb.tuple(vec![]))),
         mb.bind("code_tu", mb.field(mb.scope_use("code_tu_builder"), mb.str("type"))),
-        // # Wrapper data type — set_underlying first; variants reference
-        //
-        // `code` (the wrapper) below, so we need `code` bound before adding variants. The
-        // tagged-union ref is shared by mutable Rc so adding variants after
-        // `set_underlying` is fine.
         mb.bind("code_data", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs code"))),
         mb.call(mb.field(mb.scope_use("code_data"), mb.str("set_inner")), mb.scope_use("code_tu")),
         mb.bind("code", mb.field(mb.scope_use("code_data"), mb.str("type_ref"))),
-        // # Variants — payload types reference `code` (the wrapper), so the
-        //
-        // AST is recursively built out of wrappers.
         mb.bind("code_tu_call", mb.call(mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")), mb.tuple(vec![
             //. .
             mb.str("call"),
@@ -805,27 +617,15 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                 mb.tuple(vec![mb.str("scope_use"), mb.scope_use("string")]),
             ),
         ),
-        // # Impl `code_dyn` on the wrapper (empty — the iface has no
-        //
-        // methods; impl is what flags the data type as code_dyn-castable).
         mb.call(
             mb.field(mb.scope_use("code_data"), mb.str("impl_interface")),
             mb.tuple(vec![mb.scope_use("code_dyn"), iface_methods(mb, vec![])]),
         ),
-        // # `code.get()` — a regular data-type method. Body is `self`, which
-        //
-        // in method impls resolves to the underlying tagged-union value. The renderer
-        // calls `<code_dyn_handle>.cast(code.type).get()` to recover the original
-        // tagged-union value for matching.
         mb.bind("code_get_builder", mb.call(mb.field(mb.scope_use("code_data"), mb.str("func")), mb.str("get"))),
         mb.call(
             mb.field(mb.scope_use("code_get_builder"), mb.str("impl")),
             mb.tuple(vec![mb.tuple(vec![]), mb.scope_use("code_tu"), mb.stage(mb.scope_use("inner"))]),
         ),
-        // # Standalone construction functions — each builds the tagged-union
-        //
-        // variant and wraps in the data type. Re-exposed at the record level (below) so
-        // callers can keep doing `code.call(...)`, etc.
         mb.bind("code_call_builder", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("code.call"))),
         mb.bind("code_call", mb.field(mb.scope_use("code_call_builder"), mb.str("func"))),
         mb.call(
@@ -895,7 +695,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                 ),
             ]),
         ),
-        // # Define render-code function (recursive inner version)
         mb.bind(
             "render_inner_builder",
             mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("Render Node.js code (inner)")),
@@ -1023,7 +822,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             mb.call(mb.field(mb.scope_use("out"), mb.str("push")), mb.str(";\n}\n")),
             mb.scope_use("key"),
         ])),])),
-        // Define render-code func (outer)
         mb.bind(
             "render_builder",
             mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("Render Node.js code")),
@@ -1054,9 +852,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             ),
             mb.call(mb.field(mb.field(mb.scope_use("context"), mb.str("out")), mb.str("join")), mb.str("")),
         ])),])),
-        // Assemble and return — `type` is the wrapper data type. The variant-constructor
-        // standalone funcs are re-exposed as record fields so callers can keep doing
-        // `code.call(...)`, etc.
         mb.record(vec![
             //. .
             ("type", mb.scope_use("code")),
@@ -1069,9 +864,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
     ]);
 }
 
-/// Build a `map(string, expr).new({...})` literal — used as the implementations
-/// record by `impl_interface`. Each method body is wrapped in `mb.stage(...)`
-/// before being placed in the record.
 fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> SourceExpr {
     let entries: Vec<(&str, SourceExpr)> = methods.into_iter().map(|(k, v)| (k, mb.stage(v))).collect();
     return mb.call(
@@ -1083,17 +875,7 @@ fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> Source
     );
 }
 
-/// Make a data type also be a _type_: its instances become values whose type is
-/// themselves, and they satisfy the builtin `type` interface. Mirrors the pattern
-/// in `t0120_impl_type` but also includes the `aspect` method — without it, aspect
-/// lookups on these types always return `None`, so impls like
-/// `aspect_function.call` / `aspect_field.field` would never be reached.
-///
-/// `aspect_dispatch` is the body for `aspect(arg) -> option<aspect_impl>`: given
-/// `arg.key` (a Unique), it should return `option.some(<impl>)` if the type
-/// implements that aspect, or `option.none(())` otherwise. Real dispatch needs to
-/// compare `arg.key` against builtin aspect ids, which currently has no operator —
-/// see open TODO about adding `operator_eq`.
+#[allow(dead_code)]
 fn impl_as_self_type(
     mb: &ModuleBuilder,
     target_var: &str,
@@ -1120,7 +902,7 @@ fn impl_as_self_type(
     ];
 }
 
-/// `data_type.impl_interface(iface, map(string,expr).new({ name: stage(body), ... }))`.
+#[allow(dead_code)]
 fn impl_iface(mb: &ModuleBuilder, target_var: &str, iface: &str, methods: Vec<(&str, SourceExpr)>) -> SourceExpr {
     return mb.call(
         mb.field(mb.scope_use(target_var), mb.str("impl_interface")),
@@ -1128,11 +910,7 @@ fn impl_iface(mb: &ModuleBuilder, target_var: &str, iface: &str, methods: Vec<(&
     );
 }
 
-/// Convert an `nvalue_base` (tagged union of `binding(string)` / `expr(code)`)
-/// into a `code` AST node. `base_expr` should evaluate to an `nvalue_base`. `code`
-/// from the outer scope is lowered in for the `scope_use` constructor. The
-/// argument is cast to `nvalue_base` first — at impl-compile time the static type
-/// may be `any` (the receiver's underlying field type isn't inferred).
+#[allow(dead_code)]
 fn nvalue_base_to_code(mb: &ModuleBuilder, base_expr: SourceExpr) -> SourceExpr {
     return mb.match_(
         mb.as_(base_expr, mb.lower(mb.field(mb.scope_use("nvalue_base"), mb.str("type")))),

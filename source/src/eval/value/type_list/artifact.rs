@@ -1,7 +1,10 @@
-//! List-type artifact: serialized element type artifact.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::{
+            util::deserialize_type_artifact,
+            value::type_list::dynamic::TypeListDynamic,
+        },
         langhelp::{
             Artifact,
             ArtifactIdBuiltin,
@@ -41,8 +44,8 @@ impl Deserializer {
             },
         };
         let (element_type, _c) =
-            crate::eval::util::deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
-        Ok(Rc::new(crate::eval::value::type_list::dynamic::TypeListDynamic { element_type }))
+            deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
+        Ok(Rc::new(TypeListDynamic { element_type }))
     }
 }
 

@@ -1,15 +1,31 @@
 use {
     crate::{
-        code_dynamic::CodeDynamic,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicCall,
+            CodeDynamicType,
+        },
         eval::{
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
             from_v8_ref,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            push::Push,
+            to_v8,
+            value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -32,14 +48,18 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectStackValueDynamic,
             ScopeEntry,
+            TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            type_type_identity,
         },
     },
     std::{
@@ -62,7 +82,7 @@ impl AspectBind for TypeSourceTaggedUnionConstructorDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -73,7 +93,7 @@ impl AspectBindDynamic for TypeSourceTaggedUnionConstructorDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -106,7 +126,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
             data: ctor.data.clone(),
             variant_index: ctor.variant_index,
         });
-        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
+        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
 }
 
@@ -125,7 +145,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynamic {
+impl AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynamic {
     fn lower(
         &self,
         _xx: &ExprContext,
@@ -138,7 +158,7 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynami
             data: ctor.data.clone(),
             variant_index: ctor.variant_index,
         });
-        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
+        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
 }
 
@@ -171,10 +191,10 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
                 Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLiftDynamic>),
             );
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+        if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>,
+                    Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLowerDynamic>,
                 ),
             );
         }
@@ -187,7 +207,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+        type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
@@ -195,24 +215,24 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_none() {
+        if type_.aspect(xx, &type_type_identity()).is_none() {
             return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
         }
-        let source_code = match cv.code.cast::<crate::code_dynamic::CodeDynamic>() {
-            crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+        let source_code = match cv.code.cast::<CodeDynamic>() {
+            EResult { v: Some(Some(c)), .. } => c.clone(),
             _ => return EvalRes::err(
                 loc,
                 format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc()),
             ),
         };
-        let call = crate::code_dynamic::CodeDynamic {
+        let call = CodeDynamic {
             loc,
-            type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
-                func: Box::new(crate::code_dynamic::CodeDynamic {
+            type_: CodeDynamicType::Call(CodeDynamicCall {
+                func: Box::new(CodeDynamic {
                     loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
-                        crate::code_dynamic::CodeDynamicBindingUse {
-                            id: crate::eval::TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+                    type_: CodeDynamicType::BindingUse(
+                        CodeDynamicBindingUse {
+                            id: TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
                         },
                     ),
                 }),
@@ -222,12 +242,12 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         let dest_rc =
             type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceTaggedUnionConstructorDynamic) as Rc<dyn Type>);
         EvalRes::ok(CodeValue {
-            code: crate::langhelp::Code {
+            code: Code {
                 loc,
-                code: crate::langhelp::Code_::Dyn(Rc::new(call)),
+                code: Code_::Dyn(Rc::new(call)),
             },
-            value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
-                source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
                 type_: dest_rc,
             }),
         })
@@ -240,13 +260,13 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
 
 impl Value for TypeSourceTaggedUnionConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-impl crate::eval::push::Push for Rc<SourceTaggedUnionConstructorRef> {
+impl Push for Rc<SourceTaggedUnionConstructorRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let type_: &Rc<dyn Type> = crate::eval::from_v8_ref(&*value);
+        let type_: &Rc<dyn Type> = from_v8_ref(&*value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         Rc::new(SourceTaggedUnionConstructorRef {
             data: ctor.data.clone(),
@@ -259,7 +279,7 @@ impl crate::eval::push::Push for Rc<SourceTaggedUnionConstructorRef> {
             data: self.data.clone(),
             variant_index: self.variant_index,
         });
-        crate::eval::to_v8(scope, type_).into()
+        to_v8(scope, type_).into()
     }
 
     fn dynamic_type() -> Rc<dyn Type> {

@@ -1,6 +1,3 @@
-//! A simple const-only `Option`. Returned by `.aspect(unique)` lookups on Type
-//! values: `Some(empty)` if the type has the aspect, `None` otherwise. Supports
-//! `.is_some() -> bool` via an `AspectField` that returns a callable.
 use {
     crate::{
         eval::value::{
@@ -9,6 +6,7 @@ use {
             type_null::dynamic::TypeNullDynamic,
             value_bool::r#const::ValueBoolConst,
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -36,9 +34,6 @@ use {
     },
 };
 
-/// The closure-like value produced by `option.is_some` (a 0-arg function).
-/// `receiver` is the option value the field was accessed on; we resolve `is_some`
-/// against it lazily so source code that captures the field as a value still works.
 struct OptionIsSome {
     receiver: Rc<dyn Value>,
 }
@@ -129,8 +124,8 @@ impl Aspect for TypeOptionIsSomeFn { }
 
 impl AspectFunction for TypeOptionIsSomeFn {
     fn call(&self, _xx: &ExprContext, loc: QExprId, self_: CodeValue, _argument: CodeValue) -> EvalRes {
-        let is_some_fn = crate::invariant::must_downcast_ref::<OptionIsSome>(self_.value.as_ref());
-        let opt = crate::invariant::must_downcast_ref::<ValueOption>(is_some_fn.receiver.as_ref());
+        let is_some_fn = must_downcast_ref::<OptionIsSome>(self_.value.as_ref());
+        let opt = must_downcast_ref::<ValueOption>(is_some_fn.receiver.as_ref());
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
@@ -176,7 +171,6 @@ impl Value for TypeOptionIsSomeFn {
     }
 }
 
-/// A const-only Option value. `is_some` is true when wrapping a present value.
 pub(crate) struct ValueOption {
     pub is_some: bool,
 }

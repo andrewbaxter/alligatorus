@@ -1,16 +1,31 @@
 use {
     crate::{
-        code_dynamic::CodeDynamic,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicCall,
+            CodeDynamicType,
+        },
         eval::{
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
             from_v8_ref,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
+        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -26,20 +41,27 @@ use {
             Value,
         },
         r#gen::{
+            AspectAspect,
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectStackValueDynamic,
+            INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
+            aspect_aspect_aspect_id,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            interface_const_identity,
             interface_ref_type_identity,
+            type_type_identity,
         },
     },
     std::{
@@ -47,8 +69,8 @@ use {
         rc::Rc,
     },
     super::{
+        r#const::TypeSourceInterfaceConst,
         SourceInterfaceRef,
-        TypeSourceInterfaceConst,
     },
 };
 
@@ -62,7 +84,7 @@ impl AspectBind for TypeSourceInterfaceDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -73,7 +95,7 @@ impl AspectBindDynamic for TypeSourceInterfaceDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -103,7 +125,7 @@ impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
         let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
         iface_ref.data.set.finish()?;
         let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: iface_type }))
+        Ok(Rc::new(ValueAnyConst { inner: iface_type }))
     }
 }
 
@@ -122,46 +144,42 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
     }
 }
 
-impl crate::r#gen::AspectAspect for TypeSourceInterfaceDynamic {
+impl AspectAspect for TypeSourceInterfaceDynamic {
     fn get_iface_data(
         &self,
-        value: &dyn crate::langhelp::Value,
+        value: &dyn Value,
     ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
-        let iface_ref = crate::invariant::must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
+        let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
         iface_ref.data.clone()
     }
 
-    fn get_unique(&self, value: &dyn crate::langhelp::Value) -> crate::langhelp::Unique {
-        let iface_ref = crate::invariant::must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
+    fn get_unique(&self, value: &dyn Value) -> Unique {
+        let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
         iface_ref.data.identity.clone()
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeSourceInterfaceDynamic {
+impl AspectLowerDynamic for TypeSourceInterfaceDynamic {
     fn lower(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        // Same as `lift` but does NOT finalize the def-set — used by staging/lowering
-        // paths where sibling members may still be in-flight.
         let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
         let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: iface_type }))
+        Ok(Rc::new(ValueAnyConst { inner: iface_type }))
     }
 }
 
 impl Type for TypeSourceInterfaceDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        // Single-rep invariant: a value with type `TypeAnyConst` is a
-        // `ValueAnyConst { inner }`; the inner is the actual Type.
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeSourceInterfaceDynamic) })
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceInterfaceDynamic) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::r#gen::aspect_aspect_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn crate::r#gen::AspectAspect>));
+        if *key == aspect_aspect_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectAspect>));
         }
         if *key == interface_ref_type_identity() {
             return Some(Box::new(true));
@@ -181,9 +199,9 @@ impl Type for TypeSourceInterfaceDynamic {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+        if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+                Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLowerDynamic>),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
@@ -194,23 +212,19 @@ impl Type for TypeSourceInterfaceDynamic {
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         source_type.aspect(xx, &interface_ref_type_identity()).is_some() ||
-            source_type.aspect(xx, &crate::r#gen::interface_const_identity()).is_some()
+            source_type.aspect(xx, &interface_const_identity()).is_some()
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        // A dynamic interface ref can flow into any specific interface type (Const) — the
-        // runtime value carries the actual interface data and matches identity at
-        // use-time. Also flow into any type-of-types (TypeAnyDynamic etc.) via the
-        // `__interface_ref_to_type` converter.
         type_.aspect(xx, &interface_ref_type_identity()).is_some() ||
-            type_.aspect(xx, &crate::r#gen::interface_const_identity()).is_some() ||
-            type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+            type_.aspect(xx, &interface_const_identity()).is_some() ||
+            type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &interface_ref_type_identity()).is_some() ||
-            source_type.aspect(xx, &crate::r#gen::interface_const_identity()).is_some() {
+            source_type.aspect(xx, &interface_const_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
                 value: Rc::new(ValueDynamic {
@@ -224,7 +238,7 @@ impl Type for TypeSourceInterfaceDynamic {
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         if type_.aspect(xx, &interface_ref_type_identity()).is_some() ||
-            type_.aspect(xx, &crate::r#gen::interface_const_identity()).is_some() {
+            type_.aspect(xx, &interface_const_identity()).is_some() {
             let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceInterfaceDynamic) as Rc<dyn Type>);
             return EvalRes::ok(CodeValue {
                 code: cv.code,
@@ -234,22 +248,22 @@ impl Type for TypeSourceInterfaceDynamic {
                 }),
             });
         }
-        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some() {
-            let source_code = match cv.code.cast::<crate::code_dynamic::CodeDynamic>() {
-                crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+        if type_.aspect(xx, &type_type_identity()).is_some() {
+            let source_code = match cv.code.cast::<CodeDynamic>() {
+                EResult { v: Some(Some(c)), .. } => c.clone(),
                 _ => return EvalRes::err(
                     loc,
                     format!("cast interface_ref → {}: source has no runtime code", type_.desc()),
                 ),
             };
-            let call = crate::code_dynamic::CodeDynamic {
+            let call = CodeDynamic {
                 loc,
-                type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
-                    func: Box::new(crate::code_dynamic::CodeDynamic {
+                type_: CodeDynamicType::Call(CodeDynamicCall {
+                    func: Box::new(CodeDynamic {
                         loc,
-                        type_: crate::code_dynamic::CodeDynamicType::BindingUse(
-                            crate::code_dynamic::CodeDynamicBindingUse {
-                                id: crate::eval::INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
+                        type_: CodeDynamicType::BindingUse(
+                            CodeDynamicBindingUse {
+                                id: INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
                             },
                         ),
                     }),
@@ -282,6 +296,6 @@ impl Type for TypeSourceInterfaceDynamic {
 
 impl Value for TypeSourceInterfaceDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

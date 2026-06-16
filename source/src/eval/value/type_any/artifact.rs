@@ -1,5 +1,3 @@
-//! Builtin deserializer for `TypeAnyConst` — the singleton "any type" / "type"
-//! type used as the type-of-types in many contexts.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,

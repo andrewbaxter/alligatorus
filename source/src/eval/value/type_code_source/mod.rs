@@ -1,36 +1,26 @@
-//! Source-level types mirroring Rust's `Code` AST:
-//!
-//! * [`TypeCodeStructDynamic`] — handle on a Rust `Code { loc, code: Code_ }` struct.
-//!   Source-side `.code` field access yields a value of [`TypeCodeEnumDynamic`].
-//!
-//! * [`TypeCodeEnumDynamic`] — handle on the `Code_` enum. Matchable as a tagged union
-//!   with variants `none` (payload `null`) and `dyn` (payload
-//!   [`TypeCodeDynHandleDynamic`]).
-//!
-//! * [`TypeCodeDynHandleDynamic`] — handle on a `Rc<dyn CodeDyn>`. Field access
-//!   `.cast` yields a callable (a [`TypeCodeDynCastFn`]) that, when invoked with a
-//!   code_dyn-implementing source type, emits a runtime call to `__code_cast` to
-//!   downcast.
-//!
-//! These types are introduced when source code reaches a Rust `Code` value through
-//! a `CodeValueExtern` (e.g. the result of `const_eval`). The Rust runtime carries
-//! the actual `Code` struct; source-level field/match access is desugared at
-//! compile time into dynamic calls and tagged-union matches against the wrapped
-//! value.
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         langhelp::{
             Aspect,
@@ -56,6 +46,7 @@ use {
             AspectInitialBind,
             AspectStackValueDynamic,
             AspectTaggedUnion,
+            ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -76,28 +67,13 @@ use {
     },
 };
 
-// ---------- TypeCodeDynCastFn ----------
-/// The callable returned by `code_dyn_handle.cast`. Its `AspectFunction.call`
-/// validates that the argument is a source-defined type with the `code_dyn`
-/// builtin interface impl, then emits a runtime call to
-/// `__code_cast(handle, type_marker)` that returns the concrete v8 value the
-/// source-defined code constructor stored.
 #[derive(Clone)]
 pub(crate) struct TypeCodeDynCastFn;
 
 impl Aspect for TypeCodeDynCastFn { }
 
 impl AspectFunction for TypeCodeDynCastFn {
-    fn call(&self, _xx: &ExprContext, loc: QExprId, function: CodeValue, _argument: CodeValue) -> EvalRes {
-        // TODO: validate that `argument` is a source-defined type whose data implements
-        // the `code_dyn` builtin interface. The cast result's static type is the
-        // requested target. At runtime the wrapped CodeDyn is downcast to the wrapper
-        // Rust type holding the v8 instance; the inner v8 value is returned. For now, the
-        // function's code is already a binding-use referencing the code_dyn handle's
-        // runtime JS; the cast is conceptually a no-op at the JS level and the result
-        // reuses the handle's code unchanged, retyped as the requested dest (we
-        // type-erase to `code_dyn` for now; a follow-up will plumb the actual dest type
-        // through).
+    fn call(&self, _xx: &ExprContext, _loc: QExprId, function: CodeValue, _argument: CodeValue) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: function.code,
             value: Rc::new(ValueDynamic {
@@ -110,7 +86,7 @@ impl AspectFunction for TypeCodeDynCastFn {
 
 impl Type for TypeCodeDynCastFn {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) })
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -139,11 +115,10 @@ impl Type for TypeCodeDynCastFn {
 
 impl Value for TypeCodeDynCastFn {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-// ---------- TypeCodeDynHandleDynamic ----------
 #[derive(Clone)]
 pub(crate) struct TypeCodeDynHandleDynamic;
 
@@ -161,7 +136,7 @@ impl AspectBindDynamic for TypeCodeDynHandleDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -185,9 +160,6 @@ impl AspectField for TypeCodeDynHandleDynamic {
         let key_name = key_string.get(key.value.as_ref());
         match key_name.as_str() {
             "cast" => {
-                // `.cast` returns a callable that, when invoked with a code_dyn-implementing
-                // source type, runs `__code_cast` to downcast the wrapped CodeDyn to that type's
-                // wrapper.
                 let self_code = match self_.code.cast::<CodeDynamic>().into_res() {
                     Ok(Some(c)) => c.clone(),
                     _ => return EvalRes::err(loc, "code_dyn.cast: receiver has no dynamic code".to_string()),
@@ -198,7 +170,7 @@ impl AspectField for TypeCodeDynHandleDynamic {
                         code: Code_::Dyn(Rc::new(self_code)),
                     },
                     value: Rc::new(
-                        crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) },
+                        ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) },
                     ),
                 })
             },
@@ -235,7 +207,7 @@ impl AspectStackValueDynamic for TypeCodeDynHandleDynamic {
 
 impl Type for TypeCodeDynHandleDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeCodeDynHandleDynamic) })
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynHandleDynamic) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -272,11 +244,6 @@ impl Type for TypeCodeDynHandleDynamic {
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        // The runtime CVE wraps an inner `CodeValue`; at v8 time the wrapped
-        // `Code_::Dyn(Rc<dyn CodeDyn>)` holds a `SourceCodeWrapper`-shaped value carrying
-        // a v8 instance. The cast is a static type re-assertion — the JS code unchanged —
-        // with the result typed as the dest. (TODO: a follow-up will emit `__code_cast`
-        // and a real downcast.)
         let dest_rc = match type_.clone_rc() {
             Some(rc) => rc,
             None => return EvalRes::err(
@@ -304,11 +271,10 @@ impl Type for TypeCodeDynHandleDynamic {
 
 impl Value for TypeCodeDynHandleDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-// ---------- TypeCodeEnumDynamic ----------
 #[derive(Clone)]
 pub(crate) struct TypeCodeEnumDynamic;
 
@@ -326,7 +292,7 @@ impl AspectBindDynamic for TypeCodeEnumDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -358,7 +324,7 @@ impl AspectTaggedUnion for TypeCodeEnumDynamic {
             (
                 ConstKey::String("none".to_string()),
                 "none".to_string(),
-                Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>,
+                Rc::new(TypeNullDynamic) as Rc<dyn Type>,
             ),
             (
                 ConstKey::String("dyn".to_string()),
@@ -371,7 +337,7 @@ impl AspectTaggedUnion for TypeCodeEnumDynamic {
 
 impl Type for TypeCodeEnumDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeCodeEnumDynamic) })
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeEnumDynamic) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -418,11 +384,10 @@ impl Type for TypeCodeEnumDynamic {
 
 impl Value for TypeCodeEnumDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-// ---------- TypeCodeStructDynamic ----------
 #[derive(Clone)]
 pub(crate) struct TypeCodeStructDynamic;
 
@@ -440,7 +405,7 @@ impl AspectBindDynamic for TypeCodeStructDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -464,8 +429,6 @@ impl AspectField for TypeCodeStructDynamic {
         let key_name = key_string.get(key.value.as_ref());
         match key_name.as_str() {
             "code" => {
-                // Field access `code.code` on a `Code` struct yields the inner `Code_` enum. At
-                // runtime it's the same JS handle (we trust the structure on the v8 side).
                 EvalRes::ok(CodeValue {
                     code: self_.code,
                     value: Rc::new(ValueDynamic {
@@ -507,7 +470,7 @@ impl AspectStackValueDynamic for TypeCodeStructDynamic {
 
 impl Type for TypeCodeStructDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeCodeStructDynamic) })
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeStructDynamic) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -554,6 +517,6 @@ impl Type for TypeCodeStructDynamic {
 
 impl Value for TypeCodeStructDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

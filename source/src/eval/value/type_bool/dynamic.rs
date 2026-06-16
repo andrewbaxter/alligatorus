@@ -7,16 +7,21 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                type_any::r#const::TypeAnyConst,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         langhelp::{
             Aspect,
@@ -52,7 +57,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -73,7 +77,7 @@ impl AspectBindDynamic for TypeBoolDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -195,6 +199,6 @@ impl Type for TypeBoolDynamic {
 
 impl Value for TypeBoolDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

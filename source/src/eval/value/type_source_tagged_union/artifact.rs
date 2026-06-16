@@ -1,6 +1,3 @@
-//! Builtin deserializer for `TypeSourceTaggedUnionRefDynamic` — the parameterless
-//! dynamic marker used as the static type for v8-marshaled
-//! `Rc<SourceTaggedUnionRef>` values.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,

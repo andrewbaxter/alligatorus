@@ -94,25 +94,6 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "eval_const",
-            builtin_scope_id: 5007,
-            args: vec![
-                ("xx", "crate::eval::code_value_extern::ExprContextPush"),
-                ("staged", "crate::eval::push::StagedExpr"),
-            ],
-            ret: "crate::eval::code_value_extern::CodeValueExtern",
-            body: quote!{
-                let expr_value = staged.0;
-                let expr_ast: Expr =
-                    Rc::try_unwrap(crate::langhelp::downcast_value::<Expr>(expr_value))
-                        .ok()
-                        .expect("eval_const: staged Expr Rc not unique");
-                let res = const_eval(&xx.0, &expr_ast);
-                let cv = res.v.expect("eval_const: const_eval produced no value");
-                crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
-            },
-        },
-        PushFnSpec {
             name: "const_eval",
             builtin_scope_id: 5008,
             args: vec![

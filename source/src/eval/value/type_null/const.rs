@@ -1,9 +1,9 @@
 use {
     crate::{
-        eval::{
-            Erb,
-            value::value_null::r#const::ValueNullConst,
-        },
+        eval::value::{
+                type_any::r#const::TypeAnyConst,
+                value_null::r#const::ValueNullConst,
+            },
         langhelp::{
             Artifact,
             Aspect,
@@ -29,7 +29,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -116,6 +115,6 @@ impl Type for TypeNullConst {
 
 impl Value for TypeNullConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

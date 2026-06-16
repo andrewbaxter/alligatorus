@@ -1,16 +1,3 @@
-//! Re-installation of an imported data-type instance in the importing compile's
-//! isolate.
-//!
-//! When `from_serial` encounters an instance of a data type whose impls reference
-//! per-isolate externals (StagedExprCells captured by the user's `stage(...)`
-//! bodies in `cast_from`/`can_cast_from`/`desc`), we can't reuse the originating
-//! compile's `compiled_js` — its scope-entry names point at globals that exist
-//! only in the source isolate. Instead we re-compile the user's `impl_expr`
-//! against this compile's `ExprContext` (which allocates fresh `Local` ids and
-//! adds the externals to this compile's `ex.externals`), render the same JS the
-//! def-set pass would render, and run it eagerly so the methods + their externals
-//! are live in this isolate's globals before `TypePull.cast_from`
-//! dispatches.
 use {
     crate::{
         code_dynamic::CodeDynamic,
@@ -19,11 +6,17 @@ use {
             build_builtin_scope,
             build_cast_arg_record_type,
             const_eval,
+            rc_type_to_v8,
             render_code,
             scope_entry_id_dynamic_key,
             to_v8,
-            value::type_source_data_type::SourceDataTypeData,
+            typecheck_convert,
+            value::{
+                type_source_data_type::SourceDataTypeData,
+                type_source_interface::BuiltinInterfaceKind,
+            },
         },
+        eval::expr::Expr,
         invariant::must_downcast_ref,
         langhelp::{
             ConstKey,
@@ -36,6 +29,7 @@ use {
             ScopeEntryId,
             Type,
         },
+        r#gen::aspect_initial_bind_get,
     },
     dumpster::unsync::Gc,
     std::{
@@ -44,19 +38,12 @@ use {
     },
 };
 
-/// Re-compile each builtin-`type` interface impl, render to JS, install the
-/// captured externals as v8 globals, run a script that defines the methods and
-/// constructs the instance object, and return a persistent handle to that object.
 pub(crate) fn install_imported_type_iface(
     xx: &ExprContext,
     loc: QExprId,
     dt_data: &Gc<SourceDataTypeData>,
     underlying_js: CodeDynamic,
 ) -> Result<v8::Global<v8::Object>, String> {
-    // Each impl body is compiled against its own fresh `EvalContext` so the externals
-    // it captures (StagedExprCells, StageLiftCells) are scoped to this re-install
-    // rather than mixed in with the importer's main body. We collect those externals
-    // here and install them as globals just before running the eager script.
     let body_ex = Rc::new(EvalContext {
         ix: xx.vx.ix.clone(),
         next_local_id: Counter::default(),
@@ -75,8 +62,7 @@ pub(crate) fn install_imported_type_iface(
     let mut method_codes: Vec<(ScopeEntryId, BodyShape, CodeDynamic)> = Vec::new();
     for impl_data in dt_data.interface_impls.borrow().iter() {
         let is_type_iface =
-            impl_data.interface.builtin_kind ==
-                Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type);
+            impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type);
         for method_impl in &impl_data.method_impls {
             let method_id =
                 method_impl
@@ -89,7 +75,7 @@ pub(crate) fn install_imported_type_iface(
                     .borrow()
                     .clone()
                     .ok_or_else(|| "Interface method impl missing impl_expr".to_string())?;
-            let impl_expr_ast = must_downcast_ref::<crate::eval::expr::Expr>(impl_expr_value.as_ref());
+            let impl_expr_ast = must_downcast_ref::<Expr>(impl_expr_value.as_ref());
             let ret_type: Rc<dyn Type> = {
                 let iface_methods = impl_data.interface.methods.borrow();
                 let iface_method = &iface_methods[method_impl.interface_method_index];
@@ -110,14 +96,14 @@ pub(crate) fn install_imported_type_iface(
             let body_shape = if is_type_iface {
                 let arg_record_type = build_cast_arg_record_type();
                 let arg_ib =
-                    crate::r#gen::aspect_initial_bind_get(xx, loc, arg_record_type.as_ref())
+                    aspect_initial_bind_get(xx, loc, arg_record_type.as_ref())
                         .into_res()
                         .map_err(|e| format!("aspect_initial_bind for arg: {:?}", e))?;
                 body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(self_id));
                 BodyShape::ArgMethod(self_id)
             } else {
                 let self_ib =
-                    crate::r#gen::aspect_initial_bind_get(xx, loc, underlying_type.as_ref())
+                    aspect_initial_bind_get(xx, loc, underlying_type.as_ref())
                         .into_res()
                         .map_err(|e| format!("aspect_initial_bind for self: {:?}", e))?;
                 body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
@@ -140,7 +126,7 @@ pub(crate) fn install_imported_type_iface(
             }
             let impl_cv = impl_result.v.unwrap();
             let impl_cv = {
-                let r = crate::eval::typecheck_convert(&method_xx, loc, ret_type.as_ref(), impl_cv);
+                let r = typecheck_convert(&method_xx, loc, ret_type.as_ref(), impl_cv);
                 if let Some(errs) = r.errors {
                     let iface_methods = impl_data.interface.methods.borrow();
                     let mname = &iface_methods[method_impl.interface_method_index].name;
@@ -160,12 +146,8 @@ pub(crate) fn install_imported_type_iface(
         }
     }
 
-    // Install captured externals as v8 globals so the rendered method bodies can
-    // reference them (same setup `eval()` does at end-of-stage).
     let scope_ptr = xx.vx.v8_scope.get().ok_or_else(|| "install_imported_type_iface: no active v8 scope".to_string())?;
 
-    // SAFETY: pointer set by `eval()` for its full duration; the `pull_*_v8`
-    // dispatch paths re-borrow the same way.
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
@@ -179,16 +161,12 @@ pub(crate) fn install_imported_type_iface(
             External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
             External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
             External::CodeValueExternCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::Type(t) => crate::eval::rc_type_to_v8(scope, t.clone()).into(),
+            External::Type(t) => rc_type_to_v8(scope, t.clone()).into(),
             External::Unique(u) => to_v8(scope, *u).into(),
-            External::JsInstance(b) => v8::Local::new(scope, b).into(),
         };
         scope.get_current_context().global(scope).set(scope, key.cast(), v8_val);
     }
 
-    // Render: method function definitions + IIFE that builds and returns the instance
-    // object. The IIFE wraps `let` declarations so they don't collide with the
-    // importer's main stage script.
     let mut code = JsSourceBuilder::default();
     for (method_id, shape, impl_code) in &method_codes {
         let func_name = scope_entry_id_dynamic_key(*method_id);
@@ -205,7 +183,7 @@ pub(crate) fn install_imported_type_iface(
                         "let {} = this[{}];",
                         scope_entry_id_dynamic_key(*self_id),
                         serde_json::to_string(
-                            &crate::langhelp::ConstKey::String(data_field.clone()).to_str(),
+                            &ConstKey::String(data_field.clone()).to_str(),
                         ).unwrap(),
                     ),
                 );
@@ -215,9 +193,6 @@ pub(crate) fn install_imported_type_iface(
         code.push(loc, format!("return {};", body_var));
         code.push(loc, "}".to_string());
 
-        // Stash the compiled JS on the method_impl so the end-of-stage pass skips
-        // re-emitting it (matches what `eval()`'s `Fresh` body branch does for
-        // inline-compiled impls).
         let compiled = code.lines[start_line..].join("\n");
         if let Some(slot) = dt_data.interface_impls.borrow().iter().find_map(|i| {
             i.method_impls.iter().find(|m| m.scope_entry_id.get() == Some(*method_id))
@@ -228,11 +203,11 @@ pub(crate) fn install_imported_type_iface(
     code.push(loc, "(function() {".to_string());
     let underlying_var = render_code(&mut code, &underlying_js);
     let mut field_decls: Vec<(String, String)> = Vec::new();
-    field_decls.push((crate::langhelp::ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_var));
+    field_decls.push((ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_var));
     for method in dt_data.methods.borrow().iter() {
         let id = method.scope_entry_id.get().ok_or_else(|| "Method scope_entry_id not allocated".to_string())?;
         field_decls.push(
-            (crate::langhelp::ConstKey::String(method.field_name.clone()).to_str(), scope_entry_id_dynamic_key(id)),
+            (ConstKey::String(method.field_name.clone()).to_str(), scope_entry_id_dynamic_key(id)),
         );
     }
     for impl_data in dt_data.interface_impls.borrow().iter() {
@@ -245,7 +220,7 @@ pub(crate) fn install_imported_type_iface(
                     .ok_or_else(|| "Interface method impl scope_entry_id not allocated".to_string())?;
             let field_name = methods[m.interface_method_index].field_name.clone();
             field_decls.push(
-                (crate::langhelp::ConstKey::String(field_name).to_str(), scope_entry_id_dynamic_key(id)),
+                (ConstKey::String(field_name).to_str(), scope_entry_id_dynamic_key(id)),
             );
         }
     }

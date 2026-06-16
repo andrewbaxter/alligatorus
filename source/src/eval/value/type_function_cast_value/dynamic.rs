@@ -1,15 +1,3 @@
-//! `TypeFunctionCastValueDynamic` — the source-level `cast_value(value, type)`
-//! builtin. Takes an opaque `Rc<dyn Value>` (e.g. what `cve.value` /
-//! `__cve_get_value` returns) and a `TypeSourceDataTypeConst` template, and
-//! asserts at runtime that the value is a `ValuePull` whose data type
-//! matches the template — returning the data-type instance form so source code can
-//! drive field/method access on it normally.
-//!
-//! This is the bridge between the opaque-value world (`Rc<dyn Value>`) and a
-//! concrete user-defined data type at a statically-known site. Eventually we want
-//! this kind of unwrapping inferred statically end-to-end; for now it's an
-//! explicit construct.
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::{
@@ -18,28 +6,29 @@ use {
             CodeDynamicCall,
             CodeDynamicType,
         },
-        eval::{
-            Erb,
-            dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
-            },
-            value::{
+        eval::value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type::{
-                    TypeSourceDataTypeConst,
+                    r#const::TypeSourceDataTypeConst,
                     dynamic::TypeSourceDataTypeDynamic,
                 },
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
             },
-        },
         langhelp::{
             Aspect,
             Code,
             CodeValue,
             Code_,
-            EResult,
             EvalRes,
             ExprContext,
+            External,
             QExprId,
             ScopeEntryId,
             Type,
@@ -49,6 +38,8 @@ use {
         r#gen::{
             AspectFunction,
             AspectInitialBind,
+            CAST_VALUE_FN_SCOPE_ID,
+            ScopeEntry,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_tuple_get_maybe,
@@ -56,7 +47,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -67,7 +57,6 @@ impl Aspect for TypeFunctionCastValueDynamic { }
 
 impl AspectFunction for TypeFunctionCastValueDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        // Unpack `(value, type)` from the tuple argument.
         let arg_type = argument.value.type_(xx, loc);
         let arg_tuple = match aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             Some(t) => t,
@@ -100,9 +89,6 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
             },
         };
 
-        // The type argument's value should be a `TypeSourceDataTypeConst` (the const
-        // wrapper for a user-defined data type). Extract `.data` to type the result as
-        // the corresponding data-type instance type.
         let type_value_any: &dyn Any = type_.value.as_ref();
         let data = match type_value_any.downcast_ref::<TypeSourceDataTypeConst>() {
             Some(t) => t.data.clone(),
@@ -115,17 +101,11 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
             ),
         };
         return er_seq_cv!(loc, erb, {
-            // Emit `__cast_value(value_code, type_template)` — the v8 callback extracts the
-            // value's `ValuePull.bundle.instance` and panics if the value isn't a
-            // `ValuePull` matching the type template.
             let value_code = erb.must_er(value.code.cast::<CodeDynamic>())?.unwrap().clone();
 
-            // The type argument is compile-time only (a `TypeSourceDataTypeConst` singleton
-            // with no Dyn code). Materialize it for v8 by pushing an `External::Type` slot
-            // and emitting a `BindingUse` to it.
             let template: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: data.clone() });
             let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-            xx.vx.externals.borrow_mut().push((template_id, crate::langhelp::External::Type(template)));
+            xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
             let type_code = CodeDynamic {
                 loc,
                 type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: template_id }),
@@ -133,7 +113,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
             let cast_fn = CodeDynamic {
                 loc,
                 type_: CodeDynamicType::BindingUse(
-                    CodeDynamicBindingUse { id: crate::eval::CAST_VALUE_FN_SCOPE_ID, }
+                    CodeDynamicBindingUse { id: CAST_VALUE_FN_SCOPE_ID, }
                 ),
             };
             let call_code = CodeDynamic {
@@ -170,7 +150,7 @@ impl AspectInitialBind for TypeFunctionCastValueDynamic {
 impl Type for TypeFunctionCastValueDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(
-            crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeFunctionCastValueDynamic) },
+            ValueAnyConst { inner: Rc::new(TypeFunctionCastValueDynamic) },
         )
     }
 
@@ -191,6 +171,6 @@ impl Type for TypeFunctionCastValueDynamic {
 
 impl Value for TypeFunctionCastValueDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

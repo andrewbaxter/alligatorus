@@ -4,9 +4,19 @@ pub mod r#const;
 
 use {
     crate::{
+        eval::{
+            definition_set::DefinitionSet,
+            expr_artifact::ArtifactExpr,
+            from_v8_ref,
+            push::Push,
+            to_v8,
+        },
         invariant::DeserialLazy,
         langhelp::{
+            ArtifactId,
+            External,
             ScopeEntryId,
+            Type,
             Unique,
             Value,
         },
@@ -22,18 +32,13 @@ use {
 };
 
 pub(crate) struct SourceDataMethodData {
-    pub arg_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
-    /// Externals (`a##` bindings) captured by the body's compile environment.
-    /// `compiled_js` references these by their Local id; they must be installed as v8
-    /// globals before the body runs.
-    pub captured_externals: RefCell<Vec<(ScopeEntryId, crate::langhelp::External)>>,
-    /// Pre-compiled JS function body, set after method compilation in eval(). Format:
-    /// complete function definition string (e.g. "function d0_0_0() { ... }")
+    pub arg_type: RefCell<Option<Rc<dyn Type>>>,
+    pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub field_name: String,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: String,
-    pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
+    pub ret_type: RefCell<Option<Rc<dyn Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
@@ -51,15 +56,15 @@ impl SourceDataMethodData {
 }
 
 pub(crate) struct SourceDataTypeData {
-    pub artifact_id: RefCell<Option<crate::langhelp::ArtifactId>>,
+    pub artifact_id: RefCell<Option<ArtifactId>>,
     pub data_field: String,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
     pub interface_impls: RefCell<Vec<SourceDataTypeInterfaceImplData>>,
     pub methods: RefCell<Vec<Rc<SourceDataMethodData>>>,
     pub name: Option<String>,
-    pub set: Gc<crate::eval::definition_set::DefinitionSet>,
-    pub underlying_type: DeserialLazy<Rc<dyn crate::langhelp::Type>>,
+    pub set: Gc<DefinitionSet>,
+    pub underlying_type: DeserialLazy<Rc<dyn Type>>,
 }
 
 impl SourceDataTypeData {
@@ -89,12 +94,10 @@ pub(crate) struct SourceDataTypeInterfaceImplData {
 }
 
 pub(crate) struct SourceDataTypeInterfaceMethodImplData {
-    /// Externals (`a##` bindings) captured by the body's compile environment. See
-    /// `SourceDataMethodData::captured_externals`.
-    pub captured_externals: RefCell<Vec<(ScopeEntryId, crate::langhelp::External)>>,
+    pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
-    pub impl_expr_artifact: RefCell<Option<crate::eval::expr_artifact::ArtifactExpr>>,
+    pub impl_expr_artifact: RefCell<Option<ArtifactExpr>>,
     pub interface_method_index: usize,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
@@ -104,20 +107,17 @@ pub(crate) struct SourceDataTypeRef {
     pub data: Gc<SourceDataTypeData>,
 }
 
-pub(crate) struct TypeSourceDataTypeConst {
-    pub data: Gc<SourceDataTypeData>,
-}
 
-impl crate::eval::push::Push for Rc<SourceDataTypeRef> {
+impl Push for Rc<SourceDataTypeRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        crate::eval::from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
+        from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::to_v8(scope, self).into()
+        to_v8(scope, self).into()
     }
 
-    fn dynamic_type() -> Rc<dyn crate::langhelp::Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(dynamic::TypeSourceDataTypeRefDynamic)
     }
 }

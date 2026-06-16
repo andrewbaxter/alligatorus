@@ -3,6 +3,7 @@ use {
         langhelp::{
             Code,
             CodeValue,
+            ExprContext,
             QExprId,
         },
         r#gen::ScopeEntry,
@@ -16,7 +17,7 @@ pub(crate) struct ScopeEntryPendingImport {
 }
 
 impl ScopeEntry for ScopeEntryPendingImport {
-    fn use_(&self, _xx: &crate::langhelp::ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
         self.state.resolve_standalone()
     }
 }

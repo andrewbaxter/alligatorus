@@ -1,24 +1,24 @@
-//! `TypeAspectDynamic` — singleton Type marking "aspect" as a cast destination.
-//! Source-data-type instances implementing some aspect interface (e.g.
-//! `aspect_field`, `aspect_function`) cast to this; the cast (in
-//! `TypeSourceDataTypeDynamic::cast_to`) emits a `__data_instance_to_aspect` call
-//! that wraps the runtime v8 instance into an `AspectPull` external.
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
             TargetBindSub,
+            aspect::AspectPull,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            from_v8_ref,
+            value::{
+                type_any::r#const::TypeAnyConst,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            },
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
             EResult,
             ExprContext,
@@ -34,12 +34,15 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectStackValueDynamic,
+            ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_aspect_identity,
         },
@@ -60,7 +63,7 @@ impl AspectBind for TypeAspectDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -93,15 +96,10 @@ impl AspectLiftDynamic for TypeAspectDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        // The v8 representation of a `TypeAspectDynamic` value is a v8::External
-        // wrapping `Rc<dyn Aspect>` (produced by `__data_instance_to_aspect`).
-        // Downcast to the concrete `AspectPull` — the sole producer — to obtain a
-        // `Value` impl.
-        let aspect: Rc<dyn crate::langhelp::Aspect> =
-            crate::eval::from_v8_ref::<Rc<dyn crate::langhelp::Aspect>>(&*value).clone();
+        let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
         let aspect_pull =
             (&*aspect as &dyn std::any::Any)
-                .downcast_ref::<crate::eval::value::value_pull::aspect::AspectPull>()
+                .downcast_ref::<AspectPull>()
                 .unwrap()
                 .clone();
         Ok(Rc::new(aspect_pull))
@@ -114,18 +112,17 @@ impl AspectStackValueDynamic for TypeAspectDynamic {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeAspectDynamic {
+impl AspectLowerDynamic for TypeAspectDynamic {
     fn lower(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let aspect: Rc<dyn crate::langhelp::Aspect> =
-            crate::eval::from_v8_ref::<Rc<dyn crate::langhelp::Aspect>>(&*value).clone();
+        let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
         let aspect_pull =
             (&*aspect as &dyn std::any::Any)
-                .downcast_ref::<crate::eval::value::value_pull::aspect::AspectPull>()
+                .downcast_ref::<AspectPull>()
                 .unwrap()
                 .clone();
         Ok(Rc::new(aspect_pull))
@@ -156,8 +153,8 @@ impl Type for TypeAspectDynamic {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+        if *key == aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectInitialBind>));
@@ -176,6 +173,6 @@ impl Type for TypeAspectDynamic {
 
 impl Value for TypeAspectDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

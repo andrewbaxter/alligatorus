@@ -5,15 +5,18 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
             value::{
+                type_any::r#const::TypeAnyConst,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
                 value_null::r#const::ValueNullConst,
             },
         },
@@ -39,8 +42,10 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectNull,
             AspectStackValueDynamic,
+            AspectType,
             ScopeEntry,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
@@ -48,16 +53,17 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
             aspect_type_aspect_id,
+            type_type_identity,
         },
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -88,7 +94,7 @@ impl AspectBind for TypeNullDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -99,7 +105,7 @@ impl AspectBindDynamic for TypeNullDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -153,7 +159,7 @@ impl AspectStackValueDynamic for TypeNullDynamic {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeNullDynamic {
+impl AspectLowerDynamic for TypeNullDynamic {
     fn lower(
         &self,
         _xx: &ExprContext,
@@ -164,7 +170,7 @@ impl crate::r#gen::AspectLowerDynamic for TypeNullDynamic {
     }
 }
 
-impl crate::r#gen::AspectType for TypeNullDynamic {
+impl AspectType for TypeNullDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeNullDynamic)
     }
@@ -185,8 +191,8 @@ impl Type for TypeNullDynamic {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+        if *key == aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_null_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectNull>));
@@ -204,7 +210,7 @@ impl Type for TypeNullDynamic {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn crate::r#gen::AspectType>));
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectType>));
         }
         return None;
     }
@@ -215,7 +221,7 @@ impl Type for TypeNullDynamic {
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_null_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+            type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -233,7 +239,6 @@ impl Type for TypeNullDynamic {
     }
 
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        // No cast to `any` — `null` is a value, not a type ref. Misuse.
         EvalRes::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {
@@ -254,6 +259,6 @@ impl Type for TypeNullDynamic {
 
 impl Value for TypeNullDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

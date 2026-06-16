@@ -1,7 +1,10 @@
-//! Option-type artifact: serialized element-type artifact.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::{
+            util::deserialize_type_artifact,
+            value::type_option::dynamic::TypeOptionDynamic,
+        },
         langhelp::{
             Artifact,
             ArtifactIdBuiltin,
@@ -41,8 +44,8 @@ impl Deserializer {
             },
         };
         let (element_type, _ec) =
-            crate::eval::util::deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
-        Ok(Rc::new(crate::eval::value::type_option::dynamic::TypeOptionDynamic { element_type }))
+            deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
+        Ok(Rc::new(TypeOptionDynamic { element_type }))
     }
 }
 

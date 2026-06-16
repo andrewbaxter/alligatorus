@@ -26,6 +26,7 @@ pub fn build(
     let mut iface_trait_defs: Vec<TokenStream> = Vec::new();
     let mut iface_reg_entries: Vec<TokenStream> = Vec::new();
     let mut iface_identity_fns: Vec<TokenStream> = Vec::new();
+    let mut iface_field_consts: Vec<TokenStream> = Vec::new();
     for iface in extra_specs {
         assert!(iface_names.insert(iface.name), "duplicate interface name: {}", iface.name);
         assert!(iface_prefixes.insert(iface.field_prefix), "duplicate field_prefix: {}", iface.field_prefix);
@@ -35,6 +36,16 @@ pub fn build(
             assert!(method_names.insert(m.name), "duplicate method name on iface {}: {}", iface.name, m.name,);
         }
         let prefix = iface.field_prefix;
+        for (idx, m) in iface.methods.iter().enumerate() {
+            let field_name = format!("_im_{}{}", prefix, idx);
+            let iface_upper = iface.name.to_uppercase().replace('-', "_");
+            let method_upper = m.name.trim_end_matches('_').to_uppercase().replace('-', "_");
+            let const_name = format_ident!("IM_{}_{}_FIELD", iface_upper, method_upper);
+            iface_field_consts.push(quote!{
+                #[allow(dead_code)]
+                pub(crate) const #const_name: &str = #field_name;
+            });
+        }
         let methods_expr_items: Vec<TokenStream> = iface.methods.iter().enumerate().map(|(idx, m)| {
             let name = m.name.trim_end_matches('_');
             let field_name = format!("_im_{}{}", prefix, idx);
@@ -80,6 +91,7 @@ pub fn build(
                 iface.name
             });
             iface_identity_fns.push(quote!{
+                #[allow(dead_code)]
                 pub(crate) fn #fn_name() -> crate:: langhelp:: Unique {
                     crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
                 }
@@ -208,5 +220,6 @@ pub fn build(
             }
         }
         #(#iface_identity_fns) *
+        #(#iface_field_consts) *
     });
 }

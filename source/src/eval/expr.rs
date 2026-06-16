@@ -1,5 +1,6 @@
 use {
     crate::langhelp::{
+        CodeValue,
         QExprId,
         Value,
     },
@@ -81,14 +82,10 @@ pub(crate) struct ExprForeach {
     pub element_key: Rc<Expr>,
 }
 
-/// When a Graft is built from source it starts as `Pending(inner_expr)`. Stage
-/// processing in `const_eval` walks the staged tree, evaluates each pending graft's
-/// inner expr against the surrounding `xx`, and rewrites it to `Evaluated(cv)`. A
-/// later `const_eval` on the staged tree returns the stored CV as-is.
 #[derive(Clone)]
 pub(crate) enum ExprGraft {
     Pending(Rc<Expr>),
-    Evaluated(crate::langhelp::CodeValue),
+    Evaluated(CodeValue),
 }
 
 #[derive(Clone)]
@@ -165,15 +162,6 @@ pub(crate) struct ExprTuple {
     pub elements: Vec<Expr>,
 }
 
-/// A `Literal`'s payload.
-///
-/// `Shared` holds an immutable Value that can be cloned on every evaluation — used
-/// for source-derived literals (strings, numbers, null).
-///
-/// `Once` is a take-once cell — used when stage lowering hoists a value into the
-/// next stage as a Literal. Downstream code (e.g., `Record::bind_sub`) relies on
-/// `Rc::try_unwrap` succeeding, so the value must not be shared. Evaluating the
-/// same `Once` Literal twice panics.
 #[derive(Clone)]
 pub(crate) enum LitValue {
     Once(Rc<RefCell<Option<Rc<dyn Value>>>>),
@@ -181,7 +169,6 @@ pub(crate) enum LitValue {
 }
 
 impl LitValue {
-    /// Consume-or-clone for `const_eval`.
     pub(crate) fn consume(&self) -> Rc<dyn Value> {
         match self {
             LitValue::Shared(v) => v.clone(),
@@ -189,7 +176,6 @@ impl LitValue {
         }
     }
 
-    /// Non-consuming peek for serialization.
     pub(crate) fn peek(&self) -> Option<Rc<dyn Value>> {
         match self {
             LitValue::Shared(v) => Some(v.clone()),
@@ -210,11 +196,6 @@ pub(crate) enum Module {
     V1(Expr),
 }
 
-/// Stored in CodeDynamicExternal during eval_half. Value is taken out via
-/// `from_v8_ref`
-///
-/// * `borrow_mut().take()` — a safe take-once pattern that panics on double-consume
-///   instead of double-freeing.
 pub(crate) struct StagedExprCell {
     pub value: RefCell<Option<Rc<dyn Value>>>,
 }

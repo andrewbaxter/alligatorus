@@ -6,24 +6,49 @@ use {
             CodeDynamicForeachMap,
             CodeDynamicNewMap,
             CodeDynamicNewObject,
+            CodeDynamicSubscriptUse,
             CodeDynamicType,
         },
         eval::{
-            Erb,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicDataAccess,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_set,
             },
+            from_v8_ref,
+            push::Push,
+            to_v8,
+            typecheck_convert,
+            TargetBindSub,
             value::{
+                record::{
+                    Record,
+                    RecordField,
+                },
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_empty::r#const::ValueEmptyConst,
+                value_number::r#const::ValueNumberConst,
+                value_string::r#const::ValueStringConst,
+                type_map::artifact::{
+                    ArtifactMapType,
+                    TypeMapArtifact,
+                },
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                },
             },
         },
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -72,12 +97,10 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
 
-// --- map type (result of map(string, number), and also type of map instances) ---
 #[derive(Clone)]
 pub(crate) struct TypeMapDynamic {
     pub(crate) key_type: Rc<dyn Type>,
@@ -98,7 +121,7 @@ impl AspectBindDynamic for TypeMapDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -130,11 +153,10 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: new_type }),
+                value: Rc::new(ValueAnyConst { inner: new_type }),
             });
         }
 
-        // Instance-level fields
         return er_seq_cv!(loc, erb, {
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
@@ -143,11 +165,6 @@ impl AspectField for TypeMapDynamic {
             };
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             if key_name == "get" {
-                // `.get` returns a `TypeMapGetFnDynamic` carrying the map's runtime code; calling
-                // it emits `<self>[<key>]` (the map's JS form is a plain object — there's no real
-                // `.get` method to invoke). Wrap in `ValueEmptyConst` so the CV's value-type
-                // resolves to `TypeMapGetFnDynamic` (mirrors how `.new` returns
-                // `ValueEmptyConst { type_: TypeMapNewDynamic }`).
                 return Ok(CodeValue {
                     code: Code {
                         loc,
@@ -189,7 +206,7 @@ impl AspectField for TypeMapDynamic {
                 key_type: self.key_type.clone(),
                 value_type: self.value_type.clone(),
             })),
-            "get" => Some(Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+            "get" => Some(Rc::new(TypeFunctionDynamic {
                 arg: self.key_type.clone(),
                 ret: self.value_type.clone(),
             })),
@@ -209,17 +226,16 @@ impl AspectInitialBind for TypeMapDynamic {
 
 impl AspectIterable for TypeMapDynamic {
     fn element_type(&self) -> Rc<dyn Type> {
-        // Map iteration yields records with "key" and "value" fields
-        Rc::new(crate::eval::value::record::Record {
+        Rc::new(Record {
             base: None,
             fields: [
                 (
-                    crate::langhelp::ConstKey::String("key".to_string()),
-                    crate::eval::value::record::RecordField::Dynamic(self.key_type.clone()),
+                    ConstKey::String("key".to_string()),
+                    RecordField::Dynamic(self.key_type.clone()),
                 ),
                 (
-                    crate::langhelp::ConstKey::String("value".to_string()),
-                    crate::eval::value::record::RecordField::Dynamic(self.value_type.clone()),
+                    ConstKey::String("value".to_string()),
+                    RecordField::Dynamic(self.value_type.clone()),
                 ),
             ]
                 .into_iter()
@@ -257,7 +273,7 @@ impl AspectIterable for TypeMapDynamic {
                     body: Box::new(body_js),
                 }),
             };
-            let null_type = Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic);
+            let null_type = Rc::new(TypeNullDynamic);
             let stack_value = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, null_type.as_ref()))?;
             return Ok(stack_value.to_value(loc, foreach_js));
         });
@@ -295,24 +311,24 @@ impl AspectStackValueDynamic for TypeMapDynamic {
     }
 }
 
-impl crate::eval::push::Push for TypeMapDynamic {
+impl Push for TypeMapDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeMapDynamic> = crate::eval::from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
+        let rc: Rc<TypeMapDynamic> = from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::to_v8(scope, Rc::new(self)).into()
+        to_v8(scope, Rc::new(self)).into()
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
 impl Type for TypeMapDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: Rc::new(TypeMapDynamic {
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeMapDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
         }) })
@@ -351,11 +367,6 @@ impl Type for TypeMapDynamic {
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
         if let Some(source_map) = aspect_map_dynamic_get_maybe(xx, source_type) {
-            // Map → map: require identical key types. Differing key types would need runtime
-            // re-encoding (e.g. `string` keys are stored raw while `constkey` keys are
-            // canonical-JSON), and we don't synthesize that. Identical-type check via
-            // `TypeId` — `types_convertible` would admit one-way-cast pairs (string →
-            // constkey works) which can't reuse the JS object verbatim.
             let key_match =
                 std::any::Any::type_id(source_map.key_type().as_ref() as &dyn std::any::Any) ==
                     std::any::Any::type_id(self.key_type.as_ref() as &dyn std::any::Any);
@@ -366,18 +377,12 @@ impl Type for TypeMapDynamic {
         }
         if aspect_record_get_maybe(xx, source_type).is_some() &&
             aspect_consume_dynamic_get_maybe(xx, source_type).is_some() {
-            // Record → map: cast_from performs the real per-entry `typecheck_convert` to the
-            // map's value type (which exercises each value type's `cast_to`/`cast_from` chain
-            // — e.g. `TypeSourceDataType::cast_to` wrapping an instance as a `Rc<dyn Type>`
-            // when the map's value type is a type-iface ref). No pre-check here — let the
-            // per-entry conversion report the precise mismatch if one occurs.
             return true;
         }
         false
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        // No cast to `any` — maps aren't types. Misuse.
         false
     }
 
@@ -416,10 +421,8 @@ impl Type for TypeMapDynamic {
             });
         }
 
-        // Record source: decompose, typecheck_convert each value to the map's value type,
-        // then convert each to JS individually.
-        let record: crate::eval::value::record::Record =
-            Rc::try_unwrap(downcast_value::<crate::eval::value::record::Record>(cv.value))
+        let record: Record =
+            Rc::try_unwrap(downcast_value::<Record>(cv.value))
                 .ok()
                 .expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
@@ -427,32 +430,27 @@ impl Type for TypeMapDynamic {
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
             let mut js_fields = Vec::new();
             for (key, field) in record.fields.into_iter() {
-                // Build a CV from the const key and cast it through the map's key type.
-                // `typecheck_convert` performs the actual encoding — its result already carries
-                // the correctly-encoded runtime form for `key_type`, so we use it verbatim.
-                // Record keys are always const, so this is a per-entry compile-time
-                // reconstruction (no record-dynamic-form passthrough).
                 let display = key.to_str();
                 let key_cv = match &key {
-                    crate::langhelp::ConstKey::String(s) => CodeValue {
+                    ConstKey::String(s) => CodeValue {
                         code: Code {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.clone()),),
+                        value: Rc::new(ValueStringConst(s.clone()),),
                     },
-                    crate::langhelp::ConstKey::Usize(n) => CodeValue {
+                    ConstKey::Usize(n) => CodeValue {
                         code: Code {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(crate::eval::value::value_number::r#const::ValueNumberConst(*n as f64),),
+                        value: Rc::new(ValueNumberConst(*n as f64),),
                     },
                 };
-                let key_cv = erb.must_er(crate::eval::typecheck_convert(xx, loc, self.key_type.as_ref(), key_cv))?;
+                let key_cv = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), key_cv))?;
                 let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, key_cv))?;
                 let entry_cv = match field {
-                    crate::eval::value::record::RecordField::EvalRes(entry_res) => {
+                    RecordField::EvalRes(entry_res) => {
                         if let Some(errs) = entry_res.errors {
                             erb.errors.extend(errs);
                         }
@@ -463,14 +461,14 @@ impl Type for TypeMapDynamic {
                             },
                         }
                     },
-                    crate::eval::value::record::RecordField::Dynamic(_) => {
+                    RecordField::Dynamic(_) => {
                         return erb.err_new(
                             format!("Record entry '{}' is dynamic-only, cannot consume directly to JS", display),
                         );
                     },
                 };
                 let converted =
-                    erb.must_er(crate::eval::typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
+                    erb.must_er(typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
                 let js_val = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, converted))?;
                 js_fields.push((key_code, js_val));
             }
@@ -498,24 +496,24 @@ impl Type for TypeMapDynamic {
         format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
         let key_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+            serialize_type_ref(
                 xx,
                 loc,
                 self.key_type.as_ref(),
             );
         let value_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
+            serialize_type_ref(
                 xx,
                 loc,
                 self.value_type.as_ref(),
             );
-        let payload = crate::eval::value::type_map::artifact::ArtifactMapType {
+        let payload = ArtifactMapType {
             key_type: key_artifact,
             value_type: value_artifact,
         };
-        crate::eval::value::type_map::artifact::TypeMapArtifact::build_artifact(
+        TypeMapArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize map type"),
         )
     }
@@ -523,13 +521,10 @@ impl Type for TypeMapDynamic {
 
 impl Value for TypeMapDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-// --- map .get function --- `.get` on a map returns a value of this type. Calling
-// it emits the JS subscript `<self>[<key>]` rather than a real `.get` method call
-// — the map's runtime form is a plain object, so it has no actual `get` method.
 #[derive(Clone)]
 struct TypeMapGetFnDynamic {
     key_type: Rc<dyn Type>,
@@ -542,17 +537,14 @@ impl Aspect for TypeMapGetFnDynamic { }
 impl AspectFunction for TypeMapGetFnDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let argument = erb.must_er(crate::eval::typecheck_convert(xx, loc, self.key_type.as_ref(), argument))?;
+            let argument = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), argument))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
 
-            // `typecheck_convert` + `to_dynamic` give the encoded runtime form for `key_type`
-            // — the same shape `new_map`'s cast_from emits when it stores keys. Use it
-            // directly as the subscript.
             let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, argument))?;
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: CodeDynamicType::SubscriptUse(crate::code_dynamic::CodeDynamicSubscriptUse {
+                type_: CodeDynamicType::SubscriptUse(CodeDynamicSubscriptUse {
                     base: Box::new((*self.self_code).clone()),
                     key: Box::new(key_code),
                 }),
@@ -588,11 +580,10 @@ impl Type for TypeMapGetFnDynamic {
 
 impl Value for TypeMapGetFnDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-// --- map new function ---
 #[derive(Clone)]
 struct TypeMapNewDynamic {
     key_type: Rc<dyn Type>,
@@ -609,7 +600,6 @@ impl AspectFunction for TypeMapNewDynamic {
         });
         let arg_type = argument.value.type_(xx, loc);
 
-        // Empty tuple → empty map
         if let Some(t) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             if t.element_types().is_empty() {
                 return er_seq_cv!(loc, erb, {
@@ -622,9 +612,7 @@ impl AspectFunction for TypeMapNewDynamic {
             }
         }
 
-        // Non-empty argument: convert to map type via typecheck_convert (handles records
-        // via cast_from)
-        crate::eval::typecheck_convert(xx, loc, instance_type.as_ref(), argument)
+        typecheck_convert(xx, loc, instance_type.as_ref(), argument)
     }
 }
 
@@ -658,12 +646,10 @@ impl Type for TypeMapNewDynamic {
 
 impl Value for TypeMapNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-/// Check if `source_type` can be converted to `dest_type` by either direction of
-/// cast.
 fn types_convertible(xx: &ExprContext, loc: QExprId, source_type: &dyn Type, dest_type: &dyn Type) -> bool {
     source_type.can_cast_to(xx, loc, dest_type) || dest_type.can_cast_from(xx, loc, source_type)
 }

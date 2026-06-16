@@ -8,11 +8,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicDataAccess,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -20,9 +17,16 @@ use {
                 dynamic_set,
             },
             value::{
+                type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                },
+                value_string::r#const::ValueStringConst,
             },
         },
         langhelp::{
@@ -49,9 +53,11 @@ use {
             AspectField,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectSet,
             AspectStackValueDynamic,
             AspectStringDynamic,
+            AspectType,
             ScopeEntry,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
@@ -60,6 +66,7 @@ use {
             aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
@@ -67,11 +74,11 @@ use {
             aspect_string_dynamic_aspect_id,
             aspect_string_dynamic_get_maybe,
             aspect_type_aspect_id,
+            type_type_identity,
         },
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -90,7 +97,7 @@ impl AspectArtifact for TypeStringDynamic {
                 loc: loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())),
+            value: Rc::new(ValueStringConst(s.to_string())),
         })
     }
 
@@ -116,7 +123,7 @@ impl AspectBindDynamic for TypeStringDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -193,7 +200,7 @@ impl AspectLiftDynamic for TypeStringDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
+        Ok(Rc::new(ValueStringConst(s)))
     }
 }
 
@@ -211,7 +218,7 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 
 impl AspectStringDynamic for TypeStringDynamic { }
 
-impl crate::r#gen::AspectLowerDynamic for TypeStringDynamic {
+impl AspectLowerDynamic for TypeStringDynamic {
     fn lower(
         &self,
         _xx: &ExprContext,
@@ -219,11 +226,11 @@ impl crate::r#gen::AspectLowerDynamic for TypeStringDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s)))
+        Ok(Rc::new(ValueStringConst(s)))
     }
 }
 
-impl crate::r#gen::AspectType for TypeStringDynamic {
+impl AspectType for TypeStringDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)
     }
@@ -262,14 +269,14 @@ impl Type for TypeStringDynamic {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+        if *key == aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn crate::r#gen::AspectType>));
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectType>));
         }
         return None;
     }
@@ -281,7 +288,7 @@ impl Type for TypeStringDynamic {
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_string_dynamic_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+            type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -325,7 +332,6 @@ impl Type for TypeStringDynamic {
     }
 
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        // No cast to `any` — strings aren't types. Misuse.
         EvalRes::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {
@@ -350,6 +356,6 @@ impl Type for TypeStringDynamic {
 
 impl Value for TypeStringDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

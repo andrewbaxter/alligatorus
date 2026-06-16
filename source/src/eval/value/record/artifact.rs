@@ -1,9 +1,13 @@
-//! Record-type artifact: a per-field map of serialized field-type artifacts. Both
-//! `TypeRecordArtifact` (the artifact-id holder) and the parameterless
-//! `Deserializer` registered for that id live here.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::{
+            util::deserialize_type_artifact,
+            value::record::{
+                Record,
+                RecordField,
+            },
+        },
         langhelp::{
             Artifact,
             ArtifactIdBuiltin,
@@ -14,6 +18,8 @@ use {
             EResult,
             EvalRes,
             ExprContext,
+            ExprErr,
+            ExprSubErr,
             QExprId,
             Type,
         },
@@ -38,25 +44,25 @@ impl Deserializer {
         xx: &ExprContext,
         loc: QExprId,
         data: &serde_json::Value,
-    ) -> Result<Rc<dyn Type>, Vec<crate::langhelp::ExprErr>> {
+    ) -> Result<Rc<dyn Type>, Vec<ExprErr>> {
         let serial: ArtifactRecordType = match serde_json::from_value(data.clone()) {
             Ok(s) => s,
             Err(e) => {
-                return Err(vec![crate::langhelp::ExprErr {
+                return Err(vec![ExprErr {
                     loc,
                     errors: vec![
-                        crate::langhelp::ExprSubErr::Opaque(format!("Failed to parse record type artifact: {}", e,)),
+                        ExprSubErr::Opaque(format!("Failed to parse record type artifact: {}", e,)),
                     ],
                 }]);
             },
         };
-        let mut fields: BTreeMap<ConstKey, crate::eval::value::record::RecordField> = BTreeMap::new();
+        let mut fields: BTreeMap<ConstKey, RecordField> = BTreeMap::new();
         for (key, field_artifact) in serial.fields {
             let (field_type, _code) =
-                crate::eval::util::deserialize_type_artifact(xx, loc, &field_artifact).into_res()?;
-            fields.insert(key, crate::eval::value::record::RecordField::Dynamic(field_type));
+                deserialize_type_artifact(xx, loc, &field_artifact).into_res()?;
+            fields.insert(key, RecordField::Dynamic(field_type));
         }
-        Ok(Rc::new(crate::eval::value::record::Record {
+        Ok(Rc::new(Record {
             base: None,
             fields,
         }))

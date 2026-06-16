@@ -14,10 +14,6 @@ use {
     },
 };
 
-/// This tests basic number operations (creation, binding, comparison,
-/// modification, to_string). Note that how this test is set up, all numeric
-/// operations can happen at half-eval time (e.g. "constant folding") so only the
-/// result number is transferred to v8 before doing `to_string`.
 #[test]
 fn test_0000_number_lit() {
     setup_v8();
@@ -122,9 +118,6 @@ e0 = e15;
 e0;"#]);
 }
 
-/// This tests basic number operations (creation, binding, comparison,
-/// modification, to_string) in v8. Because the function argument is a dynamic
-/// number, all operations need to happen in v8 instead of at evaluation time.
 #[test]
 fn test_00100_number_dynamic() {
     setup_v8();

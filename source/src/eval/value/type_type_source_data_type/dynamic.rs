@@ -1,22 +1,16 @@
 use {
     crate::{
         eval::{
-            Erb,
-            definition_set::DefinitionSet,
-            value::type_source_data_type::{
-                SourceDataMethodData,
-                SourceDataTypeData,
-                TypeSourceDataTypeConst,
-                artifact::{
-                    ArtifactDataDefSet,
-                    ArtifactDataDefSetDataType,
+            definition_set::load_def_set,
+            value::{
+                type_any::r#const::TypeAnyConst,
+                type_source_data_type::{
+                    r#const::TypeSourceDataTypeConst,
+                    artifact::ArtifactDataDefSetDataType,
                 },
             },
         },
-        invariant::{
-            DeserialLazy,
-            must_downcast_ref,
-        },
+        invariant::must_downcast_ref,
         langhelp::{
             Artifact,
             Aspect,
@@ -27,27 +21,20 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
             Type,
             Unique,
             Value,
-            deserialize_independent_artifact,
         },
         r#gen::{
             AspectArtifact,
             AspectType,
             aspect_artifact_aspect_id,
             aspect_type_aspect_id,
+            type_type_identity,
         },
     },
-    dumpster::unsync::Gc,
     std::{
         any::Any,
-        cell::{
-            Cell,
-            RefCell,
-        },
-        mem,
         rc::Rc,
     },
 };
@@ -65,7 +52,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
                         data.clone(),
                     ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
                 )?;
-            let def_set = erb.must_res(crate::eval::definition_set::load_def_set(xx, &serial.def_set))?;
+            let def_set = erb.must_res(load_def_set(xx, &serial.def_set))?;
             let data_types = def_set.data_types.borrow();
             let dt_data =
                 data_types
@@ -107,7 +94,7 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::r#gen::type_type_identity() {
+        if *key == type_type_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_artifact_aspect_id() {
@@ -138,6 +125,6 @@ impl Type for TypeTypeSourceDataTypeDynamic {
 
 impl Value for TypeTypeSourceDataTypeDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

@@ -8,24 +8,36 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicDataAccess,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
+            from_v8_ref,
+            push::Push,
+            to_v8,
             typecheck_convert,
             value::{
+                type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
+                type_list::artifact::{
+                    ArtifactListType,
+                    TypeListArtifact,
+                },
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
-                value_empty::r#const::ValueEmptyConst,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                },
+                type_any::r#const::ValueAnyConst,
             },
         },
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -70,12 +82,10 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
 
-// --- list type (result of list(string), and also type of list instances) ---
 #[derive(Clone)]
 pub(crate) struct TypeListDynamic {
     pub(crate) element_type: Rc<dyn Type>,
@@ -95,7 +105,7 @@ impl AspectBindDynamic for TypeListDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -124,11 +134,10 @@ impl AspectField for TypeListDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: new_type }),
+                value: Rc::new(ValueAnyConst { inner: new_type }),
             });
         }
 
-        // Instance-level fields (push, join, etc.)
         return er_seq_cv!(loc, erb, {
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
@@ -224,7 +233,7 @@ impl AspectIterable for TypeListDynamic {
                     body: Box::new(body_js),
                 }),
             };
-            let null_type = Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic);
+            let null_type = Rc::new(TypeNullDynamic);
             let stack_value = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, null_type.as_ref()))?;
             return Ok(stack_value.to_value(loc, foreach_js));
         });
@@ -252,18 +261,18 @@ impl AspectStackValueDynamic for TypeListDynamic {
     }
 }
 
-impl crate::eval::push::Push for TypeListDynamic {
+impl Push for TypeListDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeListDynamic> = crate::eval::from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
+        let rc: Rc<TypeListDynamic> = from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
         (*rc).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::to_v8(scope, Rc::new(self)).into()
+        to_v8(scope, Rc::new(self)).into()
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
@@ -305,7 +314,6 @@ impl Type for TypeListDynamic {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        // No cast to `any` — lists aren't types. Misuse.
         false
     }
 
@@ -331,25 +339,19 @@ impl Type for TypeListDynamic {
         format!("list({})", self.element_type.desc())
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
-        let elem_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
-                xx,
-                loc,
-                self.element_type.as_ref(),
-            );
-        let payload = crate::eval::value::type_list::artifact::ArtifactListType { element_type: elem_artifact };
-        crate::eval::value::type_list::artifact::TypeListArtifact::build_artifact(payload)
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
+        let elem_artifact = serialize_type_ref(xx, loc, self.element_type.as_ref());
+        let payload = ArtifactListType { element_type: elem_artifact };
+        TypeListArtifact::build_artifact(payload)
     }
 }
 
 impl Value for TypeListDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-// --- list new function ---
 #[derive(Clone)]
 struct TypeListNewDynamic {
     element_type: Rc<dyn Type>,
@@ -415,6 +417,6 @@ impl Type for TypeListNewDynamic {
 
 impl Value for TypeListNewDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

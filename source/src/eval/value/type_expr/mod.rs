@@ -1,11 +1,13 @@
 use {
     crate::{
+        builtin::ArtifactBuiltinDeserializer,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
         eval::{
+            TargetBindSub,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -15,18 +17,22 @@ use {
                 Expr,
                 Expr_,
                 StagedExprCell,
+                make_lit_value,
             },
             from_v8_ref,
             value::{
+                type_any::r#const::TypeAnyConst,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_empty::r#const::ValueEmptyConst,
             },
         },
-        invariant::must_downcast_ref,
         langhelp::{
+            Artifact,
+            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -43,12 +49,15 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
+            AspectType,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_type_aspect_id,
             expr_type_identity,
         },
@@ -62,40 +71,37 @@ use {
 
 pub(crate) struct DeserializerTypeExpr;
 
-impl crate::builtin::ArtifactBuiltinDeserializer for DeserializerTypeExpr {
+impl ArtifactBuiltinDeserializer for DeserializerTypeExpr {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
-        loc: crate::langhelp::QExprId,
+        loc: QExprId,
         _data: &serde_json::Value,
-    ) -> crate::langhelp::EResult<(Rc<dyn Type>, crate::langhelp::Code)> {
-        crate::langhelp::EResult::ok((Rc::new(TypeExpr), crate::langhelp::Code {
+    ) -> EResult<(Rc<dyn Type>, Code)> {
+        EResult::ok((Rc::new(TypeExpr), Code {
             loc,
-            code: crate::langhelp::Code_::None,
+            code: Code_::None,
         }))
     }
 
     fn value_from_serial(
         &self,
         _xx: &ExprContext,
-        loc: crate::langhelp::QExprId,
+        loc: QExprId,
         _data: &serde_json::Value,
-    ) -> crate::langhelp::EvalRes {
-        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
-            code: crate::langhelp::Code {
+    ) -> EvalRes {
+        EvalRes::ok(CodeValue {
+            code: Code {
                 loc,
-                code: crate::langhelp::Code_::None,
+                code: Code_::None,
             },
-            value: Rc::new(TypeExpr) as Rc<dyn crate::langhelp::Value>,
+            value: Rc::new(TypeExpr) as Rc<dyn Value>,
         })
     }
 }
 
 pub(crate) fn register_expr_artifact(
-    m:
-        &mut std
-        ::collections
-        ::HashMap<crate::langhelp::ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
+    m: &mut std::collections::HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>,
 ) {
     m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
 }
@@ -115,14 +121,13 @@ impl AspectBindDynamic for TypeExpr {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
 
 impl AspectConsumeDynamic for TypeExpr {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        // If there's already JS code (e.g. from a __stage call), use it directly
         if let Some(js) = cv.code.cast::<CodeDynamic>().v.flatten() {
             return EResult::ok(js.clone());
         }
@@ -157,7 +162,7 @@ impl AspectLiftDynamic for TypeExpr {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeExpr {
+impl AspectLowerDynamic for TypeExpr {
     fn lower(
         &self,
         _xx: &ExprContext,
@@ -169,7 +174,7 @@ impl crate::r#gen::AspectLowerDynamic for TypeExpr {
     }
 }
 
-impl crate::r#gen::AspectType for TypeExpr {
+impl AspectType for TypeExpr {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeExpr)
     }
@@ -196,14 +201,14 @@ impl Type for TypeExpr {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExpr) as Box<dyn crate::r#gen::AspectLowerDynamic>));
+        if *key == aspect_lower_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeExpr) as Box<dyn crate::r#gen::AspectType>));
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectType>));
         }
         return None;
     }
@@ -213,16 +218,12 @@ impl Type for TypeExpr {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        // Expressions are code, not type-of-types — no `cast_to(any)`.
         false
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let source_type = cv.value.type_(xx, loc);
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
-            // If the value is itself an `Expr` (e.g. from a `stage(...)` literal), clone it
-            // directly; otherwise the static type is already `expr` (e.g. via a dynamic
-            // binding) and we pass through the CV unchanged.
             if let Some(expr) = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<Expr>() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
@@ -232,12 +233,11 @@ impl Type for TypeExpr {
             return EvalRes::ok(cv);
         }
 
-        // Wrap any non-Expr value as a literal Expr that reproduces the value
         let type_rc = cv.value.type_(xx, loc);
         let expr = Expr {
             loc,
             r#type: Expr_::Literal(
-                crate::eval::expr::make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>),
+                make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>),
             ),
         };
         return EvalRes::ok(CodeValue {
@@ -254,14 +254,14 @@ impl Type for TypeExpr {
         return format!("expr");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         Self::build_type_artifact()
     }
 }
 
 impl Value for TypeExpr {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 pub(crate) struct TypeExprStagedPlaceholder;
@@ -286,7 +286,7 @@ impl AspectLiftDynamic for TypeExprStagedPlaceholder {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeExprStagedPlaceholder {
+impl AspectLowerDynamic for TypeExprStagedPlaceholder {
     fn lower(
         &self,
         _xx: &ExprContext,
@@ -310,9 +310,9 @@ impl Type for TypeExprStagedPlaceholder {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+        if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn crate::r#gen::AspectLowerDynamic>),
+                Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLowerDynamic>),
             );
         }
         None
@@ -333,7 +333,7 @@ impl Type for TypeExprStagedPlaceholder {
 
 impl Value for TypeExprStagedPlaceholder {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 

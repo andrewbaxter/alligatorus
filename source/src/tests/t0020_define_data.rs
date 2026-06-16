@@ -16,18 +16,13 @@ use {
 
 #[test]
 fn test_00800define_data() {
-    //! Define an "uppercase string" data type with string as the underlying type, a
-    //! "to_string" method that uppercases self, construct one, call to_string, and log.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx = new_gx([("main", SourceModule::V1(mb.seq(vec![
-        // Define the data type inside a lower block, return the constructor
         mb.bind("make_upper", mb.lower(mb.seq(vec![
             mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
             mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
-            // Set underlying type to string
             mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-            // Define to_string method
             mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("func")), mb.str("to_string"))),
             mb.call(
                 mb.field(mb.scope_use("mnfr"), mb.str("impl")),
@@ -39,10 +34,8 @@ fn test_00800define_data() {
                     ],
                 ),
             ),
-            // Return the constructor
             mb.field(mb.scope_use("ndr"), mb.str("new")),
         ]))),
-        // Create an instance and call to_string
         mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
         mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null())),
     ])))].into_iter().collect());

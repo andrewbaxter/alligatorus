@@ -1,24 +1,54 @@
 use {
     crate::{
         eval::{
+            TargetBindSub,
             dynamic_util::throw_error,
             from_v8_ref,
             value::{
+                tuple::{
+                    Tuple,
+                    TupleElement,
+                },
                 type_any::dynamic::TypeAnyDynamic,
+                type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic,
+                type_any_target::dynamic::TypeAnyTargetDynamic,
+                type_bool::dynamic::TypeBoolDynamic,
+                type_code_source::TypeCodeDynHandleDynamic,
+                type_constkey::dynamic::TypeConstkeyDynamic,
                 type_expr::TypeExpr,
                 type_map::dynamic::TypeMapDynamic,
                 type_null::dynamic::TypeNullDynamic,
+                type_option::dynamic::TypeOptionDynamic,
                 type_string::dynamic::TypeStringDynamic,
+                type_value::dynamic::TypeValueDynamic,
             },
         },
         langhelp::{
+            Code,
+            CodeDyn,
+            Code_,
             ConstKey,
+            EResult,
+            QExprId,
+            ScopeEntryId,
+            SourceId,
             Type,
             Value,
             downcast_value,
         },
+        r#gen::{
+            ScopeEntry,
+            Target,
+        },
+        syntax::ExprId,
     },
-    std::rc::Rc,
+    std::{
+        collections::{
+            BTreeMap,
+            HashMap,
+        },
+        rc::Rc,
+    },
     super::expr,
 };
 
@@ -28,15 +58,11 @@ pub(crate) trait Push: Sized + 'static {
     fn dynamic_type() -> Rc<dyn Type>;
 }
 
-/// Trait for types that can be used as BTreeMap keys in Push. Converts
-/// between Rust keys and JS object property names (strings).
 pub(crate) trait PushKey: Sized + Ord + 'static {
     fn from_dynamic_key(s: &str) -> Result<Self, String>;
     fn to_dynamic_key(&self) -> String;
 }
 
-/// Wrapper for type values received from JS. In v8, types are always
-/// Rc`<dyn Type>` externals.
 pub(crate) struct AnyType(pub Rc<dyn Type>);
 
 impl Push for AnyType {
@@ -57,8 +83,6 @@ pub(crate) fn push_method_name(s: &str) -> &str {
     s.strip_suffix('_').unwrap_or(s)
 }
 
-/// Wrapper for staged expressions received from JS. Extracts and consumes the
-/// staged value from a StagedExprCell.
 pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
 impl Push for StagedExpr {
@@ -92,10 +116,6 @@ impl Push for () {
     }
 }
 
-/// Generic `Push` for 2-tuples `(A, B)`. The v8 form is a JS array of
-/// length 2. The source-side `Type` is the parameterized `Tuple` with element
-/// types `[A::dynamic_type(), B::dynamic_type()]` — the spec author cannot specify a
-/// mismatched dynamic by construction.
 impl<A, B> Push for (A, B)
 where
     A: Push,
@@ -115,10 +135,10 @@ where
 
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(
-            crate::eval::value::tuple::Tuple {
+            Tuple {
                 elements: vec![
-                    crate::eval::value::tuple::TupleElement::Dynamic(<A as Push>::dynamic_type()),
-                    crate::eval::value::tuple::TupleElement::Dynamic(<B as Push>::dynamic_type()),
+                    TupleElement::Dynamic(<A as Push>::dynamic_type()),
+                    TupleElement::Dynamic(<B as Push>::dynamic_type()),
                 ],
             },
         )
@@ -135,7 +155,7 @@ impl Push for bool {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic)
+        Rc::new(TypeBoolDynamic)
     }
 }
 
@@ -157,11 +177,7 @@ impl Push for ConstKey {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        // Distinct dynamic type whose `cast_from` performs canonical-JSON encoding —
-        // matches `ConstKey::from_str` at the v8 boundary. Using plain
-        // `TypeStringDynamic` here was wrong: it left string keys un-encoded so
-        // `BTreeMap<ConstKey, V>::from_v8` couldn't parse them.
-        Rc::new(crate::eval::value::type_constkey::dynamic::TypeConstkeyDynamic)
+        Rc::new(TypeConstkeyDynamic)
     }
 }
 
@@ -175,10 +191,7 @@ impl PushKey for ConstKey {
     }
 }
 
-/// `Push` for `TargetBindSub`. dynamic_type returns `TypeAnyDynamic` as a
-/// placeholder — proper source-side dynamic (e.g. a record of `{data, type}`) is a
-/// TODO once user-defined target dispatch is wired.
-impl Push for crate::eval::TargetBindSub {
+impl Push for TargetBindSub {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -194,30 +207,27 @@ impl Push for crate::eval::TargetBindSub {
     }
 }
 
-impl Push for crate::langhelp::Code {
+impl Push for Code {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        // Source-level `Code` is `option(code_dyn)`. The runtime form is a JS object
-        // shaped like option: `{<json-encoded "some">: <External(Rc<dyn CodeDyn>)>}` or
-        // `{<json-encoded "none">: null}`.
-        let dummy_loc: crate::langhelp::QExprId = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        let dummy_loc: QExprId = (SourceId(0), ExprId(0));
         let obj = v8::Local::<v8::Object>::try_from(value).expect("Code: expected option-shaped JS object");
         let some_key =
             v8::String::new(
                 scope,
-                &crate::langhelp::ConstKey::String("some".to_string()).to_str(),
+                &ConstKey::String("some".to_string()).to_str(),
             ).expect("Code from_v8: some key alloc");
         let some_val = obj.get(scope, some_key.into()).expect("Code from_v8: get some");
         if !some_val.is_undefined() {
-            let code: Rc<dyn crate::langhelp::CodeDyn> =
-                super::from_v8_ref::<Rc<dyn crate::langhelp::CodeDyn>>(&*some_val).clone();
-            return crate::langhelp::Code {
+            let code: Rc<dyn CodeDyn> =
+                super::from_v8_ref::<Rc<dyn CodeDyn>>(&*some_val).clone();
+            return Code {
                 loc: dummy_loc,
-                code: crate::langhelp::Code_::Dyn(code),
+                code: Code_::Dyn(code),
             };
         }
-        crate::langhelp::Code {
+        Code {
             loc: dummy_loc,
-            code: crate::langhelp::Code_::None,
+            code: Code_::None,
         }
     }
 
@@ -226,22 +236,15 @@ impl Push for crate::langhelp::Code {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        // The source-level `Code` is `option(code_dyn)`. The user writes
-        // `option(codedyn).some(<code_dyn>)` / `.none(())` to construct one.
         Rc::new(
-            crate::eval::value::type_option::dynamic::TypeOptionDynamic {
-                element_type: Rc::new(crate::eval::value::type_code_source::TypeCodeDynHandleDynamic) as
-                    Rc<dyn Type>,
+            TypeOptionDynamic {
+                element_type: Rc::new(TypeCodeDynHandleDynamic) as Rc<dyn Type>,
             },
         )
     }
 }
 
-/// Generic `Push` for `EResult<T>`. The source-side dynamic Type delegates
-/// to `T`'s — errors are Rust-side dispatch plumbing, not part of the source-level
-/// type. `from_v8`/`into_v8` are stubs for now; user-defined dispatch through v8
-/// isn't routed through these.
-impl<T: Push> Push for crate::langhelp::EResult<T> {
+impl<T: Push> Push for EResult<T> {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -257,12 +260,7 @@ impl<T: Push> Push for crate::langhelp::EResult<T> {
     }
 }
 
-/// `Push` for `ScopeEntryId` — the source-side representation is a string
-/// (the binding name produced by `gen_binding_name`). Used by the `Target::bind`
-/// ret tuple. `from_v8`/`into_v8` are stubs for now — user-defined target dispatch
-/// isn't yet routed through v8, and the builtin `TargetDynamic` constructs
-/// `ScopeEntryId` directly.
-impl Push for crate::langhelp::ScopeEntryId {
+impl Push for ScopeEntryId {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -274,7 +272,7 @@ impl Push for crate::langhelp::ScopeEntryId {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
+        Rc::new(TypeStringDynamic)
     }
 }
 
@@ -294,7 +292,6 @@ impl Push for expr::Expr {
     }
 }
 
-/// Generic `Push` for `Option<T>`. dynamic_type = `option(T::dynamic_type())`.
 impl<T: Push> Push for Option<T> {
     fn from_v8<
         's,
@@ -308,14 +305,14 @@ impl<T: Push> Push for Option<T> {
 
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(
-            crate::eval::value::type_option::dynamic::TypeOptionDynamic {
+            TypeOptionDynamic {
                 element_type: <T as Push>::dynamic_type(),
             },
         )
     }
 }
 
-impl Push for Rc<dyn crate::langhelp::Value> {
+impl Push for Rc<dyn Value> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_value_from_v8(&*value)
     }
@@ -325,11 +322,11 @@ impl Push for Rc<dyn crate::langhelp::Value> {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
+        Rc::new(TypeValueDynamic)
     }
 }
 
-impl Push for Rc<dyn crate::r#gen::ScopeEntry> {
+impl Push for Rc<dyn ScopeEntry> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_scope_entry_from_v8(&*value)
     }
@@ -339,11 +336,11 @@ impl Push for Rc<dyn crate::r#gen::ScopeEntry> {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic)
+        Rc::new(TypeAnyScopeEntryDynamic)
     }
 }
 
-impl Push for Rc<dyn crate::r#gen::Target> {
+impl Push for Rc<dyn Target> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_target_from_v8(&*value)
     }
@@ -353,16 +350,16 @@ impl Push for Rc<dyn crate::r#gen::Target> {
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any_target::dynamic::TypeAnyTargetDynamic)
+        Rc::new(TypeAnyTargetDynamic)
     }
 }
 
-impl<K: PushKey + Push, V: Push> Push for std::collections::BTreeMap<K, V> {
+impl<K: PushKey + Push, V: Push> Push for BTreeMap<K, V> {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
         let len = keys.length();
-        let mut map = std::collections::BTreeMap::new();
+        let mut map = BTreeMap::new();
         for i in 0 .. len {
             let dynamic_key = keys.get_index(scope, i).unwrap();
             let key_str = dynamic_key.to_string(scope).unwrap().to_rust_string_lossy(scope);
@@ -370,7 +367,7 @@ impl<K: PushKey + Push, V: Push> Push for std::collections::BTreeMap<K, V> {
                 Ok(k) => k,
                 Err(e) => {
                     throw_error(scope, &format!("Invalid map key: {}", e));
-                    return std::collections::BTreeMap::new();
+                    return BTreeMap::new();
                 },
             };
             let dynamic_val = obj.get(scope, dynamic_key).unwrap();
@@ -398,19 +395,14 @@ impl<K: PushKey + Push, V: Push> Push for std::collections::BTreeMap<K, V> {
     }
 }
 
-/// Generic manual `Push` for `HashMap<K, V>` over any
-/// `K: PushKey + Eq + std::hash::Hash` and `V: Push`. Walks the v8
-/// record's keys and delegates each value's parsing to `V::from_v8`. `dynamic_type`
-/// reports `map<string, V::dynamic_type()>` since the v8 record keys are JS strings
-/// regardless of `K`.
-impl<K, V> Push for std::collections::HashMap<K, V>
+impl<K, V> Push for HashMap<K, V>
 where
     K: PushKey + Push + Eq + std::hash::Hash,
     V: Push {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("HashMap::from_v8: expected JS object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
-        let mut out = std::collections::HashMap::new();
+        let mut out = HashMap::new();
         for i in 0 .. keys.length() {
             let key = keys.get_index(scope, i).unwrap();
             let key_str = key.to_string(scope).unwrap().to_rust_string_lossy(scope);

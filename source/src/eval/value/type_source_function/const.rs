@@ -5,9 +5,19 @@ use {
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
-        eval::value::{
-            tuple::scope_entry::ScopeEntryValue,
-            type_function::dynamic::dynamic_call,
+        eval::{
+            definition_set::serialize_definition_set,
+            from_v8_ref,
+            push::Push,
+            to_v8,
+            value::{
+                tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
+                type_function::dynamic::dynamic_call,
+            },
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -28,42 +38,57 @@ use {
             AspectArtifact,
             AspectBind,
             AspectFunction,
+            AspectType,
             ScopeEntry,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_function_aspect_id,
+            aspect_type_aspect_id,
         },
     },
     std::{
         any::Any,
         rc::Rc,
     },
-    super::TypeSourceFunctionConst,
 };
+
+pub(crate) struct TypeSourceFunctionConst {
+    pub data: dumpster::unsync::Gc<super::SourceFunctionData>,
+}
+
+impl Push for Rc<TypeSourceFunctionConst> {
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
+    }
+
+    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_v8(scope, self).into()
+    }
+
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(super::dynamic::TypeSourceFunctionDynamic)
+    }
+}
 
 impl Aspect for TypeSourceFunctionConst { }
 
 impl AspectArtifact for TypeSourceFunctionConst {
     fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        let func_type: Rc<dyn crate::langhelp::Type> =
+        let func_type: Rc<dyn Type> =
             Rc::new(TypeSourceFunctionConst { data: self.data.clone() });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type }),
+            value: Rc::new(ValueAnyConst { inner: func_type }),
         })
     }
 
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let wrapper = must_downcast_ref::<crate::eval::value::type_any::r#const::ValueAnyConst>(self_.as_ref());
+        let wrapper = must_downcast_ref::<ValueAnyConst>(self_.as_ref());
         let func = must_downcast_ref::<TypeSourceFunctionConst>(wrapper.inner.as_ref());
 
-        // Ensure the def-set is registered. Bare function references that never get
-        // called or lifted skip the usual registration paths, but their serialization
-        // still requires the def-set's data types / interface impls to have been compiled
-        // in this stage.
         {
             let set = &func.data.set;
             let mut sets = xx.vx.ix.definition_sets.borrow_mut();
@@ -71,7 +96,7 @@ impl AspectArtifact for TypeSourceFunctionConst {
                 sets.push(set.clone());
             }
         }
-        crate::eval::definition_set::serialize_definition_set(xx, loc, &func.data.set);
+        serialize_definition_set(xx, loc, &func.data.set);
         let artifact_id =
             func
                 .data
@@ -116,9 +141,9 @@ impl AspectFunction for TypeSourceFunctionConst {
     }
 }
 
-impl crate::r#gen::AspectType for TypeSourceFunctionConst {
+impl AspectType for TypeSourceFunctionConst {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let f = crate::invariant::must_downcast_ref::<TypeSourceFunctionConst>(value);
+        let f = must_downcast_ref::<TypeSourceFunctionConst>(value);
         Rc::new(TypeSourceFunctionConst { data: f.data.clone() })
     }
 }
@@ -126,7 +151,7 @@ impl crate::r#gen::AspectType for TypeSourceFunctionConst {
 impl Type for TypeSourceFunctionConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(
-            crate::eval::value::type_any::r#const::ValueAnyConst {
+            ValueAnyConst {
                 inner: Rc::new(TypeSourceFunctionConst { data: self.data.clone() }),
             },
         )
@@ -148,11 +173,10 @@ impl Type for TypeSourceFunctionConst {
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
             );
         }
-        if *key == crate::r#gen::aspect_type_aspect_id() {
+        if *key == aspect_type_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as
-                        Box<dyn crate::r#gen::AspectType>,
+                    Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectType>,
                 ),
             );
         }
@@ -177,6 +201,6 @@ impl Type for TypeSourceFunctionConst {
 
 impl Value for TypeSourceFunctionConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

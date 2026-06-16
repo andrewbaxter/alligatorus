@@ -16,7 +16,6 @@ use {
 
 #[test]
 fn test_00600define_func() {
-    //! Define a function that prints "hello", then call it.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx =
@@ -156,8 +155,6 @@ e4;"#);
 
 #[test]
 fn test_00700define_func_arg_ret() {
-    //! Define a function with string arg and string ret that uppercases the arg, call
-    //! it with a string, and log the result.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx =
@@ -175,7 +172,6 @@ fn test_00700define_func_arg_ret() {
                                         mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("f")),
                                     ),
                                     mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
-                                    // Unified impl: arg type, ret type, body
                                     mb.call(
                                         mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                         mb.tuple(
@@ -302,7 +298,6 @@ e3;"#);
 
 #[test]
 fn test_00710define_func_unified_impl() {
-    //! Define a function with string arg and string ret using the unified impl_ method.
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx =

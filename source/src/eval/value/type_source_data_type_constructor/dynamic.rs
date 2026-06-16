@@ -1,23 +1,37 @@
 use {
     crate::{
-        code_dynamic::CodeDynamic,
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicBindingUse,
+            CodeDynamicCall,
+            CodeDynamicType,
+        },
         eval::{
+            TargetBindSub,
             definition_set::DefinitionSet,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
             from_v8_ref,
+            util::deserialize_type_artifact,
             value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type::{
                     SourceDataMethodData,
                     SourceDataTypeData,
                 },
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
             },
         },
+        invariant::DeserialLazy,
         langhelp::{
             Artifact,
             ArtifactId,
@@ -25,6 +39,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            Counter,
             EResult,
             EvalRes,
             ExprContext,
@@ -40,14 +55,18 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
+            AspectLowerDynamic,
             AspectStackValueDynamic,
+            DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
+            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            type_type_identity,
         },
     },
     std::{
@@ -65,7 +84,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     xx: &ExprContext,
     loc: QExprId,
     data: &serde_json::Value,
-) -> Result<(Rc<dyn Type>, Vec<crate::langhelp::Code>), String> {
+) -> Result<(Rc<dyn Type>, Vec<Code>), String> {
     let artifact_id: ArtifactId =
         serde_json::from_value(
             data.clone(),
@@ -73,25 +92,25 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     let stored = xx.vx.ix.gx.artifacts.get(artifact_id)?;
     let serial: ArtifactDataDefSetCtorData =
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
-    let mut codes: Vec<crate::langhelp::Code> = Vec::new();
+    let mut codes: Vec<Code> = Vec::new();
     let (underlying_type, underlying_code) =
-        crate::eval::util::deserialize_type_artifact(xx, loc, &serial.underlying_type)
+        deserialize_type_artifact(xx, loc, &serial.underlying_type)
             .into_res()
             .map_err(|e| format!("{:?}", e))?;
     codes.push(underlying_code);
-    let methods: Vec<std::rc::Rc<SourceDataMethodData>> = serial.methods.iter().enumerate().map(|(i, m)| {
+    let methods: Vec<Rc<SourceDataMethodData>> = serial.methods.iter().enumerate().map(|(i, m)| {
         let (ret_type, ret_code) =
-            crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type)
+            deserialize_type_artifact(xx, loc, &m.ret_type)
                 .into_res()
                 .expect("Failed to resolve method ret type");
         codes.push(ret_code);
         let entry_id = serial.def_set_id;
-        std::rc::Rc::new(SourceDataMethodData {
+        Rc::new(SourceDataMethodData {
             name: m.name.clone(),
             arg_type: std::cell::RefCell::new(None),
             impl_expr: std::cell::RefCell::new(None),
             ret_type: std::cell::RefCell::new(Some(ret_type)),
-            scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, entry_id, i))),
+            scope_entry_id: Cell::new(Some(ScopeEntryId::Def(serial.import_id, entry_id, i))),
             inner_scope_entry_id: Cell::new(None),
             field_name: m.field_name.clone(),
             compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
@@ -106,9 +125,9 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         data_types: std::cell::RefCell::new(Vec::new()),
         interfaces: std::cell::RefCell::new(Vec::new()),
         finished: Cell::new(true),
-        next_field_id: crate::langhelp::Counter::default(),
-        next_entry_id: crate::langhelp::Counter::default(),
-        next_interface_method_id: crate::langhelp::Counter::default(),
+        next_field_id: Counter::default(),
+        next_entry_id: Counter::default(),
+        next_interface_method_id: Counter::default(),
         source_id: serial.source_id,
     });
     let dt_data = dumpster::unsync::Gc::new(SourceDataTypeData {
@@ -116,7 +135,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         name: serial.name,
         description: std::cell::RefCell::new(None),
         underlying_type: {
-            let dl = crate::invariant::DeserialLazy::new();
+            let dl = DeserialLazy::new();
             dl.set(underlying_type);
             dl
         },
@@ -130,12 +149,10 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     Ok((Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }), codes))
 }
 
-// --- Conversion helpers ---
 pub(crate) fn serialize_type_ref(xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> Artifact {
     type_.type_to_serial(xx, loc)
 }
 
-// --- TypeSourceDataTypeConstructorDynamic: eval_half type during JS execution ---
 pub(crate) struct TypeSourceDataTypeConstructorDynamic;
 
 impl Aspect for TypeSourceDataTypeConstructorDynamic { }
@@ -146,7 +163,7 @@ impl AspectBind for TypeSourceDataTypeConstructorDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -157,7 +174,7 @@ impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -187,9 +204,9 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
             from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
         ctor_ref.data.set.finish()?;
-        let ctor_type: Rc<dyn crate::langhelp::Type> =
+        let ctor_type: Rc<dyn Type> =
             Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
-        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
+        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
 }
 
@@ -208,19 +225,18 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl crate::r#gen::AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
+impl AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
     fn lower(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        // Same as `lift` but does NOT finalize the def-set.
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
             from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
-        let ctor_type: Rc<dyn crate::langhelp::Type> =
+        let ctor_type: Rc<dyn Type> =
             Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
-        Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type }))
+        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
 }
 
@@ -249,10 +265,10 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
+        if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn crate::r#gen::AspectLowerDynamic>,
+                    Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLowerDynamic>,
                 ),
             );
         }
@@ -263,7 +279,7 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+        type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
@@ -271,11 +287,11 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
-        if type_.aspect(xx, &crate::r#gen::type_type_identity()).is_none() {
+        if type_.aspect(xx, &type_type_identity()).is_none() {
             return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
         }
         let source_code = match cv.code.cast::<CodeDynamic>() {
-            crate::langhelp::EResult { v: Some(Some(c)), .. } => c.clone(),
+            EResult { v: Some(Some(c)), .. } => c.clone(),
             _ => return EvalRes::err(
                 loc,
                 format!("cast {} → {}: source has no runtime code", self.desc(), type_.desc()),
@@ -283,12 +299,12 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
         };
         let call = CodeDynamic {
             loc,
-            type_: crate::code_dynamic::CodeDynamicType::Call(crate::code_dynamic::CodeDynamicCall {
+            type_: CodeDynamicType::Call(CodeDynamicCall {
                 func: Box::new(CodeDynamic {
                     loc,
-                    type_: crate::code_dynamic::CodeDynamicType::BindingUse(
-                        crate::code_dynamic::CodeDynamicBindingUse {
-                            id: crate::eval::DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
+                    type_: CodeDynamicType::BindingUse(
+                        CodeDynamicBindingUse {
+                            id: DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
                         },
                     ),
                 }),
@@ -316,6 +332,6 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
 
 impl Value for TypeSourceDataTypeConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

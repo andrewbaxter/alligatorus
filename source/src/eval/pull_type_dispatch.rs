@@ -1,27 +1,31 @@
-//! Dispatch for types that are _user-defined_ via the builtin `type` interface.
-//! When a source-defined data type implements the `type` interface, its instances
-//! act as types; this module runs the user-provided `can_cast_from`, `cast_from`,
-//! and `desc` impls to drive `Type` methods.
-//!
-//! The impls are stored as raw `Expr` ASTs (the inner of the user-passed
-//! `stage(...)`). They reference `arg`, which we bind to a record
-//! `{xx, source_type, cv}` before `const_eval`.
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         eval::{
+            const_eval,
             expr::Expr,
+            from_v8_ref,
+            push::Push,
+            to_v8,
             value::{
                 record::{
                     Record,
                     RecordField,
                 },
+                type_any::r#const::TypeAnyConst,
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
+                type_option_aspect::{
+                    TypeOption,
+                    ValueOption,
+                },
                 type_source_data_type::SourceDataTypeData,
                 type_source_interface::BuiltinInterfaceKind,
+                value_null::r#const::ValueNullConst,
             },
         },
         invariant::must_downcast_ref,
         langhelp::{
+            Aspect,
             Code,
             CodeValue,
             Code_,
@@ -31,7 +35,18 @@ use {
             QExprId,
             Scope,
             Type,
+            Unique,
             Value,
+        },
+        r#gen::{
+            AspectField,
+            AspectFunction,
+            ScopeEntry,
+            TypeRefPush,
+            aspect_bool_const_get_maybe,
+            aspect_field_aspect_id,
+            aspect_function_aspect_id,
+            aspect_string_const_get,
         },
     },
     dumpster::unsync::Gc,
@@ -42,9 +57,6 @@ use {
     },
 };
 
-/// Scope entry that yields a fresh `Record` on each `use_` so that baseless record
-/// field access (which requires `Rc::try_unwrap`) always sees a unique `Rc`. `cv`
-/// is cloned on each use (Code is `Clone` and value is `Rc<dyn Value>`).
 pub(crate) struct ArgRecordFactory {
     pub(crate) cv: CodeValue,
     pub(crate) loc: QExprId,
@@ -52,14 +64,12 @@ pub(crate) struct ArgRecordFactory {
 }
 
 impl ScopeEntry for ArgRecordFactory {
-    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let mut fields = std::collections::BTreeMap::new();
 
-        // `source_type` is wrapped in `ValueTypeRef` so that `.aspect(...)` field access
-        // on it is dispatched to the inner Rust `Type::aspect`.
         fields.insert(
             ConstKey::String("source_type".to_string()),
-            RecordField::EvalRes(crate::langhelp::EvalRes::ok(CodeValue {
+            RecordField::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: self.loc,
                     code: Code_::None,
@@ -69,16 +79,16 @@ impl ScopeEntry for ArgRecordFactory {
         );
         fields.insert(
             ConstKey::String("cv".to_string()),
-            RecordField::EvalRes(crate::langhelp::EvalRes::ok(clone_cv(&self.cv))),
+            RecordField::EvalRes(EvalRes::ok(clone_cv(&self.cv))),
         );
         fields.insert(
             ConstKey::String("xx".to_string()),
-            RecordField::EvalRes(crate::langhelp::EvalRes::ok(CodeValue {
+            RecordField::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: self.loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
+                value: Rc::new(ValueNullConst),
             })),
         );
         CodeValue {
@@ -105,7 +115,6 @@ fn clone_cv(cv: &CodeValue) -> CodeValue {
     }
 }
 
-/// Lookup the user's impl Expr for a specific `type`-interface method by name.
 fn lookup_impl<'a>(data: &'a Gc<SourceDataTypeData>, method_name: &str) -> Option<Rc<dyn Value>> {
     let impls = data.interface_impls.borrow();
     for impl_data in impls.iter() {
@@ -122,9 +131,6 @@ fn lookup_impl<'a>(data: &'a Gc<SourceDataTypeData>, method_name: &str) -> Optio
     None
 }
 
-/// Build a child `ExprContext` with `arg` bound to a record
-/// `{xx, source_type, cv}` and `const_eval` the impl expression. Returns the
-/// result of the impl.
 fn run_impl(
     impl_expr: Rc<dyn Value>,
     xx: &ExprContext,
@@ -132,9 +138,6 @@ fn run_impl(
     source_type: Rc<dyn Type>,
     cv: CodeValue,
 ) -> EvalRes {
-    // `arg` is bound to a Record built fresh on each scope_use so that
-    // baseless-record field access (which requires `Rc::try_unwrap` to move fields
-    // out) sees a unique `Rc`.
     let arg_factory = ArgRecordFactory {
         loc,
         source_type,
@@ -156,16 +159,14 @@ fn run_impl(
         target: xx.target.clone(),
     });
     let expr_ast = must_downcast_ref::<Expr>(impl_expr.as_ref());
-    crate::eval::const_eval(&child_xx, expr_ast)
+    const_eval(&child_xx, expr_ast)
 }
 
-/// Find the JS field name for the named builtin-`type` interface method on the
-/// bundled instance.
 fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> Option<String> {
     let impls = data.interface_impls.borrow();
     for impl_data in impls.iter() {
         if impl_data.interface.builtin_kind !=
-            Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type) {
+            Some(BuiltinInterfaceKind::Type) {
             continue;
         }
         let methods = impl_data.interface.methods.borrow();
@@ -178,52 +179,49 @@ fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> O
     None
 }
 
-/// The closure-like value produced by `type_ref.aspect`. When called with a
-/// `Unique` argument, returns a `ValueOption` (Some/None) reflecting whether the
-/// inner type has that aspect.
 struct TypeAspectLookupFn {
-    receiver: Rc<dyn crate::langhelp::Value>,
+    receiver: Rc<dyn Value>,
 }
 
-impl crate::langhelp::Value for TypeAspectLookupFn {
+impl Value for TypeAspectLookupFn {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAspectLookupFnType)
     }
 }
 struct TypeAspectLookupFnType;
 
-impl crate::langhelp::Aspect for TypeAspectLookupFnType { }
+impl Aspect for TypeAspectLookupFnType { }
 
-impl crate::langhelp::Value for TypeAspectLookupFnType {
+impl Value for TypeAspectLookupFnType {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-impl crate::r#gen::AspectFunction for TypeAspectLookupFnType {
+impl AspectFunction for TypeAspectLookupFnType {
     fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
-        let lookup = crate::invariant::must_downcast_ref::<TypeAspectLookupFn>(self_.value.as_ref());
-        let type_ref = crate::invariant::must_downcast_ref::<ValueTypeRef>(lookup.receiver.as_ref());
-        let unique = crate::invariant::must_downcast_ref::<crate::langhelp::Unique>(argument.value.as_ref());
+        let lookup = must_downcast_ref::<TypeAspectLookupFn>(self_.value.as_ref());
+        let type_ref = must_downcast_ref::<ValueTypeRef>(lookup.receiver.as_ref());
+        let unique = must_downcast_ref::<Unique>(argument.value.as_ref());
         let is_some = type_ref.type_.aspect(xx, unique).is_some();
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::type_option_aspect::ValueOption { is_some }),
+            value: Rc::new(ValueOption { is_some }),
         })
     }
 }
 
 impl Type for TypeAspectLookupFnType {
-    fn as_value(&self) -> Rc<dyn crate::langhelp::Value> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAspectLookupFnType)
     }
 
-    fn aspect(&self, _xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
-        if *key == crate::r#gen::aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeAspectLookupFnType) as Box<dyn crate::r#gen::AspectFunction>));
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeAspectLookupFnType) as Box<dyn AspectFunction>));
         }
         None
     }
@@ -246,18 +244,18 @@ impl Type for TypeAspectLookupFnType {
 }
 pub(crate) struct TypeTypeRef;
 
-impl crate::langhelp::Aspect for TypeTypeRef { }
+impl Aspect for TypeTypeRef { }
 
-impl crate::langhelp::Value for TypeTypeRef {
+impl Value for TypeTypeRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
-impl crate::r#gen::AspectField for TypeTypeRef {
+impl AspectField for TypeTypeRef {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let key_type = key.value.type_(xx, loc);
-        let key_string = match crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
+        let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes {
                 v: None,
@@ -282,9 +280,9 @@ impl crate::r#gen::AspectField for TypeTypeRef {
             return None;
         };
         if k == "aspect" {
-            return Some(Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
-                arg: Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic),
-                ret: Rc::new(crate::eval::value::type_option_aspect::TypeOption),
+            return Some(Rc::new(TypeFunctionDynamic {
+                arg: Rc::new(TypeNullDynamic),
+                ret: Rc::new(TypeOption),
             }));
         }
         None
@@ -292,13 +290,13 @@ impl crate::r#gen::AspectField for TypeTypeRef {
 }
 
 impl Type for TypeTypeRef {
-    fn as_value(&self) -> Rc<dyn crate::langhelp::Value> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeRef)
     }
 
-    fn aspect(&self, _xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
-        if *key == crate::r#gen::aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeRef) as Box<dyn crate::r#gen::AspectField>));
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeTypeRef) as Box<dyn AspectField>));
         }
         None
     }
@@ -320,29 +318,21 @@ impl Type for TypeTypeRef {
     }
 }
 
-/// Invoke the user-defined `type.aspect` impl (compiled as `_im_t4`) on the
-/// bundled v8 instance with `arg = {key}`. Decode the resulting `option(aspect)`
-/// JS object — on `some`, extract the `Rc<dyn Aspect>` from the inner
-/// External (the canonical v8 representation of `TypeAspectDynamic`-typed values,
-/// produced by `__data_instance_to_aspect`); on `none`, return `None`. Returns
-/// `None` if the user data type has no `aspect` impl (no `_im_t4` field).
 pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     _loc: QExprId,
-    key: &crate::langhelp::Unique,
-) -> Option<std::rc::Rc<dyn crate::langhelp::Aspect>> {
+    key: &Unique,
+) -> Option<Rc<dyn Aspect>> {
     let field_name = type_method_field_name(data, "aspect")?;
     let scope_ptr = xx.vx.v8_scope.get()?;
 
-    // SAFETY: pointer set by eval() for its full duration. Only the v8 dispatch
-    // paths and the value/type/scope_entry lift paths read this slot.
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let key_push = crate::eval::to_v8(scope, key.clone());
+    let key_push = to_v8(scope, key.clone());
     let key_str = v8::String::new(scope, &ConstKey::String("key".to_string()).to_str())?;
     arg_obj.set(scope, key_str.into(), key_push.into());
     let instance = v8::Local::new(scope, bundle);
@@ -353,8 +343,6 @@ pub(crate) fn pull_aspect_v8(
     let arg_v: v8::Local<v8::Value> = arg_obj.into();
     let result = method_fn.call(scope, recv, &[arg_v])?;
 
-    // The result is an `option(aspect)` JS object — `{some: ext}` or `{none: null}`
-    // (see `TypeOptionVariantConstructorDynamic::call`).
     let result_obj = v8::Local::<v8::Object>::try_from(result).ok()?;
     let some_key = v8::String::new(scope, &ConstKey::String("some".to_string()).to_str())?;
     let some_val = result_obj.get(scope, some_key.into())?;
@@ -362,10 +350,8 @@ pub(crate) fn pull_aspect_v8(
         return None;
     }
 
-    // `some_val` is the v8::External produced by `__data_instance_to_aspect`,
-    // which stores the canonical `Rc<dyn Aspect>` representation.
-    let aspect: std::rc::Rc<dyn crate::langhelp::Aspect> =
-        crate::eval::from_v8_ref::<std::rc::Rc<dyn crate::langhelp::Aspect>>(
+    let aspect: Rc<dyn Aspect> =
+        from_v8_ref::<Rc<dyn Aspect>>(
             &*some_val,
         ).clone();
     Some(aspect)
@@ -388,14 +374,14 @@ pub(crate) fn pull_can_cast_from(
             loc,
             code: Code_::None,
         },
-        value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
+        value: Rc::new(ValueNullConst),
     };
     let res = run_impl(impl_expr, xx, loc, source_type_rc, placeholder_cv);
     let Some(out_cv) = res.v else {
         return false;
     };
     let v_type = out_cv.value.type_(xx, loc);
-    if let Some(b) = crate::r#gen::aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
+    if let Some(b) = aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
         return b.get(out_cv.value.as_ref());
     }
     false
@@ -418,14 +404,11 @@ pub(crate) fn pull_can_cast_from_v8(
         return false;
     };
 
-    // SAFETY: pointer set by `eval()` for its full duration. Same pattern as
-    // `pull_aspect_v8`; only the v8 dispatch paths read this slot, and method calls
-    // consume the scope `&mut` until they return.
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let xx_push = crate::eval::to_v8(scope, Rc::new(ExprContext {
+    let xx_push = to_v8(scope, Rc::new(ExprContext {
         vx: xx.vx.clone(),
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
@@ -439,7 +422,7 @@ pub(crate) fn pull_can_cast_from_v8(
         return false;
     };
     let source_type_v8 =
-        crate::eval::push::Push::into_v8(crate::r#gen::TypeRefPush { type_ref: source_type_rc }, scope);
+        Push::into_v8(TypeRefPush { type_ref: source_type_rc }, scope);
     arg_obj.set(scope, st_key.into(), source_type_v8);
     let Some(cv_key) = v8::String::new(scope, &ConstKey::String("cv".to_string()).to_str()) else {
         return false;
@@ -477,12 +460,6 @@ pub(crate) fn pull_cast_from(
     run_impl(impl_expr, xx, loc, source_type, cv)
 }
 
-/// v8 dispatch for `TypePull.cast_from`. Synchronously invokes the compiled JS
-/// method on the bundled instance via the active v8 scope (`EvalContext.v8_scope`,
-/// installed by `eval()` for the duration of `const_eval`). The method returns an
-/// External-wrapped `CodeValue` built by the user impl (via `eval_const`); we
-/// unwrap and return it as-is, so the produced code flows into the caller's
-/// evaluation without any lift through a fixed type.
 pub(crate) fn pull_cast_from_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &v8::Global<v8::Object>,
@@ -502,20 +479,12 @@ pub(crate) fn pull_cast_from_v8(
         },
     };
 
-    // SAFETY: pointer set by `eval()` for its full duration. While we hold this
-    // `&mut`, no other code path is reading `v8_scope` (method calls consume the
-    // scope `&mut` until they return). Lifetimes are erased on store/load but the
-    // underlying scope outlives every read.
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
 
-    // Build the v8-side arg object: `xx` carries the caller's ExprContext as
-    // External (for the user's body to pass to `eval_const`), `source_type` is a
-    // `TypeRefPush` wrapping the source type, `cv` is a `CodeValueExtern` the impl
-    // grafts into its staged expr at v8 time.
     let arg_obj = v8::Object::new(scope);
-    let xx_push = crate::eval::to_v8(scope, Rc::new(ExprContext {
+    let xx_push = to_v8(scope, Rc::new(ExprContext {
         vx: xx.vx.clone(),
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
@@ -534,7 +503,7 @@ pub(crate) fn pull_cast_from_v8(
         };
     let source_type = cv.value.type_(xx, loc);
     let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(cv)));
-    let cve_ext = crate::eval::to_v8(scope, cve_cell);
+    let cve_ext = to_v8(scope, cve_cell);
     arg_obj.set(scope, cv_key.into(), cve_ext.into());
     let st_key =
         match v8::String::new(scope, &ConstKey::String("source_type".to_string()).to_str()) {
@@ -542,7 +511,7 @@ pub(crate) fn pull_cast_from_v8(
             None => return EvalRes::err(loc, "source_type key alloc".to_string()),
         };
     let source_type_v8 =
-        crate::eval::push::Push::into_v8(crate::r#gen::TypeRefPush { type_ref: source_type }, scope);
+        Push::into_v8(TypeRefPush { type_ref: source_type }, scope);
     arg_obj.set(scope, st_key.into(), source_type_v8);
     let instance = v8::Local::new(scope, bundle);
     let method_key =
@@ -576,7 +545,7 @@ pub(crate) fn pull_cast_from_v8(
         }
     };
     let cell: Rc<RefCell<Option<CodeValue>>> =
-        crate::eval::from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
+        from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
     let out_cv = match cell.borrow_mut().take() {
         Some(c) => c,
         None => return EvalRes::err(loc, "cast_from v8 returned consumed CodeValueExtern".to_string()),
@@ -588,14 +557,11 @@ pub(crate) fn pull_desc(data: &Gc<SourceDataTypeData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
 }
 
-/// A `Value` wrapping a `Rc<dyn Type>`, typed as `TypeTypeRef`. Supports
-/// `.aspect(unique) -> Option` field access, delegating to `Type::aspect` on the
-/// inner type.
 pub(crate) struct ValueTypeRef {
     pub type_: Rc<dyn Type>,
 }
 
-impl crate::langhelp::Value for ValueTypeRef {
+impl Value for ValueTypeRef {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeRef)
     }

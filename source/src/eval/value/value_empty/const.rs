@@ -8,7 +8,6 @@ use {
     std::rc::Rc,
 };
 
-/// A generic value to be used by purely logical types (like const functions).
 pub(crate) struct ValueEmptyConst {
     pub type_: Rc<dyn Type>,
 }

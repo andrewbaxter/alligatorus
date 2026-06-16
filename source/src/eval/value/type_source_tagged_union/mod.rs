@@ -4,7 +4,9 @@ pub mod r#const;
 
 use {
     crate::langhelp::{
+        ConstKey,
         Counter,
+        Type,
         Unique,
     },
     std::{
@@ -25,6 +27,6 @@ pub(crate) struct SourceTaggedUnionRef {
 
 pub(crate) struct SourceTaggedUnionVariant {
     pub js_tag: String,
-    pub tag: crate::langhelp::ConstKey,
-    pub type_: Rc<dyn crate::langhelp::Type>,
+    pub tag: ConstKey,
+    pub type_: Rc<dyn Type>,
 }

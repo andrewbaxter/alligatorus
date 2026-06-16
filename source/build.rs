@@ -45,7 +45,7 @@ fn main() {
         use crate::eval::expr::Expr;
         use crate::eval::value::type_source_function::{
             SourceFunctionData,
-            TypeSourceFunctionConst
+            r#const::TypeSourceFunctionConst
         };
         use crate::eval::value::type_source_tagged_union::{
             SourceTaggedUnionData,
@@ -65,7 +65,7 @@ fn main() {
             SourceInterfaceData,
             SourceInterfaceMethodData,
             SourceInterfaceRef,
-            TypeSourceInterfaceConst,
+            r#const::TypeSourceInterfaceConst,
         };
         use crate::eval::push::{
             AnyType,

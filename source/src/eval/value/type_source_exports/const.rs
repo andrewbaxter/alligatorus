@@ -1,19 +1,27 @@
 use {
     crate::{
         eval::{
-            Erb,
-            definition_set::DefinitionSet,
+            definition_set::{
+                DefinitionSet,
+                serialize_definition_set,
+            },
             value::{
                 tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
-                type_source_function::TypeSourceFunctionConst,
+                type_source_function::r#const::TypeSourceFunctionConst,
             },
         },
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
             Code_,
+            ConstKey,
             EResult,
             EvalRes,
             ExprContext,
@@ -26,6 +34,7 @@ use {
             AspectArtifact,
             AspectBind,
             AspectField,
+            ScopeEntry,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_field_aspect_id,
@@ -35,7 +44,6 @@ use {
     dumpster::unsync::Gc,
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -55,14 +63,14 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
                 sets.push(self.set.clone());
             }
         }
-        let exports_type: Rc<dyn crate::langhelp::Type> =
+        let exports_type: Rc<dyn Type> =
             Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc: loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: exports_type }),
+            value: Rc::new(ValueAnyConst { inner: exports_type }),
         })
     }
 
@@ -71,9 +79,9 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
         xx: &ExprContext,
         loc: QExprId,
         _self_: Rc<dyn Value>,
-    ) -> EResult<crate::langhelp::Artifact> {
-        let artifact_id = crate::eval::definition_set::serialize_definition_set(xx, loc, &self.set);
-        EResult::ok(crate::langhelp::Artifact {
+    ) -> EResult<Artifact> {
+        let artifact_id = serialize_definition_set(xx, loc, &self.set);
+        EResult::ok(Artifact {
             type_: artifact_id,
             data: serde_json::Value::Null,
         })
@@ -86,11 +94,11 @@ impl AspectBind for TypeSourceExportsLiftedConst {
         _xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> crate::langhelp::EResult<(Code, Box<dyn crate::r#gen::ScopeEntry>)> {
-        crate::langhelp::EResult::ok((Code {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((Code {
             loc: loc,
             code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn crate::r#gen::ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>))
     }
 }
 
@@ -110,16 +118,14 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 sets.push(self.set.clone());
                             }
                         }
-                        let func_type: Rc<dyn crate::langhelp::Type> =
+                        let func_type: Rc<dyn Type> =
                             Rc::new(TypeSourceFunctionConst { data: func_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(
-                                crate::eval::value::type_any::r#const::ValueAnyConst { inner: func_type, }
-                            ),
+                            value: Rc::new(ValueAnyConst { inner: func_type, }),
                         });
                     }
                 }
@@ -128,16 +134,14 @@ impl AspectField for TypeSourceExportsLiftedConst {
                 let data_types = self.set.data_types.borrow();
                 for dt_data in data_types.iter() {
                     if dt_data.name.as_deref() == Some(&key_name) {
-                        let ctor_type: Rc<dyn crate::langhelp::Type> =
+                        let ctor_type: Rc<dyn Type> =
                             Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(
-                                crate::eval::value::type_any::r#const::ValueAnyConst { inner: ctor_type, }
-                            ),
+                            value: Rc::new(ValueAnyConst { inner: ctor_type, }),
                         });
                     }
                 }
@@ -146,8 +150,8 @@ impl AspectField for TypeSourceExportsLiftedConst {
         });
     }
 
-    fn field_type_opt(&self, _xx: &ExprContext, key: &crate::langhelp::ConstKey) -> Option<Rc<dyn Type>> {
-        let crate::langhelp::ConstKey::String(key) = key else {
+    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        let ConstKey::String(key) = key else {
             return None;
         };
         {
@@ -173,7 +177,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
 impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(
-            crate::eval::value::type_any::r#const::ValueAnyConst {
+            ValueAnyConst {
                 inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
             },
         )
@@ -215,6 +219,6 @@ impl Type for TypeSourceExportsLiftedConst {
 
 impl Value for TypeSourceExportsLiftedConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

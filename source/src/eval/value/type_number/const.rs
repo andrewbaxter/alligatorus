@@ -1,17 +1,18 @@
 use {
     crate::{
-        eval::{
-            Erb,
-            value::{
+        eval::value::{
                 tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::TypeAnyConst,
                 type_number::dynamic::TypeNumberDynamic,
+                value_bool::r#const::ValueBoolConst,
                 value_number::r#const::ValueNumberConst,
             },
-        },
         invariant::must_downcast_ref,
         langhelp::{
+            Artifact,
             Aspect,
             Code,
+            Code_,
             CodeValue,
             ConstKey,
             EResult,
@@ -23,6 +24,7 @@ use {
             Value,
         },
         r#gen::{
+            AspectArtifact,
             AspectBind,
             AspectField,
             AspectNumberConst,
@@ -30,6 +32,7 @@ use {
             AspectOperatorEq,
             AspectOperatorLt,
             ScopeEntry,
+            aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_field_aspect_id,
             aspect_number_const_aspect_id,
@@ -42,7 +45,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -55,7 +57,7 @@ impl AspectBind for TypeNumberConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         EResult::ok((Code {
             loc: loc,
-            code: crate::langhelp::Code_::None,
+            code: Code_::None,
         }, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
     }
 }
@@ -108,7 +110,7 @@ impl AspectOperatorEq for TypeNumberConst {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_val == ref_val)),
+                value: Rc::new(ValueBoolConst(base_val == ref_val)),
             });
         });
     }
@@ -125,19 +127,19 @@ impl AspectOperatorLt for TypeNumberConst {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(crate::eval::value::value_bool::r#const::ValueBoolConst(base_val < ref_val)),
+                value: Rc::new(ValueBoolConst(base_val < ref_val)),
             });
         });
     }
 }
 
-impl crate::r#gen::AspectArtifact for TypeNumberConst {
+impl AspectArtifact for TypeNumberConst {
     fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         match data.as_f64() {
             Some(n) => EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
-                    code: crate::langhelp::Code_::None,
+                    code: Code_::None,
                 },
                 value: Rc::new(ValueNumberConst(n)) as Rc<dyn Value>,
             }),
@@ -150,7 +152,7 @@ impl crate::r#gen::AspectArtifact for TypeNumberConst {
         _xx: &ExprContext,
         _loc: QExprId,
         value: Rc<dyn Value>,
-    ) -> EResult<crate::langhelp::Artifact> {
+    ) -> EResult<Artifact> {
         let n = must_downcast_ref::<ValueNumberConst>(value.as_ref()).0;
         EResult::ok(Self::build_artifact(n))
     }
@@ -165,8 +167,8 @@ impl Type for TypeNumberConst {
         if *key == aspect_number_const_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectNumberConst>));
         }
-        if *key == crate::r#gen::aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn crate::r#gen::AspectArtifact>));
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectField>));
@@ -224,6 +226,6 @@ impl Type for TypeNumberConst {
 
 impl Value for TypeNumberConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

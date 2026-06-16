@@ -11,11 +11,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicDataAccess,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -23,13 +20,21 @@ use {
                 dynamic_set,
             },
             value::{
+                type_any::r#const::TypeAnyConst,
+                type_bool::dynamic::TypeBoolDynamic,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicDataAccess,
+                    ValueDynamicSource,
+                },
             },
         },
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -56,6 +61,7 @@ use {
             AspectOperatorLt,
             AspectSet,
             AspectStackValueDynamic,
+            AspectType,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -70,12 +76,13 @@ use {
             aspect_operator_lt_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
+            aspect_string_const_get,
             aspect_type_aspect_id,
+            type_type_identity,
         },
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -102,7 +109,7 @@ impl AspectBindDynamic for TypeNumberDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -117,7 +124,7 @@ impl AspectField for TypeNumberDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = key.value.type_(xx, loc);
-            let key_string = erb.must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
+            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
@@ -215,7 +222,7 @@ impl AspectOperatorEq for TypeNumberDynamic {
                 },
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
+                    type_: Rc::new(TypeBoolDynamic),
                 }),
             });
         });
@@ -241,7 +248,7 @@ impl AspectOperatorLt for TypeNumberDynamic {
                 },
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
+                    type_: Rc::new(TypeBoolDynamic),
                 }),
             });
         });
@@ -260,7 +267,7 @@ impl AspectStackValueDynamic for TypeNumberDynamic {
     }
 }
 
-impl crate::r#gen::AspectType for TypeNumberDynamic {
+impl AspectType for TypeNumberDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeNumberDynamic)
     }
@@ -306,7 +313,7 @@ impl Type for TypeNumberDynamic {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_type_aspect_id() {
-            return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn crate::r#gen::AspectType>));
+            return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectType>));
         }
         return None;
     }
@@ -318,7 +325,7 @@ impl Type for TypeNumberDynamic {
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
         aspect_number_dynamic_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &crate::r#gen::type_type_identity()).is_some()
+            type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
@@ -363,7 +370,6 @@ impl Type for TypeNumberDynamic {
     }
 
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        // No cast to `any` — numbers aren't types. Misuse.
         EvalRes::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {
@@ -377,13 +383,13 @@ impl Type for TypeNumberDynamic {
         return format!("dynamic number");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         Self::build_type_artifact()
     }
 }
 
 impl Value for TypeNumberDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

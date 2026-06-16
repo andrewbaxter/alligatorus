@@ -1,24 +1,3 @@
-//! `TypeConstkeyDynamic` — runtime form of a `ConstKey` value at the v8 boundary.
-//! Used as the `dynamic_type` for `ConstKey` (e.g. as the key type when a Rust
-//! function takes `BTreeMap<ConstKey, V>`).
-//!
-//! The runtime representation is a JS string carrying the **canonical-JSON**
-//! encoding of the key (matching `ConstKey::to_str` / `ConstKey::from_str`): a
-//! string key `"foo"` becomes the 6-char JS string `"foo"` (with the literal `"`
-//! characters), a numeric key `42` becomes the 2-char JS string `42`.
-//! Distinguishing the variants by their JSON shape is what lets
-//! `BTreeMap<ConstKey, V>::from_v8` recover the original `ConstKey`.
-//!
-//! Casts encode the canonical form at the point a value of source-level `string` /
-//! `number` is converted to `ConstKey`:
-//!
-//! * `string`-typed CV: prepend/append literal `"` (compile-time for const strings, JS
-//!   `+` concat at runtime for dynamic strings)
-//!
-//! * `number`-typed CV: stringify (compile-time literal for const numbers, `String(n)`
-//!   at runtime for dynamic — not yet implemented; add when a numeric-keyed map first
-//!   surfaces it in a test)
-use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::{
@@ -26,16 +5,21 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                type_any::r#const::TypeAnyConst,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         langhelp::{
             Aspect,
@@ -58,6 +42,7 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectStackValueDynamic,
+            ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -68,7 +53,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -90,7 +74,7 @@ impl AspectBindDynamic for TypeConstkeyDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -141,10 +125,6 @@ impl Type for TypeConstkeyDynamic {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
-        // Only compile-time-const sources: encoding to canonical JSON at runtime requires
-        // a true canonicalizer (string concat / JSON.stringify diverge on `"`, `\`,
-        // control chars), and we don't have one. Add a dynamic source path once a real
-        // test needs it AND a proper canonicalizing helper is wired up.
         aspect_string_const_get_maybe(xx, source_type).is_some()
     }
 
@@ -187,6 +167,6 @@ impl Type for TypeConstkeyDynamic {
 
 impl Value for TypeConstkeyDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

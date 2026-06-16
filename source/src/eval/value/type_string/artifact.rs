@@ -1,6 +1,7 @@
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::value::value_string::r#const::ValueStringConst,
         langhelp::{
             ArtifactIdBuiltin,
             Code,
@@ -22,7 +23,6 @@ use {
 
 pub(crate) type ArtifactDataString = String;
 
-/// Deserializer for `TypeStringConst` artifacts — const string values.
 pub(crate) struct DeserializerConst;
 
 impl ArtifactBuiltinDeserializer for DeserializerConst {
@@ -45,7 +45,7 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.clone())) as
+                value: Rc::new(ValueStringConst(s.clone())) as
                     Rc<dyn Value>,
             }),
             _ => EvalRes::err(loc, "Expected string data for string type".to_string()),
@@ -53,8 +53,6 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
     }
 }
 
-/// Deserializer for `TypeStringDynamic` artifacts — dynamic string values (lifted
-/// form).
 pub(crate) struct DeserializerDynamic;
 
 impl ArtifactBuiltinDeserializer for DeserializerDynamic {
@@ -79,7 +77,7 @@ impl ArtifactBuiltinDeserializer for DeserializerDynamic {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.to_string())),
+            value: Rc::new(ValueStringConst(s.to_string())),
         })
     }
 }

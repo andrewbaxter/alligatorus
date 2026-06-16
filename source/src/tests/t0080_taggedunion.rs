@@ -527,7 +527,6 @@ fn test_0030_tagged_union_exhaustive_with_fallback() {
             ),
         ),
         mb.bind("x", mb.call(mb.field(mb.scope_use("strnum"), mb.str("num")), mb.num(7.))),
-        // Exhaustive match (both strtag and numtag) with a fallback should be an error
         mb.match_(
             mb.scope_use("x"),
             mb.str("y"),

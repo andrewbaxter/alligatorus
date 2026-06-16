@@ -1,8 +1,40 @@
 use {
-    crate::syntax::{
-        ExprId,
-        SourceModule,
-        SourceSpecAbsolute,
+    crate::{
+        builtin::ArtifactBuiltinDeserializer,
+        eval::{
+            StageLiftCell,
+            code_value_extern,
+            definition_set::DefinitionSet,
+            expr::StagedExprCell,
+            value::{
+                record,
+                tuple,
+                type_any,
+                type_expr,
+                type_list,
+                type_map,
+                type_null,
+                type_number,
+                type_option,
+                type_source_data_type,
+                type_source_function,
+                type_source_interface,
+                type_source_tagged_union,
+                type_string,
+                type_type_source_data_type,
+                type_type_source_data_type_constructor,
+            },
+        },
+        invariant::must_downcast_ref,
+        r#gen::{
+            ScopeEntry,
+            Target,
+        },
+        syntax::{
+            ExprId,
+            SourceModule,
+            SourceSpecAbsolute,
+        },
     },
     serde::{
         Deserialize,
@@ -31,10 +63,6 @@ pub(crate) trait Artifacts: Send + Sync {
 }
 
 pub(crate) trait Aspect: Any {
-    /// Returns the v8 instance that backs this aspect handle, when one exists. The
-    /// default `None` is correct for compile-time-only aspects (everything except
-    /// `TypePullAspect`). `TypeRefPush::aspect` reads this to surface the
-    /// instance into source code without RTTI on the returned `Box<dyn Aspect>`.
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
         None
     }
@@ -69,22 +97,11 @@ pub(crate) trait Type: Value {
         unimplemented!();
     }
 
-    /// Default `Type` doesn't know how to clone itself; concrete impls return
-    /// `Rc::new(Self)` (or clone any inner data). Only needed when a caller holds
-    /// `&dyn Type` and must produce an owned `Rc<dyn Type>`. Returning `None` here
-    /// keeps the default cheap and signals "type does not support being held as
-    /// `Rc<dyn Type>` outside its original construction site."
     fn clone_rc(&self) -> Option<Rc<dyn Type>> {
         None
     }
     fn desc(&self) -> String;
 
-    /// Serialize this type itself as an artifact (for type references). Required —
-    /// every type that participates in the language must be representable as a
-    /// structural artifact. The aspect-based path (`AspectArtifact`) is for
-    /// serializing _values_ of this type and is a separate concern. The default impl
-    /// panics; types must provide a real one. (Task #52: ~50 types still need to
-    /// override this.)
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         panic!("type_to_serial not implemented for {}", self.desc())
     }
@@ -148,12 +165,6 @@ pub(crate) enum Code_ {
     None,
 }
 
-/// In the first pass (meta evaluation) this bundles a Value (static meta about a
-/// runtime value) with the Code that produces the value.
-///
-/// The code results in a value described by Value (i.e., in a stack target the top
-/// stack element would be the value), but may contain other preceding side
-/// effects, so even if the value isn't used all code must be kept.
 #[derive(Clone)]
 pub(crate) struct CodeValue {
     pub(crate) code: Code,
@@ -164,42 +175,19 @@ pub(crate) struct CodeValue {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
-/// One per module (per import env).
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_deserializers: HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>>,
-    /// Builtin scope entries `(name, scope_entry_id, type)` populated at the start of
-    /// each stage's `eval()`. Read by import-side `from_serial` when re-compiling an
-    /// imported data type's interface impls — it needs the same builtin scope
-    /// (`define`, `eval_const`, type refs, etc.) the originating compile saw, so the
-    /// user's `impl_expr` resolves the same scope references.
+    pub(crate) builtin_deserializers: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>,
     pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, std::rc::Rc<dyn Type>)>>,
-    /// True once builtins have been registered on `v8_context`'s global.
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
-    /// Monotonic per-compile counter for allocating fresh `DefSetId`s. Never resets
-    /// between stages so `(import_state, def_set_id)` is globally unique within this
-    /// compile.
     pub(crate) def_set_counter: Counter,
-    /// Definition sets created via `define()`. Persists across all stages so sets from
-    /// earlier stages remain registered (their v8 closures live on the shared
-    /// `v8_context` global) and visible to later stages.
-    pub(crate) definition_sets: RefCell<Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>,
+    pub(crate) definition_sets: RefCell<Vec<dumpster::unsync::Gc<DefinitionSet>>>,
     pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
     pub(crate) gx: Arc<GlobalContext>,
-    /// Import id for this compile. Stable across all stages.
     pub(crate) import_state: ImportStateId,
-    /// Shared v8 isolate for all compile stages — one isolate per `compile_importid`.
-    /// Persistent handles (`v8::Global<...>`) captured during one stage's lift remain
-    /// valid in later stages, which is essential for keeping cross-stage JS instance
-    /// handles alive.
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
     pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
-    /// Source id of the module being compiled at this level. Used to derive the
-    /// `CompileId` for cross-compile lookups.
-    pub(crate) source_id: crate::langhelp::SourceId,
-    /// Persistent v8 context shared by all stages. The global object accumulates
-    /// builtin closures (registered once) and def-set member closures (registered in
-    /// the stage that defines them) so later stages see them without re-registration.
+    pub(crate) source_id: SourceId,
     pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
 }
 
@@ -229,7 +217,6 @@ pub(crate) enum ConstKey {
 }
 
 impl ConstKey {
-    /// Deserialize from a canonical JSON string.
     pub(crate) fn from_str(s: &str) -> Result<ConstKey, String> {
         let json: serde_json::Value =
             serde_json::from_str(s).map_err(|e| format!("Invalid ConstKey string: {}", e))?;
@@ -246,7 +233,6 @@ impl ConstKey {
         }
     }
 
-    /// Serialize to a canonical JSON string (for persistence/wire format).
     pub(crate) fn to_str(&self) -> String {
         let json = match self {
             ConstKey::String(s) => serde_json::Value::String(s.clone()),
@@ -294,7 +280,7 @@ pub(crate) fn deserialize_independent_artifact<
     {
         let cache = ix.deserialized_artifacts.borrow();
         if let Some(cached) = cache.get(id) {
-            return Ok(crate::invariant::must_downcast_ref::<T>(cached.as_ref()).clone());
+            return Ok(must_downcast_ref::<T>(cached.as_ref()).clone());
         }
     }
     let (shell, finalizer) = create()?;
@@ -303,11 +289,6 @@ pub(crate) fn deserialize_independent_artifact<
     Ok(shell)
 }
 
-/// Downcast an `Rc<dyn Value>` to `Rc<T>`.
-///
-/// This is safe because we verify the concrete type via `Any` before performing
-/// the pointer cast. The type guarantee comes from the type checker (cast_to /
-/// cast_from).
 pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Rc<T> {
     assert!((v.as_ref() as &dyn Any).is::<T>(), "downcast_value: expected {}", std::any::type_name::<T>());
     let raw = Rc::into_raw(v) as *const T;
@@ -316,52 +297,26 @@ pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Rc<T> {
     }
 }
 
-/// State table:
-///
-/// * v empty, errors non-empty: error
-///
-/// * v non-empty, errors empty
-///
-/// * v non-empty, errors non-empty
-///
-/// If `v` is empty this is an error result, and `errors` must be non-empty.
 pub(crate) struct EResult<T> {
-    /// Various errors, either causing the current evaluation to fail or from side
-    /// effects or prior statements. When considering alternative evaluation paths,
-    /// errors may be discarded, but the errors from one branch will always be kept.
-    /// Errors are accumulated into parent EvalRes's and propagated upward. When root
-    /// evaluation has at least one error, compilation fails.
-    ///
-    /// If `Some`, the result is in an error state (even if the list is empty).
     pub(crate) errors: Option<Vec<ExprErr>>,
     pub(crate) v: Option<T>,
 }
 
-/// Multiple evaluations per module.
 pub(crate) struct EvalContext {
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
-    /// Raw pointer to the active v8 scope. `eval()` installs it at the top of the
-    /// function (after creating `dynamic_scope`) and clears it just before returning.
-    /// Stored as a lifetime-erased `NonNull` so it can sit in `EvalContext` (which the
-    /// borrow checker treats as `'static`). Re-borrowed in `pull_*_v8` dispatch paths
-    /// (`pull_type_dispatch`); soundness depends on no two re-borrows being live at
-    /// once and on the underlying scope outliving every read.
     pub(crate) v8_scope: std
     ::cell
     ::Cell<Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>>,
 }
 
-/// If None, it means that the evaluation failed in a way that affects downstream
-/// meta evaluation, so no Value could be provided.
 pub(crate) type EvalRes = EResult<CodeValue>;
 
-/// Per expression
 pub(crate) struct ExprContext {
     pub(crate) import_state: Rc<Cell<ImportStateId>>,
     pub(crate) scope: Rc<Scope>,
-    pub(crate) target: Rc<dyn crate::r#gen::Target>,
+    pub(crate) target: Rc<dyn Target>,
     pub(crate) vx: Rc<EvalContext>,
 }
 
@@ -380,20 +335,10 @@ pub(crate) enum ExprSubErr {
 
 #[derive(Clone)]
 pub(crate) enum External {
-    /// A v8 instance handle, captured by `AspectPull` so its emitted JS code
-    /// can reference the user's aspect-impl instance. Runtime-only: never serialized
-    /// through artifacts (panics if encountered there).
-    JsInstance(v8::Global<v8::Object>),
-    StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
-    StageLiftCell(Rc<crate::eval::StageLiftCell>),
-    /// A `CodeValueExtern` cell — used by stage processing for grafts whose inner
-    /// `const_eval`'d to a `Code_::None` CV at install time: the cell carries the
-    /// final CV directly so `__stage` can substitute the `Pending` graft for an
-    /// `Evaluated` one without any runtime JS computation.
+    StagedExprCell(Rc<StagedExprCell>),
+    StageLiftCell(Rc<StageLiftCell>),
     CodeValueExternCell(Rc<std::cell::RefCell<Option<CodeValue>>>),
     Type(Rc<dyn Type>),
-    /// A `Unique` aspect identity captured at compile time so emitted JS code can
-    /// reference it (e.g. for `aspect(base, key)` to pass to `base.aspect(<unique>)`).
     Unique(Unique),
 }
 
@@ -428,26 +373,26 @@ pub(crate) struct LogEntry {
 
 pub(crate) fn make_builtin_deserializers() -> HashMap<
     ArtifactIdBuiltin,
-    Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>,
+    Rc<dyn ArtifactBuiltinDeserializer>,
 > {
-    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn crate::builtin::ArtifactBuiltinDeserializer>> = HashMap::new();
-    crate::eval::value::type_null::artifact::register(&mut m);
-    crate::eval::value::type_string::artifact::register(&mut m);
-    crate::eval::value::type_number::artifact::register(&mut m);
-    crate::eval::value::type_type_source_data_type::artifact::register(&mut m);
-    crate::eval::value::type_type_source_data_type_constructor::artifact::register(&mut m);
-    crate::eval::value::type_source_function::artifact::register(&mut m);
-    crate::eval::value::record::artifact::register(&mut m);
-    crate::eval::value::tuple::artifact::register(&mut m);
-    crate::eval::value::type_list::artifact::register(&mut m);
-    crate::eval::value::type_map::artifact::register(&mut m);
-    crate::eval::value::type_option::artifact::register(&mut m);
-    crate::eval::value::type_source_data_type::artifact::register(&mut m);
-    crate::eval::value::type_source_tagged_union::artifact::register(&mut m);
-    crate::eval::value::type_any::artifact::register(&mut m);
-    crate::eval::value::type_source_interface::artifact::register(&mut m);
-    crate::eval::value::type_expr::register_expr_artifact(&mut m);
-    crate::eval::code_value_extern::register_artifact_deserializer(&mut m);
+    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>> = HashMap::new();
+    type_null::artifact::register(&mut m);
+    type_string::artifact::register(&mut m);
+    type_number::artifact::register(&mut m);
+    type_type_source_data_type::artifact::register(&mut m);
+    type_type_source_data_type_constructor::artifact::register(&mut m);
+    type_source_function::artifact::register(&mut m);
+    record::artifact::register(&mut m);
+    tuple::artifact::register(&mut m);
+    type_list::artifact::register(&mut m);
+    type_map::artifact::register(&mut m);
+    type_option::artifact::register(&mut m);
+    type_source_data_type::artifact::register(&mut m);
+    type_source_tagged_union::artifact::register(&mut m);
+    type_any::artifact::register(&mut m);
+    type_source_interface::artifact::register(&mut m);
+    type_expr::register_expr_artifact(&mut m);
+    code_value_extern::register_artifact_deserializer(&mut m);
     m
 }
 
@@ -470,30 +415,20 @@ pub(crate) type QExprId = (SourceId, ExprId);
 
 pub(crate) struct Scope {
     pub(crate) parent: Option<Rc<Scope>>,
-    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn crate::r#gen::ScopeEntry>>>,
+    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn ScopeEntry>>>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 pub(crate) enum ScopeEntryId {
-    /// Builtin/static functions - deterministic indices
     Builtin(usize),
-    /// Definition set entry - deterministic
     Def(ImportStateId, DefSetId, usize),
-    /// Local bindings within an evaluation
     Local(usize),
 }
 
-/// World id for this import spec
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct SourceId(pub usize);
 
-/// A value guaranteed to be unique in the world. `Builtin` ids are all assigned in
-/// `build.rs` (interface ids, aspect ids, push struct/wrap type identities,
-/// push fn scope-entry ids, and per-`Type` identity markers) —
-/// `build.rs::check_no_duplicate_ids` panics at build time if any two specs share
-/// an id. Nothing in the runtime creates `Unique`s from `file!()`/`line!()` or
-/// hashed names anymore.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Unique {

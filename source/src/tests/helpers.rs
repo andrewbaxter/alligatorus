@@ -4,10 +4,12 @@ use {
             Artifact,
             ArtifactId,
             ArtifactIdSource,
+            Artifacts,
             CompileId,
             GlobalContext,
             ImportStateId,
             SourceId,
+            Sources,
         },
         syntax::{
             ExprId,
@@ -83,8 +85,8 @@ impl ModuleBuilder {
         };
     }
 
+    #[allow(dead_code)]
     pub fn bool(&self, v: bool) -> SourceExpr {
-        // No boolean literal in `SourceLiteral` yet — synthesize via `operator_lt`.
         if v {
             return self.operator_lt(self.num(0.), self.num(1.));
         } else {
@@ -208,6 +210,7 @@ impl ModuleBuilder {
         };
     }
 
+    #[allow(dead_code)]
     pub fn operator_eq(&self, base: SourceExpr, reference: SourceExpr) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
@@ -302,10 +305,6 @@ pub(super) fn sanitize_builtins(sources: &[String]) -> Vec<String> {
     redact_builtins(sources)
 }
 
-/// `eval()` wraps each stage's main-body in `{/*main*/ ... }/*main*/` so its
-/// top-level `let`s don't collide on the (now-persistent) v8 context. The wrap is
-/// structurally invisible to v8 but it does change the generated source string, so
-/// strip it here to keep test fixtures readable.
 fn strip_main_body_wrap(s: String) -> String {
     let lines: Vec<&str> = s.split('\n').filter(|l| *l != "{/*main*/" && *l != "}/*main*/").collect();
     lines.join("\n")
@@ -329,7 +328,7 @@ struct TestSources {
     modules: HashMap<String, (SourceId, SourceModule)>,
 }
 
-impl crate::langhelp::Sources for TestSources {
+impl Sources for TestSources {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String> {
         match spec {
             SourceSpecAbsolute::Virtual(name) => {
@@ -339,7 +338,7 @@ impl crate::langhelp::Sources for TestSources {
     }
 }
 
-impl crate::langhelp::Artifacts for Arc<TestArtifacts> {
+impl Artifacts for Arc<TestArtifacts> {
     fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
         self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
     }

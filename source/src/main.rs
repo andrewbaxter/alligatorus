@@ -5,10 +5,8 @@ pub mod eval;
 pub mod invariant;
 pub mod langhelp;
 
-// `gen` is a reserved keyword in Rust 2024 (gen blocks/closures), so the module's
-// identifier is raw-form `r#gen`. Paths in callers use `crate::r#gen::xyz` (or
-// `use crate::r#gen as gen;` for local convenience).
 #[path = "gen.rs"]
+#[allow(dead_code, unused_imports)]
 pub mod r#gen;
 pub mod syntax;
 #[cfg(test)]
@@ -22,6 +20,7 @@ use {
                 Expr,
                 ExprAs,
                 ExprBind,
+                ExprGraft,
                 ExprSeq,
                 ExprCall,
                 ExprConditionBranch,
@@ -42,6 +41,7 @@ use {
                 ExprTuple,
                 Expr_,
                 Module,
+                make_lit_value,
             },
             value::{
                 value_null::r#const::ValueNullConst,
@@ -53,12 +53,15 @@ use {
             CompileRes,
             CompileResResult,
             ExprErr,
+            ExprSubErr,
             GlobalContext,
             ImportStateId,
             LogEntry,
             SourceId,
+            Value,
         },
         syntax::{
+            ExprId,
             SourceExpr,
             SourceExpr_,
             SourceLiteral,
@@ -74,8 +77,8 @@ use {
 
 pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Result<CompileOutput, Vec<ExprErr>> {
     let (source_id, source_module) = gx.sources.get(source).map_err(|e| vec![ExprErr {
-        loc: (SourceId(0), crate::syntax::ExprId(0)),
-        errors: vec![langhelp::ExprSubErr::Opaque(e)],
+        loc: (SourceId(0), ExprId(0)),
+        errors: vec![ExprSubErr::Opaque(e)],
     }])?;
     let module = source_module_to_module(source_id, &source_module);
     let res = compile_importid(&gx, ImportStateId(0), module, vec![]);
@@ -120,13 +123,10 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
         return Expr {
             loc: (source_id, m.id),
             r#type: match &m.r#type {
-                SourceExpr_::Literal(lit) => Expr_::Literal(crate::eval::expr::make_lit_value(match lit {
-                    SourceLiteral::Null => Rc::new(ValueNullConst) as Rc<dyn crate::langhelp::Value>,
-                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as
-                        Rc<dyn crate::langhelp::Value>,
-                    SourceLiteral::Number(n) => {
-                        Rc::new(ValueNumberConst(n.into_inner())) as Rc<dyn crate::langhelp::Value>
-                    },
+                SourceExpr_::Literal(lit) => Expr_::Literal(make_lit_value(match lit {
+                    SourceLiteral::Null => Rc::new(ValueNullConst) as Rc<dyn Value>,
+                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as Rc<dyn Value>,
+                    SourceLiteral::Number(n) => Rc::new(ValueNumberConst(n.into_inner())) as Rc<dyn Value>,
                 })),
                 SourceExpr_::ScopeUse(expr) => Expr_::ScopeUse(
                     ExprScopeUse { key: Rc::new(source_expr_to_expr(source_id, &expr.key)) },
@@ -150,9 +150,7 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                     base: Rc::new(Expr {
                         loc: (source_id, m.id),
                         r#type: Expr_::Literal(
-                            crate::eval::expr::make_lit_value(
-                                Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn crate::langhelp::Value>,
-                            ),
+                            make_lit_value(Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn Value>),
                         ),
                     }),
                     value: Rc::new(source_expr_to_expr(source_id, &expr.value)),
@@ -164,7 +162,7 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                     ExprLower { expr: Rc::new(source_expr_to_expr(source_id, &expr.expr)) },
                 ),
                 SourceExpr_::Graft(expr) => Expr_::Graft(
-                    crate::eval::expr::ExprGraft::Pending(Rc::new(source_expr_to_expr(source_id, &expr.expr))),
+                    ExprGraft::Pending(Rc::new(source_expr_to_expr(source_id, &expr.expr))),
                 ),
                 SourceExpr_::Tuple(exprs) => Expr_::Tuple(
                     ExprTuple { elements: exprs.iter().map(|e| source_expr_to_expr(source_id, e)).collect() },

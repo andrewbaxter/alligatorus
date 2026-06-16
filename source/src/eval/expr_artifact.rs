@@ -1,34 +1,33 @@
-//! Serialization of `Expr` trees so user-written `stage(...)` bodies can travel
-//! through artifacts (e.g., for cross-module imports) and be reconstructed in
-//! another compile's isolate. Literals serialize via their Value's
-//! `AspectArtifact`; everything else is a plain recursive walk over the AST.
 use {
     crate::{
-        eval::expr::{
-            Expr,
-            ExprAs,
-            ExprBind,
-            ExprSeq,
-            ExprCall,
-            ExprConditionBranch,
-            ExprField,
-            ExprForeach,
-            ExprGraft,
-            ExprIf,
-            ExprImport,
-            ExprLower,
-            ExprMatch,
-            ExprMatchBranch,
-            ExprOperatorAdd,
-            ExprOperatorEq,
-            ExprOperatorLt,
-            ExprRecord,
-            ExprScopeUse,
-            ExprSet,
-            ExprStage,
-            ExprTuple,
-            Expr_,
-            make_lit_value,
+        eval::{
+            util::deserialize_artifact,
+            expr::{
+                Expr,
+                ExprAs,
+                ExprBind,
+                ExprSeq,
+                ExprCall,
+                ExprConditionBranch,
+                ExprField,
+                ExprForeach,
+                ExprGraft,
+                ExprIf,
+                ExprImport,
+                ExprLower,
+                ExprMatch,
+                ExprMatchBranch,
+                ExprOperatorAdd,
+                ExprOperatorEq,
+                ExprOperatorLt,
+                ExprRecord,
+                ExprScopeUse,
+                ExprSet,
+                ExprStage,
+                ExprTuple,
+                Expr_,
+                make_lit_value,
+            },
         },
         langhelp::{
             Artifact,
@@ -36,6 +35,7 @@ use {
             QExprId,
             SourceId,
         },
+        r#gen::aspect_artifact_get,
         syntax::ExprId,
     },
     serde::{
@@ -189,7 +189,7 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
         ),
         ArtifactExpr_::Literal { value } => {
             let cv =
-                crate::eval::util::deserialize_artifact(xx, loc, value)
+                deserialize_artifact(xx, loc, value)
                     .into_res()
                     .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?;
             Expr_::Literal(make_lit_value(cv.value))
@@ -285,7 +285,7 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             let value = p.peek().ok_or_else(|| "Cannot serialize consumed Literal".to_string())?;
             let value_type = value.type_(xx, expr.loc);
             let aspect_artifact =
-                crate::r#gen::aspect_artifact_get(xx, expr.loc, value_type.as_ref())
+                aspect_artifact_get(xx, expr.loc, value_type.as_ref())
                     .into_res()
                     .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?;
             let artifact =

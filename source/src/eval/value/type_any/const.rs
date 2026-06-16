@@ -13,10 +13,17 @@ use {
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
+        invariant::must_downcast_ref,
         langhelp::{
+            Artifact,
             Aspect,
+            Code,
             CodeValue,
+            Code_,
+            ConstKey,
             EResult,
+            EvalRes,
+            External,
             ExprContext,
             QExprId,
             ScopeEntryId,
@@ -25,15 +32,24 @@ use {
             Value,
         },
         r#gen::{
+            AspectArtifact,
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectField,
+            AspectFunction,
             AspectInitialBind,
             AspectType,
             ScopeEntry,
+            aspect_artifact_aspect_id,
+            aspect_artifact_get,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_field_aspect_id,
+            aspect_field_get,
+            aspect_function_aspect_id,
+            aspect_function_get,
             aspect_initial_bind_aspect_id,
             aspect_type_aspect_id,
             aspect_type_get,
@@ -56,7 +72,7 @@ impl AspectBind for TypeAnyConst {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -68,16 +84,11 @@ impl AspectBindDynamic for TypeAnyConst {
 }
 
 impl AspectConsumeDynamic for TypeAnyConst {
-    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
-        // If code already has JS (e.g. from Record/Tuple cast_to dynamic case or
-        // cast_from), pass through.
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
             return EResult::ok(js.clone());
         }
 
-        // Compile-time: extract the actual `Rc<dyn Type>` via `AspectType` on the value's
-        // meta-type, then push it as an `External::Type` and emit a `BindingUse` to reach
-        // it at runtime.
         let meta_type = cv.value.type_(xx, loc);
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,
@@ -88,7 +99,7 @@ impl AspectConsumeDynamic for TypeAnyConst {
         };
         let type_ = aspect_type.type_(cv.value.as_ref());
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
+        xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EResult::ok(CodeDynamic {
             loc,
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
@@ -107,18 +118,14 @@ impl AspectInitialBind for TypeAnyConst {
 
 impl AspectType for TypeAnyConst {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(value);
+        let wrapper = must_downcast_ref::<ValueAnyConst>(value);
         wrapper.inner.clone()
     }
 }
 
-impl crate::r#gen::AspectArtifact for TypeAnyConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> crate::langhelp::EvalRes {
-        // Round-trip happens via the inner type's deserializer (the literal artifact
-        // carries the inner type's `type_id`, so the dispatcher routes to it directly).
-        // `from_serial` on `TypeAnyConst` itself isn't on the literal-deserialization
-        // path.
-        crate::langhelp::EvalRes::err(loc, "TypeAnyConst::from_serial: routed via inner type's deserializer".to_string())
+impl AspectArtifact for TypeAnyConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        EvalRes::err(loc, "TypeAnyConst::from_serial: routed via inner type's deserializer".to_string())
     }
 
     fn to_serial(
@@ -126,15 +133,12 @@ impl crate::r#gen::AspectArtifact for TypeAnyConst {
         xx: &ExprContext,
         loc: QExprId,
         value: Rc<dyn Value>,
-    ) -> crate::langhelp::EResult<crate::langhelp::Artifact> {
-        // Per single-rep invariant, a value with type `TypeAnyConst` IS a
-        // `ValueAnyConst { inner: Rc<dyn Type> }`. Delegate serialization to the inner
-        // type's own `AspectArtifact::to_serial`.
-        let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(value.as_ref());
+    ) -> EResult<Artifact> {
+        let wrapper = must_downcast_ref::<ValueAnyConst>(value.as_ref());
         let inner_type = wrapper.inner.clone();
-        let inner_aspect = match crate::r#gen::aspect_artifact_get(xx, loc, inner_type.as_ref()).into_res() {
+        let inner_aspect = match aspect_artifact_get(xx, loc, inner_type.as_ref()).into_res() {
             Ok(a) => a,
-            Err(e) => return crate::langhelp::EResult {
+            Err(e) => return EResult {
                 v: None,
                 errors: Some(e),
             },
@@ -143,20 +147,15 @@ impl crate::r#gen::AspectArtifact for TypeAnyConst {
     }
 }
 
-/// Field access on a type-of-types value (`list(string).new`, `option.some`, etc.)
-/// — extract the inner type via `AspectType` and delegate to its `AspectField`.
-/// Receiver passed down is the original `cv` (so the inner type's field handler
-/// sees the same wrapper-carrying value its dispatch expects, and
-/// `cv.value.type_()` still reports `TypeAnyConst`).
-impl crate::r#gen::AspectField for TypeAnyConst {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> crate::langhelp::EvalRes {
+impl AspectField for TypeAnyConst {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let inner = {
-            let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
+            let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
             wrapper.inner.clone()
         };
-        let field = match crate::r#gen::aspect_field_get(xx, loc, inner.as_ref()).into_res() {
+        let field = match aspect_field_get(xx, loc, inner.as_ref()).into_res() {
             Ok(f) => f,
-            Err(e) => return crate::langhelp::EvalRes {
+            Err(e) => return EvalRes {
                 v: None,
                 errors: Some(e),
             },
@@ -164,27 +163,26 @@ impl crate::r#gen::AspectField for TypeAnyConst {
         field.field(xx, loc, self_, key)
     }
 
-    fn field_type_opt(&self, _xx: &ExprContext, _key: &crate::langhelp::ConstKey) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
         None
     }
 }
 
-/// Same delegation for calls (`list(string)`, `option(expr)`, etc.).
-impl crate::r#gen::AspectFunction for TypeAnyConst {
+impl AspectFunction for TypeAnyConst {
     fn call(
         &self,
         xx: &ExprContext,
         loc: QExprId,
         self_: CodeValue,
         argument: CodeValue,
-    ) -> crate::langhelp::EvalRes {
+    ) -> EvalRes {
         let inner = {
-            let wrapper = crate::invariant::must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
+            let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
             wrapper.inner.clone()
         };
-        let func = match crate::r#gen::aspect_function_get(xx, loc, inner.as_ref()).into_res() {
+        let func = match aspect_function_get(xx, loc, inner.as_ref()).into_res() {
             Ok(f) => f,
-            Err(e) => return crate::langhelp::EvalRes {
+            Err(e) => return EvalRes {
                 v: None,
                 errors: Some(e),
             },
@@ -217,54 +215,52 @@ impl Type for TypeAnyConst {
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectType>));
         }
-        if *key == crate::r#gen::aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectField>));
+        if *key == aspect_field_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectField>));
         }
-        if *key == crate::r#gen::aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectFunction>));
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectFunction>));
         }
-        if *key == crate::r#gen::aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn crate::r#gen::AspectArtifact>));
+        if *key == aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectArtifact>));
         }
         None
     }
 
-    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn crate::langhelp::Type) -> bool {
-        // Identity only; other types reach `TypeAny*` via their own `cast_to`.
+    fn can_cast_from(&self, xx: &ExprContext, _loc: QExprId, source_type: &dyn Type) -> bool {
         source_type.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        // Lower a const type-value into a dynamic type-value (Rc`<dyn Type>` external).
         type_.aspect(xx, &type_type_identity()).is_some()
     }
 
-    fn cast_from(&self, _xx: &ExprContext, _loc: QExprId, cv: crate::langhelp::CodeValue) -> crate::langhelp::EvalRes {
-        crate::langhelp::EvalRes::ok(cv)
+    fn cast_from(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EvalRes {
+        EvalRes::ok(cv)
     }
 
     fn cast_to(
         &self,
         xx: &ExprContext,
         loc: QExprId,
-        cv: crate::langhelp::CodeValue,
+        cv: CodeValue,
         _type_: &dyn Type,
-    ) -> crate::langhelp::EvalRes {
+    ) -> EvalRes {
         let meta_type = cv.value.type_(xx, loc);
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,
-            Err(e) => return crate::langhelp::EvalRes {
+            Err(e) => return EvalRes {
                 v: None,
                 errors: Some(e),
             },
         };
         let type_ = aspect_type.type_(cv.value.as_ref());
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
-        xx.vx.externals.borrow_mut().push((id, crate::langhelp::External::Type(type_)));
-        crate::langhelp::EvalRes::ok(crate::langhelp::CodeValue {
-            code: crate::langhelp::Code {
+        xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
+        EvalRes::ok(CodeValue {
+            code: Code {
                 loc,
-                code: crate::langhelp::Code_::Dyn(Rc::new(CodeDynamic {
+                code: Code_::Dyn(Rc::new(CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
@@ -277,7 +273,7 @@ impl Type for TypeAnyConst {
         "type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {
+    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         Self::build_type_artifact()
     }
 }
@@ -288,12 +284,6 @@ impl Value for TypeAnyConst {
     }
 }
 
-/// Canonical value carrier for `TypeAnyConst`: a type-of-types value carries an
-/// `Rc<dyn Type>` explicitly so `TypeAnyConst::AspectType::type_` can do an
-/// infallible downcast and read out the inner type without RTTI over the full list
-/// of type singletons. Per "one type = one representation": the `TypeListDynamic`
-/// etc. structs are reserved for their list/map/option runtime representations and
-/// aren't reused as values of `TypeAnyConst`.
 pub(crate) struct ValueAnyConst {
     pub inner: Rc<dyn Type>,
 }

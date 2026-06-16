@@ -1,14 +1,13 @@
 use {
     crate::{
-        eval::{
-            Erb,
-            value::value_bool::r#const::ValueBoolConst,
-        },
+        eval::value::{
+                type_any::r#const::TypeAnyConst,
+                value_bool::r#const::ValueBoolConst,
+            },
         invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             CodeValue,
-            EResult,
             EvalRes,
             ExprContext,
             QExprId,
@@ -25,7 +24,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -90,6 +88,6 @@ impl Type for TypeBoolConst {
 
 impl Value for TypeBoolConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

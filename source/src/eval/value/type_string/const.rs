@@ -1,13 +1,15 @@
 use {
     crate::{
-        eval::{
-            Erb,
-            value::{
+        code_dynamic::{
+            CodeDynamic,
+            CodeDynamicType,
+        },
+        eval::value::{
                 tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::TypeAnyConst,
                 type_string::dynamic::TypeStringDynamic,
                 value_string::r#const::ValueStringConst,
             },
-        },
         invariant::must_downcast_ref,
         langhelp::{
             Artifact,
@@ -27,11 +29,13 @@ use {
         r#gen::{
             AspectArtifact,
             AspectBind,
+            AspectConsumeDynamic,
             AspectField,
             AspectStringConst,
             ScopeEntry,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
+            aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_string_const_aspect_id,
             aspect_string_const_get,
@@ -40,7 +44,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -75,7 +78,7 @@ impl AspectBind for TypeStringConst {
     fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         EResult::ok((Code {
             loc: loc,
-            code: crate::langhelp::Code_::None,
+            code: Code_::None,
         }, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
     }
 }
@@ -100,18 +103,17 @@ impl AspectStringConst for TypeStringConst {
     }
 }
 
-impl crate::r#gen::AspectConsumeDynamic for TypeStringConst {
+impl AspectConsumeDynamic for TypeStringConst {
     fn to_dynamic(
         &self,
         _xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<crate::code_dynamic::CodeDynamic> {
-        // Emit a JS string literal for the const value.
+    ) -> EResult<CodeDynamic> {
         let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
-        EResult::ok(crate::code_dynamic::CodeDynamic {
+        EResult::ok(CodeDynamic {
             loc,
-            type_: crate::code_dynamic::CodeDynamicType::Literal(serde_json::Value::String(s)),
+            type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
         })
     }
 }
@@ -125,8 +127,8 @@ impl Type for TypeStringConst {
         if *key == aspect_string_const_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectStringConst>));
         }
-        if *key == crate::r#gen::aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn crate::r#gen::AspectConsumeDynamic>));
+        if *key == aspect_consume_dynamic_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectArtifact>));
@@ -182,6 +184,6 @@ impl Type for TypeStringConst {
 
 impl Value for TypeStringConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

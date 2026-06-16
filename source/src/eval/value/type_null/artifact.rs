@@ -1,6 +1,7 @@
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::value::value_null::r#const::ValueNullConst,
         langhelp::{
             ArtifactIdBuiltin,
             Code,
@@ -43,7 +44,7 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst) as Rc<dyn Value>,
+            value: Rc::new(ValueNullConst) as Rc<dyn Value>,
         })
     }
 }
@@ -68,7 +69,7 @@ impl ArtifactBuiltinDeserializer for DeserializerDynamic {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
+            value: Rc::new(ValueNullConst),
         })
     }
 }

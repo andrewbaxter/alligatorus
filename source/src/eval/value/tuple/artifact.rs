@@ -1,7 +1,13 @@
-//! Tuple-type artifact: a sequence of serialized element-type artifacts.
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
+        eval::{
+            util::deserialize_type_artifact,
+            value::tuple::{
+                Tuple,
+                TupleElement,
+            },
+        },
         langhelp::{
             Artifact,
             ArtifactIdBuiltin,
@@ -40,13 +46,13 @@ impl Deserializer {
                 }]);
             },
         };
-        let mut elements: Vec<crate::eval::value::tuple::TupleElement> = Vec::new();
+        let mut elements: Vec<TupleElement> = Vec::new();
         for elem_artifact in serial.elements {
             let (elem_type, _code) =
-                crate::eval::util::deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
-            elements.push(crate::eval::value::tuple::TupleElement::Dynamic(elem_type));
+                deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
+            elements.push(TupleElement::Dynamic(elem_type));
         }
-        Ok(Rc::new(crate::eval::value::tuple::Tuple { elements: elements }))
+        Ok(Rc::new(Tuple { elements: elements }))
     }
 }
 

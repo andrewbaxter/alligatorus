@@ -1,9 +1,3 @@
-pub(crate) use crate::eval::value::value_dynamic::{
-    ValueDynamic,
-    ValueDynamicDataAccess,
-    ValueDynamicDataScope,
-    ValueDynamicSource,
-};
 use {
     crate::{
         code_dynamic::{
@@ -15,13 +9,16 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
             TargetBindSub,
             typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
             },
         },
         invariant::must_downcast_ref,
@@ -44,10 +41,7 @@ use {
             aspect_stack_value_dynamic_get,
         },
     },
-    std::{
-        mem,
-        rc::Rc,
-    },
+    std::rc::Rc,
 };
 
 pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
@@ -155,7 +149,6 @@ pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, valu
                     return erb.err_new(format!("TODO assertion set left hand doesn't evaluate to js code (empty)"));
                 };
 
-                // Extract the base from FieldUse so FieldSet targets the parent object
                 let base_code = match &self_code.type_ {
                     CodeDynamicType::FieldUse(fu) => *fu.base.clone(),
                     _ => self_code.clone(),
@@ -205,11 +198,6 @@ pub(crate) fn throw_error(scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>, ms
     scope.throw_exception(exception);
 }
 
-/// When a compound value (Tuple/Record) is the last expression in a block, the
-/// block's code contains binding declarations but the compound value has
-/// Code_::None. When consumed to JS, the generated JS references those bindings.
-/// This helper wraps the consumed JS with the carry code so the bindings are in
-/// scope.
 pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: CodeDynamic) -> CodeDynamic {
     if let Some(Some(carry_js)) = carry.cast::<CodeDynamic>().v {
         let mut entries = match &carry_js.type_ {

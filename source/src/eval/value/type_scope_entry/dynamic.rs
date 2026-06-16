@@ -5,7 +5,7 @@ use {
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
-        eval::dynamic_util::{
+        eval::value::value_dynamic::{
             ValueDynamic,
             ValueDynamicDataScope,
             ValueDynamicSource,
@@ -14,6 +14,7 @@ use {
             Code,
             CodeValue,
             Code_,
+            ExprContext,
             QExprId,
             ScopeEntryId,
             Type,
@@ -30,7 +31,7 @@ pub(crate) struct ScopeEntryDynamicBinding {
 }
 
 impl ScopeEntry for ScopeEntryDynamicBinding {
-    fn use_(&self, _xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         return CodeValue {
             code: Code {
                 loc: loc,

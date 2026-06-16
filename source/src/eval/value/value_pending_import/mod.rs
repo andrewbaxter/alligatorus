@@ -1,21 +1,32 @@
 use {
     crate::{
-        eval::TargetDynamic,
+        eval::{
+            TargetDynamic,
+            util::deserialize_artifact,
+            value::type_source_data_type::artifact::ArtifactDataDefSetDataType,
+            value::type_source_interface::BuiltinInterfaceKind,
+        },
         langhelp::{
+            ArtifactId,
             Code,
+            Code_,
             CodeValue,
             CompileImportContext,
             CompileResResult,
             CompileResultEntry,
+            Counter,
             EvalContext,
             ExprContext,
             GlobalContext,
             ImportStateId,
             QExprId,
             Scope,
+            SourceId,
             Type,
             Value,
+            make_builtin_deserializers,
         },
+        syntax::ExprId,
     },
     std::{
         cell::{
@@ -34,10 +45,6 @@ pub(crate) struct PendingImportState {
 }
 
 impl PendingImportState {
-    /// True if the imported value is an instance of a data type that implements the
-    /// builtin `type` interface — those imports must be resolved against the importing
-    /// compile's `ExprContext` (we need its v8 scope + `builtin_scope_entries` to
-    /// re-compile the interface impls and install the bundle).
     pub(crate) fn imported_needs_v8_bundle(&self) -> bool {
         let guard = self.entry.result.read().unwrap();
         let compile_res = match guard.as_ref().and_then(|r| r.as_ref().ok()) {
@@ -45,22 +52,21 @@ impl PendingImportState {
             None => return false,
         };
         let artifact = match &compile_res.result {
-            crate::langhelp::CompileResResult::Ok(a) => a,
+            CompileResResult::Ok(a) => a,
             _ => return false,
         };
         let dt_artifact_id = match &artifact.type_ {
-            crate::langhelp::ArtifactId::Source(_) => artifact.type_.clone(),
+            ArtifactId::Source(_) => artifact.type_.clone(),
             _ => return false,
         };
         let dt_artifact = match self.gx.artifacts.get(dt_artifact_id) {
             Ok(a) => a,
             Err(_) => return false,
         };
-        let dt_serial: Result<crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetDataType, _> =
-            serde_json::from_value(dt_artifact.data);
+        let dt_serial: Result<ArtifactDataDefSetDataType, _> = serde_json::from_value(dt_artifact.data);
         match dt_serial {
             Ok(dt) => dt.interface_impls.iter().any(|i| {
-                i.builtin_kind == Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+                i.builtin_kind == Some(BuiltinInterfaceKind::Type)
             }),
             Err(_) => false,
         }
@@ -74,9 +80,9 @@ impl PendingImportState {
             CompileResResult::Ok(a) => a,
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
-        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        let loc = (SourceId(0), ExprId(0));
         let cv =
-            crate::eval::util::deserialize_artifact(xx, loc, artifact)
+            deserialize_artifact(xx, loc, artifact)
                 .into_res()
                 .expect("Artifact deserialization failed");
         let mut all_finalizer_codes: Vec<Code> = Vec::new();
@@ -88,12 +94,12 @@ impl PendingImportState {
             for f in finalizers {
                 let codes = f(xx, loc).expect("Finalizer failed");
                 all_finalizer_codes.extend(
-                    codes.into_iter().filter(|c| !matches!(c.code, crate::langhelp::Code_::None)),
+                    codes.into_iter().filter(|c| !matches!(c.code, Code_::None)),
                 );
             }
         }
         let mut all_codes = all_finalizer_codes;
-        let cv_code_is_none = matches!(cv.code.code, crate::langhelp::Code_::None);
+        let cv_code_is_none = matches!(cv.code.code, Code_::None);
         if !cv_code_is_none {
             all_codes.push(cv.code);
         }
@@ -101,7 +107,7 @@ impl PendingImportState {
             CodeValue {
                 code: Code {
                     loc: loc,
-                    code: crate::langhelp::Code_::None,
+                    code: Code_::None,
                 },
                 value: cv.value,
             }
@@ -124,16 +130,16 @@ impl PendingImportState {
         let cix = Rc::new(CompileImportContext {
             gx: self.gx.clone(),
             compile_path: vec![],
-            builtin_deserializers: crate::langhelp::make_builtin_deserializers(),
+            builtin_deserializers: make_builtin_deserializers(),
             deserialized_artifacts: std::cell::RefCell::new(std::collections::HashMap::new()),
             pending_finalizers: std::cell::RefCell::new(Vec::new()),
             isolate: Rc::new(std::cell::RefCell::new(v8::Isolate::new(Default::default()))),
             import_state: ImportStateId(0),
             definition_sets: RefCell::new(Vec::new()),
-            def_set_counter: crate::langhelp::Counter::default(),
+            def_set_counter: Counter::default(),
             v8_context: RefCell::new(None),
             builtins_registered: Cell::new(false),
-            source_id: crate::langhelp::SourceId(0),
+            source_id: SourceId(0),
             builtin_scope_entries: RefCell::new(Vec::new()),
         });
         let ex = Rc::new(EvalContext {

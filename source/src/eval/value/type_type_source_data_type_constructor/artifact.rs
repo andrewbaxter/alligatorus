@@ -1,7 +1,7 @@
 use {
     crate::{
         builtin::ArtifactBuiltinDeserializer,
-        eval::Erb,
+        eval::value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type,
         langhelp::{
             ArtifactIdBuiltin,
             Code,
@@ -16,7 +16,6 @@ use {
     },
     std::{
         collections::HashMap,
-        mem,
         rc::Rc,
     },
 };
@@ -40,7 +39,7 @@ impl ArtifactBuiltinDeserializer for Deserializer {
         er_seq_cv!(loc, erb, {
             let (type_, type_codes) =
                 erb.must_res(
-                    crate::eval::value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type(
+                    deserialize_defset_ctor_as_type(
                         xx,
                         loc,
                         data,

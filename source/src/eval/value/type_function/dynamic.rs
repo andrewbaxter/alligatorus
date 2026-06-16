@@ -6,20 +6,26 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
             TargetBindSub,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
             },
             typecheck_convert,
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::{
+                tuple::Tuple,
+                type_any::r#const::TypeAnyConst,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
+            },
         },
         langhelp::{
             Aspect,
             Code,
+            Code_,
             CodeValue,
             EResult,
             EvalRes,
@@ -45,13 +51,13 @@ use {
             aspect_function_get,
             aspect_function_get_maybe,
             aspect_initial_bind_aspect_id,
+            aspect_null_get_maybe,
             aspect_stack_value_dynamic_get,
             aspect_tuple_get_maybe,
         },
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -63,7 +69,7 @@ pub(crate) fn dynamic_call(
     arg_type: Rc<dyn Type>,
     ret_type: Rc<dyn Type>,
     argument: CodeValue,
-) -> crate::langhelp::EvalRes {
+) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let arg_value_type = argument.value.type_(xx, loc);
         let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, ret_type.as_ref()))?;
@@ -76,22 +82,19 @@ pub(crate) fn dynamic_call(
             let elements = arg_tuple.take_elements(argument.value);
             let (elements, param_types) =
                 if elements.is_empty() && param_types.len() == 1 &&
-                    crate::r#gen::aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
+                    aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
                     (vec![], vec![])
                 } else {
                     (elements, param_types)
                 };
             if elements.len() != param_types.len() {
-                // `tuple()` (empty unit) passed to a single-arg function whose param accepts
-                // anything — pass the empty tuple through as the single arg rather than unpacking
-                // it.
                 if elements.is_empty() && param_types.len() == 1 && aspect_tuple_get_maybe(xx, arg_type.as_ref()).is_none() {
                     let unit_cv = CodeValue {
-                        code: crate::langhelp::Code {
+                        code: Code {
                             loc,
-                            code: crate::langhelp::Code_::None
+                            code: Code_::None
                         },
-                        value: Rc::new(crate::eval::value::tuple::Tuple { elements: vec![], }),
+                        value: Rc::new(Tuple { elements: vec![], }),
                     };
                     let arg_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), unit_cv))?;
@@ -181,7 +184,7 @@ impl AspectFunction for TypeFunctionDynamic {
         loc: QExprId,
         function: CodeValue,
         argument: CodeValue,
-    ) -> crate::langhelp::EvalRes {
+    ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let func_type = function.value.type_(xx, loc);
             let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
@@ -257,6 +260,6 @@ impl Type for TypeFunctionDynamic {
 
 impl Value for TypeFunctionDynamic {
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

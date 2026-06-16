@@ -84,22 +84,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
         extra_field_type_opt_arms: Vec<TokenStream>,
     }
 
-    macro_rules! spec{
-        ($name: expr, $uid: expr, $data_fields: expr, $extra_aspect: expr, $fields: expr, $methods: expr) => {
-            PushStructSpec {
-                name: $name,
-                builtin_unique_id: $uid,
-                data_fields: $data_fields,
-                extra_aspect_fn: $extra_aspect,
-                fields: $fields,
-                methods: $methods,
-                extra_dispatch_arms: vec ![],
-                extra_method_setters: vec ![],
-                extra_field_type_opt_arms: vec ![],
-            }
-        };
-    }
-
     let record_arg_type = "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>";
     let impl_only_specs: Vec<&InterfaceSpec> = trait_specs.iter().filter(|s| !s.register_in_scope).collect();
     let mut source_object_extra_dispatch: Vec<TokenStream> = Vec::new();
@@ -139,8 +123,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             ),
                         },)),
                     },
-                    value: std:: rc:: Rc:: new(crate::eval::dynamic_util::ValueDynamic {
-                        source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                    value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
+                        source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                         type_: field_type,
                     }),
                 });
@@ -886,8 +870,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 },)
                             ),
                         },
-                        value: std:: rc:: Rc:: new(crate::eval::dynamic_util::ValueDynamic {
-                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                        value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
+                            source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                             type_: field_type,
                         }),
                     });
@@ -925,8 +909,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 },)
                             ),
                         },
-                        value: std:: rc:: Rc:: new(crate::eval::dynamic_util::ValueDynamic {
-                            source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
+                        value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
+                            source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                             type_: field_type,
                         }),
                     });
@@ -1114,8 +1098,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     if source_type.aspect(xx, &#identity_fn()).is_some() {
                         return crate:: langhelp:: EvalRes:: ok(crate:: langhelp:: CodeValue {
                             code: cv.code,
-                            value: std:: rc:: Rc:: new(crate:: eval:: dynamic_util:: ValueDynamic {
-                                source: crate:: eval:: dynamic_util:: ValueDynamicSource:: Expr,
+                            value: std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
+                                source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new(#type_name),
                             }),
                         });
@@ -1164,8 +1148,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             loc,
                             code: crate:: langhelp:: Code_:: Dyn(std::rc::Rc::new(value)),
                         },
-                        value: std:: rc:: Rc:: new(crate:: eval:: dynamic_util:: ValueDynamic {
-                            source: crate:: eval:: dynamic_util:: ValueDynamicSource:: Expr,
+                        value: std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
+                            source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                             type_: std:: rc:: Rc:: new(#type_name),
                         }),
                     }

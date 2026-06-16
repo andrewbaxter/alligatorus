@@ -6,21 +6,36 @@ use {
             CodeDynamicType,
         },
         eval::{
-            Erb,
+            TargetBindSub,
+            push::Push,
             dynamic_util::{
-                ValueDynamic,
-                ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_set,
             },
+            from_v8_ref,
+            to_v8,
             typecheck_convert,
             value::{
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
                 type_null::dynamic::TypeNullDynamic,
+                type_option::artifact::{
+                    ArtifactOptionType,
+                    TypeOptionArtifact,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
             },
         },
         langhelp::{
+            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -63,7 +78,6 @@ use {
     },
     std::{
         any::Any,
-        mem,
         rc::Rc,
     },
 };
@@ -96,7 +110,7 @@ impl AspectBindDynamic for TypeOptionDynamic {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+    ) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -128,7 +142,7 @@ impl AspectField for TypeOptionDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: var_type }),
+                value: Rc::new(ValueAnyConst { inner: var_type }),
             })
         };
         match key_name.as_str() {
@@ -192,18 +206,18 @@ impl AspectTaggedUnion for TypeOptionDynamic {
     }
 }
 
-impl crate::eval::push::Push for TypeOptionDynamic {
+impl Push for TypeOptionDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeOptionDynamic> = crate::eval::from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
+        let rc: Rc<TypeOptionDynamic> = from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
         (*rc).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        crate::eval::to_v8(scope, Rc::new(self)).into()
+        to_v8(scope, Rc::new(self)).into()
     }
 
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
@@ -248,7 +262,6 @@ impl Type for TypeOptionDynamic {
     }
 
     fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
-        // No cast to `any` — options aren't types. Misuse.
         false
     }
 
@@ -274,15 +287,10 @@ impl Type for TypeOptionDynamic {
         format!("option({})", self.element_type.desc())
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::Artifact {
-        let elem_artifact =
-            crate::eval::value::type_source_data_type_constructor::dynamic::serialize_type_ref(
-                xx,
-                loc,
-                self.element_type.as_ref(),
-            );
-        let payload = crate::eval::value::type_option::artifact::ArtifactOptionType { element_type: elem_artifact };
-        crate::eval::value::type_option::artifact::TypeOptionArtifact::build_artifact(
+    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
+        let elem_artifact = serialize_type_ref(xx, loc, self.element_type.as_ref());
+        let payload = ArtifactOptionType { element_type: elem_artifact };
+        TypeOptionArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize option type"),
         )
     }
@@ -290,7 +298,7 @@ impl Type for TypeOptionDynamic {
 
 impl Value for TypeOptionDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }
 
@@ -324,7 +332,7 @@ impl AspectFunction for TypeOptionVariantConstructorDynamic {
                 loc,
                 type_: CodeDynamicType::NewObject(
                     CodeDynamicNewObject {
-                        fields: vec![(crate::langhelp::ConstKey::String(js_tag).to_str(), underlying_js)],
+                        fields: vec![(ConstKey::String(js_tag).to_str(), underlying_js)],
                     }
                 ),
             }));
@@ -364,6 +372,6 @@ impl Type for TypeOptionVariantConstructorDynamic {
 
 impl Value for TypeOptionVariantConstructorDynamic {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+        Rc::new(TypeAnyConst)
     }
 }

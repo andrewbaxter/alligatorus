@@ -229,6 +229,7 @@ pub fn build(out: &mut TokenStream) {
                 let data_type: TokenStream = dt.parse().unwrap();
                 let register = if s.register {
                     quote!{
+                        #[allow(dead_code)]
                         pub(crate) fn register(
                             m:
                                 &mut std
@@ -244,6 +245,7 @@ pub fn build(out: &mut TokenStream) {
                 };
                 let build_artifact = if s.build_artifact {
                     quote!{
+                        #[allow(dead_code)]
                         pub(crate) fn build_artifact(data: #data_type) -> crate:: langhelp:: Artifact {
                             crate::langhelp::Artifact {
                                 type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
@@ -257,6 +259,7 @@ pub fn build(out: &mut TokenStream) {
                 };
                 let build_type_artifact = if s.build_type_artifact {
                     quote!{
+                        #[allow(dead_code)]
                         pub(crate) fn build_type_artifact() -> crate::langhelp::Artifact {
                             crate::langhelp::Artifact {
                                 type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),

@@ -4,22 +4,31 @@ use {
     crate::{
         eval::value::type_any,
         langhelp::{
+            Aspect,
+            Code,
             CodeValue,
+            Code_,
             EResult,
+            EvalRes,
             ExprContext,
             QExprId,
+            SourceId,
             Type,
+            Unique,
             Value,
         },
-        r#gen::ScopeEntry,
+        r#gen::{
+            AspectBind,
+            ScopeEntry,
+            aspect_bind_aspect_id,
+        },
+        syntax::ExprId,
     },
+    scope_entry::ScopeEntryPendingImport,
     std::{
         any::Any,
         rc::Rc,
     },
-};
-pub(crate) use {
-    scope_entry::ScopeEntryPendingImport,
     super::value_pending_import::PendingImportState,
 };
 
@@ -27,18 +36,18 @@ struct PendingImportBind {
     state: Rc<PendingImportState>,
 }
 
-impl crate::langhelp::Aspect for PendingImportBind { }
+impl Aspect for PendingImportBind { }
 
-impl crate::r#gen::AspectBind for PendingImportBind {
+impl AspectBind for PendingImportBind {
     fn bind(
         &self,
         _xx: &ExprContext,
         loc: QExprId,
         _cv: CodeValue,
-    ) -> EResult<(crate::langhelp::Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((crate::langhelp::Code {
+    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        EResult::ok((Code {
             loc: loc,
-            code: crate::langhelp::Code_::None,
+            code: Code_::None,
         }, Box::new(ScopeEntryPendingImport { state: self.state.clone() }) as Box<dyn ScopeEntry>))
     }
 }
@@ -66,17 +75,16 @@ impl Type for TypePendingImport {
         self.resolved.clone()
     }
 
-    fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn Any>> {
-        if *key == crate::r#gen::aspect_bind_aspect_id() {
+    fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_bind_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn crate::r#gen::AspectBind>,
+                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn AspectBind>,
                 ),
             );
         }
 
-        // For all other aspects, resolve and delegate
-        let loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        let loc = (SourceId(0), ExprId(0));
         self.resolved_type(xx, loc).aspect(xx, key)
     }
 
@@ -89,11 +97,11 @@ impl Type for TypePendingImport {
         resolved.can_cast_to(xx, loc, type_) || type_.can_cast_from(xx, loc, resolved.as_ref())
     }
 
-    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> crate::langhelp::EvalRes {
+    fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         self.resolved_type(xx, loc).cast_from(xx, loc, cv)
     }
 
-    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> crate::langhelp::EvalRes {
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         let resolved = self.resolved_type(xx, loc);
         let cv = self.substitute_cv(cv);
         if resolved.can_cast_to(xx, loc, type_) {
