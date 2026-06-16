@@ -13,8 +13,8 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
-                dynamic_stack_to_value,
                 dynamic_set,
+                dynamic_stack_to_value,
             },
             value::{
                 type_any::r#const::TypeAnyConst,
@@ -118,12 +118,7 @@ impl AspectBind for TypeStringDynamic {
 }
 
 impl AspectBindDynamic for TypeStringDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -204,6 +199,18 @@ impl AspectLiftDynamic for TypeStringDynamic {
     }
 }
 
+impl AspectLowerDynamic for TypeStringDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
+        Ok(Rc::new(ValueStringConst(s)))
+    }
+}
+
 impl AspectSet for TypeStringDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
         dynamic_set(xx, loc, self_, value)
@@ -217,18 +224,6 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 }
 
 impl AspectStringDynamic for TypeStringDynamic { }
-
-impl AspectLowerDynamic for TypeStringDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(ValueStringConst(s)))
-    }
-}
 
 impl AspectType for TypeStringDynamic {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
@@ -287,8 +282,7 @@ impl Type for TypeStringDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_string_dynamic_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &type_type_identity()).is_some()
+        aspect_string_dynamic_get_maybe(xx, type_).is_some() || type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

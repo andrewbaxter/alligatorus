@@ -335,9 +335,9 @@ pub(crate) enum ExprSubErr {
 
 #[derive(Clone)]
 pub(crate) enum External {
+    CodeValueExternCell(Rc<std::cell::RefCell<Option<CodeValue>>>),
     StagedExprCell(Rc<StagedExprCell>),
     StageLiftCell(Rc<StageLiftCell>),
-    CodeValueExternCell(Rc<std::cell::RefCell<Option<CodeValue>>>),
     Type(Rc<dyn Type>),
     Unique(Unique),
 }
@@ -371,10 +371,7 @@ pub(crate) struct LogEntry {
     pub(crate) timestamp_ms: u64,
 }
 
-pub(crate) fn make_builtin_deserializers() -> HashMap<
-    ArtifactIdBuiltin,
-    Rc<dyn ArtifactBuiltinDeserializer>,
-> {
+pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>> {
     let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>> = HashMap::new();
     type_null::artifact::register(&mut m);
     type_string::artifact::register(&mut m);

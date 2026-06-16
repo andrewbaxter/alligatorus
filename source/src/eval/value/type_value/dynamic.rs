@@ -69,12 +69,7 @@ pub(crate) struct TypeValueDynamic;
 impl Aspect for TypeValueDynamic { }
 
 impl AspectBind for TypeValueDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -88,21 +83,6 @@ impl AspectBindDynamic for TypeValueDynamic {
 impl AspectConsumeDynamic for TypeValueDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         dynamic_consume_to_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectInitialBind for TypeValueDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key,
-            type_: Rc::new(TypeValueDynamic),
-        })
-    }
-}
-
-impl AspectStackValueDynamic for TypeValueDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        dynamic_stack_to_value(loc, value, Rc::new(TypeValueDynamic))
     }
 }
 
@@ -156,6 +136,21 @@ impl AspectField for TypeValueDynamic {
             return Some(Rc::new(TypeTypeRefPushDynamic));
         }
         None
+    }
+}
+
+impl AspectInitialBind for TypeValueDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key,
+            type_: Rc::new(TypeValueDynamic),
+        })
+    }
+}
+
+impl AspectStackValueDynamic for TypeValueDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        dynamic_stack_to_value(loc, value, Rc::new(TypeValueDynamic))
     }
 }
 

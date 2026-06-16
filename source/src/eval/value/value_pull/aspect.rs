@@ -5,16 +5,14 @@ use {
             CodeDynamicFieldUse,
             CodeDynamicType,
         },
-        eval::{
-            value::{
-                type_any::r#const::TypeAnyConst,
-                type_function::dynamic::TypeFunctionDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_interface::SourceInterfaceRef,
-                value_dynamic::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
+        eval::value::{
+            type_any::r#const::TypeAnyConst,
+            type_function::dynamic::TypeFunctionDynamic,
+            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_source_interface::SourceInterfaceRef,
+            value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
             },
         },
         langhelp::{

@@ -36,7 +36,6 @@ pub struct SourceExpr {
 pub enum SourceExpr_ {
     As(SourceExprAs),
     Bind(SourceExprBind),
-    Seq(SourceExprSeq),
     Call(SourceExprCall),
     Field(SourceExprField),
     Foreach(SourceExprForeach),
@@ -51,6 +50,7 @@ pub enum SourceExpr_ {
     OperatorLt(SourceExprOperatorLt),
     Record(Vec<(SourceExpr, SourceExpr)>),
     ScopeUse(SourceExprBindingUse),
+    Seq(SourceExprSeq),
     Set(SourceExprSet),
     Stage(SourceExprStage),
     Tuple(Vec<SourceExpr>),
@@ -76,15 +76,6 @@ pub struct SourceExprBind {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprBindingUse {
     pub key: Box<SourceExpr>,
-}
-
-/// Run a number of expressions in sequence. This resolves to the value of the last
-/// sequence element - all preceding values are discarded. If the sequence is
-/// empty, evaluates to null.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct SourceExprSeq {
-    pub exprs: Vec<SourceExpr>,
 }
 
 /// Call a function with the specified argument.
@@ -181,6 +172,15 @@ pub struct SourceExprOperatorEq {
 pub struct SourceExprOperatorLt {
     pub base: Box<SourceExpr>,
     pub reference: Box<SourceExpr>,
+}
+
+/// Run a number of expressions in sequence. This resolves to the value of the last
+/// sequence element - all preceding values are discarded. If the sequence is
+/// empty, evaluates to null.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprSeq {
+    pub exprs: Vec<SourceExpr>,
 }
 
 /// Modify the value of a value field or an existing binding.

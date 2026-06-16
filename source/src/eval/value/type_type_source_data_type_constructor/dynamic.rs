@@ -1,12 +1,12 @@
 use {
     crate::{
         eval::value::{
-                type_any::r#const::TypeAnyConst,
-                type_source_data_type_constructor::{
-                    TypeSourceDataTypeConstructorConst,
-                    dynamic::deserialize_defset_ctor_as_type,
-                },
+            type_any::r#const::TypeAnyConst,
+            type_source_data_type_constructor::{
+                TypeSourceDataTypeConstructorConst,
+                dynamic::deserialize_defset_ctor_as_type,
             },
+        },
         invariant::must_downcast_ref,
         langhelp::{
             Artifact,

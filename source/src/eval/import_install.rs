@@ -6,6 +6,7 @@ use {
             build_builtin_scope,
             build_cast_arg_record_type,
             const_eval,
+            expr::Expr,
             rc_type_to_v8,
             render_code,
             scope_entry_id_dynamic_key,
@@ -16,7 +17,6 @@ use {
                 type_source_interface::BuiltinInterfaceKind,
             },
         },
-        eval::expr::Expr,
         invariant::must_downcast_ref,
         langhelp::{
             ConstKey,
@@ -61,8 +61,7 @@ pub(crate) fn install_imported_type_iface(
 
     let mut method_codes: Vec<(ScopeEntryId, BodyShape, CodeDynamic)> = Vec::new();
     for impl_data in dt_data.interface_impls.borrow().iter() {
-        let is_type_iface =
-            impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type);
+        let is_type_iface = impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type);
         for method_impl in &impl_data.method_impls {
             let method_id =
                 method_impl
@@ -145,9 +144,8 @@ pub(crate) fn install_imported_type_iface(
             method_codes.push((method_id, body_shape, impl_code));
         }
     }
-
-    let scope_ptr = xx.vx.v8_scope.get().ok_or_else(|| "install_imported_type_iface: no active v8 scope".to_string())?;
-
+    let scope_ptr =
+        xx.vx.v8_scope.get().ok_or_else(|| "install_imported_type_iface: no active v8 scope".to_string())?;
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
@@ -166,7 +164,6 @@ pub(crate) fn install_imported_type_iface(
         };
         scope.get_current_context().global(scope).set(scope, key.cast(), v8_val);
     }
-
     let mut code = JsSourceBuilder::default();
     for (method_id, shape, impl_code) in &method_codes {
         let func_name = scope_entry_id_dynamic_key(*method_id);
@@ -182,9 +179,7 @@ pub(crate) fn install_imported_type_iface(
                     format!(
                         "let {} = this[{}];",
                         scope_entry_id_dynamic_key(*self_id),
-                        serde_json::to_string(
-                            &ConstKey::String(data_field.clone()).to_str(),
-                        ).unwrap(),
+                        serde_json::to_string(&ConstKey::String(data_field.clone()).to_str(),).unwrap(),
                     ),
                 );
             },
@@ -192,7 +187,6 @@ pub(crate) fn install_imported_type_iface(
         let body_var = render_code(&mut code, impl_code);
         code.push(loc, format!("return {};", body_var));
         code.push(loc, "}".to_string());
-
         let compiled = code.lines[start_line..].join("\n");
         if let Some(slot) = dt_data.interface_impls.borrow().iter().find_map(|i| {
             i.method_impls.iter().find(|m| m.scope_entry_id.get() == Some(*method_id))
@@ -206,9 +200,7 @@ pub(crate) fn install_imported_type_iface(
     field_decls.push((ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_var));
     for method in dt_data.methods.borrow().iter() {
         let id = method.scope_entry_id.get().ok_or_else(|| "Method scope_entry_id not allocated".to_string())?;
-        field_decls.push(
-            (ConstKey::String(method.field_name.clone()).to_str(), scope_entry_id_dynamic_key(id)),
-        );
+        field_decls.push((ConstKey::String(method.field_name.clone()).to_str(), scope_entry_id_dynamic_key(id)));
     }
     for impl_data in dt_data.interface_impls.borrow().iter() {
         let methods = impl_data.interface.methods.borrow();
@@ -219,9 +211,7 @@ pub(crate) fn install_imported_type_iface(
                     .get()
                     .ok_or_else(|| "Interface method impl scope_entry_id not allocated".to_string())?;
             let field_name = methods[m.interface_method_index].field_name.clone();
-            field_decls.push(
-                (ConstKey::String(field_name).to_str(), scope_entry_id_dynamic_key(id)),
-            );
+            field_decls.push((ConstKey::String(field_name).to_str(), scope_entry_id_dynamic_key(id)));
         }
     }
     let obj_lit =

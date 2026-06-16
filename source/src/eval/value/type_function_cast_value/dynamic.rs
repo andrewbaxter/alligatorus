@@ -7,20 +7,20 @@ use {
             CodeDynamicType,
         },
         eval::value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type::{
-                    r#const::TypeSourceDataTypeConst,
-                    dynamic::TypeSourceDataTypeDynamic,
-                },
-                value_dynamic::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
+            type_any::r#const::{
+                TypeAnyConst,
+                ValueAnyConst,
             },
+            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_source_data_type::{
+                dynamic::TypeSourceDataTypeDynamic,
+                r#const::TypeSourceDataTypeConst,
+            },
+            value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+            },
+        },
         langhelp::{
             Aspect,
             Code,
@@ -88,7 +88,6 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                 errors: Some(e),
             },
         };
-
         let type_value_any: &dyn Any = type_.value.as_ref();
         let data = match type_value_any.downcast_ref::<TypeSourceDataTypeConst>() {
             Some(t) => t.data.clone(),
@@ -102,7 +101,6 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
         };
         return er_seq_cv!(loc, erb, {
             let value_code = erb.must_er(value.code.cast::<CodeDynamic>())?.unwrap().clone();
-
             let template: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: data.clone() });
             let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
@@ -112,9 +110,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
             };
             let cast_fn = CodeDynamic {
                 loc,
-                type_: CodeDynamicType::BindingUse(
-                    CodeDynamicBindingUse { id: CAST_VALUE_FN_SCOPE_ID, }
-                ),
+                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: CAST_VALUE_FN_SCOPE_ID, }),
             };
             let call_code = CodeDynamic {
                 loc,
@@ -149,9 +145,7 @@ impl AspectInitialBind for TypeFunctionCastValueDynamic {
 
 impl Type for TypeFunctionCastValueDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(
-            ValueAnyConst { inner: Rc::new(TypeFunctionCastValueDynamic) },
-        )
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeFunctionCastValueDynamic) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

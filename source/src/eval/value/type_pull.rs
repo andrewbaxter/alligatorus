@@ -66,64 +66,36 @@ impl Type for TypePull {
             let interface_impls = self.data.interface_impls.borrow();
             for impl_data in interface_impls.iter() {
                 if *key == impl_data.interface.identity && impl_data.interface.is_aspect.get() {
-                    return Some(
-                        Box::new(Box::new(TypePullAspect {
-                            iface_ref: Rc::new(
-                                SourceInterfaceRef {
-                                    data: impl_data.interface.clone(),
-                                },
-                            ),
-                            bundle: Some(bundle.clone()),
-                        }) as Box<dyn AspectField>),
-                    );
+                    return Some(Box::new(Box::new(TypePullAspect {
+                        iface_ref: Rc::new(SourceInterfaceRef { data: impl_data.interface.clone() }),
+                        bundle: Some(bundle.clone()),
+                    }) as Box<dyn AspectField>));
                 }
             }
         }
-
         let bundle = bundle_opt?;
         let dummy_loc: QExprId = (SourceId(0), ExprId(0));
-        let aspect =
-            pull_aspect_v8(&self.data, bundle, xx, dummy_loc, key)?;
-        let aspect_pull =
-            (&*aspect as &dyn std::any::Any)
-                .downcast_ref::<AspectPull>()
-                .unwrap()
-                .clone();
+        let aspect = pull_aspect_v8(&self.data, bundle, xx, dummy_loc, key)?;
+        let aspect_pull = (&*aspect as &dyn std::any::Any).downcast_ref::<AspectPull>().unwrap().clone();
         if *key == aspect_field_aspect_id() {
-            return Some(
-                Box::new(Box::new(aspect_pull) as Box<dyn AspectField>),
-            );
+            return Some(Box::new(Box::new(aspect_pull) as Box<dyn AspectField>));
         }
         if *key == aspect_function_aspect_id() {
-            return Some(
-                Box::new(Box::new(aspect_pull) as Box<dyn AspectFunction>),
-            );
+            return Some(Box::new(Box::new(aspect_pull) as Box<dyn AspectFunction>));
         }
         None
     }
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
         if let Some(bundle) = &self.bundle {
-            return pull_can_cast_from_v8(
-                &self.data,
-                bundle,
-                xx,
-                loc,
-                source_type,
-            );
+            return pull_can_cast_from_v8(&self.data, bundle, xx, loc, source_type);
         }
         pull_can_cast_from(&self.data, xx, loc, source_type)
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         if let Some(bundle) = &self.bundle {
-            return pull_cast_from_v8(
-                &self.data,
-                bundle,
-                xx,
-                loc,
-                cv,
-            );
+            return pull_cast_from_v8(&self.data, bundle, xx, loc, cv);
         }
         pull_cast_from(&self.data, xx, loc, cv)
     }

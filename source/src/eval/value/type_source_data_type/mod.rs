@@ -37,10 +37,10 @@ pub(crate) struct SourceDataMethodData {
     pub compiled_js: RefCell<Option<String>>,
     pub field_name: String,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
+    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub name: String,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
-    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
 impl SourceDataMethodData {
@@ -98,26 +98,25 @@ pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub compiled_js: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub impl_expr_artifact: RefCell<Option<ArtifactExpr>>,
+    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub interface_method_index: usize,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
-    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
 pub(crate) struct SourceDataTypeRef {
     pub data: Gc<SourceDataTypeData>,
 }
 
-
 impl Push for Rc<SourceDataTypeRef> {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(dynamic::TypeSourceDataTypeRefDynamic)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, self).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(dynamic::TypeSourceDataTypeRefDynamic)
     }
 }

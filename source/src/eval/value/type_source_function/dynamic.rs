@@ -80,23 +80,13 @@ pub(crate) struct TypeSourceFunctionDynamic;
 impl Aspect for TypeSourceFunctionDynamic { }
 
 impl AspectBind for TypeSourceFunctionDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceFunctionDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -129,24 +119,8 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
             sets.push(set.clone());
         }
-        let func_type: Rc<dyn Type> =
-            Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
+        let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: func_type }))
-    }
-}
-
-impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceFunctionDynamic),
-            }),
-        }
     }
 }
 
@@ -163,9 +137,23 @@ impl AspectLowerDynamic for TypeSourceFunctionDynamic {
         if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
             sets.push(set.clone());
         }
-        let func_type: Rc<dyn Type> =
-            Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
+        let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: func_type }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceFunctionDynamic),
+            }),
+        }
     }
 }
 
@@ -191,9 +179,7 @@ impl Type for TypeSourceFunctionDynamic {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLowerDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectInitialBind>));
@@ -226,9 +212,7 @@ impl Type for TypeSourceFunctionDynamic {
                 func: Box::new(CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse {
-                            id: FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
-                        },
+                        CodeDynamicBindingUse { id: FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID },
                     ),
                 }),
                 args: vec![source_code],
@@ -294,7 +278,6 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
 
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let func = must_downcast_ref::<TypeSourceFunctionConst>(self_.as_ref());
-
         serialize_definition_set(xx, loc, &func.data.set);
         let artifact_id =
             func

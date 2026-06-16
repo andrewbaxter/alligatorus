@@ -377,9 +377,7 @@ impl AspectField for Record {
             let entry_type = record_field_type(xx, loc, self.fields.get(&const_key).ok_or_else(|| {
                 erb.errors.push(ExprErr {
                     loc,
-                    errors: vec![
-                        ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name)),
-                    ],
+                    errors: vec![ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name))],
                 });
             })?);
             let CodeValue { code: self_code_raw, value: self_value } = self_;
@@ -463,25 +461,18 @@ impl Type for Record {
             return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_lower_dynamic_aspect_id() {
-            let entry_lowers: Vec<(ConstKey, Box<dyn AspectLowerDynamic>)> =
-                self.fields.iter().map(|(k, f)| {
-                    let t = match f {
-                        RecordField::Dynamic(t) => t.clone(),
-                        RecordField::EvalRes(_) => panic!("lower on non-type record"),
-                    };
-                    let a =
-                        t
-                            .aspect(xx, &aspect_lower_dynamic_aspect_id())
-                            .expect(
-                                &format!("Record entry '{:?}' type ({}) missing AspectLowerDynamic", k, t.desc()),
-                            );
-                    (k.clone(), must_downcast_box::<Box<dyn AspectLowerDynamic>>(a))
-                }).collect();
-            return Some(
-                Box::new(
-                    Box::new(RecordLowerDynamic { entry_lowers }) as Box<dyn AspectLowerDynamic>,
-                ),
-            );
+            let entry_lowers: Vec<(ConstKey, Box<dyn AspectLowerDynamic>)> = self.fields.iter().map(|(k, f)| {
+                let t = match f {
+                    RecordField::Dynamic(t) => t.clone(),
+                    RecordField::EvalRes(_) => panic!("lower on non-type record"),
+                };
+                let a =
+                    t
+                        .aspect(xx, &aspect_lower_dynamic_aspect_id())
+                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLowerDynamic", k, t.desc()));
+                (k.clone(), must_downcast_box::<Box<dyn AspectLowerDynamic>>(a))
+            }).collect();
+            return Some(Box::new(Box::new(RecordLowerDynamic { entry_lowers }) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
@@ -517,10 +508,7 @@ impl Type for Record {
                 let converted_field = match field {
                     RecordField::EvalRes(entry_res) => {
                         if let Some(entry_cv) = entry_res.v {
-                            let conv =
-                                erb.must_er(
-                                    typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv),
-                                )?;
+                            let conv = erb.must_er(typecheck_convert(xx, loc, dest_entry_type.as_ref(), entry_cv),)?;
                             RecordField::EvalRes(EvalRes::ok(conv))
                         } else {
                             RecordField::EvalRes(EvalRes {
@@ -560,9 +548,7 @@ impl Type for Record {
                                 loc,
                                 code: Code_::Dyn(Rc::new(CodeDynamic {
                                     loc,
-                                    type_: CodeDynamicType::BindingUse(
-                                        CodeDynamicBindingUse { id },
-                                    ),
+                                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id },),
                                 })),
                             },
                             value: any_type.clone().as_value(),
@@ -570,7 +556,6 @@ impl Type for Record {
                     },
                     RecordField::EvalRes(er) => {
                         let entry_cv = erb.must_er(er)?;
-
                         erb.must_er(typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
                     },
                 };
@@ -736,8 +721,8 @@ impl RecordBase for RecordBaseDynamic {
 }
 
 pub(crate) enum RecordField {
-    EvalRes(EvalRes),
     Dynamic(Rc<dyn Type>),
+    EvalRes(EvalRes),
 }
 
 struct RecordLiftDynamic {

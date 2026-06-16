@@ -31,34 +31,9 @@ use {
 };
 
 pub(crate) enum RecordScopeField {
-    Error(Vec<ExprErr>),
     Dynamic(Rc<dyn Type>),
+    Error(Vec<ExprErr>),
     Scope(Box<dyn ScopeEntry>),
-}
-
-pub(crate) struct ScopeEntryRecordDynamic {
-    pub dynamic_key: ScopeEntryId,
-    pub fields: BTreeMap<ConstKey, Rc<dyn Type>>,
-}
-
-impl ScopeEntry for ScopeEntryRecordDynamic {
-    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc: loc,
-                code: Code_::Dyn(Rc::new(CodeDynamic {
-                    loc: loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
-                })),
-            },
-            value: Rc::new(Record {
-                base: Some(Box::new(RecordBaseDynamic)),
-                fields: self.fields.iter().map(|(k, t)| {
-                    (k.clone(), RecordField::Dynamic(t.clone()))
-                }).collect(),
-            }),
-        }
-    }
 }
 
 pub(crate) struct ScopeEntryRecordBound {
@@ -110,6 +85,31 @@ impl ScopeEntry for ScopeEntryRecordBound {
             value: Rc::new(Record {
                 base: base,
                 fields: result_fields,
+            }),
+        }
+    }
+}
+
+pub(crate) struct ScopeEntryRecordDynamic {
+    pub dynamic_key: ScopeEntryId,
+    pub fields: BTreeMap<ConstKey, Rc<dyn Type>>,
+}
+
+impl ScopeEntry for ScopeEntryRecordDynamic {
+    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc: loc,
+                code: Code_::Dyn(Rc::new(CodeDynamic {
+                    loc: loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
+                })),
+            },
+            value: Rc::new(Record {
+                base: Some(Box::new(RecordBaseDynamic)),
+                fields: self.fields.iter().map(|(k, t)| {
+                    (k.clone(), RecordField::Dynamic(t.clone()))
+                }).collect(),
             }),
         }
     }

@@ -5,11 +5,11 @@ use {
             CodeDynamicType,
         },
         eval::value::{
-                tuple::scope_entry::ScopeEntryValue,
-                type_any::r#const::TypeAnyConst,
-                type_string::dynamic::TypeStringDynamic,
-                value_string::r#const::ValueStringConst,
-            },
+            tuple::scope_entry::ScopeEntryValue,
+            type_any::r#const::TypeAnyConst,
+            type_string::dynamic::TypeStringDynamic,
+            value_string::r#const::ValueStringConst,
+        },
         invariant::must_downcast_ref,
         langhelp::{
             Artifact,
@@ -83,6 +83,16 @@ impl AspectBind for TypeStringConst {
     }
 }
 
+impl AspectConsumeDynamic for TypeStringConst {
+    fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
+        EResult::ok(CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
+        })
+    }
+}
+
 impl AspectField for TypeStringConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
@@ -100,21 +110,6 @@ impl AspectField for TypeStringConst {
 impl AspectStringConst for TypeStringConst {
     fn get(&self, value: &dyn Value) -> String {
         return must_downcast_ref::<ValueStringConst>(value).0.clone();
-    }
-}
-
-impl AspectConsumeDynamic for TypeStringConst {
-    fn to_dynamic(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<CodeDynamic> {
-        let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
-        EResult::ok(CodeDynamic {
-            loc,
-            type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
-        })
     }
 }
 

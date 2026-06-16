@@ -1,11 +1,9 @@
-use {
-    crate::langhelp::{
-        Artifact,
-        DefSetId,
-        ImportStateId,
-        SourceId,
-        Unique,
-    },
+use crate::langhelp::{
+    Artifact,
+    DefSetId,
+    ImportStateId,
+    SourceId,
+    Unique,
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]

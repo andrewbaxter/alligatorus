@@ -43,8 +43,7 @@ impl Deserializer {
                 }]);
             },
         };
-        let (element_type, _ec) =
-            deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
+        let (element_type, _ec) = deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
         Ok(Rc::new(TypeOptionDynamic { element_type }))
     }
 }

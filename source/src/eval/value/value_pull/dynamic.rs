@@ -26,16 +26,14 @@ impl Value for ValuePull {
             Some(p) => p,
             None => return Rc::new(TypeAnyDynamic),
         };
-
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };
         let instance = v8::Local::new(scope, &self.bundle);
-        let method_key =
-            match v8::String::new(scope, &ConstKey::String(IM_VALUE_TYPE_FIELD.to_string()).to_str()) {
-                Some(k) => k,
-                None => return Rc::new(TypeAnyDynamic),
-            };
+        let method_key = match v8::String::new(scope, &ConstKey::String(IM_VALUE_TYPE_FIELD.to_string()).to_str()) {
+            Some(k) => k,
+            None => return Rc::new(TypeAnyDynamic),
+        };
         let method_val = match instance.get(scope, method_key.into()) {
             Some(v) => v,
             None => return Rc::new(TypeAnyDynamic),

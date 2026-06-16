@@ -16,8 +16,8 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
-                dynamic_stack_to_value,
                 dynamic_set,
+                dynamic_stack_to_value,
             },
             value::{
                 type_any::r#const::TypeAnyConst,
@@ -104,12 +104,7 @@ impl AspectBind for TypeNumberDynamic {
 }
 
 impl AspectBindDynamic for TypeNumberDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -324,8 +319,7 @@ impl Type for TypeNumberDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_number_dynamic_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &type_type_identity()).is_some()
+        aspect_number_dynamic_get_maybe(xx, type_).is_some() || type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {

@@ -45,8 +45,7 @@ impl Deserializer {
             },
         };
         let (key_type, _kc) = deserialize_type_artifact(xx, loc, &serial.key_type).into_res()?;
-        let (value_type, _vc) =
-            deserialize_type_artifact(xx, loc, &serial.value_type).into_res()?;
+        let (value_type, _vc) = deserialize_type_artifact(xx, loc, &serial.value_type).into_res()?;
         Ok(Rc::new(TypeMapDynamic {
             key_type,
             value_type,

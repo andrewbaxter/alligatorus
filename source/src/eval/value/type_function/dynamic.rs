@@ -25,8 +25,8 @@ use {
         langhelp::{
             Aspect,
             Code,
-            Code_,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -88,7 +88,8 @@ pub(crate) fn dynamic_call(
                     (elements, param_types)
                 };
             if elements.len() != param_types.len() {
-                if elements.is_empty() && param_types.len() == 1 && aspect_tuple_get_maybe(xx, arg_type.as_ref()).is_none() {
+                if elements.is_empty() && param_types.len() == 1 &&
+                    aspect_tuple_get_maybe(xx, arg_type.as_ref()).is_none() {
                     let unit_cv = CodeValue {
                         code: Code {
                             loc,
@@ -178,13 +179,7 @@ impl AspectConsumeDynamic for TypeFunctionDynamic {
 }
 
 impl AspectFunction for TypeFunctionDynamic {
-    fn call(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        function: CodeValue,
-        argument: CodeValue,
-    ) -> EvalRes {
+    fn call(&self, xx: &ExprContext, loc: QExprId, function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let func_type = function.value.type_(xx, loc);
             let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;

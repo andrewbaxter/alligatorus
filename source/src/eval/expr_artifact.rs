@@ -1,12 +1,10 @@
 use {
     crate::{
         eval::{
-            util::deserialize_artifact,
             expr::{
                 Expr,
                 ExprAs,
                 ExprBind,
-                ExprSeq,
                 ExprCall,
                 ExprConditionBranch,
                 ExprField,
@@ -22,12 +20,14 @@ use {
                 ExprOperatorLt,
                 ExprRecord,
                 ExprScopeUse,
+                ExprSeq,
                 ExprSet,
                 ExprStage,
                 ExprTuple,
                 Expr_,
                 make_lit_value,
             },
+            util::deserialize_artifact,
         },
         langhelp::{
             Artifact,
@@ -69,9 +69,6 @@ pub(crate) enum ArtifactExpr_ {
     Bind {
         base: ArtifactExpr,
         value: ArtifactExpr,
-    },
-    Seq {
-        exprs: Vec<ArtifactExpr>,
     },
     Call {
         arg: ArtifactExpr,
@@ -125,6 +122,9 @@ pub(crate) enum ArtifactExpr_ {
     },
     ScopeUse {
         key: ArtifactExpr,
+    },
+    Seq {
+        exprs: Vec<ArtifactExpr>,
     },
     Set {
         base: ArtifactExpr,

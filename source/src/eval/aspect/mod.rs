@@ -87,11 +87,9 @@ fn dispatch_aspect_method(
         Some(p) => p,
         None => return EvalRes::err(loc, "AspectPull dispatch: no active v8 scope".to_string()),
     };
-
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
-
     let arg_obj = v8::Object::new(scope);
     let xx_push = to_v8(scope, Rc::new(ExprContext {
         vx: xx.vx.clone(),
@@ -143,8 +141,7 @@ fn dispatch_aspect_method(
             },
         }
     };
-    let cell: Rc<RefCell<Option<CodeValue>>> =
-        from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
+    let cell: Rc<RefCell<Option<CodeValue>>> = from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
     let out_cv = match cell.borrow_mut().take() {
         Some(cv) => cv,
         None => return EvalRes::err(loc, format!("v8 method '{}' returned consumed CodeValueExtern", method_field)),

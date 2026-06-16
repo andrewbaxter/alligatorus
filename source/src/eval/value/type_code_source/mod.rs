@@ -118,7 +118,6 @@ impl Value for TypeCodeDynCastFn {
         Rc::new(TypeAnyConst)
     }
 }
-
 #[derive(Clone)]
 pub(crate) struct TypeCodeDynHandleDynamic;
 
@@ -131,12 +130,7 @@ impl AspectBind for TypeCodeDynHandleDynamic {
 }
 
 impl AspectBindDynamic for TypeCodeDynHandleDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -169,9 +163,7 @@ impl AspectField for TypeCodeDynHandleDynamic {
                         loc,
                         code: Code_::Dyn(Rc::new(self_code)),
                     },
-                    value: Rc::new(
-                        ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) },
-                    ),
+                    value: Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) }),
                 })
             },
             _ => EvalRes::err(loc, format!("Field '{}' not found on code_dyn handle", key_name)),
@@ -274,7 +266,6 @@ impl Value for TypeCodeDynHandleDynamic {
         Rc::new(TypeAnyConst)
     }
 }
-
 #[derive(Clone)]
 pub(crate) struct TypeCodeEnumDynamic;
 
@@ -287,12 +278,7 @@ impl AspectBind for TypeCodeEnumDynamic {
 }
 
 impl AspectBindDynamic for TypeCodeEnumDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -321,11 +307,7 @@ impl AspectStackValueDynamic for TypeCodeEnumDynamic {
 impl AspectTaggedUnion for TypeCodeEnumDynamic {
     fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
         vec![
-            (
-                ConstKey::String("none".to_string()),
-                "none".to_string(),
-                Rc::new(TypeNullDynamic) as Rc<dyn Type>,
-            ),
+            (ConstKey::String("none".to_string()), "none".to_string(), Rc::new(TypeNullDynamic) as Rc<dyn Type>),
             (
                 ConstKey::String("dyn".to_string()),
                 "dyn".to_string(),
@@ -387,7 +369,6 @@ impl Value for TypeCodeEnumDynamic {
         Rc::new(TypeAnyConst)
     }
 }
-
 #[derive(Clone)]
 pub(crate) struct TypeCodeStructDynamic;
 
@@ -400,12 +381,7 @@ impl AspectBind for TypeCodeStructDynamic {
 }
 
 impl AspectBindDynamic for TypeCodeStructDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }

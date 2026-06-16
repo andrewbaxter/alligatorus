@@ -18,27 +18,74 @@ use {
 fn test_00800define_data() {
     setup_v8();
     let mb = ModuleBuilder::default();
-    let gx = new_gx([("main", SourceModule::V1(mb.seq(vec![
-        mb.bind("make_upper", mb.lower(mb.seq(vec![
-            mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-            mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
-            mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-            mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("func")), mb.str("to_string"))),
-            mb.call(
-                mb.field(mb.scope_use("mnfr"), mb.str("impl")),
-                mb.tuple(
-                    vec![
-                        mb.scope_use("null"),
-                        mb.scope_use("string"),
-                        mb.stage(mb.call(mb.field(mb.scope_use("inner"), mb.str("toUpperCase")), mb.null())),
-                    ],
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.seq(
+                            vec![
+                                mb.bind(
+                                    "make_upper",
+                                    mb.lower(
+                                        mb.seq(
+                                            vec![
+                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind(
+                                                    "ndr",
+                                                    mb.call(
+                                                        mb.field(mb.scope_use("d"), mb.str("object")),
+                                                        mb.str("upper"),
+                                                    ),
+                                                ),
+                                                mb.call(
+                                                    mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
+                                                    mb.scope_use("string"),
+                                                ),
+                                                mb.bind(
+                                                    "mnfr",
+                                                    mb.call(
+                                                        mb.field(mb.scope_use("ndr"), mb.str("func")),
+                                                        mb.str("to_string"),
+                                                    ),
+                                                ),
+                                                mb.call(
+                                                    mb.field(mb.scope_use("mnfr"), mb.str("impl")),
+                                                    mb.tuple(
+                                                        vec![
+                                                            mb.scope_use("null"),
+                                                            mb.scope_use("string"),
+                                                            mb.stage(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.scope_use("inner"),
+                                                                        mb.str("toUpperCase"),
+                                                                    ),
+                                                                    mb.null(),
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                                mb.field(mb.scope_use("ndr"), mb.str("new")),
+                                            ],
+                                        ),
+                                    ),
+                                ),
+                                mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
+                                mb.call(
+                                    mb.scope_use("log"),
+                                    mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null()),
+                                ),
+                            ],
+                        ),
+                    ),
                 ),
-            ),
-            mb.field(mb.scope_use("ndr"), mb.str("new")),
-        ]))),
-        mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
-        mb.call(mb.scope_use("log"), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null())),
-    ])))].into_iter().collect());
+            ]
+                .into_iter()
+                .collect(),
+        );
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO");

@@ -67,23 +67,13 @@ pub(crate) struct TypeSourceTaggedUnionConst {
 impl Aspect for TypeSourceTaggedUnionConst { }
 
 impl AspectBind for TypeSourceTaggedUnionConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceTaggedUnionConst {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -132,11 +122,7 @@ impl AspectType for TypeSourceTaggedUnionConst {
 
 impl Type for TypeSourceTaggedUnionConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(
-            ValueAnyConst {
-                inner: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            },
-        )
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -187,10 +173,7 @@ impl Type for TypeSourceTaggedUnionConst {
         }
         if *key == aspect_type_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as
-                        Box<dyn AspectType>,
-                ),
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectType>),
             );
         }
         return None;
@@ -211,7 +194,6 @@ impl Type for TypeSourceTaggedUnionConst {
                 }),
             });
         }
-
         EvalRes::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {

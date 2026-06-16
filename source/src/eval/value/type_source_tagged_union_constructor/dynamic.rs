@@ -77,23 +77,13 @@ pub(crate) struct TypeSourceTaggedUnionConstructorDynamic;
 impl Aspect for TypeSourceTaggedUnionConstructorDynamic { }
 
 impl AspectBind for TypeSourceTaggedUnionConstructorDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -130,21 +120,6 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(value)),
-            },
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
-            }),
-        }
-    }
-}
-
 impl AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynamic {
     fn lower(
         &self,
@@ -159,6 +134,21 @@ impl AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynamic {
             variant_index: ctor.variant_index,
         });
         Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
+    }
+}
+
+impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(value)),
+            },
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
+            }),
+        }
     }
 }
 
@@ -193,9 +183,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         }
         if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLowerDynamic>,
-                ),
+                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLowerDynamic>),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
@@ -231,9 +219,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
                 func: Box::new(CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse {
-                            id: TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
-                        },
+                        CodeDynamicBindingUse { id: TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID },
                     ),
                 }),
                 args: vec![source_code],
@@ -265,6 +251,10 @@ impl Value for TypeSourceTaggedUnionConstructorDynamic {
 }
 
 impl Push for Rc<SourceTaggedUnionConstructorRef> {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeSourceTaggedUnionConstructorDynamic)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let type_: &Rc<dyn Type> = from_v8_ref(&*value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
@@ -280,9 +270,5 @@ impl Push for Rc<SourceTaggedUnionConstructorRef> {
             variant_index: self.variant_index,
         });
         to_v8(scope, type_).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
 }

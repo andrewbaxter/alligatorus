@@ -115,16 +115,13 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
             let converted = erb.must_er(typecheck_convert(xx, loc, underlying_type.as_ref(), argument))?;
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref()))?;
             let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
-            let mut object_fields =
-                vec![(ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
+            let mut object_fields = vec![(ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
             for method in self.data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push(
-                    (ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-                    })
-                );
+                object_fields.push((ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                }));
             }
             for impl_data in self.data.interface_impls.borrow().iter() {
                 let iface_methods = impl_data.interface.methods.borrow();
@@ -132,12 +129,10 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
-                    object_fields.push(
-                        (ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-                        })
-                    );
+                    object_fields.push((ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                    }));
                 }
             }
             let result_type =
@@ -155,11 +150,7 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
 
 impl Type for TypeSourceDataTypeConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(
-            ValueAnyConst {
-                inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }),
-            },
-        )
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

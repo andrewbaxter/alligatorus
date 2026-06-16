@@ -1,3 +1,25 @@
+use {
+    crate::{
+        langhelp::{
+            Artifact,
+            ArtifactId,
+            Code,
+            CodeValue,
+            Code_,
+            EResult,
+            EvalRes,
+            ExprContext,
+            QExprId,
+            Type,
+        },
+        r#gen::{
+            aspect_artifact_get,
+            aspect_type_get,
+        },
+    },
+    std::rc::Rc,
+};
+
 #[macro_export]
 macro_rules! er_all{
     ($v: ident, {
@@ -45,33 +67,7 @@ macro_rules! er_seq_cv{
     };
 }
 
-use {
-    crate::{
-        langhelp::{
-            Artifact,
-            ArtifactId,
-            Code,
-            Code_,
-            CodeValue,
-            EResult,
-            EvalRes,
-            ExprContext,
-            QExprId,
-            Type,
-        },
-        r#gen::{
-            aspect_artifact_get,
-            aspect_type_get,
-        },
-    },
-    std::rc::Rc,
-};
-
-pub(crate) fn deserialize_artifact(
-    xx: &ExprContext,
-    loc: QExprId,
-    artifact: &Artifact,
-) -> EvalRes {
+pub(crate) fn deserialize_artifact(xx: &ExprContext, loc: QExprId, artifact: &Artifact) -> EvalRes {
     match &artifact.type_ {
         ArtifactId::Builtin(id) => {
             let Some(deserializer) = xx.vx.ix.builtin_deserializers.get(id) else {
@@ -111,11 +107,10 @@ pub(crate) fn deserialize_type_artifact(
             }
         },
         ArtifactId::Source(compile_id) => {
-            let source_artifact =
-                match xx.vx.ix.gx.artifacts.get(ArtifactId::Source(*compile_id)) {
-                    Ok(v) => v,
-                    Err(e) => return EResult::err(loc, e),
-                };
+            let source_artifact = match xx.vx.ix.gx.artifacts.get(ArtifactId::Source(*compile_id)) {
+                Ok(v) => v,
+                Err(e) => return EResult::err(loc, e),
+            };
             let cv = match deserialize_artifact(xx, loc, &source_artifact).into_res() {
                 Ok(v) => v,
                 Err(e) => return EResult {
@@ -137,10 +132,7 @@ pub(crate) fn deserialize_type_artifact(
     }
 }
 
-pub(crate) fn er_seq_cv_inline(
-    loc: QExprId,
-    f: impl FnOnce(&mut super::Erb) -> Result<CodeValue, ()>,
-) -> EvalRes {
+pub(crate) fn er_seq_cv_inline(loc: QExprId, f: impl FnOnce(&mut super::Erb) -> Result<CodeValue, ()>) -> EvalRes {
     let mut erb = super::Erb::new(loc);
     match f(&mut erb) {
         Ok(v) => {

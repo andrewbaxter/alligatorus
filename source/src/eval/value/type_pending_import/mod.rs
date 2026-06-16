@@ -39,12 +39,7 @@ struct PendingImportBind {
 impl Aspect for PendingImportBind { }
 
 impl AspectBind for PendingImportBind {
-    fn bind(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         EResult::ok((Code {
             loc: loc,
             code: Code_::None,
@@ -78,12 +73,9 @@ impl Type for TypePendingImport {
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn AspectBind>,
-                ),
+                Box::new(Box::new(PendingImportBind { state: self.state.clone() }) as Box<dyn AspectBind>),
             );
         }
-
         let loc = (SourceId(0), ExprId(0));
         self.resolved_type(xx, loc).aspect(xx, key)
     }

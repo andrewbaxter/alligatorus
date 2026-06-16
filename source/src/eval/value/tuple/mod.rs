@@ -335,9 +335,7 @@ impl Type for Tuple {
                         .expect(&format!("Tuple element type ({}) missing AspectLowerDynamic", t.desc()));
                 must_downcast_box::<Box<dyn AspectLowerDynamic>>(a)
             }).collect();
-            return Some(
-                Box::new(Box::new(TupleLowerJs { element_lowers }) as Box<dyn AspectLowerDynamic>),
-            );
+            return Some(Box::new(Box::new(TupleLowerJs { element_lowers }) as Box<dyn AspectLowerDynamic>));
         }
         return None;
     }
@@ -373,10 +371,7 @@ impl Type for Tuple {
                 let converted = match elem {
                     TupleElement::EvalRes(elem_res) => {
                         if let Some(elem_cv) = elem_res.v {
-                            let conv =
-                                erb.must_er(
-                                    typecheck_convert(xx, loc, dest_elem_type.as_ref(), elem_cv),
-                                )?;
+                            let conv = erb.must_er(typecheck_convert(xx, loc, dest_elem_type.as_ref(), elem_cv),)?;
                             TupleElement::EvalRes(EvalRes::ok(conv))
                         } else {
                             TupleElement::EvalRes(EvalRes {
@@ -397,13 +392,11 @@ impl Type for Tuple {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        let cv_value: Rc<dyn Value> =
-            if (cv.value.as_ref() as
-                &dyn std::any::Any).is::<ValueEmptyConst>() {
-                Rc::new(self.clone_as_type())
-            } else {
-                cv.value
-            };
+        let cv_value: Rc<dyn Value> = if (cv.value.as_ref() as &dyn std::any::Any).is::<ValueEmptyConst>() {
+            Rc::new(self.clone_as_type())
+        } else {
+            cv.value
+        };
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv_value)).ok().expect("Tuple cast_to: Rc not unique");
         return er_seq_cv_inline(loc, |erb| {
@@ -514,8 +507,8 @@ enum TupleBindSubResult {
 }
 
 pub(crate) enum TupleElement {
-    EvalRes(EvalRes),
     Dynamic(Rc<dyn Type>),
+    EvalRes(EvalRes),
 }
 
 struct TupleLiftJs {

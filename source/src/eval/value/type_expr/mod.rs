@@ -84,12 +84,7 @@ impl ArtifactBuiltinDeserializer for DeserializerTypeExpr {
         }))
     }
 
-    fn value_from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> EvalRes {
+    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
@@ -116,12 +111,7 @@ impl AspectBind for TypeExpr {
 }
 
 impl AspectBindDynamic for TypeExpr {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -232,13 +222,10 @@ impl Type for TypeExpr {
             }
             return EvalRes::ok(cv);
         }
-
         let type_rc = cv.value.type_(xx, loc);
         let expr = Expr {
             loc,
-            r#type: Expr_::Literal(
-                make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>),
-            ),
+            r#type: Expr_::Literal(make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>)),
         };
         return EvalRes::ok(CodeValue {
             code: cv.code,
@@ -311,9 +298,7 @@ impl Type for TypeExprStagedPlaceholder {
             return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLowerDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLowerDynamic>));
         }
         None
     }

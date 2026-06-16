@@ -45,15 +45,11 @@ impl ScopeEntry for PullScopeEntry {
         let method_val =
             instance.get(scope, method_key.into()).expect("PullScopeEntry::use_: instance missing _im_se0");
         let method_fn =
-            v8::Local::<v8::Function>::try_from(
-                method_val,
-            ).expect("PullScopeEntry::use_: _im_se0 not a function");
+            v8::Local::<v8::Function>::try_from(method_val).expect("PullScopeEntry::use_: _im_se0 not a function");
         let recv: v8::Local<v8::Value> = instance.into();
         let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
         let result =
-            method_fn
-                .call(scope, recv, &[null_arg])
-                .expect("PullScopeEntry::use_: _im_se0 returned no value");
+            method_fn.call(scope, recv, &[null_arg]).expect("PullScopeEntry::use_: _im_se0 returned no value");
         <CodeValue as Push>::from_v8(scope, result)
     }
 }
@@ -63,44 +59,20 @@ pub(crate) struct PullTarget {
 }
 
 impl Target for PullTarget {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        sub: TargetBindSub,
-    ) -> (Code, ScopeEntryId) {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
         let _ = &self.instance;
         TargetDynamic.bind(xx, loc, sub)
     }
 
-    fn bind_sub_record(
-        &self,
-        loc: QExprId,
-        carry: Code,
-        fields: Vec<(ConstKey, TargetBindSub)>,
-    ) -> TargetBindSub {
+    fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub {
         TargetDynamic.bind_sub_record(loc, carry, fields)
     }
 
-    fn bind_sub_tuple(
-        &self,
-        loc: QExprId,
-        carry: Code,
-        elements: Vec<TargetBindSub>,
-    ) -> TargetBindSub {
+    fn bind_sub_tuple(&self, loc: QExprId, carry: Code, elements: Vec<TargetBindSub>) -> TargetBindSub {
         TargetDynamic.bind_sub_tuple(loc, carry, elements)
     }
 
-    fn seq(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
-        TargetDynamic.seq(loc, entries)
-    }
-
-    fn code_to_bind_sub(
-        &self,
-        loc: QExprId,
-        code: Code,
-        type_: Rc<dyn Type>,
-    ) -> EResult<TargetBindSub> {
+    fn code_to_bind_sub(&self, loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub> {
         TargetDynamic.code_to_bind_sub(loc, code, type_)
     }
 
@@ -126,13 +98,12 @@ impl Target for PullTarget {
         TargetDynamic.match_(xx, loc, base, element_key, cases, fallback)
     }
 
-    fn maybe_bind_sub(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         TargetDynamic.maybe_bind_sub(xx, loc, cv)
+    }
+
+    fn seq(&self, loc: QExprId, entries: Vec<Code>) -> EResult<Code> {
+        TargetDynamic.seq(loc, entries)
     }
 
     fn stage(

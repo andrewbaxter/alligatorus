@@ -1,9 +1,9 @@
 use {
     crate::{
         eval::value::{
-                type_any::r#const::TypeAnyConst,
-                value_null::r#const::ValueNullConst,
-            },
+            type_any::r#const::TypeAnyConst,
+            value_null::r#const::ValueNullConst,
+        },
         langhelp::{
             Artifact,
             Aspect,

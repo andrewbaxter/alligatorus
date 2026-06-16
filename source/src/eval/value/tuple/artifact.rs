@@ -48,8 +48,7 @@ impl Deserializer {
         };
         let mut elements: Vec<TupleElement> = Vec::new();
         for elem_artifact in serial.elements {
-            let (elem_type, _code) =
-                deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
+            let (elem_type, _code) = deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
             elements.push(TupleElement::Dynamic(elem_type));
         }
         Ok(Rc::new(Tuple { elements: elements }))

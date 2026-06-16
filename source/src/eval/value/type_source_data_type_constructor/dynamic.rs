@@ -94,15 +94,11 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
     let mut codes: Vec<Code> = Vec::new();
     let (underlying_type, underlying_code) =
-        deserialize_type_artifact(xx, loc, &serial.underlying_type)
-            .into_res()
-            .map_err(|e| format!("{:?}", e))?;
+        deserialize_type_artifact(xx, loc, &serial.underlying_type).into_res().map_err(|e| format!("{:?}", e))?;
     codes.push(underlying_code);
     let methods: Vec<Rc<SourceDataMethodData>> = serial.methods.iter().enumerate().map(|(i, m)| {
         let (ret_type, ret_code) =
-            deserialize_type_artifact(xx, loc, &m.ret_type)
-                .into_res()
-                .expect("Failed to resolve method ret type");
+            deserialize_type_artifact(xx, loc, &m.ret_type).into_res().expect("Failed to resolve method ret type");
         codes.push(ret_code);
         let entry_id = serial.def_set_id;
         Rc::new(SourceDataMethodData {
@@ -152,29 +148,18 @@ pub(crate) fn deserialize_defset_ctor_as_type(
 pub(crate) fn serialize_type_ref(xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> Artifact {
     type_.type_to_serial(xx, loc)
 }
-
 pub(crate) struct TypeSourceDataTypeConstructorDynamic;
 
 impl Aspect for TypeSourceDataTypeConstructorDynamic { }
 
 impl AspectBind for TypeSourceDataTypeConstructorDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -204,8 +189,21 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
             from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
         ctor_ref.data.set.finish()?;
-        let ctor_type: Rc<dyn Type> =
-            Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
+        let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
+        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
+    }
+}
+
+impl AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
+            from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
+        let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
 }
@@ -222,21 +220,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
                 type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
             }),
         }
-    }
-}
-
-impl AspectLowerDynamic for TypeSourceDataTypeConstructorDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
-            from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
-        let ctor_type: Rc<dyn Type> =
-            Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
-        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
 }
 
@@ -266,11 +249,7 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLowerDynamic>,
-                ),
-            );
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectInitialBind>));
@@ -303,9 +282,7 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
                 func: Box::new(CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse {
-                            id: DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
-                        },
+                        CodeDynamicBindingUse { id: DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID },
                     ),
                 }),
                 args: vec![source_code],

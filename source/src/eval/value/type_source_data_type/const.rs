@@ -7,23 +7,23 @@ use {
             CodeDynamicType,
         },
         eval::{
+            TargetBindSub,
+            definition_set::serialize_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
             import_install::install_imported_type_iface,
-            definition_set::serialize_definition_set,
             util::deserialize_artifact,
-            TargetBindSub,
             value::{
+                type_pull::TypePull,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_source_interface::{
                     BuiltinInterfaceKind,
                     SourceInterfaceData,
                     r#const::TypeSourceInterfaceConst,
                 },
-                type_pull::TypePull,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic,
                 value_dynamic::{
                     ValueDynamic,
@@ -64,6 +64,7 @@ use {
             AspectType,
             ScopeEntry,
             aspect_artifact_aspect_id,
+            aspect_artifact_get_maybe,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -76,7 +77,6 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get_maybe,
             aspect_type_aspect_id,
-            aspect_artifact_get_maybe,
             type_type_identity,
         },
     },
@@ -88,17 +88,12 @@ use {
     },
 };
 
-pub(crate) struct TypeSourceDataTypeConst {
-    pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
-}
-
 fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc<super::SourceDataTypeData>) -> bool {
     let id = match dt_data.artifact_id.borrow().clone() {
         Some(id) => id,
         None => {
             return dt_data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind ==
-                    Some(BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
             });
         },
     };
@@ -115,23 +110,8 @@ fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc
     })
 }
 
-pub(crate) struct TypeSourceDataTypeConstAspectType {
+pub(crate) struct TypeSourceDataTypeConst {
     pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
-}
-
-impl Aspect for TypeSourceDataTypeConstAspectType { }
-
-impl AspectType for TypeSourceDataTypeConstAspectType {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let bundle =
-            (value as &dyn std::any::Any)
-                .downcast_ref::<ValueSourceDataTypeConst>()
-                .and_then(|v| v.isolate_bundle.borrow().clone());
-        Rc::new(TypePull {
-            data: self.data.clone(),
-            bundle,
-        })
-    }
 }
 
 impl TypeSourceDataTypeConst {
@@ -152,7 +132,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
     fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let dt_data = self.data.clone();
         let data = data.clone();
-
         let has_type_iface = read_artifact_has_type_iface(xx, &dt_data);
         let bundle_cell: Rc<RefCell<Option<v8::Global<v8::Object>>>> = Rc::new(RefCell::new(None));
         let underlying_cell: Rc<RefCell<Option<Rc<dyn Value>>>> = Rc::new(RefCell::new(None));
@@ -160,12 +139,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         let underlying_cell_for_finalizer = underlying_cell.clone();
         xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, loc| {
             let underlying_type = dt_data.underlying_type.get();
-            let build_type_artifact =
-                serialize_type_ref(
-                    xx,
-                    loc,
-                    underlying_type.as_ref(),
-                );
+            let build_type_artifact = serialize_type_ref(xx, loc, underlying_type.as_ref());
             drop(underlying_type);
             let underlying_artifact = Artifact {
                 type_: build_type_artifact.type_,
@@ -177,8 +151,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
             let underlying_value_type = underlying_cv.value.type_(xx, loc);
             let underlying_js =
-                if let Some(aspect_str) =
-                    aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
+                if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
                     let s = aspect_str.get(underlying_cv.value.as_ref());
                     CodeDynamic {
                         loc: loc,
@@ -191,8 +164,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     }
                 };
             let has_type_iface = dt_data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind ==
-                    Some(BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
             });
             if has_type_iface {
                 let instance_global = install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;
@@ -200,7 +172,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 *underlying_cell_for_finalizer.borrow_mut() = Some(underlying_cv.value);
                 return Ok(vec![]);
             }
-
             {
                 let set = &dt_data.set;
                 let mut sets = xx.vx.ix.definition_sets.borrow_mut();
@@ -209,34 +180,23 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                     sets.push(set.clone());
                 }
             }
-            let mut object_fields =
-                vec![(ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)];
+            let mut object_fields = vec![(ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)];
             for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push(
-                    (
-                        ConstKey::String(method.field_name.clone()).to_str(),
-                        CodeDynamic {
-                            loc: loc,
-                            type_: CodeDynamicType::BindingUse(
-                                CodeDynamicBindingUse { id: method_id },
-                            ),
-                        },
-                    ),
-                );
+                object_fields.push((ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
+                    loc: loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                }));
             }
             let code = CodeDynamic {
                 loc: loc,
-                type_: CodeDynamicType::NewObject(
-                    CodeDynamicNewObject { fields: object_fields },
-                ),
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
             };
             Ok(vec![Code {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(code)),
             }])
         }));
-
         let value: Rc<dyn Value> = if has_type_iface {
             Rc::new(ValueSourceDataTypeConst {
                 data: self.data.clone(),
@@ -249,7 +209,6 @@ impl AspectArtifact for TypeSourceDataTypeConst {
                 type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
             })
         };
-
         if has_type_iface {
             let value_clone = value.clone();
             xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |_xx, _loc| {
@@ -301,23 +260,13 @@ impl AspectArtifact for TypeSourceDataTypeConst {
 }
 
 impl AspectBind for TypeSourceDataTypeConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceDataTypeConst {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -356,8 +305,42 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
         let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;
         let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
-            impl_data.interface.builtin_kind ==
-                Some(BuiltinInterfaceKind::Type)
+            impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
+        });
+        let isolate_bundle = if has_type_iface {
+            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
+            std::cell::RefCell::new(Some(instance_global))
+        } else {
+            std::cell::RefCell::new(None)
+        };
+        Ok(Rc::new(ValueSourceDataTypeConst {
+            underlying: underlying_value,
+            data: self.data.clone(),
+            isolate_bundle,
+        }))
+    }
+}
+
+impl AspectLowerDynamic for TypeSourceDataTypeConst {
+    fn lower(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let underlying_type = self.data.underlying_type.get().clone();
+        let underlying_lower =
+            aspect_lower_dynamic_get_maybe(
+                xx,
+                underlying_type.as_ref(),
+            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLowerDynamic", underlying_type.desc()))?;
+        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lower")?;
+        let data_field = ConstKey::String(self.data.data_field.clone()).to_str();
+        let key = v8::String::new(scope, &data_field).unwrap();
+        let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
+        let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
+        let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
+            impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
         });
         let isolate_bundle = if has_type_iface {
             let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
@@ -385,42 +368,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
                 type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
             }),
         }
-    }
-}
-
-impl AspectLowerDynamic for TypeSourceDataTypeConst {
-    fn lower(
-        &self,
-        xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let underlying_type = self.data.underlying_type.get().clone();
-        let underlying_lower =
-            aspect_lower_dynamic_get_maybe(
-                xx,
-                underlying_type.as_ref(),
-            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLowerDynamic", underlying_type.desc()))?;
-        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lower")?;
-        let data_field = ConstKey::String(self.data.data_field.clone()).to_str();
-        let key = v8::String::new(scope, &data_field).unwrap();
-        let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
-        let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
-        let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
-            impl_data.interface.builtin_kind ==
-                Some(BuiltinInterfaceKind::Type)
-        });
-        let isolate_bundle = if has_type_iface {
-            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(Some(instance_global))
-        } else {
-            std::cell::RefCell::new(None)
-        };
-        Ok(Rc::new(ValueSourceDataTypeConst {
-            underlying: underlying_value,
-            data: self.data.clone(),
-            isolate_bundle,
-        }))
     }
 }
 
@@ -470,8 +417,7 @@ impl Type for TypeSourceDataTypeConst {
         if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as
-                        Box<dyn AspectLowerDynamic>,
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLowerDynamic>,
                 ),
             );
         }
@@ -495,7 +441,6 @@ impl Type for TypeSourceDataTypeConst {
                 ),
             );
         }
-
         {
             let interface_impls = self.data.interface_impls.borrow();
             for impl_data in interface_impls.iter() {
@@ -503,11 +448,9 @@ impl Type for TypeSourceDataTypeConst {
                     return Some(Box::new(true));
                 }
             }
-
             if *key == aspect_type_aspect_id() {
                 let has_type_impl = interface_impls.iter().any(|impl_data| {
-                    impl_data.interface.builtin_kind ==
-                        Some(BuiltinInterfaceKind::Type)
+                    impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
                 });
                 if has_type_impl {
                     return Some(
@@ -553,13 +496,11 @@ impl Type for TypeSourceDataTypeConst {
         let (own_identity, iface_data) = {
             let own = self.data.identity.clone();
             let interface_impls = self.data.interface_impls.borrow();
-            let ifaces: Vec<(Gc<SourceInterfaceData>, Unique)> =
-                interface_impls.iter().map(|impl_data| {
-                    (impl_data.interface.clone(), impl_data.interface.identity.clone())
-                }).collect();
+            let ifaces: Vec<(Gc<SourceInterfaceData>, Unique)> = interface_impls.iter().map(|impl_data| {
+                (impl_data.interface.clone(), impl_data.interface.identity.clone())
+            }).collect();
             (own, ifaces)
         };
-
         if type_.aspect(xx, &own_identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
@@ -569,7 +510,6 @@ impl Type for TypeSourceDataTypeConst {
                 }),
             });
         }
-
         for (iface_data, identity) in iface_data {
             if type_.aspect(xx, &identity).is_some() {
                 return EvalRes::ok(CodeValue {
@@ -625,5 +565,24 @@ impl Type for TypeSourceDataTypeConst {
 impl Value for TypeSourceDataTypeConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
+    }
+}
+
+pub(crate) struct TypeSourceDataTypeConstAspectType {
+    pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
+}
+
+impl Aspect for TypeSourceDataTypeConstAspectType { }
+
+impl AspectType for TypeSourceDataTypeConstAspectType {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let bundle =
+            (value as &dyn std::any::Any)
+                .downcast_ref::<ValueSourceDataTypeConst>()
+                .and_then(|v| v.isolate_bundle.borrow().clone());
+        Rc::new(TypePull {
+            data: self.data.clone(),
+            bundle,
+        })
     }
 }

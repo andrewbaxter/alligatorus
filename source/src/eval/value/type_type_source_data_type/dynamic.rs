@@ -5,8 +5,8 @@ use {
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_source_data_type::{
-                    r#const::TypeSourceDataTypeConst,
                     artifact::ArtifactDataDefSetDataType,
+                    r#const::TypeSourceDataTypeConst,
                 },
             },
         },

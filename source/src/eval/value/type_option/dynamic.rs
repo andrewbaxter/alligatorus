@@ -7,13 +7,13 @@ use {
         },
         eval::{
             TargetBindSub,
-            push::Push,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_set,
             },
             from_v8_ref,
+            push::Push,
             to_v8,
             typecheck_convert,
             value::{
@@ -105,12 +105,7 @@ impl AspectBind for TypeOptionDynamic {
 }
 
 impl AspectBindDynamic for TypeOptionDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -207,6 +202,10 @@ impl AspectTaggedUnion for TypeOptionDynamic {
 }
 
 impl Push for TypeOptionDynamic {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeAnyConst)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeOptionDynamic> = from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
         (*rc).clone()
@@ -214,10 +213,6 @@ impl Push for TypeOptionDynamic {
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, Rc::new(self)).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
     }
 }
 
@@ -290,9 +285,7 @@ impl Type for TypeOptionDynamic {
     fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
         let elem_artifact = serialize_type_ref(xx, loc, self.element_type.as_ref());
         let payload = ArtifactOptionType { element_type: elem_artifact };
-        TypeOptionArtifact::build_artifact(
-            serde_json::to_value(&payload).expect("Failed to serialize option type"),
-        )
+        TypeOptionArtifact::build_artifact(serde_json::to_value(&payload).expect("Failed to serialize option type"))
     }
 }
 
@@ -331,9 +324,7 @@ impl AspectFunction for TypeOptionVariantConstructorDynamic {
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
                 type_: CodeDynamicType::NewObject(
-                    CodeDynamicNewObject {
-                        fields: vec![(ConstKey::String(js_tag).to_str(), underlying_js)],
-                    }
+                    CodeDynamicNewObject { fields: vec![(ConstKey::String(js_tag).to_str(), underlying_js)], }
                 ),
             }));
         });

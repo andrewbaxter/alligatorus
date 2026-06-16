@@ -76,36 +76,42 @@ pub(crate) struct TypeSourceInterfaceConst {
     pub data: dumpster::unsync::Gc<super::SourceInterfaceData>,
 }
 
-pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
+impl Aspect for TypeSourceInterfaceConst { }
 
-impl Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
+impl AspectArtifact for TypeSourceInterfaceConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        EvalRes::err(loc, "TypeSourceInterfaceConst::from_serial: handled via Deserializer registry".to_string())
+    }
 
-impl AspectType for TypeSourceInterfaceConstAspectTypeImpl {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
-        Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
+    fn to_serial(&self, _xx: &ExprContext, loc: QExprId, _value: Rc<dyn Value>) -> EResult<Artifact> {
+        match self.data.builtin_kind {
+            Some(kind) => EResult::ok(super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind)),
+            None => EResult::err(
+                loc,
+                format!("TypeSourceInterfaceConst::to_serial: non-builtin interfaces not yet artifact-serializable"),
+            ),
+        }
     }
 }
 
-impl Aspect for TypeSourceInterfaceConst { }
+impl AspectAspect for TypeSourceInterfaceConst {
+    fn get_iface_data(&self, _value: &dyn Value) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+        self.data.clone()
+    }
+
+    fn get_unique(&self, _value: &dyn Value) -> Unique {
+        self.data.identity.clone()
+    }
+}
 
 impl AspectBind for TypeSourceInterfaceConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceInterfaceConst {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -199,47 +205,9 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
     }
 }
 
-impl AspectArtifact for TypeSourceInterfaceConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::err(loc, "TypeSourceInterfaceConst::from_serial: handled via Deserializer registry".to_string())
-    }
-
-    fn to_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        match self.data.builtin_kind {
-            Some(kind) => EResult::ok(super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind)),
-            None => EResult::err(
-                loc,
-                format!("TypeSourceInterfaceConst::to_serial: non-builtin interfaces not yet artifact-serializable"),
-            ),
-        }
-    }
-}
-
-impl AspectAspect for TypeSourceInterfaceConst {
-    fn get_iface_data(
-        &self,
-        _value: &dyn Value,
-    ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
-        self.data.clone()
-    }
-
-    fn get_unique(&self, _value: &dyn Value) -> Unique {
-        self.data.identity.clone()
-    }
-}
-
 impl Type for TypeSourceInterfaceConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(
-            ValueAnyConst {
-                inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
-            },
-        )
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -254,16 +222,12 @@ impl Type for TypeSourceInterfaceConst {
         }
         if *key == aspect_aspect_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectAspect>,
-                ),
+                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectAspect>),
             );
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectArtifact>,
-                ),
+                Box::new(Box::new(TypeSourceInterfaceConst { data: self.data.clone() }) as Box<dyn AspectArtifact>),
             );
         }
         if *key == aspect_field_aspect_id() {
@@ -366,5 +330,14 @@ impl Type for TypeSourceInterfaceConst {
 impl Value for TypeSourceInterfaceConst {
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
+    }
+}
+pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
+
+impl Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
+
+impl AspectType for TypeSourceInterfaceConstAspectTypeImpl {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+        Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
     }
 }

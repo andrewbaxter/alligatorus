@@ -48,28 +48,57 @@ fn test_00200_import_definitionset() {
         //. .
         ("other", {
             let mb = ModuleBuilder::default();
-            SourceModule::V1(mb.seq(vec![
-                mb.bind("ctor", mb.lower(mb.seq(vec![
-                    mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-                    mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
-                    mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
-                    mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("func")), mb.str("to_string"))),
-                    mb.call(
-                        mb.field(mb.scope_use("mnfr"), mb.str("impl")),
-                        mb.tuple(
-                            vec![
-                                mb.scope_use("null"),
-                                mb.scope_use("string"),
-                                mb.stage(
-                                    mb.call(mb.field(mb.scope_use("inner"), mb.str("toUpperCase")), mb.null()),
+            SourceModule::V1(
+                mb.seq(
+                    vec![
+                        mb.bind(
+                            "ctor",
+                            mb.lower(
+                                mb.seq(
+                                    vec![
+                                        mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                        mb.bind(
+                                            "ndr",
+                                            mb.call(
+                                                mb.field(mb.scope_use("d"), mb.str("object")),
+                                                mb.str("upper"),
+                                            ),
+                                        ),
+                                        mb.call(
+                                            mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
+                                            mb.scope_use("string"),
+                                        ),
+                                        mb.bind(
+                                            "mnfr",
+                                            mb.call(
+                                                mb.field(mb.scope_use("ndr"), mb.str("func")),
+                                                mb.str("to_string"),
+                                            ),
+                                        ),
+                                        mb.call(
+                                            mb.field(mb.scope_use("mnfr"), mb.str("impl")),
+                                            mb.tuple(
+                                                vec![
+                                                    mb.scope_use("null"),
+                                                    mb.scope_use("string"),
+                                                    mb.stage(
+                                                        mb.call(
+                                                            mb.field(mb.scope_use("inner"), mb.str("toUpperCase")),
+                                                            mb.null(),
+                                                        ),
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                        mb.field(mb.scope_use("ndr"), mb.str("new")),
+                                    ],
                                 ),
-                            ],
+                            ),
                         ),
-                    ),
-                    mb.field(mb.scope_use("ndr"), mb.str("new")),
-                ]))),
-                mb.call(mb.scope_use("ctor"), mb.str("hello")),
-            ]))
+                        mb.call(mb.scope_use("ctor"), mb.str("hello")),
+                    ],
+                ),
+            )
         }),
         ("main", {
             let mb = ModuleBuilder::default();
@@ -222,7 +251,6 @@ e1 = (e2)(e3);
 e0 = e1;
 }
 e0;"#]);
-
     let arts = test_artifacts.data.lock().unwrap();
     assert_eq!(arts.len(), 2);
     let mut art_jsons: Vec<String> = arts.values().map(|a| serde_json::to_string_pretty(a).unwrap()).collect();

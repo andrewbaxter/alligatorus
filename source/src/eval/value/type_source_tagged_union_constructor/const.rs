@@ -56,12 +56,7 @@ pub(crate) struct TypeSourceTaggedUnionConstructorConst {
 impl Aspect for TypeSourceTaggedUnionConstructorConst { }
 
 impl AspectBind for TypeSourceTaggedUnionConstructorConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -82,9 +77,7 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
                 type_: CodeDynamicType::NewObject(
-                    CodeDynamicNewObject {
-                        fields: vec![(ConstKey::String(js_tag).to_str(), underlying_js)],
-                    }
+                    CodeDynamicNewObject { fields: vec![(ConstKey::String(js_tag).to_str(), underlying_js)], }
                 ),
             }));
         });
@@ -93,14 +86,10 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
 
 impl Type for TypeSourceTaggedUnionConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(
-            ValueAnyConst {
-                inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
-                    data: self.data.clone(),
-                    variant_index: self.variant_index,
-                }),
-            },
-        )
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
+            data: self.data.clone(),
+            variant_index: self.variant_index,
+        }) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

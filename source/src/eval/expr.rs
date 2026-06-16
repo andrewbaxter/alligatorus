@@ -20,7 +20,6 @@ pub(crate) struct Expr {
 pub(crate) enum Expr_ {
     As(ExprAs),
     Bind(ExprBind),
-    Seq(ExprSeq),
     Call(ExprCall),
     Field(ExprField),
     Foreach(ExprForeach),
@@ -35,6 +34,7 @@ pub(crate) enum Expr_ {
     OperatorLt(ExprOperatorLt),
     Record(ExprRecord),
     ScopeUse(ExprScopeUse),
+    Seq(ExprSeq),
     Set(ExprSet),
     Stage(ExprStage),
     Tuple(ExprTuple),
@@ -50,11 +50,6 @@ pub(crate) struct ExprAs {
 pub(crate) struct ExprBind {
     pub base: Rc<Expr>,
     pub value: Rc<Expr>,
-}
-
-#[derive(Clone)]
-pub(crate) struct ExprSeq {
-    pub exprs: Vec<Expr>,
 }
 
 #[derive(Clone)]
@@ -84,8 +79,8 @@ pub(crate) struct ExprForeach {
 
 #[derive(Clone)]
 pub(crate) enum ExprGraft {
-    Pending(Rc<Expr>),
     Evaluated(CodeValue),
+    Pending(Rc<Expr>),
 }
 
 #[derive(Clone)]
@@ -144,6 +139,11 @@ pub(crate) struct ExprRecord {
 #[derive(Clone)]
 pub(crate) struct ExprScopeUse {
     pub key: Rc<Expr>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ExprSeq {
+    pub exprs: Vec<Expr>,
 }
 
 #[derive(Clone)]

@@ -54,8 +54,8 @@ use {
             ConstKey,
             EResult,
             EvalRes,
-            External,
             ExprContext,
+            External,
             QExprId,
             ScopeEntryId,
             Type,
@@ -103,8 +103,8 @@ use {
         rc::Rc,
     },
     super::{
-        r#const::TypeSourceDataTypeConst,
         SourceDataTypeData,
+        r#const::TypeSourceDataTypeConst,
     },
 };
 
@@ -115,23 +115,13 @@ pub(crate) struct TypeSourceDataTypeDynamic {
 impl Aspect for TypeSourceDataTypeDynamic { }
 
 impl AspectBind for TypeSourceDataTypeDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceDataTypeDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -180,8 +170,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                     let underlying_type = data.underlying_type.get().clone();
                     let dispatch_type: Rc<dyn Type> =
                         if let Some(record) =
-                            (underlying_type.as_ref() as
-                                &dyn std::any::Any).downcast_ref::<Record>() {
+                            (underlying_type.as_ref() as &dyn std::any::Any).downcast_ref::<Record>() {
                             let mut fields = std::collections::BTreeMap::new();
                             for (k, f) in &record.fields {
                                 let t = match f {
@@ -204,7 +193,6 @@ impl AspectField for TypeSourceDataTypeDynamic {
                     let underlying_field = aspect_field_get_maybe(xx, dispatch_type.as_ref());
                     if let Some(underlying_field) = underlying_field {
                         let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-
                         let underlying_access = CodeDynamic {
                             loc,
                             type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
@@ -302,20 +290,17 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
         {
             let data = &self.data;
             let underlying_type = data.underlying_type.get().clone();
-            let underlying_lift =
-                aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
-                    format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc())
-                })?;
+            let underlying_lift = aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
+                format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc())
+            })?;
             let obj =
                 v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lift")?;
             let data_field = ConstKey::String(data.data_field.clone()).to_str();
             let key = v8::String::new(scope, &data_field).unwrap();
             let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
             let underlying_value = underlying_lift.lift(xx, scope, underlying_v8)?;
-
             let has_type_iface = data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind ==
-                    Some(BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
             });
             let isolate_bundle = if has_type_iface {
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
@@ -329,6 +314,40 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
                 isolate_bundle,
             }))
         }
+    }
+}
+
+impl AspectLowerDynamic for TypeSourceDataTypeDynamic {
+    fn lower(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let data = &self.data;
+        let underlying_type = data.underlying_type.get().clone();
+        let underlying_lower = aspect_lower_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
+            format!("Underlying type ({}) missing AspectLowerDynamic", underlying_type.desc())
+        })?;
+        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lower")?;
+        let data_field = ConstKey::String(data.data_field.clone()).to_str();
+        let key = v8::String::new(scope, &data_field).unwrap();
+        let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
+        let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
+        let has_type_iface = data.interface_impls.borrow().iter().any(|impl_data| {
+            impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
+        });
+        let isolate_bundle = if has_type_iface {
+            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
+            std::cell::RefCell::new(Some(instance_global))
+        } else {
+            std::cell::RefCell::new(None)
+        };
+        Ok(Rc::new(ValueSourceDataTypeConst {
+            underlying: underlying_value,
+            data: data.clone(),
+            isolate_bundle,
+        }))
     }
 }
 
@@ -347,46 +366,9 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
     }
 }
 
-impl AspectLowerDynamic for TypeSourceDataTypeDynamic {
-    fn lower(
-        &self,
-        xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let data = &self.data;
-        let underlying_type = data.underlying_type.get().clone();
-        let underlying_lower =
-            aspect_lower_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
-                format!("Underlying type ({}) missing AspectLowerDynamic", underlying_type.desc())
-            })?;
-        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lower")?;
-        let data_field = ConstKey::String(data.data_field.clone()).to_str();
-        let key = v8::String::new(scope, &data_field).unwrap();
-        let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
-        let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
-        let has_type_iface = data.interface_impls.borrow().iter().any(|impl_data| {
-            impl_data.interface.builtin_kind ==
-                Some(BuiltinInterfaceKind::Type)
-        });
-        let isolate_bundle = if has_type_iface {
-            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(Some(instance_global))
-        } else {
-            std::cell::RefCell::new(None)
-        };
-        Ok(Rc::new(ValueSourceDataTypeConst {
-            underlying: underlying_value,
-            data: data.clone(),
-            isolate_bundle,
-        }))
-    }
-}
-
 impl AspectType for TypeSourceDataTypeDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let data = self.data.clone();
-
         let bundle =
             (value as &dyn std::any::Any)
                 .downcast_ref::<ValueSourceDataTypeConst>()
@@ -441,8 +423,7 @@ impl Type for TypeSourceDataTypeDynamic {
         if *key == aspect_lower_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as
-                        Box<dyn AspectLowerDynamic>,
+                    Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as Box<dyn AspectLowerDynamic>,
                 ),
             );
         }
@@ -471,17 +452,14 @@ impl Type for TypeSourceDataTypeDynamic {
                     return Some(Box::new(true));
                 }
             }
-
             if *key == aspect_type_aspect_id() {
                 let has_type_impl = interface_impls.iter().any(|impl_data| {
-                    impl_data.interface.builtin_kind ==
-                        Some(BuiltinInterfaceKind::Type)
+                    impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
                 });
                 if has_type_impl {
                     return Some(
                         Box::new(
-                            Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as
-                                Box<dyn AspectType>,
+                            Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as Box<dyn AspectType>,
                         ),
                     );
                 }
@@ -507,8 +485,7 @@ impl Type for TypeSourceDataTypeDynamic {
         }
         if type_.aspect(xx, &type_type_identity()).is_some() {
             return data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind ==
-                    Some(BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
             });
         }
         if type_.aspect(xx, &type_aspect_identity()).is_some() {
@@ -532,28 +509,21 @@ impl Type for TypeSourceDataTypeDynamic {
                 }),
             });
         }
-
         if type_.aspect(xx, &type_type_identity()).is_some() {
             let has_type_impl = data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind ==
-                    Some(BuiltinInterfaceKind::Type)
+                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
             });
             if has_type_impl {
                 let source_code = match cv.code.cast::<CodeDynamic>() {
                     EResult { v: Some(Some(c)), .. } => c.clone(),
                     _ => return EvalRes::err(loc, format!("cast {} → any: source has no runtime code", self.desc())),
                 };
-                let template: Rc<dyn Type> =
-                    Rc::new(
-                        TypeSourceDataTypeConst { data: self.data.clone() },
-                    );
+                let template: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: self.data.clone() });
                 let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                 xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
                 let template_code = CodeDynamic {
                     loc,
-                    type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse { id: template_id },
-                    ),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: template_id }),
                 };
                 let call = CodeDynamic {
                     loc,
@@ -561,9 +531,7 @@ impl Type for TypeSourceDataTypeDynamic {
                         func: Box::new(CodeDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(
-                                CodeDynamicBindingUse {
-                                    id: DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
-                                },
+                                CodeDynamicBindingUse { id: DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID },
                             ),
                         }),
                         args: vec![template_code, source_code],
@@ -584,40 +552,24 @@ impl Type for TypeSourceDataTypeDynamic {
         let interface_impls = data.interface_impls.borrow();
         for impl_data in interface_impls.iter() {
             if type_.aspect(xx, &impl_data.interface.identity).is_some() {
-                let runtime_setup: Option<(ScopeEntryId, Rc<dyn Type>)> =
-                    match impl_data.interface.builtin_kind {
-                        Some(BuiltinInterfaceKind::Type) => Some(
-                            (
-                                DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
-                                Rc::new(TypeAnyDynamic),
-                            ),
-                        ),
-                        Some(BuiltinInterfaceKind::Target) => Some(
-                            (
-                                DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
-                                Rc::new(TypeAnyTargetDynamic),
-                            ),
-                        ),
-                        Some(BuiltinInterfaceKind::ScopeEntry) => Some(
-                            (
-                                DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID,
-                                Rc::new(TypeAnyScopeEntryDynamic),
-                            ),
-                        ),
-                        Some(BuiltinInterfaceKind::Value) => Some(
-                            (
-                                DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
-                                Rc::new(TypeValueDynamic),
-                            ),
-                        ),
-                        Some(BuiltinInterfaceKind::CodeDyn) => Some(
-                            (
-                                DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
-                                Rc::new(TypeCodeDynHandleDynamic),
-                            ),
-                        ),
-                        _ => None,
-                    };
+                let runtime_setup: Option<(ScopeEntryId, Rc<dyn Type>)> = match impl_data.interface.builtin_kind {
+                    Some(BuiltinInterfaceKind::Type) => Some(
+                        (DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID, Rc::new(TypeAnyDynamic)),
+                    ),
+                    Some(BuiltinInterfaceKind::Target) => Some(
+                        (DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID, Rc::new(TypeAnyTargetDynamic)),
+                    ),
+                    Some(BuiltinInterfaceKind::ScopeEntry) => Some(
+                        (DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID, Rc::new(TypeAnyScopeEntryDynamic)),
+                    ),
+                    Some(BuiltinInterfaceKind::Value) => Some(
+                        (DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID, Rc::new(TypeValueDynamic)),
+                    ),
+                    Some(BuiltinInterfaceKind::CodeDyn) => Some(
+                        (DATA_INSTANCE_TO_CODE_FN_SCOPE_ID, Rc::new(TypeCodeDynHandleDynamic)),
+                    ),
+                    _ => None,
+                };
                 if let Some((fn_id, result_type)) = runtime_setup {
                     let source_code = match cv.code.cast::<CodeDynamic>() {
                         EResult { v: Some(Some(c)), .. } => c.clone(),
@@ -626,29 +578,19 @@ impl Type for TypeSourceDataTypeDynamic {
                             format!("cast {} → interface: source has no runtime code", self.desc()),
                         ),
                     };
-
-                    let template: Rc<dyn Type> =
-                        Rc::new(
-                            TypeSourceDataTypeConst {
-                                data: self.data.clone(),
-                            },
-                        );
+                    let template: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: self.data.clone() });
                     let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                     xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
                     let template_code = CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::BindingUse(
-                            CodeDynamicBindingUse { id: template_id },
-                        ),
+                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: template_id }),
                     };
                     let call = CodeDynamic {
                         loc,
                         type_: CodeDynamicType::Call(CodeDynamicCall {
                             func: Box::new(CodeDynamic {
                                 loc,
-                                type_: CodeDynamicType::BindingUse(
-                                    CodeDynamicBindingUse { id: fn_id },
-                                ),
+                                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: fn_id }),
                             }),
                             args: vec![template_code, source_code],
                         }),
@@ -684,9 +626,7 @@ impl Type for TypeSourceDataTypeDynamic {
                     func: Box::new(CodeDynamic {
                         loc,
                         type_: CodeDynamicType::BindingUse(
-                            CodeDynamicBindingUse {
-                                id: DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
-                            },
+                            CodeDynamicBindingUse { id: DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID },
                         ),
                     }),
                     args: vec![self_code],
@@ -730,29 +670,18 @@ impl Value for TypeSourceDataTypeDynamic {
         Rc::new(TypeAnyConst)
     }
 }
-
 pub(crate) struct TypeSourceDataTypeRefDynamic;
 
 impl Aspect for TypeSourceDataTypeRefDynamic { }
 
 impl AspectBind for TypeSourceDataTypeRefDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceDataTypeRefDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -785,6 +714,18 @@ impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
     }
 }
 
+impl AspectLowerDynamic for TypeSourceDataTypeRefDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
+        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -797,18 +738,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
                 type_: Rc::new(TypeSourceDataTypeRefDynamic),
             }),
         }
-    }
-}
-
-impl AspectLowerDynamic for TypeSourceDataTypeRefDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
-        Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
     }
 }
 
@@ -834,9 +763,7 @@ impl Type for TypeSourceDataTypeRefDynamic {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLowerDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectStackValueDynamic>));
@@ -860,7 +787,6 @@ impl Type for TypeSourceDataTypeRefDynamic {
         if type_.aspect(xx, &type_type_identity()).is_none() {
             return EvalRes::err(loc, format!("Cannot convert {} to {}", self.desc(), type_.desc()));
         }
-
         let source_code = match cv.code.cast::<CodeDynamic>() {
             EResult { v: Some(Some(c)), .. } => c.clone(),
             _ => return EvalRes::err(
@@ -874,9 +800,7 @@ impl Type for TypeSourceDataTypeRefDynamic {
                 func: Box::new(CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse {
-                            id: DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID,
-                        },
+                        CodeDynamicBindingUse { id: DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID },
                     ),
                 }),
                 args: vec![source_code],
@@ -913,4 +837,3 @@ impl Value for TypeSourceDataTypeRefDynamic {
         Rc::new(TypeAnyConst)
     }
 }
-

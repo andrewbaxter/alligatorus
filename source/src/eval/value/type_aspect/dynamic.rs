@@ -58,12 +58,7 @@ pub(crate) struct TypeAspectDynamic;
 impl Aspect for TypeAspectDynamic { }
 
 impl AspectBind for TypeAspectDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -97,18 +92,8 @@ impl AspectLiftDynamic for TypeAspectDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
-        let aspect_pull =
-            (&*aspect as &dyn std::any::Any)
-                .downcast_ref::<AspectPull>()
-                .unwrap()
-                .clone();
+        let aspect_pull = (&*aspect as &dyn std::any::Any).downcast_ref::<AspectPull>().unwrap().clone();
         Ok(Rc::new(aspect_pull))
-    }
-}
-
-impl AspectStackValueDynamic for TypeAspectDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        dynamic_stack_to_value(loc, value, Rc::new(TypeAspectDynamic))
     }
 }
 
@@ -120,12 +105,14 @@ impl AspectLowerDynamic for TypeAspectDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
-        let aspect_pull =
-            (&*aspect as &dyn std::any::Any)
-                .downcast_ref::<AspectPull>()
-                .unwrap()
-                .clone();
+        let aspect_pull = (&*aspect as &dyn std::any::Any).downcast_ref::<AspectPull>().unwrap().clone();
         Ok(Rc::new(aspect_pull))
+    }
+}
+
+impl AspectStackValueDynamic for TypeAspectDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        dynamic_stack_to_value(loc, value, Rc::new(TypeAspectDynamic))
     }
 }
 

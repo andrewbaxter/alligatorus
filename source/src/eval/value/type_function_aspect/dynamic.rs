@@ -6,21 +6,19 @@ use {
             CodeDynamicCall,
             CodeDynamicType,
         },
-        eval::{
-            value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
-                type_option::dynamic::TypeOptionDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_interface::SourceInterfaceRef,
-                value_dynamic::{
-                    ValueDynamic,
-                    ValueDynamicSource,
-                },
-                value_pull::aspect::TypePullAspect,
+        eval::value::{
+            type_any::r#const::{
+                TypeAnyConst,
+                ValueAnyConst,
             },
+            type_option::dynamic::TypeOptionDynamic,
+            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_source_interface::SourceInterfaceRef,
+            value_dynamic::{
+                ValueDynamic,
+                ValueDynamicSource,
+            },
+            value_pull::aspect::TypePullAspect,
         },
         langhelp::{
             Aspect,
@@ -37,9 +35,9 @@ use {
             Value,
         },
         r#gen::{
+            ASPECT_LOOKUP_FN_SCOPE_ID,
             AspectFunction,
             AspectInitialBind,
-            ASPECT_LOOKUP_FN_SCOPE_ID,
             ScopeEntry,
             aspect_aspect_get_maybe,
             aspect_function_aspect_id,
@@ -92,7 +90,6 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 errors: Some(e),
             },
         };
-
         let key_meta = key.value.type_(xx, loc);
         let key_type = match aspect_type_get_maybe(xx, key_meta.as_ref()) {
             Some(at) => at.type_(key.value.as_ref()),
@@ -109,7 +106,6 @@ impl AspectFunction for TypeFunctionAspectDynamic {
         let unique = aspect_aspect.get_unique(key_as_value.as_ref());
         let iface_data = aspect_aspect.get_iface_data(key_as_value.as_ref());
         let iface_ref = Rc::new(SourceInterfaceRef { data: iface_data });
-
         let base_code = match base.code.cast::<CodeDynamic>().into_res() {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "aspect(): base has no runtime code".to_string()),
@@ -120,12 +116,9 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             loc,
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: unique_id }),
         };
-
         let lookup_fn = CodeDynamic {
             loc,
-            type_: CodeDynamicType::BindingUse(
-                CodeDynamicBindingUse { id: ASPECT_LOOKUP_FN_SCOPE_ID },
-            ),
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: ASPECT_LOOKUP_FN_SCOPE_ID }),
         };
         let call_code = CodeDynamic {
             loc,
@@ -134,7 +127,6 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 args: vec![base_code, unique_code],
             }),
         };
-
         let handle_type: Rc<dyn Type> = Rc::new(TypePullAspect {
             iface_ref,
             bundle: None,

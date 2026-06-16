@@ -4,7 +4,6 @@ pub mod code_dynamic;
 pub mod eval;
 pub mod invariant;
 pub mod langhelp;
-
 #[path = "gen.rs"]
 #[allow(dead_code, unused_imports)]
 pub mod r#gen;
@@ -20,12 +19,11 @@ use {
                 Expr,
                 ExprAs,
                 ExprBind,
-                ExprGraft,
-                ExprSeq,
                 ExprCall,
                 ExprConditionBranch,
                 ExprField,
                 ExprForeach,
+                ExprGraft,
                 ExprIf,
                 ExprImport,
                 ExprLower,
@@ -36,6 +34,7 @@ use {
                 ExprOperatorLt,
                 ExprRecord,
                 ExprScopeUse,
+                ExprSeq,
                 ExprSet,
                 ExprStage,
                 ExprTuple,

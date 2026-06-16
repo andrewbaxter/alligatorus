@@ -58,4 +58,3 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData 
         Ok(())
     }
 }
-

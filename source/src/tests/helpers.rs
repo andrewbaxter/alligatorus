@@ -19,7 +19,6 @@ use {
             SourceExprAs,
             SourceExprBind,
             SourceExprBindingUse,
-            SourceExprSeq,
             SourceExprCall,
             SourceExprField,
             SourceExprForeach,
@@ -31,6 +30,7 @@ use {
             SourceExprOperatorAdd,
             SourceExprOperatorEq,
             SourceExprOperatorLt,
+            SourceExprSeq,
             SourceExprSet,
             SourceExprStage,
             SourceExpr_,
@@ -75,13 +75,6 @@ impl ModuleBuilder {
                 base: key.to_string(),
                 value: Box::new(expr),
             }),
-        };
-    }
-
-    pub fn seq(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
-        return SourceExpr {
-            id: self.id(),
-            r#type: SourceExpr_::Seq(SourceExprSeq { exprs: exprs }),
         };
     }
 
@@ -245,6 +238,13 @@ impl ModuleBuilder {
                 id: self.id(),
                 r#type: SourceExpr_::Literal(SourceLiteral::String(key.to_string())),
             }) }),
+        };
+    }
+
+    pub fn seq(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Seq(SourceExprSeq { exprs: exprs }),
         };
     }
 

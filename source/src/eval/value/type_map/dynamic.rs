@@ -10,6 +10,7 @@ use {
             CodeDynamicType,
         },
         eval::{
+            TargetBindSub,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -19,7 +20,6 @@ use {
             push::Push,
             to_v8,
             typecheck_convert,
-            TargetBindSub,
             value::{
                 record::{
                     Record,
@@ -30,21 +30,21 @@ use {
                     ValueAnyConst,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_null::dynamic::TypeNullDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
-                value_empty::r#const::ValueEmptyConst,
-                value_number::r#const::ValueNumberConst,
-                value_string::r#const::ValueStringConst,
                 type_map::artifact::{
                     ArtifactMapType,
                     TypeMapArtifact,
                 },
+                type_null::dynamic::TypeNullDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
                 },
+                value_empty::r#const::ValueEmptyConst,
+                value_number::r#const::ValueNumberConst,
+                value_string::r#const::ValueStringConst,
             },
         },
         langhelp::{
@@ -116,12 +116,7 @@ impl AspectBind for TypeMapDynamic {
 }
 
 impl AspectBindDynamic for TypeMapDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -156,7 +151,6 @@ impl AspectField for TypeMapDynamic {
                 value: Rc::new(ValueAnyConst { inner: new_type }),
             });
         }
-
         return er_seq_cv!(loc, erb, {
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
@@ -229,14 +223,8 @@ impl AspectIterable for TypeMapDynamic {
         Rc::new(Record {
             base: None,
             fields: [
-                (
-                    ConstKey::String("key".to_string()),
-                    RecordField::Dynamic(self.key_type.clone()),
-                ),
-                (
-                    ConstKey::String("value".to_string()),
-                    RecordField::Dynamic(self.value_type.clone()),
-                ),
+                (ConstKey::String("key".to_string()), RecordField::Dynamic(self.key_type.clone())),
+                (ConstKey::String("value".to_string()), RecordField::Dynamic(self.value_type.clone())),
             ]
                 .into_iter()
                 .collect(),
@@ -312,6 +300,10 @@ impl AspectStackValueDynamic for TypeMapDynamic {
 }
 
 impl Push for TypeMapDynamic {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeAnyConst)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeMapDynamic> = from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()
@@ -319,10 +311,6 @@ impl Push for TypeMapDynamic {
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, Rc::new(self)).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
     }
 }
 
@@ -420,11 +408,8 @@ impl Type for TypeMapDynamic {
                 }),
             });
         }
-
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value))
-                .ok()
-                .expect("Record Rc not unique in map cast");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
@@ -467,8 +452,7 @@ impl Type for TypeMapDynamic {
                         );
                     },
                 };
-                let converted =
-                    erb.must_er(typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
+                let converted = erb.must_er(typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
                 let js_val = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, converted))?;
                 js_fields.push((key_code, js_val));
             }
@@ -497,25 +481,13 @@ impl Type for TypeMapDynamic {
     }
 
     fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let key_artifact =
-            serialize_type_ref(
-                xx,
-                loc,
-                self.key_type.as_ref(),
-            );
-        let value_artifact =
-            serialize_type_ref(
-                xx,
-                loc,
-                self.value_type.as_ref(),
-            );
+        let key_artifact = serialize_type_ref(xx, loc, self.key_type.as_ref());
+        let value_artifact = serialize_type_ref(xx, loc, self.value_type.as_ref());
         let payload = ArtifactMapType {
             key_type: key_artifact,
             value_type: value_artifact,
         };
-        TypeMapArtifact::build_artifact(
-            serde_json::to_value(&payload).expect("Failed to serialize map type"),
-        )
+        TypeMapArtifact::build_artifact(serde_json::to_value(&payload).expect("Failed to serialize map type"))
     }
 }
 
@@ -539,7 +511,6 @@ impl AspectFunction for TypeMapGetFnDynamic {
         return er_seq_cv!(loc, erb, {
             let argument = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), argument))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
-
             let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, argument))?;
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
@@ -599,7 +570,6 @@ impl AspectFunction for TypeMapNewDynamic {
             value_type: self.value_type.clone(),
         });
         let arg_type = argument.value.type_(xx, loc);
-
         if let Some(t) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             if t.element_types().is_empty() {
                 return er_seq_cv!(loc, erb, {
@@ -611,7 +581,6 @@ impl AspectFunction for TypeMapNewDynamic {
                 });
             }
         }
-
         typecheck_convert(xx, loc, instance_type.as_ref(), argument)
     }
 }

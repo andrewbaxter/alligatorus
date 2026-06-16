@@ -40,26 +40,19 @@ pub(crate) struct ArtifactRecordType {
 pub(crate) struct Deserializer;
 
 impl Deserializer {
-    fn decode(
-        xx: &ExprContext,
-        loc: QExprId,
-        data: &serde_json::Value,
-    ) -> Result<Rc<dyn Type>, Vec<ExprErr>> {
+    fn decode(xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> Result<Rc<dyn Type>, Vec<ExprErr>> {
         let serial: ArtifactRecordType = match serde_json::from_value(data.clone()) {
             Ok(s) => s,
             Err(e) => {
                 return Err(vec![ExprErr {
                     loc,
-                    errors: vec![
-                        ExprSubErr::Opaque(format!("Failed to parse record type artifact: {}", e,)),
-                    ],
+                    errors: vec![ExprSubErr::Opaque(format!("Failed to parse record type artifact: {}", e,))],
                 }]);
             },
         };
         let mut fields: BTreeMap<ConstKey, RecordField> = BTreeMap::new();
         for (key, field_artifact) in serial.fields {
-            let (field_type, _code) =
-                deserialize_type_artifact(xx, loc, &field_artifact).into_res()?;
+            let (field_type, _code) = deserialize_type_artifact(xx, loc, &field_artifact).into_res()?;
             fields.insert(key, RecordField::Dynamic(field_type));
         }
         Ok(Rc::new(Record {

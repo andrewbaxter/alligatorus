@@ -7,8 +7,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            push::Push,
             from_v8_ref,
+            push::Push,
             to_v8,
             value::{
                 type_any::r#const::TypeAnyConst,
@@ -20,8 +20,8 @@ use {
         langhelp::{
             Aspect,
             Code,
-            Code_,
             CodeValue,
+            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -65,9 +65,7 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
                 loc,
                 code: Code_::Dyn(Rc::new(CodeDynamic {
                     loc,
-                    type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse { id: self.dynamic_key },
-                    ),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
             value: Rc::new(self.unique),
@@ -117,7 +115,6 @@ impl AspectOperatorEq for TypeUnique {
                 value: Rc::new(ValueBoolConst(b == r)),
             });
         }
-
         let base_dyn = match aspect_consume_dynamic_get(xx, loc, self).into_res() {
             Ok(c) => match c.to_dynamic(xx, loc, base).into_res() {
                 Ok(d) => d,
@@ -152,12 +149,9 @@ impl AspectOperatorEq for TypeUnique {
                 errors: Some(e),
             },
         };
-
         let unique_eq_fn_code = CodeDynamic {
             loc,
-            type_: CodeDynamicType::BindingUse(
-                CodeDynamicBindingUse { id: UNIQUE_EQ_FN_SCOPE_ID },
-            ),
+            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: UNIQUE_EQ_FN_SCOPE_ID }),
         };
         EvalRes::ok(stack.to_value(loc, CodeDynamic {
             loc,
@@ -217,16 +211,16 @@ impl Value for TypeUnique {
 }
 
 impl Push for Unique {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeUnique)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         *from_v8_ref::<Unique>(&*value)
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, self).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeUnique)
     }
 }
 

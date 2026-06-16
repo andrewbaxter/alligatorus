@@ -33,8 +33,8 @@ use {
             ConstKey,
             EResult,
             EvalRes,
-            External,
             ExprContext,
+            External,
             QExprId,
             ScopeEntryId,
             Type,
@@ -80,12 +80,7 @@ pub(crate) struct TypeAnyDynamic;
 impl Aspect for TypeAnyDynamic { }
 
 impl AspectBind for TypeAnyDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -99,33 +94,6 @@ impl AspectBindDynamic for TypeAnyDynamic {
 impl AspectConsumeDynamic for TypeAnyDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         dynamic_consume_to_dynamic(xx, loc, cv)
-    }
-}
-
-impl AspectInitialBind for TypeAnyDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeAnyDynamic),
-        })
-    }
-}
-
-impl AspectLiftDynamic for TypeAnyDynamic {
-    fn lift(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_ = rc_type_from_v8(&*value);
-        Ok(type_.as_value())
-    }
-}
-
-impl AspectStackValueDynamic for TypeAnyDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }
 
@@ -163,23 +131,13 @@ impl AspectField for TypeAnyDynamic {
         })
     }
 
-    fn field_type_opt(
-        &self,
-        _xx: &ExprContext,
-        _key: &ConstKey,
-    ) -> Option<Rc<dyn Type>> {
+    fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
         Some(Rc::new(TypeAnyDynamic))
     }
 }
 
 impl AspectFunction for TypeAnyDynamic {
-    fn call(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: CodeValue,
-        argument: CodeValue,
-    ) -> EvalRes {
+    fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
         let func_code = match self_.code.cast::<CodeDynamic>().into_res() {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "any.call: function has no runtime code".to_string()),
@@ -219,6 +177,27 @@ impl AspectFunction for TypeAnyDynamic {
     }
 }
 
+impl AspectInitialBind for TypeAnyDynamic {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeAnyDynamic),
+        })
+    }
+}
+
+impl AspectLiftDynamic for TypeAnyDynamic {
+    fn lift(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let type_ = rc_type_from_v8(&*value);
+        Ok(type_.as_value())
+    }
+}
+
 impl AspectLowerDynamic for TypeAnyDynamic {
     fn lower(
         &self,
@@ -228,6 +207,12 @@ impl AspectLowerDynamic for TypeAnyDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let type_ = rc_type_from_v8(&*value);
         Ok(type_.as_value())
+    }
+}
+
+impl AspectStackValueDynamic for TypeAnyDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }
 
@@ -287,7 +272,6 @@ impl Type for TypeAnyDynamic {
         if matches!(cv.code.code, Code_::Dyn(_)) {
             return EvalRes::ok(cv);
         }
-
         let meta_type = cv.value.type_(xx, loc);
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,

@@ -45,14 +45,12 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueStringConst(s.clone())) as
-                    Rc<dyn Value>,
+                value: Rc::new(ValueStringConst(s.clone())) as Rc<dyn Value>,
             }),
             _ => EvalRes::err(loc, "Expected string data for string type".to_string()),
         }
     }
 }
-
 pub(crate) struct DeserializerDynamic;
 
 impl ArtifactBuiltinDeserializer for DeserializerDynamic {

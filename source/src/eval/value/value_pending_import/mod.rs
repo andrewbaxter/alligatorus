@@ -3,14 +3,16 @@ use {
         eval::{
             TargetDynamic,
             util::deserialize_artifact,
-            value::type_source_data_type::artifact::ArtifactDataDefSetDataType,
-            value::type_source_interface::BuiltinInterfaceKind,
+            value::{
+                type_source_data_type::artifact::ArtifactDataDefSetDataType,
+                type_source_interface::BuiltinInterfaceKind,
+            },
         },
         langhelp::{
             ArtifactId,
             Code,
-            Code_,
             CodeValue,
+            Code_,
             CompileImportContext,
             CompileResResult,
             CompileResultEntry,
@@ -81,10 +83,7 @@ impl PendingImportState {
             CompileResResult::Err(e) => panic!("Import compilation failed: {:?}", e),
         };
         let loc = (SourceId(0), ExprId(0));
-        let cv =
-            deserialize_artifact(xx, loc, artifact)
-                .into_res()
-                .expect("Artifact deserialization failed");
+        let cv = deserialize_artifact(xx, loc, artifact).into_res().expect("Artifact deserialization failed");
         let mut all_finalizer_codes: Vec<Code> = Vec::new();
         loop {
             let finalizers = std::mem::take(&mut *xx.vx.ix.pending_finalizers.borrow_mut());
@@ -93,9 +92,7 @@ impl PendingImportState {
             }
             for f in finalizers {
                 let codes = f(xx, loc).expect("Finalizer failed");
-                all_finalizer_codes.extend(
-                    codes.into_iter().filter(|c| !matches!(c.code, Code_::None)),
-                );
+                all_finalizer_codes.extend(codes.into_iter().filter(|c| !matches!(c.code, Code_::None)));
             }
         }
         let mut all_codes = all_finalizer_codes;

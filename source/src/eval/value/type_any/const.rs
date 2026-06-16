@@ -23,8 +23,8 @@ use {
             ConstKey,
             EResult,
             EvalRes,
-            External,
             ExprContext,
+            External,
             QExprId,
             ScopeEntryId,
             Type,
@@ -66,13 +66,27 @@ pub(crate) struct TypeAnyConst;
 
 impl Aspect for TypeAnyConst { }
 
+impl AspectArtifact for TypeAnyConst {
+    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
+        EvalRes::err(loc, "TypeAnyConst::from_serial: routed via inner type's deserializer".to_string())
+    }
+
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
+        let wrapper = must_downcast_ref::<ValueAnyConst>(value.as_ref());
+        let inner_type = wrapper.inner.clone();
+        let inner_aspect = match aspect_artifact_get(xx, loc, inner_type.as_ref()).into_res() {
+            Ok(a) => a,
+            Err(e) => return EResult {
+                v: None,
+                errors: Some(e),
+            },
+        };
+        inner_aspect.to_serial(xx, loc, value)
+    }
+}
+
 impl AspectBind for TypeAnyConst {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -88,7 +102,6 @@ impl AspectConsumeDynamic for TypeAnyConst {
         if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
             return EResult::ok(js.clone());
         }
-
         let meta_type = cv.value.type_(xx, loc);
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,
@@ -104,46 +117,6 @@ impl AspectConsumeDynamic for TypeAnyConst {
             loc,
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
         })
-    }
-}
-
-impl AspectInitialBind for TypeAnyConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
-            dynamic_key: dynamic_key,
-            type_: Rc::new(TypeAnyConst),
-        })
-    }
-}
-
-impl AspectType for TypeAnyConst {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let wrapper = must_downcast_ref::<ValueAnyConst>(value);
-        wrapper.inner.clone()
-    }
-}
-
-impl AspectArtifact for TypeAnyConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::err(loc, "TypeAnyConst::from_serial: routed via inner type's deserializer".to_string())
-    }
-
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        value: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
-        let wrapper = must_downcast_ref::<ValueAnyConst>(value.as_ref());
-        let inner_type = wrapper.inner.clone();
-        let inner_aspect = match aspect_artifact_get(xx, loc, inner_type.as_ref()).into_res() {
-            Ok(a) => a,
-            Err(e) => return EResult {
-                v: None,
-                errors: Some(e),
-            },
-        };
-        inner_aspect.to_serial(xx, loc, value)
     }
 }
 
@@ -169,13 +142,7 @@ impl AspectField for TypeAnyConst {
 }
 
 impl AspectFunction for TypeAnyConst {
-    fn call(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: CodeValue,
-        argument: CodeValue,
-    ) -> EvalRes {
+    fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
         let inner = {
             let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
             wrapper.inner.clone()
@@ -188,6 +155,22 @@ impl AspectFunction for TypeAnyConst {
             },
         };
         func.call(xx, loc, self_, argument)
+    }
+}
+
+impl AspectInitialBind for TypeAnyConst {
+    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key: dynamic_key,
+            type_: Rc::new(TypeAnyConst),
+        })
+    }
+}
+
+impl AspectType for TypeAnyConst {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+        let wrapper = must_downcast_ref::<ValueAnyConst>(value);
+        wrapper.inner.clone()
     }
 }
 
@@ -239,13 +222,7 @@ impl Type for TypeAnyConst {
         EvalRes::ok(cv)
     }
 
-    fn cast_to(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-        _type_: &dyn Type,
-    ) -> EvalRes {
+    fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let meta_type = cv.value.type_(xx, loc);
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,

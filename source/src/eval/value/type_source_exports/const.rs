@@ -63,8 +63,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
                 sets.push(self.set.clone());
             }
         }
-        let exports_type: Rc<dyn Type> =
-            Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() });
+        let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc: loc,
@@ -74,12 +73,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
         })
     }
 
-    fn to_serial(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        _self_: Rc<dyn Value>,
-    ) -> EResult<Artifact> {
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, _self_: Rc<dyn Value>) -> EResult<Artifact> {
         let artifact_id = serialize_definition_set(xx, loc, &self.set);
         EResult::ok(Artifact {
             type_: artifact_id,
@@ -89,12 +83,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
 }
 
 impl AspectBind for TypeSourceExportsLiftedConst {
-    fn bind(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         EResult::ok((Code {
             loc: loc,
             code: Code_::None,
@@ -118,8 +107,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 sets.push(self.set.clone());
                             }
                         }
-                        let func_type: Rc<dyn Type> =
-                            Rc::new(TypeSourceFunctionConst { data: func_data.clone() });
+                        let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
@@ -176,11 +164,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
 
 impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(
-            ValueAnyConst {
-                inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }),
-            },
-        )
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {

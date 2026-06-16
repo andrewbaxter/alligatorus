@@ -52,12 +52,7 @@ pub(crate) struct TypeAnyScopeEntryDynamic;
 impl Aspect for TypeAnyScopeEntryDynamic { }
 
 impl AspectBind for TypeAnyScopeEntryDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }

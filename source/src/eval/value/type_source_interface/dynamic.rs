@@ -69,8 +69,8 @@ use {
         rc::Rc,
     },
     super::{
-        r#const::TypeSourceInterfaceConst,
         SourceInterfaceRef,
+        r#const::TypeSourceInterfaceConst,
     },
 };
 
@@ -78,24 +78,26 @@ pub(crate) struct TypeSourceInterfaceDynamic;
 
 impl Aspect for TypeSourceInterfaceDynamic { }
 
+impl AspectAspect for TypeSourceInterfaceDynamic {
+    fn get_iface_data(&self, value: &dyn Value) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+        let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
+        iface_ref.data.clone()
+    }
+
+    fn get_unique(&self, value: &dyn Value) -> Unique {
+        let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
+        iface_ref.data.identity.clone()
+    }
+}
+
 impl AspectBind for TypeSourceInterfaceDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeSourceInterfaceDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -129,6 +131,19 @@ impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
     }
 }
 
+impl AspectLowerDynamic for TypeSourceInterfaceDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
+        let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
+        Ok(Rc::new(ValueAnyConst { inner: iface_type }))
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -141,34 +156,6 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
                 type_: Rc::new(TypeSourceInterfaceDynamic),
             }),
         }
-    }
-}
-
-impl AspectAspect for TypeSourceInterfaceDynamic {
-    fn get_iface_data(
-        &self,
-        value: &dyn Value,
-    ) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
-        let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
-        iface_ref.data.clone()
-    }
-
-    fn get_unique(&self, value: &dyn Value) -> Unique {
-        let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
-        iface_ref.data.identity.clone()
-    }
-}
-
-impl AspectLowerDynamic for TypeSourceInterfaceDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
-        let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-        Ok(Rc::new(ValueAnyConst { inner: iface_type }))
     }
 }
 
@@ -200,9 +187,7 @@ impl Type for TypeSourceInterfaceDynamic {
             return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLiftDynamic>));
         }
         if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLowerDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectInitialBind>));
@@ -262,9 +247,7 @@ impl Type for TypeSourceInterfaceDynamic {
                     func: Box::new(CodeDynamic {
                         loc,
                         type_: CodeDynamicType::BindingUse(
-                            CodeDynamicBindingUse {
-                                id: INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
-                            },
+                            CodeDynamicBindingUse { id: INTERFACE_REF_TO_TYPE_FN_SCOPE_ID },
                         ),
                     }),
                     args: vec![source_code],

@@ -100,9 +100,7 @@ pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Op
         return Some(Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLiftDynamic>));
     }
     if *key == aspect_lower_dynamic_aspect_id() {
-        return Some(
-            Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLowerDynamic>),
-        );
+        return Some(Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLowerDynamic>));
     }
     None
 }
@@ -139,11 +137,7 @@ impl DefinitionSet {
         Ok(())
     }
 
-    pub fn new(
-        import_id: ImportStateId,
-        def_set_id: DefSetId,
-        source_id: SourceId,
-    ) -> Self {
+    pub fn new(import_id: ImportStateId, def_set_id: DefSetId, source_id: SourceId) -> Self {
         DefinitionSet {
             artifact_id: RefCell::new(None),
             import_id: import_id,
@@ -193,16 +187,8 @@ pub(crate) fn deserialize_captured_externals(
         match ext {
             ArtifactExternal::StagedExpr { local_id, expr } => {
                 let expr =
-                    expr_from_artifact(
-                        xx,
-                        expr,
-                    ).expect("Failed to deserialize captured StagedExprCell expr");
-                let cell =
-                    Rc::new(
-                        StagedExprCell {
-                            value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value>)),
-                        },
-                    );
+                    expr_from_artifact(xx, expr).expect("Failed to deserialize captured StagedExprCell expr");
+                let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value>)) });
                 (ScopeEntryId::Local(*local_id), External::StagedExprCell(cell))
             },
             ArtifactExternal::StageLift { local_id, source_type } => {
@@ -235,10 +221,7 @@ pub(crate) fn deserialize_captured_externals(
     }).collect()
 }
 
-pub(crate) fn load_def_set(
-    xx: &ExprContext,
-    def_set_artifact_id: &ArtifactId,
-) -> Result<Gc<DefinitionSet>, String> {
+pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -> Result<Gc<DefinitionSet>, String> {
     deserialize_independent_artifact(&xx.vx.ix, def_set_artifact_id, || {
         let def_set_artifact = xx.vx.ix.gx.artifacts.get(def_set_artifact_id.clone())?;
         let def_set_serial: ArtifactDataDefSet =
@@ -285,9 +268,7 @@ pub(crate) fn load_def_set(
                 impl_expr: RefCell::new(None),
                 arg_type: RefCell::new(None),
                 ret_type: RefCell::new(None),
-                scope_entry_id: Cell::new(
-                    Some(ScopeEntryId::Def(import_id, def_set_id, func_serial.entry_id)),
-                ),
+                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(import_id, def_set_id, func_serial.entry_id))),
                 artifact_id: RefCell::new(Some(func_artifact_id.clone())),
                 compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
                 captured_externals: RefCell::new(Vec::new()),
@@ -307,7 +288,6 @@ pub(crate) fn load_def_set(
             dt_serials.iter().map(|(id, s)| (id.clone(), s.interface_impls.clone())).collect();
         let finalizer: ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
             let set = set_for_finalizer.clone();
-
             for (dt_artifact_id, dt_impl_serials) in &user_iface_impls {
                 let dt_data = {
                     let cache = xx.vx.ix.deserialized_artifacts.borrow();
@@ -373,9 +353,7 @@ pub(crate) fn load_def_set(
                         arg_type: RefCell::new(Some(arg_type)),
                         impl_expr: RefCell::new(None),
                         ret_type: RefCell::new(Some(ret_type)),
-                        scope_entry_id: Cell::new(
-                            Some(ScopeEntryId::Def(import_id, def_set_id, m.entry_id)),
-                        ),
+                        scope_entry_id: Cell::new(Some(ScopeEntryId::Def(import_id, def_set_id, m.entry_id))),
                         inner_scope_entry_id: Cell::new(None),
                         field_name: m.field_name.clone(),
                         compiled_js: RefCell::new(Some(m.compiled_js.clone())),
@@ -402,16 +380,14 @@ pub(crate) fn load_def_set(
                                         .expect(
                                             "user-defined interface impl artifact missing inline iface signature",
                                         );
-                                dumpster::unsync::Gc::new(
-                                    SourceInterfaceData {
-                                        builtin_kind: None,
-                                        set: set.clone(),
-                                        description: RefCell::new(user_iface.description.clone()),
-                                        is_aspect: std::cell::Cell::new(user_iface.is_aspect),
-                                        methods: RefCell::new(vec![]),
-                                        identity: user_iface.identity.clone(),
-                                    },
-                                )
+                                dumpster::unsync::Gc::new(SourceInterfaceData {
+                                    builtin_kind: None,
+                                    set: set.clone(),
+                                    description: RefCell::new(user_iface.description.clone()),
+                                    is_aspect: std::cell::Cell::new(user_iface.is_aspect),
+                                    methods: RefCell::new(vec![]),
+                                    identity: user_iface.identity.clone(),
+                                })
                             },
                         };
                         let method_impls = impl_serial.method_impls.iter().map(|m| {
@@ -423,9 +399,7 @@ pub(crate) fn load_def_set(
                             let captured_externals = deserialize_captured_externals(xx, loc, &m.captured_externals);
                             SourceDataTypeInterfaceMethodImplData {
                                 interface_method_index: m.interface_method_index,
-                                impl_expr: RefCell::new(
-                                    Some(Rc::new(impl_expr) as Rc<dyn Value>),
-                                ),
+                                impl_expr: RefCell::new(Some(Rc::new(impl_expr) as Rc<dyn Value>)),
                                 impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
                                 compiled_js: RefCell::new(Some(m.compiled_js.clone())),
                                 captured_externals: RefCell::new(captured_externals),
@@ -489,10 +463,7 @@ pub(crate) fn serialize_captured_externals(
                 let value = cell.value.borrow().clone().expect("captured StagedExprCell already consumed");
                 let expr_ref = must_downcast_ref::<Expr>(value.as_ref());
                 let expr =
-                    expr_to_artifact(
-                        xx,
-                        expr_ref,
-                    ).expect("Failed to serialize captured StagedExprCell value");
+                    expr_to_artifact(xx, expr_ref).expect("Failed to serialize captured StagedExprCell value");
                 ArtifactExternal::StagedExpr {
                     local_id,
                     expr,
@@ -500,19 +471,11 @@ pub(crate) fn serialize_captured_externals(
             },
             External::StageLiftCell(cell) => ArtifactExternal::StageLift {
                 local_id,
-                source_type: serialize_type_ref(
-                    xx,
-                    loc,
-                    cell.source_type.as_ref(),
-                ),
+                source_type: serialize_type_ref(xx, loc, cell.source_type.as_ref()),
             },
             External::Type(type_) => ArtifactExternal::Type {
                 local_id,
-                type_artifact: serialize_type_ref(
-                    xx,
-                    loc,
-                    type_.as_ref(),
-                ),
+                type_artifact: serialize_type_ref(xx, loc, type_.as_ref()),
             },
             External::Unique(u) => ArtifactExternal::Unique {
                 local_id,
@@ -525,11 +488,7 @@ pub(crate) fn serialize_captured_externals(
     }).collect()
 }
 
-pub(crate) fn serialize_definition_set(
-    xx: &ExprContext,
-    loc: QExprId,
-    set: &Gc<DefinitionSet>,
-) -> ArtifactId {
+pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> ArtifactId {
     produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
         let def_set_artifact_id = set.artifact_id.borrow().clone().unwrap();
         let data_types = set.data_types.borrow();
@@ -540,7 +499,6 @@ pub(crate) fn serialize_definition_set(
                     let compiled_js = m.compiled_js.borrow();
                     let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
                     let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-
                     let arg_type: Rc<dyn Type> = m.arg_type.borrow().clone().unwrap_or_else(|| {
                         Rc::new(TypeNullDynamic)
                     });
@@ -578,16 +536,11 @@ pub(crate) fn serialize_definition_set(
                                             other,
                                         ),
                                     };
-
                                 if m.impl_expr_artifact.borrow().is_none() {
                                     let impl_expr_value = m.impl_expr.borrow().clone();
                                     if let Some(impl_expr_value) = impl_expr_value {
-                                        let impl_expr_ast =
-                                            must_downcast_ref::<Expr>(
-                                                impl_expr_value.as_ref(),
-                                            );
-                                        if let Ok(serialized) =
-                                            expr_to_artifact(xx, impl_expr_ast) {
+                                        let impl_expr_ast = must_downcast_ref::<Expr>(impl_expr_value.as_ref());
+                                        if let Ok(serialized) = expr_to_artifact(xx, impl_expr_ast) {
                                             *m.impl_expr_artifact.borrow_mut() = Some(serialized);
                                         }
                                     }
@@ -718,11 +671,9 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
             v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lift")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
-        let ds: Gc<DefinitionSet> =
-            from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
+        let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
         ds.finish()?;
-        let exports_type: Rc<dyn Type> =
-            Rc::new(TypeSourceExportsLiftedConst { set: ds });
+        let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
     }
 }
@@ -734,13 +685,12 @@ impl AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lower")?;
+        let obj =
+            v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lower")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
-        let ds: Gc<DefinitionSet> =
-            from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        let exports_type: Rc<dyn Type> =
-            Rc::new(TypeSourceExportsLiftedConst { set: ds });
+        let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
+        let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
     }
 }

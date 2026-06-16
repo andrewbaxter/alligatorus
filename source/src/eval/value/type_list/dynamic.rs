@@ -18,7 +18,10 @@ use {
             to_v8,
             typecheck_convert,
             value::{
-                type_any::r#const::TypeAnyConst,
+                type_any::r#const::{
+                    TypeAnyConst,
+                    ValueAnyConst,
+                },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_list::artifact::{
                     ArtifactListType,
@@ -26,14 +29,13 @@ use {
                 },
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_string::dynamic::TypeStringDynamic,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
+                type_string::dynamic::TypeStringDynamic,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
                     ValueDynamicSource,
                 },
-                type_any::r#const::ValueAnyConst,
             },
         },
         langhelp::{
@@ -100,12 +102,7 @@ impl AspectBind for TypeListDynamic {
 }
 
 impl AspectBindDynamic for TypeListDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -137,7 +134,6 @@ impl AspectField for TypeListDynamic {
                 value: Rc::new(ValueAnyConst { inner: new_type }),
             });
         }
-
         return er_seq_cv!(loc, erb, {
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
@@ -262,6 +258,10 @@ impl AspectStackValueDynamic for TypeListDynamic {
 }
 
 impl Push for TypeListDynamic {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeAnyConst)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeListDynamic> = from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
         (*rc).clone()
@@ -269,10 +269,6 @@ impl Push for TypeListDynamic {
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, Rc::new(self)).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
     }
 }
 

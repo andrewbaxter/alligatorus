@@ -116,19 +116,6 @@ pub(crate) fn dynamic_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: Co
     }
 }
 
-pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
-    CodeValue {
-        code: Code {
-            loc,
-            code: Code_::Dyn(Rc::new(value)),
-        },
-        value: Rc::new(ValueDynamic {
-            source: ValueDynamicSource::Expr,
-            type_,
-        }),
-    }
-}
-
 pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let target_type = {
@@ -148,7 +135,6 @@ pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, valu
                 let Some(self_code) = self_code else {
                     return erb.err_new(format!("TODO assertion set left hand doesn't evaluate to js code (empty)"));
                 };
-
                 let base_code = match &self_code.type_ {
                     CodeDynamicType::FieldUse(fu) => *fu.base.clone(),
                     _ => self_code.clone(),
@@ -190,6 +176,19 @@ pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, valu
             },
         }
     });
+}
+
+pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
+    CodeValue {
+        code: Code {
+            loc,
+            code: Code_::Dyn(Rc::new(value)),
+        },
+        value: Rc::new(ValueDynamic {
+            source: ValueDynamicSource::Expr,
+            type_,
+        }),
+    }
 }
 
 pub(crate) fn throw_error(scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>, msg: &str) {

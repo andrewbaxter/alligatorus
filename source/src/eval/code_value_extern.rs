@@ -15,8 +15,8 @@ use {
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            push::Push,
             from_v8_ref,
+            push::Push,
             to_v8,
             value::{
                 type_any::r#const::TypeAnyConst,
@@ -85,6 +85,10 @@ impl CodeValueExtern {
 }
 
 impl Push for CodeValueExtern {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeCodeValueExternDynamic)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<RefCell<Option<CodeValue>>> =
             from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone();
@@ -93,10 +97,6 @@ impl Push for CodeValueExtern {
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, self.0).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeCodeValueExternDynamic)
     }
 }
 pub(crate) struct DeserializerCodeValueExtern;
@@ -122,16 +122,16 @@ impl ArtifactBuiltinDeserializer for DeserializerCodeValueExtern {
 pub(crate) struct ExprContextPush(pub Rc<ExprContext>);
 
 impl Push for ExprContextPush {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeExprContextPushDynamic)
+    }
+
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         ExprContextPush(from_v8_ref::<Rc<ExprContext>>(&*value).clone())
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, self.0).into()
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeExprContextPushDynamic)
     }
 }
 
@@ -169,7 +169,6 @@ impl AspectField for TypeCodeValueExternDynamic {
             let key_type = key.value.type_(xx, loc);
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
-
             if key_str == "code" {
                 let call_code = CodeDynamic {
                     loc,
@@ -306,9 +305,7 @@ impl Type for TypeCodeValueExternDynamic {
             type_: CodeDynamicType::Call(CodeDynamicCall {
                 func: Box::new(CodeDynamic {
                     loc,
-                    type_: CodeDynamicType::BindingUse(
-                        CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID },
-                    ),
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID }),
                 }),
                 args: vec![self_code],
             }),
@@ -425,6 +422,10 @@ impl Value for TypeExprContextPushDynamic {
 }
 
 impl Push for CodeValue {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeCodeValueExternDynamic)
+    }
+
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cve = <CodeValueExtern as Push>::from_v8(scope, value);
         cve.into_inner()
@@ -432,9 +433,5 @@ impl Push for CodeValue {
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         CodeValueExtern::wrap(self).into_v8(scope)
-    }
-
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeCodeValueExternDynamic)
     }
 }

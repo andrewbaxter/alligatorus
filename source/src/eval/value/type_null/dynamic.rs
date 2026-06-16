@@ -89,23 +89,13 @@ impl AspectArtifact for TypeNullDynamic {
 }
 
 impl AspectBind for TypeNullDynamic {
-    fn bind(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
 impl AspectBindDynamic for TypeNullDynamic {
-    fn bind_dynamic(
-        &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> EResult<Option<TargetBindSub>> {
+    fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
@@ -142,6 +132,17 @@ impl AspectLiftDynamic for TypeNullDynamic {
     }
 }
 
+impl AspectLowerDynamic for TypeNullDynamic {
+    fn lower(
+        &self,
+        _xx: &ExprContext,
+        _scope: &v8::PinScope,
+        _value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        Ok(Rc::new(ValueNullConst))
+    }
+}
+
 impl AspectNull for TypeNullDynamic { }
 
 impl AspectStackValueDynamic for TypeNullDynamic {
@@ -156,17 +157,6 @@ impl AspectStackValueDynamic for TypeNullDynamic {
                 type_: Rc::new(TypeNullDynamic),
             }),
         }
-    }
-}
-
-impl AspectLowerDynamic for TypeNullDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        _value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        Ok(Rc::new(ValueNullConst))
     }
 }
 
@@ -220,8 +210,7 @@ impl Type for TypeNullDynamic {
     }
 
     fn can_cast_to(&self, xx: &ExprContext, _loc: QExprId, type_: &dyn Type) -> bool {
-        aspect_null_get_maybe(xx, type_).is_some() ||
-            type_.aspect(xx, &type_type_identity()).is_some()
+        aspect_null_get_maybe(xx, type_).is_some() || type_.aspect(xx, &type_type_identity()).is_some()
     }
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
