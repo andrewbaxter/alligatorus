@@ -42,8 +42,7 @@ pub fn build(
             let method_upper = m.name.trim_end_matches('_').to_uppercase().replace('-', "_");
             let const_name = format_ident!("IM_{}_{}_FIELD", iface_upper, method_upper);
             iface_field_consts.push(quote!{
-                #[allow(dead_code)]
-                pub(crate) const #const_name: &str = #field_name;
+                #[allow(dead_code)] pub(crate) const #const_name: & str = #field_name;
             });
         }
         let methods_expr_items: Vec<TokenStream> = iface.methods.iter().enumerate().map(|(idx, m)| {
@@ -91,8 +90,7 @@ pub fn build(
                 iface.name
             });
             iface_identity_fns.push(quote!{
-                #[allow(dead_code)]
-                pub(crate) fn #fn_name() -> crate:: langhelp:: Unique {
+                #[allow(dead_code)] pub(crate) fn #fn_name() -> crate:: langhelp:: Unique {
                     crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
                 }
             });
@@ -219,7 +217,6 @@ pub fn build(
                 *
             }
         }
-        #(#iface_identity_fns) *
-        #(#iface_field_consts) *
+        #(#iface_identity_fns) * #(#iface_field_consts) *
     });
 }

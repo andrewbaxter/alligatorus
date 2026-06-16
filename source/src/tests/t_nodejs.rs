@@ -91,7 +91,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             mb.field(mb.scope_use("acn_to_code"), mb.str("impl")),
             mb.tuple(
                 vec![
-                    mb.field(mb.scope_use("nvalue"), mb.str("type")),
+                    mb.field(mb.scope_use("nvalue"), mb.str("type_ref")),
                     mb.field(mb.scope_use("code"), mb.str("type")),
                 ],
             ),
@@ -164,7 +164,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                                     mb.str("value"),
                                                                 ),
                                                                 mb.lower(
-                                                                    mb.field(mb.scope_use("nvalue"), mb.str("type")),
+                                                                    mb.field(
+                                                                        mb.scope_use("nvalue"),
+                                                                        mb.str("type_ref"),
+                                                                    ),
                                                                 ),
                                                             ],
                                                         ),
@@ -219,7 +222,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                                         mb.lower(
                                                                             mb.field(
                                                                                 mb.scope_use("nvalue"),
-                                                                                mb.str("type"),
+                                                                                mb.str("type_ref"),
                                                                             ),
                                                                         ),
                                                                     ],
@@ -321,7 +324,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                                     mb.str("value"),
                                                                 ),
                                                                 mb.lower(
-                                                                    mb.field(mb.scope_use("nvalue"), mb.str("type")),
+                                                                    mb.field(
+                                                                        mb.scope_use("nvalue"),
+                                                                        mb.str("type_ref"),
+                                                                    ),
                                                                 ),
                                                             ],
                                                         ),

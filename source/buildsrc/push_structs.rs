@@ -1,7 +1,7 @@
 use {
     crate::buildsrc::util::{
-        PushMethod,
         InterfaceSpec,
+        PushMethod,
         arg_dynamic_type_expr_str,
         snake_case,
     },
@@ -12,58 +12,6 @@ use {
     },
     std::collections::HashSet,
 };
-
-fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
-    let iface_field = format_ident!("{}", iface_field);
-    quote!{
-        let record_entries = record;
-        let import_id = self_.data_type_ref.data.set.import_id;
-        let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_id);
-        let iface_data = builtin_ifaces.#iface_field.clone();
-        let iface_method_names: Vec<(usize, String)> = {
-            let methods = iface_data.methods.borrow();
-            methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
-        };
-        let mut method_impls = Vec::new();
-        let dt_data = &self_.data_type_ref.data;
-        for (imethod_idx, imethod_name) in &iface_method_names {
-            let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
-            match record_entries.get(&const_key) {
-                Some(expr) => {
-                    let entry_id = dt_data.set.next_entry_id.next();
-                    method_impls.push(SourceDataTypeInterfaceMethodImplData {
-                        interface_method_index: *imethod_idx,
-                        impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                        impl_expr_artifact: RefCell::new(None),
-                        compiled_js: RefCell::new(None),
-                        captured_externals: RefCell::new(Vec::new()),
-                        scope_entry_id: Cell::new(
-                            Some(
-                                crate::langhelp::ScopeEntryId::Def(
-                                    dt_data.set.import_id,
-                                    dt_data.set.def_set_id,
-                                    entry_id
-                                )
-                            ),
-                        ),
-                        inner_scope_entry_id: Cell::new(None),
-                    });
-                },
-                None => {
-                    throw_error(
-                        scope,
-                        &format!("Missing implementation for builtin interface method '{}'", imethod_name)
-                    );
-                    return;
-                },
-            }
-        }
-        dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
-            interface: iface_data,
-            method_impls,
-        });
-    }
-}
 
 pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, trait_specs: Vec<InterfaceSpec>) {
     struct PushField {
@@ -76,12 +24,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
         builtin_unique_id: usize,
         data_fields: Vec<(&'static str, &'static str)>,
         extra_aspect_fn: Option<&'static str>,
+        extra_dispatch_arms: Vec<TokenStream>,
+        extra_field_type_opt_arms: Vec<TokenStream>,
+        extra_method_setters: Vec<TokenStream>,
         fields: Vec<PushField>,
         methods: Vec<PushMethod>,
         name: &'static str,
-        extra_dispatch_arms: Vec<TokenStream>,
-        extra_method_setters: Vec<TokenStream>,
-        extra_field_type_opt_arms: Vec<TokenStream>,
     }
 
     let record_arg_type = "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>";
@@ -357,7 +305,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 },
                 PushMethod {
                     name: "impl_",
-                    args: vec![("arg", "AnyType"), ("ret", "AnyType"), ("impl_body", "StagedExpr"),],
+                    args: vec![("arg", "AnyType"), ("ret", "AnyType"), ("impl_body", "StagedExpr")],
                     ret: "()",
                     body: quote!{
                         {
@@ -404,7 +352,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 //. .
                 PushMethod {
                     name: "impl_",
-                    args: vec![("arg", "AnyType"), ("ret", "AnyType"), ("impl_body", "StagedExpr"),],
+                    args: vec![("arg", "AnyType"), ("ret", "AnyType"), ("impl_body", "StagedExpr")],
                     ret: "()",
                     body: quote!{
                         {
@@ -622,7 +570,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 PushMethod {
                     name: "aspect",
                     args: vec![
-                        ("record", "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>")
+                        ("record", "std::collections::BTreeMap<crate::langhelp::ConstKey, crate::eval::expr::Expr>"),
                     ],
                     ret: "Rc<SourceInterfaceRef>",
                     body: quote!{
@@ -796,7 +744,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             fields: vec![],
             methods: vec![PushMethod {
                 name: "impl_",
-                args: vec![("arg", "AnyType"), ("ret", "AnyType"),],
+                args: vec![("arg", "AnyType"), ("ret", "AnyType")],
                 ret: "()",
                 body: quote!{
                     {
@@ -818,7 +766,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         *ret_type = Some(ret.0);
                     }
                 },
-            },],
+            }],
             extra_dispatch_arms: vec![],
             extra_method_setters: vec![],
             extra_field_type_opt_arms: vec![],
@@ -1204,6 +1152,58 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     #(#field_setters) * #(#method_setters) * #(#extra_method_setters) * _jw_obj.into()
                 }
             }
+        });
+    }
+}
+
+fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
+    let iface_field = format_ident!("{}", iface_field);
+    quote!{
+        let record_entries = record;
+        let import_id = self_.data_type_ref.data.set.import_id;
+        let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_id);
+        let iface_data = builtin_ifaces.#iface_field.clone();
+        let iface_method_names: Vec<(usize, String)> = {
+            let methods = iface_data.methods.borrow();
+            methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
+        };
+        let mut method_impls = Vec::new();
+        let dt_data = &self_.data_type_ref.data;
+        for (imethod_idx, imethod_name) in &iface_method_names {
+            let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
+            match record_entries.get(&const_key) {
+                Some(expr) => {
+                    let entry_id = dt_data.set.next_entry_id.next();
+                    method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                        interface_method_index: *imethod_idx,
+                        impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
+                        impl_expr_artifact: RefCell::new(None),
+                        compiled_js: RefCell::new(None),
+                        captured_externals: RefCell::new(Vec::new()),
+                        scope_entry_id: Cell::new(
+                            Some(
+                                crate::langhelp::ScopeEntryId::Def(
+                                    dt_data.set.import_id,
+                                    dt_data.set.def_set_id,
+                                    entry_id
+                                )
+                            ),
+                        ),
+                        inner_scope_entry_id: Cell::new(None),
+                    });
+                },
+                None => {
+                    throw_error(
+                        scope,
+                        &format!("Missing implementation for builtin interface method '{}'", imethod_name)
+                    );
+                    return;
+                },
+            }
+        }
+        dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
+            interface: iface_data,
+            method_impls,
         });
     }
 }

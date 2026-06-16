@@ -30,13 +30,6 @@ pub fn arg_dynamic_type_expr_str(args: &[(&'static str, &'static str)]) -> Token
     arg_dynamic_type_expr(&dynamic_types)
 }
 
-pub struct PushMethod {
-    pub args: Vec<(&'static str, &'static str)>,
-    pub body: TokenStream,
-    pub name: &'static str,
-    pub ret: &'static str,
-}
-
 pub struct InterfaceSpec {
     pub builtin_unique_id: usize,
     pub description: Option<&'static str>,
@@ -63,6 +56,13 @@ pub enum MethodArgs {
 pub struct MethodSig {
     pub context: Vec<(&'static str, TokenStream)>,
     pub data: Vec<(&'static str, TypeRef)>,
+}
+
+pub struct PushMethod {
+    pub args: Vec<(&'static str, &'static str)>,
+    pub body: TokenStream,
+    pub name: &'static str,
+    pub ret: &'static str,
 }
 
 pub fn snake_case(s: &str) -> String {

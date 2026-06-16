@@ -245,8 +245,9 @@ pub fn build(out: &mut TokenStream) {
                 };
                 let build_artifact = if s.build_artifact {
                     quote!{
-                        #[allow(dead_code)]
-                        pub(crate) fn build_artifact(data: #data_type) -> crate:: langhelp:: Artifact {
+                        #[
+                            allow(dead_code)
+                        ] pub(crate) fn build_artifact(data: #data_type) -> crate:: langhelp:: Artifact {
                             crate::langhelp::Artifact {
                                 type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
                                 data: serde_json::to_value(data).unwrap(),

@@ -7,11 +7,7 @@ use {
     std::collections::HashSet,
 };
 
-pub fn build(
-    out: &mut TokenStream,
-    builtin_unique_ids: &mut HashSet<usize>,
-    scope_ids: &mut HashSet<usize>,
-) {
+pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, scope_ids: &mut HashSet<usize>) {
     let mut local_fns: Vec<TokenStream> = Vec::new();
     for (name, builtin_unique_id) in [
         //. .
@@ -68,12 +64,12 @@ pub fn build(
         assert!(scope_ids.insert(scope_id));
         let name_ident = format_ident!("{}", name);
         local_consts.push(quote!{
-            pub(crate) const #name_ident: crate:: langhelp:: ScopeEntryId =
-                crate:: langhelp:: ScopeEntryId:: Builtin(#scope_id);
+            pub(
+                crate
+            ) const #name_ident: crate:: langhelp:: ScopeEntryId = crate:: langhelp:: ScopeEntryId:: Builtin(#scope_id);
         });
     }
     out.extend(quote!{
-        #(#local_fns) *
-        #(#local_consts) *
+        #(#local_fns) * #(#local_consts) *
     });
 }

@@ -154,10 +154,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
         PushFnSpec {
             name: "map",
             builtin_scope_id: 5011,
-            args: vec![
-                ("key_type", "crate::eval::push::AnyType"),
-                ("value_type", "crate::eval::push::AnyType"),
-            ],
+            args: vec![("key_type", "crate::eval::push::AnyType"), ("value_type", "crate::eval::push::AnyType")],
             ret: "crate::eval::value::type_map::dynamic::TypeMapDynamic",
             body: quote!{
                 crate::eval::value::type_map::dynamic::TypeMapDynamic {
@@ -185,10 +182,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             let n = format_ident!("{}", n);
             let ty: TokenStream = ty.parse().unwrap();
             quote!{
-                let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_v8(
-                    scope,
-                    _jw_args.get(_jw_arg_i),
-                );
+                let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_v8(scope, _jw_args.get(_jw_arg_i),);
                 _jw_arg_i += 1;
             }
         }).collect();

@@ -113,9 +113,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 //. .
                 Method {
                     name: "bind",
-                    ret_type: TypeRef::via_push(
-                        quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId)),
-                    ),
+                    ret_type: TypeRef::via_push(quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId))),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
@@ -153,9 +151,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "seq",
-                    ret_type: TypeRef::via_push(
-                        quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >),
-                    ),
+                    ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![("loc", quote!(crate::langhelp::QExprId))],
                         data: vec![("entries", TypeRef::opaque(quote!(Vec < crate:: langhelp:: Code >)))],
@@ -163,9 +159,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "code_to_bind_sub",
-                    ret_type: TypeRef::via_push(
-                        quote!(crate:: langhelp:: EResult < crate:: eval:: TargetBindSub >),
-                    ),
+                    ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: eval:: TargetBindSub >)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![("loc", quote!(crate::langhelp::QExprId))],
                         data: vec![
@@ -176,9 +170,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "if_",
-                    ret_type: TypeRef::via_push(
-                        quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
-                    ),
+                    ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
@@ -197,9 +189,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "match_",
-                    ret_type: TypeRef::via_push(
-                        quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
-                    ),
+                    ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
@@ -239,9 +229,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "stage",
-                    ret_type: TypeRef::via_push(
-                        quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
-                    ),
+                    ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),
