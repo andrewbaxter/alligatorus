@@ -14,10 +14,10 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            dynamic_wrap::{
+            pull::{
                 AnyType,
-                DynamicWrap,
-                dynamic_wrap_method_name,
+                Pull,
+                pull_method_name,
             },
             value::{
                 tuple::Tuple,

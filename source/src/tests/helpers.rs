@@ -17,7 +17,7 @@ use {
             SourceExprAs,
             SourceExprBind,
             SourceExprBindingUse,
-            SourceExprBlock,
+            SourceExprSeq,
             SourceExprCall,
             SourceExprField,
             SourceExprForeach,
@@ -76,10 +76,10 @@ impl ModuleBuilder {
         };
     }
 
-    pub fn block(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
+    pub fn seq(&self, exprs: Vec<SourceExpr>) -> SourceExpr {
         return SourceExpr {
             id: self.id(),
-            r#type: SourceExpr_::Block(SourceExprBlock { exprs: exprs }),
+            r#type: SourceExpr_::Seq(SourceExprSeq { exprs: exprs }),
         };
     }
 

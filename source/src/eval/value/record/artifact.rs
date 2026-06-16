@@ -54,7 +54,7 @@ impl Deserializer {
         for (key, field_artifact) in serial.fields {
             let (field_type, _code) =
                 crate::eval::util::deserialize_type_artifact(xx, loc, &field_artifact).into_res()?;
-            fields.insert(key, crate::eval::value::record::RecordField::Mortar(field_type));
+            fields.insert(key, crate::eval::value::record::RecordField::Dynamic(field_type));
         }
         Ok(Rc::new(crate::eval::value::record::Record {
             base: None,

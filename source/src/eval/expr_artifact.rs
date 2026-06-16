@@ -8,7 +8,7 @@ use {
             Expr,
             ExprAs,
             ExprBind,
-            ExprBlock,
+            ExprSeq,
             ExprCall,
             ExprConditionBranch,
             ExprField,
@@ -70,7 +70,7 @@ pub(crate) enum ArtifactExpr_ {
         base: ArtifactExpr,
         value: ArtifactExpr,
     },
-    Block {
+    Seq {
         exprs: Vec<ArtifactExpr>,
     },
     Call {
@@ -160,8 +160,8 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
             base: Rc::new(expr_from_artifact(xx, base)?),
             value: Rc::new(expr_from_artifact(xx, value)?),
         }),
-        ArtifactExpr_::Block { exprs } => Expr_::Block(
-            ExprBlock { exprs: exprs.iter().map(|e| expr_from_artifact(xx, e)).collect::<Result<_, _>>()? },
+        ArtifactExpr_::Seq { exprs } => Expr_::Seq(
+            ExprSeq { exprs: exprs.iter().map(|e| expr_from_artifact(xx, e)).collect::<Result<_, _>>()? },
         ),
         ArtifactExpr_::Call { arg, func } => Expr_::Call(ExprCall {
             arg: Rc::new(expr_from_artifact(xx, arg)?),
@@ -248,7 +248,7 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             base: expr_to_artifact(xx, &e.base)?,
             value: expr_to_artifact(xx, &e.value)?,
         },
-        Expr_::Block(e) => ArtifactExpr_::Block {
+        Expr_::Seq(e) => ArtifactExpr_::Seq {
             exprs: e.exprs.iter().map(|s| expr_to_artifact(xx, s)).collect::<Result<_, _>>()?,
         },
         Expr_::Call(e) => ArtifactExpr_::Call {

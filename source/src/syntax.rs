@@ -36,7 +36,7 @@ pub struct SourceExpr {
 pub enum SourceExpr_ {
     As(SourceExprAs),
     Bind(SourceExprBind),
-    Block(SourceExprBlock),
+    Seq(SourceExprSeq),
     Call(SourceExprCall),
     Field(SourceExprField),
     Foreach(SourceExprForeach),
@@ -83,7 +83,7 @@ pub struct SourceExprBindingUse {
 /// empty, evaluates to null.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct SourceExprBlock {
+pub struct SourceExprSeq {
     pub exprs: Vec<SourceExpr>,
 }
 

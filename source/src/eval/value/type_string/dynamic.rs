@@ -15,9 +15,9 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
-                mortar_set,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
+                dynamic_set,
             },
             value::{
                 type_function::dynamic::TypeFunctionDynamic,
@@ -83,7 +83,7 @@ impl Aspect for TypeStringDynamic { }
 impl AspectArtifact for TypeStringDynamic {
     fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let Some(s) = data.as_str() else {
-            return EvalRes::err(loc, format!("Expected string data for mortar string, got {:?}", data));
+            return EvalRes::err(loc, format!("Expected string data for dynamic string, got {:?}", data));
         };
         EvalRes::ok(CodeValue {
             code: Code {
@@ -123,7 +123,7 @@ impl AspectBindDynamic for TypeStringDynamic {
 
 impl AspectConsumeDynamic for TypeStringDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -136,7 +136,7 @@ impl AspectField for TypeStringDynamic {
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
                 Some(t) => t,
-                None => return erb.err_new(format!("Field '{}' not found on mortar string", key_name)),
+                None => return erb.err_new(format!("Field '{}' not found on dynamic string", key_name)),
             };
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
@@ -199,13 +199,13 @@ impl AspectLiftDynamic for TypeStringDynamic {
 
 impl AspectSet for TypeStringDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        mortar_set(xx, loc, self_, value)
+        dynamic_set(xx, loc, self_, value)
     }
 }
 
 impl AspectStackValueDynamic for TypeStringDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeStringDynamic))
     }
 }
 
@@ -340,7 +340,7 @@ impl Type for TypeStringDynamic {
     }
 
     fn desc(&self) -> String {
-        return format!("mortar string");
+        return format!("dynamic string");
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {

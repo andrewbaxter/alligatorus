@@ -23,7 +23,7 @@ fn test_0000_foreach_list() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "my_list",
@@ -38,7 +38,7 @@ fn test_0000_foreach_list() {
                                 mb.foreach(
                                     mb.scope_use("my_list"),
                                     mb.str("e"),
-                                    mb.block(
+                                    mb.seq(
                                         vec![
                                             mb.call(
                                                 mb.scope_use("log"),

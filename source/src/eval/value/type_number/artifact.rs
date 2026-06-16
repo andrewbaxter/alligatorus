@@ -65,7 +65,7 @@ impl ArtifactBuiltinDeserializer for DeserializerDynamic {
 
     fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let Some(n) = data.as_f64() else {
-            return EvalRes::err(loc, format!("Expected number data for mortar number, got {:?}", data));
+            return EvalRes::err(loc, format!("Expected number data for dynamic number, got {:?}", data));
         };
         EvalRes::ok(CodeValue {
             code: Code {

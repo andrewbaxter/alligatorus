@@ -244,7 +244,7 @@ impl Value for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionConstructorRef> {
+impl crate::eval::pull::Pull for Rc<SourceTaggedUnionConstructorRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let type_: &Rc<dyn Type> = crate::eval::from_v8_ref(&*value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
@@ -262,7 +262,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionConstructorR
         crate::eval::to_v8(scope, type_).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
 }

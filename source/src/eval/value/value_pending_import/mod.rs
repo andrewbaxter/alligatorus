@@ -112,7 +112,7 @@ impl PendingImportState {
             }
         } else {
             let combined_code =
-                xx.target.block(loc, all_codes).into_res().expect("Failed to combine finalizer codes");
+                xx.target.seq(loc, all_codes).into_res().expect("Failed to combine finalizer codes");
             CodeValue {
                 code: combined_code,
                 value: cv.value,

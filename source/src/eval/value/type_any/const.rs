@@ -69,7 +69,7 @@ impl AspectBindDynamic for TypeAnyConst {
 
 impl AspectConsumeDynamic for TypeAnyConst {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: crate::langhelp::CodeValue) -> EResult<CodeDynamic> {
-        // If code already has JS (e.g. from Record/Tuple cast_to mortar case or
+        // If code already has JS (e.g. from Record/Tuple cast_to dynamic case or
         // cast_from), pass through.
         if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
             return EResult::ok(js.clone());

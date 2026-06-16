@@ -1,15 +1,15 @@
 //! v8-side wrappers around `Rc<dyn Type>` and `Option<...>`. These give the user's
 //! compiled-to-JS impl body a JS object to call `.aspect(unique)` on (returns
-//! `OptionV8`), and `.is_some()` on `OptionV8`. Built via `dynamic_wrap!` so the
+//! `OptionPull`), and `.is_some()` on `OptionPull`. Built via `push!` so the
 //! structs are both Rust state holders and have v8 method dispatch.
 //!
-//! The `TypeTypeRefV8Dynamic` and `TypeOptionV8Dynamic` types — produced by the
+//! The `TypeTypeRefPullDynamic` and `TypeOptionPullDynamic` types — produced by the
 //! macro alongside the structs — are what's referenced from
 //! `build_cast_arg_record_type` and `TypeTypeRef`'s compile-path field return, so
 //! the compiled method bodies type-check and emit JS that addresses the
 //! dynamic_wrap-generated `_0` method names.
 //!
-//! The `OptionV8` and `TypeRefV8` structs themselves are constructed only at
+//! The `OptionPull` and `TypeRefPull` structs themselves are constructed only at
 //! runtime, when the v8 dispatch path (currently scaffolded but not yet wired up
 //! at `as`-time) builds JS objects for `arg.source_type` and the result of
 //! `.aspect`.
@@ -31,9 +31,9 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            dynamic_wrap::{
-                DynamicWrap,
-                dynamic_wrap_method_name,
+            pull::{
+                Pull,
+                pull_method_name,
             },
             value::{
                 tuple::Tuple,
@@ -85,4 +85,4 @@ use {
 // Per-struct gen files from `build.rs::dyn_wrap_structs()`. The `include!` pulls
 // them into this file's identifier scope so the bodies' references (`Rc`,
 // `ExprContext`, etc.) resolve via the imports above. As more
-// `dynamic_wrap!(struct …)` invocations migrate, add their `include!` here.
+// `push!(struct …)` invocations migrate, add their `include!` here.

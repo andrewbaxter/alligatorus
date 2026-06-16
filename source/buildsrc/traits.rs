@@ -25,6 +25,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
             field_prefix: "v",
             kind: "Value",
             description: None,
+            register_in_scope: false,
             rust_trait_name: None,
             methods: vec![
                 //. .
@@ -42,6 +43,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
             field_prefix: "t",
             kind: "Type",
             description: None,
+            register_in_scope: false,
             rust_trait_name: None,
             methods: vec![
                 //. .
@@ -63,12 +65,12 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 Method {
                     name: "aspect",
                     ret_type: {
-                        let inner_mortar = &aspect().mortar;
+                        let inner_dynamic_type = &aspect().dynamic_type;
                         TypeRef {
                             path: quote!(crate::eval::value::type_option::dynamic::TypeOptionDynamic),
-                            mortar: quote!{
+                            dynamic_type: quote!{
                                 std:: rc:: Rc:: new(crate:: eval:: value:: type_option:: dynamic:: TypeOptionDynamic {
-                                    element_type: #inner_mortar,
+                                    element_type: #inner_dynamic_type,
                                 }) as std:: rc:: Rc < dyn crate:: langhelp:: Type >
                             },
                         }
@@ -84,16 +86,17 @@ pub fn specs() -> Vec<InterfaceSpec> {
             field_prefix: "se",
             kind: "ScopeEntry",
             description: None,
+            register_in_scope: true,
             rust_trait_name: Some("ScopeEntry"),
             methods: vec![Method {
                 name: "use_",
-                ret_type: TypeRef::via_dynamic_wrap(quote!(crate::langhelp::CodeValue)),
+                ret_type: TypeRef::via_push(quote!(crate::langhelp::CodeValue)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
                         ("xx", quote!(&crate::langhelp::ExprContext)),
                         ("loc", quote!(crate::langhelp::QExprId)),
                     ],
-                    data: vec![("code", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code)))],
+                    data: vec![("code", TypeRef::via_push(quote!(crate::langhelp::Code)))],
                 }),
             }],
         },
@@ -104,12 +107,13 @@ pub fn specs() -> Vec<InterfaceSpec> {
             field_prefix: "tg",
             kind: "Target",
             description: None,
+            register_in_scope: true,
             rust_trait_name: Some("Target"),
             methods: vec![
                 //. .
                 Method {
                     name: "bind",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    ret_type: TypeRef::via_push(
                         quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId)),
                     ),
                     args: MethodArgs::Rust(MethodSig {
@@ -117,16 +121,16 @@ pub fn specs() -> Vec<InterfaceSpec> {
                             ("xx", quote!(&crate::langhelp::ExprContext)),
                             ("loc", quote!(crate::langhelp::QExprId)),
                         ],
-                        data: vec![("sub", TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)))],
+                        data: vec![("sub", TypeRef::via_push(quote!(crate::eval::TargetBindSub)))],
                     }),
                 },
                 Method {
                     name: "bind_sub_record",
-                    ret_type: TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)),
+                    ret_type: TypeRef::via_push(quote!(crate::eval::TargetBindSub)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![("loc", quote!(crate::langhelp::QExprId))],
                         data: vec![
-                            ("carry", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code))),
+                            ("carry", TypeRef::via_push(quote!(crate::langhelp::Code))),
                             (
                                 "fields",
                                 TypeRef::opaque(
@@ -138,18 +142,18 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "bind_sub_tuple",
-                    ret_type: TypeRef::via_dynamic_wrap(quote!(crate::eval::TargetBindSub)),
+                    ret_type: TypeRef::via_push(quote!(crate::eval::TargetBindSub)),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![("loc", quote!(crate::langhelp::QExprId))],
                         data: vec![
-                            ("carry", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code))),
+                            ("carry", TypeRef::via_push(quote!(crate::langhelp::Code))),
                             ("elements", TypeRef::opaque(quote!(Vec < crate:: eval:: TargetBindSub >))),
                         ],
                     }),
                 },
                 Method {
-                    name: "block",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    name: "seq",
+                    ret_type: TypeRef::via_push(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >),
                     ),
                     args: MethodArgs::Rust(MethodSig {
@@ -159,20 +163,20 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "code_to_bind_sub",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    ret_type: TypeRef::via_push(
                         quote!(crate:: langhelp:: EResult < crate:: eval:: TargetBindSub >),
                     ),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![("loc", quote!(crate::langhelp::QExprId))],
                         data: vec![
-                            ("code", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::Code))),
+                            ("code", TypeRef::via_push(quote!(crate::langhelp::Code))),
                             ("type_", TypeRef::opaque(quote!(std:: rc:: Rc < dyn crate:: langhelp:: Type >))),
                         ],
                     }),
                 },
                 Method {
                     name: "if_",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    ret_type: TypeRef::via_push(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
                     ),
                     args: MethodArgs::Rust(MethodSig {
@@ -193,7 +197,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "match_",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    ret_type: TypeRef::via_push(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
                     ),
                     args: MethodArgs::Rust(MethodSig {
@@ -203,7 +207,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                         ],
                         data: vec![
                             ("base", TypeRef::opaque(quote!(crate::langhelp::CodeValue))),
-                            ("element_key", TypeRef::via_dynamic_wrap(quote!(crate::langhelp::ConstKey))),
+                            ("element_key", TypeRef::via_push(quote!(crate::langhelp::ConstKey))),
                             (
                                 "cases",
                                 TypeRef::opaque(
@@ -222,7 +226,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "maybe_bind_sub",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    ret_type: TypeRef::via_push(
                         quote!(crate:: langhelp:: EResult < Option < crate:: eval:: TargetBindSub >>),
                     ),
                     args: MethodArgs::Rust(MethodSig {
@@ -235,7 +239,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 },
                 Method {
                     name: "stage",
-                    ret_type: TypeRef::via_dynamic_wrap(
+                    ret_type: TypeRef::via_push(
                         quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >),
                     ),
                     args: MethodArgs::Rust(MethodSig {
@@ -244,7 +248,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                             ("loc", quote!(crate::langhelp::QExprId)),
                         ],
                         data: vec![
-                            ("tree", TypeRef::via_dynamic_wrap(quote!(crate::eval::expr::Expr))),
+                            ("tree", TypeRef::via_push(quote!(crate::eval::expr::Expr))),
                             ("lower_values", TypeRef::opaque(quote!(Vec < crate:: langhelp:: CodeValue >))),
                         ],
                     }),
@@ -258,6 +262,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
             field_prefix: "cd",
             kind: "CodeDyn",
             description: None,
+            register_in_scope: true,
             rust_trait_name: None,
             methods: vec![],
         },

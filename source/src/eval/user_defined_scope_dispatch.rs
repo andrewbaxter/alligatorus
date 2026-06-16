@@ -11,7 +11,7 @@
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
-        eval::dynamic_wrap::DynamicWrap,
+        eval::pull::Pull,
         langhelp::{
             Code,
             CodeValue,
@@ -57,7 +57,7 @@ impl ScopeEntry for UserDefinedScopeEntry {
             method_fn
                 .call(scope, recv, &[null_arg])
                 .expect("UserDefinedScopeEntry::use_: _im_se0 returned no value");
-        <CodeValue as DynamicWrap>::from_v8(scope, result)
+        <CodeValue as Pull>::from_v8(scope, result)
     }
 }
 
@@ -97,8 +97,8 @@ impl crate::r#gen::Target for UserDefinedTarget {
         crate::eval::TargetDynamic.bind_sub_tuple(loc, carry, elements)
     }
 
-    fn block(&self, loc: QExprId, entries: Vec<Code>) -> crate::langhelp::EResult<Code> {
-        crate::eval::TargetDynamic.block(loc, entries)
+    fn seq(&self, loc: QExprId, entries: Vec<Code>) -> crate::langhelp::EResult<Code> {
+        crate::eval::TargetDynamic.seq(loc, entries)
     }
 
     fn code_to_bind_sub(

@@ -12,7 +12,7 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_set,
+                dynamic_set,
             },
             typecheck_convert,
             value::{
@@ -167,7 +167,7 @@ impl AspectInitialBind for TypeOptionDynamic {
 
 impl AspectSet for TypeOptionDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        mortar_set(xx, loc, self_, value)
+        dynamic_set(xx, loc, self_, value)
     }
 }
 
@@ -192,7 +192,7 @@ impl AspectTaggedUnion for TypeOptionDynamic {
     }
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for TypeOptionDynamic {
+impl crate::eval::pull::Pull for TypeOptionDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeOptionDynamic> = crate::eval::from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
         (*rc).clone()
@@ -202,7 +202,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for TypeOptionDynamic {
         crate::eval::to_v8(scope, Rc::new(self)).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }

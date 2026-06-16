@@ -15,11 +15,11 @@ use {
                 bind_via_target,
                 throw_error,
             },
-            dynamic_wrap::{
+            pull::{
                 AnyType,
-                DynamicWrap,
+                Pull,
                 StagedExpr,
-                dynamic_wrap_method_name,
+                pull_method_name,
             },
             value::{
                 type_any::r#const::TypeAnyConst,

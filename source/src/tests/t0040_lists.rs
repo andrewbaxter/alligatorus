@@ -23,7 +23,7 @@ fn test_0000_list() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "my_list",

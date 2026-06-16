@@ -23,7 +23,7 @@ fn test_0000_map_string_keys() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "my_map",
@@ -43,7 +43,7 @@ fn test_0000_map_string_keys() {
                                 mb.foreach(
                                     mb.scope_use("my_map"),
                                     mb.str("entry"),
-                                    mb.block(
+                                    mb.seq(
                                         vec![
                                             mb.call(
                                                 mb.scope_use("log"),
@@ -88,7 +88,7 @@ fn test_0010_map_string_string() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "my_map",
@@ -108,7 +108,7 @@ fn test_0010_map_string_string() {
                                 mb.foreach(
                                     mb.scope_use("my_map"),
                                     mb.str("entry"),
-                                    mb.block(
+                                    mb.seq(
                                         vec![
                                             mb.call(
                                                 mb.scope_use("log"),

@@ -25,34 +25,28 @@ fn test_00600define_func() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "hello",
                                     mb.lower(
-                                        mb.block(
+                                        mb.seq(
                                             vec![
                                                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "nfr",
                                                     mb.call(
-                                                        mb.field(mb.scope_use("d"), mb.str("new_func")),
+                                                        mb.field(mb.scope_use("d"), mb.str("func")),
                                                         mb.str("f"),
                                                     ),
                                                 ),
                                                 mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
                                                 mb.call(
-                                                    mb.field(mb.scope_use("nfr"), mb.str("arg")),
-                                                    mb.tuple(vec![mb.scope_use("null")]),
-                                                ),
-                                                mb.call(
-                                                    mb.field(mb.scope_use("nfr"), mb.str("ret")),
-                                                    mb.tuple(vec![mb.scope_use("null")]),
-                                                ),
-                                                mb.call(
                                                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
+                                                            mb.scope_use("null"),
+                                                            mb.scope_use("null"),
                                                             mb.stage(mb.call(mb.scope_use("log"), mb.str("hello"))),
                                                         ],
                                                     ),
@@ -74,7 +68,7 @@ fn test_00600define_func() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "hello");
-    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
+    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -119,31 +113,17 @@ let e14;
 e14 = a1;
 let e15;
 e15 = a3;
-e13 = e14["_3"](e15);
+let e16;
+e16 = a4;
+let e17;
+e17 = a5;
+e13 = e14["_2"](e15,e16,e17);
 e4 = e13;
 }
 {
-let e16;
-let e17;
-e17 = a1;
 let e18;
-e18 = a4;
-e16 = e17["_5"](e18);
-e4 = e16;
-}
-{
-let e19;
-let e20;
-e20 = a1;
-let e21;
-e21 = a5;
-e19 = e20["_2"](e21);
-e4 = e19;
-}
-{
-let e22;
-e22 = a2;
-e4 = e22;
+e18 = a2;
+e4 = e18;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
@@ -186,24 +166,22 @@ fn test_00700define_func_arg_ret() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
-                                mb.bind("my_func", mb.lower(mb.block(vec![
+                                mb.bind("my_func", mb.lower(mb.seq(vec![
                                     mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                     mb.bind(
                                         "nfr",
-                                        mb.call(mb.field(mb.scope_use("d"), mb.str("new_func")), mb.str("f")),
+                                        mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("f")),
                                     ),
                                     mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
-                                    // Set arg type to string
-                                    mb.call(mb.field(mb.scope_use("nfr"), mb.str("arg")), mb.tuple(vec![mb.scope_use("string")])),
-                                    // Set ret type to string
-                                    mb.call(mb.field(mb.scope_use("nfr"), mb.str("ret")), mb.tuple(vec![mb.scope_use("string")])),
-                                    // Impl: call toUpperCase on arg and return
+                                    // Unified impl: arg type, ret type, body
                                     mb.call(
                                         mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                         mb.tuple(
                                             vec![
+                                                mb.scope_use("string"),
+                                                mb.scope_use("string"),
                                                 mb.stage(
                                                     mb.call(
                                                         mb.field(mb.scope_use("arg"), mb.str("toUpperCase")),
@@ -230,7 +208,7 @@ fn test_00700define_func_arg_ret() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO WORLD");
-    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
+    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -275,31 +253,17 @@ let e14;
 e14 = a1;
 let e15;
 e15 = a3;
-e13 = e14["_3"](e15);
+let e16;
+e16 = a4;
+let e17;
+e17 = a5;
+e13 = e14["_2"](e15,e16,e17);
 e4 = e13;
 }
 {
-let e16;
-let e17;
-e17 = a1;
 let e18;
-e18 = a4;
-e16 = e17["_5"](e18);
-e4 = e16;
-}
-{
-let e19;
-let e20;
-e20 = a1;
-let e21;
-e21 = a5;
-e19 = e20["_2"](e21);
-e4 = e19;
-}
-{
-let e22;
-e22 = a2;
-e4 = e22;
+e18 = a2;
+e4 = e18;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);
@@ -334,4 +298,58 @@ e4 = (e5)(e6);
 e3 = e4;
 }
 e3;"#);
+}
+
+#[test]
+fn test_00710define_func_unified_impl() {
+    //! Define a function with string arg and string ret using the unified impl_ method.
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.seq(
+                            vec![
+                                mb.bind("my_func", mb.lower(mb.seq(vec![
+                                    mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                    mb.bind(
+                                        "nfr",
+                                        mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("f")),
+                                    ),
+                                    mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
+                                    mb.call(
+                                        mb.field(mb.scope_use("nfr"), mb.str("impl")),
+                                        mb.tuple(
+                                            vec![
+                                                mb.scope_use("string"),
+                                                mb.scope_use("string"),
+                                                mb.stage(
+                                                    mb.call(
+                                                        mb.field(mb.scope_use("arg"), mb.str("toUpperCase")),
+                                                        mb.null(),
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    mb.scope_use("f"),
+                                ]))),
+                                mb.call(
+                                    mb.scope_use("log"),
+                                    mb.call(mb.scope_use("my_func"), mb.tuple(vec![mb.str("hello world")])),
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            ]
+                .into_iter()
+                .collect(),
+        );
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "HELLO WORLD");
 }

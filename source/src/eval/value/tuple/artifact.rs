@@ -44,7 +44,7 @@ impl Deserializer {
         for elem_artifact in serial.elements {
             let (elem_type, _code) =
                 crate::eval::util::deserialize_type_artifact(xx, loc, &elem_artifact).into_res()?;
-            elements.push(crate::eval::value::tuple::TupleElement::Mortar(elem_type));
+            elements.push(crate::eval::value::tuple::TupleElement::Dynamic(elem_type));
         }
         Ok(Rc::new(crate::eval::value::tuple::Tuple { elements: elements }))
     }

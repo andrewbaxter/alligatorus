@@ -1,5 +1,5 @@
 //! `TypeFunctionAspectDynamic` — the source-level `aspect(base, key)` builtin.
-//! `base` is a `Rc<dyn Type>` handle (a `TypeRefV8`-typed value, typically
+//! `base` is a `Rc<dyn Type>` handle (a `TypeRefPush`-typed value, typically
 //! `value.type`). `key` is an interface-bearing value (`Rc<SourceInterfaceRef>` —
 //! the result of `d.new_interface()`, or a globally-bound aspect interface like
 //! `aspect_field`).
@@ -127,8 +127,8 @@ impl AspectFunction for TypeFunctionAspectDynamic {
         let iface_ref = Rc::new(crate::eval::value::type_source_interface::SourceInterfaceRef { data: iface_data });
 
         // Generate `base_code.aspect(unique_external)` — the `aspect` method on the
-        // `TypeRefV8` JS wrapper. `dynamic_wrap!` mangles the method name as `_0` per its
-        // declaration order in `type_ref_v8.rs`.
+        // `TypeRefPush` JS wrapper. `dynamic_wrap!` mangles the method name as `_0` per its
+        // declaration order in `type_ref_push.rs`.
         let base_code = match base.code.cast::<CodeDynamic>().into_res() {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "aspect(): base has no runtime code".to_string()),
@@ -158,16 +158,16 @@ impl AspectFunction for TypeFunctionAspectDynamic {
         };
 
         // Result CV: value-type is `option(TypeUserDefinedAspect{iface_ref})`, with
-        // bundle filled at runtime when the OptionV8 unwraps to the JS instance. The
+        // bundle filled at runtime when the OptionPush unwraps to the JS instance. The
         // compile-time `bundle` slot on `TypeUserDefinedAspect` is only consulted via
-        // `Aspect::v8_instance` at `TypeRefV8.aspect` time, so we put a placeholder here
+        // `Aspect::v8_instance` at `TypeRefPush.aspect` time, so we put a placeholder here
         // — source-level field access on the unwrapped handle uses the CV's runtime code,
         // not the type's bundle.
         //
-        // TODO: when `OptionV8.get()` lands, ensure the bundle propagated by
+        // TODO: when `OptionPush.get()` lands, ensure the bundle propagated by
         // `Aspect::v8_instance` is the same one the source-level CV code references. The
         // compile-time `bundle` slot on `TypeUserDefinedAspect` is only consulted via
-        // `Aspect::v8_instance` at `TypeRefV8.aspect` time, not for AspectField field
+        // `Aspect::v8_instance` at `TypeRefPush.aspect` time, not for AspectField field
         // access on this CV. Stash a "no bundle" sentinel here — see
         // `TypeUserDefinedAspect.bundle` doc.
         let handle_type: Rc<dyn Type> = Rc::new(crate::eval::value::value_user_defined::aspect::TypeUserDefinedAspect {

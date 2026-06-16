@@ -27,7 +27,7 @@ fn test_00100_call_lit() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -58,7 +58,7 @@ fn test_00200_bind_use() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind("hello", mb.str("Hello world (mortar)")),
                                 mb.call(mb.scope_use("log"), mb.scope_use("hello")),
@@ -73,7 +73,7 @@ fn test_00200_bind_use() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 {
 let e1;
 let e2;
@@ -103,7 +103,7 @@ fn test_00300_stage_lower() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -139,7 +139,7 @@ fn test_00400_lower_nostage() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "Hello world (mortar)");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -183,7 +183,7 @@ fn test_00500_method_call() {
                 .collect(),
         );
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;

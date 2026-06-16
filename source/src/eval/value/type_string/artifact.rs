@@ -53,7 +53,7 @@ impl ArtifactBuiltinDeserializer for DeserializerConst {
     }
 }
 
-/// Deserializer for `TypeStringDynamic` artifacts — mortar string values (lifted
+/// Deserializer for `TypeStringDynamic` artifacts — dynamic string values (lifted
 /// form).
 pub(crate) struct DeserializerDynamic;
 
@@ -72,7 +72,7 @@ impl ArtifactBuiltinDeserializer for DeserializerDynamic {
 
     fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
         let Some(s) = data.as_str() else {
-            return EvalRes::err(loc, format!("Expected string data for mortar string, got {:?}", data));
+            return EvalRes::err(loc, format!("Expected string data for dynamic string, got {:?}", data));
         };
         EvalRes::ok(CodeValue {
             code: Code {

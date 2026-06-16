@@ -21,17 +21,9 @@ use {
 // for `code_dyn` / `scope_entry` / `target`. Kept here as thin wrappers so
 // existing callers (`type_any_target::dynamic`, etc.) compile unchanged; the
 // canonical source of truth is the spec.
-pub(crate) fn builtin_code_dyn_iface_identity() -> Unique {
-    Unique::Builtin(2007)
-}
-
-pub(crate) fn builtin_scope_entry_iface_identity() -> Unique {
-    Unique::Builtin(2005)
-}
-
-pub(crate) fn builtin_target_iface_identity() -> Unique {
-    Unique::Builtin(2006)
-}
+pub(crate) use crate::r#gen::builtin_code_dyn_iface_identity;
+pub(crate) use crate::r#gen::builtin_scope_entry_iface_identity;
+pub(crate) use crate::r#gen::builtin_target_iface_identity;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -77,8 +69,18 @@ pub(crate) struct SourceInterfaceData {
     /// instance. `Cell` rather than plain field so source code can flip it via
     /// `iface.set_is_aspect(true)` after `new_interface()`.
     pub is_aspect: Cell<bool>,
-    pub methods: RefCell<Vec<SourceInterfaceMethodData>>,
+    pub methods: RefCell<Vec<std::rc::Rc<SourceInterfaceMethodData>>>,
     pub set: Gc<crate::eval::definition_set::DefinitionSet>,
+}
+
+impl SourceInterfaceData {
+    pub fn finish(&self) -> Result<(), String> {
+        let name = self.description.borrow().clone().unwrap_or_else(|| "(unnamed)".to_string());
+        for method in self.methods.borrow().iter() {
+            method.finish(&name)?;
+        }
+        Ok(())
+    }
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceInterfaceData {
@@ -95,6 +97,18 @@ pub(crate) struct SourceInterfaceMethodData {
     pub ret_type: RefCell<Option<std::rc::Rc<dyn crate::langhelp::Type>>>,
 }
 
+impl SourceInterfaceMethodData {
+    pub fn finish(&self, iface_name: &str) -> Result<(), String> {
+        if self.arg_type.borrow().is_none() {
+            return Err(format!("Interface '{}' method '{}' is missing an arg type", iface_name, self.name));
+        }
+        if self.ret_type.borrow().is_none() {
+            return Err(format!("Interface '{}' method '{}' is missing a return type", iface_name, self.name));
+        }
+        Ok(())
+    }
+}
+
 pub(crate) struct SourceInterfaceRef {
     pub data: Gc<SourceInterfaceData>,
 }
@@ -106,7 +120,7 @@ pub(crate) struct TypeSourceInterfaceConst {
 // `build_builtin_interfaces` removed — callers now invoke
 // `gen_build_builtin_interfaces(import_state)` (from `build.rs`'s generated
 // gen_builtin_interfaces.rs) directly.
-impl crate::eval::dynamic_wrap::DynamicWrap for std::rc::Rc<SourceInterfaceRef> {
+impl crate::eval::pull::Pull for std::rc::Rc<SourceInterfaceRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<std::rc::Rc<SourceInterfaceRef>>(&*value).clone()
     }
@@ -115,7 +129,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for std::rc::Rc<SourceInterfaceRef> 
         crate::eval::to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> std::rc::Rc<dyn crate::langhelp::Type> {
+    fn dynamic_type() -> std::rc::Rc<dyn crate::langhelp::Type> {
         std::rc::Rc::new(dynamic::TypeSourceInterfaceDynamic)
     }
 }

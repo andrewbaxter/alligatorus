@@ -1,5 +1,5 @@
 //! Builtin deserializer for `TypeSourceTaggedUnionRefDynamic` — the parameterless
-//! mortar marker used as the static type for v8-marshaled
+//! dynamic marker used as the static type for v8-marshaled
 //! `Rc<SourceTaggedUnionRef>` values.
 use {
     crate::{

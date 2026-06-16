@@ -79,24 +79,24 @@ pub(crate) fn deserialize_defset_ctor_as_type(
             .into_res()
             .map_err(|e| format!("{:?}", e))?;
     codes.push(underlying_code);
-    let methods: Vec<SourceDataMethodData> = serial.methods.iter().enumerate().map(|(i, m)| {
+    let methods: Vec<std::rc::Rc<SourceDataMethodData>> = serial.methods.iter().enumerate().map(|(i, m)| {
         let (ret_type, ret_code) =
             crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type)
                 .into_res()
                 .expect("Failed to resolve method ret type");
         codes.push(ret_code);
         let entry_id = serial.def_set_id;
-        SourceDataMethodData {
+        std::rc::Rc::new(SourceDataMethodData {
             name: m.name.clone(),
             arg_type: std::cell::RefCell::new(None),
             impl_expr: std::cell::RefCell::new(None),
             ret_type: std::cell::RefCell::new(Some(ret_type)),
             scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(serial.import_id, entry_id, i))),
-            self_scope_entry_id: Cell::new(None),
+            inner_scope_entry_id: Cell::new(None),
             field_name: m.field_name.clone(),
             compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
             captured_externals: std::cell::RefCell::new(Vec::new()),
-        }
+        })
     }).collect();
     let set = dumpster::unsync::Gc::new(DefinitionSet {
         artifact_id: std::cell::RefCell::new(None),

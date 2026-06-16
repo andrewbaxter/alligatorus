@@ -24,10 +24,10 @@ fn test_0000_scope_ok() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind("x", mb.str("zebra")),
-                                mb.block(
+                                mb.seq(
                                     vec![
                                         mb.bind("x", mb.str("apple")),
                                         mb.call(mb.scope_use("log"), mb.scope_use("x")),
@@ -46,7 +46,7 @@ fn test_0000_scope_ok() {
     assert_eq!(res.logs.len(), 2);
     assert_eq!(res.logs[0].message, "apple");
     assert_eq!(res.logs[1].message, "zebra");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 {
 let e1;
 {
@@ -90,9 +90,9 @@ fn test_0010_scope_bad() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
-                                mb.block(vec![mb.bind("x", mb.str("apple"))]),
+                                mb.seq(vec![mb.bind("x", mb.str("apple"))]),
                                 mb.call(mb.scope_use("log"), mb.scope_use("x")),
                             ],
                         ),

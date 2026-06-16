@@ -107,8 +107,8 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
-        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: mortar.data.clone() });
+        let type_val = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
+        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: type_val.data.clone() });
         Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: tu_type }))
     }
 }
@@ -136,8 +136,8 @@ impl crate::r#gen::AspectLowerDynamic for TypeSourceTaggedUnionDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let mortar = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
-        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: mortar.data.clone() });
+        let type_val = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
+        let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: type_val.data.clone() });
         Ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner: tu_type }))
     }
 }
@@ -295,7 +295,7 @@ impl Value for TypeSourceTaggedUnionDynamic {
     }
 }
 
-/// Parameterless mortar marker for `Rc<SourceTaggedUnionRef>` v8 marshaling. See
+/// Parameterless dynamic marker for `Rc<SourceTaggedUnionRef>` v8 marshaling. See
 /// `TypeSourceDataTypeRefDynamic` — same pattern.
 pub(crate) struct TypeSourceTaggedUnionRefDynamic;
 
@@ -505,7 +505,7 @@ impl Value for TypeSourceTaggedUnionRefDynamic {
     }
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionRef> {
+impl crate::eval::pull::Pull for Rc<SourceTaggedUnionRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<SourceTaggedUnionRef>>(&*value).clone()
     }
@@ -514,7 +514,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceTaggedUnionRef> {
         crate::eval::to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeSourceTaggedUnionRefDynamic)
     }
 }

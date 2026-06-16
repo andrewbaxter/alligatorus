@@ -9,7 +9,7 @@ use {
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
+                dynamic_consume_to_dynamic,
             },
             expr::{
                 Expr,
@@ -270,7 +270,7 @@ impl Aspect for TypeExprStagedPlaceholder { }
 
 impl AspectConsumeDynamic for TypeExprStagedPlaceholder {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 

@@ -244,7 +244,7 @@ impl Type for TypeNullDynamic {
     }
 
     fn desc(&self) -> String {
-        return format!("mortar null");
+        return format!("dynamic null");
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {

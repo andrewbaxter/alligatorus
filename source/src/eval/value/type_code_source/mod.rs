@@ -15,7 +15,7 @@
 //! These types are introduced when source code reaches a Rust `Code` value through
 //! a `CodeValueExtern` (e.g. the result of `const_eval`). The Rust runtime carries
 //! the actual `Code` struct; source-level field/match access is desugared at
-//! compile time into mortar calls and tagged-union matches against the wrapped
+//! compile time into dynamic calls and tagged-union matches against the wrapped
 //! value.
 use crate::r#gen::ScopeEntry;
 use {
@@ -27,8 +27,8 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -168,7 +168,7 @@ impl AspectBindDynamic for TypeCodeDynHandleDynamic {
 
 impl AspectConsumeDynamic for TypeCodeDynHandleDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -229,7 +229,7 @@ impl AspectInitialBind for TypeCodeDynHandleDynamic {
 
 impl AspectStackValueDynamic for TypeCodeDynHandleDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeCodeDynHandleDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeCodeDynHandleDynamic))
     }
 }
 
@@ -333,7 +333,7 @@ impl AspectBindDynamic for TypeCodeEnumDynamic {
 
 impl AspectConsumeDynamic for TypeCodeEnumDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -348,7 +348,7 @@ impl AspectInitialBind for TypeCodeEnumDynamic {
 
 impl AspectStackValueDynamic for TypeCodeEnumDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeCodeEnumDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeCodeEnumDynamic))
     }
 }
 
@@ -447,7 +447,7 @@ impl AspectBindDynamic for TypeCodeStructDynamic {
 
 impl AspectConsumeDynamic for TypeCodeStructDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -501,7 +501,7 @@ impl AspectInitialBind for TypeCodeStructDynamic {
 
 impl AspectStackValueDynamic for TypeCodeStructDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeCodeStructDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeCodeStructDynamic))
     }
 }
 

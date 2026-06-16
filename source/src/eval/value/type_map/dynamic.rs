@@ -16,7 +16,7 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_set,
+                dynamic_set,
             },
             value::{
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
@@ -215,11 +215,11 @@ impl AspectIterable for TypeMapDynamic {
             fields: [
                 (
                     crate::langhelp::ConstKey::String("key".to_string()),
-                    crate::eval::value::record::RecordField::Mortar(self.key_type.clone()),
+                    crate::eval::value::record::RecordField::Dynamic(self.key_type.clone()),
                 ),
                 (
                     crate::langhelp::ConstKey::String("value".to_string()),
-                    crate::eval::value::record::RecordField::Mortar(self.value_type.clone()),
+                    crate::eval::value::record::RecordField::Dynamic(self.value_type.clone()),
                 ),
             ]
                 .into_iter()
@@ -276,7 +276,7 @@ impl AspectMapDynamic for TypeMapDynamic {
 
 impl AspectSet for TypeMapDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
-        mortar_set(xx, loc, self_, value)
+        dynamic_set(xx, loc, self_, value)
     }
 }
 
@@ -295,7 +295,7 @@ impl AspectStackValueDynamic for TypeMapDynamic {
     }
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for TypeMapDynamic {
+impl crate::eval::pull::Pull for TypeMapDynamic {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeMapDynamic> = crate::eval::from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()
@@ -305,7 +305,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for TypeMapDynamic {
         crate::eval::to_v8(scope, Rc::new(self)).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
     }
 }
@@ -463,9 +463,9 @@ impl Type for TypeMapDynamic {
                             },
                         }
                     },
-                    crate::eval::value::record::RecordField::Mortar(_) => {
+                    crate::eval::value::record::RecordField::Dynamic(_) => {
                         return erb.err_new(
-                            format!("Record entry '{}' is mortar-only, cannot consume directly to JS", display),
+                            format!("Record entry '{}' is dynamic-only, cannot consume directly to JS", display),
                         );
                     },
                 };

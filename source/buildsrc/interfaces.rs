@@ -25,6 +25,7 @@ pub fn build(
     let mut iface_result_fields: Vec<TokenStream> = Vec::new();
     let mut iface_trait_defs: Vec<TokenStream> = Vec::new();
     let mut iface_reg_entries: Vec<TokenStream> = Vec::new();
+    let mut iface_identity_fns: Vec<TokenStream> = Vec::new();
     for iface in extra_specs {
         assert!(iface_names.insert(iface.name), "duplicate interface name: {}", iface.name);
         assert!(iface_prefixes.insert(iface.field_prefix), "duplicate field_prefix: {}", iface.field_prefix);
@@ -37,21 +38,22 @@ pub fn build(
         let methods_expr_items: Vec<TokenStream> = iface.methods.iter().enumerate().map(|(idx, m)| {
             let name = m.name.trim_end_matches('_');
             let field_name = format!("_im_{}{}", prefix, idx);
-            let arg_mortar = match &m.args {
-                MethodArgs::Source(t) => t.mortar.clone(),
+            let arg_dynamic_type = match &m.args {
+                MethodArgs::Source(t) => t.dynamic_type.clone(),
                 MethodArgs::Rust(rs) => {
-                    let mortars: Vec<TokenStream> = rs.data.iter().map(|(_, t)| t.mortar.clone()).collect();
-                    crate::buildsrc::util::arg_mortar_expr(&mortars)
+                    let dynamic_types: Vec<TokenStream> =
+                        rs.data.iter().map(|(_, t)| t.dynamic_type.clone()).collect();
+                    crate::buildsrc::util::arg_dynamic_type_expr(&dynamic_types)
                 },
             };
-            let ret = &m.ret_type.mortar;
+            let ret = &m.ret_type.dynamic_type;
             quote!{
-                crate:: eval:: value:: type_source_interface:: SourceInterfaceMethodData {
+                std:: rc:: Rc:: new(crate:: eval:: value:: type_source_interface:: SourceInterfaceMethodData {
                     name: #name.to_string(),
-                    arg_type: std:: cell:: RefCell:: new(Some(#arg_mortar)),
+                    arg_type: std:: cell:: RefCell:: new(Some(#arg_dynamic_type)),
                     ret_type: std:: cell:: RefCell:: new(Some(#ret)),
                     field_name: #field_name.to_string(),
-                }
+                })
             }
         }).collect();
         let methods_expr = quote!{
@@ -71,6 +73,18 @@ pub fn build(
         assert!(scope_ids.insert(iface.scope_id));
         let builtin_unique_id = iface.builtin_unique_id;
         let scope_id = iface.scope_id;
+        {
+            let fn_name = format_ident!("builtin_{}_iface_identity", if iface.name == "type" {
+                "type"
+            } else {
+                iface.name
+            });
+            iface_identity_fns.push(quote!{
+                pub(crate) fn #fn_name() -> crate:: langhelp:: Unique {
+                    crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
+                }
+            });
+        }
         iface_build_entries.push(quote!{
             let #f = dumpster:: unsync:: Gc:: new(crate:: eval:: value:: type_source_interface:: SourceInterfaceData {
                 builtin_kind: Some(crate:: eval:: value:: type_source_interface:: BuiltinInterfaceKind::#kind,),
@@ -86,30 +100,35 @@ pub fn build(
             #f: #f
         });
         let name = iface.name;
+        let register_in_scope = iface.register_in_scope;
         iface_reg_entries.push(quote!{
             {
                 let iface_ref = Rc:: new(SourceInterfaceRef {
                     data: builtin_ifaces.#f
                 });
-                let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
-                if register_v8 {
-                    let v8_val = crate::eval::to_v8(dynamic_scope, iface_ref.clone());
-                    dynamic_scope
-                        .get_current_context()
-                        .global(dynamic_scope)
-                        .set(
-                            dynamic_scope,
-                            v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
-                                .unwrap()
-                                .cast(),
-                            v8_val.into(),
-                        );
+                if #register_in_scope {
+                    let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
+                    if register_v8 {
+                        let v8_val = crate::eval::to_v8(dynamic_scope, iface_ref.clone());
+                        dynamic_scope
+                            .get_current_context()
+                            .global(dynamic_scope)
+                            .set(
+                                dynamic_scope,
+                                v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
+                                    .unwrap()
+                                    .cast(),
+                                v8_val.into(),
+                            );
+                    }
+                    let iface_const_type: Rc<dyn crate::langhelp::Type> =
+                        Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
+                    let ib =
+                        crate::r#gen::aspect_initial_bind_get(xx, root_loc, iface_const_type.as_ref()).into_res()?;
+                    builtin_scope_entries.push((#name.to_string(), dynamic_key, iface_const_type.clone()));
+                    scope.values.borrow_mut(
+                    ).insert(ConstKey:: String(#name.to_string()), ib.initial_bind(dynamic_key));
                 }
-                let iface_const_type: Rc<dyn crate::langhelp::Type> =
-                    Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-                let ib = crate::r#gen::aspect_initial_bind_get(xx, root_loc, iface_const_type.as_ref()).into_res()?;
-                builtin_scope_entries.push((#name.to_string(), dynamic_key, iface_const_type.clone()));
-                scope.values.borrow_mut().insert(ConstKey:: String(#name.to_string()), ib.initial_bind(dynamic_key));
             }
         });
         if let Some(trait_name_str) = iface.rust_trait_name {
@@ -188,5 +207,6 @@ pub fn build(
                 *
             }
         }
+        #(#iface_identity_fns) *
     });
 }

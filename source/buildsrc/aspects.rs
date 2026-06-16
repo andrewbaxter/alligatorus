@@ -585,6 +585,7 @@ pub fn interface_specs() -> Vec<InterfaceSpec> {
             field_prefix: "af",
             kind: "AspectFunction",
             description: None,
+            register_in_scope: true,
             rust_trait_name: None,
             methods: vec![Method {
                 name: "call",
@@ -599,6 +600,7 @@ pub fn interface_specs() -> Vec<InterfaceSpec> {
             field_prefix: "afd",
             kind: "AspectField",
             description: None,
+            register_in_scope: true,
             rust_trait_name: None,
             methods: vec![
                 //. .

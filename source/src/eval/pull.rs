@@ -22,15 +22,15 @@ use {
     super::expr,
 };
 
-pub(crate) trait DynamicWrap: Sized + 'static {
+pub(crate) trait Pull: Sized + 'static {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self;
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
-    fn mortar_type() -> Rc<dyn Type>;
+    fn dynamic_type() -> Rc<dyn Type>;
 }
 
-/// Trait for types that can be used as BTreeMap keys in DynamicWrap. Converts
+/// Trait for types that can be used as BTreeMap keys in Push. Converts
 /// between Rust keys and JS object property names (strings).
-pub(crate) trait DynamicWrapKey: Sized + Ord + 'static {
+pub(crate) trait PullKey: Sized + Ord + 'static {
     fn from_dynamic_key(s: &str) -> Result<Self, String>;
     fn to_dynamic_key(&self) -> String;
 }
@@ -39,7 +39,7 @@ pub(crate) trait DynamicWrapKey: Sized + Ord + 'static {
 /// Rc`<dyn Type>` externals.
 pub(crate) struct AnyType(pub Rc<dyn Type>);
 
-impl DynamicWrap for AnyType {
+impl Pull for AnyType {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         AnyType(super::rc_type_from_v8(&*value))
     }
@@ -48,12 +48,12 @@ impl DynamicWrap for AnyType {
         unimplemented!("AnyType should not be sent back to v8")
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyDynamic)
     }
 }
 
-pub(crate) fn dynamic_wrap_method_name(s: &str) -> &str {
+pub(crate) fn pull_method_name(s: &str) -> &str {
     s.strip_suffix('_').unwrap_or(s)
 }
 
@@ -61,7 +61,7 @@ pub(crate) fn dynamic_wrap_method_name(s: &str) -> &str {
 /// staged value from a StagedExprCell.
 pub(crate) struct StagedExpr(pub Rc<dyn Value>);
 
-impl DynamicWrap for StagedExpr {
+impl Pull for StagedExpr {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
@@ -71,12 +71,12 @@ impl DynamicWrap for StagedExpr {
         unimplemented!("StagedExpr should not be sent back to v8")
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeExpr)
     }
 }
 
-impl DynamicWrap for () {
+impl Pull for () {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -87,25 +87,25 @@ impl DynamicWrap for () {
         v8::null(scope).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeNullDynamic)
     }
 }
 
-/// Generic `DynamicWrap` for 2-tuples `(A, B)`. The v8 form is a JS array of
+/// Generic `Push` for 2-tuples `(A, B)`. The v8 form is a JS array of
 /// length 2. The source-side `Type` is the parameterized `Tuple` with element
-/// types `[A::mortar_type(), B::mortar_type()]` — the spec author cannot specify a
-/// mismatched mortar by construction.
-impl<A, B> DynamicWrap for (A, B)
+/// types `[A::dynamic_type(), B::dynamic_type()]` — the spec author cannot specify a
+/// mismatched dynamic by construction.
+impl<A, B> Pull for (A, B)
 where
-    A: DynamicWrap,
-    B: DynamicWrap {
+    A: Pull,
+    B: Pull {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let arr = v8::Local::<v8::Array>::try_from(value).expect("(A, B)::from_v8: expected JS array of length 2");
         let a_val = arr.get_index(scope, 0).expect("(A, B)::from_v8: missing element 0");
         let b_val = arr.get_index(scope, 1).expect("(A, B)::from_v8: missing element 1");
-        let a = <A as DynamicWrap>::from_v8(scope, a_val);
-        let b = <B as DynamicWrap>::from_v8(scope, b_val);
+        let a = <A as Pull>::from_v8(scope, a_val);
+        let b = <B as Pull>::from_v8(scope, b_val);
         (a, b)
     }
 
@@ -113,19 +113,19 @@ where
         unimplemented!("(A, B) should not be sent back to v8 (yet)");
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(
             crate::eval::value::tuple::Tuple {
                 elements: vec![
-                    crate::eval::value::tuple::TupleElement::Mortar(<A as DynamicWrap>::mortar_type()),
-                    crate::eval::value::tuple::TupleElement::Mortar(<B as DynamicWrap>::mortar_type()),
+                    crate::eval::value::tuple::TupleElement::Dynamic(<A as Pull>::dynamic_type()),
+                    crate::eval::value::tuple::TupleElement::Dynamic(<B as Pull>::dynamic_type()),
                 ],
             },
         )
     }
 }
 
-impl DynamicWrap for bool {
+impl Pull for bool {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         value.boolean_value(scope)
     }
@@ -134,12 +134,12 @@ impl DynamicWrap for bool {
         v8::Boolean::new(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_bool::dynamic::TypeBoolDynamic)
     }
 }
 
-impl DynamicWrap for ConstKey {
+impl Pull for ConstKey {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
         match ConstKey::from_str(&s) {
@@ -156,8 +156,8 @@ impl DynamicWrap for ConstKey {
         v8::String::new(scope, &s).unwrap().into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
-        // Distinct mortar type whose `cast_from` performs canonical-JSON encoding —
+    fn dynamic_type() -> Rc<dyn Type> {
+        // Distinct dynamic type whose `cast_from` performs canonical-JSON encoding —
         // matches `ConstKey::from_str` at the v8 boundary. Using plain
         // `TypeStringDynamic` here was wrong: it left string keys un-encoded so
         // `BTreeMap<ConstKey, V>::from_v8` couldn't parse them.
@@ -165,7 +165,7 @@ impl DynamicWrap for ConstKey {
     }
 }
 
-impl DynamicWrapKey for ConstKey {
+impl PullKey for ConstKey {
     fn from_dynamic_key(s: &str) -> Result<Self, String> {
         ConstKey::from_str(s)
     }
@@ -175,10 +175,10 @@ impl DynamicWrapKey for ConstKey {
     }
 }
 
-/// `DynamicWrap` for `TargetBindSub`. mortar_type returns `TypeAnyDynamic` as a
-/// placeholder — proper source-side mortar (e.g. a record of `{data, type}`) is a
+/// `Push` for `TargetBindSub`. dynamic_type returns `TypeAnyDynamic` as a
+/// placeholder — proper source-side dynamic (e.g. a record of `{data, type}`) is a
 /// TODO once user-defined target dispatch is wired.
-impl DynamicWrap for crate::eval::TargetBindSub {
+impl Pull for crate::eval::TargetBindSub {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -186,15 +186,15 @@ impl DynamicWrap for crate::eval::TargetBindSub {
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("TargetBindSub::into_v8: cross-mortar `TargetBindSub` transfer not yet wired");
+        unimplemented!("TargetBindSub::into_v8: cross-dynamic `TargetBindSub` transfer not yet wired");
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyDynamic)
     }
 }
 
-impl DynamicWrap for crate::langhelp::Code {
+impl Pull for crate::langhelp::Code {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         // Source-level `Code` is `option(code_dyn)`. The runtime form is a JS object
         // shaped like option: `{<json-encoded "some">: <External(Rc<dyn CodeDyn>)>}` or
@@ -225,7 +225,7 @@ impl DynamicWrap for crate::langhelp::Code {
         unimplemented!("Code should not be sent back to v8 (yet)")
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         // The source-level `Code` is `option(code_dyn)`. The user writes
         // `option(codedyn).some(<code_dyn>)` / `.none(())` to construct one.
         Rc::new(
@@ -237,11 +237,11 @@ impl DynamicWrap for crate::langhelp::Code {
     }
 }
 
-/// Generic `DynamicWrap` for `EResult<T>`. The source-side mortar Type delegates
+/// Generic `Push` for `EResult<T>`. The source-side dynamic Type delegates
 /// to `T`'s — errors are Rust-side dispatch plumbing, not part of the source-level
 /// type. `from_v8`/`into_v8` are stubs for now; user-defined dispatch through v8
 /// isn't routed through these.
-impl<T: DynamicWrap> DynamicWrap for crate::langhelp::EResult<T> {
+impl<T: Pull> Pull for crate::langhelp::EResult<T> {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -252,17 +252,17 @@ impl<T: DynamicWrap> DynamicWrap for crate::langhelp::EResult<T> {
         unimplemented!("EResult<T>::into_v8: not yet wired");
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
-        <T as DynamicWrap>::mortar_type()
+    fn dynamic_type() -> Rc<dyn Type> {
+        <T as Pull>::dynamic_type()
     }
 }
 
-/// `DynamicWrap` for `ScopeEntryId` — the source-side representation is a string
+/// `Push` for `ScopeEntryId` — the source-side representation is a string
 /// (the binding name produced by `gen_binding_name`). Used by the `Target::bind`
 /// ret tuple. `from_v8`/`into_v8` are stubs for now — user-defined target dispatch
 /// isn't yet routed through v8, and the builtin `TargetDynamic` constructs
 /// `ScopeEntryId` directly.
-impl DynamicWrap for crate::langhelp::ScopeEntryId {
+impl Pull for crate::langhelp::ScopeEntryId {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -270,15 +270,15 @@ impl DynamicWrap for crate::langhelp::ScopeEntryId {
     }
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("ScopeEntryId::into_v8: cross-mortar `ScopeEntryId` transfer not yet wired",);
+        unimplemented!("ScopeEntryId::into_v8: cross-dynamic `ScopeEntryId` transfer not yet wired",);
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
     }
 }
 
-impl DynamicWrap for expr::Expr {
+impl Pull for expr::Expr {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
@@ -289,13 +289,13 @@ impl DynamicWrap for expr::Expr {
         unimplemented!("Expr should not be sent back to v8")
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeExpr)
     }
 }
 
-/// Generic `DynamicWrap` for `Option<T>`. mortar_type = `option(T::mortar_type())`.
-impl<T: DynamicWrap> DynamicWrap for Option<T> {
+/// Generic `Push` for `Option<T>`. dynamic_type = `option(T::dynamic_type())`.
+impl<T: Pull> Pull for Option<T> {
     fn from_v8<
         's,
     >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
@@ -306,16 +306,16 @@ impl<T: DynamicWrap> DynamicWrap for Option<T> {
         unimplemented!("Option<T>::into_v8: not yet wired");
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(
             crate::eval::value::type_option::dynamic::TypeOptionDynamic {
-                element_type: <T as DynamicWrap>::mortar_type(),
+                element_type: <T as Pull>::dynamic_type(),
             },
         )
     }
 }
 
-impl DynamicWrap for Rc<dyn crate::langhelp::Value> {
+impl Pull for Rc<dyn crate::langhelp::Value> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_value_from_v8(&*value)
     }
@@ -324,12 +324,12 @@ impl DynamicWrap for Rc<dyn crate::langhelp::Value> {
         super::rc_value_to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_value::dynamic::TypeValueDynamic)
     }
 }
 
-impl DynamicWrap for Rc<dyn crate::r#gen::ScopeEntry> {
+impl Pull for Rc<dyn crate::r#gen::ScopeEntry> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_scope_entry_from_v8(&*value)
     }
@@ -338,12 +338,12 @@ impl DynamicWrap for Rc<dyn crate::r#gen::ScopeEntry> {
         super::rc_scope_entry_to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic)
     }
 }
 
-impl DynamicWrap for Rc<dyn crate::r#gen::Target> {
+impl Pull for Rc<dyn crate::r#gen::Target> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_target_from_v8(&*value)
     }
@@ -352,12 +352,12 @@ impl DynamicWrap for Rc<dyn crate::r#gen::Target> {
         super::rc_target_to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(crate::eval::value::type_any_target::dynamic::TypeAnyTargetDynamic)
     }
 }
 
-impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::collections::BTreeMap<K, V> {
+impl<K: PullKey + Pull, V: Pull> Pull for std::collections::BTreeMap<K, V> {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
@@ -390,23 +390,23 @@ impl<K: DynamicWrapKey + DynamicWrap, V: DynamicWrap> DynamicWrap for std::colle
         obj.into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeMapDynamic {
-            key_type: K::mortar_type(),
-            value_type: V::mortar_type(),
+            key_type: K::dynamic_type(),
+            value_type: V::dynamic_type(),
         })
     }
 }
 
-/// Generic manual `DynamicWrap` for `HashMap<K, V>` over any
-/// `K: DynamicWrapKey + Eq + std::hash::Hash` and `V: DynamicWrap`. Walks the v8
-/// record's keys and delegates each value's parsing to `V::from_v8`. `mortar_type`
-/// reports `map<string, V::mortar_type()>` since the v8 record keys are JS strings
+/// Generic manual `Push` for `HashMap<K, V>` over any
+/// `K: PullKey + Eq + std::hash::Hash` and `V: Pull`. Walks the v8
+/// record's keys and delegates each value's parsing to `V::from_v8`. `dynamic_type`
+/// reports `map<string, V::dynamic_type()>` since the v8 record keys are JS strings
 /// regardless of `K`.
-impl<K, V> DynamicWrap for std::collections::HashMap<K, V>
+impl<K, V> Pull for std::collections::HashMap<K, V>
 where
-    K: DynamicWrapKey + DynamicWrap + Eq + std::hash::Hash,
-    V: DynamicWrap {
+    K: PullKey + Pull + Eq + std::hash::Hash,
+    V: Pull {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let obj = v8::Local::<v8::Object>::try_from(value).expect("HashMap::from_v8: expected JS object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
@@ -429,15 +429,15 @@ where
         unimplemented!("HashMap should not be sent back to v8")
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeMapDynamic {
-            key_type: <K as DynamicWrap>::mortar_type(),
-            value_type: <V as DynamicWrap>::mortar_type(),
+            key_type: <K as Pull>::dynamic_type(),
+            value_type: <V as Pull>::dynamic_type(),
         })
     }
 }
 
-impl DynamicWrap for String {
+impl Pull for String {
     fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         value.to_string(scope).unwrap().to_rust_string_lossy(scope)
     }
@@ -446,7 +446,8 @@ impl DynamicWrap for String {
         v8::String::new(scope, &self).unwrap().into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)
     }
 }
+

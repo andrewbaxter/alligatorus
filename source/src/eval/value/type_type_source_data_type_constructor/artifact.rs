@@ -46,7 +46,7 @@ impl ArtifactBuiltinDeserializer for Deserializer {
                         data,
                     ),
                 )?;
-            let code = erb.must_er(xx.target.block(loc, type_codes))?;
+            let code = erb.must_er(xx.target.seq(loc, type_codes))?;
             return Ok(CodeValue {
                 code,
                 value: type_.as_value()

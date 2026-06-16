@@ -36,6 +36,22 @@ pub(crate) struct SourceFunctionData {
     pub set: Gc<crate::eval::definition_set::DefinitionSet>,
 }
 
+impl SourceFunctionData {
+    pub fn finish(&self) -> Result<(), String> {
+        let name = self.name.as_deref().unwrap_or("(unnamed)");
+        if self.impl_expr.borrow().is_none() {
+            return Err(format!("Definition set function '{}' is missing an implementation", name));
+        }
+        if self.arg_type.borrow().is_none() {
+            return Err(format!("Definition set function '{}' is missing an arg type", name));
+        }
+        if self.ret_type.borrow().is_none() {
+            return Err(format!("Definition set function '{}' is missing a return type", name));
+        }
+        Ok(())
+    }
+}
+
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData {
     fn accept(&self, visitor: &mut V) -> Result<(), ()> {
         visitor.visit_unsync(&self.set);
@@ -47,7 +63,7 @@ pub(crate) struct TypeSourceFunctionConst {
     pub data: Gc<SourceFunctionData>,
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TypeSourceFunctionConst> {
+impl crate::eval::pull::Pull for Rc<TypeSourceFunctionConst> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
     }
@@ -56,7 +72,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<TypeSourceFunctionConst> {
         crate::eval::to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+    fn dynamic_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(dynamic::TypeSourceFunctionDynamic)
     }
 }

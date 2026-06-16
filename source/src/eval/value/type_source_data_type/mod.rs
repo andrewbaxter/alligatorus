@@ -35,7 +35,19 @@ pub(crate) struct SourceDataMethodData {
     pub name: String,
     pub ret_type: RefCell<Option<Rc<dyn crate::langhelp::Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
-    pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
+}
+
+impl SourceDataMethodData {
+    pub fn finish(&self, dt_name: &str) -> Result<(), String> {
+        if self.impl_expr.borrow().is_none() {
+            return Err(format!("Data type '{}' method '{}' is missing implementation", dt_name, self.name));
+        }
+        if self.ret_type.borrow().is_none() {
+            return Err(format!("Data type '{}' method '{}' is missing a return type", dt_name, self.name));
+        }
+        Ok(())
+    }
 }
 
 pub(crate) struct SourceDataTypeData {
@@ -44,10 +56,20 @@ pub(crate) struct SourceDataTypeData {
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
     pub interface_impls: RefCell<Vec<SourceDataTypeInterfaceImplData>>,
-    pub methods: RefCell<Vec<SourceDataMethodData>>,
+    pub methods: RefCell<Vec<Rc<SourceDataMethodData>>>,
     pub name: Option<String>,
     pub set: Gc<crate::eval::definition_set::DefinitionSet>,
     pub underlying_type: DeserialLazy<Rc<dyn crate::langhelp::Type>>,
+}
+
+impl SourceDataTypeData {
+    pub fn finish(&self) -> Result<(), String> {
+        let name = self.name.as_deref().unwrap_or("(unnamed)");
+        for method in self.methods.borrow().iter() {
+            method.finish(name)?;
+        }
+        Ok(())
+    }
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceDataTypeData {
@@ -75,7 +97,7 @@ pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub impl_expr_artifact: RefCell<Option<crate::eval::expr_artifact::ArtifactExpr>>,
     pub interface_method_index: usize,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
-    pub self_scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
 }
 
 pub(crate) struct SourceDataTypeRef {
@@ -86,7 +108,7 @@ pub(crate) struct TypeSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
 }
 
-impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
+impl crate::eval::pull::Pull for Rc<SourceDataTypeRef> {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         crate::eval::from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
     }
@@ -95,7 +117,7 @@ impl crate::eval::dynamic_wrap::DynamicWrap for Rc<SourceDataTypeRef> {
         crate::eval::to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn crate::langhelp::Type> {
+    fn dynamic_type() -> Rc<dyn crate::langhelp::Type> {
         Rc::new(dynamic::TypeSourceDataTypeRefDynamic)
     }
 }

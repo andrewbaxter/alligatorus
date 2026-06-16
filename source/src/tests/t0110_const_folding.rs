@@ -24,7 +24,7 @@ fn test_0000_const_fold_bind() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind("x", mb.num(7.)),
                                 mb.if_(
@@ -47,7 +47,7 @@ fn test_0000_const_fold_bind() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "less");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 {
 let e1;
 let e2;
@@ -74,7 +74,7 @@ fn test_0010_no_const_fold_with_as() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind("x", mb.as_(mb.num(7.), mb.scope_use("number"))),
                                 mb.if_(
@@ -97,7 +97,7 @@ fn test_0010_no_const_fold_with_as() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "less");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let a0;
 {
 let e1;

@@ -60,46 +60,14 @@ impl DefinitionSet {
         if self.finished.get() {
             return Ok(());
         }
-        let functions = self.functions.borrow();
-        for func_data in functions.iter() {
-            let name = func_data.name.as_deref().unwrap_or("(unnamed)");
-            if func_data.impl_expr.borrow().is_none() {
-                return Err(format!("Definition set function '{}' is missing an implementation", name));
-            }
-            if func_data.arg_type.borrow().is_none() {
-                return Err(format!("Definition set function '{}' is missing an arg type", name));
-            }
-            if func_data.ret_type.borrow().is_none() {
-                return Err(format!("Definition set function '{}' is missing a return type", name));
-            }
+        for func_data in self.functions.borrow().iter() {
+            func_data.finish()?;
         }
-        let data_types = self.data_types.borrow();
-        for dt_data in data_types.iter() {
-            let name = dt_data.name.as_deref().unwrap_or("(unnamed)");
-            for method in dt_data.methods.borrow().iter() {
-                if method.impl_expr.borrow().is_none() {
-                    return Err(format!("Data type '{}' method '{}' is missing implementation", name, method.name));
-                }
-                if method.ret_type.borrow().is_none() {
-                    return Err(format!("Data type '{}' method '{}' is missing a return type", name, method.name));
-                }
-            }
+        for dt_data in self.data_types.borrow().iter() {
+            dt_data.finish()?;
         }
-        let interfaces = self.interfaces.borrow();
-        for (i, iface) in interfaces.iter().enumerate() {
-            let iface_name = iface.description.borrow().clone().unwrap_or_else(|| format!("(interface {})", i));
-            for method in iface.methods.borrow().iter() {
-                if method.arg_type.borrow().is_none() {
-                    return Err(
-                        format!("Interface '{}' method '{}' is missing an arg type", iface_name, method.name),
-                    );
-                }
-                if method.ret_type.borrow().is_none() {
-                    return Err(
-                        format!("Interface '{}' method '{}' is missing a return type", iface_name, method.name),
-                    );
-                }
-            }
+        for iface in self.interfaces.borrow().iter() {
+            iface.finish()?;
         }
         self.finished.set(true);
         Ok(())
@@ -201,7 +169,7 @@ pub(crate) fn deserialize_captured_externals(
             },
             ArtifactExternal::Unique { local_id, unique } => (
                 crate::langhelp::ScopeEntryId::Local(*local_id),
-                crate::langhelp::External::Unique(unique.clone()),
+                crate::langhelp::External::Unique(*unique),
             ),
         }
     }).collect()
@@ -344,12 +312,12 @@ pub(crate) fn load_def_set(
                             crate::eval::util::deserialize_type_artifact(xx, loc, &m.ret_type)
                                 .into_res()
                                 .expect("Failed to deserialize iface method ret_type");
-                        crate::eval::value::type_source_interface::SourceInterfaceMethodData {
+                        Rc::new(crate::eval::value::type_source_interface::SourceInterfaceMethodData {
                             name: m.name.clone(),
                             field_name: m.field_name.clone(),
                             arg_type: RefCell::new(Some(arg_type)),
                             ret_type: RefCell::new(Some(ret_type)),
-                        }
+                        })
                     }).collect();
                     *impl_data.interface.methods.borrow_mut() = methods;
                 }
@@ -368,7 +336,7 @@ pub(crate) fn load_def_set(
                         .map_err(|e| format!("Failed to deserialize underlying type: {:?}", e))?;
                 codes.push(underlying_code);
                 dt_data.underlying_type.set(underlying_type);
-                let methods: Vec<SourceDataMethodData> = dt_serial.methods.iter().map(|m| {
+                let methods: Vec<Rc<SourceDataMethodData>> = dt_serial.methods.iter().map(|m| {
                     let (arg_type, arg_code) =
                         crate::eval::util::deserialize_type_artifact(xx, loc, &m.arg_type)
                             .into_res()
@@ -380,7 +348,7 @@ pub(crate) fn load_def_set(
                             .unwrap_or_else(|e| panic!("Failed to deserialize method ret type: {:?}", e));
                     codes.push(ret_code);
                     let captured_externals = deserialize_captured_externals(xx, loc, &m.captured_externals);
-                    SourceDataMethodData {
+                    Rc::new(SourceDataMethodData {
                         name: m.name.clone(),
                         arg_type: RefCell::new(Some(arg_type)),
                         impl_expr: RefCell::new(None),
@@ -388,11 +356,11 @@ pub(crate) fn load_def_set(
                         scope_entry_id: Cell::new(
                             Some(crate::langhelp::ScopeEntryId::Def(import_id, def_set_id, m.entry_id)),
                         ),
-                        self_scope_entry_id: Cell::new(None),
+                        inner_scope_entry_id: Cell::new(None),
                         field_name: m.field_name.clone(),
                         compiled_js: RefCell::new(Some(m.compiled_js.clone())),
                         captured_externals: RefCell::new(captured_externals),
-                    }
+                    })
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
                 let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_id);
@@ -448,7 +416,7 @@ pub(crate) fn load_def_set(
                                 scope_entry_id: Cell::new(
                                     Some(crate::langhelp::ScopeEntryId::Def(import_id, def_set_id, m.entry_id)),
                                 ),
-                                self_scope_entry_id: Cell::new(None),
+                                inner_scope_entry_id: Cell::new(None),
                             }
                         }).collect();
                         SourceDataTypeInterfaceImplData {
@@ -536,7 +504,7 @@ pub(crate) fn serialize_captured_externals(
             },
             crate::langhelp::External::Unique(u) => ArtifactExternal::Unique {
                 local_id,
-                unique: u.clone(),
+                unique: *u,
             },
             crate::langhelp::External::IsolateBundle(_) => {
                 panic!("External::IsolateBundle is runtime-only and must not be serialized")
@@ -575,7 +543,7 @@ pub(crate) fn serialize_definition_set(
 
                     // `arg_type == None` is the conventional "method takes null / no argument" form
                     // (see `AspectField::field` use-site at type_source_data_type/dynamic.rs which
-                    // defaults to `TypeNullDynamic`). Serialize that as the null mortar type.
+                    // defaults to `TypeNullDynamic`). Serialize that as the null dynamic type.
                     let arg_type: Rc<dyn Type> = m.arg_type.borrow().clone().unwrap_or_else(|| {
                         Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)
                     });

@@ -101,7 +101,7 @@ pub(crate) fn install_imported_type_iface(
                     .ok_or_else(|| "Interface method missing return type".to_string())?
             };
             let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-            method_impl.self_scope_entry_id.set(Some(self_id));
+            method_impl.inner_scope_entry_id.set(Some(self_id));
             let mut body_scope =
                 build_builtin_scope(
                     xx,
@@ -121,7 +121,7 @@ pub(crate) fn install_imported_type_iface(
                     crate::r#gen::aspect_initial_bind_get(xx, loc, underlying_type.as_ref())
                         .into_res()
                         .map_err(|e| format!("aspect_initial_bind for self: {:?}", e))?;
-                body_scope.insert(ConstKey::String("self".to_string()), self_ib.initial_bind(self_id));
+                body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
                 BodyShape::SelfMethod(self_id, dt_data.data_field.clone())
             };
             let method_xx = Rc::new(ExprContext {
@@ -180,7 +180,7 @@ pub(crate) fn install_imported_type_iface(
             External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
             External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
             External::Type(t) => crate::eval::rc_type_to_v8(scope, t.clone()).into(),
-            External::Unique(u) => to_v8(scope, u.clone()).into(),
+            External::Unique(u) => to_v8(scope, *u).into(),
             External::IsolateBundle(b) => v8::Local::new(scope, &b.instance).into(),
         };
         scope.get_current_context().global(scope).set(scope, key.cast(), v8_val);

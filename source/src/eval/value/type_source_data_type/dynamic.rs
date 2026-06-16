@@ -156,14 +156,14 @@ impl AspectField for TypeSourceDataTypeDynamic {
                             let mut fields = std::collections::BTreeMap::new();
                             for (k, f) in &record.fields {
                                 let t = match f {
-                                    crate::eval::value::record::RecordField::Mortar(t) => t.clone(),
+                                    crate::eval::value::record::RecordField::Dynamic(t) => t.clone(),
                                     crate::eval::value::record::RecordField::EvalRes(_) => {
                                         return erb.err_new(
                                             "data type underlying record field is non-type".to_string(),
                                         );
                                     },
                                 };
-                                fields.insert(k.clone(), crate::eval::value::record::RecordField::Mortar(t),);
+                                fields.insert(k.clone(), crate::eval::value::record::RecordField::Dynamic(t),);
                             }
                             Rc::new(crate::eval::value::record::Record {
                                 base: Some(Box::new(crate::eval::value::record::RecordBaseDynamic)),
@@ -582,12 +582,12 @@ impl Type for TypeSourceDataTypeDynamic {
                 // see an external rather than a raw instance object. For the
                 // `Type`/`Target`/`ScopeEntry` builtin interfaces, the runtime value needs to be
                 // a `v8::External` wrapping the matching `Rc<dyn …>` so downstream
-                // `DynamicWrap::from_v8` (or `__record_to_type` / `__tuple_to_type` for `Type`)
+                // `Push::from_v8` (or `__record_to_type` / `__tuple_to_type` for `Type`)
                 // sees an external rather than a raw instance object. The cast emits a
                 // `__data_instance_to_<kind>(template, instance)` call which the rust-in-v8
                 // callback turns into the matching external. For each builtin iface, the runtime
                 // value is `Rc<dyn …>` wrapped in a `v8::External` — exactly the representation
-                // of the corresponding `…Dynamic` mortar type. The result CV's static type must
+                // of the corresponding `…Dynamic` dynamic type. The result CV's static type must
                 // match that runtime form (each type has a single representation, so a Dyn-coded
                 // CV cannot be typed `TypeSourceInterfaceConst`, whose representation is the
                 // compile-time iface ref).
@@ -743,7 +743,7 @@ impl Value for TypeSourceDataTypeDynamic {
     }
 }
 
-/// Parameterless mortar marker for `Rc<SourceDataTypeRef>` v8 marshaling. A
+/// Parameterless dynamic marker for `Rc<SourceDataTypeRef>` v8 marshaling. A
 /// `SourceDataTypeRef` is a reference to a data-type _definition_, not an instance
 /// of one (that's `TypeSourceDataTypeDynamic`); the two need distinct static-type
 /// singletons. The v8 runtime value stored at field accessors is

@@ -68,8 +68,8 @@ use {
     },
     scope_entry::{
         RecordScopeField,
+        ScopeEntryRecordBound,
         ScopeEntryRecordDynamic,
-        ScopeEntryRecordMortar,
     },
     std::{
         any::Any,
@@ -123,10 +123,10 @@ impl Record {
             let record_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
             let scope_fields: BTreeMap<ConstKey, RecordScopeField> = self.fields.iter().map(|(k, f)| {
                 let t = match f {
-                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::Dynamic(t) => t.clone(),
                     RecordField::EvalRes(_) => panic!("bind on non-type record"),
                 };
-                (k.clone(), RecordScopeField::Mortar(t))
+                (k.clone(), RecordScopeField::Dynamic(t))
             }).collect();
             return base.bind_sub(xx, loc, carry, record_type).map(|sub| (scope_fields, Some(sub)));
         }
@@ -135,12 +135,12 @@ impl Record {
         let mut has_target = false;
         for (key, field) in record.fields.into_iter() {
             match field {
-                RecordField::Mortar(_) => {
+                RecordField::Dynamic(_) => {
                     errors.push(crate::langhelp::ExprErr {
                         loc: loc,
                         errors: vec![
                             crate::langhelp::ExprSubErr::Opaque(
-                                format!("Record entry '{:?}' is mortar-only, cannot bind directly", key),
+                                format!("Record entry '{:?}' is dynamic-only, cannot bind directly", key),
                             ),
                         ],
                     });
@@ -209,7 +209,7 @@ impl Record {
         for (key, result) in bind_results {
             match result {
                 BindSubResult::Target(sub) => {
-                    scope_fields.insert(key.clone(), RecordScopeField::Mortar(sub.type_.clone()));
+                    scope_fields.insert(key.clone(), RecordScopeField::Dynamic(sub.type_.clone()));
                     target_fields.push((key.clone(), sub));
                 },
                 BindSubResult::Const(cv) => {
@@ -247,7 +247,7 @@ impl Record {
             base: self.base.as_ref().map(|b| b.clone_base()),
             fields: self.fields.iter().map(|(k, f)| {
                 (k.clone(), match f {
-                    RecordField::Mortar(t) => RecordField::Mortar(t.clone()),
+                    RecordField::Dynamic(t) => RecordField::Dynamic(t.clone()),
                     RecordField::EvalRes(_) => panic!("clone_as_type on non-type record"),
                 })
             }).collect(),
@@ -268,14 +268,14 @@ impl AspectBind for Record {
                 EResult::ok((Code {
                     loc: loc,
                     code: Code_::None,
-                }, Box::new(ScopeEntryRecordMortar {
+                }, Box::new(ScopeEntryRecordBound {
                     fields: scope_fields,
                     js_key: None,
                 }) as Box<dyn ScopeEntry>))
             },
             Ok((scope_fields, Some(sub))) => {
                 let (code, js_key) = xx.target.bind(xx, loc, sub);
-                EResult::ok((code, Box::new(ScopeEntryRecordMortar {
+                EResult::ok((code, Box::new(ScopeEntryRecordBound {
                     fields: scope_fields,
                     js_key: Some(js_key),
                 }) as Box<dyn ScopeEntry>))
@@ -302,12 +302,12 @@ impl AspectConsumeDynamic for Record {
         let mut js_fields = Vec::new();
         for (key, field) in record.fields.into_iter() {
             match field {
-                RecordField::Mortar(_) => {
+                RecordField::Dynamic(_) => {
                     errors.push(crate::langhelp::ExprErr {
                         loc,
                         errors: vec![
                             crate::langhelp::ExprSubErr::Opaque(
-                                format!("Record entry '{:?}' is mortar-only, cannot consume directly to JS", key),
+                                format!("Record entry '{:?}' is dynamic-only, cannot consume directly to JS", key),
                             ),
                         ],
                     });
@@ -384,7 +384,7 @@ impl AspectField for Record {
                     }
                     return erb.err_new(format!("Field '{}' evaluated to error", key_name));
                 },
-                Some(RecordField::Mortar(_)) => {
+                Some(RecordField::Dynamic(_)) => {
                     panic!("baseless record has Mortar field");
                 },
                 None => {
@@ -406,7 +406,7 @@ impl AspectInitialBind for Record {
             dynamic_key: dynamic_key,
             fields: self.fields.iter().map(|(k, f)| {
                 (k.clone(), match f {
-                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::Dynamic(t) => t.clone(),
                     RecordField::EvalRes(_) => panic!("initial_bind on non-type record"),
                 })
             }).collect(),
@@ -438,7 +438,7 @@ impl Type for Record {
         if *key == aspect_lift_dynamic_aspect_id() {
             let entry_lifts: Vec<(ConstKey, Box<dyn AspectLiftDynamic>)> = self.fields.iter().map(|(k, f)| {
                 let t = match f {
-                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::Dynamic(t) => t.clone(),
                     RecordField::EvalRes(_) => panic!("lift_js on non-type record"),
                 };
                 let a =
@@ -453,7 +453,7 @@ impl Type for Record {
             let entry_lowers: Vec<(ConstKey, Box<dyn crate::r#gen::AspectLowerDynamic>)> =
                 self.fields.iter().map(|(k, f)| {
                     let t = match f {
-                        RecordField::Mortar(t) => t.clone(),
+                        RecordField::Dynamic(t) => t.clone(),
                         RecordField::EvalRes(_) => panic!("lower on non-type record"),
                     };
                     let a =
@@ -498,7 +498,7 @@ impl Type for Record {
             let mut converted_fields = BTreeMap::new();
             for (key, field) in record.fields {
                 let dest_entry_type = match self.fields.get(&key) {
-                    Some(RecordField::Mortar(t)) => t.clone(),
+                    Some(RecordField::Dynamic(t)) => t.clone(),
                     _ => panic!("cast_from: dest missing key {:?}", key),
                 };
                 let converted_field = match field {
@@ -516,7 +516,7 @@ impl Type for Record {
                             })
                         }
                     },
-                    RecordField::Mortar(_) => RecordField::Mortar(dest_entry_type),
+                    RecordField::Dynamic(_) => RecordField::Dynamic(dest_entry_type),
                 };
                 converted_fields.insert(key, converted_field);
             }
@@ -540,7 +540,7 @@ impl Type for Record {
             let mut converted_type = self.clone_as_type();
             for (key, field) in record.fields {
                 let converted_cv = match field {
-                    RecordField::Mortar(t) => {
+                    RecordField::Dynamic(t) => {
                         // Compile-time type — store as External::Type, produce a BindingUse code that
                         // resolves to an `Rc<dyn Type>` external at runtime.
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
@@ -566,7 +566,7 @@ impl Type for Record {
                         erb.must_er(crate::eval::typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
                     },
                 };
-                converted_type.fields.insert(key.clone(), RecordField::Mortar(any_type.clone()));
+                converted_type.fields.insert(key.clone(), RecordField::Dynamic(any_type.clone()));
                 converted_fields.insert(key, RecordField::EvalRes(EvalRes::ok(converted_cv)));
             }
             let converted_record = Record {
@@ -603,7 +603,7 @@ impl Type for Record {
     fn desc(&self) -> String {
         format!("record({})", self.fields.iter().map(|(k, f)| {
             let t_desc = match f {
-                RecordField::Mortar(t) => t.desc(),
+                RecordField::Dynamic(t) => t.desc(),
                 RecordField::EvalRes(_) => "?".to_string(),
             };
             format!("{:?}: {}", k, t_desc)
@@ -615,7 +615,7 @@ impl Type for Record {
             std::collections::BTreeMap::new();
         for (key, field) in &self.fields {
             let field_type = match field {
-                RecordField::Mortar(t) => t.clone(),
+                RecordField::Dynamic(t) => t.clone(),
                 RecordField::EvalRes(er) => match &er.v {
                     Some(cv) => cv.value.type_(xx, loc),
                     None => panic!("Record::type_to_serial: field '{:?}' has no value", key),
@@ -640,7 +640,7 @@ impl Value for Record {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
         let fields = self.fields.iter().map(|(k, f)| {
             let t = record_field_type(xx, loc, f);
-            (k.clone(), RecordField::Mortar(t))
+            (k.clone(), RecordField::Dynamic(t))
         }).collect();
         Rc::new(Record {
             base: self.base.as_ref().map(|b| b.clone_base()),
@@ -651,7 +651,7 @@ impl Value for Record {
 
 fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn Type> {
     match f {
-        RecordField::Mortar(t) => t.clone(),
+        RecordField::Dynamic(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
             Some(cv) => cv.value.type_(xx, loc),
             None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
@@ -704,12 +704,12 @@ impl RecordBase for RecordBaseDynamic {
             let record_type = must_downcast_ref::<Record>(entry_type.as_ref());
             let fields = record_type.fields.iter().map(|(k, f)| {
                 let t = match f {
-                    RecordField::Mortar(t) => t.clone(),
+                    RecordField::Dynamic(t) => t.clone(),
                     RecordField::EvalRes(_) => {
-                        panic!("field mortar type Record has non-Mortar field")
+                        panic!("field dynamic type Record has non-Mortar field")
                     },
                 };
-                (k.clone(), RecordField::Mortar(t))
+                (k.clone(), RecordField::Dynamic(t))
             }).collect();
             return CodeValue {
                 code: field_code,
@@ -737,9 +737,9 @@ impl RecordBase for RecordBaseDynamic {
 pub(crate) enum RecordField {
     /// Field has been fully evaluated and is available immediately.
     EvalRes(EvalRes),
-    /// Field available only via the mortar source (a JS object). Type is known but
+    /// Field available only via the dynamic source (a JS object). Type is known but
     /// value is deferred to runtime.
-    Mortar(Rc<dyn Type>),
+    Dynamic(Rc<dyn Type>),
 }
 
 struct RecordLiftDynamic {

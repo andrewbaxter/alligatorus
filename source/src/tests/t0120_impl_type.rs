@@ -15,28 +15,38 @@ use {
     },
 };
 
+fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> SourceExpr {
+    let entries: Vec<(&str, SourceExpr)> = methods.into_iter().map(|(k, v)| (k, mb.stage(v))).collect();
+    return mb.call(
+        mb.field(
+            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("constkey"), mb.scope_use("expr")])),
+            mb.str("new"),
+        ),
+        mb.record(entries),
+    );
+}
+
 fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
     return mb.call(
         // Return constructor of type that implements "type"
         mb.lower(
-            mb.block(
+            mb.seq(
                 vec![
                     mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-                    mb.bind("u", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper"))),
-                    mb.call(mb.field(mb.scope_use("u"), mb.str("set_underlying")), mb.scope_use("null")),
+                    mb.bind("u", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
+                    mb.call(mb.field(mb.scope_use("u"), mb.str("set_inner")), mb.scope_use("null")),
                     mb.call(
-                        mb.field(mb.scope_use("u"), mb.str("impl_interface")),
-                        mb.tuple(vec![mb.scope_use("value"), mb.record(vec![
+                        mb.field(mb.scope_use("u"), mb.str("value")),
+                        iface_methods(mb, vec![
                             //. .
-                            ("type", mb.stage(mb.scope_use("self"))),
-                        ])]),
+                            ("type", mb.scope_use("inner")),
+                        ]),
                     ),
                     mb.call(
-                        mb.field(mb.scope_use("u"), mb.str("impl_interface")),
-                        // Create a new aspect for types that can be implemented from dynamic.
-                        mb.tuple(vec![mb.scope_use("type"), mb.record(vec![
+                        mb.field(mb.scope_use("u"), mb.str("type")),
+                        iface_methods(mb, vec![
                             //. .
-                            ("can_cast_from", mb.stage(mb.block(vec![
+                            ("can_cast_from", mb.seq(vec![
                                 // Need a new "option" type like "list" and "map". For now it just has an
                                 // `is_some() -> bool` method.
                                 mb.call(mb.field(
@@ -52,40 +62,36 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                                     ),
                                     mb.str("is_some"),
                                 ), mb.tuple(vec![])),
-                            ]))),
+                            ])),
                             (
                                 "cast_from",
-                                mb.stage(
-                                    mb.call(
-                                        mb.scope_use("eval_const"),
-                                        mb.tuple(
-                                            vec![
-                                                mb.field(mb.scope_use("arg"), mb.str("xx")),
-                                                mb.stage(mb.call(mb.field(
-                                                    // Graft is like "lower" except it just takes an EvalRes and puts it in the tree,
-                                                    // to be used as-is when evaluated.
-                                                    mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv"))),
-                                                    mb.str("toUpperCase"),
-                                                ), mb.tuple(vec![]))),
-                                            ],
-                                        ),
+                                mb.call(
+                                    mb.scope_use("eval_const"),
+                                    mb.tuple(
+                                        vec![
+                                            mb.field(mb.scope_use("arg"), mb.str("xx")),
+                                            mb.stage(mb.call(mb.field(
+                                                // Graft is like "lower" except it just takes an EvalRes and puts it in the tree,
+                                                // to be used as-is when evaluated.
+                                                mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv"))),
+                                                mb.str("toUpperCase"),
+                                            ), mb.tuple(vec![]))),
+                                        ],
                                     ),
                                 ),
                             ),
-                            ("desc", mb.stage(mb.block(vec![mb.str("upper")]))),
+                            ("desc", mb.seq(vec![mb.str("upper")])),
                             (
                                 "aspect",
-                                mb.stage(
-                                    mb.call(
-                                        mb.field(
-                                            mb.call(mb.scope_use("option"), mb.scope_use("aspect")),
-                                            mb.str("none"),
-                                        ),
-                                        mb.null(),
+                                mb.call(
+                                    mb.field(
+                                        mb.call(mb.scope_use("option"), mb.scope_use("aspect")),
+                                        mb.str("none"),
                                     ),
+                                    mb.null(),
                                 ),
                             ),
-                        ])]),
+                        ]),
                     ),
                     mb.field(mb.scope_use("u"), mb.str("new")),
                 ],
@@ -102,7 +108,7 @@ fn test_00100_impl_type() {
     setup_v8();
     let gx = new_gx([("main", SourceModule::V1({
         let mb = ModuleBuilder::default();
-        mb.block(vec![
+        mb.seq(vec![
             mb.bind("upper", mb.lower(build_upper_type(&mb))),
             // Cast a string to the "upper" type (which actually results in a string) and log
             // it
@@ -122,7 +128,7 @@ fn test_00100_impl_type() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO");
-    let scripts = redact_builtins(&res.generated_mortar_scripts);
+    let scripts = redact_builtins(&res.generated_dynamic_scripts);
     assert_eq!(scripts.len(), 3);
 
     // The four interface impls (value's `type`; type's
@@ -258,7 +264,7 @@ fn test_00200_impl_type_import() {
         })),
         ("main", SourceModule::V1({
             let mb = ModuleBuilder::default();
-            mb.block(
+            mb.seq(
                 vec![
                     mb.bind("upper", mb.import(mb.str("other"))),
                     mb.call(

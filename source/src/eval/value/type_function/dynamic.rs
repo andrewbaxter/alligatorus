@@ -247,11 +247,11 @@ impl Type for TypeFunctionDynamic {
     }
 
     fn cast_to(&self, _ex: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert mortar function"))
+        EvalRes::err(loc, format!("Cannot convert dynamic function"))
     }
 
     fn desc(&self) -> String {
-        return format!("mortar func");
+        return format!("dynamic func");
     }
 }
 

@@ -19,7 +19,7 @@ pub(crate) struct Expr {
 pub(crate) enum Expr_ {
     As(ExprAs),
     Bind(ExprBind),
-    Block(ExprBlock),
+    Seq(ExprSeq),
     Call(ExprCall),
     Field(ExprField),
     Foreach(ExprForeach),
@@ -52,7 +52,7 @@ pub(crate) struct ExprBind {
 }
 
 #[derive(Clone)]
-pub(crate) struct ExprBlock {
+pub(crate) struct ExprSeq {
     pub exprs: Vec<Expr>,
 }
 

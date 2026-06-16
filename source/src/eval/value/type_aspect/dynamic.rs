@@ -12,8 +12,8 @@ use {
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -73,7 +73,7 @@ impl AspectBindDynamic for TypeAspectDynamic {
 
 impl AspectConsumeDynamic for TypeAspectDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -105,7 +105,7 @@ impl AspectLiftDynamic for TypeAspectDynamic {
 
 impl AspectStackValueDynamic for TypeAspectDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAspectDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeAspectDynamic))
     }
 }
 

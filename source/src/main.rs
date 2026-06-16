@@ -22,7 +22,7 @@ use {
                 Expr,
                 ExprAs,
                 ExprBind,
-                ExprBlock,
+                ExprSeq,
                 ExprCall,
                 ExprConditionBranch,
                 ExprField,
@@ -93,23 +93,23 @@ pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Res
         let guard = entry.result.read().unwrap();
         if let Some(Ok(r)) = guard.as_ref() {
             all_errors.extend(collect_errors(r));
-            all_scripts.extend(r.generated_mortar_scripts.iter().cloned());
+            all_scripts.extend(r.generated_dynamic_scripts.iter().cloned());
         }
     }
     all_errors.extend(collect_errors(&res));
-    all_scripts.extend(res.generated_mortar_scripts.iter().cloned());
+    all_scripts.extend(res.generated_dynamic_scripts.iter().cloned());
     if !all_errors.is_empty() {
         return Err(all_errors);
     }
     return Ok(CompileOutput {
         logs: res.logs,
-        generated_mortar_scripts: all_scripts,
+        generated_dynamic_scripts: all_scripts,
     });
 }
 
 #[derive(Debug)]
 pub(crate) struct CompileOutput {
-    pub(crate) generated_mortar_scripts: Vec<String>,
+    pub(crate) generated_dynamic_scripts: Vec<String>,
     pub(crate) logs: Vec<LogEntry>,
 }
 
@@ -143,8 +143,8 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                     base: Rc::new(source_expr_to_expr(source_id, &expr.base)),
                     key: Rc::new(source_expr_to_expr(source_id, &expr.key)),
                 }),
-                SourceExpr_::Block(expr) => Expr_::Block(
-                    ExprBlock { exprs: expr.exprs.iter().map(|e| source_expr_to_expr(source_id, e)).collect() },
+                SourceExpr_::Seq(expr) => Expr_::Seq(
+                    ExprSeq { exprs: expr.exprs.iter().map(|e| source_expr_to_expr(source_id, e)).collect() },
                 ),
                 SourceExpr_::Bind(expr) => Expr_::Bind(ExprBind {
                     base: Rc::new(Expr {

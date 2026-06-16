@@ -1,7 +1,7 @@
 //! `TypeAnyTargetDynamic` — the v8/dynamic representation of a value impl'ing the
 //! builtin `target` interface. Parallels `TypeAnyDynamic` for `Rc<dyn Type>`: a
-//! `v8::External` wrapping an `Rc<dyn crate::r#gen::Target>`. Used as the mortar
-//! type of the `DynamicWrap` impl for `Rc<dyn crate::r#gen::Target>`.
+//! `v8::External` wrapping an `Rc<dyn crate::r#gen::Target>`. Used as the dynamic type
+//! type of the `Push` impl for `Rc<dyn crate::r#gen::Target>`.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
@@ -11,8 +11,8 @@ use {
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -69,7 +69,7 @@ impl AspectBindDynamic for TypeAnyTargetDynamic {
 
 impl AspectConsumeDynamic for TypeAnyTargetDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -84,7 +84,7 @@ impl AspectInitialBind for TypeAnyTargetDynamic {
 
 impl AspectStackValueDynamic for TypeAnyTargetDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyTargetDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeAnyTargetDynamic))
     }
 }
 

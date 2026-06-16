@@ -24,18 +24,18 @@ fn test_0000_tagged_union_match() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "strnum",
                                     mb.lower(
-                                        mb.block(
+                                        mb.seq(
                                             vec![
                                                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "builder",
                                                     mb.call(
-                                                        mb.field(mb.scope_use("d"), mb.str("tagged_union")),
+                                                        mb.field(mb.scope_use("d"), mb.str("union")),
                                                         mb.tuple(vec![]),
                                                     ),
                                                 ),
@@ -97,7 +97,7 @@ fn test_0000_tagged_union_match() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "7");
-    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
+    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -224,18 +224,18 @@ fn test_0010_tagged_union_match_fallback() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "strnum",
                                     mb.lower(
-                                        mb.block(
+                                        mb.seq(
                                             vec![
                                                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "builder",
                                                     mb.call(
-                                                        mb.field(mb.scope_use("d"), mb.str("tagged_union")),
+                                                        mb.field(mb.scope_use("d"), mb.str("union")),
                                                         mb.tuple(vec![]),
                                                     ),
                                                 ),
@@ -285,7 +285,7 @@ fn test_0010_tagged_union_match_fallback() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "fallback");
-    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
+    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -414,18 +414,18 @@ fn test_0020_tagged_union_nonexhaustive() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "strnum",
                                     mb.lower(
-                                        mb.block(
+                                        mb.seq(
                                             vec![
                                                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "builder",
                                                     mb.call(
-                                                        mb.field(mb.scope_use("d"), mb.str("tagged_union")),
+                                                        mb.field(mb.scope_use("d"), mb.str("union")),
                                                         mb.tuple(vec![]),
                                                     ),
                                                 ),
@@ -490,16 +490,16 @@ fn test_0020_tagged_union_nonexhaustive() {
 fn test_0030_tagged_union_exhaustive_with_fallback() {
     setup_v8();
     let mb = ModuleBuilder::default();
-    let gx = new_gx([("main", SourceModule::V1(mb.block(vec![
+    let gx = new_gx([("main", SourceModule::V1(mb.seq(vec![
         mb.bind(
             "strnum",
             mb.lower(
-                mb.block(
+                mb.seq(
                     vec![
                         mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                         mb.bind(
                             "builder",
-                            mb.call(mb.field(mb.scope_use("d"), mb.str("tagged_union")), mb.tuple(vec![])),
+                            mb.call(mb.field(mb.scope_use("d"), mb.str("union")), mb.tuple(vec![])),
                         ),
                         mb.bind(
                             "new_str",

@@ -342,9 +342,9 @@ pub(crate) fn user_defined_aspect_v8(
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let key_external = crate::eval::to_v8(scope, key.clone());
+    let key_push = crate::eval::to_v8(scope, key.clone());
     let key_str = v8::String::new(scope, &ConstKey::String("key".to_string()).to_str())?;
-    arg_obj.set(scope, key_str.into(), key_external.into());
+    arg_obj.set(scope, key_str.into(), key_push.into());
     let instance = v8::Local::new(scope, &bundle.instance);
     let method_key = v8::String::new(scope, &ConstKey::String(field_name).to_str())?;
     let method_val = instance.get(scope, method_key.into())?;

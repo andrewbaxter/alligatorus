@@ -30,11 +30,11 @@ use {
 };
 
 /// Scope entry for a bound record. Maps each key to one of: a DynamicScopeEntry
-/// (for fields that were mortar-only), a ScopeEntry (for fields that were fully
+/// (for fields that were dynamic-only), a ScopeEntry (for fields that were fully
 /// evaluated), or an error.
 pub(crate) enum RecordScopeField {
     Error(Vec<ExprErr>),
-    Mortar(Rc<dyn Type>),
+    Dynamic(Rc<dyn Type>),
     Scope(Box<dyn ScopeEntry>),
 }
 
@@ -56,26 +56,26 @@ impl ScopeEntry for ScopeEntryRecordDynamic {
             value: Rc::new(Record {
                 base: Some(Box::new(RecordBaseDynamic)),
                 fields: self.fields.iter().map(|(k, t)| {
-                    (k.clone(), RecordField::Mortar(t.clone()))
+                    (k.clone(), RecordField::Dynamic(t.clone()))
                 }).collect(),
             }),
         }
     }
 }
 
-/// DynamicScopeEntry adapter for sourceless records (used by bind_dynamic when
+/// ScopeEntry adapter for bound records (used by bind_dynamic when
 /// record has no JS code). On use_, constructs a Record from the stored scope
 /// entries.
-pub(crate) struct ScopeEntryRecordMortar {
+pub(crate) struct ScopeEntryRecordBound {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
     pub js_key: Option<ScopeEntryId>,
 }
 
-impl ScopeEntry for ScopeEntryRecordMortar {
+impl ScopeEntry for ScopeEntryRecordBound {
     fn use_(&self, xx: &crate::langhelp::ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        let has_mortar = self.fields.values().any(|f| matches!(f, RecordScopeField::Mortar(_)));
-        let (use_code, base) = if has_mortar {
-            let js_key = self.js_key.expect("ScopeEntryRecordMortar with mortar fields must have js_key");
+        let has_dynamic = self.fields.values().any(|f| matches!(f, RecordScopeField::Dynamic(_)));
+        let (use_code, base) = if has_dynamic {
+            let js_key = self.js_key.expect("ScopeEntryRecordDynamic with dynamic fields must have js_key");
             (Code {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(CodeDynamic {
@@ -99,8 +99,8 @@ impl ScopeEntry for ScopeEntryRecordMortar {
                     });
                     result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(cv)));
                 },
-                RecordScopeField::Mortar(t) => {
-                    result_fields.insert(key.clone(), RecordField::Mortar(t.clone()));
+                RecordScopeField::Dynamic(t) => {
+                    result_fields.insert(key.clone(), RecordField::Dynamic(t.clone()));
                 },
                 RecordScopeField::Error(errs) => {
                     result_fields.insert(key.clone(), RecordField::EvalRes(EvalRes {

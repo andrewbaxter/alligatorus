@@ -13,8 +13,8 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -82,7 +82,7 @@ impl AspectBoolDynamic for TypeBoolDynamic { }
 
 impl AspectConsumeDynamic for TypeBoolDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -97,7 +97,7 @@ impl AspectInitialBind for TypeBoolDynamic {
 
 impl AspectStackValueDynamic for TypeBoolDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeBoolDynamic))
     }
 }
 
@@ -189,7 +189,7 @@ impl Type for TypeBoolDynamic {
     }
 
     fn desc(&self) -> String {
-        return format!("mortar bool");
+        return format!("dynamic bool");
     }
 }
 

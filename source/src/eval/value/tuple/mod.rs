@@ -80,11 +80,11 @@ impl Tuple {
         let mut extra_codes: Vec<Code> = vec![cv.code];
         for elem in tuple.elements.into_iter() {
             match elem {
-                TupleElement::Mortar(_) => {
+                TupleElement::Dynamic(_) => {
                     errors.push(ExprErr {
                         loc: loc,
                         errors: vec![
-                            ExprSubErr::Opaque(format!("Tuple element is mortar-only, cannot bind directly")),
+                            ExprSubErr::Opaque(format!("Tuple element is dynamic-only, cannot bind directly")),
                         ],
                     });
                 },
@@ -122,7 +122,7 @@ impl Tuple {
                 errors: Some(errors),
             };
         }
-        let carry = match xx.target.block(loc, extra_codes).into_res() {
+        let carry = match xx.target.seq(loc, extra_codes).into_res() {
             Ok(c) => c,
             Err(e) => return EResult {
                 v: None,
@@ -167,7 +167,7 @@ impl Tuple {
     pub fn clone_as_type(&self) -> Tuple {
         Tuple { elements: self.elements.iter().map(|e| {
             match e {
-                TupleElement::Mortar(t) => TupleElement::Mortar(t.clone()),
+                TupleElement::Dynamic(t) => TupleElement::Dynamic(t.clone()),
                 TupleElement::EvalRes(_) => panic!("clone_as_type on non-type tuple"),
             }
         }).collect() }
@@ -214,7 +214,7 @@ impl AspectConsumeDynamic for Tuple {
             Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple to_dynamic: Rc not unique");
         let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
             match e {
-                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::Dynamic(t) => t.clone(),
                 TupleElement::EvalRes(_) => panic!("to_dynamic on non-type tuple"),
             }
         }).collect();
@@ -223,7 +223,7 @@ impl AspectConsumeDynamic for Tuple {
         for (elem, elem_type) in tuple.elements.into_iter().zip(types.iter()) {
             let elem_res = match elem {
                 TupleElement::EvalRes(er) => er,
-                TupleElement::Mortar(_) => panic!("to_dynamic on mortar tuple element"),
+                TupleElement::Dynamic(_) => panic!("to_dynamic on dynamic-only tuple element"),
             };
             if let Some(errs) = elem_res.errors {
                 errors.extend(errs);
@@ -261,7 +261,7 @@ impl AspectTuple for Tuple {
     fn element_types(&self) -> Vec<Rc<dyn Type>> {
         self.elements.iter().map(|e| {
             match e {
-                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::Dynamic(t) => t.clone(),
                 TupleElement::EvalRes(_) => panic!("element_types on non-type tuple"),
             }
         }).collect()
@@ -273,7 +273,7 @@ impl AspectTuple for Tuple {
         tuple.elements.into_iter().map(|e| {
             match e {
                 TupleElement::EvalRes(er) => er,
-                TupleElement::Mortar(_) => panic!("take_elements encountered Mortar element"),
+                TupleElement::Dynamic(_) => panic!("take_elements encountered Mortar element"),
             }
         }).collect()
     }
@@ -303,7 +303,7 @@ impl Type for Tuple {
         if *key == aspect_lift_dynamic_aspect_id() {
             let element_lifts: Vec<Box<dyn AspectLiftDynamic>> = self.elements.iter().map(|e| {
                 let t = match e {
-                    TupleElement::Mortar(t) => t.clone(),
+                    TupleElement::Dynamic(t) => t.clone(),
                     TupleElement::EvalRes(_) => panic!("lift_js on non-type tuple"),
                 };
                 let a =
@@ -317,7 +317,7 @@ impl Type for Tuple {
         if *key == crate::r#gen::aspect_lower_dynamic_aspect_id() {
             let element_lowers: Vec<Box<dyn crate::r#gen::AspectLowerDynamic>> = self.elements.iter().map(|e| {
                 let t = match e {
-                    TupleElement::Mortar(t) => t.clone(),
+                    TupleElement::Dynamic(t) => t.clone(),
                     TupleElement::EvalRes(_) => panic!("lower on non-type tuple"),
                 };
                 let a =
@@ -355,7 +355,7 @@ impl Type for Tuple {
             let mut converted_elements: Vec<TupleElement> = Vec::new();
             for (i, elem) in tuple.elements.into_iter().enumerate() {
                 let dest_elem_type = match self.elements.get(i) {
-                    Some(TupleElement::Mortar(t)) => t.clone(),
+                    Some(TupleElement::Dynamic(t)) => t.clone(),
                     Some(TupleElement::EvalRes(er)) => {
                         match &er.v {
                             Some(cv) => cv.value.type_(xx, loc),
@@ -379,7 +379,7 @@ impl Type for Tuple {
                             })
                         }
                     },
-                    TupleElement::Mortar(_) => TupleElement::Mortar(dest_elem_type),
+                    TupleElement::Dynamic(_) => TupleElement::Dynamic(dest_elem_type),
                 };
                 converted_elements.push(converted);
             }
@@ -411,7 +411,7 @@ impl Type for Tuple {
             let mut converted_type = self.clone_as_type();
             for (i, elem) in tuple.elements.into_iter().enumerate() {
                 let converted_cv = match elem {
-                    TupleElement::Mortar(t) => {
+                    TupleElement::Dynamic(t) => {
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::Type(t)));
                         CodeValue {
@@ -430,7 +430,7 @@ impl Type for Tuple {
                         erb.must_er(crate::eval::typecheck_convert(xx, loc, any_type.as_ref(), entry_cv))?
                     },
                 };
-                converted_type.elements[i] = TupleElement::Mortar(any_type.clone());
+                converted_type.elements[i] = TupleElement::Dynamic(any_type.clone());
                 converted_elements.push(TupleElement::EvalRes(EvalRes::ok(converted_cv)));
             }
             let converted_tuple = Tuple { elements: converted_elements };
@@ -462,7 +462,7 @@ impl Type for Tuple {
     fn desc(&self) -> String {
         format!("tuple({})", self.elements.iter().map(|e| {
             match e {
-                TupleElement::Mortar(t) => t.desc(),
+                TupleElement::Dynamic(t) => t.desc(),
                 TupleElement::EvalRes(_) => "?".to_string(),
             }
         }).collect::<Vec<_>>().join(", "))
@@ -472,7 +472,7 @@ impl Type for Tuple {
         let mut elements_serial: Vec<crate::langhelp::Artifact> = Vec::new();
         for elem in &self.elements {
             let elem_type = match elem {
-                TupleElement::Mortar(t) => t.clone(),
+                TupleElement::Dynamic(t) => t.clone(),
                 TupleElement::EvalRes(er) => match &er.v {
                     Some(cv) => cv.value.type_(xx, loc),
                     None => panic!("Tuple::type_to_serial: element has no value"),
@@ -496,7 +496,7 @@ impl Type for Tuple {
 impl Value for Tuple {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
         let elements = self.elements.iter().map(|e| {
-            TupleElement::Mortar(tuple_element_type(xx, loc, e))
+            TupleElement::Dynamic(tuple_element_type(xx, loc, e))
         }).collect();
         Rc::new(Tuple { elements: elements })
     }
@@ -504,7 +504,7 @@ impl Value for Tuple {
 
 fn tuple_element_type(xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
     match e {
-        TupleElement::Mortar(t) => t.clone(),
+        TupleElement::Dynamic(t) => t.clone(),
         TupleElement::EvalRes(er) => match &er.v {
             Some(cv) => cv.value.type_(xx, loc),
             None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
@@ -521,9 +521,9 @@ enum TupleBindSubResult {
 pub(crate) enum TupleElement {
     /// Element has been fully evaluated and is available immediately.
     EvalRes(EvalRes),
-    /// Element available only via the mortar source. Type is known but value is
+    /// Element available only via the dynamic source. Type is known but value is
     /// deferred to runtime.
-    Mortar(Rc<dyn Type>),
+    Dynamic(Rc<dyn Type>),
 }
 
 struct TupleLiftJs {

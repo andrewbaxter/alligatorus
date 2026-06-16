@@ -33,7 +33,7 @@ pub(crate) trait Artifacts: Send + Sync {
 pub(crate) trait Aspect: Any {
     /// Returns the v8 instance that backs this aspect handle, when one exists. The
     /// default `None` is correct for compile-time-only aspects (everything except
-    /// `TypeUserDefinedAspect`). `TypeRefV8::aspect` reads this to surface the
+    /// `TypeUserDefinedAspect`). `TypeRefPull::aspect` reads this to surface the
     /// instance into source code without RTTI on the returned `Box<dyn Aspect>`.
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
         None
@@ -205,7 +205,7 @@ pub(crate) struct CompileImportContext {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileRes {
-    pub(crate) generated_mortar_scripts: Vec<String>,
+    pub(crate) generated_dynamic_scripts: Vec<String>,
     pub(crate) logs: Vec<LogEntry>,
     pub(crate) result: CompileResResult,
 }
@@ -401,7 +401,7 @@ pub(crate) enum External {
 pub(crate) struct GlobalContext {
     pub(crate) artifacts: Box<dyn Artifacts>,
     pub(crate) compile_results: Mutex<HashMap<CompileId, Arc<CompileResultEntry>>>,
-    pub(crate) generated_mortar_scripts: Mutex<Vec<String>>,
+    pub(crate) generated_dynamic_scripts: Mutex<Vec<String>>,
     pub(crate) sources: Box<dyn Sources>,
 }
 
@@ -410,7 +410,7 @@ impl GlobalContext {
         Arc::new(GlobalContext {
             sources,
             artifacts,
-            generated_mortar_scripts: Default::default(),
+            generated_dynamic_scripts: Default::default(),
             compile_results: Default::default(),
         })
     }
@@ -495,7 +495,7 @@ pub(crate) struct SourceId(pub usize);
 /// `build.rs::check_no_duplicate_ids` panics at build time if any two specs share
 /// an id. Nothing in the runtime creates `Unique`s from `file!()`/`line!()` or
 /// hashed names anymore.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Unique {
     Builtin(usize),

@@ -12,8 +12,8 @@ use {
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -70,7 +70,7 @@ impl AspectBindDynamic for TypeValueDynamic {
 
 impl AspectConsumeDynamic for TypeValueDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -85,7 +85,7 @@ impl AspectInitialBind for TypeValueDynamic {
 
 impl AspectStackValueDynamic for TypeValueDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeValueDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeValueDynamic))
     }
 }
 
@@ -107,7 +107,7 @@ impl crate::r#gen::AspectField for TypeValueDynamic {
         if key_name == "type" {
             // Emit `__value_get_type(<value_code>)`. At v8 time the callback invokes the
             // user's compiled `value.type` impl on the instance, unwraps the resulting
-            // `Rc<dyn Type>` external, and rebuilds it as a `TypeRefV8` JS object —
+            // `Rc<dyn Type>` external, and rebuilds it as a `TypeRefPull` JS object —
             // supporting `.aspect(unique)` from source as if it were a Rust `Rc<dyn Type>`.
             let call = crate::code_dynamic::CodeDynamic {
                 loc,
@@ -128,7 +128,7 @@ impl crate::r#gen::AspectField for TypeValueDynamic {
                 },
                 value: Rc::new(crate::eval::dynamic_util::ValueDynamic {
                     source: crate::eval::dynamic_util::ValueDynamicSource::Expr,
-                    type_: Rc::new(crate::r#gen::TypeTypeRefV8Dynamic),
+                    type_: Rc::new(crate::r#gen::TypeTypeRefPullDynamic),
                 }),
             });
         }
@@ -140,7 +140,7 @@ impl crate::r#gen::AspectField for TypeValueDynamic {
             return None;
         };
         if s == "type" {
-            return Some(Rc::new(crate::r#gen::TypeTypeRefV8Dynamic));
+            return Some(Rc::new(crate::r#gen::TypeTypeRefPullDynamic));
         }
         None
     }

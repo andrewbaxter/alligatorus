@@ -1,12 +1,12 @@
 //! `Unique` as a value, plus the `TypeUnique` that types it. Used to expose aspect
 //! ids (like `aspect_string_dynamic`) as scope-usable values that can be passed to
-//! `.aspect(...)` lookups — both in const-eval and (via `DynamicWrap`) v8.
+//! `.aspect(...)` lookups — both in const-eval and (via `Push`) v8.
 use crate::r#gen::ScopeEntry;
 use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
-            dynamic_wrap::DynamicWrap,
+            pull::Pull,
             from_v8_ref,
             to_v8,
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
@@ -64,7 +64,7 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
                     ),
                 })),
             },
-            value: Rc::new(self.unique.clone()),
+            value: Rc::new(self.unique),
         }
     }
 }
@@ -217,16 +217,16 @@ impl Value for TypeUnique {
     }
 }
 
-impl DynamicWrap for Unique {
+impl Pull for Unique {
     fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        from_v8_ref::<Unique>(&*value).clone()
+        *from_v8_ref::<Unique>(&*value)
     }
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, self).into()
     }
 
-    fn mortar_type() -> Rc<dyn Type> {
+    fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeUnique)
     }
 }

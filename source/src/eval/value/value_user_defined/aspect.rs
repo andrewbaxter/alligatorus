@@ -100,7 +100,7 @@ impl AspectField for AspectUserDefined {
             xx,
             loc,
             "_im_afd0",
-            vec![("self".to_string(), self_), ("key".to_string(), key)],
+            vec![("inner".to_string(), self_), ("key".to_string(), key)],
         )
     }
 
@@ -119,7 +119,7 @@ impl AspectFunction for AspectUserDefined {
             xx,
             loc,
             "_im_af0",
-            vec![("self".to_string(), self_), ("argument".to_string(), argument)],
+            vec![("inner".to_string(), self_), ("argument".to_string(), argument)],
         )
     }
 }
@@ -220,12 +220,12 @@ fn dispatch_aspect_method(
     // `__cve_field(arg.<name>, …)` and friends, so the field values must be real CVE
     // externals at v8 — not placeholders.
     let arg_obj = v8::Object::new(scope);
-    let xx_external = to_v8(scope, child_xx.clone());
+    let xx_push = to_v8(scope, child_xx.clone());
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
         Some(k) => k,
         None => return EvalRes::err(loc, "AspectUserDefined dispatch: xx key alloc failed".to_string()),
     };
-    arg_obj.set(scope, xx_key.into(), xx_external.into());
+    arg_obj.set(scope, xx_key.into(), xx_push.into());
     for (name, cv) in &cv_fields {
         let k = match v8::String::new(scope, &ConstKey::String(name.clone()).to_str()) {
             Some(s) => s,
@@ -284,7 +284,7 @@ fn dispatch_aspect_method(
 ///
 /// `bundle` is the v8 instance that backs the impl — the same one
 /// `TypeUserDefined` held. `Aspect::v8_instance` surfaces it so
-/// `TypeRefV8::aspect` (in v8) can put the JS instance into an `OptionV8` payload
+/// `TypeRefPush::aspect` (in v8) can put the JS instance into an `OptionPush` payload
 /// without needing to RTTI the `Rc<dyn Type>` it came from.
 pub(crate) struct TypeUserDefinedAspect {
     /// Some when the handle was looked up via `TypeUserDefined::aspect` (bundle came

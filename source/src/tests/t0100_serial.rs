@@ -27,7 +27,7 @@ fn test_00100_import_literal() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "Hello world (mortar)");
-    assert_eq!(redact_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(redact_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -48,25 +48,23 @@ fn test_00200_import_definitionset() {
         //. .
         ("other", {
             let mb = ModuleBuilder::default();
-            SourceModule::V1(mb.block(vec![
+            SourceModule::V1(mb.seq(vec![
                 // First lower: create the definition set and get the constructor
-                mb.bind("ctor", mb.lower(mb.block(vec![
+                mb.bind("ctor", mb.lower(mb.seq(vec![
                     mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
-                    mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("new_data")), mb.str("upper"))),
+                    mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
                     // Set underlying type to string
-                    mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_underlying")), mb.scope_use("string")),
+                    mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.scope_use("string")),
                     // Define to_string method
-                    mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("new_func")), mb.str("to_string"))),
-                    mb.call(
-                        mb.field(mb.scope_use("mnfr"), mb.str("ret")),
-                        mb.tuple(vec![mb.scope_use("string")]),
-                    ),
+                    mb.bind("mnfr", mb.call(mb.field(mb.scope_use("ndr"), mb.str("func")), mb.str("to_string"))),
                     mb.call(
                         mb.field(mb.scope_use("mnfr"), mb.str("impl")),
                         mb.tuple(
                             vec![
+                                mb.scope_use("null"),
+                                mb.scope_use("string"),
                                 mb.stage(
-                                    mb.call(mb.field(mb.scope_use("self"), mb.str("toUpperCase")), mb.null()),
+                                    mb.call(mb.field(mb.scope_use("inner"), mb.str("toUpperCase")), mb.null()),
                                 ),
                             ],
                         ),
@@ -81,7 +79,7 @@ fn test_00200_import_definitionset() {
         ("main", {
             let mb = ModuleBuilder::default();
             SourceModule::V1(
-                mb.block(
+                mb.seq(
                     vec![
                         mb.bind("val", mb.import(mb.str("other"))),
                         mb.call(
@@ -96,13 +94,13 @@ fn test_00200_import_definitionset() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO");
-    assert_eq!(redact_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(redact_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
-e2 = a6;
+e2 = a7;
 let e3;
-e3 = a7;
+e3 = a8;
 let e4;
 let a0;
 {
@@ -155,24 +153,19 @@ let e19;
 e19 = a3;
 let e20;
 e20 = a4;
-e18 = e19["_1"](e20);
+let e21;
+e21 = a5;
+let e22;
+e22 = a6;
+e18 = e19["_0"](e20,e21,e22);
 e4 = e18;
 }
 {
-let e21;
-let e22;
-e22 = a3;
 let e23;
-e23 = a5;
-e21 = e22["_0"](e23);
-e4 = e21;
-}
-{
 let e24;
-let e25;
-e25 = a1;
-e24 = e25["_1"];
-e4 = e24;
+e24 = a1;
+e23 = e24["_1"];
+e4 = e23;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#, r#"var d0_0_0;

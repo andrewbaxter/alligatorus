@@ -55,7 +55,7 @@ pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue
         return EResult::ok(None);
     }
     let vtype = cv.value.type_(xx, loc);
-    mortar_consume_to_dynamic(xx, loc, cv).map(|c| Some(TargetBindSub {
+    dynamic_consume_to_dynamic(xx, loc, cv).map(|c| Some(TargetBindSub {
         data: Code {
             loc: loc,
             code: Code_::Dyn(Rc::new(c)),
@@ -95,7 +95,7 @@ pub(crate) fn bind_via_target(
     }
 }
 
-pub(crate) fn mortar_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+pub(crate) fn dynamic_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
     let r = cv.code.cast::<CodeDynamic>();
     if let Some(c) = r.v {
         if let Some(c) = c {
@@ -122,7 +122,7 @@ pub(crate) fn mortar_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: Cod
     }
 }
 
-pub(crate) fn mortar_dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
+pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc<dyn Type>) -> CodeValue {
     CodeValue {
         code: Code {
             loc,
@@ -135,7 +135,7 @@ pub(crate) fn mortar_dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, ty
     }
 }
 
-pub(crate) fn mortar_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
+pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let target_type = {
             let v = must_downcast_ref::<ValueDynamic>(self_.value.as_ref());

@@ -1,5 +1,5 @@
 use {
-    crate::buildsrc::util::arg_mortar_expr_str,
+    crate::buildsrc::util::arg_dynamic_type_expr_str,
     proc_macro2::TokenStream,
     quote::{
         format_ident,
@@ -8,9 +8,9 @@ use {
     std::collections::HashSet,
 };
 
-pub fn build(out: &mut TokenStream) {
+pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
     let mut dw_fn_call_exprs: Vec<TokenStream> = Vec::new();
-    let mut builtin_scope_ids = HashSet::new();
+    let builtin_scope_ids = scope_ids;
 
     struct DynWrapFnSpec {
         args: Vec<(&'static str, &'static str)>,
@@ -97,8 +97,8 @@ pub fn build(out: &mut TokenStream) {
             name: "eval_const",
             builtin_scope_id: 5007,
             args: vec![
-                ("xx", "crate::eval::code_value_extern::ExprContextRef"),
-                ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
+                ("xx", "crate::eval::code_value_extern::ExprContextPull"),
+                ("staged", "crate::eval::pull::StagedExpr"),
             ],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
             body: quote!{
@@ -116,8 +116,8 @@ pub fn build(out: &mut TokenStream) {
             name: "const_eval",
             builtin_scope_id: 5008,
             args: vec![
-                ("xx", "crate::eval::code_value_extern::ExprContextRef"),
-                ("staged", "crate::eval::dynamic_wrap::StagedExpr"),
+                ("xx", "crate::eval::code_value_extern::ExprContextPull"),
+                ("staged", "crate::eval::pull::StagedExpr"),
             ],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
             body: quote!{
@@ -140,7 +140,7 @@ pub fn build(out: &mut TokenStream) {
                 ("target_arg", "Rc<dyn crate::r#gen::Target>"),
                 ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::ScopeEntry>>"),
             ],
-            ret: "crate::eval::code_value_extern::ExprContextRef",
+            ret: "crate::eval::code_value_extern::ExprContextPull",
             body: quote!{
                 let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
                 let parent_ex = ex_slot.ex.clone();
@@ -158,13 +158,13 @@ pub fn build(out: &mut TokenStream) {
                     scope: new_scope,
                     target: target_arg,
                 });
-                crate::eval::code_value_extern::ExprContextRef(xx)
+                crate::eval::code_value_extern::ExprContextPull(xx)
             },
         },
         DynWrapFnSpec {
             name: "list",
             builtin_scope_id: 5010,
-            args: vec![("element_type", "crate::eval::dynamic_wrap::AnyType")],
+            args: vec![("element_type", "crate::eval::pull::AnyType")],
             ret: "crate::eval::value::type_list::dynamic::TypeListDynamic",
             body: quote!{
                 crate::eval::value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
@@ -174,8 +174,8 @@ pub fn build(out: &mut TokenStream) {
             name: "map",
             builtin_scope_id: 5011,
             args: vec![
-                ("key_type", "crate::eval::dynamic_wrap::AnyType"),
-                ("value_type", "crate::eval::dynamic_wrap::AnyType"),
+                ("key_type", "crate::eval::pull::AnyType"),
+                ("value_type", "crate::eval::pull::AnyType"),
             ],
             ret: "crate::eval::value::type_map::dynamic::TypeMapDynamic",
             body: quote!{
@@ -188,7 +188,7 @@ pub fn build(out: &mut TokenStream) {
         DynWrapFnSpec {
             name: "option",
             builtin_scope_id: 5012,
-            args: vec![("element_type", "crate::eval::dynamic_wrap::AnyType")],
+            args: vec![("element_type", "crate::eval::pull::AnyType")],
             ret: "crate::eval::value::type_option::dynamic::TypeOptionDynamic",
             body: quote!{
                 crate::eval::value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
@@ -199,12 +199,12 @@ pub fn build(out: &mut TokenStream) {
         let name_str = s.name;
         let builtin_scope_id = s.builtin_scope_id;
         assert!(builtin_scope_ids.insert(builtin_scope_id));
-        let arg_mortar = arg_mortar_expr_str(&s.args);
+        let arg_dynamic_type = arg_dynamic_type_expr_str(&s.args);
         let arg_decls: Vec<TokenStream> = s.args.iter().map(|(n, ty)| {
             let n = format_ident!("{}", n);
             let ty: TokenStream = ty.parse().unwrap();
             quote!{
-                let #n: #ty = <#ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: from_v8(
+                let #n: #ty = <#ty as crate:: eval:: pull:: Pull >:: from_v8(
                     scope,
                     _jw_args.get(_jw_arg_i),
                 );
@@ -237,14 +237,14 @@ pub fn build(out: &mut TokenStream) {
                     #(#arg_decls) * let _jw_result: #ret_ty = {
                         #body
                     };
-                    _jw_rv.set(<#ret_ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: into_v8(_jw_result, scope),);
+                    _jw_rv.set(<#ret_ty as crate:: eval:: pull:: Pull >:: into_v8(_jw_result, scope),);
                 }
                 (
                     #name_str,
                     crate:: langhelp:: ScopeEntryId:: Builtin(#builtin_scope_id),
                     std:: rc:: Rc:: new(crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
-                        arg: #arg_mortar,
-                        ret: <#ret_ty as crate:: eval:: dynamic_wrap:: DynamicWrap >:: mortar_type(),
+                        arg: #arg_dynamic_type,
+                        ret: <#ret_ty as crate:: eval:: pull:: Pull >:: dynamic_type(),
                     },) as std:: rc:: Rc < dyn crate:: langhelp:: Type >,
                     v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
                 )

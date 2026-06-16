@@ -10,8 +10,8 @@ use {
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -48,7 +48,7 @@ use {
     },
 };
 
-// TypeMortarType — the mortar (v8) representation of a type value. In v8, types
+// TypeMortarType — the dynamic (v8) representation of a type value. In v8, types
 // are always Rc`<dyn Type>` externals.
 pub(crate) struct TypeAnyDynamic;
 
@@ -73,7 +73,7 @@ impl AspectBindDynamic for TypeAnyDynamic {
 
 impl AspectConsumeDynamic for TypeAnyDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -100,7 +100,7 @@ impl AspectLiftDynamic for TypeAnyDynamic {
 
 impl AspectStackValueDynamic for TypeAnyDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeAnyDynamic))
     }
 }
 
@@ -301,7 +301,7 @@ impl Type for TypeAnyDynamic {
     }
 
     fn desc(&self) -> String {
-        "mortar type".to_string()
+        "dynamic type".to_string()
     }
 
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> crate::langhelp::Artifact {

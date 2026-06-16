@@ -1,5 +1,5 @@
 //! `TypeConstkeyDynamic` — runtime form of a `ConstKey` value at the v8 boundary.
-//! Used as the `mortar_type` for `ConstKey` (e.g. as the key type when a Rust
+//! Used as the `dynamic_type` for `ConstKey` (e.g. as the key type when a Rust
 //! function takes `BTreeMap<ConstKey, V>`).
 //!
 //! The runtime representation is a JS string carrying the **canonical-JSON**
@@ -32,8 +32,8 @@ use {
                 ValueDynamicSource,
                 bind_dynamic_default,
                 bind_via_target,
-                mortar_consume_to_dynamic,
-                mortar_dynamic_stack_to_value,
+                dynamic_consume_to_dynamic,
+                dynamic_stack_to_value,
             },
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -97,7 +97,7 @@ impl AspectBindDynamic for TypeConstkeyDynamic {
 
 impl AspectConsumeDynamic for TypeConstkeyDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        mortar_consume_to_dynamic(xx, loc, cv)
+        dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
@@ -112,7 +112,7 @@ impl AspectInitialBind for TypeConstkeyDynamic {
 
 impl AspectStackValueDynamic for TypeConstkeyDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        mortar_dynamic_stack_to_value(loc, value, Rc::new(TypeConstkeyDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeConstkeyDynamic))
     }
 }
 

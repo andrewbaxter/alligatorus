@@ -28,7 +28,7 @@ fn test_0000_number_lit() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind("x", mb.as_(mb.num(4.), mb.scope_use("number"))),
                                 mb.if_(
@@ -58,7 +58,7 @@ fn test_0000_number_lit() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "11");
-    assert_eq!(sanitize_builtins(&res.generated_mortar_scripts), vec![r#"let e0;
+    assert_eq!(sanitize_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
 let a0;
 {
 let e1;
@@ -123,10 +123,10 @@ e0;"#]);
 }
 
 /// This tests basic number operations (creation, binding, comparison,
-/// modification, to_string) in v8. Because the function argument is a mortar
+/// modification, to_string) in v8. Because the function argument is a dynamic
 /// number, all operations need to happen in v8 instead of at evaluation time.
 #[test]
-fn test_00100_number_mortar() {
+fn test_00100_number_dynamic() {
     setup_v8();
     let mb = ModuleBuilder::default();
     let gx =
@@ -135,35 +135,29 @@ fn test_00100_number_mortar() {
                 (
                     "main",
                     SourceModule::V1(
-                        mb.block(
+                        mb.seq(
                             vec![
                                 mb.bind(
                                     "maybe_add",
                                     mb.lower(
-                                        mb.block(
+                                        mb.seq(
                                             vec![
                                                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "builder",
                                                     mb.call(
-                                                        mb.field(mb.scope_use("d"), mb.str("new_func")),
+                                                        mb.field(mb.scope_use("d"), mb.str("func")),
                                                         mb.str("maybe add 7"),
                                                     ),
-                                                ),
-                                                mb.call(
-                                                    mb.field(mb.scope_use("builder"), mb.str("arg")),
-                                                    mb.tuple(vec![mb.scope_use("number")]),
-                                                ),
-                                                mb.call(
-                                                    mb.field(mb.scope_use("builder"), mb.str("ret")),
-                                                    mb.tuple(vec![mb.scope_use("number")]),
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("builder"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
+                                                            mb.scope_use("number"),
+                                                            mb.scope_use("number"),
                                                             mb.stage(
-                                                                mb.block(
+                                                                mb.seq(
                                                                     vec![
                                                                         mb.if_(
                                                                             vec![
@@ -216,7 +210,7 @@ fn test_00100_number_mortar() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "11");
-    let js_sources = sanitize_builtins(&res.generated_mortar_scripts);
+    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
     assert_eq!(js_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -253,33 +247,19 @@ let e12;
 e12 = a1;
 let e13;
 e13 = a2;
-e11 = e12["_3"](e13);
+let e14;
+e14 = a3;
+let e15;
+e15 = a4;
+e11 = e12["_2"](e13,e14,e15);
 e4 = e11;
 }
 {
-let e14;
-let e15;
-e15 = a1;
 let e16;
-e16 = a3;
-e14 = e15["_5"](e16);
-e4 = e14;
-}
-{
 let e17;
-let e18;
-e18 = a1;
-let e19;
-e19 = a4;
-e17 = e18["_2"](e19);
-e4 = e17;
-}
-{
-let e20;
-let e21;
-e21 = a1;
-e20 = e21["_0"];
-e4 = e20;
+e17 = a1;
+e16 = e17["_0"];
+e4 = e16;
 }
 e0 = (e1)(e2,e3,e4);
 e0;"#);

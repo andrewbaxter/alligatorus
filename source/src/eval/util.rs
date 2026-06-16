@@ -67,7 +67,7 @@ pub(crate) fn deserialize_artifact(
                 if matches!(type_code.code, crate::langhelp::Code_::None) {
                     Ok(data_cv)
                 } else {
-                    let combined_code = erb.must_er(xx.target.block(loc, vec![type_code, data_cv.code]))?;
+                    let combined_code = erb.must_er(xx.target.seq(loc, vec![type_code, data_cv.code]))?;
                     Ok(crate::langhelp::CodeValue {
                         code: combined_code,
                         value: data_cv.value,
