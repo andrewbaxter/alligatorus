@@ -2138,3 +2138,60 @@ e156 = e157;
 }
 e156;"#);
 }
+
+#[test]
+fn test_0010_nodejs_helloworld() {
+    setup_v8();
+    let gx = new_gx([
+        //. .
+        ("nodejs", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.lower(build_nodejs(&mb))
+        })),
+        ("main", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.seq(vec![
+                //. .
+                mb.bind("nodejs", mb.import(mb.str("nodejs"))),
+                mb.bind("app", mb.call(mb.scope_use("nodejs"), mb.tuple(vec![]))),
+                mb.call(
+                    mb.field(mb.scope_use("app"), mb.str("root")),
+                    mb.stage(
+                        mb.call(mb.field(mb.scope_use("console"), mb.str("log")), mb.str("Hello world (node)")),
+                    ),
+                ),
+                mb.call(
+                    mb.scope_use("log"),
+                    mb.call(mb.field(mb.scope_use("app"), mb.str("build")), mb.tuple(vec![])),
+                ),
+            ])
+        })),
+    ].into_iter().collect());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, r#"let e0;
+{
+let e1;
+{
+let e2;
+{
+e2 = console;
+}
+let e3;
+{
+e3 = "log";
+}
+e1 = e2.e3;
+}
+let e4;
+{
+e4 = "Hello world (node)";
+}
+e0 = (e1)(e4);
+}
+e0"#);
+    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert_eq!(js_sources.len(), 2);
+    assert_eq!(js_sources[0], r#"TODO"#);
+    assert_eq!(js_sources[1], r#"TODO"#);
+}
