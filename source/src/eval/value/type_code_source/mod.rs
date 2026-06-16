@@ -79,11 +79,10 @@ impl AspectFunction for TypeCodeDynCastFn {
         let target_type: Rc<dyn Type> = if let Some(v) = arg_any.downcast_ref::<ValueAnyConst>() {
             v.inner.clone()
         } else if let Some(dt) =
-            arg_any
-                .downcast_ref::<crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst>() {
-            Rc::new(crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst {
-                data: dt.data.clone(),
-            })
+            arg_any.downcast_ref::<crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst>() {
+            Rc::new(
+                crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst { data: dt.data.clone() },
+            )
         } else {
             Rc::new(TypeCodeDynHandleDynamic) as Rc<dyn Type>
         };

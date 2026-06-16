@@ -39,11 +39,7 @@ use {
     },
 };
 
-pub(crate) fn install_def_set_to_v8(
-    xx: &ExprContext,
-    loc: QExprId,
-    set: &Gc<DefinitionSet>,
-) -> Result<(), String> {
+pub(crate) fn install_def_set_to_v8(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Result<(), String> {
     let Some(scope_ptr) = xx.vx.v8_scope.get() else {
         return Ok(());
     };
@@ -58,23 +54,26 @@ pub(crate) fn install_def_set_to_v8(
         }
     };
     for func_data in set.functions.borrow().iter() {
-        let func_name = scope_entry_id_dynamic_key(
-            func_data.scope_entry_id.get().ok_or_else(|| "func missing scope_entry_id".to_string())?,
-        );
+        let func_name =
+            scope_entry_id_dynamic_key(
+                func_data.scope_entry_id.get().ok_or_else(|| "func missing scope_entry_id".to_string())?,
+            );
         collect_externals(&func_name, &func_data.captured_externals.borrow());
     }
     for dt in set.data_types.borrow().iter() {
         for method in dt.methods.borrow().iter() {
-            let func_name = scope_entry_id_dynamic_key(
-                method.scope_entry_id.get().ok_or_else(|| "method missing scope_entry_id".to_string())?,
-            );
+            let func_name =
+                scope_entry_id_dynamic_key(
+                    method.scope_entry_id.get().ok_or_else(|| "method missing scope_entry_id".to_string())?,
+                );
             collect_externals(&func_name, &method.captured_externals.borrow());
         }
         for impl_data in dt.interface_impls.borrow().iter() {
             for m in &impl_data.method_impls {
-                let func_name = scope_entry_id_dynamic_key(
-                    m.scope_entry_id.get().ok_or_else(|| "iface method missing scope_entry_id".to_string())?,
-                );
+                let func_name =
+                    scope_entry_id_dynamic_key(
+                        m.scope_entry_id.get().ok_or_else(|| "iface method missing scope_entry_id".to_string())?,
+                    );
                 collect_externals(&func_name, &m.captured_externals.borrow());
             }
         }

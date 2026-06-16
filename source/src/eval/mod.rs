@@ -330,6 +330,7 @@ fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
             code_uses_binding(&s.key, target_id),
     }
 }
+
 pub(crate) struct CodePull {
     pub instance: v8::Global<v8::Object>,
 }

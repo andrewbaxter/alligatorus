@@ -100,18 +100,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.call(
             mb.field(mb.scope_use("ntype_str"), mb.str("impl_interface")),
-            mb.tuple(
-                vec![
-                    mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("type")),
-                    iface_methods(
-                        mb,
-                        vec![
-                            //. .
-                            ("to_code", nvalue_to_code(mb, mb.scope_use("arg"))),
-                        ],
-                    ),
-                ],
-            ),
+            mb.tuple(vec![mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("type")), iface_methods(mb, vec![
+                //. .
+                ("to_code", nvalue_to_code(mb, mb.scope_use("arg"))),
+            ])]),
         ),
     );
     exprs.push(
@@ -154,10 +146,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                     mb.str("type"),
                                                 ),
                                                 mb.lower(
-                                                    mb.field(
-                                                        mb.scope_use("aspect_consume_nodejs"),
-                                                        mb.str("type"),
-                                                    ),
+                                                    mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("type")),
                                                 ),
                                             ],
                                         ),
@@ -174,9 +163,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                         (
                                             mb.str("none"),
                                             mb.call(
-                                                mb.lower(
-                                                    mb.field(mb.scope_use("code"), mb.str("lit_str")),
-                                                ),
+                                                mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
                                                 mb.as_(
                                                     mb.field(mb.scope_use("arg"), mb.str("argument")),
                                                     mb.scope_use("string"),
@@ -216,10 +203,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                 vec![
                                                     (
                                                         "base",
-                                                        mb.call(
-                                                            mb.lower(mb.scope_use("nvalue_expr")),
-                                                            mb.null(),
-                                                        ),
+                                                        mb.call(mb.lower(mb.scope_use("nvalue_expr")), mb.null()),
                                                     ),
                                                     ("type", mb.field(mb.scope_use("inner"), mb.str("ret"))),
                                                 ],
@@ -264,16 +248,18 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                 "field_code",
                                 mb.call(
                                     mb.lower(mb.field(mb.scope_use("code"), mb.str("field"))),
-                                    mb.record(vec![
-                                        ("base", mb.scope_use("base_code")),
-                                        (
-                                            "field",
-                                            mb.call(
-                                                mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
-                                                mb.field(mb.scope_use("arg"), mb.str("key")),
+                                    mb.record(
+                                        vec![
+                                            ("base", mb.scope_use("base_code")),
+                                            (
+                                                "field",
+                                                mb.call(
+                                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
+                                                    mb.field(mb.scope_use("arg"), mb.str("key")),
+                                                ),
                                             ),
-                                        ),
-                                    ]),
+                                        ],
+                                    ),
                                 ),
                             ),
                             mb.call(
@@ -293,10 +279,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                                 vec![
                                                     (
                                                         "base",
-                                                        mb.call(
-                                                            mb.lower(mb.scope_use("nvalue_expr")),
-                                                            mb.null(),
-                                                        ),
+                                                        mb.call(mb.lower(mb.scope_use("nvalue_expr")), mb.null()),
                                                     ),
                                                     (
                                                         "type",
@@ -995,56 +978,63 @@ fn impl_iface(mb: &ModuleBuilder, target_var: &str, iface: &str, methods: Vec<(&
 
 #[allow(dead_code)]
 fn nvalue_to_code(mb: &ModuleBuilder, cve_expr: SourceExpr) -> SourceExpr {
-    return mb.seq(vec![
-        mb.bind("__cve", cve_expr),
-        mb.match_(
-            mb.as_(
-                mb.field(
-                    mb.call(
-                        mb.scope_use("cast_value"),
-                        mb.tuple(vec![
-                            mb.field(mb.scope_use("__cve"), mb.str("value")),
-                            mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type_ref"))),
-                        ]),
+    return mb.seq(
+        vec![
+            mb.bind("__cve", cve_expr),
+            mb.match_(
+                mb.as_(
+                    mb.field(
+                        mb.call(
+                            mb.scope_use("cast_value"),
+                            mb.tuple(
+                                vec![
+                                    mb.field(mb.scope_use("__cve"), mb.str("value")),
+                                    mb.lower(mb.field(mb.scope_use("nvalue"), mb.str("type_ref"))),
+                                ],
+                            ),
+                        ),
+                        mb.str("base"),
                     ),
-                    mb.str("base"),
+                    mb.lower(mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
                 ),
-                mb.lower(mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
+                mb.str("v"),
+                vec![
+                    (
+                        mb.str("binding"),
+                        mb.call(
+                            mb.lower(mb.field(mb.scope_use("code"), mb.str("scope_use"))),
+                            mb.scope_use("v"),
+                        ),
+                    ),
+                    (
+                        mb.str("expr"),
+                        mb.match_(
+                            mb.field(mb.field(mb.scope_use("__cve"), mb.str("code")), mb.str("code")),
+                            mb.str("c"),
+                            vec![
+                                (
+                                    mb.str("dyn"),
+                                    mb.call(
+                                        mb.field(mb.scope_use("c"), mb.str("cast")),
+                                        mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
+                                    ),
+                                ),
+                                (
+                                    mb.str("none"),
+                                    mb.call(
+                                        mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
+                                        mb.str(""),
+                                    ),
+                                ),
+                            ],
+                            None,
+                        ),
+                    ),
+                ],
+                None,
             ),
-            mb.str("v"),
-            vec![
-                (
-                    mb.str("binding"),
-                    mb.call(mb.lower(mb.field(mb.scope_use("code"), mb.str("scope_use"))), mb.scope_use("v")),
-                ),
-                (
-                    mb.str("expr"),
-                    mb.match_(
-                        mb.field(mb.field(mb.scope_use("__cve"), mb.str("code")), mb.str("code")),
-                        mb.str("c"),
-                        vec![
-                            (
-                                mb.str("dyn"),
-                                mb.call(
-                                    mb.field(mb.scope_use("c"), mb.str("cast")),
-                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("type"))),
-                                ),
-                            ),
-                            (
-                                mb.str("none"),
-                                mb.call(
-                                    mb.lower(mb.field(mb.scope_use("code"), mb.str("lit_str"))),
-                                    mb.str(""),
-                                ),
-                            ),
-                        ],
-                        None,
-                    ),
-                ),
-            ],
-            None,
-        ),
-    ]);
+        ],
+    );
 }
 
 #[test]
@@ -2328,10 +2318,7 @@ e0"#);
     let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
     assert_eq!(js_sources.len(), 3);
     assert!(js_sources[0].starts_with("let e0;\nlet e1;\n"), "nodejs build script shape");
-    assert!(
-        js_sources[1].contains("\nnull;"),
-        "main first-pass evaluates imports and yields null",
-    );
+    assert!(js_sources[1].contains("\nnull;"), "main first-pass evaluates imports and yields null",);
     assert!(
         js_sources[2].contains("e4[\"\\\"_7\\\"\"](e5)") && js_sources[2].contains("e9[\"\\\"_8\\\"\"]()"),
         "main dynamic substage calls napp.root and napp.build",

@@ -649,15 +649,16 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
         }).collect();
         drop(functions);
         let dependencies: Vec<ArtifactId> = {
-            let dep_sets: Vec<Gc<DefinitionSet>> = xx
-                .vx
-                .ix
-                .definition_sets
-                .borrow()
-                .iter()
-                .filter(|s| s.def_set_id != set.def_set_id)
-                .cloned()
-                .collect();
+            let dep_sets: Vec<Gc<DefinitionSet>> =
+                xx
+                    .vx
+                    .ix
+                    .definition_sets
+                    .borrow()
+                    .iter()
+                    .filter(|s| s.def_set_id != set.def_set_id)
+                    .cloned()
+                    .collect();
             dep_sets.iter().map(|s| serialize_definition_set(xx, loc, s)).collect()
         };
         let serial = ArtifactDataDefSet {

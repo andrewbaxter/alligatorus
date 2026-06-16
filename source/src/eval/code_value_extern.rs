@@ -236,15 +236,18 @@ impl AspectField for TypeCodeValueExternDynamic {
     }
 }
 
-impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
-    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        dynamic_stack_to_value(loc, value, Rc::new(TypeCodeValueExternDynamic))
+impl AspectInitialBind for TypeCodeValueExternDynamic {
+    fn initial_bind(&self, dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding {
+            dynamic_key,
+            type_: Rc::new(TypeCodeValueExternDynamic),
+        })
     }
 }
 
-impl AspectInitialBind for TypeCodeValueExternDynamic {
-    fn initial_bind(&self, dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding { dynamic_key, type_: Rc::new(TypeCodeValueExternDynamic) })
+impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
+    fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
+        dynamic_stack_to_value(loc, value, Rc::new(TypeCodeValueExternDynamic))
     }
 }
 
