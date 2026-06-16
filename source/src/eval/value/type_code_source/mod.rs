@@ -74,12 +74,24 @@ pub(crate) struct TypeCodeDynCastFn;
 impl Aspect for TypeCodeDynCastFn { }
 
 impl AspectFunction for TypeCodeDynCastFn {
-    fn call(&self, _xx: &ExprContext, _loc: QExprId, function: CodeValue, _argument: CodeValue) -> EvalRes {
+    fn call(&self, _xx: &ExprContext, _loc: QExprId, function: CodeValue, argument: CodeValue) -> EvalRes {
+        let arg_any: &dyn Any = argument.value.as_ref();
+        let target_type: Rc<dyn Type> = if let Some(v) = arg_any.downcast_ref::<ValueAnyConst>() {
+            v.inner.clone()
+        } else if let Some(dt) =
+            arg_any
+                .downcast_ref::<crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst>() {
+            Rc::new(crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst {
+                data: dt.data.clone(),
+            })
+        } else {
+            Rc::new(TypeCodeDynHandleDynamic) as Rc<dyn Type>
+        };
         EvalRes::ok(CodeValue {
             code: function.code,
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
-                type_: Rc::new(TypeCodeDynHandleDynamic),
+                type_: target_type,
             }),
         })
     }

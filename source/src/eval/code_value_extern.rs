@@ -21,6 +21,7 @@ use {
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_code_source::TypeCodeStructDynamic,
+                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,
                 value_dynamic::{
                     ValueDynamic,
@@ -49,6 +50,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectField,
+            AspectInitialBind,
             AspectStackValueDynamic,
             CVE_EXTRACT_FN_SCOPE_ID,
             CVE_GET_CODE_ENUM_FN_SCOPE_ID,
@@ -58,6 +60,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
+            aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
             code_value_extern_type_identity,
@@ -239,6 +242,12 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
     }
 }
 
+impl AspectInitialBind for TypeCodeValueExternDynamic {
+    fn initial_bind(&self, dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
+        Box::new(ScopeEntryDynamicBinding { dynamic_key, type_: Rc::new(TypeCodeValueExternDynamic) })
+    }
+}
+
 impl Type for TypeCodeValueExternDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeCodeValueExternDynamic)
@@ -262,6 +271,9 @@ impl Type for TypeCodeValueExternDynamic {
         }
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectField>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectInitialBind>));
         }
         None
     }

@@ -251,6 +251,7 @@ pub(crate) fn build_builtin_scope(
         ("type", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
         ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
+        ("cve", Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
             code: Code {
@@ -1256,6 +1257,7 @@ fn eval(
         ("type", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
         ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
+        ("cve", Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
             code: Code {
