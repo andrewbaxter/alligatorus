@@ -23,7 +23,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            Scope,
             Type,
             Value,
         },
@@ -34,50 +33,9 @@ use {
     },
     std::{
         cell::RefCell,
-        collections::HashMap,
         rc::Rc,
     },
 };
-
-/// Scope entry that yields a fresh record on each `use_` with the named CV fields
-/// exposed for `arg.<name>` access. Parallel to `ArgRecordFactory` from
-/// `pull_type_dispatch`, but with a configurable field set.
-struct AspectArgRecordFactory {
-    cv_fields: Vec<(String, CodeValue)>,
-    loc: QExprId,
-}
-
-impl ScopeEntry for AspectArgRecordFactory {
-    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        let mut fields = std::collections::BTreeMap::new();
-        for (name, cv) in &self.cv_fields {
-            fields.insert(
-                ConstKey::String(name.clone()),
-                crate::eval::value::record::RecordField::EvalRes(EvalRes::ok(clone_cv(cv))),
-            );
-        }
-        fields.insert(
-            ConstKey::String("xx".to_string()),
-            crate::eval::value::record::RecordField::EvalRes(EvalRes::ok(CodeValue {
-                code: Code {
-                    loc: self.loc,
-                    code: Code_::None,
-                },
-                value: Rc::new(crate::eval::value::value_null::r#const::ValueNullConst),
-            })),
-        );
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(crate::eval::value::record::Record {
-                base: None,
-                fields,
-            }),
-        }
-    }
-}
 
 /// A v8-instance-backed aspect impl. Holds the binding name(s) of the underlying
 /// interface methods (`_im_afd0` for `aspect_field.field`, `_im_af0` for
@@ -157,34 +115,17 @@ fn dispatch_aspect_method(
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
 
-    // Child ExprContext: bind `arg` so `eval_const(arg.xx, stage(...))` in the impl
-    // can resolve `arg.self`, `arg.key` / `arg.argument` as the corresponding
-    // CodeValues at Rust const_eval time.
-    let arg_factory = AspectArgRecordFactory {
-        loc,
-        cv_fields: cv_fields.iter().map(|(k, v)| (k.clone(), clone_cv(v))).collect(),
-    };
-    let child_scope = Rc::new(Scope {
-        values: RefCell::new(HashMap::new()),
-        parent: Some(xx.scope.clone()),
-    });
-    child_scope
-        .values
-        .borrow_mut()
-        .insert(ConstKey::String("arg".to_string()), Box::new(arg_factory) as Box<dyn ScopeEntry>);
-    let child_xx = Rc::new(ExprContext {
-        vx: xx.vx.clone(),
-        import_state: xx.import_state.clone(),
-        scope: child_scope,
-        target: xx.target.clone(),
-    });
-
     // Build the v8-side arg object: `xx` external + each named CV field as a
     // `CodeValueExtern` external. The compiled impl body emits JS that does
     // `__cve_field(arg.<name>, …)` and friends, so the field values must be real CVE
     // externals at v8 — not placeholders.
     let arg_obj = v8::Object::new(scope);
-    let xx_push = to_v8(scope, child_xx.clone());
+    let xx_push = to_v8(scope, Rc::new(ExprContext {
+        vx: xx.vx.clone(),
+        import_state: xx.import_state.clone(),
+        scope: xx.scope.clone(),
+        target: xx.target.clone(),
+    }));
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
         Some(k) => k,
         None => return EvalRes::err(loc, "AspectPull dispatch: xx key alloc failed".to_string()),

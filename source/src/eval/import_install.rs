@@ -179,6 +179,7 @@ pub(crate) fn install_imported_type_iface(
         let v8_val: v8::Local<v8::Value> = match ext {
             External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
             External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
+            External::CodeValueExternCell(cell) => to_v8(scope, cell.clone()).into(),
             External::Type(t) => crate::eval::rc_type_to_v8(scope, t.clone()).into(),
             External::Unique(u) => to_v8(scope, *u).into(),
             External::JsInstance(b) => v8::Local::new(scope, b).into(),

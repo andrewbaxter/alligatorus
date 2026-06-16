@@ -250,6 +250,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                         data: vec![
                             ("tree", TypeRef::via_push(quote!(crate::eval::expr::Expr))),
                             ("lower_values", TypeRef::opaque(quote!(Vec < crate:: langhelp:: CodeValue >))),
+                            ("graft_values", TypeRef::opaque(quote!(Vec < crate:: langhelp:: CodeValue >))),
                         ],
                     }),
                 },

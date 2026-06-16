@@ -388,7 +388,10 @@ pub(crate) fn compile_importid(
                     excess.max(max_lower_excess(&e.expr, sd, new_ld))
                 },
                 Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
-                Expr_::Graft(e) => max_lower_excess(&e.expr, sd, ld),
+                Expr_::Graft(e) => match e {
+                    expr::ExprGraft::Pending(inner) => max_lower_excess(inner, sd, ld),
+                    expr::ExprGraft::Evaluated(_) => 0,
+                },
                 Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
                 Expr_::As(e) => {
                     max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
@@ -659,7 +662,10 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         }
                     },
                     Expr_::Stage(e) => find_matched_lowers_inner(&e.expr, sd + 1, ld, out),
-                    Expr_::Graft(e) => find_matched_lowers_inner(&e.expr, sd, ld, out),
+                    Expr_::Graft(e) => match e {
+                        expr::ExprGraft::Pending(inner) => find_matched_lowers_inner(inner, sd, ld, out),
+                        expr::ExprGraft::Evaluated(_) => { },
+                    },
                     Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => { },
                     Expr_::As(e) => {
                         find_matched_lowers_inner(&e.base, sd, ld, out);
@@ -737,10 +743,103 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
             }
 
+            // Like `find_matched_lowers_inner` but for Pending grafts at the current
+            // stage level (sd == 0, not nested inside another `Stage`). Each graft's
+            // inner is const-evaluated against the surrounding `xx`; the resulting CV is
+            // handed to v8 via `__stage`, which substitutes the `Pending` graft for an
+            // `Evaluated(cv)` in the staged tree. Evaluated grafts are skipped — they
+            // already carry a CV that the v8-side stage callback will preserve.
+            fn find_matched_grafts_inner<'a>(expr: &'a Expr, sd: usize, out: &mut Vec<&'a Expr>) {
+                match &expr.r#type {
+                    Expr_::Graft(g) => match g {
+                        expr::ExprGraft::Pending(inner) if sd == 0 => out.push(inner),
+                        expr::ExprGraft::Pending(inner) => find_matched_grafts_inner(inner, sd, out),
+                        expr::ExprGraft::Evaluated(_) => { },
+                    },
+                    Expr_::Stage(e) => find_matched_grafts_inner(&e.expr, sd + 1, out),
+                    Expr_::Lower(e) => find_matched_grafts_inner(&e.expr, sd, out),
+                    Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => { },
+                    Expr_::As(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.target, sd, out);
+                    },
+                    Expr_::Call(c) => {
+                        find_matched_grafts_inner(&c.func, sd, out);
+                        find_matched_grafts_inner(&c.arg, sd, out);
+                    },
+                    Expr_::Bind(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.value, sd, out);
+                    },
+                    Expr_::Set(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.value, sd, out);
+                    },
+                    Expr_::Field(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.key, sd, out);
+                    },
+                    Expr_::Seq(e) => {
+                        for sub in &e.exprs {
+                            find_matched_grafts_inner(sub, sd, out);
+                        }
+                    },
+                    Expr_::Tuple(t) => {
+                        for e in &t.elements {
+                            find_matched_grafts_inner(e, sd, out);
+                        }
+                    },
+                    Expr_::Record(r) => {
+                        for (k, v) in &r.entries {
+                            find_matched_grafts_inner(k, sd, out);
+                            find_matched_grafts_inner(v, sd, out);
+                        }
+                    },
+                    Expr_::If(e) => {
+                        for b in &e.conditions {
+                            find_matched_grafts_inner(&b.condition, sd, out);
+                            find_matched_grafts_inner(&b.body, sd, out);
+                        }
+                        if let Some(el) = &e.else_ {
+                            find_matched_grafts_inner(el, sd, out);
+                        }
+                    },
+                    Expr_::OperatorLt(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.reference, sd, out);
+                    },
+                    Expr_::OperatorEq(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.reference, sd, out);
+                    },
+                    Expr_::OperatorAdd(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.reference, sd, out);
+                    },
+                    Expr_::Foreach(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.element_key, sd, out);
+                        find_matched_grafts_inner(&e.body, sd, out);
+                    },
+                    Expr_::Match(e) => {
+                        find_matched_grafts_inner(&e.base, sd, out);
+                        find_matched_grafts_inner(&e.element_key, sd, out);
+                        for c in &e.cases {
+                            find_matched_grafts_inner(&c.condition, sd, out);
+                            find_matched_grafts_inner(&c.body, sd, out);
+                        }
+                        if let Some(f) = &e.fallback {
+                            find_matched_grafts_inner(f, sd, out);
+                        }
+                    },
+                }
+            }
+
             let mut matched_lower_exprs = Vec::new();
             find_matched_lowers_inner(&e.expr, 0, 0, &mut matched_lower_exprs);
-            if matched_lower_exprs.is_empty() {
-                // No matched lowers - return the inner tree as-is
+            let mut matched_graft_exprs = Vec::new();
+            find_matched_grafts_inner(&e.expr, 0, &mut matched_graft_exprs);
+            if matched_lower_exprs.is_empty() && matched_graft_exprs.is_empty() {
                 return EvalRes::ok(CodeValue {
                     code: Code {
                         loc: expr.loc,
@@ -750,14 +849,19 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 });
             }
 
-            // half_eval each matched lower's inner expression
             return er_seq_cv!(expr.loc, erb, {
                 let mut lower_values = Vec::new();
                 for lower_inner in &matched_lower_exprs {
                     let cv = erb.must_er(const_eval(xx, lower_inner))?;
                     lower_values.push(cv);
                 }
-                let v = erb.must_er(xx.target.stage(xx, expr.loc, e.expr.as_ref().clone(), lower_values))?;
+                let mut graft_values = Vec::new();
+                for graft_inner in &matched_graft_exprs {
+                    let cv = erb.must_er(const_eval(xx, graft_inner))?;
+                    graft_values.push(cv);
+                }
+                let v =
+                    erb.must_er(xx.target.stage(xx, expr.loc, e.expr.as_ref().clone(), lower_values, graft_values))?;
                 return Ok(v);
             });
         },
@@ -766,11 +870,18 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             return const_eval(xx, &e.expr);
         },
         Expr_::Graft(e) => {
-            // Outside of stage processing, Graft just transparently evaluates its inner
-            // expression — like Lower. Inside a stage, the stage processor handles the graft
-            // specially (the inner is evaluated in the current context and its EvalRes is
-            // embedded in the staged tree as-is).
-            return const_eval(xx, &e.expr);
+            // Stage processing rewrites each Pending graft (at the current stage level) to
+            // an Evaluated graft carrying the CV that the inner expression produced against
+            // the surrounding xx. `const_eval` just returns the stored CV. A Pending graft
+            // here means stage processing never reached it — graft has no meaning outside a
+            // stage and `const_eval` must not evaluate its inner.
+            return match e {
+                expr::ExprGraft::Evaluated(cv) => EvalRes::ok(cv.clone()),
+                expr::ExprGraft::Pending(_) => EvalRes::err(
+                    expr.loc,
+                    "Graft outside of stage processing — its inner was never evaluated".to_string(),
+                ),
+            };
         },
         Expr_::Tuple(t) => {
             let elements: Vec<TupleElement> =
@@ -1340,6 +1451,296 @@ fn eval(
     };
     ex.v8_dispatcher.set(Some(dispatcher_ptr_static));
     *cix.builtin_scope_entries.borrow_mut() = builtin_scope_entries.clone();
+    // Register __stage v8 function. Signature:
+    //   __stage(tree, lower_count, lift1, val1, …, graft_val1, graft_val2, …)
+    // After `lower_count`, the next `lower_count` arg pairs are lowers; any
+    // remaining single args are graft CV cells. For a lower: if lift is null, val is
+    // already a StagedExprCell external; if lift is a StageLiftCell external, val is
+    // a raw v8 value to lift. For a graft: the arg is a v8 external pointing at a
+    // `Rc<RefCell<Option<CodeValue>>>` cell whose contained CV replaces the matched
+    // `ExprGraft::Pending` node with `ExprGraft::Evaluated(cv)`.
+    {
+        fn stage_callback<
+            's,
+        >(
+            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            args: v8::FunctionCallbackArguments<'s>,
+            mut rv: v8::ReturnValue<'s>,
+        ) {
+            let tree_cell: Rc<expr::StagedExprCell> =
+                from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
+            let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
+            let tree = must_downcast_ref::<Expr>(tree_value.as_ref()).clone();
+
+            enum StageLowerValue {
+                Expr(Expr),
+                Value(Rc<dyn Value>),
+            }
+
+            let lower_count = args.get(1).integer_value(scope).expect("__stage: lower_count not an integer") as usize;
+            let mut values: Vec<StageLowerValue> = Vec::new();
+            let mut i = 2;
+            for _ in 0..lower_count {
+                let lift_arg = args.get(i);
+                let val_arg = args.get(i + 1);
+                i += 2;
+                if lift_arg.is_null_or_undefined() {
+                    // Already a StagedExprCell external
+                    let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
+                    let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
+                    if (value.as_ref() as &dyn Any).is::<Expr>() {
+                        let expr =
+                            Rc::try_unwrap(downcast_value::<Expr>(value))
+                                .ok()
+                                .expect("Stage lower Expr: Rc not unique");
+                        values.push(StageLowerValue::Expr(expr));
+                    } else {
+                        values.push(StageLowerValue::Value(value));
+                    }
+                } else {
+                    // Lower the raw v8 value. Lower behaves like lift, but for types whose lift
+                    // finalizes the def-set (data-type ref/constructor, iface ref), lower omits the
+                    // finalization — staging may reference sibling def-set members that haven't had
+                    // impls set yet.
+                    let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
+                    let lift_xx = ExprContext {
+                        vx: lift_cell.vx.clone(),
+                        import_state: lift_cell.import_state.clone(),
+                        scope: lift_cell.scope.clone(),
+                        target: lift_cell.target.clone(),
+                    };
+                    let lower =
+                        crate::r#gen::aspect_lower_dynamic_get(
+                            &lift_xx,
+                            lift_cell.loc,
+                            lift_cell.source_type.as_ref(),
+                        )
+                            .into_res()
+                            .expect("__stage: source type missing AspectLowerDynamic");
+                    let value = lower.lower(&lift_xx, &*scope, val_arg).expect("__stage: lower failed");
+                    values.push(StageLowerValue::Value(value));
+                }
+            }
+
+            // After lowers come graft args — one v8 external per matched graft, each
+            // pointing at an `Rc<RefCell<Option<CodeValue>>>` cell whose contained CV
+            // replaces the corresponding `ExprGraft::Pending` with `ExprGraft::Evaluated`.
+            let mut graft_values: Vec<CodeValue> = Vec::new();
+            while i < args.length() {
+                let graft_arg = args.get(i);
+                i += 1;
+                let cell: Rc<RefCell<Option<CodeValue>>> =
+                    from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*graft_arg).clone();
+                let cv = cell.borrow_mut().take().expect("__stage: graft CodeValueExtern already consumed");
+                graft_values.push(cv);
+            }
+
+            /// Clone an expression tree, replacing Lower nodes at net depth 1 (lower_depth -
+            /// stage_depth == 1) with Expr values from the lower iterator, and replacing
+            /// `Pending` graft nodes at the current stage level (sd == 0) with
+            /// `Evaluated(cv)` from the graft iterator.
+            fn clone_with_lower_substitutions(
+                expr: &Expr,
+                sd: usize,
+                ld: usize,
+                values: &mut dyn Iterator<Item = StageLowerValue>,
+                grafts: &mut dyn Iterator<Item = CodeValue>,
+            ) -> Expr {
+                match &expr.r#type {
+                    Expr_::Lower(e) => {
+                        let new_ld = ld + 1;
+                        if new_ld - sd == 1 {
+                            match values.next().expect("Not enough lower values for substitution") {
+                                StageLowerValue::Expr(expr_val) => expr_val,
+                                StageLowerValue::Value(value) => Expr {
+                                    loc: expr.loc,
+                                    r#type: Expr_::Literal(crate::eval::expr::make_lit_value_once(value)),
+                                },
+                            }
+                        } else {
+                            Expr {
+                                loc: expr.loc,
+                                r#type: Expr_::Lower(
+                                    ExprLower {
+                                        expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, new_ld, values, grafts)),
+                                    },
+                                ),
+                            }
+                        }
+                    },
+                    Expr_::Stage(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Stage(
+                            ExprStage { expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values, grafts)) },
+                        ),
+                    },
+                    Expr_::Graft(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Graft(match e {
+                            expr::ExprGraft::Pending(_) if sd == 0 => expr::ExprGraft::Evaluated(
+                                grafts.next().expect("Not enough graft values for substitution"),
+                            ),
+                            expr::ExprGraft::Pending(inner) => expr::ExprGraft::Pending(
+                                Rc::new(clone_with_lower_substitutions(inner, sd, ld, values, grafts)),
+                            ),
+                            expr::ExprGraft::Evaluated(cv) => expr::ExprGraft::Evaluated(cv.clone()),
+                        }),
+                    },
+                    Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => expr.clone(),
+                    Expr_::As(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::As(ExprAs {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            target: Rc::new(clone_with_lower_substitutions(&e.target, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Call(c) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Call(ExprCall {
+                            func: Rc::new(clone_with_lower_substitutions(&c.func, sd, ld, values, grafts)),
+                            arg: Rc::new(clone_with_lower_substitutions(&c.arg, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Bind(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Bind(ExprBind {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Set(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Set(ExprSet {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Field(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Field(ExprField {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            key: Rc::new(clone_with_lower_substitutions(&e.key, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Seq(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Seq(
+                            ExprSeq {
+                                exprs: e
+                                    .exprs
+                                    .iter()
+                                    .map(|sub| clone_with_lower_substitutions(sub, sd, ld, values, grafts))
+                                    .collect(),
+                            },
+                        ),
+                    },
+                    Expr_::Tuple(t) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Tuple(
+                            ExprTuple {
+                                elements: t
+                                    .elements
+                                    .iter()
+                                    .map(|e| clone_with_lower_substitutions(e, sd, ld, values, grafts))
+                                    .collect(),
+                            },
+                        ),
+                    },
+                    Expr_::Record(r) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Record(expr::ExprRecord { entries: r.entries.iter().map(|(k, v)| {
+                            (
+                                clone_with_lower_substitutions(k, sd, ld, values, grafts),
+                                clone_with_lower_substitutions(v, sd, ld, values, grafts),
+                            )
+                        }).collect() }),
+                    },
+                    Expr_::If(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::If(expr::ExprIf {
+                            conditions: e.conditions.iter().map(|b| expr::ExprConditionBranch {
+                                condition: clone_with_lower_substitutions(&b.condition, sd, ld, values, grafts),
+                                body: clone_with_lower_substitutions(&b.body, sd, ld, values, grafts),
+                            }).collect(),
+                            else_: e
+                                .else_
+                                .as_ref()
+                                .map(|el| Rc::new(clone_with_lower_substitutions(el, sd, ld, values, grafts))),
+                        }),
+                    },
+                    Expr_::OperatorLt(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::OperatorEq(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::OperatorEq(expr::ExprOperatorEq {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::OperatorAdd(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Foreach(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Foreach(ExprForeach {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values, grafts)),
+                            body: Rc::new(clone_with_lower_substitutions(&e.body, sd, ld, values, grafts)),
+                        }),
+                    },
+                    Expr_::Match(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Match(ExprMatch {
+                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values, grafts)),
+                            element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values, grafts)),
+                            cases: e.cases.iter().map(|c| ExprMatchBranch {
+                                condition: clone_with_lower_substitutions(&c.condition, sd, ld, values, grafts),
+                                body: clone_with_lower_substitutions(&c.body, sd, ld, values, grafts),
+                            }).collect(),
+                            fallback: e
+                                .fallback
+                                .as_ref()
+                                .map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values, grafts))),
+                        }),
+                    },
+                }
+            }
+
+            let new_tree =
+                clone_with_lower_substitutions(
+                    &tree,
+                    0,
+                    0,
+                    &mut values.into_iter(),
+                    &mut graft_values.into_iter(),
+                );
+            let result_cell =
+                Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(new_tree) as Rc<dyn Value>)) });
+            let ext = to_v8(scope, result_cell);
+            rv.set(ext.into());
+        }
+
+        if register_v8 {
+            let stage_fn = v8::Function::builder(stage_callback).build(dynamic_scope).unwrap();
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
+                    stage_fn.into(),
+                );
+        }
+    }
     let result = const_eval(&xx, expr);
     if let Some(errs) = result.errors {
         return Err(errs);
@@ -2080,263 +2481,6 @@ fn eval(
     }
     code1.push(root_loc, "}/*main*/".to_string());
 
-    // Register __stage v8 function Signature: __stage(tree, lift1, val1, lift2, val2,
-    // ...) If lift is null, val is already a StagedExprCell external. If lift is a
-    // StageLiftCell external, val is a raw v8 value to lift.
-    {
-        fn stage_callback<
-            's,
-        >(
-            scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-            args: v8::FunctionCallbackArguments<'s>,
-            mut rv: v8::ReturnValue<'s>,
-        ) {
-            let tree_cell: Rc<expr::StagedExprCell> =
-                from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
-            let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
-            let tree = must_downcast_ref::<Expr>(tree_value.as_ref()).clone();
-
-            enum StageLowerValue {
-                Expr(Expr),
-                Value(Rc<dyn Value>),
-            }
-
-            let mut values: Vec<StageLowerValue> = Vec::new();
-            let mut i = 1;
-            while i < args.length() {
-                let lift_arg = args.get(i);
-                let val_arg = args.get(i + 1);
-                i += 2;
-                if lift_arg.is_null_or_undefined() {
-                    // Already a StagedExprCell external
-                    let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
-                    let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
-                    if (value.as_ref() as &dyn Any).is::<Expr>() {
-                        let expr =
-                            Rc::try_unwrap(downcast_value::<Expr>(value))
-                                .ok()
-                                .expect("Stage lower Expr: Rc not unique");
-                        values.push(StageLowerValue::Expr(expr));
-                    } else {
-                        values.push(StageLowerValue::Value(value));
-                    }
-                } else {
-                    // Lower the raw v8 value. Lower behaves like lift, but for types whose lift
-                    // finalizes the def-set (data-type ref/constructor, iface ref), lower omits the
-                    // finalization — staging may reference sibling def-set members that haven't had
-                    // impls set yet.
-                    let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
-                    let lift_xx = ExprContext {
-                        vx: lift_cell.vx.clone(),
-                        import_state: lift_cell.import_state.clone(),
-                        scope: lift_cell.scope.clone(),
-                        target: lift_cell.target.clone(),
-                    };
-                    let lower =
-                        crate::r#gen::aspect_lower_dynamic_get(
-                            &lift_xx,
-                            lift_cell.loc,
-                            lift_cell.source_type.as_ref(),
-                        )
-                            .into_res()
-                            .expect("__stage: source type missing AspectLowerDynamic");
-                    let value = lower.lower(&lift_xx, &*scope, val_arg).expect("__stage: lower failed");
-                    values.push(StageLowerValue::Value(value));
-                }
-            }
-
-            /// Clone an expression tree, replacing Lower nodes at net depth 1 (lower_depth -
-            /// stage_depth == 1) with Expr values from the iterator.
-            fn clone_with_lower_substitutions(
-                expr: &Expr,
-                sd: usize,
-                ld: usize,
-                values: &mut dyn Iterator<Item = StageLowerValue>,
-            ) -> Expr {
-                match &expr.r#type {
-                    Expr_::Lower(e) => {
-                        let new_ld = ld + 1;
-                        if new_ld - sd == 1 {
-                            match values.next().expect("Not enough lower values for substitution") {
-                                StageLowerValue::Expr(expr_val) => expr_val,
-                                StageLowerValue::Value(value) => Expr {
-                                    loc: expr.loc,
-                                    r#type: Expr_::Literal(crate::eval::expr::make_lit_value_once(value)),
-                                },
-                            }
-                        } else {
-                            Expr {
-                                loc: expr.loc,
-                                r#type: Expr_::Lower(
-                                    ExprLower {
-                                        expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, new_ld, values)),
-                                    },
-                                ),
-                            }
-                        }
-                    },
-                    Expr_::Stage(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Stage(
-                            ExprStage { expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd + 1, ld, values)) },
-                        ),
-                    },
-                    Expr_::Graft(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Graft(
-                            expr::ExprGraft {
-                                expr: Rc::new(clone_with_lower_substitutions(&e.expr, sd, ld, values)),
-                            },
-                        ),
-                    },
-                    Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => expr.clone(),
-                    Expr_::As(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::As(ExprAs {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            target: Rc::new(clone_with_lower_substitutions(&e.target, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Call(c) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Call(ExprCall {
-                            func: Rc::new(clone_with_lower_substitutions(&c.func, sd, ld, values)),
-                            arg: Rc::new(clone_with_lower_substitutions(&c.arg, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Bind(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Bind(ExprBind {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Set(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Set(ExprSet {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            value: Rc::new(clone_with_lower_substitutions(&e.value, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Field(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Field(ExprField {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            key: Rc::new(clone_with_lower_substitutions(&e.key, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Seq(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Seq(
-                            ExprSeq {
-                                exprs: e
-                                    .exprs
-                                    .iter()
-                                    .map(|sub| clone_with_lower_substitutions(sub, sd, ld, values))
-                                    .collect(),
-                            },
-                        ),
-                    },
-                    Expr_::Tuple(t) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Tuple(
-                            ExprTuple {
-                                elements: t
-                                    .elements
-                                    .iter()
-                                    .map(|e| clone_with_lower_substitutions(e, sd, ld, values))
-                                    .collect(),
-                            },
-                        ),
-                    },
-                    Expr_::Record(r) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Record(expr::ExprRecord { entries: r.entries.iter().map(|(k, v)| {
-                            (
-                                clone_with_lower_substitutions(k, sd, ld, values),
-                                clone_with_lower_substitutions(v, sd, ld, values),
-                            )
-                        }).collect() }),
-                    },
-                    Expr_::If(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::If(expr::ExprIf {
-                            conditions: e.conditions.iter().map(|b| expr::ExprConditionBranch {
-                                condition: clone_with_lower_substitutions(&b.condition, sd, ld, values),
-                                body: clone_with_lower_substitutions(&b.body, sd, ld, values),
-                            }).collect(),
-                            else_: e
-                                .else_
-                                .as_ref()
-                                .map(|el| Rc::new(clone_with_lower_substitutions(el, sd, ld, values))),
-                        }),
-                    },
-                    Expr_::OperatorLt(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::OperatorLt(expr::ExprOperatorLt {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::OperatorEq(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::OperatorEq(expr::ExprOperatorEq {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::OperatorAdd(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::OperatorAdd(expr::ExprOperatorAdd {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            reference: Rc::new(clone_with_lower_substitutions(&e.reference, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Foreach(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Foreach(ExprForeach {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
-                            body: Rc::new(clone_with_lower_substitutions(&e.body, sd, ld, values)),
-                        }),
-                    },
-                    Expr_::Match(e) => Expr {
-                        loc: expr.loc,
-                        r#type: Expr_::Match(ExprMatch {
-                            base: Rc::new(clone_with_lower_substitutions(&e.base, sd, ld, values)),
-                            element_key: Rc::new(clone_with_lower_substitutions(&e.element_key, sd, ld, values)),
-                            cases: e.cases.iter().map(|c| ExprMatchBranch {
-                                condition: clone_with_lower_substitutions(&c.condition, sd, ld, values),
-                                body: clone_with_lower_substitutions(&c.body, sd, ld, values),
-                            }).collect(),
-                            fallback: e
-                                .fallback
-                                .as_ref()
-                                .map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values))),
-                        }),
-                    },
-                }
-            }
-
-            let new_tree = clone_with_lower_substitutions(&tree, 0, 0, &mut values.into_iter());
-            let result_cell =
-                Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(new_tree) as Rc<dyn Value>)) });
-            let ext = to_v8(scope, result_cell);
-            rv.set(ext.into());
-        }
-
-        if register_v8 {
-            let stage_fn = v8::Function::builder(stage_callback).build(dynamic_scope).unwrap();
-            dynamic_scope
-                .get_current_context()
-                .global(dynamic_scope)
-                .set(
-                    dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
-                    stage_fn.into(),
-                );
-        }
-    }
 
     // Register __record_to_type and __tuple_to_type dynamic functions. These convert
     // JS objects/arrays into Rc`<dyn Type>` externals at runtime.
@@ -3256,6 +3400,10 @@ fn eval(
                 let ext = to_v8(dynamic_scope, cell.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
+            External::CodeValueExternCell(cell) => {
+                let ext = to_v8(dynamic_scope, cell.clone());
+                dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
+            },
             External::Type(type_) => {
                 let ext = rc_type_to_v8(dynamic_scope, type_.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
@@ -3761,38 +3909,17 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };
 
-        // Build a child ExprContext with `arg` bound in scope so the user's staged inner
-        // expr (passed to `eval_const`) can resolve `arg.cv` etc. through Rust
-        // `const_eval` at v8 invocation time.
-        let arg_factory = crate::eval::pull_type_dispatch::ArgRecordFactory {
-            loc,
-            source_type: cv.value.type_(xx, loc),
-            cv: CodeValue {
-                code: cv.code.clone(),
-                value: cv.value.clone(),
-            },
-        };
-        let child_scope = Rc::new(Scope {
-            values: RefCell::new(HashMap::new()),
-            parent: Some(xx.scope.clone()),
-        });
-        child_scope
-            .values
-            .borrow_mut()
-            .insert(ConstKey::String("arg".to_string()), Box::new(arg_factory) as Box<dyn ScopeEntry>);
-        let child_xx = Rc::new(ExprContext {
+        // Build the v8-side arg object: `xx` carries the caller's ExprContext as
+        // External (for the user's body to pass to `eval_const`), `source_type` is a
+        // `TypeRefPush` wrapping the source type, `cv` is a `CodeValueExtern` the impl
+        // grafts into its staged expr at v8 time.
+        let arg_obj = v8::Object::new(scope);
+        let xx_push = to_v8(scope, Rc::new(ExprContext {
             vx: xx.vx.clone(),
             import_state: xx.import_state.clone(),
-            scope: child_scope,
+            scope: xx.scope.clone(),
             target: xx.target.clone(),
-        });
-
-        // Build the v8-side arg object: `xx` carries the child_xx as External (for the
-        // user's body to pass to `eval_const`), `source_type` is a `TypeRefPush` wrapping
-        // the source type (for user can_cast_from impls), `cv` is null (the user impl
-        // reads `arg.cv` at Rust const_eval time, not v8 time).
-        let arg_obj = v8::Object::new(scope);
-        let xx_push = to_v8(scope, child_xx.clone());
+        }));
         let xx_key =
             v8::String::new(
                 scope,
@@ -3804,8 +3931,10 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
                 scope,
                 &ConstKey::String("cv".to_string()).to_str(),
             ).ok_or_else(|| "cv key alloc".to_string())?;
-        let null_for_cv: v8::Local<v8::Value> = v8::null(scope).into();
-        arg_obj.set(scope, cv_key.into(), null_for_cv);
+        let source_type = cv.value.type_(xx, loc);
+        let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(cv)));
+        let cve_ext = to_v8(scope, cve_cell);
+        arg_obj.set(scope, cv_key.into(), cve_ext.into());
         let st_key =
             v8::String::new(
                 scope,
@@ -3813,7 +3942,7 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
             ).ok_or_else(|| "source_type key alloc".to_string())?;
         let source_type_v8 =
             crate::eval::push::Push::into_v8(
-                crate::r#gen::TypeRefPush { type_ref: cv.value.type_(xx, loc) },
+                crate::r#gen::TypeRefPush { type_ref: source_type },
                 scope,
             );
         arg_obj.set(scope, st_key.into(), source_type_v8);
@@ -3833,10 +3962,21 @@ impl V8CastDispatcher for StatelessV8CastDispatcher {
             ).map_err(|_| format!("instance field '{}' is not a function", method_field))?;
         let recv: v8::Local<v8::Value> = instance.into();
         let arg_v: v8::Local<v8::Value> = arg_obj.into();
-        let result =
-            method_fn
-                .call(scope, recv, &[arg_v])
-                .ok_or_else(|| "cast_from v8 call returned no value".to_string())?;
+        let result = {
+            let tc = std::pin::pin!(v8::TryCatch::new(scope));
+            let mut tc = tc.init();
+            match method_fn.call(&mut tc, recv, &[arg_v]) {
+                Some(r) => r,
+                None => {
+                    let msg =
+                        tc
+                            .exception()
+                            .map(|e| e.to_rust_string_lossy(&mut tc))
+                            .unwrap_or_else(|| "<no exception>".to_string());
+                    return Err(format!("cast_from v8 call threw: {}", msg));
+                },
+            }
+        };
         let cell: Rc<RefCell<Option<CodeValue>>> =
             from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
         let out_cv =
@@ -4138,7 +4278,14 @@ impl crate::r#gen::Target for TargetDynamic {
         EResult::ok(None)
     }
 
-    fn stage(&self, xx: &ExprContext, loc: QExprId, tree: Expr, lower_values: Vec<CodeValue>) -> EvalRes {
+    fn stage(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        tree: Expr,
+        lower_values: Vec<CodeValue>,
+        graft_values: Vec<CodeValue>,
+    ) -> EvalRes {
         // Store tree as external
         let tree_cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
@@ -4148,14 +4295,22 @@ impl crate::r#gen::Target for TargetDynamic {
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: tree_id }),
         };
 
-        // Build args for __stage(tree, lift1, val1, lift2, val2, ...). For each lower
-        // value, pass a (lift, value) pair:
+        // Build args for __stage(tree, lower_count, lower_pairs..., graft_values...). For
+        // each lower value, pass a (lift, value) pair:
         //
         // * Code_::None: lift=null, value=StagedExprCell external
         //
-        // * Code_::Dyn:  lift=StageLiftCell external, value=raw v8 result __stage handles the
-        //   lifting internally.
-        let mut stage_args = vec![tree_js];
+        // * Code_::Dyn:  lift=StageLiftCell external, value=raw v8 result __stage handles
+        //   the lifting internally.
+        //
+        // After the lower pairs come `graft_values.len()` single args, each a v8 external
+        // pointing to a `Rc<RefCell<Option<CodeValue>>>` cell — the CV stored there
+        // replaces the matched `Pending` graft with `Evaluated(cv)` in the staged tree.
+        let lower_count = lower_values.len();
+        let mut stage_args = vec![tree_js, CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Literal(serde_json::Value::Number(serde_json::Number::from(lower_count))),
+        }];
         return er_seq_cv!(loc, erb, {
             for cv in lower_values {
                 let vtype = cv.value.type_(xx, loc);
@@ -4190,6 +4345,34 @@ impl crate::r#gen::Target for TargetDynamic {
                             loc,
                             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: lift_id }),
                         });
+                        stage_args.push(inner_js);
+                    },
+                }
+            }
+            for cv in graft_values {
+                match cv.code.code {
+                    Code_::None => {
+                        let cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(CodeValue {
+                            code: Code {
+                                loc,
+                                code: Code_::None,
+                            },
+                            value: cv.value,
+                        })));
+                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        xx.vx.externals.borrow_mut().push((id, External::CodeValueExternCell(cell)));
+                        stage_args.push(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
+                        });
+                    },
+                    Code_::Dyn(_) => {
+                        // The graft's inner expression already compiles to JS that yields a
+                        // v8 external pointing at a `Rc<RefCell<Option<CodeValue>>>` cell — the
+                        // source-level representation of a CodeValueExtern.
+                        let vtype = cv.value.type_(xx, loc);
+                        let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
+                        let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
                         stage_args.push(inner_js);
                     },
                 }

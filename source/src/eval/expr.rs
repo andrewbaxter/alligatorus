@@ -81,9 +81,14 @@ pub(crate) struct ExprForeach {
     pub element_key: Rc<Expr>,
 }
 
+/// When a Graft is built from source it starts as `Pending(inner_expr)`. Stage
+/// processing in `const_eval` walks the staged tree, evaluates each pending graft's
+/// inner expr against the surrounding `xx`, and rewrites it to `Evaluated(cv)`. A
+/// later `const_eval` on the staged tree returns the stored CV as-is.
 #[derive(Clone)]
-pub(crate) struct ExprGraft {
-    pub expr: Rc<Expr>,
+pub(crate) enum ExprGraft {
+    Pending(Rc<Expr>),
+    Evaluated(crate::langhelp::CodeValue),
 }
 
 #[derive(Clone)]

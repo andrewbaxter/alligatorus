@@ -154,6 +154,7 @@ pub(crate) enum Code_ {
 /// The code results in a value described by Value (i.e., in a stack target the top
 /// stack element would be the value), but may contain other preceding side
 /// effects, so even if the value isn't used all code must be kept.
+#[derive(Clone)]
 pub(crate) struct CodeValue {
     pub(crate) code: Code,
     pub(crate) value: Rc<dyn Value>,
@@ -392,6 +393,11 @@ pub(crate) enum External {
     JsInstance(v8::Global<v8::Object>),
     StagedExprCell(Rc<crate::eval::expr::StagedExprCell>),
     StageLiftCell(Rc<crate::eval::StageLiftCell>),
+    /// A `CodeValueExtern` cell — used by stage processing for grafts whose inner
+    /// `const_eval`'d to a `Code_::None` CV at install time: the cell carries the
+    /// final CV directly so `__stage` can substitute the `Pending` graft for an
+    /// `Evaluated` one without any runtime JS computation.
+    CodeValueExternCell(Rc<std::cell::RefCell<Option<CodeValue>>>),
     Type(Rc<dyn Type>),
     /// A `Unique` aspect identity captured at compile time so emitted JS code can
     /// reference it (e.g. for `aspect(base, key)` to pass to `base.aspect(<unique>)`).

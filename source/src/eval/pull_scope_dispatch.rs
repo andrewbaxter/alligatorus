@@ -147,7 +147,8 @@ impl crate::r#gen::Target for PullTarget {
         loc: QExprId,
         tree: crate::eval::expr::Expr,
         lower_values: Vec<crate::langhelp::CodeValue>,
+        graft_values: Vec<crate::langhelp::CodeValue>,
     ) -> crate::langhelp::EvalRes {
-        crate::eval::TargetDynamic.stage(xx, loc, tree, lower_values)
+        crate::eval::TargetDynamic.stage(xx, loc, tree, lower_values, graft_values)
     }
 }

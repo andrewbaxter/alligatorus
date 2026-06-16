@@ -509,6 +509,9 @@ pub(crate) fn serialize_captured_externals(
             crate::langhelp::External::JsInstance(_) => {
                 panic!("External::JsInstance is runtime-only and must not be serialized")
             },
+            crate::langhelp::External::CodeValueExternCell(_) => {
+                panic!("External::CodeValueExternCell is runtime-only and must not be serialized")
+            },
         }
     }).collect()
 }

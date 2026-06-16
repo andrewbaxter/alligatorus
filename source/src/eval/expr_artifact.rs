@@ -176,7 +176,7 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
             body: Rc::new(expr_from_artifact(xx, body)?),
             element_key: Rc::new(expr_from_artifact(xx, element_key)?),
         }),
-        ArtifactExpr_::Graft { expr } => Expr_::Graft(ExprGraft { expr: Rc::new(expr_from_artifact(xx, expr)?) }),
+        ArtifactExpr_::Graft { expr } => Expr_::Graft(ExprGraft::Pending(Rc::new(expr_from_artifact(xx, expr)?))),
         ArtifactExpr_::If { conditions, else_ } => Expr_::If(ExprIf {
             conditions: conditions.iter().map(|b| Ok::<_, String>(ExprConditionBranch {
                 condition: expr_from_artifact(xx, &b.condition)?,
@@ -264,7 +264,15 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             body: expr_to_artifact(xx, &e.body)?,
             element_key: expr_to_artifact(xx, &e.element_key)?,
         },
-        Expr_::Graft(e) => ArtifactExpr_::Graft { expr: expr_to_artifact(xx, &e.expr)? },
+        Expr_::Graft(e) => {
+            let inner = match e {
+                ExprGraft::Pending(inner) => inner,
+                ExprGraft::Evaluated(_) => {
+                    return Err("Cannot serialize Graft after it has been evaluated by stage processing".to_string());
+                },
+            };
+            ArtifactExpr_::Graft { expr: expr_to_artifact(xx, inner)? }
+        },
         Expr_::If(e) => ArtifactExpr_::If {
             conditions: e.conditions.iter().map(|b| Ok::<_, String>(ArtifactCondBranch {
                 condition: expr_to_artifact(xx, &b.condition)?,
