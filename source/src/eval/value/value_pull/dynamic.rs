@@ -29,7 +29,7 @@ impl Value for ValuePull {
         };
 
         // SAFETY: pointer set by `eval()` for its full duration; same access pattern as
-        // `dispatch_cast_from` in mod.rs.
+        // `pull_cast_from_v8` in `pull_type_dispatch`.
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };

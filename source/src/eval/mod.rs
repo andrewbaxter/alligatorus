@@ -174,39 +174,6 @@ pub(crate) use crate::r#gen::TUPLE_TO_TYPE_FN_SCOPE_ID;
 pub(crate) use crate::r#gen::UNIQUE_EQ_FN_SCOPE_ID;
 pub(crate) use crate::r#gen::VALUE_GET_TYPE_FN_SCOPE_ID;
 
-/// Dispatch interface for synchronously invoking compiled JS methods on a bundled
-/// instance during `const_eval`. The implementer captures the reads the active
-/// scope from `EvalContext.v8_scope` (raw pointer, set by `eval()`) on each call.
-/// The trait object is stored in `EvalContext` as `NonNull<dyn>` so the fat
-/// pointer (data + vtable) is preserved.
-pub(crate) trait V8CastDispatcher {
-    /// Dispatch `instance[method_field](arg_obj)` for `can_cast_from`. The method's JS
-    /// body accesses `arg.source_type` (a `TypeRefPush`) and returns a boolean.
-    fn dispatch_can_cast_from(
-        &mut self,
-        bundle: &v8::Global<v8::Object>,
-        method_field: &str,
-        xx: &ExprContext,
-        loc: QExprId,
-        source_type: Rc<dyn Type>,
-    ) -> Result<bool, String>;
-
-    /// Dispatch `instance[method_field](arg_obj)` where `arg_obj` is a JS object
-    /// exposing the user-defined `cast_from` body's `arg` parameter. `arg.xx` is set
-    /// to an External of a child `Rc<ExprContext>` (with `arg` bound in its scope so
-    /// `eval_const`'s inner `const_eval` can resolve graft/scope references). The
-    /// method is expected to return an External-wrapped `CodeValue` — the dispatcher
-    /// unwraps it and returns it directly, no lifting.
-    fn dispatch_cast_from(
-        &mut self,
-        bundle: &v8::Global<v8::Object>,
-        method_field: &str,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> Result<CodeValue, String>;
-}
-
 /// Build the `arg` record type for a builtin-interface impl method on the new
 /// aspect_function / aspect_field / scope_entry / target kinds. Each field is a
 /// `CodeValueExtern` wrapping the corresponding Rust trait param's CodeValue (or
@@ -498,7 +465,6 @@ pub(crate) fn compile_importid(
                 next_local_id: Default::default(),
                 externals: RefCell::new(Vec::new()),
                 v8_scope: std::cell::Cell::new(None),
-                v8_dispatcher: std::cell::Cell::new(None),
             });
             let xx = Rc::new(ExprContext {
                 vx: ex,
@@ -1244,7 +1210,6 @@ fn eval(
         next_local_id: Default::default(),
         externals: RefCell::new(Vec::new()),
         v8_scope: std::cell::Cell::new(None),
-        v8_dispatcher: std::cell::Cell::new(None),
     });
     dynamic_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
     dynamic_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
@@ -1274,9 +1239,10 @@ fn eval(
     tc_scope!(let dynamic_scope, dynamic_scope_context2);
 
     // Install the active v8 scope on EvalContext as a raw `NonNull`. Anyone reaching
-    // v8 from `const_eval` (currently `StatelessV8CastDispatcher`) reads this and
-    // re-borrows. A drop guard clears it on `eval()` exit (early returns included) so
-    // a stale pointer can't outlive this function via Rc-shared `EvalContext`.
+    // v8 from `const_eval` (the `pull_*_v8` dispatch paths in `pull_type_dispatch`)
+    // reads this and re-borrows. A drop guard clears it on `eval()` exit (early
+    // returns included) so a stale pointer can't outlive this function via
+    // Rc-shared `EvalContext`.
     {
         let scope_ref: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = &mut **dynamic_scope;
         let scope_ptr = std::ptr::NonNull::from(scope_ref);
@@ -1292,7 +1258,6 @@ fn eval(
     impl<'a> Drop for V8RefsGuard<'a> {
         fn drop(&mut self) {
             self.0.v8_scope.set(None);
-            self.0.v8_dispatcher.set(None);
         }
     }
 
@@ -1434,22 +1399,6 @@ fn eval(
             .insert(ConstKey::String("cast_value".to_string()), ib.initial_bind(crate::r#gen::CAST_VALUE_COMPILE_SCOPE_ID));
     }
 
-    // The v8 dispatcher (`StatelessV8CastDispatcher`) is stateless — it reads the
-    // active scope from `ex.v8_scope` (installed at the top of `eval()`) on each
-    // call, so its lifetime isn't tied to a `&mut` on `dynamic_scope`. Installed once
-    // here for the whole `const_eval`.
-    let mut dispatcher_impl = StatelessV8CastDispatcher;
-    let dispatcher_ref: &mut dyn V8CastDispatcher = &mut dispatcher_impl;
-    let dispatcher_ptr: std::ptr::NonNull<dyn V8CastDispatcher> = std::ptr::NonNull::from(dispatcher_ref);
-
-    // SAFETY: lifetime-erase the trait-object pointer so it can sit in EvalContext.
-    // The dispatcher impl is on this stack frame for the rest of `eval()`; the
-    // v8_dispatcher field is cleared just before return, so the pointer is never
-    // readable after the impl drops.
-    let dispatcher_ptr_static: std::ptr::NonNull<dyn V8CastDispatcher + 'static> = unsafe {
-        std::mem::transmute(dispatcher_ptr)
-    };
-    ex.v8_dispatcher.set(Some(dispatcher_ptr_static));
     *cix.builtin_scope_entries.borrow_mut() = builtin_scope_entries.clone();
     // Register __stage v8 function. Signature:
     //   __stage(tree, lower_count, lift1, val1, …, graft_val1, graft_val2, …)
@@ -1811,7 +1760,6 @@ fn eval(
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
             v8_scope: std::cell::Cell::new(None),
-            v8_dispatcher: std::cell::Cell::new(None),
         });
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
@@ -1934,7 +1882,6 @@ fn eval(
                     next_local_id: Counter::default(),
                     externals: RefCell::new(Vec::new()),
                     v8_scope: std::cell::Cell::new(None),
-                    v8_dispatcher: std::cell::Cell::new(None),
                 });
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 method.inner_scope_entry_id.set(Some(self_id));
@@ -2045,7 +1992,6 @@ fn eval(
                         next_local_id: Counter::default(),
                         externals: RefCell::new(Vec::new()),
                         v8_scope: std::cell::Cell::new(None),
-                        v8_dispatcher: std::cell::Cell::new(None),
                     });
 
                     // For builtin-`type` interface impls the body sees `arg` (a record
@@ -3813,176 +3759,6 @@ pub(crate) struct StageLiftCell {
     pub source_type: Rc<dyn Type>,
     pub target: Rc<dyn crate::r#gen::Target>,
     pub vx: Rc<EvalContext>,
-}
-
-/// Stateless dispatcher impl. Reads the active v8 scope from
-/// `EvalContext.v8_scope` on each call rather than capturing it — so the
-/// dispatcher's lifetime is independent of any `&mut` borrow on the scope, and a
-/// single instance can live for the whole `eval()` call.
-pub(crate) struct StatelessV8CastDispatcher;
-
-impl V8CastDispatcher for StatelessV8CastDispatcher {
-    fn dispatch_can_cast_from(
-        &mut self,
-        bundle: &v8::Global<v8::Object>,
-        method_field: &str,
-        xx: &ExprContext,
-        loc: QExprId,
-        source_type: Rc<dyn Type>,
-    ) -> Result<bool, String> {
-        let scope_ptr =
-            xx.vx.v8_scope.get().ok_or_else(|| "v8 dispatch attempted with no active v8 scope".to_string())?;
-        let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
-            &mut *(scope_ptr.as_ptr() as *mut _)
-        };
-        let _ = loc;
-        let arg_obj = v8::Object::new(scope);
-        let xx_push = to_v8(scope, Rc::new(ExprContext {
-            vx: xx.vx.clone(),
-            import_state: xx.import_state.clone(),
-            scope: xx.scope.clone(),
-            target: xx.target.clone(),
-        }));
-        let xx_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String("xx".to_string()).to_str(),
-            ).ok_or_else(|| "xx key alloc".to_string())?;
-        arg_obj.set(scope, xx_key.into(), xx_push.into());
-        let st_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String("source_type".to_string()).to_str(),
-            ).ok_or_else(|| "source_type key alloc".to_string())?;
-        let source_type_v8 =
-            crate::eval::push::Push::into_v8(
-                crate::r#gen::TypeRefPush { type_ref: source_type },
-                scope,
-            );
-        arg_obj.set(scope, st_key.into(), source_type_v8);
-        let cv_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String("cv".to_string()).to_str(),
-            ).ok_or_else(|| "cv key alloc".to_string())?;
-        let null_for_cv: v8::Local<v8::Value> = v8::null(scope).into();
-        arg_obj.set(scope, cv_key.into(), null_for_cv);
-        let instance = v8::Local::new(scope, bundle);
-        let method_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String(method_field.to_string()).to_str(),
-            ).ok_or_else(|| "method_field alloc".to_string())?;
-        let method_val =
-            instance
-                .get(scope, method_key.into())
-                .ok_or_else(|| format!("instance missing field '{}'", method_field))?;
-        let method_fn =
-            v8::Local::<v8::Function>::try_from(
-                method_val,
-            ).map_err(|_| format!("instance field '{}' is not a function", method_field))?;
-        let recv: v8::Local<v8::Value> = instance.into();
-        let arg_v: v8::Local<v8::Value> = arg_obj.into();
-        let result =
-            method_fn
-                .call(scope, recv, &[arg_v])
-                .ok_or_else(|| "can_cast_from v8 call returned no value".to_string())?;
-        Ok(result.boolean_value(scope))
-    }
-
-    fn dispatch_cast_from(
-        &mut self,
-        bundle: &v8::Global<v8::Object>,
-        method_field: &str,
-        xx: &ExprContext,
-        loc: QExprId,
-        cv: CodeValue,
-    ) -> Result<CodeValue, String> {
-        let scope_ptr =
-            xx.vx.v8_scope.get().ok_or_else(|| "v8 dispatch attempted with no active v8 scope".to_string())?;
-
-        // SAFETY: pointer set by `eval()` for its full duration. While we hold this
-        // `&mut`, no other code path is reading `v8_scope` (the dispatcher is the only
-        // reader; method calls within it consume the scope `&mut` until they return).
-        // Lifetimes are erased on store/load but the underlying scope outlives every read.
-        let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
-            &mut *(scope_ptr.as_ptr() as *mut _)
-        };
-
-        // Build the v8-side arg object: `xx` carries the caller's ExprContext as
-        // External (for the user's body to pass to `eval_const`), `source_type` is a
-        // `TypeRefPush` wrapping the source type, `cv` is a `CodeValueExtern` the impl
-        // grafts into its staged expr at v8 time.
-        let arg_obj = v8::Object::new(scope);
-        let xx_push = to_v8(scope, Rc::new(ExprContext {
-            vx: xx.vx.clone(),
-            import_state: xx.import_state.clone(),
-            scope: xx.scope.clone(),
-            target: xx.target.clone(),
-        }));
-        let xx_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String("xx".to_string()).to_str(),
-            ).ok_or_else(|| "xx key alloc".to_string())?;
-        arg_obj.set(scope, xx_key.into(), xx_push.into());
-        let cv_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String("cv".to_string()).to_str(),
-            ).ok_or_else(|| "cv key alloc".to_string())?;
-        let source_type = cv.value.type_(xx, loc);
-        let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(cv)));
-        let cve_ext = to_v8(scope, cve_cell);
-        arg_obj.set(scope, cv_key.into(), cve_ext.into());
-        let st_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String("source_type".to_string()).to_str(),
-            ).ok_or_else(|| "source_type key alloc".to_string())?;
-        let source_type_v8 =
-            crate::eval::push::Push::into_v8(
-                crate::r#gen::TypeRefPush { type_ref: source_type },
-                scope,
-            );
-        arg_obj.set(scope, st_key.into(), source_type_v8);
-        let instance = v8::Local::new(scope, bundle);
-        let method_key =
-            v8::String::new(
-                scope,
-                &ConstKey::String(method_field.to_string()).to_str(),
-            ).ok_or_else(|| "method_field alloc".to_string())?;
-        let method_val =
-            instance
-                .get(scope, method_key.into())
-                .ok_or_else(|| format!("instance missing field '{}'", method_field))?;
-        let method_fn =
-            v8::Local::<v8::Function>::try_from(
-                method_val,
-            ).map_err(|_| format!("instance field '{}' is not a function", method_field))?;
-        let recv: v8::Local<v8::Value> = instance.into();
-        let arg_v: v8::Local<v8::Value> = arg_obj.into();
-        let result = {
-            let tc = std::pin::pin!(v8::TryCatch::new(scope));
-            let mut tc = tc.init();
-            match method_fn.call(&mut tc, recv, &[arg_v]) {
-                Some(r) => r,
-                None => {
-                    let msg =
-                        tc
-                            .exception()
-                            .map(|e| e.to_rust_string_lossy(&mut tc))
-                            .unwrap_or_else(|| "<no exception>".to_string());
-                    return Err(format!("cast_from v8 call threw: {}", msg));
-                },
-            }
-        };
-        let cell: Rc<RefCell<Option<CodeValue>>> =
-            from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
-        let out_cv =
-            cell.borrow_mut().take().ok_or_else(|| "cast_from v8 returned consumed CodeValueExtern".to_string())?;
-        Ok(out_cv)
-    }
 }
 
 pub(crate) struct TargetBindSub {

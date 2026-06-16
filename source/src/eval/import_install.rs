@@ -62,7 +62,6 @@ pub(crate) fn install_imported_type_iface(
         next_local_id: Counter::default(),
         externals: RefCell::new(Vec::new()),
         v8_scope: std::cell::Cell::new(None),
-        v8_dispatcher: std::cell::Cell::new(None),
     });
     let target = xx.target.clone();
     let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
@@ -165,8 +164,8 @@ pub(crate) fn install_imported_type_iface(
     // reference them (same setup `eval()` does at end-of-stage).
     let scope_ptr = xx.vx.v8_scope.get().ok_or_else(|| "install_imported_type_iface: no active v8 scope".to_string())?;
 
-    // SAFETY: pointer set by `eval()` for its full duration; the dispatcher already
-    // re-borrows the same way (see `StatelessV8CastDispatcher`).
+    // SAFETY: pointer set by `eval()` for its full duration; the `pull_*_v8`
+    // dispatch paths re-borrow the same way.
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };

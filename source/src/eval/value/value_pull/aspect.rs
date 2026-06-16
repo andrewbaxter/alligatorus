@@ -2,7 +2,7 @@
 //! type that implements one of the aspect interfaces (`aspect_field`,
 //! `aspect_function`). Implements the corresponding Rust aspect traits by
 //! synchronously invoking the v8 instance's interface method at const-eval time
-//! (parallel to `StatelessV8CastDispatcher::dispatch_cast_from`), then unwrapping
+//! (parallel to `pull_cast_from_v8` in `pull_type_dispatch`), then unwrapping
 //! the returned `CodeValueExtern` to obtain the inner `CodeValue`.
 //!
 //! Parallel to `TypePull` and `ValuePull`. Source-language code constructs values
@@ -92,7 +92,7 @@ fn clone_cv(cv: &CodeValue) -> CodeValue {
 }
 
 /// Synchronous v8 dispatch shared by `field` and `call`. Mirrors
-/// `StatelessV8CastDispatcher::dispatch_cast_from`: builds a child `ExprContext`
+/// `pull_cast_from_v8` in `pull_type_dispatch`: builds a child `ExprContext`
 /// whose `arg` scope entry yields the named CV record, sets up the v8 arg object
 /// (`xx` external + the named CV fields as `CodeValueExtern` externals), invokes
 /// `instance[method_field](arg_obj)`, and unwraps the returned `CodeValueExtern`
@@ -110,7 +110,7 @@ fn dispatch_aspect_method(
     };
 
     // SAFETY: pointer set by `eval()` for its full duration; same access pattern as
-    // `StatelessV8CastDispatcher::dispatch_cast_from`.
+    // `pull_cast_from_v8` in `pull_type_dispatch`.
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };

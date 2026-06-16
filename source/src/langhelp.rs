@@ -342,19 +342,12 @@ pub(crate) struct EvalContext {
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
-    /// Trait-object pointer to a dispatcher for v8-side type interface methods
-    /// (currently `cast_from`). `eval()` constructs a unit impl and installs it here
-    /// for the duration of `eval()`. The dispatcher itself stateless — it reads the
-    /// active scope from `v8_scope` on each call, so its lifetime is decoupled from
-    /// the v8 scope's borrow.
-    pub(crate) v8_dispatcher: std::cell::Cell<Option<std::ptr::NonNull<dyn crate::eval::V8CastDispatcher>>>,
     /// Raw pointer to the active v8 scope. `eval()` installs it at the top of the
     /// function (after creating `dynamic_scope`) and clears it just before returning.
     /// Stored as a lifetime-erased `NonNull` so it can sit in `EvalContext` (which the
-    /// borrow checker treats as `'static`). Re-borrowed in
-    /// `V8CastDispatcher::dispatch_cast_from` and other v8 dispatch points; soundness
-    /// depends on no two re-borrows being live at once and on the underlying scope
-    /// outliving every read.
+    /// borrow checker treats as `'static`). Re-borrowed in `pull_*_v8` dispatch paths
+    /// (`pull_type_dispatch`); soundness depends on no two re-borrows being live at
+    /// once and on the underlying scope outliving every read.
     pub(crate) v8_scope: std
     ::cell
     ::Cell<Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>>,
