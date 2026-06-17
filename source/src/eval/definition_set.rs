@@ -117,7 +117,7 @@ pub(crate) struct DefinitionSet {
 }
 
 impl DefinitionSet {
-    pub fn finish(&self, xx: &ExprContext) -> Result<(), String> {
+    pub fn finish(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
         if self.finished.get() {
             return Ok(());
         }
@@ -134,21 +134,19 @@ impl DefinitionSet {
             scope: xx.scope.clone(),
             target: xx.target.clone(),
         });
+        let root_loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
         for func_data in self.functions.borrow().iter() {
-            func_data.finish(&inner_xx)?;
+            func_data.finish(&inner_xx, root_loc)?;
         }
         for dt_data in self.data_types.borrow().iter() {
-            dt_data.finish(&inner_xx)?;
+            crate::eval::value::type_source_data_type::SourceDataTypeData::finish(dt_data, &inner_xx, root_loc)?;
         }
         for iface in self.interfaces.borrow().iter() {
-            iface.finish()?;
+            iface.finish().map_err(|e| vec![crate::langhelp::ExprErr {
+                loc: root_loc,
+                errors: vec![crate::langhelp::ExprSubErr::Opaque(e)],
+            }])?;
         }
-        let root_loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
-        crate::eval::compile_def_set_members(
-            &inner_xx,
-            root_loc,
-            self,
-        ).map_err(|e| format!("def set codegen: {:?}", e))?;
         let registered = inner_ex.definition_sets.borrow();
         let mut deps = self.dependencies.borrow_mut();
         for (id, ds) in registered.iter() {
@@ -703,7 +701,7 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        ds.finish(xx)?;
+        ds.finish(xx).map_err(|e| format!("{:?}", e))?;
         xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
@@ -722,7 +720,7 @@ impl AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        ds.finish(xx)?;
+        ds.finish(xx).map_err(|e| format!("{:?}", e))?;
         xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))

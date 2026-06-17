@@ -266,6 +266,10 @@ pub(crate) struct ValueAnyConst {
 }
 
 impl Value for ValueAnyConst {
+    fn lift(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
+        self.inner.lift(xx)
+    }
+
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
     }

@@ -116,6 +116,7 @@ pub(crate) struct TypeSourceDataTypeConst {
 
 impl TypeSourceDataTypeConst {
     pub(crate) fn serialize_data_type(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
+        self.data.set.finish(xx).map_err(|e| format!("{:?}", e)).expect("lift in serialize_data_type");
         serialize_definition_set(xx, loc, &self.data.set);
         self
             .data
@@ -554,6 +555,7 @@ impl Type for TypeSourceDataTypeConst {
     }
 
     fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
+        self.data.set.finish(xx).map_err(|e| format!("{:?}", e)).expect("lift in type_to_serial");
         serialize_definition_set(xx, loc, &self.data.set);
         let artifact_id =
             self
@@ -570,6 +572,11 @@ impl Type for TypeSourceDataTypeConst {
 }
 
 impl Value for TypeSourceDataTypeConst {
+    fn lift(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
+        xx.vx.definition_sets.borrow_mut().entry(self.data.set.def_set_id).or_insert_with(|| self.data.set.clone());
+        self.data.set.finish(xx)
+    }
+
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
     }
