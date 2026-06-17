@@ -557,34 +557,34 @@ var d0_0_0_0;
 {
 d0_0_0_0 = function(a2) {
 let a0 = this["\"_0\""];
-let e5;
-let e6;
-e6 = a0;
-let e7;
-e7 = null;
-e5 = e6["toUpperCase"](e7);
-return e5;
+let e0;
+let e1;
+e1 = a0;
+let e2;
+e2 = null;
+e0 = e1["toUpperCase"](e2);
+return e0;
 };
 }
-let e8;
+let e0;
 {
-let e9;
-let e10;
-e10 = d0_0_0_1;
-let e11;
-let e12;
+let e1;
+let e2;
+e2 = d0_0_0_1;
+let e3;
+let e4;
 {
-let e13;
-e13 = "hello";
-e12 = e13;
+let e5;
+e5 = "hello";
+e4 = e5;
 }
-let e14;
-e14 = d0_0_0_0;
-e11 = { "\"_0\"": e12, "\"_im0\"": e14 };
-e9 = (e10)(e11);
-e8 = e9;
+let e6;
+e6 = d0_0_0_0;
+e3 = { "\"_0\"": e4, "\"_im0\"": e6 };
+e1 = (e2)(e3);
+e0 = e1;
 }
-e8;"#);
+e0;"#);
 }
 
 #[test]

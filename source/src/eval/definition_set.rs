@@ -143,6 +143,12 @@ impl DefinitionSet {
         for iface in self.interfaces.borrow().iter() {
             iface.finish()?;
         }
+        let root_loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
+        crate::eval::compile_def_set_members(
+            &inner_xx,
+            root_loc,
+            self,
+        ).map_err(|e| format!("def set codegen: {:?}", e))?;
         let registered = inner_ex.definition_sets.borrow();
         let mut deps = self.dependencies.borrow_mut();
         for (id, ds) in registered.iter() {
