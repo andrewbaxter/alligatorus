@@ -56,13 +56,7 @@ impl Aspect for TypeSourceExportsLiftedConst { }
 
 impl AspectArtifact for TypeSourceExportsLiftedConst {
     fn from_serial(&self, xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        {
-            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-            let already = sets.iter().any(|s| s.def_set_id == self.set.def_set_id);
-            if !already {
-                sets.push(self.set.clone());
-            }
-        }
+        xx.vx.definition_sets.borrow_mut().entry(self.set.def_set_id).or_insert_with(|| self.set.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() });
         EvalRes::ok(CodeValue {
             code: Code {
@@ -101,12 +95,12 @@ impl AspectField for TypeSourceExportsLiftedConst {
                 let functions = self.set.functions.borrow();
                 for func_data in functions.iter() {
                     if func_data.name.as_deref() == Some(&key_name) {
-                        {
-                            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-                            if !sets.iter().any(|s| s.def_set_id == self.set.def_set_id) {
-                                sets.push(self.set.clone());
-                            }
-                        }
+                        xx
+                            .vx
+                            .definition_sets
+                            .borrow_mut()
+                            .entry(self.set.def_set_id)
+                            .or_insert_with(|| self.set.clone());
                         let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_data.clone() });
                         return Ok(CodeValue {
                             code: Code {

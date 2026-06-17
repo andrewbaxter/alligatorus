@@ -1,8 +1,6 @@
 use crate::langhelp::{
     Artifact,
     DefSetId,
-    ImportStateId,
-    SourceId,
     Unique,
 };
 
@@ -11,10 +9,8 @@ pub(crate) struct ArtifactDataDefSetCtorData {
     pub data_field: String,
     pub def_set_id: DefSetId,
     pub identity: Unique,
-    pub import_id: ImportStateId,
     pub methods: Vec<ArtifactDataDefSetCtorMethod>,
     pub name: Option<String>,
-    pub source_id: SourceId,
     pub underlying_type: Artifact,
 }
 

@@ -132,7 +132,7 @@ impl PendingImportState {
             pending_finalizers: std::cell::RefCell::new(Vec::new()),
             isolate: Rc::new(std::cell::RefCell::new(v8::Isolate::new(Default::default()))),
             import_state: ImportStateId(0),
-            definition_sets: RefCell::new(Vec::new()),
+            installed_def_sets: RefCell::new(std::collections::HashSet::new()),
             def_set_counter: Counter::default(),
             v8_context: RefCell::new(None),
             builtins_registered: Cell::new(false),
@@ -144,6 +144,7 @@ impl PendingImportState {
             next_local_id: Default::default(),
             externals: RefCell::new(Vec::new()),
             v8_scope: std::cell::Cell::new(None),
+            definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let xx = ExprContext {
             vx: ex,

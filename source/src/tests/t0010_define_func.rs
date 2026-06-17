@@ -130,9 +130,9 @@ e5 = e19;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0;
+    assert_eq!(js_sources[1], r#"var d0_0_0_0;
 {
-d0_0_0 = function(a0) {
+d0_0_0_0 = function(a0) {
 let e0;
 let e1;
 e1 = BUILTIN;
@@ -150,7 +150,7 @@ let e4;
 {
 let e5;
 let e6;
-e6 = d0_0_0;
+e6 = d0_0_0_0;
 e5 = (e6)();
 e4 = e5;
 }
@@ -282,9 +282,9 @@ e5 = e19;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0;
+    assert_eq!(js_sources[1], r#"var d0_0_0_0;
 {
-d0_0_0 = function(a0) {
+d0_0_0_0 = function(a0) {
 let e0;
 let e1;
 e1 = a0;
@@ -301,7 +301,7 @@ let e5;
 e5 = BUILTIN;
 let e6;
 let e7;
-e7 = d0_0_0;
+e7 = d0_0_0_0;
 let e8;
 {
 let e9;

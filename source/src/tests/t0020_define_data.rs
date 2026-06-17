@@ -167,9 +167,9 @@ e5 = e24;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0;
+    assert_eq!(js_sources[1], r#"var d0_0_0_0;
 {
-d0_0_0 = function(a1) {
+d0_0_0_0 = function(a1) {
 let a0 = this["\"_0\""];
 let e0;
 let e1;
@@ -191,7 +191,7 @@ e6 = "hello";
 e5 = e6;
 }
 let e7;
-e7 = d0_0_0;
+e7 = d0_0_0_0;
 e4 = { "\"_0\"": e5, "\"_1\"": e7 };
 a0 = e4;
 }

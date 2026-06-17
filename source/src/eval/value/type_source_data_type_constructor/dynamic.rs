@@ -100,13 +100,12 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         let (ret_type, ret_code) =
             deserialize_type_artifact(xx, loc, &m.ret_type).into_res().expect("Failed to resolve method ret type");
         codes.push(ret_code);
-        let entry_id = serial.def_set_id;
         Rc::new(SourceDataMethodData {
             name: m.name.clone(),
             arg_type: std::cell::RefCell::new(None),
             impl_expr: std::cell::RefCell::new(None),
             ret_type: std::cell::RefCell::new(Some(ret_type)),
-            scope_entry_id: Cell::new(Some(ScopeEntryId::Def(serial.import_id, entry_id, i))),
+            scope_entry_id: Cell::new(Some(ScopeEntryId::Def(serial.def_set_id, i))),
             inner_scope_entry_id: Cell::new(None),
             field_name: m.field_name.clone(),
             compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
@@ -115,7 +114,6 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     }).collect();
     let set = dumpster::unsync::Gc::new(DefinitionSet {
         artifact_id: std::cell::RefCell::new(None),
-        import_id: serial.import_id,
         def_set_id: serial.def_set_id,
         functions: std::cell::RefCell::new(Vec::new()),
         data_types: std::cell::RefCell::new(Vec::new()),
@@ -124,7 +122,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         next_field_id: Counter::default(),
         next_entry_id: Counter::default(),
         next_interface_method_id: Counter::default(),
-        source_id: serial.source_id,
+        dependencies: std::cell::RefCell::new(std::collections::HashMap::new()),
     });
     let dt_data = dumpster::unsync::Gc::new(SourceDataTypeData {
         set: set.clone(),
@@ -182,13 +180,13 @@ impl AspectInitialBind for TypeSourceDataTypeConstructorDynamic {
 impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
     fn lift(
         &self,
-        _xx: &ExprContext,
+        xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
             from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
-        ctor_ref.data.set.finish()?;
+        ctor_ref.data.set.finish(xx)?;
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }

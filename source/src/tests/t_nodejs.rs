@@ -1684,65 +1684,65 @@ e5 = e226;
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#
     );
-    assert_eq!(js_sources[1], r#"var d0_0_1;
+    assert_eq!(js_sources[1], r#"var d0_0_0_1;
 {
-d0_0_1 = function(a0) {
+d0_0_0_1 = function(a0) {
 let e0;
 let e1;
 let e2;
 e2 = a0;
 e1 = { "\"t0\"": e2 };
 let e3;
-e3 = d0_0_0;
+e3 = d0_0_0_0;
 e0 = { "\"_0\"": e1, "\"_1\"": e3 };
 return e0;
 };
 }
-var d0_0_2;
+var d0_0_0_2;
 {
-d0_0_2 = function(a0) {
+d0_0_0_2 = function(a0) {
 let e4;
 let e5;
 let e6;
 e6 = a0;
 e5 = { "\"t1\"": e6 };
 let e7;
-e7 = d0_0_0;
+e7 = d0_0_0_0;
 e4 = { "\"_0\"": e5, "\"_1\"": e7 };
 return e4;
 };
 }
-var d0_0_3;
+var d0_0_0_3;
 {
-d0_0_3 = function(a0) {
+d0_0_0_3 = function(a0) {
 let e8;
 let e9;
 let e10;
 e10 = a0;
 e9 = { "\"t2\"": e10 };
 let e11;
-e11 = d0_0_0;
+e11 = d0_0_0_0;
 e8 = { "\"_0\"": e9, "\"_1\"": e11 };
 return e8;
 };
 }
-var d0_0_4;
+var d0_0_0_4;
 {
-d0_0_4 = function(a0) {
+d0_0_0_4 = function(a0) {
 let e12;
 let e13;
 let e14;
 e14 = a0;
 e13 = { "\"t3\"": e14 };
 let e15;
-e15 = d0_0_0;
+e15 = d0_0_0_0;
 e12 = { "\"_0\"": e13, "\"_1\"": e15 };
 return e12;
 };
 }
-var d0_0_5;
+var d0_0_0_5;
 {
-d0_0_5 = function(a0) {
+d0_0_0_5 = function(a0) {
 let e16;
 let a1;
 {
@@ -1871,7 +1871,7 @@ let a5;
 {
 let e59;
 let e60;
-e60 = d0_0_5;
+e60 = d0_0_0_5;
 let e61;
 let e62;
 let e63;
@@ -1889,7 +1889,7 @@ let a6;
 {
 let e66;
 let e67;
-e67 = d0_0_5;
+e67 = d0_0_0_5;
 let e68;
 let e69;
 let e70;
@@ -1985,7 +1985,7 @@ let a7;
 {
 let e98;
 let e99;
-e99 = d0_0_5;
+e99 = d0_0_0_5;
 let e100;
 let e101;
 let e102;
@@ -2003,7 +2003,7 @@ let a8;
 {
 let e105;
 let e106;
-e106 = d0_0_5;
+e106 = d0_0_0_5;
 let e107;
 let e108;
 let e109;
@@ -2104,9 +2104,9 @@ e16 = e136;
 return e16;
 };
 }
-var d0_0_6;
+var d0_0_0_6;
 {
-d0_0_6 = function(a0) {
+d0_0_0_6 = function(a0) {
 let e137;
 let a1;
 {
@@ -2130,7 +2130,7 @@ e144 = a1;
 e143 = e144["\"out\""];
 let e145;
 let e146;
-e146 = d0_0_5;
+e146 = d0_0_0_5;
 let e147;
 let e148;
 e148 = a0;
@@ -2159,9 +2159,9 @@ e137 = e150;
 return e137;
 };
 }
-var d0_0_0;
+var d0_0_0_0;
 {
-d0_0_0 = function(a1) {
+d0_0_0_0 = function(a1) {
 let a0 = this["\"_0\""];
 let e155;
 e155 = a0;
@@ -2175,14 +2175,14 @@ let e158;
 e158 = BUILTIN;
 let e159;
 let e160;
-e160 = d0_0_6;
+e160 = d0_0_0_6;
 let e161;
 let e162;
-e162 = d0_0_1;
+e162 = d0_0_0_1;
 let e163;
 let e164;
 let e165;
-e165 = d0_0_2;
+e165 = d0_0_0_2;
 let e166;
 {
 let e167;
@@ -2192,11 +2192,11 @@ e166 = e167;
 e164 = (e165)(e166);
 let e168;
 let e169;
-e169 = d0_0_3;
+e169 = d0_0_0_3;
 let e170;
 let e171;
 let e172;
-e172 = d0_0_4;
+e172 = d0_0_0_4;
 let e173;
 {
 let e174;
@@ -2206,7 +2206,7 @@ e173 = e174;
 e171 = (e172)(e173);
 let e175;
 let e176;
-e176 = d0_0_2;
+e176 = d0_0_0_2;
 let e177;
 {
 let e178;

@@ -117,10 +117,10 @@ fn test_00100_impl_type() {
     assert_eq!(res.logs[0].message, "HELLO");
     let scripts = redact_builtins(&res.generated_dynamic_scripts);
     assert_eq!(scripts.len(), 3);
-    assert!(scripts[1].contains("d0_0_0 = function("), "value.type compiled");
-    assert!(scripts[1].contains("d0_0_1 = function("), "type.can_cast_from compiled (arg)");
-    assert!(scripts[1].contains("d0_0_2 = function("), "type.cast_from compiled (arg)");
-    assert!(scripts[1].contains("d0_0_3 = function("), "type.desc compiled (arg)");
+    assert!(scripts[1].contains("d0_0_0_0 = function("), "value.type compiled");
+    assert!(scripts[1].contains("d0_0_0_1 = function("), "type.can_cast_from compiled (arg)");
+    assert!(scripts[1].contains("d0_0_0_2 = function("), "type.cast_from compiled (arg)");
+    assert!(scripts[1].contains("d0_0_0_3 = function("), "type.desc compiled (arg)");
     assert!(scripts[1].contains("source_type"), "can_cast_from accesses arg.source_type");
     assert!(scripts[1].contains("\"_0\""), "constructor builds instance object");
     assert!(scripts[2].contains("\"hello\""), "stage 3 contains the literal source string");

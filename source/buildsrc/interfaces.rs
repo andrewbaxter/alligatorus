@@ -207,9 +207,10 @@ pub fn build(
             let builtin_def_set =
                 dumpster::unsync::Gc::new(
                     crate::eval::definition_set::DefinitionSet::new(
-                        import_state,
-                        crate::langhelp::DefSetId(usize::MAX),
-                        crate::langhelp::SourceId(usize::MAX),
+                        crate::langhelp::DefSetId(
+                            crate::langhelp::CompileId(import_state, crate::langhelp::SourceId(usize::MAX),),
+                            usize::MAX,
+                        ),
                     ),
                 );
             #(#iface_build_entries) * GenBuiltinInterfaces {

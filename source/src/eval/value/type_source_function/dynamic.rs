@@ -115,10 +115,7 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
         let set = &func_ref.data.set;
-        let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-        if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
-            sets.push(set.clone());
-        }
+        xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: func_type }))
     }
@@ -133,10 +130,7 @@ impl AspectLowerDynamic for TypeSourceFunctionDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
         let set = &func_ref.data.set;
-        let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-        if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
-            sets.push(set.clone());
-        }
+        xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: func_type }))
     }
@@ -253,15 +247,10 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
                     serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset function: {}", e)),
                 )?;
             let def_set = erb.must_res(load_def_set(xx, &serial.def_set))?;
-            {
-                let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-                if !sets.iter().any(|s| s.def_set_id == def_set.def_set_id) {
-                    sets.push(def_set.clone());
-                }
-            }
+            xx.vx.definition_sets.borrow_mut().entry(def_set.def_set_id).or_insert_with(|| def_set.clone());
             let functions = def_set.functions.borrow();
             let func_data = functions.iter().find(|f| match f.scope_entry_id.get() {
-                Some(ScopeEntryId::Def(_, _, id)) => id == serial.entry_id,
+                Some(ScopeEntryId::Def(_, id)) => id == serial.entry_id,
                 _ => false,
             }).expect("Function not found in definition set").clone();
             drop(functions);

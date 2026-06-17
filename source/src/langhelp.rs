@@ -46,7 +46,10 @@ use {
             Cell,
             RefCell,
         },
-        collections::HashMap,
+        collections::{
+            HashMap,
+            HashSet,
+        },
         rc::Rc,
         sync::{
             Arc,
@@ -181,10 +184,10 @@ pub(crate) struct CompileImportContext {
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) def_set_counter: Counter,
-    pub(crate) definition_sets: RefCell<Vec<dumpster::unsync::Gc<DefinitionSet>>>,
     pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) import_state: ImportStateId,
+    pub(crate) installed_def_sets: RefCell<HashSet<DefSetId>>,
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
     pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
     pub(crate) source_id: SourceId,
@@ -268,7 +271,7 @@ impl Counter {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct DefSetId(pub usize);
+pub(crate) struct DefSetId(pub CompileId, pub usize);
 
 pub(crate) fn deserialize_independent_artifact<
     T: Clone + 'static,
@@ -303,6 +306,7 @@ pub(crate) struct EResult<T> {
 }
 
 pub(crate) struct EvalContext {
+    pub(crate) definition_sets: RefCell<HashMap<DefSetId, dumpster::unsync::Gc<DefinitionSet>>>,
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
@@ -418,7 +422,7 @@ pub(crate) struct Scope {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 pub(crate) enum ScopeEntryId {
     Builtin(usize),
-    Def(ImportStateId, DefSetId, usize),
+    Def(DefSetId, usize),
     Local(usize),
 }
 

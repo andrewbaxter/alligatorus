@@ -258,9 +258,9 @@ e5 = e17;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0;
+    assert_eq!(js_sources[1], r#"var d0_0_0_0;
 {
-d0_0_0 = function(a0) {
+d0_0_0_0 = function(a0) {
 let e0;
 {
 let e1;
@@ -317,7 +317,7 @@ e16 = BUILTIN;
 let e17;
 let e18;
 let e19;
-e19 = d0_0_0;
+e19 = d0_0_0_0;
 let e20;
 {
 let e21;

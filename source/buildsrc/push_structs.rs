@@ -144,7 +144,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             arg_type: RefCell::new(None),
                             ret_type: RefCell::new(None),
                             scope_entry_id: Cell::new(
-                                Some(crate::langhelp::ScopeEntryId::Def(ds.import_id, ds.def_set_id, entry_id,),)
+                                Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
                             ),
                             artifact_id: RefCell::new(None),
                             compiled_js: RefCell::new(None),
@@ -496,13 +496,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             impl_expr: RefCell::new(None),
                             ret_type: RefCell::new(None),
                             scope_entry_id: Cell::new(
-                                Some(
-                                    crate::langhelp::ScopeEntryId::Def(
-                                        dt_data.set.import_id,
-                                        dt_data.set.def_set_id,
-                                        entry_id,
-                                    ),
-                                )
+                                Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id,),)
                             ),
                             inner_scope_entry_id: Cell::new(None),
                             field_name,
@@ -541,13 +535,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         compiled_js: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
-                                            Some(
-                                                crate::langhelp::ScopeEntryId::Def(
-                                                    dt_data.set.import_id,
-                                                    dt_data.set.def_set_id,
-                                                    entry_id,
-                                                ),
-                                            )
+                                            Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id,),)
                                         ),
                                         inner_scope_entry_id: Cell::new(None),
                                     });
@@ -645,7 +633,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     scope_entry_id: Cell::new(
                                         Some(
                                             crate::langhelp::ScopeEntryId::Def(
-                                                dt_data.set.import_id,
                                                 dt_data.set.def_set_id,
                                                 aspect_id_entry_id
                                             )
@@ -666,13 +653,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         compiled_js: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
-                                            Some(
-                                                crate::langhelp::ScopeEntryId::Def(
-                                                    dt_data.set.import_id,
-                                                    dt_data.set.def_set_id,
-                                                    entry_id
-                                                )
-                                            ),
+                                            Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id)),
                                         ),
                                         inner_scope_entry_id: Cell::new(None),
                                     });
@@ -1160,7 +1141,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
     let iface_field = format_ident!("{}", iface_field);
     quote!{
         let record_entries = record;
-        let import_id = self_.data_type_ref.data.set.import_id;
+        let import_id = self_.data_type_ref.data.set.def_set_id.0.0;
         let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_id);
         let iface_data = builtin_ifaces.#iface_field.clone();
         let iface_method_names: Vec<(usize, String)> = {
@@ -1181,13 +1162,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                         compiled_js: RefCell::new(None),
                         captured_externals: RefCell::new(Vec::new()),
                         scope_entry_id: Cell::new(
-                            Some(
-                                crate::langhelp::ScopeEntryId::Def(
-                                    dt_data.set.import_id,
-                                    dt_data.set.def_set_id,
-                                    entry_id
-                                )
-                            ),
+                            Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id)),
                         ),
                         inner_scope_entry_id: Cell::new(None),
                     });

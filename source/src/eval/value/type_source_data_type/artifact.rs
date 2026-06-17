@@ -16,9 +16,7 @@ use {
             EResult,
             EvalRes,
             ExprContext,
-            ImportStateId,
             QExprId,
-            SourceId,
             Type,
             Unique,
             Value,
@@ -38,8 +36,6 @@ pub(crate) struct ArtifactDataDefSet {
     pub dependencies: Vec<ArtifactId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<ArtifactId>,
-    pub import_id: ImportStateId,
-    pub source_id: SourceId,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

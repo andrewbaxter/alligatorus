@@ -75,10 +75,7 @@ impl AspectArtifact for TypeSourceFunctionConst {
         let func = must_downcast_ref::<TypeSourceFunctionConst>(wrapper.inner.as_ref());
         {
             let set = &func.data.set;
-            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-            if !sets.iter().any(|s| s.def_set_id == set.def_set_id) {
-                sets.push(set.clone());
-            }
+            xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         }
         serialize_definition_set(xx, loc, &func.data.set);
         let artifact_id =
@@ -108,11 +105,7 @@ impl AspectFunction for TypeSourceFunctionConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         {
             let set = &self.data.set;
-            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-            let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
-            if !already {
-                sets.push(set.clone());
-            }
+            xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         }
         let scope_id = self.data.scope_entry_id.get().expect("Definition set function not registered");
         let arg_type = self.data.arg_type.borrow().clone().expect("Definition set function missing arg type");

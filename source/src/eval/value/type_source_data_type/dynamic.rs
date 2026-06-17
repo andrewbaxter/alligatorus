@@ -704,12 +704,12 @@ impl AspectInitialBind for TypeSourceDataTypeRefDynamic {
 impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
     fn lift(
         &self,
-        _xx: &ExprContext,
+        xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
-        dt_ref.data.set.finish()?;
+        dt_ref.data.set.finish(xx)?;
         Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
     }
 }

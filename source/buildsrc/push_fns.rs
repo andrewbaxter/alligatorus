@@ -43,11 +43,10 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             ret: "DefinitionSetBuilder",
             body: quote!{
                 let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
-                let def_set_id = DefSetId(ex_slot.ex.ix.def_set_counter.next());
-                let import_id = ex_slot.ex.ix.import_state;
-                let source_id = ex_slot.ex.ix.source_id;
-                let inner = Gc::new(DefinitionSet::new(import_id, def_set_id, source_id));
-                ex_slot.ex.ix.definition_sets.borrow_mut().push(inner.clone());
+                let compile_id = crate::langhelp::CompileId(ex_slot.ex.ix.import_state, ex_slot.ex.ix.source_id);
+                let def_set_id = DefSetId(compile_id, ex_slot.ex.ix.def_set_counter.next());
+                let inner = Gc::new(DefinitionSet::new(def_set_id));
+                ex_slot.ex.definition_sets.borrow_mut().insert(def_set_id, inner.clone());
                 DefinitionSetBuilder { inner }
             },
         },

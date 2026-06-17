@@ -14,6 +14,7 @@ use {
         invariant::DeserialLazy,
         langhelp::{
             ArtifactId,
+            ExprContext,
             External,
             ScopeEntryId,
             Type,
@@ -44,7 +45,7 @@ pub(crate) struct SourceDataMethodData {
 }
 
 impl SourceDataMethodData {
-    pub fn finish(&self, dt_name: &str) -> Result<(), String> {
+    pub fn finish(&self, _xx: &ExprContext, dt_name: &str) -> Result<(), String> {
         if self.impl_expr.borrow().is_none() {
             return Err(format!("Data type '{}' method '{}' is missing implementation", dt_name, self.name));
         }
@@ -68,10 +69,10 @@ pub(crate) struct SourceDataTypeData {
 }
 
 impl SourceDataTypeData {
-    pub fn finish(&self) -> Result<(), String> {
+    pub fn finish(&self, xx: &ExprContext) -> Result<(), String> {
         let name = self.name.as_deref().unwrap_or("(unnamed)");
         for method in self.methods.borrow().iter() {
-            method.finish(name)?;
+            method.finish(xx, name)?;
         }
         Ok(())
     }

@@ -78,9 +78,7 @@ impl TypeSourceDataTypeConstructorConst {
                 underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
                 identity: self.data.identity.clone(),
                 methods,
-                import_id: self.data.set.import_id,
                 def_set_id: self.data.set.def_set_id,
-                source_id: self.data.set.source_id,
             };
             TypeTypeSourceDataTypeConstructorDynamic::build_artifact(
                 serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data"),
@@ -104,11 +102,7 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         {
             let set = &self.data.set;
-            let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-            let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
-            if !already {
-                sets.push(set.clone());
-            }
+            xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         }
         let underlying_type = self.data.underlying_type.get().clone();
         return er_seq_cv!(loc, erb, {

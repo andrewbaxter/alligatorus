@@ -168,11 +168,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             });
             {
                 let set = &dt_data.set;
-                let mut sets = xx.vx.ix.definition_sets.borrow_mut();
-                let already = sets.iter().any(|s| s.def_set_id == set.def_set_id);
-                if !already {
-                    sets.push(set.clone());
-                }
+                xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
             }
             if has_type_iface {
                 let instance_global = install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;

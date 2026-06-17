@@ -64,10 +64,8 @@ use {
             DefSetId,
             ExprContext,
             External,
-            ImportStateId,
             QExprId,
             ScopeEntryId,
-            SourceId,
             Type,
             Unique,
             Value,
@@ -109,38 +107,59 @@ pub(crate) struct DefinitionSet {
     pub artifact_id: RefCell<Option<ArtifactId>>,
     pub data_types: RefCell<Vec<Gc<SourceDataTypeData>>>,
     pub def_set_id: DefSetId,
+    pub dependencies: RefCell<std::collections::HashMap<DefSetId, Gc<DefinitionSet>>>,
     pub finished: Cell<bool>,
     pub functions: RefCell<Vec<Gc<SourceFunctionData>>>,
-    pub import_id: ImportStateId,
     pub interfaces: RefCell<Vec<Gc<SourceInterfaceData>>>,
     pub next_entry_id: Counter,
     pub next_field_id: Counter,
     pub next_interface_method_id: Counter,
-    pub source_id: SourceId,
 }
 
 impl DefinitionSet {
-    pub fn finish(&self) -> Result<(), String> {
+    pub fn finish(&self, xx: &ExprContext) -> Result<(), String> {
         if self.finished.get() {
             return Ok(());
         }
+        let inner_ex = Rc::new(crate::langhelp::EvalContext {
+            ix: xx.vx.ix.clone(),
+            next_local_id: Counter::default(),
+            externals: RefCell::new(Vec::new()),
+            v8_scope: Cell::new(None),
+            definition_sets: RefCell::new(std::collections::HashMap::new()),
+        });
+        let inner_xx = Rc::new(ExprContext {
+            vx: inner_ex.clone(),
+            import_state: xx.import_state.clone(),
+            scope: xx.scope.clone(),
+            target: xx.target.clone(),
+        });
         for func_data in self.functions.borrow().iter() {
-            func_data.finish()?;
+            func_data.finish(&inner_xx)?;
         }
         for dt_data in self.data_types.borrow().iter() {
-            dt_data.finish()?;
+            dt_data.finish(&inner_xx)?;
         }
         for iface in self.interfaces.borrow().iter() {
             iface.finish()?;
         }
+        let registered = inner_ex.definition_sets.borrow();
+        let mut deps = self.dependencies.borrow_mut();
+        for (id, ds) in registered.iter() {
+            if *id == self.def_set_id {
+                continue;
+            }
+            deps.entry(*id).or_insert_with(|| ds.clone());
+        }
+        drop(deps);
+        drop(registered);
         self.finished.set(true);
         Ok(())
     }
 
-    pub fn new(import_id: ImportStateId, def_set_id: DefSetId, source_id: SourceId) -> Self {
+    pub fn new(def_set_id: DefSetId) -> Self {
         DefinitionSet {
             artifact_id: RefCell::new(None),
-            import_id: import_id,
             def_set_id: def_set_id,
             functions: RefCell::new(Vec::new()),
             data_types: RefCell::new(Vec::new()),
@@ -149,7 +168,7 @@ impl DefinitionSet {
             next_field_id: Counter::default(),
             next_entry_id: Counter::default(),
             next_interface_method_id: Counter::default(),
-            source_id,
+            dependencies: RefCell::new(std::collections::HashMap::new()),
         }
     }
 }
@@ -228,9 +247,8 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
             serde_json::from_value(
                 def_set_artifact.data,
             ).map_err(|e| format!("Failed to parse definition set: {}", e))?;
-        let import_id = def_set_serial.import_id;
         let def_set_id = def_set_serial.def_set_id;
-        let set = Gc::new(DefinitionSet::new(import_id, def_set_id, def_set_serial.source_id));
+        let set = Gc::new(DefinitionSet::new(def_set_id));
         let mut dt_serials: Vec<(ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
         let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
         for dt_artifact_id in &def_set_serial.data_types {
@@ -268,7 +286,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                 impl_expr: RefCell::new(None),
                 arg_type: RefCell::new(None),
                 ret_type: RefCell::new(None),
-                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(import_id, def_set_id, func_serial.entry_id))),
+                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, func_serial.entry_id))),
                 artifact_id: RefCell::new(Some(func_artifact_id.clone())),
                 compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
                 captured_externals: RefCell::new(Vec::new()),
@@ -353,7 +371,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                         arg_type: RefCell::new(Some(arg_type)),
                         impl_expr: RefCell::new(None),
                         ret_type: RefCell::new(Some(ret_type)),
-                        scope_entry_id: Cell::new(Some(ScopeEntryId::Def(import_id, def_set_id, m.entry_id))),
+                        scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, m.entry_id))),
                         inner_scope_entry_id: Cell::new(None),
                         field_name: m.field_name.clone(),
                         compiled_js: RefCell::new(Some(m.compiled_js.clone())),
@@ -361,7 +379,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                     })
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
-                let builtin_ifaces = gen_build_builtin_interfaces(import_id);
+                let builtin_ifaces = gen_build_builtin_interfaces(def_set_id.0.0);
                 let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
                     dt_serial.interface_impls.iter().map(|impl_serial| {
                         let iface = match impl_serial.builtin_kind {
@@ -403,9 +421,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                                 impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
                                 compiled_js: RefCell::new(Some(m.compiled_js.clone())),
                                 captured_externals: RefCell::new(captured_externals),
-                                scope_entry_id: Cell::new(
-                                    Some(ScopeEntryId::Def(import_id, def_set_id, m.entry_id)),
-                                ),
+                                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, m.entry_id))),
                                 inner_scope_entry_id: Cell::new(None),
                             }
                         }).collect();
@@ -440,8 +456,9 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
             }
             for dep_id in &def_set_serial.dependencies {
                 let dep_set = load_def_set(xx, dep_id).map_err(|e| format!("dep load: {}", e))?;
-                crate::eval::import_install::install_def_set_to_v8(xx, loc, &dep_set)?;
+                set.dependencies.borrow_mut().entry(dep_set.def_set_id).or_insert_with(|| dep_set.clone());
             }
+            set.finished.set(true);
             crate::eval::import_install::install_def_set_to_v8(xx, loc, &set)?;
             Ok(codes)
         });
@@ -509,7 +526,7 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
                     });
                     let captured_externals = serialize_captured_externals(xx, loc, &m.captured_externals.borrow());
                     let entry_id = match m.scope_entry_id.get() {
-                        Some(ScopeEntryId::Def(_, _, eid)) => eid,
+                        Some(ScopeEntryId::Def(_, eid)) => eid,
                         _ => panic!("Method scope_entry_id missing or not Def"),
                     };
                     ArtifactDataDefSetMethod {
@@ -535,7 +552,7 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
                                         .scope_entry_id
                                         .get()
                                         .expect("Interface method impl missing scope_entry_id") {
-                                        ScopeEntryId::Def(_, _, id) => id,
+                                        ScopeEntryId::Def(_, id) => id,
                                         other => panic!(
                                             "Interface method impl has non-Def scope_entry_id: {:?}",
                                             other,
@@ -629,7 +646,7 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
                 let ret_type = f.ret_type.borrow().clone().expect("Function missing ret type");
                 let compiled_js = f.compiled_js.borrow().clone().expect("Function missing compiled JS");
                 let entry_id = match f.scope_entry_id.get().expect("Function missing scope_entry_id") {
-                    ScopeEntryId::Def(_, _, id) => id,
+                    ScopeEntryId::Def(_, id) => id,
                     other => panic!("Function has non-Def scope_entry_id: {:?}", other),
                 };
                 let captured_externals = serialize_captured_externals(xx, loc, &f.captured_externals.borrow());
@@ -649,25 +666,14 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
         }).collect();
         drop(functions);
         let dependencies: Vec<ArtifactId> = {
-            let dep_sets: Vec<Gc<DefinitionSet>> =
-                xx
-                    .vx
-                    .ix
-                    .definition_sets
-                    .borrow()
-                    .iter()
-                    .filter(|s| s.def_set_id != set.def_set_id)
-                    .cloned()
-                    .collect();
-            dep_sets.iter().map(|s| serialize_definition_set(xx, loc, s)).collect()
+            let deps = set.dependencies.borrow();
+            deps.values().map(|s| serialize_definition_set(xx, loc, s)).collect()
         };
         let serial = ArtifactDataDefSet {
             data_types: data_type_ids,
             functions: function_ids,
-            import_id: set.import_id,
             def_set_id: set.def_set_id,
             dependencies,
-            source_id: set.source_id,
         };
         Artifact {
             type_: ArtifactId::Builtin(defset_artifact_identity()),
@@ -682,7 +688,7 @@ impl Aspect for TypeDefinitionSetLiftDynamic { }
 impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
     fn lift(
         &self,
-        _xx: &ExprContext,
+        xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
@@ -691,7 +697,8 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        ds.finish()?;
+        ds.finish(xx)?;
+        xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
     }
@@ -700,7 +707,7 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
 impl AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
     fn lower(
         &self,
-        _xx: &ExprContext,
+        xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
@@ -709,6 +716,8 @@ impl AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
+        ds.finish(xx)?;
+        xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
     }

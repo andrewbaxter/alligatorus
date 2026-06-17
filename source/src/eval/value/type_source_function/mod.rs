@@ -7,6 +7,7 @@ use {
         eval::definition_set::DefinitionSet,
         langhelp::{
             ArtifactId,
+            ExprContext,
             External,
             ScopeEntryId,
             Type,
@@ -37,7 +38,7 @@ pub(crate) struct SourceFunctionData {
 }
 
 impl SourceFunctionData {
-    pub fn finish(&self) -> Result<(), String> {
+    pub fn finish(&self, _xx: &ExprContext) -> Result<(), String> {
         let name = self.name.as_deref().unwrap_or("(unnamed)");
         if self.impl_expr.borrow().is_none() {
             return Err(format!("Definition set function '{}' is missing an implementation", name));

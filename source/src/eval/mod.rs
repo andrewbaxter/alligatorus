@@ -355,7 +355,7 @@ pub(crate) fn compile_importid(
         pending_finalizers: RefCell::new(Vec::new()),
         isolate: Rc::new(RefCell::new(v8::Isolate::new(Default::default()))),
         import_state: import_state,
-        definition_sets: RefCell::new(Vec::new()),
+        installed_def_sets: RefCell::new(std::collections::HashSet::new()),
         def_set_counter: Counter::default(),
         v8_context: RefCell::new(None),
         builtins_registered: Cell::new(false),
@@ -472,6 +472,7 @@ pub(crate) fn compile_importid(
                 next_local_id: Default::default(),
                 externals: RefCell::new(Vec::new()),
                 v8_scope: std::cell::Cell::new(None),
+                definition_sets: RefCell::new(std::collections::HashMap::new()),
             });
             let xx = Rc::new(ExprContext {
                 vx: ex,
@@ -1176,6 +1177,7 @@ fn eval(
         next_local_id: Default::default(),
         externals: RefCell::new(Vec::new()),
         v8_scope: std::cell::Cell::new(None),
+        definition_sets: RefCell::new(std::collections::HashMap::new()),
     });
     dynamic_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
     dynamic_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
@@ -1627,9 +1629,9 @@ fn eval(
 
     let mut precompiled_def_funcs: Vec<String> = vec![];
     let def_func_infos: Vec<DefFuncInfo> = {
-        let sets = ex.ix.definition_sets.borrow();
+        let sets = ex.definition_sets.borrow();
         let mut infos = vec![];
-        for ds in sets.iter() {
+        for ds in sets.values() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.impl_expr.borrow().is_none() {
                     if let Some(js) = func_data.compiled_js.borrow().clone() {
@@ -1662,6 +1664,7 @@ fn eval(
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
             v8_scope: std::cell::Cell::new(None),
+            definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
         let func_xx = {
@@ -1699,7 +1702,7 @@ fn eval(
                 .expect("Definition set function body must produce JS code")
                 .clone();
         let captured = func_xx.vx.externals.borrow().clone();
-        for ds in ex.ix.definition_sets.borrow().iter() {
+        for ds in ex.definition_sets.borrow().values() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.scope_entry_id.get() == Some(info.scope_entry_id) {
                     *func_data.captured_externals.borrow_mut() = captured.clone();
@@ -1728,7 +1731,7 @@ fn eval(
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
-    let dss: Vec<_> = ex.ix.definition_sets.borrow().iter().cloned().collect();
+    let dss: Vec<_> = ex.definition_sets.borrow().values().cloned().collect();
     for ds in &dss {
         let dts: Vec<_> = ds.data_types.borrow().iter().cloned().collect();
         for dt_data in &dts {
@@ -1753,6 +1756,7 @@ fn eval(
                     next_local_id: Counter::default(),
                     externals: RefCell::new(Vec::new()),
                     v8_scope: std::cell::Cell::new(None),
+                    definition_sets: RefCell::new(std::collections::HashMap::new()),
                 });
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                 method.inner_scope_entry_id.set(Some(self_id));
@@ -1838,6 +1842,7 @@ fn eval(
                         next_local_id: Counter::default(),
                         externals: RefCell::new(Vec::new()),
                         v8_scope: std::cell::Cell::new(None),
+                        definition_sets: RefCell::new(std::collections::HashMap::new()),
                     });
                     let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
                     method_impl.inner_scope_entry_id.set(Some(self_id));
@@ -2117,7 +2122,7 @@ fn eval(
         code1.push(root_loc, "};".to_string());
         code1.push(root_loc, "}".to_string());
         let compiled = code1.lines[start_line..].join("\n");
-        for ds in ex.ix.definition_sets.borrow().iter() {
+        for ds in ex.definition_sets.borrow().values() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.scope_entry_id.get() == Some(*scope_id) {
                     *func_data.compiled_js.borrow_mut() = Some(compiled.clone());
@@ -2170,7 +2175,7 @@ fn eval(
                 code1.push(root_loc, "};".to_string());
                 code1.push(root_loc, "}".to_string());
                 let compiled = code1.lines[start_line..].join("\n");
-                for ds in ex.ix.definition_sets.borrow().iter() {
+                for ds in ex.definition_sets.borrow().values() {
                     for dt_data in ds.data_types.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
                             if m.scope_entry_id.get() == Some(method.scope_entry_id) {
@@ -3333,8 +3338,8 @@ pub(crate) fn scope_entry_id_dynamic_key(e: ScopeEntryId) -> String {
     match e {
         ScopeEntryId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
         ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
-        ScopeEntryId::Def(import_id, def_set_id, entry_id) => {
-            format!("{}{}_{}_{}", DEF_PREFIX, import_id.0, def_set_id.0, entry_id)
+        ScopeEntryId::Def(def_set_id, entry_id) => {
+            format!("{}{}_{}_{}_{}", DEF_PREFIX, (def_set_id.0).0.0, (def_set_id.0).1.0, def_set_id.1, entry_id,)
         },
     }
 }

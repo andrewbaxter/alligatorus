@@ -194,9 +194,9 @@ e24 = e25["_1"];
 e5 = e24;
 }
 e0 = (e1)(e2,e3,e4,e5);
-e0;"#, r#"var d0_0_0;
+e0;"#, r#"var d0_1_0_0;
 {
-d0_0_0 = function(a1) {
+d0_1_0_0 = function(a1) {
 let a0 = this["\"_0\""];
 let e0;
 let e1;
@@ -217,13 +217,13 @@ e6 = "hello";
 e5 = e6;
 }
 let e7;
-e7 = d0_0_0;
+e7 = d0_1_0_0;
 e4 = { "\"_0\"": e5, "\"_1\"": e7 };
 e3 = e4;
 }
-e3;"#, r#"var d0_0_0;
+e3;"#, r#"var d0_1_0_0;
 {
-d0_0_0 = function(a1) {
+d0_1_0_0 = function(a1) {
 let a0 = this["\"_0\""];
 let e0;
 let e1;
@@ -244,7 +244,7 @@ let e4;
 let e5;
 e5 = "hello";
 let e6;
-e6 = d0_0_0;
+e6 = d0_1_0_0;
 e4 = { "\"_0\"": e5, "\"_1\"": e6 };
 let e7;
 e7 = null;
@@ -290,7 +290,7 @@ e0;"#]);
             "builtin": 7013
           }
         },
-        "compiled_js": "var d0_0_0;\n{\nd0_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
+        "compiled_js": "var d0_1_0_0;\n{\nd0_1_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
         "entry_id": 0,
         "field_name": "_1",
         "name": "to_string",
@@ -327,9 +327,13 @@ e0;"#]);
         ]
       }
     ],
-    "def_set_id": 0,
-    "import_id": 0,
-    "source_id": 1
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
+    ]
   },
   "type_": {
     "builtin": 7001

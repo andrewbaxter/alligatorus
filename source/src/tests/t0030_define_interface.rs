@@ -221,9 +221,9 @@ e5 = e32;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0;
+    assert_eq!(js_sources[1], r#"var d0_0_0_0;
 {
-d0_0_0 = function(a2) {
+d0_0_0_0 = function(a2) {
 let a0 = this["\"_0\""];
 let e0;
 let e1;
@@ -245,7 +245,7 @@ e6 = "hello";
 e5 = e6;
 }
 let e7;
-e7 = d0_0_0;
+e7 = d0_0_0_0;
 e4 = { "\"_0\"": e5, "\"_im0\"": e7 };
 a0 = e4;
 }
@@ -537,9 +537,9 @@ e5 = e44;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_1;
+    assert_eq!(js_sources[1], r#"var d0_0_0_1;
 {
-d0_0_1 = function(a0) {
+d0_0_0_1 = function(a0) {
 let e0;
 let e1;
 e1 = BUILTIN;
@@ -553,9 +553,9 @@ e0 = (e1)(e2);
 return e0;
 };
 }
-var d0_0_0;
+var d0_0_0_0;
 {
-d0_0_0 = function(a2) {
+d0_0_0_0 = function(a2) {
 let a0 = this["\"_0\""];
 let e5;
 let e6;
@@ -570,7 +570,7 @@ let e8;
 {
 let e9;
 let e10;
-e10 = d0_0_1;
+e10 = d0_0_0_1;
 let e11;
 let e12;
 {
@@ -579,7 +579,7 @@ e13 = "hello";
 e12 = e13;
 }
 let e14;
-e14 = d0_0_0;
+e14 = d0_0_0_0;
 e11 = { "\"_0\"": e12, "\"_im0\"": e14 };
 e9 = (e10)(e11);
 e8 = e9;

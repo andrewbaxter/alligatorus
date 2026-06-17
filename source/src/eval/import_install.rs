@@ -40,6 +40,12 @@ use {
 };
 
 pub(crate) fn install_def_set_to_v8(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Result<(), String> {
+    if !xx.vx.ix.installed_def_sets.borrow_mut().insert(set.def_set_id) {
+        return Ok(());
+    }
+    for dep in set.dependencies.borrow().values() {
+        install_def_set_to_v8(xx, loc, dep)?;
+    }
     let Some(scope_ptr) = xx.vx.v8_scope.get() else {
         return Ok(());
     };
@@ -141,6 +147,7 @@ pub(crate) fn install_imported_type_iface(
         next_local_id: Counter::default(),
         externals: RefCell::new(Vec::new()),
         v8_scope: std::cell::Cell::new(None),
+        definition_sets: RefCell::new(std::collections::HashMap::new()),
     });
     let target = xx.target.clone();
     let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
