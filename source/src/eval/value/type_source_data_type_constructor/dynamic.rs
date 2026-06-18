@@ -99,6 +99,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
             deserialize_type_artifact(xx, loc, &m.ret_type).into_res().expect("Failed to resolve method ret type");
         codes.push(ret_code);
         Rc::new(SourceDataMethodData {
+            artifact_id: std::cell::RefCell::new(None),
             name: m.name.clone(),
             arg_type: std::cell::RefCell::new(None),
             impl_expr: std::cell::RefCell::new(None),

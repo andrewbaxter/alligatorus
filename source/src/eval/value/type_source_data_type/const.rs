@@ -102,8 +102,24 @@ fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc
         Ok(s) => s,
         Err(_) => return false,
     };
-    dt_serial.interface_impls.iter().any(|i| {
-        i.builtin_kind == Some(BuiltinInterfaceKind::Type)
+    dt_serial.members.iter().any(|m_id| {
+        let m_art = match xx.vx.ix.gx.artifacts.get(m_id.clone()) {
+            Ok(a) => a,
+            Err(_) => return false,
+        };
+        let is_iface_impl =
+            matches!(
+                &m_art.type_,
+                crate:: langhelp:: ArtifactId:: Builtin(b) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
+            );
+        if !is_iface_impl {
+            return false;
+        }
+        let impl_serial: super::artifact::ArtifactDataDefSetInterfaceImpl = match serde_json::from_value(m_art.data) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        impl_serial.builtin_kind == Some(BuiltinInterfaceKind::Type)
     })
 }
 

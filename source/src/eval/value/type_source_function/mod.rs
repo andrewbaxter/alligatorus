@@ -10,11 +10,18 @@ use {
             Scope,
             build_builtin_scope,
             const_eval,
-            definition_set::DefinitionSet,
+            definition_set::{
+                DefinitionSet,
+                serialize_captured_externals,
+            },
             expr::Expr,
             render_code,
             scope_entry_id_dynamic_key,
             typecheck_convert,
+            value::{
+                type_source_data_type::artifact::ArtifactDataDefSetFunction,
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
+            },
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -29,6 +36,7 @@ use {
             ScopeEntryId,
             Type,
             Value,
+            produce_independent_artifact,
         },
         r#gen::aspect_initial_bind_get_maybe,
     },
@@ -138,6 +146,39 @@ impl SourceFunctionData {
         *self.captured_externals.borrow_mut() = captured;
         *self.compiled_js.borrow_mut() = Some(compiled);
         Ok(())
+    }
+
+    pub fn serialize(&self, xx: &ExprContext, loc: QExprId, def_set_artifact_id: ArtifactId) -> ArtifactId {
+        use crate::{
+            eval::value::type_null::dynamic::TypeNullDynamic,
+            langhelp::Type as _,
+        };
+
+        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
+            let arg_type = self.arg_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
+            let ret_type = self.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
+            let compiled_js = self.compiled_js.borrow().clone().unwrap_or_default();
+            let entry_id = match self.scope_entry_id.get().expect("Function missing scope_entry_id") {
+                ScopeEntryId::Def(_, id) => id,
+                other => panic!("Function has non-Def scope_entry_id: {:?}", other),
+            };
+            let captured_externals = serialize_captured_externals(xx, loc, &self.captured_externals.borrow());
+            let serial = ArtifactDataDefSetFunction {
+                name: self.name.clone(),
+                entry_id,
+                arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
+                ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
+                compiled_js,
+                def_set: def_set_artifact_id,
+                captured_externals,
+            };
+
+            use crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic;
+
+            TypeTypeSourceFunctionDynamic::build_artifact(
+                serde_json::to_value(&serial).expect("Failed to serialize function"),
+            )
+        })
     }
 }
 

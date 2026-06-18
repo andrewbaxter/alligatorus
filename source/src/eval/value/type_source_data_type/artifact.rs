@@ -30,12 +30,10 @@ use {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSet {
-    pub data_types: Vec<ArtifactId>,
     pub def_set_id: DefSetId,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<ArtifactId>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub functions: Vec<ArtifactId>,
+    pub members: Vec<ArtifactId>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -43,8 +41,7 @@ pub(crate) struct ArtifactDataDefSetDataType {
     pub data_field: String,
     pub def_set: ArtifactId,
     pub identity: Unique,
-    pub interface_impls: Vec<ArtifactDataDefSetInterfaceImpl>,
-    pub methods: Vec<ArtifactDataDefSetMethod>,
+    pub members: Vec<ArtifactId>,
     pub name: Option<String>,
     pub underlying_type: Artifact,
 }
@@ -75,9 +72,9 @@ pub(crate) struct ArtifactDataDefSetInterface {
 pub(crate) struct ArtifactDataDefSetInterfaceImpl {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub builtin_kind: Option<BuiltinInterfaceKind>,
-    pub method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl>,
+    pub method_impls: Vec<ArtifactId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_iface: Option<ArtifactDataDefSetInterface>,
+    pub user_iface: Option<ArtifactId>,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]

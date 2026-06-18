@@ -254,12 +254,35 @@ e0 = e1;
 }
 e0;"#]);
     let arts = test_artifacts.data.lock().unwrap();
-    assert_eq!(arts.len(), 2);
+    assert_eq!(arts.len(), 3);
     let mut art_jsons: Vec<String> = arts.values().map(|a| serde_json::to_string_pretty(a).unwrap()).collect();
     art_jsons.sort();
     assert_eq!(
         art_jsons,
         vec![
+            r#"{
+  "data": {
+    "arg_type": {
+      "data": null,
+      "type_": {
+        "builtin": 7013
+      }
+    },
+    "compiled_js": "var d0_1_0_0;\n{\nd0_1_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
+    "entry_id": 0,
+    "field_name": "_1",
+    "name": "to_string",
+    "ret_type": {
+      "data": null,
+      "type_": {
+        "builtin": 7019
+      }
+    }
+  },
+  "type_": {
+    "builtin": 7022
+  }
+}"#,
             r#"{
   "data": {
     "data_field": "_0",
@@ -281,25 +304,15 @@ e0;"#]);
         0
       ]
     },
-    "interface_impls": [],
-    "methods": [
+    "members": [
       {
-        "arg_type": {
-          "data": null,
-          "type_": {
-            "builtin": 7013
-          }
-        },
-        "compiled_js": "var d0_1_0_0;\n{\nd0_1_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
-        "entry_id": 0,
-        "field_name": "_1",
-        "name": "to_string",
-        "ret_type": {
-          "data": null,
-          "type_": {
-            "builtin": 7019
-          }
-        }
+        "source": [
+          [
+            0,
+            0
+          ],
+          2
+        ]
       }
     ],
     "name": "upper",
@@ -316,7 +329,14 @@ e0;"#]);
 }"#,
             r#"{
   "data": {
-    "data_types": [
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
+    ],
+    "members": [
       {
         "source": [
           [
@@ -326,13 +346,6 @@ e0;"#]);
           1
         ]
       }
-    ],
-    "def_set_id": [
-      [
-        0,
-        1
-      ],
-      0
     ]
   },
   "type_": {

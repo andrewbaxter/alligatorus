@@ -254,76 +254,213 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
         let set = Gc::new(DefinitionSet::new(def_set_id));
         let mut dt_serials: Vec<(ArtifactId, ArtifactDataDefSetDataType)> = Vec::new();
         let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
-        for dt_artifact_id in &def_set_serial.data_types {
-            let dt_artifact = xx.vx.ix.gx.artifacts.get(dt_artifact_id.clone())?;
-            let dt_serial: ArtifactDataDefSetDataType =
-                serde_json::from_value(dt_artifact.data).map_err(|e| format!("Failed to parse data type: {}", e))?;
-            let dt_data = Gc::new(SourceDataTypeData {
-                set: set.clone(),
-                name: dt_serial.name.clone(),
-                identity: dt_serial.identity.clone(),
-                data_field: dt_serial.data_field.clone(),
-                description: RefCell::new(None),
-                underlying_type: DeserialLazy::new(),
-                methods: RefCell::new(Vec::new()),
-                interface_impls: RefCell::new(Vec::new()),
-                artifact_id: RefCell::new(Some(dt_artifact_id.clone())),
-            });
-            xx.vx.ix.deserialized_artifacts.borrow_mut().insert(dt_artifact_id.clone(), Box::new(dt_data.clone()));
-            dt_gcs.push(dt_data);
-            dt_serials.push((dt_artifact_id.clone(), dt_serial));
-        }
-        *set.data_types.borrow_mut() = dt_gcs;
         let mut func_serials: Vec<(ArtifactId, ArtifactDataDefSetFunction)> = Vec::new();
         let mut func_gcs: Vec<Gc<SourceFunctionData>> = Vec::new();
-        for func_artifact_id in &def_set_serial.functions {
-            let func_artifact = xx.vx.ix.gx.artifacts.get(func_artifact_id.clone())?;
-            let func_serial: ArtifactDataDefSetFunction =
-                serde_json::from_value(
-                    func_artifact.data,
-                ).map_err(|e| format!("Failed to parse function: {}", e))?;
-            let func_data = Gc::new(SourceFunctionData {
-                set: set.clone(),
-                name: func_serial.name.clone(),
-                description: RefCell::new(None),
-                impl_expr: RefCell::new(None),
-                arg_type: RefCell::new(None),
-                ret_type: RefCell::new(None),
-                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, func_serial.entry_id))),
-                artifact_id: RefCell::new(Some(func_artifact_id.clone())),
-                compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
-                captured_externals: RefCell::new(Vec::new()),
-            });
-            xx
-                .vx
-                .ix
-                .deserialized_artifacts
-                .borrow_mut()
-                .insert(func_artifact_id.clone(), Box::new(func_data.clone()));
-            func_gcs.push(func_data);
-            func_serials.push((func_artifact_id.clone(), func_serial));
+
+        use crate::r#gen::{
+            defset_method_artifact_id,
+            defset_iface_impl_artifact_id,
+            defset_iface_method_impl_artifact_id,
+            defset_iface_artifact_id,
+        };
+
+        for member_artifact_id in &def_set_serial.members {
+            let member_artifact = xx.vx.ix.gx.artifacts.get(member_artifact_id.clone())?;
+            let type_id = match &member_artifact.type_ {
+                ArtifactId::Builtin(b) => b.clone(),
+                _ => return Err(format!("def-set member artifact has non-builtin type_")),
+            };
+            if type_id == crate::r#gen::type_type_source_data_type_dynamic_artifact_id() {
+                let dt_serial: ArtifactDataDefSetDataType =
+                    serde_json::from_value(
+                        member_artifact.data,
+                    ).map_err(|e| format!("Failed to parse data type: {}", e))?;
+                let dt_data = Gc::new(SourceDataTypeData {
+                    set: set.clone(),
+                    name: dt_serial.name.clone(),
+                    identity: dt_serial.identity.clone(),
+                    data_field: dt_serial.data_field.clone(),
+                    description: RefCell::new(None),
+                    underlying_type: DeserialLazy::new(),
+                    methods: RefCell::new(Vec::new()),
+                    interface_impls: RefCell::new(Vec::new()),
+                    artifact_id: RefCell::new(Some(member_artifact_id.clone())),
+                });
+                xx
+                    .vx
+                    .ix
+                    .deserialized_artifacts
+                    .borrow_mut()
+                    .insert(member_artifact_id.clone(), Box::new(dt_data.clone()));
+                dt_gcs.push(dt_data);
+                dt_serials.push((member_artifact_id.clone(), dt_serial));
+            } else if type_id == crate::r#gen::type_type_source_function_dynamic_artifact_id() {
+                let func_serial: ArtifactDataDefSetFunction =
+                    serde_json::from_value(
+                        member_artifact.data,
+                    ).map_err(|e| format!("Failed to parse function: {}", e))?;
+                let func_data = Gc::new(SourceFunctionData {
+                    set: set.clone(),
+                    name: func_serial.name.clone(),
+                    description: RefCell::new(None),
+                    impl_expr: RefCell::new(None),
+                    arg_type: RefCell::new(None),
+                    ret_type: RefCell::new(None),
+                    scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, func_serial.entry_id))),
+                    artifact_id: RefCell::new(Some(member_artifact_id.clone())),
+                    compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
+                    captured_externals: RefCell::new(Vec::new()),
+                });
+                xx
+                    .vx
+                    .ix
+                    .deserialized_artifacts
+                    .borrow_mut()
+                    .insert(member_artifact_id.clone(), Box::new(func_data.clone()));
+                func_gcs.push(func_data);
+                func_serials.push((member_artifact_id.clone(), func_serial));
+            } else {
+                return Err(format!("Unknown def-set member artifact type_id: {:?}", type_id));
+            }
         }
+        *set.data_types.borrow_mut() = dt_gcs;
         *set.functions.borrow_mut() = func_gcs;
         let set_for_finalizer = set.clone();
-        let user_iface_impls: Vec<(ArtifactId, Vec<ArtifactDataDefSetInterfaceImpl>)> =
-            dt_serials.iter().map(|(id, s)| (id.clone(), s.interface_impls.clone())).collect();
         let finalizer: ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
             let set = set_for_finalizer.clone();
-            for (dt_artifact_id, dt_impl_serials) in &user_iface_impls {
+            for (dt_artifact_id, dt_serial) in &dt_serials {
                 let dt_data = {
                     let cache = xx.vx.ix.deserialized_artifacts.borrow();
                     must_downcast_ref::<Gc<SourceDataTypeData>>(
                         cache.get(dt_artifact_id).unwrap().as_ref(),
                     ).clone()
                 };
+                let builtin_ifaces = gen_build_builtin_interfaces(def_set_id.0.0);
+                let dt_iface_impl_ids: Vec<ArtifactId> = dt_serial.members.iter().filter(|m_id| {
+                    let m_art = xx.vx.ix.gx.artifacts.get((*m_id).clone()).ok();
+                    matches!(
+                        m_art.as_ref().map(|a| &a.type_),
+                        Some(ArtifactId::Builtin(b)) if * b == defset_iface_impl_artifact_id()
+                    )
+                }).cloned().collect();
+                let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
+                    dt_iface_impl_ids.iter().map(|impl_artifact_id| {
+                        let impl_artifact =
+                            xx
+                                .vx
+                                .ix
+                                .gx
+                                .artifacts
+                                .get(impl_artifact_id.clone())
+                                .expect("Failed to fetch iface impl artifact");
+                        let impl_serial: ArtifactDataDefSetInterfaceImpl =
+                            serde_json::from_value(
+                                impl_artifact.data,
+                            ).expect("Failed to parse iface impl artifact");
+                        let iface = match impl_serial.builtin_kind {
+                            Some(BuiltinInterfaceKind::Value) => builtin_ifaces.value.clone(),
+                            Some(BuiltinInterfaceKind::Type) => builtin_ifaces.type_.clone(),
+                            Some(BuiltinInterfaceKind::AspectFunction) => builtin_ifaces.aspect_function.clone(),
+                            Some(BuiltinInterfaceKind::AspectField) => builtin_ifaces.aspect_field.clone(),
+                            Some(BuiltinInterfaceKind::ScopeEntry) => builtin_ifaces.scope_entry.clone(),
+                            Some(BuiltinInterfaceKind::Target) => builtin_ifaces.target.clone(),
+                            Some(BuiltinInterfaceKind::CodeDyn) => builtin_ifaces.code_dyn.clone(),
+                            None => {
+                                let user_iface_id =
+                                    impl_serial
+                                        .user_iface
+                                        .as_ref()
+                                        .expect("user-defined interface impl missing user_iface artifact ref");
+                                let user_iface_artifact =
+                                    xx
+                                        .vx
+                                        .ix
+                                        .gx
+                                        .artifacts
+                                        .get(user_iface_id.clone())
+                                        .expect("Failed to fetch user iface artifact");
+                                let user_iface: ArtifactDataDefSetInterface =
+                                    serde_json::from_value(
+                                        user_iface_artifact.data,
+                                    ).expect("Failed to parse user iface artifact");
+                                dumpster::unsync::Gc::new(SourceInterfaceData {
+                                    artifact_id: RefCell::new(Some(user_iface_id.clone())),
+                                    builtin_kind: None,
+                                    set: set.clone(),
+                                    description: RefCell::new(user_iface.description.clone()),
+                                    is_aspect: std::cell::Cell::new(user_iface.is_aspect),
+                                    methods: RefCell::new(vec![]),
+                                    identity: user_iface.identity.clone(),
+                                })
+                            },
+                        };
+                        let method_impls = impl_serial.method_impls.iter().map(|mi_id| {
+                            let mi_artifact =
+                                xx
+                                    .vx
+                                    .ix
+                                    .gx
+                                    .artifacts
+                                    .get(mi_id.clone())
+                                    .expect("Failed to fetch iface method impl artifact");
+                            let m: ArtifactDataDefSetInterfaceMethodImpl =
+                                serde_json::from_value(
+                                    mi_artifact.data,
+                                ).expect("Failed to parse iface method impl artifact");
+                            let impl_expr =
+                                expr_from_artifact(
+                                    xx,
+                                    &m.impl_expr,
+                                ).expect("Failed to deserialize interface method impl_expr");
+                            let captured_externals = deserialize_captured_externals(xx, loc, &m.captured_externals);
+                            SourceDataTypeInterfaceMethodImplData {
+                                artifact_id: RefCell::new(Some(mi_id.clone())),
+                                interface_method_index: m.interface_method_index,
+                                impl_expr: RefCell::new(Some(Rc::new(impl_expr) as Rc<dyn Value>)),
+                                impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
+                                compiled_js: RefCell::new(Some(m.compiled_js.clone())),
+                                captured_externals: RefCell::new(captured_externals),
+                                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, m.entry_id))),
+                                inner_scope_entry_id: Cell::new(None),
+                            }
+                        }).collect();
+                        SourceDataTypeInterfaceImplData {
+                            artifact_id: RefCell::new(Some(impl_artifact_id.clone())),
+                            interface: iface,
+                            method_impls,
+                        }
+                    }).collect();
+                *dt_data.interface_impls.borrow_mut() = interface_impls;
                 let impls = dt_data.interface_impls.borrow();
-                for (impl_data, impl_serial) in impls.iter().zip(dt_impl_serials.iter()) {
-                    let Some(user_iface) = impl_serial.user_iface.as_ref() else {
-                        continue;
+                for (impl_data, impl_artifact_id) in impls.iter().zip(dt_iface_impl_ids.iter()) {
+                    let impl_artifact =
+                        xx
+                            .vx
+                            .ix
+                            .gx
+                            .artifacts
+                            .get(impl_artifact_id.clone())
+                            .expect("Failed to fetch iface impl artifact for user iface check");
+                    let impl_serial: ArtifactDataDefSetInterfaceImpl =
+                        serde_json::from_value(impl_artifact.data).expect("Failed to parse iface impl artifact");
+                    let Some(user_iface_id) = impl_serial.user_iface.as_ref() else {
+                        continue
                     };
                     if !impl_data.interface.methods.borrow().is_empty() {
-                        continue;
+                        continue
                     }
+                    let user_iface_artifact =
+                        xx
+                            .vx
+                            .ix
+                            .gx
+                            .artifacts
+                            .get(user_iface_id.clone())
+                            .expect("Failed to fetch user iface artifact");
+                    let user_iface: ArtifactDataDefSetInterface =
+                        serde_json::from_value(
+                            user_iface_artifact.data,
+                        ).expect("Failed to parse user iface artifact");
                     let methods = user_iface.methods.iter().map(|m| {
                         let (arg_type, _) =
                             deserialize_type_artifact(xx, loc, &m.arg_type)
@@ -342,6 +479,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                     }).collect();
                     *impl_data.interface.methods.borrow_mut() = methods;
                 }
+                drop(impls);
             }
             let mut codes: Vec<Code> = Vec::new();
             for (dt_artifact_id, dt_serial) in &dt_serials {
@@ -357,7 +495,24 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                         .map_err(|e| format!("Failed to deserialize underlying type: {:?}", e))?;
                 codes.push(underlying_code);
                 dt_data.underlying_type.set(underlying_type);
-                let methods: Vec<Rc<SourceDataMethodData>> = dt_serial.methods.iter().map(|m| {
+                let dt_method_ids: Vec<ArtifactId> = dt_serial.members.iter().filter(|m_id| {
+                    let m_art = xx.vx.ix.gx.artifacts.get((*m_id).clone()).ok();
+                    matches!(
+                        m_art.as_ref().map(|a| &a.type_),
+                        Some(ArtifactId::Builtin(b)) if * b == defset_method_artifact_id()
+                    )
+                }).cloned().collect();
+                let methods: Vec<Rc<SourceDataMethodData>> = dt_method_ids.iter().map(|method_artifact_id| {
+                    let method_artifact =
+                        xx
+                            .vx
+                            .ix
+                            .gx
+                            .artifacts
+                            .get(method_artifact_id.clone())
+                            .expect("Failed to fetch method artifact");
+                    let m: ArtifactDataDefSetMethod =
+                        serde_json::from_value(method_artifact.data).expect("Failed to parse method artifact");
                     let (arg_type, arg_code) =
                         deserialize_type_artifact(xx, loc, &m.arg_type)
                             .into_res()
@@ -370,6 +525,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                     codes.push(ret_code);
                     let captured_externals = deserialize_captured_externals(xx, loc, &m.captured_externals);
                     Rc::new(SourceDataMethodData {
+                        artifact_id: RefCell::new(Some(method_artifact_id.clone())),
                         name: m.name.clone(),
                         arg_type: RefCell::new(Some(arg_type)),
                         impl_expr: RefCell::new(None),
@@ -382,58 +538,6 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                     })
                 }).collect();
                 *dt_data.methods.borrow_mut() = methods;
-                let builtin_ifaces = gen_build_builtin_interfaces(def_set_id.0.0);
-                let interface_impls: Vec<SourceDataTypeInterfaceImplData> =
-                    dt_serial.interface_impls.iter().map(|impl_serial| {
-                        let iface = match impl_serial.builtin_kind {
-                            Some(BuiltinInterfaceKind::Value) => builtin_ifaces.value.clone(),
-                            Some(BuiltinInterfaceKind::Type) => builtin_ifaces.type_.clone(),
-                            Some(BuiltinInterfaceKind::AspectFunction) => builtin_ifaces.aspect_function.clone(),
-                            Some(BuiltinInterfaceKind::AspectField) => builtin_ifaces.aspect_field.clone(),
-                            Some(BuiltinInterfaceKind::ScopeEntry) => builtin_ifaces.scope_entry.clone(),
-                            Some(BuiltinInterfaceKind::Target) => builtin_ifaces.target.clone(),
-                            Some(BuiltinInterfaceKind::CodeDyn) => builtin_ifaces.code_dyn.clone(),
-                            None => {
-                                let user_iface =
-                                    impl_serial
-                                        .user_iface
-                                        .as_ref()
-                                        .expect(
-                                            "user-defined interface impl artifact missing inline iface signature",
-                                        );
-                                dumpster::unsync::Gc::new(SourceInterfaceData {
-                                    builtin_kind: None,
-                                    set: set.clone(),
-                                    description: RefCell::new(user_iface.description.clone()),
-                                    is_aspect: std::cell::Cell::new(user_iface.is_aspect),
-                                    methods: RefCell::new(vec![]),
-                                    identity: user_iface.identity.clone(),
-                                })
-                            },
-                        };
-                        let method_impls = impl_serial.method_impls.iter().map(|m| {
-                            let impl_expr =
-                                expr_from_artifact(
-                                    xx,
-                                    &m.impl_expr,
-                                ).expect("Failed to deserialize interface method impl_expr");
-                            let captured_externals = deserialize_captured_externals(xx, loc, &m.captured_externals);
-                            SourceDataTypeInterfaceMethodImplData {
-                                interface_method_index: m.interface_method_index,
-                                impl_expr: RefCell::new(Some(Rc::new(impl_expr) as Rc<dyn Value>)),
-                                impl_expr_artifact: RefCell::new(Some(m.impl_expr.clone())),
-                                compiled_js: RefCell::new(Some(m.compiled_js.clone())),
-                                captured_externals: RefCell::new(captured_externals),
-                                scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, m.entry_id))),
-                                inner_scope_entry_id: Cell::new(None),
-                            }
-                        }).collect();
-                        SourceDataTypeInterfaceImplData {
-                            interface: iface,
-                            method_impls,
-                        }
-                    }).collect();
-                *dt_data.interface_impls.borrow_mut() = interface_impls;
             }
             for (func_artifact_id, func_serial) in &func_serials {
                 let func_data = {
@@ -516,166 +620,19 @@ pub(crate) fn serialize_captured_externals(
 pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> ArtifactId {
     produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
         let def_set_artifact_id = set.artifact_id.borrow().clone().unwrap();
-        let data_types = set.data_types.borrow();
-        let data_type_ids: Vec<ArtifactId> = data_types.iter().map(|dt| {
-            produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &dt.artifact_id, || {
-                let underlying_type = dt.underlying_type.get();
-                let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
-                    let compiled_js = m.compiled_js.borrow();
-                    let empty = String::new();
-                    let compiled_js = compiled_js.as_ref().unwrap_or(&empty);
-                    let ret_type = m.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-                    let arg_type: Rc<dyn Type> = m.arg_type.borrow().clone().unwrap_or_else(|| {
-                        Rc::new(TypeNullDynamic)
-                    });
-                    let captured_externals = serialize_captured_externals(xx, loc, &m.captured_externals.borrow());
-                    let entry_id = match m.scope_entry_id.get() {
-                        Some(ScopeEntryId::Def(_, eid)) => eid,
-                        _ => panic!("Method scope_entry_id missing or not Def"),
-                    };
-                    ArtifactDataDefSetMethod {
-                        name: m.name.clone(),
-                        entry_id,
-                        field_name: m.field_name.clone(),
-                        arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
-                        ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                        compiled_js: compiled_js.clone(),
-                        captured_externals,
-                    }
-                }).collect();
-                let interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> =
-                    dt.interface_impls.borrow().iter().map(|impl_data| {
-                        let builtin_kind = impl_data.interface.builtin_kind;
-                        let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> =
-                            impl_data.method_impls.iter().map(|m| {
-                                let compiled_js = m.compiled_js.borrow();
-                                let empty = String::new();
-                                let compiled_js = compiled_js.as_ref().unwrap_or(&empty);
-                                let entry_id =
-                                    match m
-                                        .scope_entry_id
-                                        .get()
-                                        .expect("Interface method impl missing scope_entry_id") {
-                                        ScopeEntryId::Def(_, id) => id,
-                                        other => panic!(
-                                            "Interface method impl has non-Def scope_entry_id: {:?}",
-                                            other,
-                                        ),
-                                    };
-                                if m.impl_expr_artifact.borrow().is_none() {
-                                    let impl_expr_value = m.impl_expr.borrow().clone();
-                                    if let Some(impl_expr_value) = impl_expr_value {
-                                        let impl_expr_ast = must_downcast_ref::<Expr>(impl_expr_value.as_ref());
-                                        if let Ok(serialized) = expr_to_artifact(xx, impl_expr_ast) {
-                                            *m.impl_expr_artifact.borrow_mut() = Some(serialized);
-                                        }
-                                    }
-                                }
-                                let impl_expr = m.impl_expr_artifact.borrow().clone().unwrap_or_else(|| {
-                                    ArtifactExpr {
-                                        loc: ArtifactQExprId(0, 0),
-                                        r#type: Box::new(
-                                            ArtifactExpr_::Literal {
-                                                value: crate
-                                                ::eval
-                                                ::value
-                                                ::type_null
-                                                ::r#const
-                                                ::TypeNullConst
-                                                ::build_artifact(
-                                                    (),
-                                                ),
-                                            },
-                                        ),
-                                    }
-                                });
-                                let captured_externals =
-                                    serialize_captured_externals(xx, loc, &m.captured_externals.borrow());
-                                ArtifactDataDefSetInterfaceMethodImpl {
-                                    interface_method_index: m.interface_method_index,
-                                    entry_id,
-                                    compiled_js: compiled_js.clone(),
-                                    impl_expr,
-                                    captured_externals,
-                                }
-                            }).collect();
-                        let user_iface = match builtin_kind {
-                            Some(_) => None,
-                            None => {
-                                let iface = &impl_data.interface;
-                                let iface_methods = iface.methods.borrow().iter().map(|m| {
-                                    let arg_type =
-                                        m.arg_type.borrow().clone().expect("iface method missing arg_type");
-                                    let ret_type =
-                                        m.ret_type.borrow().clone().expect("iface method missing ret_type");
-                                    ArtifactDataDefSetInterfaceMethod {
-                                        name: m.name.clone(),
-                                        field_name: m.field_name.clone(),
-                                        arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
-                                        ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                                    }
-                                }).collect();
-                                Some(ArtifactDataDefSetInterface {
-                                    identity: iface.identity.clone(),
-                                    description: iface.description.borrow().clone(),
-                                    is_aspect: iface.is_aspect.get(),
-                                    methods: iface_methods,
-                                })
-                            },
-                        };
-                        ArtifactDataDefSetInterfaceImpl {
-                            builtin_kind,
-                            user_iface,
-                            method_impls,
-                        }
-                    }).collect();
-                let serial = ArtifactDataDefSetDataType {
-                    name: dt.name.clone(),
-                    data_field: dt.data_field.clone(),
-                    underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
-                    identity: dt.identity.clone(),
-                    methods: methods,
-                    interface_impls,
-                    def_set: def_set_artifact_id.clone(),
-                };
-                TypeTypeSourceDataTypeDynamic::build_artifact(
-                    serde_json::to_value(&serial).expect("Failed to serialize data type"),
-                )
-            })
-        }).collect();
-        let functions = set.functions.borrow();
-        let function_ids: Vec<ArtifactId> = functions.iter().map(|f| {
-            produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &f.artifact_id, || {
-                let arg_type = f.arg_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-                let ret_type = f.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-                let compiled_js = f.compiled_js.borrow().clone().unwrap_or_default();
-                let entry_id = match f.scope_entry_id.get().expect("Function missing scope_entry_id") {
-                    ScopeEntryId::Def(_, id) => id,
-                    other => panic!("Function has non-Def scope_entry_id: {:?}", other),
-                };
-                let captured_externals = serialize_captured_externals(xx, loc, &f.captured_externals.borrow());
-                let serial = ArtifactDataDefSetFunction {
-                    name: f.name.clone(),
-                    entry_id,
-                    arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
-                    ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                    compiled_js,
-                    def_set: def_set_artifact_id.clone(),
-                    captured_externals,
-                };
-                TypeTypeSourceFunctionDynamic::build_artifact(
-                    serde_json::to_value(&serial).expect("Failed to serialize function"),
-                )
-            })
-        }).collect();
-        drop(functions);
+        let mut members: Vec<ArtifactId> = Vec::new();
+        for dt in set.data_types.borrow().iter() {
+            members.push(dt.serialize(xx, loc, def_set_artifact_id.clone()));
+        }
+        for f in set.functions.borrow().iter() {
+            members.push(f.serialize(xx, loc, def_set_artifact_id.clone()));
+        }
         let dependencies: Vec<ArtifactId> = {
             let deps = set.dependencies.borrow();
             deps.values().map(|s| serialize_definition_set(xx, loc, s)).collect()
         };
         let serial = ArtifactDataDefSet {
-            data_types: data_type_ids,
-            functions: function_ids,
+            members,
             def_set_id: set.def_set_id,
             dependencies,
         };

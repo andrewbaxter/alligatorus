@@ -9,8 +9,17 @@ use {
             from_v8_ref,
             push::Push,
             to_v8,
+            value::{
+                type_source_data_type::artifact::{
+                    ArtifactDataDefSetInterface,
+                    ArtifactDataDefSetInterfaceMethod,
+                },
+                type_source_data_type_constructor::dynamic::serialize_type_ref,
+            },
         },
         langhelp::{
+            ExprContext,
+            QExprId,
             Type,
             Unique,
         },
@@ -38,6 +47,7 @@ pub(crate) enum BuiltinInterfaceKind {
 }
 
 pub(crate) struct SourceInterfaceData {
+    pub artifact_id: RefCell<Option<crate::langhelp::ArtifactId>>,
     pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
@@ -53,6 +63,39 @@ impl SourceInterfaceData {
             method.finish(&name)?;
         }
         Ok(())
+    }
+
+    pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::ArtifactId {
+        use crate::{
+            langhelp::{
+                Artifact,
+                produce_independent_artifact,
+            },
+            r#gen::defset_iface_artifact_id,
+        };
+
+        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
+            let methods: Vec<ArtifactDataDefSetInterfaceMethod> = self.methods.borrow().iter().map(|m| {
+                let arg_type = m.arg_type.borrow().clone().expect("iface method missing arg_type");
+                let ret_type = m.ret_type.borrow().clone().expect("iface method missing ret_type");
+                ArtifactDataDefSetInterfaceMethod {
+                    name: m.name.clone(),
+                    field_name: m.field_name.clone(),
+                    arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
+                    ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
+                }
+            }).collect();
+            let serial = ArtifactDataDefSetInterface {
+                identity: self.identity.clone(),
+                description: self.description.borrow().clone(),
+                is_aspect: self.is_aspect.get(),
+                methods,
+            };
+            Artifact {
+                type_: crate::langhelp::ArtifactId::Builtin(defset_iface_artifact_id()),
+                data: serde_json::to_value(&serial).expect("Failed to serialize iface"),
+            }
+        })
     }
 }
 

@@ -67,8 +67,27 @@ impl PendingImportState {
         };
         let dt_serial: Result<ArtifactDataDefSetDataType, _> = serde_json::from_value(dt_artifact.data);
         match dt_serial {
-            Ok(dt) => dt.interface_impls.iter().any(|i| {
-                i.builtin_kind == Some(BuiltinInterfaceKind::Type)
+            Ok(dt) => dt.members.iter().any(|m_id| {
+                let m_art = match self.gx.artifacts.get(m_id.clone()) {
+                    Ok(a) => a,
+                    Err(_) => return false,
+                };
+                let is_iface_impl =
+                    matches!(
+                        &m_art.type_,
+                        crate:: langhelp:: ArtifactId:: Builtin(
+                            b
+                        ) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
+                    );
+                if !is_iface_impl {
+                    return false;
+                }
+                let impl_serial: crate::eval::value::type_source_data_type::artifact::ArtifactDataDefSetInterfaceImpl =
+                    match serde_json::from_value(m_art.data) {
+                        Ok(s) => s,
+                        Err(_) => return false,
+                    };
+                impl_serial.builtin_kind == Some(BuiltinInterfaceKind::Type)
             }),
             Err(_) => false,
         }
