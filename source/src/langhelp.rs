@@ -111,9 +111,6 @@ pub(crate) trait Type: Value {
 }
 
 pub(crate) trait Value: Any {
-    fn lift(&self, _xx: &ExprContext) -> Result<(), Vec<ExprErr>> {
-        Ok(())
-    }
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type>;
 }
 

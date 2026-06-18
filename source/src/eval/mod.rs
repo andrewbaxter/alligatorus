@@ -483,13 +483,6 @@ pub(crate) fn compile_importid(
                 }),
                 target: Rc::new(TargetDynamic),
             });
-            if let Err(errors) = eval_value.lift(&xx) {
-                return CompileRes {
-                    logs,
-                    generated_dynamic_scripts: vec![],
-                    result: CompileResResult::Err(errors),
-                };
-            }
             let value_type = eval_value.type_(&xx, root_loc);
             let value_serial = match aspect_artifact_get(&xx, root_loc, value_type.as_ref()).into_res() {
                 Ok(v) => v,

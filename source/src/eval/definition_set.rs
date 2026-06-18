@@ -147,17 +147,21 @@ impl DefinitionSet {
                 errors: vec![crate::langhelp::ExprSubErr::Opaque(e)],
             }])?;
         }
-        let registered = inner_ex.definition_sets.borrow();
-        let mut deps = self.dependencies.borrow_mut();
-        for (id, ds) in registered.iter() {
-            if *id == self.def_set_id {
-                continue;
+        let dep_list: Vec<Gc<DefinitionSet>> = {
+            let registered = inner_ex.definition_sets.borrow();
+            let mut deps = self.dependencies.borrow_mut();
+            for (id, ds) in registered.iter() {
+                if *id == self.def_set_id {
+                    continue;
+                }
+                deps.entry(*id).or_insert_with(|| ds.clone());
             }
-            deps.entry(*id).or_insert_with(|| ds.clone());
-        }
-        drop(deps);
-        drop(registered);
+            deps.values().cloned().collect()
+        };
         self.finished.set(true);
+        for dep in dep_list {
+            dep.finish(xx)?;
+        }
         Ok(())
     }
 
@@ -523,8 +527,9 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
                 let underlying_type = dt.underlying_type.get();
                 let methods: Vec<ArtifactDataDefSetMethod> = dt.methods.borrow().iter().map(|m| {
                     let compiled_js = m.compiled_js.borrow();
-                    let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
-                    let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
+                    let empty = String::new();
+                    let compiled_js = compiled_js.as_ref().unwrap_or(&empty);
+                    let ret_type = m.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
                     let arg_type: Rc<dyn Type> = m.arg_type.borrow().clone().unwrap_or_else(|| {
                         Rc::new(TypeNullDynamic)
                     });
@@ -549,8 +554,8 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
                         let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> =
                             impl_data.method_impls.iter().map(|m| {
                                 let compiled_js = m.compiled_js.borrow();
-                                let compiled_js =
-                                    compiled_js.as_ref().expect("Interface method impl missing compiled JS");
+                                let empty = String::new();
+                                let compiled_js = compiled_js.as_ref().unwrap_or(&empty);
                                 let entry_id =
                                     match m
                                         .scope_entry_id
@@ -646,9 +651,9 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
         let functions = set.functions.borrow();
         let function_ids: Vec<ArtifactId> = functions.iter().map(|f| {
             produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &f.artifact_id, || {
-                let arg_type = f.arg_type.borrow().clone().expect("Function missing arg type");
-                let ret_type = f.ret_type.borrow().clone().expect("Function missing ret type");
-                let compiled_js = f.compiled_js.borrow().clone().expect("Function missing compiled JS");
+                let arg_type = f.arg_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
+                let ret_type = f.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
+                let compiled_js = f.compiled_js.borrow().clone().unwrap_or_default();
                 let entry_id = match f.scope_entry_id.get().expect("Function missing scope_entry_id") {
                     ScopeEntryId::Def(_, id) => id,
                     other => panic!("Function has non-Def scope_entry_id: {:?}", other),
@@ -701,7 +706,6 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        ds.finish(xx).map_err(|e| format!("{:?}", e))?;
         xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
@@ -720,7 +724,6 @@ impl AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        ds.finish(xx).map_err(|e| format!("{:?}", e))?;
         xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))

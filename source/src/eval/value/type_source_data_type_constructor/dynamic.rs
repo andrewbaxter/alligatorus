@@ -186,7 +186,6 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
             from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
-        ctor_ref.data.set.finish(xx).map_err(|e| format!("{:?}", e))?;
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }

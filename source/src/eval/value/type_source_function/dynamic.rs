@@ -267,7 +267,6 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
 
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
         let func = must_downcast_ref::<TypeSourceFunctionConst>(self_.as_ref());
-        func.data.set.finish(xx).map_err(|e| format!("{:?}", e)).expect("lift in to_serial");
         serialize_definition_set(xx, loc, &func.data.set);
         let artifact_id =
             func

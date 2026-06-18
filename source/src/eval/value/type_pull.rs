@@ -109,7 +109,6 @@ impl Type for TypePull {
     }
 
     fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        self.data.set.finish(xx).map_err(|e| format!("{:?}", e)).expect("lift in type_to_serial");
         serialize_definition_set(xx, loc, &self.data.set);
         let artifact_id =
             self
@@ -126,11 +125,6 @@ impl Type for TypePull {
 }
 
 impl Value for TypePull {
-    fn lift(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
-        xx.vx.definition_sets.borrow_mut().entry(self.data.set.def_set_id).or_insert_with(|| self.data.set.clone());
-        self.data.set.finish(xx)
-    }
-
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
     }

@@ -196,11 +196,6 @@ impl Type for TypeSourceExportsLiftedConst {
 }
 
 impl Value for TypeSourceExportsLiftedConst {
-    fn lift(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
-        xx.vx.definition_sets.borrow_mut().entry(self.set.def_set_id).or_insert_with(|| self.set.clone());
-        self.set.finish(xx)
-    }
-
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
     }

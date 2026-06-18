@@ -224,6 +224,31 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         SourceInterfaceResult { interface_ref }
                     },
                 },
+                PushMethod {
+                    name: "finish",
+                    args: vec![],
+                    ret: "DefinitionSetBuilder",
+                    body: quote!{
+                        let ex = scope.get_slot::<crate::eval::V8EvalContextSlot>().unwrap().ex.clone();
+                        let xx = std::rc::Rc::new(crate::langhelp::ExprContext {
+                            vx: ex.clone(),
+                            import_state: std::rc::Rc::new(std::cell::Cell::new(ex.ix.import_state)),
+                            scope: std::rc::Rc::new(crate::langhelp::Scope {
+                                values: std::cell::RefCell::new(std::collections::HashMap::new()),
+                                parent: None,
+                            }),
+                            target: std::rc::Rc::new(crate::eval::TargetDynamic),
+                        });
+                        if let Err(errors) = self_.inner.finish(&xx) {
+                            crate::eval::dynamic_util::throw_error(
+                                scope,
+                                &format!("definition set finish failed: {:?}", errors)
+                            );
+                            return;
+                        }
+                        DefinitionSetBuilder { inner: self_.inner.clone() }
+                    },
+                },
             ],
             extra_dispatch_arms: vec![],
             extra_method_setters: vec![],

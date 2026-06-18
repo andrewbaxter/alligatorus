@@ -623,6 +623,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
             ),
         ),
     );
+    exprs.push(mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])));
     exprs.push(mb.field(mb.scope_use("nodejs"), mb.str("func")));
     return mb.seq(exprs);
 }
@@ -920,6 +921,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                 ]))]),
             ),
+            mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
             mb.record(vec![
                 //. .
                 ("type", mb.scope_use("code")),
@@ -1667,19 +1669,26 @@ e5 = e214;
 {
 let e226;
 let e227;
-e227 = a14;
-let e228;
-e228 = a25;
-let e229;
-e229 = a19;
-let e230;
-e230 = a46;
-let e231;
-e231 = a30;
-let e232;
-e232 = a4;
-e226 = { "\"call\"": e227, "\"field\"": e228, "\"lit_str\"": e229, "\"render\"": e230, "\"scope_use\"": e231, "\"type\"": e232 };
+e227 = a0;
+e226 = e227["_5"]();
 e5 = e226;
+}
+{
+let e228;
+let e229;
+e229 = a14;
+let e230;
+e230 = a25;
+let e231;
+e231 = a19;
+let e232;
+e232 = a46;
+let e233;
+e233 = a30;
+let e234;
+e234 = a4;
+e228 = { "\"call\"": e229, "\"field\"": e230, "\"lit_str\"": e231, "\"render\"": e232, "\"scope_use\"": e233, "\"type\"": e234 };
+e5 = e228;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#
@@ -1701,528 +1710,528 @@ return e0;
 var d0_0_0_2;
 {
 d0_0_0_2 = function(a0) {
-let e4;
-let e5;
-let e6;
-e6 = a0;
-e5 = { "\"t1\"": e6 };
-let e7;
-e7 = d0_0_0_0;
-e4 = { "\"_0\"": e5, "\"_1\"": e7 };
-return e4;
+let e0;
+let e1;
+let e2;
+e2 = a0;
+e1 = { "\"t1\"": e2 };
+let e3;
+e3 = d0_0_0_0;
+e0 = { "\"_0\"": e1, "\"_1\"": e3 };
+return e0;
 };
 }
 var d0_0_0_3;
 {
 d0_0_0_3 = function(a0) {
-let e8;
-let e9;
-let e10;
-e10 = a0;
-e9 = { "\"t2\"": e10 };
-let e11;
-e11 = d0_0_0_0;
-e8 = { "\"_0\"": e9, "\"_1\"": e11 };
-return e8;
+let e0;
+let e1;
+let e2;
+e2 = a0;
+e1 = { "\"t2\"": e2 };
+let e3;
+e3 = d0_0_0_0;
+e0 = { "\"_0\"": e1, "\"_1\"": e3 };
+return e0;
 };
 }
 var d0_0_0_4;
 {
 d0_0_0_4 = function(a0) {
-let e12;
-let e13;
-let e14;
-e14 = a0;
-e13 = { "\"t3\"": e14 };
-let e15;
-e15 = d0_0_0_0;
-e12 = { "\"_0\"": e13, "\"_1\"": e15 };
-return e12;
+let e0;
+let e1;
+let e2;
+e2 = a0;
+e1 = { "\"t3\"": e2 };
+let e3;
+e3 = d0_0_0_0;
+e0 = { "\"_0\"": e1, "\"_1\"": e3 };
+return e0;
 };
 }
 var d0_0_0_5;
 {
 d0_0_0_5 = function(a0) {
-let e16;
+let e0;
 let a1;
 {
+let e1;
+let e2;
+let e3;
+{
+let e4;
+e4 = "e";
+e3 = e4;
+}
+let e5;
+let e6;
+let e7;
+let e8;
+e8 = a0;
+e7 = e8["\"context\""];
+e6 = e7["\"expr_count\""];
+e5 = e6["toString"]();
+e2 = [e3, e5];
+let e9;
+{
+let e10;
+e10 = "";
+e9 = e10;
+}
+e1 = e2["join"](e9);
+a1 = e1;
+}
+{
+let e11;
+let e12;
+let e13;
+e13 = a0;
+e12 = e13["\"context\""];
+let e14;
+let e15;
+let e16;
 let e17;
+e17 = a0;
+e16 = e17["\"context\""];
+e15 = e16["\"expr_count\""];
 let e18;
+{
 let e19;
+e19 = 1.0;
+e18 = e19;
+}
+e14 = (e15 + e18);
+e12["\"expr_count\""] = e14;
+e11 = null;
+e0 = e11;
+}
+let a2;
 {
 let e20;
-e20 = "e";
-e19 = e20;
-}
 let e21;
 let e22;
+e22 = a0;
+e21 = e22["\"context\""];
+e20 = e21["\"out\""];
+a2 = e20;
+}
+{
 let e23;
 let e24;
-e24 = a0;
-e23 = e24["\"context\""];
-e22 = e23["\"expr_count\""];
-e21 = e22["toString"]();
-e18 = [e19, e21];
+e24 = a2;
 let e25;
 {
 let e26;
-e26 = "";
+e26 = "let ";
 e25 = e26;
 }
-e17 = e18["join"](e25);
-a1 = e17;
+e23 = e24["push"](e25);
+e0 = e23;
 }
 {
 let e27;
 let e28;
+e28 = a2;
 let e29;
-e29 = a0;
-e28 = e29["\"context\""];
+e29 = a1;
+e27 = e28["push"](e29);
+e0 = e27;
+}
+{
 let e30;
 let e31;
+e31 = a2;
 let e32;
+{
 let e33;
-e33 = a0;
-e32 = e33["\"context\""];
-e31 = e32["\"expr_count\""];
-let e34;
-{
-let e35;
-e35 = 1.0;
-e34 = e35;
+e33 = ";\n{\n";
+e32 = e33;
 }
-e30 = (e31 + e34);
-e28["\"expr_count\""] = e30;
-e27 = null;
-e16 = e27;
-}
-let a2;
-{
-let e36;
-let e37;
-let e38;
-e38 = a0;
-e37 = e38["\"context\""];
-e36 = e37["\"out\""];
-a2 = e36;
-}
-{
-let e39;
-let e40;
-e40 = a2;
-let e41;
-{
-let e42;
-e42 = "let ";
-e41 = e42;
-}
-e39 = e40["push"](e41);
-e16 = e39;
-}
-{
-let e43;
-let e44;
-e44 = a2;
-let e45;
-e45 = a1;
-e43 = e44["push"](e45);
-e16 = e43;
-}
-{
-let e46;
-let e47;
-e47 = a2;
-let e48;
-{
-let e49;
-e49 = ";\n{\n";
-e48 = e49;
-}
-e46 = e47["push"](e48);
-e16 = e46;
+e30 = e31["push"](e32);
+e0 = e30;
 }
 let a3;
 {
-let e50;
-let e51;
-e51 = a1;
-let e52;
+let e34;
+let e35;
+e35 = a1;
+let e36;
 {
-let e53;
-e53 = " = ";
-e52 = e53;
+let e37;
+e37 = " = ";
+e36 = e37;
 }
-e50 = [e51, e52];
-a3 = e50;
+e34 = [e35, e36];
+a3 = e34;
 }
 {
-let e54;
-let e55;
-let e56;
-let e57;
-e57 = a0;
-e56 = e57["\"code\""];
-e55 = e56["\"_1\""]();
-{ let [__tag, a4] = Object.entries(e55)[0];
+let e38;
+let e39;
+let e40;
+let e41;
+e41 = a0;
+e40 = e41["\"code\""];
+e39 = e40["\"_1\""]();
+{ let [__tag, a4] = Object.entries(e39)[0];
 switch (__tag) {
 case "\"t0\"": {
-let e58;
+let e42;
 let a5;
 {
-let e59;
-let e60;
-e60 = d0_0_0_5;
-let e61;
-let e62;
-let e63;
-e63 = a4;
-e62 = e63["\"func\""];
-let e64;
-let e65;
-e65 = a0;
-e64 = e65["\"context\""];
-e61 = { "\"code\"": e62, "\"context\"": e64 };
-e59 = (e60)(e61);
-a5 = e59;
+let e43;
+let e44;
+e44 = d0_0_0_5;
+let e45;
+let e46;
+let e47;
+e47 = a4;
+e46 = e47["\"func\""];
+let e48;
+let e49;
+e49 = a0;
+e48 = e49["\"context\""];
+e45 = { "\"code\"": e46, "\"context\"": e48 };
+e43 = (e44)(e45);
+a5 = e43;
 }
 let a6;
 {
-let e66;
-let e67;
-e67 = d0_0_0_5;
-let e68;
-let e69;
-let e70;
-e70 = a4;
-e69 = e70["\"arg\""];
-let e71;
-let e72;
-e72 = a0;
-e71 = e72["\"context\""];
-e68 = { "\"code\"": e69, "\"context\"": e71 };
-e66 = (e67)(e68);
-a6 = e66;
+let e50;
+let e51;
+e51 = d0_0_0_5;
+let e52;
+let e53;
+let e54;
+e54 = a4;
+e53 = e54["\"arg\""];
+let e55;
+let e56;
+e56 = a0;
+e55 = e56["\"context\""];
+e52 = { "\"code\"": e53, "\"context\"": e55 };
+e50 = (e51)(e52);
+a6 = e50;
 }
 {
+let e57;
+let e58;
+e58 = a3;
+let e59;
+{
+let e60;
+e60 = "(";
+e59 = e60;
+}
+e57 = e58["push"](e59);
+e42 = e57;
+}
+{
+let e61;
+let e62;
+e62 = a3;
+let e63;
+e63 = a5;
+e61 = e62["push"](e63);
+e42 = e61;
+}
+{
+let e64;
+let e65;
+e65 = a3;
+let e66;
+{
+let e67;
+e67 = ")(";
+e66 = e67;
+}
+e64 = e65["push"](e66);
+e42 = e64;
+}
+{
+let e68;
+let e69;
+e69 = a3;
+let e70;
+e70 = a6;
+e68 = e69["push"](e70);
+e42 = e68;
+}
+{
+let e71;
+let e72;
+e72 = a3;
 let e73;
+{
 let e74;
-e74 = a3;
+e74 = ")";
+e73 = e74;
+}
+e71 = e72["push"](e73);
+e42 = e71;
+}
+e38 = e42;
+break; }
+case "\"t1\"": {
 let e75;
 {
 let e76;
-e76 = "(";
+let e77;
+e77 = a3;
+let e78;
+let e79;
+e79 = BUILTIN;
+let e80;
+e80 = a4;
+e78 = (e79)(e80);
+e76 = e77["push"](e78);
 e75 = e76;
 }
-e73 = e74["push"](e75);
-e58 = e73;
-}
-{
-let e77;
-let e78;
-e78 = a3;
-let e79;
-e79 = a5;
-e77 = e78["push"](e79);
-e58 = e77;
-}
-{
-let e80;
-let e81;
-e81 = a3;
-let e82;
-{
-let e83;
-e83 = ")(";
-e82 = e83;
-}
-e80 = e81["push"](e82);
-e58 = e80;
-}
-{
-let e84;
-let e85;
-e85 = a3;
-let e86;
-e86 = a6;
-e84 = e85["push"](e86);
-e58 = e84;
-}
-{
-let e87;
-let e88;
-e88 = a3;
-let e89;
-{
-let e90;
-e90 = ")";
-e89 = e90;
-}
-e87 = e88["push"](e89);
-e58 = e87;
-}
-e54 = e58;
-break; }
-case "\"t1\"": {
-let e91;
-{
-let e92;
-let e93;
-e93 = a3;
-let e94;
-let e95;
-e95 = BUILTIN;
-let e96;
-e96 = a4;
-e94 = (e95)(e96);
-e92 = e93["push"](e94);
-e91 = e92;
-}
-e54 = e91;
+e38 = e75;
 break; }
 case "\"t2\"": {
-let e97;
+let e81;
 let a7;
 {
-let e98;
-let e99;
-e99 = d0_0_0_5;
-let e100;
-let e101;
-let e102;
-e102 = a4;
-e101 = e102["\"base\""];
-let e103;
-let e104;
-e104 = a0;
-e103 = e104["\"context\""];
-e100 = { "\"code\"": e101, "\"context\"": e103 };
-e98 = (e99)(e100);
-a7 = e98;
+let e82;
+let e83;
+e83 = d0_0_0_5;
+let e84;
+let e85;
+let e86;
+e86 = a4;
+e85 = e86["\"base\""];
+let e87;
+let e88;
+e88 = a0;
+e87 = e88["\"context\""];
+e84 = { "\"code\"": e85, "\"context\"": e87 };
+e82 = (e83)(e84);
+a7 = e82;
 }
 let a8;
 {
-let e105;
-let e106;
-e106 = d0_0_0_5;
-let e107;
-let e108;
-let e109;
-e109 = a4;
-e108 = e109["\"field\""];
-let e110;
-let e111;
-e111 = a0;
-e110 = e111["\"context\""];
-e107 = { "\"code\"": e108, "\"context\"": e110 };
-e105 = (e106)(e107);
-a8 = e105;
+let e89;
+let e90;
+e90 = d0_0_0_5;
+let e91;
+let e92;
+let e93;
+e93 = a4;
+e92 = e93["\"field\""];
+let e94;
+let e95;
+e95 = a0;
+e94 = e95["\"context\""];
+e91 = { "\"code\"": e92, "\"context\"": e94 };
+e89 = (e90)(e91);
+a8 = e89;
 }
 {
+let e96;
+let e97;
+e97 = a3;
+let e98;
+e98 = a7;
+e96 = e97["push"](e98);
+e81 = e96;
+}
+{
+let e99;
+let e100;
+e100 = a3;
+let e101;
+{
+let e102;
+e102 = ".";
+e101 = e102;
+}
+e99 = e100["push"](e101);
+e81 = e99;
+}
+{
+let e103;
+let e104;
+e104 = a3;
+let e105;
+e105 = a8;
+e103 = e104["push"](e105);
+e81 = e103;
+}
+e38 = e81;
+break; }
+case "\"t3\"": {
+let e106;
+{
+let e107;
+let e108;
+e108 = a3;
+let e109;
+e109 = a4;
+e107 = e108["push"](e109);
+e106 = e107;
+}
+e38 = e106;
+break; }
+} }
+e0 = e38;
+}
+{
+let e110;
+let e111;
+e111 = a2;
 let e112;
 let e113;
 e113 = a3;
 let e114;
-e114 = a7;
-e112 = e113["push"](e114);
-e97 = e112;
-}
 {
 let e115;
-let e116;
-e116 = a3;
-let e117;
+e115 = "";
+e114 = e115;
+}
+e112 = e113["join"](e114);
+e110 = e111["push"](e112);
+e0 = e110;
+}
 {
+let e116;
+let e117;
+e117 = a2;
 let e118;
-e118 = ".";
-e117 = e118;
-}
-e115 = e116["push"](e117);
-e97 = e115;
-}
 {
 let e119;
+e119 = ";\n}\n";
+e118 = e119;
+}
+e116 = e117["push"](e118);
+e0 = e116;
+}
+{
 let e120;
-e120 = a3;
-let e121;
-e121 = a8;
-e119 = e120["push"](e121);
-e97 = e119;
+e120 = a1;
+e0 = e120;
 }
-e54 = e97;
-break; }
-case "\"t3\"": {
-let e122;
-{
-let e123;
-let e124;
-e124 = a3;
-let e125;
-e125 = a4;
-e123 = e124["push"](e125);
-e122 = e123;
-}
-e54 = e122;
-break; }
-} }
-e16 = e54;
-}
-{
-let e126;
-let e127;
-e127 = a2;
-let e128;
-let e129;
-e129 = a3;
-let e130;
-{
-let e131;
-e131 = "";
-e130 = e131;
-}
-e128 = e129["join"](e130);
-e126 = e127["push"](e128);
-e16 = e126;
-}
-{
-let e132;
-let e133;
-e133 = a2;
-let e134;
-{
-let e135;
-e135 = ";\n}\n";
-e134 = e135;
-}
-e132 = e133["push"](e134);
-e16 = e132;
-}
-{
-let e136;
-e136 = a1;
-e16 = e136;
-}
-return e16;
+return e0;
 };
 }
 var d0_0_0_6;
 {
 d0_0_0_6 = function(a0) {
-let e137;
+let e0;
 let a1;
 {
-let e138;
-let e139;
+let e1;
+let e2;
 {
-let e140;
-e140 = 0.0;
-e139 = e140;
+let e3;
+e3 = 0.0;
+e2 = e3;
 }
-let e141;
-e141 = [];
-e138 = { "\"expr_count\"": e139, "\"out\"": e141 };
-a1 = e138;
-}
-{
-let e142;
-let e143;
-let e144;
-e144 = a1;
-e143 = e144["\"out\""];
-let e145;
-let e146;
-e146 = d0_0_0_5;
-let e147;
-let e148;
-e148 = a0;
-let e149;
-e149 = a1;
-e147 = { "\"code\"": e148, "\"context\"": e149 };
-e145 = (e146)(e147);
-e142 = e143["push"](e145);
-e137 = e142;
+let e4;
+e4 = [];
+e1 = { "\"expr_count\"": e2, "\"out\"": e4 };
+a1 = e1;
 }
 {
-let e150;
-let e151;
-let e152;
-e152 = a1;
-e151 = e152["\"out\""];
-let e153;
+let e5;
+let e6;
+let e7;
+e7 = a1;
+e6 = e7["\"out\""];
+let e8;
+let e9;
+e9 = d0_0_0_5;
+let e10;
+let e11;
+e11 = a0;
+let e12;
+e12 = a1;
+e10 = { "\"code\"": e11, "\"context\"": e12 };
+e8 = (e9)(e10);
+e5 = e6["push"](e8);
+e0 = e5;
+}
 {
-let e154;
-e154 = "";
-e153 = e154;
+let e13;
+let e14;
+let e15;
+e15 = a1;
+e14 = e15["\"out\""];
+let e16;
+{
+let e17;
+e17 = "";
+e16 = e17;
 }
-e150 = e151["join"](e153);
-e137 = e150;
+e13 = e14["join"](e16);
+e0 = e13;
 }
-return e137;
+return e0;
 };
 }
 var d0_0_0_0;
 {
 d0_0_0_0 = function(a1) {
 let a0 = this["\"_0\""];
-let e155;
-e155 = a0;
-return e155;
+let e0;
+e0 = a0;
+return e0;
 };
 }
-let e156;
+let e0;
 {
-let e157;
-let e158;
-e158 = BUILTIN;
-let e159;
-let e160;
-e160 = d0_0_0_6;
-let e161;
-let e162;
-e162 = d0_0_0_1;
-let e163;
-let e164;
-let e165;
-e165 = d0_0_0_2;
-let e166;
+let e1;
+let e2;
+e2 = BUILTIN;
+let e3;
+let e4;
+e4 = d0_0_0_6;
+let e5;
+let e6;
+e6 = d0_0_0_1;
+let e7;
+let e8;
+let e9;
+e9 = d0_0_0_2;
+let e10;
 {
-let e167;
-e167 = "Hello world (node)";
-e166 = e167;
+let e11;
+e11 = "Hello world (node)";
+e10 = e11;
 }
-e164 = (e165)(e166);
-let e168;
-let e169;
-e169 = d0_0_0_3;
-let e170;
-let e171;
-let e172;
-e172 = d0_0_0_4;
-let e173;
+e8 = (e9)(e10);
+let e12;
+let e13;
+e13 = d0_0_0_3;
+let e14;
+let e15;
+let e16;
+e16 = d0_0_0_4;
+let e17;
 {
-let e174;
-e174 = "console";
-e173 = e174;
+let e18;
+e18 = "console";
+e17 = e18;
 }
-e171 = (e172)(e173);
-let e175;
-let e176;
-e176 = d0_0_0_2;
-let e177;
+e15 = (e16)(e17);
+let e19;
+let e20;
+e20 = d0_0_0_2;
+let e21;
 {
-let e178;
-e178 = "log";
-e177 = e178;
+let e22;
+e22 = "log";
+e21 = e22;
 }
-e175 = (e176)(e177);
-e170 = { "\"base\"": e171, "\"field\"": e175 };
-e168 = (e169)(e170);
-e163 = { "\"arg\"": e164, "\"func\"": e168 };
-e161 = (e162)(e163);
-e159 = (e160)(e161);
-e157 = (e158)(e159);
-e156 = e157;
+e19 = (e20)(e21);
+e14 = { "\"base\"": e15, "\"field\"": e19 };
+e12 = (e13)(e14);
+e7 = { "\"arg\"": e8, "\"func\"": e12 };
+e5 = (e6)(e7);
+e3 = (e4)(e5);
+e1 = (e2)(e3);
+e0 = e1;
 }
-e156;"#);
+e0;"#);
 }
 
 #[test]

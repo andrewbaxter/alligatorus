@@ -379,7 +379,7 @@ fn test_00910interface_cast() {
                                                     ),
                                                 ),
                                                 mb.call(
-                                                    mb.field(mb.scope_use("d"), mb.str("build")),
+                                                    mb.field(mb.scope_use("d"), mb.str("finish")),
                                                     mb.tuple(vec![]),
                                                 ),
                                             ],
@@ -532,7 +532,7 @@ e5 = e36;
 let e44;
 let e45;
 e45 = a0;
-e44 = e45["_2"]();
+e44 = e45["_5"]();
 e5 = e44;
 }
 e0 = (e1)(e2,e3,e4,e5);

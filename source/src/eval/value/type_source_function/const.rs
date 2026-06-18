@@ -76,7 +76,6 @@ impl AspectArtifact for TypeSourceFunctionConst {
         {
             let set = &func.data.set;
             xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
-            set.finish(xx).map_err(|e| format!("{:?}", e)).expect("lift in to_serial");
         }
         serialize_definition_set(xx, loc, &func.data.set);
         let artifact_id =
@@ -172,11 +171,6 @@ impl Type for TypeSourceFunctionConst {
 }
 
 impl Value for TypeSourceFunctionConst {
-    fn lift(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
-        xx.vx.definition_sets.borrow_mut().entry(self.data.set.def_set_id).or_insert_with(|| self.data.set.clone());
-        self.data.set.finish(xx)
-    }
-
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
     }

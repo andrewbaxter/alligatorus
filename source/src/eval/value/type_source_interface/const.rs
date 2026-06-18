@@ -328,11 +328,6 @@ impl Type for TypeSourceInterfaceConst {
 }
 
 impl Value for TypeSourceInterfaceConst {
-    fn lift(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
-        xx.vx.definition_sets.borrow_mut().entry(self.data.set.def_set_id).or_insert_with(|| self.data.set.clone());
-        self.data.set.finish(xx)
-    }
-
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
     }
