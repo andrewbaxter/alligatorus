@@ -266,7 +266,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
 
         for member_artifact_id in &def_set_serial.members {
             let member_artifact = xx.vx.ix.gx.artifacts.get(member_artifact_id.clone())?;
-            let type_id = match &member_artifact.type_ {
+            let type_id = match &member_artifact.deserializer {
                 ArtifactId::Builtin(b) => b.clone(),
                 _ => return Err(format!("def-set member artifact has non-builtin type_")),
             };
@@ -339,7 +339,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                 let dt_iface_impl_ids: Vec<ArtifactId> = dt_serial.members.iter().filter(|m_id| {
                     let m_art = xx.vx.ix.gx.artifacts.get((*m_id).clone()).ok();
                     matches!(
-                        m_art.as_ref().map(|a| &a.type_),
+                        m_art.as_ref().map(|a| &a.deserializer),
                         Some(ArtifactId::Builtin(b)) if * b == defset_iface_impl_artifact_id()
                     )
                 }).cloned().collect();
@@ -498,7 +498,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                 let dt_method_ids: Vec<ArtifactId> = dt_serial.members.iter().filter(|m_id| {
                     let m_art = xx.vx.ix.gx.artifacts.get((*m_id).clone()).ok();
                     matches!(
-                        m_art.as_ref().map(|a| &a.type_),
+                        m_art.as_ref().map(|a| &a.deserializer),
                         Some(ArtifactId::Builtin(b)) if * b == defset_method_artifact_id()
                     )
                 }).cloned().collect();

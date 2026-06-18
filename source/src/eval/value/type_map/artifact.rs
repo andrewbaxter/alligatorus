@@ -1,6 +1,6 @@
 use {
     crate::{
-        builtin::ArtifactBuiltinDeserializer,
+        builtin::ArtifactDeserializer,
         eval::{
             util::deserialize_type_artifact,
             value::type_map::dynamic::TypeMapDynamic,
@@ -53,7 +53,7 @@ impl Deserializer {
     }
 }
 
-impl ArtifactBuiltinDeserializer for Deserializer {
+impl ArtifactDeserializer for Deserializer {
     fn type_from_serial(
         &self,
         xx: &ExprContext,
@@ -89,7 +89,7 @@ impl ArtifactBuiltinDeserializer for Deserializer {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
     m.insert(TypeMapArtifact::artifact_id(), Rc::new(Deserializer));
 }
 pub(crate) struct TypeMapArtifact;

@@ -57,8 +57,8 @@ impl PendingImportState {
             CompileResResult::Ok(a) => a,
             _ => return false,
         };
-        let dt_artifact_id = match &artifact.type_ {
-            ArtifactId::Source(_) => artifact.type_.clone(),
+        let dt_artifact_id = match &artifact.deserializer {
+            ArtifactId::Source(_) => artifact.deserializer.clone(),
             _ => return false,
         };
         let dt_artifact = match self.gx.artifacts.get(dt_artifact_id) {
@@ -74,7 +74,7 @@ impl PendingImportState {
                 };
                 let is_iface_impl =
                     matches!(
-                        &m_art.type_,
+                        &m_art.deserializer,
                         crate:: langhelp:: ArtifactId:: Builtin(
                             b
                         ) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
@@ -146,7 +146,7 @@ impl PendingImportState {
         let cix = Rc::new(CompileImportContext {
             gx: self.gx.clone(),
             compile_path: vec![],
-            builtin_deserializers: make_builtin_deserializers(),
+            builtin_artifacts: make_builtin_deserializers(),
             deserialized_artifacts: std::cell::RefCell::new(std::collections::HashMap::new()),
             pending_finalizers: std::cell::RefCell::new(Vec::new()),
             isolate: Rc::new(std::cell::RefCell::new(v8::Isolate::new(Default::default()))),

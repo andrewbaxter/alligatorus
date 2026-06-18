@@ -109,7 +109,7 @@ fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc
         };
         let is_iface_impl =
             matches!(
-                &m_art.type_,
+                &m_art.deserializer,
                 crate:: langhelp:: ArtifactId:: Builtin(b) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
             );
         if !is_iface_impl {

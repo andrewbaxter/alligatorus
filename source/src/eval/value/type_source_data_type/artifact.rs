@@ -1,6 +1,6 @@
 use {
     crate::{
-        builtin::ArtifactBuiltinDeserializer,
+        builtin::ArtifactDeserializer,
         eval::{
             expr_artifact::ArtifactExpr,
             value::type_source_interface::BuiltinInterfaceKind,
@@ -128,7 +128,7 @@ pub(crate) enum ArtifactExternal {
 }
 pub(crate) struct DeserializerRef;
 
-impl ArtifactBuiltinDeserializer for DeserializerRef {
+impl ArtifactDeserializer for DeserializerRef {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -152,6 +152,6 @@ impl ArtifactBuiltinDeserializer for DeserializerRef {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
     m.insert(super::dynamic::TypeSourceDataTypeRefDynamic::artifact_id(), Rc::new(DeserializerRef));
 }

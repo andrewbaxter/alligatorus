@@ -1,6 +1,6 @@
 use {
     crate::{
-        builtin::ArtifactBuiltinDeserializer,
+        builtin::ArtifactDeserializer,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -69,7 +69,7 @@ use {
 
 pub(crate) struct DeserializerTypeExpr;
 
-impl ArtifactBuiltinDeserializer for DeserializerTypeExpr {
+impl ArtifactDeserializer for DeserializerTypeExpr {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -94,7 +94,7 @@ impl ArtifactBuiltinDeserializer for DeserializerTypeExpr {
 }
 
 pub(crate) fn register_expr_artifact(
-    m: &mut std::collections::HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>,
+    m: &mut std::collections::HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>,
 ) {
     m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
 }

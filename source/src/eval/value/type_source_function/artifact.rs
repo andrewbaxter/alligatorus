@@ -1,6 +1,6 @@
 use {
     crate::{
-        builtin::ArtifactBuiltinDeserializer,
+        builtin::ArtifactDeserializer,
         langhelp::{
             ArtifactIdBuiltin,
             Code,
@@ -21,7 +21,7 @@ use {
 
 pub(crate) struct Deserializer;
 
-impl ArtifactBuiltinDeserializer for Deserializer {
+impl ArtifactDeserializer for Deserializer {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -39,6 +39,6 @@ impl ArtifactBuiltinDeserializer for Deserializer {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
     m.insert(super::dynamic::TypeTypeSourceFunctionDynamic::artifact_id(), Rc::new(Deserializer));
 }

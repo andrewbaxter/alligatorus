@@ -1,13 +1,17 @@
 use {
     crate::{
-        builtin::ArtifactBuiltinDeserializer,
+        builtin::ArtifactDeserializer,
         eval::{
-            util::deserialize_type_artifact,
+            artifact::{
+                ArtifactDeserializer,
+                ArtifactId,
+                ArtifactIdBuiltin,
+                ArtifactIdSource,
+                impl_deserialize_independent_artifact,
+            },
             value::type_list::dynamic::TypeListDynamic,
         },
         langhelp::{
-            Artifact,
-            ArtifactIdBuiltin,
             Code,
             CodeValue,
             Code_,
@@ -21,6 +25,7 @@ use {
         },
     },
     std::{
+        any::Any,
         collections::HashMap,
         rc::Rc,
     },
@@ -28,63 +33,34 @@ use {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactListType {
-    pub element_type: Artifact,
+    pub element_type: ArtifactId,
 }
 pub(crate) struct Deserializer;
 
-impl Deserializer {
-    fn decode(xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> Result<Rc<dyn Type>, Vec<ExprErr>> {
-        let serial: ArtifactListType = match serde_json::from_value(data.clone()) {
-            Ok(s) => s,
-            Err(e) => {
-                return Err(vec![ExprErr {
-                    loc,
-                    errors: vec![ExprSubErr::Opaque(format!("Failed to parse list type artifact: {}", e))],
-                }]);
-            },
-        };
-        let (element_type, _c) = deserialize_type_artifact(xx, loc, &serial.element_type).into_res()?;
-        Ok(Rc::new(TypeListDynamic { element_type }))
-    }
-}
-
-impl ArtifactBuiltinDeserializer for Deserializer {
-    fn type_from_serial(
+impl ArtifactDeserializer for Deserializer {
+    fn from_serial(
         &self,
         xx: &ExprContext,
         loc: QExprId,
-        data: &serde_json::Value,
-    ) -> EResult<(Rc<dyn Type>, Code)> {
-        match Self::decode(xx, loc, data) {
-            Ok(list_type) => EResult::ok((list_type, Code {
-                loc,
-                code: Code_::None,
-            })),
-            Err(errs) => EResult {
-                v: None,
-                errors: Some(errs),
-            },
-        }
-    }
-
-    fn value_from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        match Self::decode(xx, loc, data) {
-            Ok(list_type) => EvalRes::ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::None,
-                },
-                value: list_type.as_value(),
-            }),
-            Err(errs) => EvalRes {
-                v: None,
-                errors: Some(errs),
-            },
-        }
+        id: ArtifactIdSource,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        return impl_deserialize_independent_artifact::<ArtifactListType>(&xx, loc, &id, data, |data| {
+            let shell = Rc::new(TypeListDynamic { element_type: None });
+            return Ok((shell as Rc<dyn Any>, vec![data.element_type], Box::new({
+                let shell = shell.clone();
+                |xx, loc| {
+                    let Some(element_type) = xx.vx.ix.deserialized_artifacts.get(data.element_type) else {
+                        return;
+                    };
+                    shell.element_type.borrow_mut() = element_type;
+                }
+            })));
+        });
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
     m.insert(TypeListArtifact::artifact_id(), Rc::new(Deserializer));
 }
 pub(crate) struct TypeListArtifact;

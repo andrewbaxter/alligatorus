@@ -2,6 +2,7 @@
 pub mod push;
 #[macro_use]
 pub mod util;
+pub mod artifact;
 pub mod aspect;
 pub mod code_value_extern;
 pub mod definition_set;
@@ -349,7 +350,7 @@ pub(crate) fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
-        builtin_deserializers: make_builtin_deserializers(),
+        builtin_artifacts: make_builtin_deserializers(),
         deserialized_artifacts: RefCell::new(HashMap::new()),
         pending_finalizers: RefCell::new(Vec::new()),
         isolate: Rc::new(RefCell::new(v8::Isolate::new(Default::default()))),

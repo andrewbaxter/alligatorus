@@ -1,8 +1,15 @@
 use {
     crate::{
-        builtin::ArtifactBuiltinDeserializer,
+        builtin::ArtifactDeserializer,
         eval::{
             StageLiftCell,
+            artifact::{
+                Artifact,
+                ArtifactId,
+                ArtifactIdBuiltin,
+                ArtifactIdSource,
+                Artifacts,
+            },
             code_value_extern,
             definition_set::DefinitionSet,
             expr::StagedExprCell,
@@ -59,12 +66,6 @@ use {
     },
 };
 
-pub(crate) trait Artifacts: Send + Sync {
-    fn get(&self, id: ArtifactId) -> Result<Artifact, String>;
-    fn reserve_id(&self) -> ArtifactId;
-    fn set(&self, id: ArtifactId, data: Artifact);
-}
-
 pub(crate) trait Aspect: Any {
     fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
         None
@@ -114,30 +115,6 @@ pub(crate) trait Value: Any {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type>;
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct Artifact {
-    pub(crate) data: serde_json::Value,
-    pub(crate) type_: ArtifactId,
-}
-
-pub(crate) type ArtifactFinalizer = Box<dyn FnOnce(&ExprContext, QExprId) -> Result<Vec<Code>, String>>;
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) enum ArtifactId {
-    Builtin(ArtifactIdBuiltin),
-    Source(ArtifactIdSource),
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
-#[serde(transparent)]
-pub(crate) struct ArtifactIdBuiltin(pub usize);
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct ArtifactIdSource(pub CompileId, pub usize);
-
 #[derive(Clone)]
 pub(crate) struct Code {
     pub(crate) code: Code_,
@@ -179,17 +156,16 @@ pub(crate) struct CodeValue {
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_deserializers: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>>,
-    pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, std::rc::Rc<dyn Type>)>>,
+    pub(crate) builtin_artifacts: HashMap<ArtifactIdBuiltin, Rc<dyn Any>>,
+    pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, Rc<dyn Type>)>>,
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) def_set_counter: Counter,
-    pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactId, Box<dyn std::any::Any>>>,
+    pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactIdSource, Rc<dyn Any>>>,
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) import_state: ImportStateId,
     pub(crate) installed_def_sets: RefCell<HashSet<DefSetId>>,
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
-    pub(crate) pending_finalizers: RefCell<Vec<ArtifactFinalizer>>,
     pub(crate) source_id: SourceId,
     pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
 }
@@ -272,25 +248,6 @@ impl Counter {
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct DefSetId(pub CompileId, pub usize);
-
-pub(crate) fn deserialize_independent_artifact<
-    T: Clone + 'static,
->(
-    ix: &CompileImportContext,
-    id: &ArtifactId,
-    create: impl FnOnce() -> Result<(T, ArtifactFinalizer), String>,
-) -> Result<T, String> {
-    {
-        let cache = ix.deserialized_artifacts.borrow();
-        if let Some(cached) = cache.get(id) {
-            return Ok(must_downcast_ref::<T>(cached.as_ref()).clone());
-        }
-    }
-    let (shell, finalizer) = create()?;
-    ix.deserialized_artifacts.borrow_mut().insert(id.clone(), Box::new(shell.clone()));
-    ix.pending_finalizers.borrow_mut().push(finalizer);
-    Ok(shell)
-}
 
 pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Rc<T> {
     assert!((v.as_ref() as &dyn Any).is::<T>(), "downcast_value: expected {}", std::any::type_name::<T>());
@@ -375,8 +332,8 @@ pub(crate) struct LogEntry {
     pub(crate) timestamp_ms: u64,
 }
 
-pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>> {
-    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactBuiltinDeserializer>> = HashMap::new();
+pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>> {
+    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>> = HashMap::new();
     type_null::artifact::register(&mut m);
     type_string::artifact::register(&mut m);
     type_number::artifact::register(&mut m);
@@ -395,21 +352,6 @@ pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn 
     type_expr::register_expr_artifact(&mut m);
     code_value_extern::register_artifact_deserializer(&mut m);
     m
-}
-
-pub(crate) fn produce_independent_artifact(
-    artifacts: &dyn Artifacts,
-    cell: &std::cell::RefCell<Option<ArtifactId>>,
-    produce: impl FnOnce() -> Artifact,
-) -> ArtifactId {
-    if let Some(existing_id) = cell.borrow().clone() {
-        return existing_id;
-    }
-    let id = artifacts.reserve_id();
-    *cell.borrow_mut() = Some(id.clone());
-    let artifact = produce();
-    artifacts.set(id.clone(), artifact);
-    id
 }
 
 pub(crate) type QExprId = (SourceId, ExprId);
