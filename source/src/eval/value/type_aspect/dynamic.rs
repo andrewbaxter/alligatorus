@@ -34,7 +34,6 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectStackValueDynamic,
             ScopeEntry,
             aspect_bind_aspect_id,
@@ -42,7 +41,6 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_aspect_identity,
         },
@@ -97,19 +95,6 @@ impl AspectLiftDynamic for TypeAspectDynamic {
     }
 }
 
-impl AspectLowerDynamic for TypeAspectDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
-        let aspect_pull = (&*aspect as &dyn std::any::Any).downcast_ref::<AspectPull>().unwrap().clone();
-        Ok(Rc::new(aspect_pull))
-    }
-}
-
 impl AspectStackValueDynamic for TypeAspectDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         dynamic_stack_to_value(loc, value, Rc::new(TypeAspectDynamic))
@@ -139,9 +124,6 @@ impl Type for TypeAspectDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectInitialBind>));

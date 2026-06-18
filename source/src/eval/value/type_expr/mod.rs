@@ -49,7 +49,6 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectType,
             ScopeEntry,
             aspect_bind_aspect_id,
@@ -57,7 +56,6 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_type_aspect_id,
             expr_type_identity,
         },
@@ -152,18 +150,6 @@ impl AspectLiftDynamic for TypeExpr {
     }
 }
 
-impl AspectLowerDynamic for TypeExpr {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
-        Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lower"))
-    }
-}
-
 impl AspectType for TypeExpr {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeExpr)
@@ -190,9 +176,6 @@ impl Type for TypeExpr {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectInitialBind>));
@@ -273,18 +256,6 @@ impl AspectLiftDynamic for TypeExprStagedPlaceholder {
     }
 }
 
-impl AspectLowerDynamic for TypeExprStagedPlaceholder {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
-        Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lower"))
-    }
-}
-
 impl Type for TypeExprStagedPlaceholder {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeExprStagedPlaceholder)
@@ -296,9 +267,6 @@ impl Type for TypeExprStagedPlaceholder {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLowerDynamic>));
         }
         None
     }

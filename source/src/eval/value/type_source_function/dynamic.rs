@@ -53,7 +53,6 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectStackValueDynamic,
             FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
@@ -63,7 +62,6 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_type_identity,
         },
@@ -121,21 +119,6 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
     }
 }
 
-impl AspectLowerDynamic for TypeSourceFunctionDynamic {
-    fn lower(
-        &self,
-        xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
-        let set = &func_ref.data.set;
-        xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
-        let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
-        Ok(Rc::new(ValueAnyConst { inner: func_type }))
-    }
-}
-
 impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -171,9 +154,6 @@ impl Type for TypeSourceFunctionDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectInitialBind>));

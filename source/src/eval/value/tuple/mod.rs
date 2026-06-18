@@ -52,7 +52,6 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectTuple,
             ScopeEntry,
             TUPLE_TO_TYPE_FN_SCOPE_ID,
@@ -62,7 +61,6 @@ use {
             aspect_consume_dynamic_get,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_tuple_aspect_id,
             aspect_tuple_get_maybe,
             type_type_identity,
@@ -323,20 +321,6 @@ impl Type for Tuple {
             }).collect();
             return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftDynamic>));
         }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            let element_lowers: Vec<Box<dyn AspectLowerDynamic>> = self.elements.iter().map(|e| {
-                let t = match e {
-                    TupleElement::Dynamic(t) => t.clone(),
-                    TupleElement::EvalRes(_) => panic!("lower on non-type tuple"),
-                };
-                let a =
-                    t
-                        .aspect(xx, &aspect_lower_dynamic_aspect_id())
-                        .expect(&format!("Tuple element type ({}) missing AspectLowerDynamic", t.desc()));
-                must_downcast_box::<Box<dyn AspectLowerDynamic>>(a)
-            }).collect();
-            return Some(Box::new(Box::new(TupleLowerJs { element_lowers }) as Box<dyn AspectLowerDynamic>));
-        }
         return None;
     }
 
@@ -535,36 +519,6 @@ impl AspectLiftDynamic for TupleLiftJs {
                     code: Code_::None,
                 },
                 value: lifted,
-            })));
-        }
-        Ok(Rc::new(Tuple { elements: elements }))
-    }
-}
-
-struct TupleLowerJs {
-    element_lowers: Vec<Box<dyn AspectLowerDynamic>>,
-}
-
-impl Aspect for TupleLowerJs { }
-
-impl AspectLowerDynamic for TupleLowerJs {
-    fn lower(
-        &self,
-        xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lower");
-        let mut elements = Vec::new();
-        for (i, elem_lower) in self.element_lowers.iter().enumerate() {
-            let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lower");
-            let lowered = elem_lower.lower(xx, scope, elem_v8)?;
-            elements.push(TupleElement::EvalRes(EvalRes::ok(CodeValue {
-                code: Code {
-                    loc: (SourceId(0), ExprId(0)),
-                    code: Code_::None,
-                },
-                value: lowered,
             })));
         }
         Ok(Rc::new(Tuple { elements: elements }))

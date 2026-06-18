@@ -146,7 +146,6 @@ use {
             aspect_initial_bind_get_maybe,
             aspect_iterable_get,
             aspect_lift_dynamic_get,
-            aspect_lower_dynamic_get,
             aspect_operator_add_get,
             aspect_operator_eq_get,
             aspect_operator_lt_get,
@@ -1377,11 +1376,11 @@ fn eval(
                         scope: lift_cell.scope.clone(),
                         target: lift_cell.target.clone(),
                     };
-                    let lower =
-                        aspect_lower_dynamic_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
+                    let lift =
+                        aspect_lift_dynamic_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
                             .into_res()
-                            .expect("__stage: source type missing AspectLowerDynamic");
-                    let value = lower.lower(&lift_xx, &*scope, val_arg).expect("__stage: lower failed");
+                            .expect("__stage: source type missing AspectLiftDynamic");
+                    let value = lift.lift(&lift_xx, &*scope, val_arg).expect("__stage: lift failed");
                     values.push(StageLowerValue::Value(value));
                 }
             }

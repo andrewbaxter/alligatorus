@@ -48,7 +48,6 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectStackValueDynamic,
             ScopeEntry,
             TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
@@ -57,7 +56,6 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_type_identity,
         },
@@ -120,23 +118,6 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl AspectLowerDynamic for TypeSourceTaggedUnionConstructorDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
-        let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
-        let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
-            data: ctor.data.clone(),
-            variant_index: ctor.variant_index,
-        });
-        Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
-    }
-}
-
 impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -179,11 +160,6 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLiftDynamic>),
-            );
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLowerDynamic>),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {

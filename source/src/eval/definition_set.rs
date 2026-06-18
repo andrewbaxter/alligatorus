@@ -74,10 +74,8 @@ use {
         },
         r#gen::{
             AspectLiftDynamic,
-            AspectLowerDynamic,
             DefinitionSetBuilder,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             defset_artifact_id,
             gen_build_builtin_interfaces,
         },
@@ -96,9 +94,6 @@ use {
 pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
     if *key == aspect_lift_dynamic_aspect_id() {
         return Some(Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLiftDynamic>));
-    }
-    if *key == aspect_lower_dynamic_aspect_id() {
-        return Some(Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLowerDynamic>));
     }
     None
 }
@@ -703,24 +698,6 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
     ) -> Result<Rc<dyn Value>, String> {
         let obj =
             v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lift")?;
-        let dk = v8::String::new(scope, "_d").unwrap();
-        let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
-        let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
-        xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
-        let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
-        Ok(Rc::new(ValueAnyConst { inner: exports_type }))
-    }
-}
-
-impl AspectLowerDynamic for TypeDefinitionSetLiftDynamic {
-    fn lower(
-        &self,
-        xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let obj =
-            v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lower")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();

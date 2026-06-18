@@ -53,7 +53,6 @@ use {
             AspectField,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectSet,
             AspectStackValueDynamic,
             AspectStringDynamic,
@@ -66,7 +65,6 @@ use {
             aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
@@ -199,18 +197,6 @@ impl AspectLiftDynamic for TypeStringDynamic {
     }
 }
 
-impl AspectLowerDynamic for TypeStringDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
-        Ok(Rc::new(ValueStringConst(s)))
-    }
-}
-
 impl AspectSet for TypeStringDynamic {
     fn set(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
         dynamic_set(xx, loc, self_, value)
@@ -263,9 +249,6 @@ impl Type for TypeStringDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectInitialBind>));

@@ -413,24 +413,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             ],
         },
         AspectSpec {
-            name: "LowerDynamic",
-            doc: doc(""),
-            builtin_unique_id: 1031,
-            methods: vec![
-                //. .
-                AspectMethod {
-                    name: "lower",
-                    doc: doc(""),
-                    params: vec![
-                        ("xx", "&crate::langhelp::ExprContext"),
-                        ("scope", "&v8::PinScope"),
-                        ("self_", "v8::Local<v8::Value>"),
-                    ],
-                    ret: "Result<std::rc::Rc<dyn crate::langhelp::Value>, String>",
-                },
-            ],
-        },
-        AspectSpec {
             name: "Iterable",
             doc: doc("Allows foreach expressions to be run on the value."),
             builtin_unique_id: 1027,

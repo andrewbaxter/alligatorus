@@ -59,7 +59,6 @@ use {
             AspectField,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectStackValueDynamic,
             AspectType,
             ScopeEntry,
@@ -72,8 +71,6 @@ use {
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
             aspect_lift_dynamic_get_maybe,
-            aspect_lower_dynamic_aspect_id,
-            aspect_lower_dynamic_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get_maybe,
             aspect_type_aspect_id,
@@ -317,41 +314,6 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectLowerDynamic for TypeSourceDataTypeConst {
-    fn lower(
-        &self,
-        xx: &ExprContext,
-        scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let underlying_type = self.data.underlying_type.get().clone();
-        let underlying_lower =
-            aspect_lower_dynamic_get_maybe(
-                xx,
-                underlying_type.as_ref(),
-            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLowerDynamic", underlying_type.desc()))?;
-        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lower")?;
-        let data_field = ConstKey::String(self.data.data_field.clone()).to_str();
-        let key = v8::String::new(scope, &data_field).unwrap();
-        let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
-        let underlying_value = underlying_lower.lower(xx, scope, underlying_v8)?;
-        let has_type_iface = self.data.interface_impls.borrow().iter().any(|impl_data| {
-            impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
-        });
-        let isolate_bundle = if has_type_iface {
-            let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, obj);
-            std::cell::RefCell::new(Some(instance_global))
-        } else {
-            std::cell::RefCell::new(None)
-        };
-        Ok(Rc::new(ValueSourceDataTypeConst {
-            underlying: underlying_value,
-            data: self.data.clone(),
-            isolate_bundle,
-        }))
-    }
-}
-
 impl AspectStackValueDynamic for TypeSourceDataTypeConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -407,13 +369,6 @@ impl Type for TypeSourceDataTypeConst {
             return Some(
                 Box::new(
                     Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
-                ),
-            );
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLowerDynamic>,
                 ),
             );
         }

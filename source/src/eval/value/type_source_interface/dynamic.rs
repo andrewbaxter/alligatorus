@@ -47,7 +47,6 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLiftDynamic,
-            AspectLowerDynamic,
             AspectStackValueDynamic,
             INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
@@ -57,7 +56,6 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
-            aspect_lower_dynamic_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             interface_const_identity,
             interface_ref_type_identity,
@@ -130,19 +128,6 @@ impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
     }
 }
 
-impl AspectLowerDynamic for TypeSourceInterfaceDynamic {
-    fn lower(
-        &self,
-        _xx: &ExprContext,
-        _scope: &v8::PinScope,
-        value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
-        let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
-        let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-        Ok(Rc::new(ValueAnyConst { inner: iface_type }))
-    }
-}
-
 impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -184,9 +169,6 @@ impl Type for TypeSourceInterfaceDynamic {
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLiftDynamic>));
-        }
-        if *key == aspect_lower_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectLowerDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceInterfaceDynamic) as Box<dyn AspectInitialBind>));
