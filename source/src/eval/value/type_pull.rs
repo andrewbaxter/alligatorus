@@ -18,8 +18,8 @@ use {
                 value_pull::aspect::TypePullAspect,
             },
         },
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             CodeValue,
             EvalRes,
@@ -118,7 +118,7 @@ impl Type for TypePull {
                 .clone()
                 .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
         Artifact {
-            type_: artifact_id,
+            deserializer: artifact_id,
             data: serde_json::Value::Null,
         }
     }

@@ -11,8 +11,8 @@ use {
             value_string::r#const::ValueStringConst,
         },
         invariant::must_downcast_ref,
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

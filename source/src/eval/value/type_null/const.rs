@@ -4,8 +4,8 @@ use {
             type_any::r#const::TypeAnyConst,
             value_null::r#const::ValueNullConst,
         },
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

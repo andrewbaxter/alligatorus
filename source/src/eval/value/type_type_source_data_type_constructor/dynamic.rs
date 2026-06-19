@@ -8,8 +8,8 @@ use {
             },
         },
         invariant::must_downcast_ref,
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             CodeValue,
             EResult,
@@ -54,7 +54,7 @@ impl AspectArtifact for TypeTypeSourceDataTypeConstructorDynamic {
         let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(self_.as_ref());
         let artifact_id = ctor.serialize_ctor(xx, loc);
         EResult::ok(Artifact {
-            type_: artifact_id,
+            deserializer: artifact_id,
             data: serde_json::Value::Null,
         })
     }

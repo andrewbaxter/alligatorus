@@ -14,7 +14,11 @@ use {
                 bind_via_target,
             },
             from_v8_ref,
-            util::deserialize_type_artifact,
+            artifact::{
+                Artifact,
+                ArtifactId,
+                deserialize_type_artifact,
+            },
             value::{
                 type_any::r#const::{
                     TypeAnyConst,
@@ -33,8 +37,6 @@ use {
         },
         invariant::DeserialLazy,
         langhelp::{
-            Artifact,
-            ArtifactId,
             Aspect,
             Code,
             CodeValue,

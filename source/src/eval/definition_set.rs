@@ -2,6 +2,15 @@ use {
     crate::{
         eval::{
             StageLiftCell,
+            artifact::{
+                Artifact,
+                ArtifactFinalizer,
+                ArtifactId,
+                ArtifactIdBuiltin,
+                deserialize_type_artifact,
+                impl_deserialize_independent_artifact as deserialize_independent_artifact,
+                impl_produce_independent_artifact as produce_independent_artifact,
+            },
             expr::{
                 Expr,
                 StagedExprCell,
@@ -14,7 +23,6 @@ use {
                 expr_to_artifact,
             },
             from_v8_ref,
-            util::deserialize_type_artifact,
             value::{
                 type_any::r#const::ValueAnyConst,
                 type_null::dynamic::TypeNullDynamic,
@@ -54,10 +62,6 @@ use {
             must_downcast_ref,
         },
         langhelp::{
-            Artifact,
-            ArtifactFinalizer,
-            ArtifactId,
-            ArtifactIdBuiltin,
             Aspect,
             Code,
             Counter,
@@ -69,8 +73,6 @@ use {
             Type,
             Unique,
             Value,
-            deserialize_independent_artifact,
-            produce_independent_artifact,
         },
         r#gen::{
             AspectLiftDynamic,
@@ -637,7 +639,7 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
             dependencies,
         };
         Artifact {
-            type_: ArtifactId::Builtin(defset_artifact_identity()),
+            deserializer: ArtifactId::Builtin(defset_artifact_identity()),
             data: serde_json::to_value(&serial).expect("Failed to serialize definition set"),
         }
     })

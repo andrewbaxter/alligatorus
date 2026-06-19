@@ -1,14 +1,16 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
         eval::{
+            artifact::{
+                Artifact,
+                ArtifactDeserializer,
+                ArtifactId,
+                ArtifactIdBuiltin,
+            },
             expr_artifact::ArtifactExpr,
             value::type_source_interface::BuiltinInterfaceKind,
         },
         langhelp::{
-            Artifact,
-            ArtifactId,
-            ArtifactIdBuiltin,
             Code,
             CodeValue,
             Code_,

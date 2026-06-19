@@ -24,8 +24,11 @@ use {
             },
         },
         invariant::must_downcast_ref,
-        langhelp::{
+        eval::artifact::{
             ArtifactId,
+            impl_produce_independent_artifact as produce_independent_artifact,
+        },
+        langhelp::{
             ConstKey,
             Counter,
             EvalContext,
@@ -36,7 +39,6 @@ use {
             ScopeEntryId,
             Type,
             Value,
-            produce_independent_artifact,
         },
         r#gen::aspect_initial_bind_get_maybe,
     },

@@ -1,8 +1,10 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
-        langhelp::{
+        eval::artifact::{
+            ArtifactDeserializer,
             ArtifactIdBuiltin,
+        },
+        langhelp::{
             Code,
             CodeValue,
             Code_,

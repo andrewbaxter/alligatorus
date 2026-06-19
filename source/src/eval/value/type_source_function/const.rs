@@ -20,8 +20,8 @@ use {
             },
         },
         invariant::must_downcast_ref,
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -86,7 +86,7 @@ impl AspectArtifact for TypeSourceFunctionConst {
                 .clone()
                 .expect("Function artifact ID should be set by serialize_definition_set");
         EResult::ok(Artifact {
-            type_: artifact_id,
+            deserializer: artifact_id,
             data: serde_json::Value::Null,
         })
     }

@@ -8,8 +8,8 @@ use {
             value_number::r#const::ValueNumberConst,
         },
         invariant::must_downcast_ref,
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

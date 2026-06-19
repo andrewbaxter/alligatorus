@@ -14,8 +14,8 @@ use {
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         invariant::must_downcast_ref,
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

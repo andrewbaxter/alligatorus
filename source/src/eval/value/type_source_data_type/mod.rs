@@ -45,8 +45,11 @@ use {
             DeserialLazy,
             must_downcast_ref,
         },
-        langhelp::{
+        eval::artifact::{
             ArtifactId,
+            impl_produce_independent_artifact as produce_independent_artifact,
+        },
+        langhelp::{
             ConstKey,
             Counter,
             EvalContext,
@@ -59,7 +62,6 @@ use {
             Type,
             Unique,
             Value,
-            produce_independent_artifact,
         },
         r#gen::{
             aspect_initial_bind_get,
@@ -193,8 +195,10 @@ impl SourceDataMethodData {
 
     pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
         use crate::{
-            eval::value::type_null::dynamic::TypeNullDynamic,
-            langhelp::Artifact,
+            eval::{
+                artifact::Artifact,
+                value::type_null::dynamic::TypeNullDynamic,
+            },
             r#gen::defset_method_artifact_id,
         };
 
@@ -217,7 +221,7 @@ impl SourceDataMethodData {
                 captured_externals,
             };
             Artifact {
-                type_: crate::langhelp::ArtifactId::Builtin(defset_method_artifact_id()),
+                deserializer: crate::eval::artifact::ArtifactId::Builtin(defset_method_artifact_id()),
                 data: serde_json::to_value(&serial).expect("Failed to serialize method"),
             }
         })
@@ -297,7 +301,7 @@ pub(crate) struct SourceDataTypeInterfaceImplData {
 impl SourceDataTypeInterfaceImplData {
     pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
         use crate::{
-            langhelp::Artifact,
+            eval::artifact::Artifact,
             r#gen::defset_iface_impl_artifact_id,
         };
 
@@ -314,7 +318,7 @@ impl SourceDataTypeInterfaceImplData {
                 method_impls,
             };
             Artifact {
-                type_: crate::langhelp::ArtifactId::Builtin(defset_iface_impl_artifact_id()),
+                deserializer: crate::eval::artifact::ArtifactId::Builtin(defset_iface_impl_artifact_id()),
                 data: serde_json::to_value(&serial).expect("Failed to serialize iface impl"),
             }
         })
@@ -531,7 +535,7 @@ impl SourceDataTypeInterfaceMethodImplData {
 
     pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
         use crate::{
-            langhelp::Artifact,
+            eval::artifact::Artifact,
             r#gen::defset_iface_method_impl_artifact_id,
         };
 
@@ -575,7 +579,7 @@ impl SourceDataTypeInterfaceMethodImplData {
                 captured_externals,
             };
             Artifact {
-                type_: crate::langhelp::ArtifactId::Builtin(defset_iface_method_impl_artifact_id()),
+                deserializer: crate::eval::artifact::ArtifactId::Builtin(defset_iface_method_impl_artifact_id()),
                 data: serde_json::to_value(&serial).expect("Failed to serialize iface method impl"),
             }
         })

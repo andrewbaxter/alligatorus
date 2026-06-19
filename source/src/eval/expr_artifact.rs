@@ -27,10 +27,12 @@ use {
                 Expr_,
                 make_lit_value,
             },
-            util::deserialize_artifact,
+            artifact::{
+                Artifact,
+                deserialize_artifact,
+            },
         },
         langhelp::{
-            Artifact,
             ExprContext,
             QExprId,
             SourceId,

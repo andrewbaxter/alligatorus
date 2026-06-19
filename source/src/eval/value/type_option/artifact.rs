@@ -1,13 +1,15 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
         eval::{
-            util::deserialize_type_artifact,
+            artifact::{
+                Artifact,
+                ArtifactDeserializer,
+                ArtifactIdBuiltin,
+                deserialize_type_artifact,
+            },
             value::type_option::dynamic::TypeOptionDynamic,
         },
         langhelp::{
-            Artifact,
-            ArtifactIdBuiltin,
             Code,
             CodeValue,
             Code_,

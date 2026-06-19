@@ -26,8 +26,8 @@ use {
             },
         },
         invariant::must_downcast_box,
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

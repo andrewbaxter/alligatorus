@@ -1,6 +1,6 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
+        eval::artifact::ArtifactDeserializer,
         eval::{
             StageLiftCell,
             artifact::{

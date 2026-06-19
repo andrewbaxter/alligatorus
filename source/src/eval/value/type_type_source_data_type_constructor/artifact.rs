@@ -1,9 +1,13 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
-        eval::value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type,
+        eval::{
+            artifact::{
+                ArtifactDeserializer,
+                ArtifactIdBuiltin,
+            },
+            value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type,
+        },
         langhelp::{
-            ArtifactIdBuiltin,
             Code,
             CodeValue,
             Code_,

@@ -452,7 +452,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                         ("loc", "crate::langhelp::QExprId"),
                         ("self_", "std::rc::Rc<dyn crate::langhelp::Value>"),
                     ],
-                    ret: "crate::langhelp::EResult<crate::langhelp::Artifact>",
+                    ret: "crate::langhelp::EResult<crate::eval::artifact::Artifact>",
                 },
                 AspectMethod {
                     name: "from_serial",

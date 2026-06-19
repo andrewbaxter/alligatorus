@@ -17,8 +17,11 @@ use {
                 type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
         },
-        langhelp::{
+        eval::artifact::{
             ArtifactId,
+            impl_produce_independent_artifact as produce_independent_artifact,
+        },
+        langhelp::{
             Aspect,
             Code,
             CodeValue,
@@ -31,7 +34,6 @@ use {
             Type,
             Unique,
             Value,
-            produce_independent_artifact,
         },
         r#gen::{
             AspectBind,

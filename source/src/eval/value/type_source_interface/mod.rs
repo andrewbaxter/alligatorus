@@ -47,7 +47,7 @@ pub(crate) enum BuiltinInterfaceKind {
 }
 
 pub(crate) struct SourceInterfaceData {
-    pub artifact_id: RefCell<Option<crate::langhelp::ArtifactId>>,
+    pub artifact_id: RefCell<Option<crate::eval::artifact::ArtifactId>>,
     pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
@@ -65,11 +65,11 @@ impl SourceInterfaceData {
         Ok(())
     }
 
-    pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> crate::langhelp::ArtifactId {
+    pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> crate::eval::artifact::ArtifactId {
         use crate::{
-            langhelp::{
+            eval::artifact::{
                 Artifact,
-                produce_independent_artifact,
+                impl_produce_independent_artifact as produce_independent_artifact,
             },
             r#gen::defset_iface_artifact_id,
         };
@@ -92,7 +92,7 @@ impl SourceInterfaceData {
                 methods,
             };
             Artifact {
-                type_: crate::langhelp::ArtifactId::Builtin(defset_iface_artifact_id()),
+                deserializer: crate::eval::artifact::ArtifactId::Builtin(defset_iface_artifact_id()),
                 data: serde_json::to_value(&serial).expect("Failed to serialize iface"),
             }
         })

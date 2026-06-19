@@ -14,7 +14,11 @@ use {
                 bind_via_target,
             },
             import_install::install_imported_type_iface,
-            util::deserialize_artifact,
+            artifact::{
+                Artifact,
+                ArtifactId,
+                deserialize_artifact,
+            },
             value::{
                 type_pull::TypePull,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
@@ -35,8 +39,6 @@ use {
         },
         invariant::must_downcast_ref,
         langhelp::{
-            Artifact,
-            ArtifactId,
             Aspect,
             Code,
             CodeValue,
@@ -110,7 +112,7 @@ fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc
         let is_iface_impl =
             matches!(
                 &m_art.deserializer,
-                crate:: langhelp:: ArtifactId:: Builtin(b) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
+                crate:: eval:: artifact:: ArtifactId:: Builtin(b) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
             );
         if !is_iface_impl {
             return false;
@@ -155,7 +157,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
             let build_type_artifact = serialize_type_ref(xx, loc, underlying_type.as_ref());
             drop(underlying_type);
             let underlying_artifact = Artifact {
-                type_: build_type_artifact.type_,
+                deserializer: build_type_artifact.deserializer,
                 data: data.clone(),
             };
             let underlying_cv =
@@ -262,7 +264,7 @@ impl AspectArtifact for TypeSourceDataTypeConst {
         };
         let data_type_artifact_id = self.serialize_data_type(xx, loc);
         EResult::ok(Artifact {
-            type_: data_type_artifact_id,
+            deserializer: data_type_artifact_id,
             data: underlying_artifact.data,
         })
     }
@@ -534,7 +536,7 @@ impl Type for TypeSourceDataTypeConst {
                 .clone()
                 .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
         Artifact {
-            type_: artifact_id,
+            deserializer: artifact_id,
             data: serde_json::Value::Null,
         }
     }

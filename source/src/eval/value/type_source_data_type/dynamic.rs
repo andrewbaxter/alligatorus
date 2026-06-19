@@ -45,8 +45,8 @@ use {
                 value_source_data_type::r#const::ValueSourceDataTypeConst,
             },
         },
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -615,7 +615,7 @@ impl Type for TypeSourceDataTypeDynamic {
         serialize_definition_set(xx, loc, &data.set);
         let artifact_id = data.artifact_id.borrow().clone().expect("type_to_serial: data type artifact_id not set");
         Artifact {
-            type_: artifact_id,
+            deserializer: artifact_id,
             data: serde_json::Value::Null,
         }
     }

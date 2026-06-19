@@ -1,9 +1,13 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
-        eval::value::value_number::r#const::ValueNumberConst,
+        eval::{
+            artifact::{
+                ArtifactDeserializer,
+                ArtifactIdBuiltin,
+            },
+            value::value_number::r#const::ValueNumberConst,
+        },
         langhelp::{
-            ArtifactIdBuiltin,
             Code,
             CodeValue,
             Code_,

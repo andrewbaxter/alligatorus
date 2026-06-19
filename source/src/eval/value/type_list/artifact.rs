@@ -1,6 +1,5 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
         eval::{
             artifact::{
                 ArtifactDeserializer,

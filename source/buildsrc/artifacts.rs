@@ -255,8 +255,8 @@ pub fn build(out: &mut TokenStream) {
         let builtin_artifact_id = s.builtin_artifact_id;
         assert!(builtin_artifact_ids.insert(builtin_artifact_id));
         let id_decl = quote!{
-            pub(crate) fn #id_fn() -> crate:: langhelp:: ArtifactIdBuiltin {
-                crate:: langhelp:: ArtifactIdBuiltin(#builtin_artifact_id)
+            pub(crate) fn #id_fn() -> crate:: eval:: artifact:: ArtifactIdBuiltin {
+                crate:: eval:: artifact:: ArtifactIdBuiltin(#builtin_artifact_id)
             }
         };
         let impl_block = match (s.type_path, s.data_type) {
@@ -270,7 +270,7 @@ pub fn build(out: &mut TokenStream) {
                             m:
                                 &mut std
                                 ::collections
-                                ::HashMap<crate::langhelp::ArtifactIdBuiltin, std::rc::Rc<dyn crate::langhelp::Type>,>,
+                                ::HashMap<crate::eval::artifact::ArtifactIdBuiltin, std::rc::Rc<dyn crate::eval::artifact::ArtifactDeserializer>,>,
                         ) {
                             m.insert(Self::artifact_id(), std::rc::Rc::new(Self));
                         }
@@ -283,9 +283,9 @@ pub fn build(out: &mut TokenStream) {
                     quote!{
                         #[
                             allow(dead_code)
-                        ] pub(crate) fn build_artifact(data: #data_type) -> crate:: langhelp:: Artifact {
-                            crate::langhelp::Artifact {
-                                type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
+                        ] pub(crate) fn build_artifact(data: #data_type) -> crate:: eval:: artifact:: Artifact {
+                            crate::eval::artifact::Artifact {
+                                deserializer: crate::eval::artifact::ArtifactId::Builtin(Self::artifact_id()),
                                 data: serde_json::to_value(data).unwrap(),
                             }
                         }
@@ -297,9 +297,9 @@ pub fn build(out: &mut TokenStream) {
                 let build_type_artifact = if s.build_type_artifact {
                     quote!{
                         #[allow(dead_code)]
-                        pub(crate) fn build_type_artifact() -> crate::langhelp::Artifact {
-                            crate::langhelp::Artifact {
-                                type_: crate::langhelp::ArtifactId::Builtin(Self::artifact_id()),
+                        pub(crate) fn build_type_artifact() -> crate::eval::artifact::Artifact {
+                            crate::eval::artifact::Artifact {
+                                deserializer: crate::eval::artifact::ArtifactId::Builtin(Self::artifact_id()),
                                 data: serde_json::Value::Null,
                             }
                         }
@@ -310,7 +310,7 @@ pub fn build(out: &mut TokenStream) {
                 };
                 quote!{
                     impl #type_path {
-                        pub(crate) fn artifact_id() -> crate:: langhelp:: ArtifactIdBuiltin {
+                        pub(crate) fn artifact_id() -> crate:: eval:: artifact:: ArtifactIdBuiltin {
                             #id_fn()
                         }
                         #build_artifact #build_type_artifact #register

@@ -31,8 +31,8 @@ use {
             must_downcast_box,
             must_downcast_ref,
         },
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

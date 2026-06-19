@@ -1,6 +1,5 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -9,6 +8,11 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::{
+                Artifact,
+                ArtifactDeserializer,
+                ArtifactIdBuiltin,
+            },
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -30,8 +34,6 @@ use {
             },
         },
         langhelp::{
-            Artifact,
-            ArtifactIdBuiltin,
             Aspect,
             Code,
             CodeValue,

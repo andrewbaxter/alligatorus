@@ -1,16 +1,18 @@
 use {
     crate::{
-        builtin::ArtifactDeserializer,
         eval::{
-            util::deserialize_type_artifact,
+            artifact::{
+                Artifact,
+                ArtifactDeserializer,
+                ArtifactIdBuiltin,
+                deserialize_type_artifact,
+            },
             value::record::{
                 Record,
                 RecordField,
             },
         },
         langhelp::{
-            Artifact,
-            ArtifactIdBuiltin,
             Code,
             CodeValue,
             Code_,

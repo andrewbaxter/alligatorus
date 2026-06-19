@@ -25,8 +25,8 @@ use {
                 },
             },
         },
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,

@@ -2,14 +2,14 @@ use {
     crate::{
         eval::{
             TargetDynamic,
-            util::deserialize_artifact,
+            artifact::deserialize_artifact,
             value::{
                 type_source_data_type::artifact::ArtifactDataDefSetDataType,
                 type_source_interface::BuiltinInterfaceKind,
             },
         },
+        eval::artifact::ArtifactId,
         langhelp::{
-            ArtifactId,
             Code,
             CodeValue,
             Code_,
@@ -75,7 +75,7 @@ impl PendingImportState {
                 let is_iface_impl =
                     matches!(
                         &m_art.deserializer,
-                        crate:: langhelp:: ArtifactId:: Builtin(
+                        crate:: eval:: artifact:: ArtifactId:: Builtin(
                             b
                         ) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
                     );

@@ -15,8 +15,8 @@ use {
                 type_source_function::r#const::TypeSourceFunctionConst,
             },
         },
+        eval::artifact::Artifact,
         langhelp::{
-            Artifact,
             Aspect,
             Code,
             CodeValue,
@@ -70,7 +70,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
     fn to_serial(&self, xx: &ExprContext, loc: QExprId, _self_: Rc<dyn Value>) -> EResult<Artifact> {
         let artifact_id = serialize_definition_set(xx, loc, &self.set);
         EResult::ok(Artifact {
-            type_: artifact_id,
+            deserializer: artifact_id,
             data: serde_json::Value::Null,
         })
     }
