@@ -13,6 +13,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             dynamic_util::wrap_with_carry,
             typecheck_convert,
             util::er_seq_cv_inline,
@@ -31,7 +32,6 @@ use {
             must_downcast_box,
             must_downcast_ref,
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

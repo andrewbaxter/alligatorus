@@ -7,6 +7,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -14,7 +15,6 @@ use {
             value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         invariant::must_downcast_ref,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

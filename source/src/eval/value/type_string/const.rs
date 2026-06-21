@@ -4,14 +4,16 @@ use {
             CodeDynamic,
             CodeDynamicType,
         },
-        eval::value::{
-            tuple::scope_entry::ScopeEntryValue,
-            type_any::r#const::TypeAnyConst,
-            type_string::dynamic::TypeStringDynamic,
-            value_string::r#const::ValueStringConst,
+        eval::{
+            artifact::Artifact,
+            value::{
+                tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::TypeAnyConst,
+                type_string::dynamic::TypeStringDynamic,
+                value_string::r#const::ValueStringConst,
+            },
         },
         invariant::must_downcast_ref,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

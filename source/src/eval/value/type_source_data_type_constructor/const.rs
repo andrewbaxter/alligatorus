@@ -7,6 +7,10 @@ use {
             CodeDynamicType,
         },
         eval::{
+            artifact::{
+                ArtifactId,
+                impl_serialize_independent_artifact as produce_independent_artifact,
+            },
             typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
@@ -16,10 +20,6 @@ use {
                 },
                 type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
-        },
-        eval::artifact::{
-            ArtifactId,
-            impl_produce_independent_artifact as produce_independent_artifact,
         },
         langhelp::{
             Aspect,

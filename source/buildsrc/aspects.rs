@@ -445,24 +445,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             methods: vec![
                 //. .
                 AspectMethod {
-                    name: "to_serial",
-                    doc: doc(""),
-                    params: vec![
-                        ("xx", "&crate::langhelp::ExprContext"),
-                        ("loc", "crate::langhelp::QExprId"),
-                        ("self_", "std::rc::Rc<dyn crate::langhelp::Value>"),
-                    ],
-                    ret: "crate::langhelp::EResult<crate::eval::artifact::Artifact>",
-                },
-                AspectMethod {
-                    name: "from_serial",
-                    doc: doc(""),
-                    params: vec![
-                        ("xx", "&crate::langhelp::ExprContext"),
-                        ("loc", "crate::langhelp::QExprId"),
-                        ("data", "&serde_json::Value"),
-                    ],
-                    ret: "crate::langhelp::EvalRes",
+                    name: "exporter",
+                    doc: doc("Returns the exporter"),
+                    params: vec![],
+                    ret: "Rc<dyn ArtifactExporter>",
                 },
             ],
         },

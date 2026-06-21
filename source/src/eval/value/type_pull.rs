@@ -1,6 +1,7 @@
 use {
     crate::{
         eval::{
+            artifact::Artifact,
             aspect::AspectPull,
             definition_set::serialize_definition_set,
             pull_type_dispatch::{
@@ -18,7 +19,6 @@ use {
                 value_pull::aspect::TypePullAspect,
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             CodeValue,

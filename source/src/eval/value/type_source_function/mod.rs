@@ -8,6 +8,10 @@ use {
         eval::{
             JsSourceBuilder,
             Scope,
+            artifact::{
+                ArtifactId,
+                impl_serialize_independent_artifact as produce_independent_artifact,
+            },
             build_builtin_scope,
             const_eval,
             definition_set::{
@@ -24,10 +28,6 @@ use {
             },
         },
         invariant::must_downcast_ref,
-        eval::artifact::{
-            ArtifactId,
-            impl_produce_independent_artifact as produce_independent_artifact,
-        },
         langhelp::{
             ConstKey,
             Counter,

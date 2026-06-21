@@ -270,7 +270,10 @@ pub fn build(out: &mut TokenStream) {
                             m:
                                 &mut std
                                 ::collections
-                                ::HashMap<crate::eval::artifact::ArtifactIdBuiltin, std::rc::Rc<dyn crate::eval::artifact::ArtifactDeserializer>,>,
+                                ::HashMap<
+                                    crate::eval::artifact::ArtifactIdBuiltin,
+                                    std::rc::Rc<dyn crate::eval::artifact::ArtifactDeserializer>,
+                                >,
                         ) {
                             m.insert(Self::artifact_id(), std::rc::Rc::new(Self));
                         }

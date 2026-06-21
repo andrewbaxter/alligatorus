@@ -8,6 +8,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             definition_set::{
                 load_def_set,
                 serialize_definition_set,
@@ -31,7 +32,6 @@ use {
             },
         },
         invariant::must_downcast_ref,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

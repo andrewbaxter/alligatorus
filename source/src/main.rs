@@ -2,10 +2,9 @@ pub mod code_dynamic;
 pub mod eval;
 pub mod invariant;
 pub mod langhelp;
-#[path = "gen.rs"]
-#[allow(dead_code, unused_imports)]
 pub mod r#gen;
 pub mod syntax;
+pub mod artifact;
 #[cfg(test)]
 mod tests;
 

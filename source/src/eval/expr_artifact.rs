@@ -1,6 +1,10 @@
 use {
     crate::{
         eval::{
+            artifact::{
+                Artifact,
+                deserialize_artifact,
+            },
             expr::{
                 Expr,
                 ExprAs,
@@ -26,10 +30,6 @@ use {
                 ExprTuple,
                 Expr_,
                 make_lit_value,
-            },
-            artifact::{
-                Artifact,
-                deserialize_artifact,
             },
         },
         langhelp::{

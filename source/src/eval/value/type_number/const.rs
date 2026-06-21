@@ -1,14 +1,16 @@
 use {
     crate::{
-        eval::value::{
-            tuple::scope_entry::ScopeEntryValue,
-            type_any::r#const::TypeAnyConst,
-            type_number::dynamic::TypeNumberDynamic,
-            value_bool::r#const::ValueBoolConst,
-            value_number::r#const::ValueNumberConst,
+        eval::{
+            artifact::Artifact,
+            value::{
+                tuple::scope_entry::ScopeEntryValue,
+                type_any::r#const::TypeAnyConst,
+                type_number::dynamic::TypeNumberDynamic,
+                value_bool::r#const::ValueBoolConst,
+                value_number::r#const::ValueNumberConst,
+            },
         },
         invariant::must_downcast_ref,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

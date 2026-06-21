@@ -10,7 +10,7 @@ use {
             TargetBindSub,
             artifact::{
                 Artifact,
-                ArtifactDeserializer,
+                ArtifactExporter,
                 ArtifactIdBuiltin,
             },
             dynamic_util::{
@@ -106,7 +106,7 @@ impl Push for CodeValueExtern {
 }
 pub(crate) struct DeserializerCodeValueExtern;
 
-impl ArtifactDeserializer for DeserializerCodeValueExtern {
+impl ArtifactExporter for DeserializerCodeValueExtern {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -140,7 +140,7 @@ impl Push for ExprContextPush {
     }
 }
 
-pub(crate) fn register_artifact_deserializer(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
+pub(crate) fn register_artifact_deserializer(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
     m.insert(TypeCodeValueExternDynamic::artifact_id(), Rc::new(DeserializerCodeValueExtern));
 }
 pub(crate) struct TypeCodeValueExternDynamic;

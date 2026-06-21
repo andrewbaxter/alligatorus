@@ -1,6 +1,7 @@
 use {
     crate::{
         eval::{
+            artifact::Artifact,
             definition_set::{
                 DefinitionSet,
                 serialize_definition_set,
@@ -15,7 +16,6 @@ use {
                 type_source_function::r#const::TypeSourceFunctionConst,
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

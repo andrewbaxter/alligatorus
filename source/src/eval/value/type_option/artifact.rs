@@ -3,7 +3,7 @@ use {
         eval::{
             artifact::{
                 Artifact,
-                ArtifactDeserializer,
+                ArtifactExporter,
                 ArtifactIdBuiltin,
                 deserialize_type_artifact,
             },
@@ -50,7 +50,7 @@ impl Deserializer {
     }
 }
 
-impl ArtifactDeserializer for Deserializer {
+impl ArtifactExporter for Deserializer {
     fn type_from_serial(
         &self,
         xx: &ExprContext,
@@ -86,7 +86,7 @@ impl ArtifactDeserializer for Deserializer {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
     m.insert(TypeOptionArtifact::artifact_id(), Rc::new(Deserializer));
 }
 pub(crate) struct TypeOptionArtifact;

@@ -1,7 +1,7 @@
 use {
     crate::{
         eval::artifact::{
-            ArtifactDeserializer,
+            ArtifactExporter,
             ArtifactIdBuiltin,
         },
         langhelp::{
@@ -24,7 +24,7 @@ use {
 
 pub(crate) struct DeserializerRef;
 
-impl ArtifactDeserializer for DeserializerRef {
+impl ArtifactExporter for DeserializerRef {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -48,6 +48,6 @@ impl ArtifactDeserializer for DeserializerRef {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
     m.insert(super::dynamic::TypeSourceTaggedUnionRefDynamic::artifact_id(), Rc::new(DeserializerRef));
 }

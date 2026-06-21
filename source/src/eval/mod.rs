@@ -2,7 +2,6 @@
 pub mod push;
 #[macro_use]
 pub mod util;
-pub mod artifact;
 pub mod aspect;
 pub mod code_value_extern;
 pub mod definition_set;
@@ -350,9 +349,8 @@ pub(crate) fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
-        builtin_artifacts: make_builtin_deserializers(),
+        builtin_artifact_exporters: make_builtin_deserializers(),
         deserialized_artifacts: RefCell::new(HashMap::new()),
-        pending_finalizers: RefCell::new(Vec::new()),
         isolate: Rc::new(RefCell::new(v8::Isolate::new(Default::default()))),
         import_state: import_state,
         installed_def_sets: RefCell::new(std::collections::HashSet::new()),
@@ -492,18 +490,10 @@ pub(crate) fn compile_importid(
                     result: CompileResResult::Err(e),
                 },
             };
-            let value = match value_serial.to_serial(&xx, root_loc, eval_value).into_res() {
-                Ok(v) => v,
-                Err(e) => return CompileRes {
-                    logs,
-                    generated_dynamic_scripts: vec![],
-                    result: CompileResResult::Err(e),
-                },
-            };
-            let generated_dynamic_scripts = mem::take(&mut *fx.generated_dynamic_scripts.lock().unwrap());
+            let value = value_serial.exporter().to_serial(eval_value);
             return CompileRes {
                 logs,
-                generated_dynamic_scripts,
+                generated_dynamic_scripts: mem::take(&mut *fx.generated_dynamic_scripts.lock().unwrap()),
                 result: CompileResResult::Ok(value),
             };
         }
@@ -1017,22 +1007,23 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 if let Some(entry) = results.get(&compile_id) {
                     entry.clone()
                 } else {
-                    let entry = Arc::new(CompileResultEntry { result: std::sync::RwLock::new(None), });
+                    let entry = Arc::new(CompileResultEntry { result: Default::default(), });
                     let started = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
-                    let started_clone = started.clone();
-                    let gx = xx.vx.ix.gx.clone();
-                    let import_state = xx.import_state.get();
-                    let entry_clone = entry.clone();
-                    std::thread::spawn(move || {
-                        let mut write_guard = entry_clone.result.write().unwrap();
-                        {
-                            let (lock, cvar) = &*started_clone;
-                            *lock.lock().unwrap() = true;
-                            cvar.notify_one();
+                    std::thread::spawn({
+                        let started_clone = started.clone();
+                        let gx = xx.vx.ix.gx.clone();
+                        let import_state = xx.import_state.get();
+                        let entry = entry.clone();
+                        move || {
+                            let mut result = entry.result.write().unwrap();
+                            {
+                                let (lock, cvar) = &*started_clone;
+                                *lock.lock().unwrap() = true;
+                                cvar.notify_one();
+                            }
+                            let module = source_module_to_module(source_id, &source_module);
+                            *result = Some(compile_importid(&gx, import_state, module, vec![]));
                         }
-                        let module = source_module_to_module(source_id, &source_module);
-                        let result = compile_importid(&gx, import_state, module, vec![]);
-                        *write_guard = Some(Ok(result));
                     });
                     let (lock, cvar) = &*started;
                     let mut started_flag = lock.lock().unwrap();

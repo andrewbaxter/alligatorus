@@ -9,6 +9,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -29,7 +30,6 @@ use {
                 value_string::r#const::ValueStringConst,
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

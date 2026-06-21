@@ -8,6 +8,10 @@ use {
         eval::{
             JsSourceBuilder,
             Scope,
+            artifact::{
+                ArtifactId,
+                impl_serialize_independent_artifact as produce_independent_artifact,
+            },
             build_aspect_arg_record_type,
             build_builtin_scope,
             build_cast_arg_record_type,
@@ -44,10 +48,6 @@ use {
         invariant::{
             DeserialLazy,
             must_downcast_ref,
-        },
-        eval::artifact::{
-            ArtifactId,
-            impl_produce_independent_artifact as produce_independent_artifact,
         },
         langhelp::{
             ConstKey,

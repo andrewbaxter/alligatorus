@@ -7,6 +7,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -25,7 +26,6 @@ use {
                 },
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

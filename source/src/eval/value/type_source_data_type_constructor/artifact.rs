@@ -1,10 +1,8 @@
-use {
-    crate::{
-        eval::artifact::Artifact,
-        langhelp::{
-            DefSetId,
-            Unique,
-        },
+use crate::{
+    eval::artifact::Artifact,
+    langhelp::{
+        DefSetId,
+        Unique,
     },
 };
 

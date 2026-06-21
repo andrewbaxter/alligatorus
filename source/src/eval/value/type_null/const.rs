@@ -1,10 +1,23 @@
 use {
     crate::{
+        artifact::{
+            Artifact,
+            ArtifactBody,
+            ArtifactBodyExporter,
+            ArtifactExporter,
+            ArtifactIdSource,
+            ExporterAny,
+            ValueFromAny,
+        },
         eval::value::{
             type_any::r#const::TypeAnyConst,
+            type_null::artifact::ArtifactNull,
+            type_root::r#const::{
+                TypeRoot,
+                TypeRootExporter,
+            },
             value_null::r#const::ValueNullConst,
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,
@@ -22,6 +35,7 @@ use {
             AspectArtifact,
             AspectNull,
             aspect_artifact_aspect_id,
+            aspect_artifact_get,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
@@ -35,26 +49,33 @@ use {
 
 pub(crate) struct TypeNullConst;
 
+impl ArtifactExporter for TypeNullConst {
+    fn from_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        return EResult {
+            errors: None,
+            v: Some(Rc::new(ValueFromAny(Rc::new(ValueNullConst)))),
+        };
+    }
+
+    fn to_serial(self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(ArtifactBody {
+            data: serde_json::Value::Null,
+            exporter: TypeRoot::NullConst.self_to_serial(),
+        }));
+    }
+}
+
 impl Aspect for TypeNullConst { }
 
 impl AspectArtifact for TypeNullConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        match data {
-            serde_json::Value::Null => {
-                EvalRes::ok(CodeValue {
-                    code: Code {
-                        loc: loc,
-                        code: Code_::None,
-                    },
-                    value: Rc::new(ValueNullConst) as Rc<dyn Value>,
-                })
-            },
-            _ => EvalRes::err(loc, "Expected null data for null type".to_string()),
-        }
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, _value: Rc<dyn Value>) -> EResult<Artifact> {
-        EResult::ok(Self::build_artifact(()))
+    fn exporter(&self) -> Rc<dyn ArtifactExporter> {
+        return Rc::new(self);
     }
 }
 
@@ -107,14 +128,27 @@ impl Type for TypeNullConst {
     fn desc(&self) -> String {
         return format!("null");
     }
+}
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
+impl TypeRootExporter for TypeNullConst {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactNull>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+        );
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::Ok(serde_json::to_value(ArtifactNull {}).unwrap());
     }
 }
 
 impl Value for TypeNullConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        return Rc::new(Self);
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(TypeRoot::NullConst));
     }
 }

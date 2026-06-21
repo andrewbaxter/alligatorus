@@ -1,15 +1,15 @@
 use {
     crate::{
-        eval::artifact::ArtifactDeserializer,
+        artifact::{
+            Artifact,
+            ArtifactExporter,
+            ArtifactIdBuiltin,
+            ArtifactIdSource,
+            Artifacts,
+            ExporterAny,
+        },
         eval::{
             StageLiftCell,
-            artifact::{
-                Artifact,
-                ArtifactId,
-                ArtifactIdBuiltin,
-                ArtifactIdSource,
-                Artifacts,
-            },
             code_value_extern,
             definition_set::DefinitionSet,
             expr::StagedExprCell,
@@ -32,7 +32,6 @@ use {
                 type_type_source_data_type_constructor,
             },
         },
-        invariant::must_downcast_ref,
         r#gen::{
             ScopeEntry,
             Target,
@@ -105,14 +104,11 @@ pub(crate) trait Type: Value {
         None
     }
     fn desc(&self) -> String;
-
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        panic!("type_to_serial not implemented for {}", self.desc())
-    }
 }
 
 pub(crate) trait Value: Any {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type>;
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny>;
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>>;
 }
 
 #[derive(Clone)]
@@ -156,12 +152,12 @@ pub(crate) struct CodeValue {
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_artifacts: HashMap<ArtifactIdBuiltin, Rc<dyn Any>>,
+    pub(crate) builtin_artifact_exporters: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>,
     pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, Rc<dyn Type>)>>,
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) def_set_counter: Counter,
-    pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactIdSource, Rc<dyn Any>>>,
+    pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactIdSource, Rc<dyn ExporterAny>>>,
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) import_state: ImportStateId,
     pub(crate) installed_def_sets: RefCell<HashSet<DefSetId>>,
@@ -185,9 +181,7 @@ pub(crate) enum CompileResResult {
     Ok(Artifact),
 }
 
-pub(crate) struct CompileResultEntry {
-    pub(crate) result: RwLock<Option<Result<CompileRes, ExprSubErr>>>,
-}
+pub(crate) type CompileResultEntry = Arc<RwLock<Option<CompileRes>>>;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
 pub(crate) enum ConstKey {
@@ -221,16 +215,16 @@ impl ConstKey {
     }
 }
 
+impl Serialize for ConstKey {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_str())
+    }
+}
+
 impl<'de> Deserialize<'de> for ConstKey {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         ConstKey::from_str(&s).map_err(serde::de::Error::custom)
-    }
-}
-
-impl Serialize for ConstKey {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.to_str())
     }
 }
 
@@ -260,6 +254,73 @@ pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Rc<T> {
 pub(crate) struct EResult<T> {
     pub(crate) errors: Option<Vec<ExprErr>>,
     pub(crate) v: Option<T>,
+}
+
+impl<T> EResult<T> {
+    pub(crate) fn from<E: std::fmt::Display>(loc: QExprId, value: Result<T, E>) -> Self {
+        match value {
+            Ok(v) => return EResult {
+                errors: None,
+                v: Some(v),
+            },
+            Err(e) => return EResult {
+                errors: Some(vec![ExprErr {
+                    errors: vec![ExprSubErr::Opaque(e.to_string())],
+                    loc: loc,
+                }]),
+                v: None,
+            },
+        }
+    }
+
+    pub(crate) fn push_errors(&mut self, errors: &mut Option<Vec<ExprErr>>) {
+        if let Some(errors1) = self.errors.take() {
+            errors.get_or_insert_default().extend(errors1);
+        }
+    }
+}
+
+impl<T> EResult<T> {
+    pub(crate) fn err(loc: QExprId, e: String) -> Self {
+        return Self {
+            v: None,
+            errors: Some(vec![ExprErr {
+                loc: loc,
+                errors: vec![ExprSubErr::Opaque(e)],
+            }]),
+        };
+    }
+
+    pub(crate) fn into_res(self) -> Result<T, Vec<ExprErr>> {
+        if self.errors.is_some() {
+            return Err(self.errors.unwrap_or_default());
+        } else {
+            return Ok(self.v.unwrap());
+        }
+    }
+
+    pub(crate) fn map<U>(self, f: impl FnOnce(T) -> U) -> EResult<U> {
+        return EResult {
+            v: self.v.map(f),
+            errors: self.errors,
+        };
+    }
+
+    pub(crate) fn ok(v: T) -> Self {
+        return Self {
+            v: Some(v),
+            errors: None,
+        };
+    }
+}
+
+impl<T: Clone> Clone for EResult<T> {
+    fn clone(&self) -> Self {
+        return Self {
+            errors: self.errors.clone(),
+            v: self.v.clone(),
+        };
+    }
 }
 
 pub(crate) struct EvalContext {
@@ -332,8 +393,8 @@ pub(crate) struct LogEntry {
     pub(crate) timestamp_ms: u64,
 }
 
-pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>> {
-    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>> = HashMap::new();
+pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>> {
+    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>> = HashMap::new();
     type_null::artifact::register(&mut m);
     type_string::artifact::register(&mut m);
     type_number::artifact::register(&mut m);
@@ -377,38 +438,4 @@ pub(crate) struct SourceId(pub usize);
 pub(crate) enum Unique {
     Builtin(usize),
     Source(CompileId, usize),
-}
-
-impl<T> EResult<T> {
-    pub(crate) fn err(loc: QExprId, e: String) -> Self {
-        return Self {
-            v: None,
-            errors: Some(vec![ExprErr {
-                loc: loc,
-                errors: vec![ExprSubErr::Opaque(e)],
-            }]),
-        };
-    }
-
-    pub(crate) fn into_res(self) -> Result<T, Vec<ExprErr>> {
-        if self.errors.is_some() {
-            return Err(self.errors.unwrap_or_default());
-        } else {
-            return Ok(self.v.unwrap());
-        }
-    }
-
-    pub(crate) fn map<U>(self, f: impl FnOnce(T) -> U) -> EResult<U> {
-        return EResult {
-            v: self.v.map(f),
-            errors: self.errors,
-        };
-    }
-
-    pub(crate) fn ok(v: T) -> Self {
-        return Self {
-            v: Some(v),
-            errors: None,
-        };
-    }
 }

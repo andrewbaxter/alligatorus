@@ -2,7 +2,7 @@ use {
     crate::{
         eval::{
             artifact::{
-                ArtifactDeserializer,
+                ArtifactExporter,
                 ArtifactIdBuiltin,
             },
             value::value_string::r#const::ValueStringConst,
@@ -29,7 +29,7 @@ pub(crate) type ArtifactDataString = String;
 
 pub(crate) struct DeserializerConst;
 
-impl ArtifactDeserializer for DeserializerConst {
+impl ArtifactExporter for DeserializerConst {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -57,7 +57,7 @@ impl ArtifactDeserializer for DeserializerConst {
 }
 pub(crate) struct DeserializerDynamic;
 
-impl ArtifactDeserializer for DeserializerDynamic {
+impl ArtifactExporter for DeserializerDynamic {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -84,7 +84,7 @@ impl ArtifactDeserializer for DeserializerDynamic {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
     m.insert(super::r#const::TypeStringConst::artifact_id(), Rc::new(DeserializerConst));
     m.insert(super::dynamic::TypeStringDynamic::artifact_id(), Rc::new(DeserializerDynamic));
 }

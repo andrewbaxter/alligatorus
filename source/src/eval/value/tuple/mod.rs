@@ -12,6 +12,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             dynamic_util::wrap_with_carry,
             typecheck_convert,
             util::er_seq_cv_inline,
@@ -26,7 +27,6 @@ use {
             },
         },
         invariant::must_downcast_box,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

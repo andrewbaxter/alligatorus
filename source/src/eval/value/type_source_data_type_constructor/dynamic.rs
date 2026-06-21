@@ -8,17 +8,17 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::{
+                Artifact,
+                ArtifactId,
+                deserialize_type_artifact,
+            },
             definition_set::DefinitionSet,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
             from_v8_ref,
-            artifact::{
-                Artifact,
-                ArtifactId,
-                deserialize_type_artifact,
-            },
             value::{
                 type_any::r#const::{
                     TypeAnyConst,

@@ -9,6 +9,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             definition_set::serialize_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
@@ -45,7 +46,6 @@ use {
                 value_source_data_type::r#const::ValueSourceDataTypeConst,
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

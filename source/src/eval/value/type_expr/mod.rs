@@ -9,7 +9,7 @@ use {
             TargetBindSub,
             artifact::{
                 Artifact,
-                ArtifactDeserializer,
+                ArtifactExporter,
                 ArtifactIdBuiltin,
             },
             dynamic_util::{
@@ -71,7 +71,7 @@ use {
 
 pub(crate) struct DeserializerTypeExpr;
 
-impl ArtifactDeserializer for DeserializerTypeExpr {
+impl ArtifactExporter for DeserializerTypeExpr {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -96,7 +96,7 @@ impl ArtifactDeserializer for DeserializerTypeExpr {
 }
 
 pub(crate) fn register_expr_artifact(
-    m: &mut std::collections::HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>,
+    m: &mut std::collections::HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>,
 ) {
     m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
 }

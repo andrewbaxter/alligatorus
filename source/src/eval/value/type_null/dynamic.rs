@@ -6,6 +6,7 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::Artifact,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -20,7 +21,6 @@ use {
                 value_null::r#const::ValueNullConst,
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

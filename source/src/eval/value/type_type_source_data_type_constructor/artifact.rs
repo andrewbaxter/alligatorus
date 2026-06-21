@@ -2,7 +2,7 @@ use {
     crate::{
         eval::{
             artifact::{
-                ArtifactDeserializer,
+                ArtifactExporter,
                 ArtifactIdBuiltin,
             },
             value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type,
@@ -26,7 +26,7 @@ use {
 
 pub(crate) struct Deserializer;
 
-impl ArtifactDeserializer for Deserializer {
+impl ArtifactExporter for Deserializer {
     fn type_from_serial(
         &self,
         _xx: &ExprContext,
@@ -51,6 +51,6 @@ impl ArtifactDeserializer for Deserializer {
     }
 }
 
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactDeserializer>>) {
+pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
     m.insert(super::dynamic::TypeTypeSourceDataTypeConstructorDynamic::artifact_id(), Rc::new(Deserializer));
 }

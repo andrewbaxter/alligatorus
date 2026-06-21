@@ -1,5 +1,11 @@
 use {
     crate::{
+        artifact::{
+            ExporterAny,
+            TypeFromAny,
+            deserialize_artifact,
+            serialize_artifact,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -23,11 +29,9 @@ use {
                     ValueAnyConst,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_list::artifact::{
-                    ArtifactListType,
-                    TypeListArtifact,
-                },
+                type_list::artifact::ArtifactListType,
                 type_null::dynamic::TypeNullDynamic,
+                type_root::r#const::TypeRootExporter,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_string::dynamic::TypeStringDynamic,
@@ -38,7 +42,6 @@ use {
                 },
             },
         },
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,
@@ -334,17 +337,60 @@ impl Type for TypeListDynamic {
     fn desc(&self) -> String {
         format!("list({})", self.element_type.desc())
     }
+}
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let elem_artifact = serialize_type_ref(xx, loc, self.element_type.as_ref());
-        let payload = ArtifactListType { element_type: elem_artifact };
-        TypeListArtifact::build_artifact(payload)
+impl TypeRootExporter for TypeListDynamic {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactListType>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut element_type = deserialize_artifact(xx, loc, data.element_type);
+        element_type.push_errors(&mut errors);
+        let Some(element_type) = element_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                Rc::new(
+                    TypeListDynamic { element_type: element_type.1.downcast::<TypeFromAny>().unwrap().0.clone() },
+                ),
+            ),
+        };
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeListDynamic>().unwrap();
+        let mut errors = None;
+        let mut el_art = serialize_artifact(xx, loc, &self_.element_type);
+        el_art.push_errors(&mut errors);
+        let Some(el_art) = el_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(serde_json::to_value(ArtifactListType { element_type: el_art }).unwrap()),
+        };
     }
 }
 
 impl Value for TypeListDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        return Rc::new(self.clone());
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(TypeAnyConst));
     }
 }
 
@@ -412,7 +458,11 @@ impl Type for TypeListNewDynamic {
 }
 
 impl Value for TypeListNewDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        return Rc::new(self.clone());
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(TypeAnyConst));
     }
 }

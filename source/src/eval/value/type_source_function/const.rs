@@ -6,6 +6,7 @@ use {
             CodeDynamicType,
         },
         eval::{
+            artifact::Artifact,
             definition_set::serialize_definition_set,
             from_v8_ref,
             push::Push,
@@ -20,7 +21,6 @@ use {
             },
         },
         invariant::must_downcast_ref,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,

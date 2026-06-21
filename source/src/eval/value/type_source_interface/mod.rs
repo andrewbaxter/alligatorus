@@ -69,7 +69,7 @@ impl SourceInterfaceData {
         use crate::{
             eval::artifact::{
                 Artifact,
-                impl_produce_independent_artifact as produce_independent_artifact,
+                impl_serialize_independent_artifact as produce_independent_artifact,
             },
             r#gen::defset_iface_artifact_id,
         };

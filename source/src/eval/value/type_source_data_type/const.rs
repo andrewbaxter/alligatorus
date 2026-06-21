@@ -8,17 +8,17 @@ use {
         },
         eval::{
             TargetBindSub,
+            artifact::{
+                Artifact,
+                ArtifactId,
+                deserialize_artifact,
+            },
             definition_set::serialize_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
             import_install::install_imported_type_iface,
-            artifact::{
-                Artifact,
-                ArtifactId,
-                deserialize_artifact,
-            },
             value::{
                 type_pull::TypePull,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
@@ -111,8 +111,10 @@ fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc
         };
         let is_iface_impl =
             matches!(
-                &m_art.deserializer,
-                crate:: eval:: artifact:: ArtifactId:: Builtin(b) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
+                &m_art.exporter,
+                crate:: eval:: artifact:: ArtifactId:: Builtin(
+                    b
+                ) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
             );
         if !is_iface_impl {
             return false;

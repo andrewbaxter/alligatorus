@@ -1,6 +1,7 @@
 use {
     crate::{
         eval::{
+            artifact::Artifact,
             definition_set::load_def_set,
             value::{
                 type_any::r#const::TypeAnyConst,
@@ -11,7 +12,6 @@ use {
             },
         },
         invariant::must_downcast_ref,
-        eval::artifact::Artifact,
         langhelp::{
             Aspect,
             Code,
