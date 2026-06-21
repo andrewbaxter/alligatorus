@@ -3,15 +3,15 @@ pub mod dynamic;
 pub mod r#const;
 
 use {
+    crate::artifact::{
+        ArtifactId,
+        impl_serialize_independent_artifact as produce_independent_artifact,
+    },
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
             JsSourceBuilder,
             Scope,
-            artifact::{
-                ArtifactId,
-                impl_serialize_independent_artifact as produce_independent_artifact,
-            },
             build_builtin_scope,
             const_eval,
             definition_set::{

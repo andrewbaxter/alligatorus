@@ -1,4 +1,9 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::ArtifactId,
+    crate::artifact::impl_serialize_independent_artifact as produce_independent_artifact,
+    crate::artifact::ArtifactDataDefSetCtorData,
+    crate::artifact::ArtifactDataDefSetCtorMethod,
     crate::{
         code_dynamic::{
             CodeDynamic,
@@ -6,12 +11,7 @@ use {
             CodeDynamicNewObject,
             CodeDynamicType,
         },
-        eval::{
-            artifact::{
-                ArtifactId,
-                impl_serialize_independent_artifact as produce_independent_artifact,
-            },
-            typecheck_convert,
+        eval::{            typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_any::r#const::{
@@ -50,12 +50,7 @@ use {
         rc::Rc,
     },
     super::{
-        TypeSourceDataTypeConstructorConst,
-        artifact::{
-            ArtifactDataDefSetCtorData,
-            ArtifactDataDefSetCtorMethod,
-        },
-        dynamic::serialize_type_ref,
+        TypeSourceDataTypeConstructorConst,        dynamic::serialize_type_ref,
     },
 };
 
@@ -184,8 +179,22 @@ impl Type for TypeSourceDataTypeConstructorConst {
     }
 }
 
+impl ExporterAny for TypeSourceDataTypeConstructorConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeSourceDataTypeConstructorConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

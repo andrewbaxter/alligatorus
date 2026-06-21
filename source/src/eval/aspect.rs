@@ -1,4 +1,5 @@
 use {
+    crate::artifact::ExporterAny,
     crate::{
         eval::{
             from_v8_ref,
@@ -6,6 +7,7 @@ use {
             value::type_aspect::dynamic::TypeAspectDynamic,
         },
         langhelp::{
+            EResult,
             Aspect,
             CodeValue,
             ConstKey,
@@ -63,9 +65,23 @@ impl AspectFunction for AspectPull {
     }
 }
 
+impl ExporterAny for AspectPull {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for AspectPull {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAspectDynamic)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAspectDynamic))
     }
 }
 

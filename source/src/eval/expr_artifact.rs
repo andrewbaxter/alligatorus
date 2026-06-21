@@ -1,10 +1,10 @@
 use {
     crate::{
+        artifact::{
+            Artifact,
+            deserialize_artifact,
+        },
         eval::{
-            artifact::{
-                Artifact,
-                deserialize_artifact,
-            },
             expr::{
                 Expr,
                 ExprAs,

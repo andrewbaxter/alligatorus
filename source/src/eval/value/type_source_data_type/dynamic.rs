@@ -1,4 +1,6 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
     crate::{
         code_dynamic::{
             CodeDynamic,
@@ -8,9 +10,7 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,
-            artifact::Artifact,
-            definition_set::serialize_definition_set,
+            TargetBindSub,            definition_set::serialize_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -621,9 +621,23 @@ impl Type for TypeSourceDataTypeDynamic {
     }
 }
 
+impl ExporterAny for TypeSourceDataTypeDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeSourceDataTypeDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }
 pub(crate) struct TypeSourceDataTypeRefDynamic;
@@ -772,8 +786,22 @@ impl Type for TypeSourceDataTypeRefDynamic {
     }
 }
 
+impl ExporterAny for TypeSourceDataTypeRefDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeSourceDataTypeRefDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

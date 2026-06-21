@@ -1,12 +1,12 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
     crate::{
         code_dynamic::{
             CodeDynamic,
             CodeDynamicType,
         },
-        eval::{
-            artifact::Artifact,
-            value::{
+        eval::{            value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_any::r#const::TypeAnyConst,
                 type_string::dynamic::TypeStringDynamic,
@@ -179,8 +179,22 @@ impl Type for TypeStringConst {
     }
 }
 
+impl ExporterAny for TypeStringConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeStringConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

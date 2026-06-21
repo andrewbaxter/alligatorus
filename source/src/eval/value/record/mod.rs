@@ -2,7 +2,9 @@ pub mod artifact;
 pub mod scope_entry;
 
 use {
+    crate::artifact::ExporterAny,
     crate::{
+        artifact::Artifact,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -13,7 +15,6 @@ use {
         },
         eval::{
             TargetBindSub,
-            artifact::Artifact,
             dynamic_util::wrap_with_carry,
             typecheck_convert,
             util::er_seq_cv_inline,
@@ -33,12 +34,12 @@ use {
             must_downcast_ref,
         },
         langhelp::{
+            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
             ConstKey,
-            EResult,
             EvalRes,
             ExprContext,
             ExprErr,
@@ -607,16 +608,30 @@ impl Type for Record {
     }
 }
 
+impl ExporterAny for Record {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for Record {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
         let fields = self.fields.iter().map(|(k, f)| {
             let t = record_field_type(xx, loc, f);
             (k.clone(), RecordField::Dynamic(t))
         }).collect();
-        Rc::new(Record {
+        EResult::ok(Rc::new(Record {
             base: self.base.as_ref().map(|b| b.clone_base()),
             fields: fields,
-        })
+        }))
     }
 }
 

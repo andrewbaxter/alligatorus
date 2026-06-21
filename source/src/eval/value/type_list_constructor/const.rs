@@ -1,4 +1,5 @@
 use {
+    crate::artifact::ExporterAny,
     crate::{
         eval::value::{
             type_any::r#const::{
@@ -8,6 +9,7 @@ use {
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
+            EResult,
             Aspect,
             Code,
             CodeValue,
@@ -99,8 +101,22 @@ impl Type for TypeListConstructorConst {
     }
 }
 
+impl ExporterAny for TypeListConstructorConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeListConstructorConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

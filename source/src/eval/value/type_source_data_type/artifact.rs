@@ -1,13 +1,10 @@
 use {
+    crate::artifact::Artifact,
+    crate::artifact::ArtifactExporter,
+    crate::artifact::ArtifactId,
+    crate::artifact::ArtifactIdBuiltin,
     crate::{
-        eval::{
-            artifact::{
-                Artifact,
-                ArtifactExporter,
-                ArtifactId,
-                ArtifactIdBuiltin,
-            },
-            expr_artifact::ArtifactExpr,
+        eval::{            expr_artifact::ArtifactExpr,
             value::type_source_interface::BuiltinInterfaceKind,
         },
         langhelp::{

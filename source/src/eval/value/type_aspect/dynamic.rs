@@ -1,4 +1,5 @@
 use {
+    crate::artifact::ExporterAny,
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
@@ -140,8 +141,22 @@ impl Type for TypeAspectDynamic {
     }
 }
 
+impl ExporterAny for TypeAspectDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeAspectDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

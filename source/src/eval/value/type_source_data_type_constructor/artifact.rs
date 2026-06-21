@@ -1,5 +1,5 @@
 use crate::{
-    eval::artifact::Artifact,
+    artifact::Artifact,
     langhelp::{
         DefSetId,
         Unique,

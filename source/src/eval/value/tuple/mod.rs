@@ -2,7 +2,9 @@ pub mod artifact;
 pub mod scope_entry;
 
 use {
+    crate::artifact::ExporterAny,
     crate::{
+        artifact::Artifact,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -12,7 +14,6 @@ use {
         },
         eval::{
             TargetBindSub,
-            artifact::Artifact,
             dynamic_util::wrap_with_carry,
             typecheck_convert,
             util::er_seq_cv_inline,
@@ -28,11 +29,11 @@ use {
         },
         invariant::must_downcast_box,
         langhelp::{
+            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
-            EResult,
             EvalRes,
             ExprContext,
             ExprErr,
@@ -466,12 +467,26 @@ impl Type for Tuple {
     }
 }
 
+impl ExporterAny for Tuple {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for Tuple {
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
         let elements = self.elements.iter().map(|e| {
             TupleElement::Dynamic(tuple_element_type(xx, loc, e))
         }).collect();
-        Rc::new(Tuple { elements: elements })
+        EResult::ok(Rc::new(Tuple { elements: elements }))
     }
 }
 

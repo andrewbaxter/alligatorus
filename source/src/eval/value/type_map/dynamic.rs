@@ -1,4 +1,6 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
     crate::{
         code_dynamic::{
             CodeDynamic,
@@ -10,9 +12,7 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,
-            artifact::Artifact,
-            dynamic_util::{
+            TargetBindSub,            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_set,
@@ -491,9 +491,23 @@ impl Type for TypeMapDynamic {
     }
 }
 
+impl ExporterAny for TypeMapDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeMapDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }
 
@@ -549,9 +563,23 @@ impl Type for TypeMapGetFnDynamic {
     }
 }
 
+impl ExporterAny for TypeMapGetFnDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeMapGetFnDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }
 
@@ -613,9 +641,23 @@ impl Type for TypeMapNewDynamic {
     }
 }
 
+impl ExporterAny for TypeMapNewDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeMapNewDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }
 

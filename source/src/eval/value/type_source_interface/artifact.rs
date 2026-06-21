@@ -1,11 +1,8 @@
 use {
+    crate::artifact::ArtifactExporter,
+    crate::artifact::ArtifactIdBuiltin,
     crate::{
-        eval::{
-            artifact::{
-                ArtifactExporter,
-                ArtifactIdBuiltin,
-            },
-            value::type_source_interface::BuiltinInterfaceKind,
+        eval::{            value::type_source_interface::BuiltinInterfaceKind,
         },
         langhelp::{
             Code,

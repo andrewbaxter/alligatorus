@@ -1,13 +1,12 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
+    crate::artifact::ArtifactDataDefSetDataType,
     crate::{
-        eval::{
-            artifact::Artifact,
-            definition_set::load_def_set,
+        eval::{            definition_set::load_def_set,
             value::{
                 type_any::r#const::TypeAnyConst,
-                type_source_data_type::{
-                    artifact::ArtifactDataDefSetDataType,
-                    r#const::TypeSourceDataTypeConst,
+                type_source_data_type::{                    r#const::TypeSourceDataTypeConst,
                 },
             },
         },
@@ -123,8 +122,22 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     }
 }
 
+impl ExporterAny for TypeTypeSourceDataTypeDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeTypeSourceDataTypeDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

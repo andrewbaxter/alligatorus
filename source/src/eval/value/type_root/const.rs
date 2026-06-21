@@ -1,4 +1,5 @@
 use {
+    crate::artifact::ExporterAny,
     crate::{
         artifact::{
             Artifact,
@@ -141,12 +142,22 @@ impl Type for TypeRoot {
     }
 }
 
+impl ExporterAny for TypeRoot {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeRoot {
-    fn as_exporter_any(&self) -> Rc<dyn Any> {
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(*self);
     }
 
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(TypeRoot::Root);
+    fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(TypeRoot::Root));
     }
 }

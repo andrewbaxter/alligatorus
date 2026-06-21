@@ -1,6 +1,6 @@
 use {
     crate::{
-        eval::artifact::{
+        artifact::{
             ArtifactExporter,
             ArtifactIdBuiltin,
         },

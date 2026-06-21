@@ -1,8 +1,8 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
     crate::{
-        eval::{
-            artifact::Artifact,
-            value::{
+        eval::{            value::{
                 type_any::r#const::TypeAnyConst,
                 type_source_data_type_constructor::{
                     TypeSourceDataTypeConstructorConst,
@@ -104,8 +104,22 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 }
 
+impl ExporterAny for TypeTypeSourceDataTypeConstructorDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeTypeSourceDataTypeConstructorDynamic {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

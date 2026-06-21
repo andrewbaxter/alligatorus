@@ -1,4 +1,8 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
+    crate::artifact::ArtifactExporter,
+    crate::artifact::ArtifactIdBuiltin,
     crate::{
         code_dynamic::{
             CodeDynamic,
@@ -6,13 +10,7 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,
-            artifact::{
-                Artifact,
-                ArtifactExporter,
-                ArtifactIdBuiltin,
-            },
-            dynamic_util::{
+            TargetBindSub,            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -231,9 +229,23 @@ impl Type for TypeExpr {
     }
 }
 
+impl ExporterAny for TypeExpr {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeExpr {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }
 pub(crate) struct TypeExprStagedPlaceholder;
@@ -286,14 +298,42 @@ impl Type for TypeExprStagedPlaceholder {
     }
 }
 
+impl ExporterAny for TypeExprStagedPlaceholder {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeExprStagedPlaceholder {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
+    }
+}
+
+impl ExporterAny for Expr {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
 impl Value for Expr {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeExpr)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeExpr))
     }
 }

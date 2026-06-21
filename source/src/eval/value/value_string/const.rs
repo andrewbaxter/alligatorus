@@ -1,5 +1,7 @@
 use {
+    crate::artifact::ExporterAny,
     crate::langhelp::{
+            EResult,
         ExprContext,
         QExprId,
         Type,
@@ -10,8 +12,22 @@ use {
 
 pub(crate) struct ValueStringConst(pub String);
 
+impl ExporterAny for ValueStringConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for ValueStringConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        return Rc::new(super::super::type_string::r#const::TypeStringConst);
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(super::super::type_string::r#const::TypeStringConst));
     }
 }

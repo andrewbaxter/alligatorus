@@ -1,4 +1,6 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
     crate::{
         code_dynamic::{
             CodeDynamic,
@@ -6,9 +8,7 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,
-            artifact::Artifact,
-            dynamic_util::{
+            TargetBindSub,            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
@@ -327,9 +327,23 @@ impl Type for TypeSourceInterfaceConst {
     }
 }
 
+impl ExporterAny for TypeSourceInterfaceConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeSourceInterfaceConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }
 pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;

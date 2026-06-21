@@ -1,11 +1,8 @@
 use {
+    crate::artifact::ArtifactExporter,
+    crate::artifact::ArtifactIdBuiltin,
     crate::{
-        eval::{
-            artifact::{
-                ArtifactExporter,
-                ArtifactIdBuiltin,
-            },
-            value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type,
+        eval::{            value::type_source_data_type_constructor::dynamic::deserialize_defset_ctor_as_type,
         },
         langhelp::{
             Code,

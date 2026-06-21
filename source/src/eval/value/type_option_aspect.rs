@@ -1,4 +1,5 @@
 use {
+    crate::artifact::ExporterAny,
     crate::{
         eval::value::{
             type_bool::dynamic::TypeBoolDynamic,
@@ -8,6 +9,7 @@ use {
         },
         invariant::must_downcast_ref,
         langhelp::{
+            EResult,
             Aspect,
             Code,
             CodeValue,
@@ -38,9 +40,23 @@ struct OptionIsSome {
     receiver: Rc<dyn Value>,
 }
 
+impl ExporterAny for OptionIsSome {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for OptionIsSome {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeOptionIsSomeFn)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeOptionIsSomeFn))
     }
 }
 pub(crate) struct TypeOption;
@@ -113,9 +129,23 @@ impl Type for TypeOption {
     }
 }
 
+impl ExporterAny for TypeOption {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeOption {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_any::r#const::TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(super::type_any::r#const::TypeAnyConst))
     }
 }
 struct TypeOptionIsSomeFn;
@@ -165,9 +195,23 @@ impl Type for TypeOptionIsSomeFn {
     }
 }
 
+impl ExporterAny for TypeOptionIsSomeFn {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeOptionIsSomeFn {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(super::type_any::r#const::TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(super::type_any::r#const::TypeAnyConst))
     }
 }
 
@@ -175,8 +219,22 @@ pub(crate) struct ValueOption {
     pub is_some: bool,
 }
 
+impl ExporterAny for ValueOption {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for ValueOption {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeOption)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeOption))
     }
 }

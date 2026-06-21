@@ -1,8 +1,8 @@
 use {
+    crate::artifact::ExporterAny,
+    crate::artifact::Artifact,
     crate::{
-        eval::{
-            artifact::Artifact,
-            definition_set::{
+        eval::{            definition_set::{
                 DefinitionSet,
                 serialize_definition_set,
             },
@@ -195,8 +195,22 @@ impl Type for TypeSourceExportsLiftedConst {
     }
 }
 
+impl ExporterAny for TypeSourceExportsLiftedConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Value for TypeSourceExportsLiftedConst {
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> Rc<dyn Type> {
-        Rc::new(TypeAnyConst)
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeAnyConst))
     }
 }

@@ -73,6 +73,7 @@ use {
             must_downcast_ref,
         },
         langhelp::{
+            EResult,
             Aspect,
             Code,
             CodeDyn,
@@ -85,7 +86,6 @@ use {
             CompileResultEntry,
             ConstKey,
             Counter,
-            EResult,
             EvalContext,
             EvalRes,
             ExprContext,

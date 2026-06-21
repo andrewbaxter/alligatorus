@@ -1,16 +1,16 @@
 use {
     crate::{
+        artifact::{
+            Artifact,
+            ArtifactFinalizer,
+            ArtifactId,
+            ArtifactIdBuiltin,
+            deserialize_type_artifact,
+            impl_deserialize_independent_artifact as deserialize_independent_artifact,
+            impl_serialize_independent_artifact as produce_independent_artifact,
+        },
         eval::{
             StageLiftCell,
-            artifact::{
-                Artifact,
-                ArtifactFinalizer,
-                ArtifactId,
-                ArtifactIdBuiltin,
-                deserialize_type_artifact,
-                impl_deserialize_independent_artifact as deserialize_independent_artifact,
-                impl_serialize_independent_artifact as produce_independent_artifact,
-            },
             expr::{
                 Expr,
                 StagedExprCell,
