@@ -568,9 +568,73 @@ pub enum TypeRoot {
     ValueDynamic,
 }
 
+impl TypeRoot {
+    fn exporter_for(&self) -> Option<ExporterRoot> {
+        return match self {
+            TypeRoot::AnyScopeEntryDynamic => Some(ExporterRoot::AnyScopeEntryDynamic),
+            TypeRoot::AnyTargetDynamic => Some(ExporterRoot::AnyTargetDynamic),
+            TypeRoot::AspectDynamic => Some(ExporterRoot::AspectDynamic),
+            TypeRoot::AspectLookupFnType => Some(ExporterRoot::AspectLookupFnType),
+            TypeRoot::BoolConst => Some(ExporterRoot::BoolConst),
+            TypeRoot::BoolDynamic => Some(ExporterRoot::BoolDynamic),
+            TypeRoot::CodeDynCastFn => Some(ExporterRoot::CodeDynCastFn),
+            TypeRoot::CodeDynHandleDynamic => Some(ExporterRoot::CodeDynHandleDynamic),
+            TypeRoot::CodeEnumDynamic => Some(ExporterRoot::CodeEnumDynamic),
+            TypeRoot::CodeStructDynamic => Some(ExporterRoot::CodeStructDynamic),
+            TypeRoot::CodeValueExternDynamic => Some(ExporterRoot::CodeValueExternDynamic),
+            TypeRoot::ConstkeyDynamic => Some(ExporterRoot::ConstkeyDynamic),
+            TypeRoot::Expr => Some(ExporterRoot::Expr),
+            TypeRoot::ExprContextPushDynamic => Some(ExporterRoot::ExprContextPushDynamic),
+            TypeRoot::ExprStagedPlaceholder => Some(ExporterRoot::ExprStagedPlaceholder),
+            TypeRoot::FunctionAspectDynamic => Some(ExporterRoot::FunctionAspectDynamic),
+            TypeRoot::FunctionCastValueDynamic => Some(ExporterRoot::FunctionCastValueDynamic),
+            TypeRoot::FunctionDynamic => Some(ExporterRoot::FunctionDynamic),
+            TypeRoot::ListConstructorConst => Some(ExporterRoot::ListConstructorConst),
+            TypeRoot::ListDynamic => Some(ExporterRoot::ListDynamic),
+            TypeRoot::ListNewDynamic => Some(ExporterRoot::ListNewDynamic),
+            TypeRoot::MapConstructorConst => Some(ExporterRoot::MapConstructorConst),
+            TypeRoot::MapDynamic => Some(ExporterRoot::MapDynamic),
+            TypeRoot::MapGetFnDynamic => Some(ExporterRoot::MapGetFnDynamic),
+            TypeRoot::MapNewDynamic => Some(ExporterRoot::MapNewDynamic),
+            TypeRoot::NullConst => Some(ExporterRoot::NullConst),
+            TypeRoot::NullDynamic => Some(ExporterRoot::NullDynamic),
+            TypeRoot::NumberConst => Some(ExporterRoot::NumberConst),
+            TypeRoot::NumberDynamic => Some(ExporterRoot::NumberDynamic),
+            TypeRoot::OptionConstructorConst => Some(ExporterRoot::OptionConstructorConst),
+            TypeRoot::OptionDynamic => Some(ExporterRoot::OptionDynamic),
+            TypeRoot::OptionVariantConstructorDynamic => Some(ExporterRoot::OptionVariantConstructorDynamic),
+            TypeRoot::Pull => Some(ExporterRoot::Pull),
+            TypeRoot::PullAspect => Some(ExporterRoot::PullAspect),
+            TypeRoot::Root => Some(ExporterRoot::Root),
+            TypeRoot::SourceDataTypeConstructorConst => Some(ExporterRoot::SourceDataTypeConstructorConst),
+            TypeRoot::SourceDataTypeConstructorDynamic => Some(ExporterRoot::SourceDataTypeConstructorDynamic),
+            TypeRoot::SourceDataTypeDynamic => Some(ExporterRoot::SourceDataTypeDynamic),
+            TypeRoot::SourceDataTypeRefDynamic => Some(ExporterRoot::SourceDataTypeRefDynamic),
+            TypeRoot::SourceExportsLiftedConst => Some(ExporterRoot::SourceExportsLiftedConst),
+            TypeRoot::SourceFunctionConst => Some(ExporterRoot::SourceFunctionConst),
+            TypeRoot::SourceFunctionDynamic => Some(ExporterRoot::SourceFunctionDynamic),
+            TypeRoot::SourceInterfaceConst => Some(ExporterRoot::SourceInterfaceConst),
+            TypeRoot::SourceInterfaceDynamic => Some(ExporterRoot::SourceInterfaceDynamic),
+            TypeRoot::SourceTaggedUnionConst => Some(ExporterRoot::SourceTaggedUnionConst),
+            TypeRoot::SourceTaggedUnionConstructorConst => Some(ExporterRoot::SourceTaggedUnionConstructorConst),
+            TypeRoot::SourceTaggedUnionConstructorDynamic => Some(ExporterRoot::SourceTaggedUnionConstructorDynamic),
+            TypeRoot::SourceTaggedUnionDynamic => Some(ExporterRoot::SourceTaggedUnionDynamic),
+            TypeRoot::SourceTaggedUnionRefDynamic => Some(ExporterRoot::SourceTaggedUnionRefDynamic),
+            TypeRoot::StringConst => Some(ExporterRoot::StringConst),
+            TypeRoot::StringDynamic => Some(ExporterRoot::StringDynamic),
+            TypeRoot::TypeRef => Some(ExporterRoot::TypeRef),
+            TypeRoot::TypeSourceDataTypeConstructorDynamic => Some(ExporterRoot::TypeSourceDataTypeConstructorDynamic),
+            TypeRoot::TypeSourceDataTypeDynamic => Some(ExporterRoot::TypeSourceDataTypeDynamic),
+            TypeRoot::TypeSourceFunctionDynamic => Some(ExporterRoot::TypeSourceFunctionDynamic),
+            TypeRoot::Unique => Some(ExporterRoot::Unique),
+            TypeRoot::ValueDynamic => Some(ExporterRoot::ValueDynamic),
+        };
+    }
+}
+
 impl AspectArtifact for TypeRoot {
     fn exporter(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn ArtifactExporter> {
-        return Rc::new(ExporterRoot::Root);
+        return Rc::new(self.exporter_for().unwrap());
     }
 }
 
@@ -590,7 +654,7 @@ impl Type for TypeRoot {
     }
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
-        if key == aspect_artifact_aspect_id() {
+        if key == aspect_artifact_aspect_id() && self.exporter_for().is_some() {
             return Some(Box::new(*self));
         }
         return None;
