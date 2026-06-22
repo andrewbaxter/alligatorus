@@ -38,6 +38,7 @@ use {
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_map::artifact::{
+                    ArtifactMapGetFnType,
                     ArtifactMapNewType,
                     ArtifactMapType,
                     TypeMapArtifact,
@@ -173,10 +174,9 @@ impl AspectField for TypeMapDynamic {
                 return Ok(CodeValue {
                     code: Code {
                         loc,
-                        code: Code_::None
+                        code: Code_::Dyn(Rc::new(self_code)),
                     },
                     value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapGetFnDynamic {
-                        self_code: Rc::new(self_code),
                         key_type: self.key_type.clone(),
                         value_type: self.value_type.clone(),
                     }) }),
@@ -592,15 +592,15 @@ impl Value for TypeMapDynamic {
 #[derive(Clone)]
 pub(crate) struct TypeMapGetFnDynamic {
     key_type: Rc<dyn Type>,
-    self_code: Rc<CodeDynamic>,
     value_type: Rc<dyn Type>,
 }
 
 impl Aspect for TypeMapGetFnDynamic { }
 
 impl AspectFunction for TypeMapGetFnDynamic {
-    fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
+    fn call(&self, xx: &ExprContext, loc: QExprId, function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
+            let self_code = erb.must_er(function.code.cast::<CodeDynamic>())?.unwrap().clone();
             let argument = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), argument))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
             let key_code = erb.must_er(key_to_dynamic.to_dynamic(xx, loc, argument))?;
@@ -608,7 +608,7 @@ impl AspectFunction for TypeMapGetFnDynamic {
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
                 type_: CodeDynamicType::SubscriptUse(CodeDynamicSubscriptUse {
-                    base: Box::new((*self.self_code).clone()),
+                    base: Box::new(self_code),
                     key: Box::new(key_code),
                 }),
             }));
@@ -652,12 +652,69 @@ impl Type for TypeMapGetFnDynamic {
 }
 
 impl TypeRootExporter for TypeMapGetFnDynamic {
-    fn self_from_artifact_data(_xx: &ExprContext, _loc: QExprId, _data: serde_json::Value) -> EResult<Rc<dyn Any>> {
-        unimplemented!()
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactMapGetFnType>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut key_type = deserialize_artifact(xx, loc, data.key_type);
+        key_type.push_errors(&mut errors);
+        let Some(key_type) = key_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut value_type = deserialize_artifact(xx, loc, data.value_type);
+        value_type.push_errors(&mut errors);
+        let Some(value_type) = value_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                Rc::new(TypeMapGetFnDynamic {
+                    key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                    value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                }),
+            ),
+        };
     }
 
-    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        unimplemented!()
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeMapGetFnDynamic>().unwrap();
+        let mut errors = None;
+        let mut key_art = serialize_artifact(xx, loc, &self_.key_type);
+        key_art.push_errors(&mut errors);
+        let Some(key_art) = key_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut value_art = serialize_artifact(xx, loc, &self_.value_type);
+        value_art.push_errors(&mut errors);
+        let Some(value_art) = value_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                serde_json::to_value(ArtifactMapGetFnType {
+                    key_type: key_art,
+                    value_type: value_art,
+                }).unwrap(),
+            ),
+        };
     }
 }
 

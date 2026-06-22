@@ -37,6 +37,12 @@ pub(crate) struct ArtifactMapNewType {
     pub key_type: Artifact,
     pub value_type: Artifact,
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactMapGetFnType {
+    pub key_type: Artifact,
+    pub value_type: Artifact,
+}
 pub(crate) struct Deserializer;
 
 impl Deserializer {
