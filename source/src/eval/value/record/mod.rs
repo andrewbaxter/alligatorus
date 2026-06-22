@@ -23,7 +23,6 @@ use {
             value::{
                 tuple::Tuple,
                 type_any::dynamic::TypeAnyDynamic,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
@@ -600,24 +599,6 @@ impl Type for Record {
         }).collect::<Vec<_>>().join(", "))
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let mut fields_serial: BTreeMap<ConstKey, Artifact> = BTreeMap::new();
-        for (key, field) in &self.fields {
-            let field_type = match field {
-                RecordField::Dynamic(t) => t.clone(),
-                RecordField::EvalRes(er) => match &er.v {
-                    Some(cv) => cv.value.type_(xx, loc),
-                    None => panic!("Record::type_to_serial: field '{:?}' has no value", key),
-                },
-            };
-            let field_artifact = serialize_type_ref(xx, loc, field_type.as_ref());
-            fields_serial.insert(key.clone(), field_artifact);
-        }
-        let payload = artifact::ArtifactRecordType { fields: fields_serial };
-        artifact::TypeRecordArtifact::build_artifact(
-            serde_json::to_value(&payload).expect("Failed to serialize record type"),
-        )
-    }
 }
 
 impl Value for Record {

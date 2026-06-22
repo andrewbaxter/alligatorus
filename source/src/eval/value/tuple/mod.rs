@@ -22,7 +22,6 @@ use {
             value::{
                 type_any::dynamic::TypeAnyDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_empty::{
                     r#const::ValueEmptyConst,
                     scope_entry::ScopeEntryEmpty,
@@ -459,24 +458,6 @@ impl Type for Tuple {
         }).collect::<Vec<_>>().join(", "))
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let mut elements_serial: Vec<Artifact> = Vec::new();
-        for elem in &self.elements {
-            let elem_type = match elem {
-                TupleElement::Dynamic(t) => t.clone(),
-                TupleElement::EvalRes(er) => match &er.v {
-                    Some(cv) => cv.value.type_(xx, loc),
-                    None => panic!("Tuple::type_to_serial: element has no value"),
-                },
-            };
-            let elem_artifact = serialize_type_ref(xx, loc, elem_type.as_ref());
-            elements_serial.push(elem_artifact);
-        }
-        let payload = artifact::ArtifactTupleType { elements: elements_serial };
-        artifact::TypeTupleArtifact::build_artifact(
-            serde_json::to_value(&payload).expect("Failed to serialize tuple type"),
-        )
-    }
 }
 
 impl Value for Tuple {

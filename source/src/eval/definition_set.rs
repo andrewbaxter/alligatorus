@@ -43,7 +43,6 @@ use {
                         ArtifactExternal,
                     },
                 },
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_source_exports::r#const::TypeSourceExportsLiftedConst,
                 type_source_function::{
                     SourceFunctionData,

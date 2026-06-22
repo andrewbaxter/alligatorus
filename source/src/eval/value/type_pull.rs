@@ -123,20 +123,6 @@ impl Type for TypePull {
         pull_desc(&self.data)
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        serialize_definition_set(xx, loc, &self.data.set);
-        let artifact_id =
-            self
-                .data
-                .artifact_id
-                .borrow()
-                .clone()
-                .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
-        Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        }
-    }
 }
 
 impl Value for TypePull {

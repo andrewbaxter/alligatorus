@@ -63,37 +63,6 @@ pub(crate) struct TypeSourceFunctionConst {
 impl Aspect for TypeSourceFunctionConst { }
 
 impl AspectArtifact for TypeSourceFunctionConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: self.data.clone() });
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueAnyConst { inner: func_type }),
-        })
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let wrapper = must_downcast_ref::<ValueAnyConst>(self_.as_ref());
-        let func = must_downcast_ref::<TypeSourceFunctionConst>(wrapper.inner.as_ref());
-        {
-            let set = &func.data.set;
-            xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
-        }
-        serialize_definition_set(xx, loc, &func.data.set);
-        let artifact_id =
-            func
-                .data
-                .artifact_id
-                .borrow()
-                .clone()
-                .expect("Function artifact ID should be set by serialize_definition_set");
-        EResult::ok(Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        })
-    }
 }
 
 impl AspectBind for TypeSourceFunctionConst {

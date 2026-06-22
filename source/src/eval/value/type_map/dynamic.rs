@@ -49,7 +49,6 @@ use {
                     TypeRoot,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
@@ -564,15 +563,6 @@ impl Type for TypeMapDynamic {
         format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let key_artifact = serialize_type_ref(xx, loc, self.key_type.as_ref());
-        let value_artifact = serialize_type_ref(xx, loc, self.value_type.as_ref());
-        let payload = ArtifactMapType {
-            key_type: key_artifact,
-            value_type: value_artifact,
-        };
-        TypeMapArtifact::build_artifact(serde_json::to_value(&payload).expect("Failed to serialize map type"))
-    }
 }
 
 impl Value for TypeMapDynamic {

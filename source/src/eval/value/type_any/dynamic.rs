@@ -302,9 +302,6 @@ impl Type for TypeAnyDynamic {
         "dynamic type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        super::r#const::TypeAnyConst::build_type_artifact()
-    }
 }
 
 impl Value for TypeAnyDynamic {

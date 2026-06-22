@@ -94,27 +94,6 @@ pub(crate) struct TypeStringDynamic;
 impl Aspect for TypeStringDynamic { }
 
 impl AspectArtifact for TypeStringDynamic {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        let Some(s) = data.as_str() else {
-            return EvalRes::err(loc, format!("Expected string data for dynamic string, got {:?}", data));
-        };
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc: loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueStringConst(s.to_string())),
-        })
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
-        let type_ = value.type_(xx, loc);
-        let s =
-            aspect_string_const_get_maybe(xx, type_.as_ref())
-                .expect("TypeStringDynamic::to_serial expects a string value")
-                .get(value.as_ref());
-        EResult::ok(Self::build_artifact(s))
-    }
 }
 
 impl AspectBind for TypeStringDynamic {
@@ -344,9 +323,6 @@ impl Type for TypeStringDynamic {
         return format!("dynamic string");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl ExporterRootDelegate for TypeStringDynamic {

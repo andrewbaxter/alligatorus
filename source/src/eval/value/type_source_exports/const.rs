@@ -59,25 +59,6 @@ pub(crate) struct TypeSourceExportsLiftedConst {
 impl Aspect for TypeSourceExportsLiftedConst { }
 
 impl AspectArtifact for TypeSourceExportsLiftedConst {
-    fn from_serial(&self, xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        xx.vx.definition_sets.borrow_mut().entry(self.set.def_set_id).or_insert_with(|| self.set.clone());
-        let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() });
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc: loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueAnyConst { inner: exports_type }),
-        })
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, _self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let artifact_id = serialize_definition_set(xx, loc, &self.set);
-        EResult::ok(Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        })
-    }
 }
 
 impl AspectBind for TypeSourceExportsLiftedConst {

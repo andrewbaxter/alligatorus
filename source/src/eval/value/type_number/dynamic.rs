@@ -395,9 +395,6 @@ impl Type for TypeNumberDynamic {
         return format!("dynamic number");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl ExporterRootDelegate for TypeNumberDynamic {

@@ -39,7 +39,6 @@ use {
                     ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_string::dynamic::TypeStringDynamic,
                 value_dynamic::{
                     ValueDynamic,

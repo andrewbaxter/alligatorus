@@ -64,23 +64,6 @@ pub(crate) struct TypeNumberConst;
 impl Aspect for TypeNumberConst { }
 
 impl AspectArtifact for TypeNumberConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        match data.as_f64() {
-            Some(n) => EvalRes::ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::None,
-                },
-                value: Rc::new(ValueNumberConst(n)) as Rc<dyn Value>,
-            }),
-            None => EvalRes::err(loc, "Expected number data for number type".to_string()),
-        }
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
-        let n = must_downcast_ref::<ValueNumberConst>(value.as_ref()).0;
-        EResult::ok(Self::build_artifact(n))
-    }
 }
 
 impl AspectBind for TypeNumberConst {

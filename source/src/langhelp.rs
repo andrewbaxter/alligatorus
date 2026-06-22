@@ -3,7 +3,6 @@ use {
         artifact::{
             Artifact,
             ArtifactExporter,
-            ArtifactIdBuiltin,
             ArtifactIdSource,
             Artifacts,
             ExporterAny,

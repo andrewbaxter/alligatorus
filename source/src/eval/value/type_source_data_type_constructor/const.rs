@@ -53,10 +53,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::{
-        TypeSourceDataTypeConstructorConst,
-        dynamic::serialize_type_ref,
-    },
+    super::TypeSourceDataTypeConstructorConst,
 };
 
 impl TypeSourceDataTypeConstructorConst {

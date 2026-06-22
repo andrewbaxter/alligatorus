@@ -24,7 +24,6 @@ use {
             typecheck_convert,
             value::{
                 type_source_data_type::artifact::ArtifactDataDefSetFunction,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
             },
         },
         invariant::must_downcast_ref,

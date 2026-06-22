@@ -39,7 +39,6 @@ use {
                     TypeRoot,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -348,11 +347,6 @@ impl Type for TypeOptionDynamic {
         format!("option({})", self.element_type.desc())
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let elem_artifact = serialize_type_ref(xx, loc, self.element_type.as_ref());
-        let payload = ArtifactOptionType { element_type: elem_artifact };
-        TypeOptionArtifact::build_artifact(serde_json::to_value(&payload).expect("Failed to serialize option type"))
-    }
 }
 
 impl Value for TypeOptionDynamic {

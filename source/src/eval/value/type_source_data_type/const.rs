@@ -23,7 +23,6 @@ use {
             value::{
                 type_pull::TypePull,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_source_interface::{
                     BuiltinInterfaceKind,
                     SourceInterfaceData,
@@ -147,130 +146,6 @@ impl TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
-    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        let dt_data = self.data.clone();
-        let data = data.clone();
-        let has_type_iface = read_artifact_has_type_iface(xx, &dt_data);
-        let bundle_cell: Rc<RefCell<Option<v8::Global<v8::Object>>>> = Rc::new(RefCell::new(None));
-        let underlying_cell: Rc<RefCell<Option<Rc<dyn Value>>>> = Rc::new(RefCell::new(None));
-        let bundle_cell_for_finalizer = bundle_cell.clone();
-        let underlying_cell_for_finalizer = underlying_cell.clone();
-        xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |xx, loc| {
-            let underlying_type = dt_data.underlying_type.get();
-            let build_type_artifact = serialize_type_ref(xx, loc, underlying_type.as_ref());
-            drop(underlying_type);
-            let underlying_artifact = Artifact {
-                deserializer: build_type_artifact.deserializer,
-                data: data.clone(),
-            };
-            let underlying_cv =
-                deserialize_artifact(xx, loc, &underlying_artifact)
-                    .into_res()
-                    .map_err(|e| format!("Failed to deserialize underlying value: {:?}", e))?;
-            let underlying_value_type = underlying_cv.value.type_(xx, loc);
-            let underlying_js =
-                if let Some(aspect_str) = aspect_string_const_get_maybe(xx, underlying_value_type.as_ref()) {
-                    let s = aspect_str.get(underlying_cv.value.as_ref());
-                    CodeDynamic {
-                        loc: loc,
-                        type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
-                    }
-                } else {
-                    CodeDynamic {
-                        loc: loc,
-                        type_: CodeDynamicType::Literal(data.clone()),
-                    }
-                };
-            let has_type_iface = dt_data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
-            });
-            {
-                let set = &dt_data.set;
-                xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
-            }
-            if has_type_iface {
-                let instance_global = install_imported_type_iface(xx, loc, &dt_data, underlying_js)?;
-                *bundle_cell_for_finalizer.borrow_mut() = Some(instance_global);
-                *underlying_cell_for_finalizer.borrow_mut() = Some(underlying_cv.value);
-                return Ok(vec![]);
-            }
-            let mut object_fields = vec![(ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_js)];
-            for method in dt_data.methods.borrow().iter() {
-                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
-                object_fields.push((ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
-                    loc: loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
-                }));
-            }
-            let code = CodeDynamic {
-                loc: loc,
-                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
-            };
-            Ok(vec![Code {
-                loc: loc,
-                code: Code_::Dyn(Rc::new(code)),
-            }])
-        }));
-        let value: Rc<dyn Value> = if has_type_iface {
-            Rc::new(ValueSourceDataTypeConst {
-                data: self.data.clone(),
-                underlying: Rc::new(ValueNullConst),
-                isolate_bundle: std::cell::RefCell::new(None),
-            })
-        } else {
-            Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
-            })
-        };
-        if has_type_iface {
-            let value_clone = value.clone();
-            xx.vx.ix.pending_finalizers.borrow_mut().push(Box::new(move |_xx, _loc| {
-                let bundle = bundle_cell.borrow_mut().take();
-                let underlying = underlying_cell.borrow_mut().take();
-                let v = must_downcast_ref::<ValueSourceDataTypeConst>(value_clone.as_ref());
-                if let Some(b) = bundle {
-                    *v.isolate_bundle.borrow_mut() = Some(b);
-                }
-                if let Some(u) = underlying {
-                    let _ = u;
-                }
-                Ok(vec![])
-            }));
-        }
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc: loc,
-                code: Code_::None,
-            },
-            value,
-        })
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let lifted = must_downcast_ref::<ValueSourceDataTypeConst>(self_.as_ref());
-        let underlying_type = self.data.underlying_type.get();
-        let underlying_aspect = match aspect_artifact_get_maybe(xx, underlying_type.as_ref()) {
-            Some(a) => a,
-            None => {
-                return EResult::err(
-                    loc,
-                    format!("Underlying type ({}) missing AspectArtifact", underlying_type.desc()),
-                );
-            },
-        };
-        let underlying_artifact = match underlying_aspect.to_serial(xx, loc, lifted.underlying.clone()).into_res() {
-            Ok(a) => a,
-            Err(e) => {
-                return EResult::err(loc, format!("Failed to serialize underlying value: {:?}", e));
-            },
-        };
-        let data_type_artifact_id = self.serialize_data_type(xx, loc);
-        EResult::ok(Artifact {
-            deserializer: data_type_artifact_id,
-            data: underlying_artifact.data,
-        })
-    }
 }
 
 impl AspectBind for TypeSourceDataTypeConst {
@@ -539,20 +414,6 @@ impl Type for TypeSourceDataTypeConst {
         }
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        serialize_definition_set(xx, loc, &self.data.set);
-        let artifact_id =
-            self
-                .data
-                .artifact_id
-                .borrow()
-                .clone()
-                .expect("type_to_serial: data type artifact_id not set after serialize_definition_set");
-        Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        }
-    }
 }
 
 impl Value for TypeSourceDataTypeConst {

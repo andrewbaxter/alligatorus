@@ -70,22 +70,6 @@ pub(crate) struct TypeAnyConst;
 impl Aspect for TypeAnyConst { }
 
 impl AspectArtifact for TypeAnyConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::err(loc, "TypeAnyConst::from_serial: routed via inner type's deserializer".to_string())
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
-        let wrapper = must_downcast_ref::<ValueAnyConst>(value.as_ref());
-        let inner_type = wrapper.inner.clone();
-        let inner_aspect = match aspect_artifact_get(xx, loc, inner_type.as_ref()).into_res() {
-            Ok(a) => a,
-            Err(e) => return EResult {
-                v: None,
-                errors: Some(e),
-            },
-        };
-        inner_aspect.to_serial(xx, loc, value)
-    }
 }
 
 impl AspectBind for TypeAnyConst {
@@ -263,9 +247,6 @@ impl Type for TypeAnyConst {
         "type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl Value for TypeAnyConst {

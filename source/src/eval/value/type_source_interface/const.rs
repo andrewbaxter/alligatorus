@@ -83,19 +83,6 @@ pub(crate) struct TypeSourceInterfaceConst {
 impl Aspect for TypeSourceInterfaceConst { }
 
 impl AspectArtifact for TypeSourceInterfaceConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::err(loc, "TypeSourceInterfaceConst::from_serial: handled via Deserializer registry".to_string())
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, loc: QExprId, _value: Rc<dyn Value>) -> EResult<Artifact> {
-        match self.data.builtin_kind {
-            Some(kind) => EResult::ok(super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind)),
-            None => EResult::err(
-                loc,
-                format!("TypeSourceInterfaceConst::to_serial: non-builtin interfaces not yet artifact-serializable"),
-            ),
-        }
-    }
 }
 
 impl AspectAspect for TypeSourceInterfaceConst {
@@ -335,10 +322,6 @@ impl Type for TypeSourceInterfaceConst {
         }
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        let kind = self.data.builtin_kind.expect("type_to_serial: user-defined iface artifact not implemented");
-        super::artifact::TypeSourceInterfaceConstArtifact::build_artifact(kind)
-    }
 }
 
 impl Value for TypeSourceInterfaceConst {

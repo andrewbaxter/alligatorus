@@ -14,7 +14,6 @@ use {
                     ArtifactDataDefSetInterface,
                     ArtifactDataDefSetInterfaceMethod,
                 },
-                type_source_data_type_constructor::dynamic::serialize_type_ref,
             },
         },
         langhelp::{

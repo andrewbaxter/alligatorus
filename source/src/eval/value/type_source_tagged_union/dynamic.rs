@@ -283,9 +283,6 @@ impl Type for TypeSourceTaggedUnionDynamic {
         format!("tagged_union_dyn")
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        TypeSourceTaggedUnionRefDynamic::build_type_artifact()
-    }
 }
 
 impl Value for TypeSourceTaggedUnionDynamic {
@@ -472,9 +469,6 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
         "tagged_union_ref".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl Value for TypeSourceTaggedUnionRefDynamic {

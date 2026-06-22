@@ -238,46 +238,6 @@ pub(crate) struct TypeTypeSourceFunctionDynamic;
 impl Aspect for TypeTypeSourceFunctionDynamic { }
 
 impl AspectArtifact for TypeTypeSourceFunctionDynamic {
-    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        er_seq_cv!(loc, erb, {
-            let serial: ArtifactDataDefSetFunction =
-                erb.must_res(
-                    serde_json::from_value(data.clone()).map_err(|e| format!("Failed to parse defset function: {}", e)),
-                )?;
-            let def_set = erb.must_res(load_def_set(xx, &serial.def_set))?;
-            xx.vx.definition_sets.borrow_mut().entry(def_set.def_set_id).or_insert_with(|| def_set.clone());
-            let functions = def_set.functions.borrow();
-            let func_data = functions.iter().find(|f| match f.scope_entry_id.get() {
-                Some(ScopeEntryId::Def(_, id)) => id == serial.entry_id,
-                _ => false,
-            }).expect("Function not found in definition set").clone();
-            drop(functions);
-            let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_data });
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::None
-                },
-                value: Rc::new(ValueAnyConst { inner: func_type, }),
-            });
-        })
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let func = must_downcast_ref::<TypeSourceFunctionConst>(self_.as_ref());
-        serialize_definition_set(xx, loc, &func.data.set);
-        let artifact_id =
-            func
-                .data
-                .artifact_id
-                .borrow()
-                .clone()
-                .expect("Function artifact ID should be set by serialize_definition_set");
-        EResult::ok(Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        })
-    }
 }
 
 impl ExporterAny for TypeTypeSourceFunctionDynamic {

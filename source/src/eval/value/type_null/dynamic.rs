@@ -79,19 +79,6 @@ pub(crate) struct TypeNullDynamic;
 impl Aspect for TypeNullDynamic { }
 
 impl AspectArtifact for TypeNullDynamic {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc: loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueNullConst),
-        })
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, _value: Rc<dyn Value>) -> EResult<Artifact> {
-        EResult::ok(Self::build_artifact(()))
-    }
 }
 
 impl AspectBind for TypeNullDynamic {
@@ -243,9 +230,6 @@ impl Type for TypeNullDynamic {
         return format!("dynamic null");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl ExporterRootDelegate for TypeNullDynamic {

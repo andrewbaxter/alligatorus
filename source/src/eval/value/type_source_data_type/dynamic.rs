@@ -624,15 +624,6 @@ impl Type for TypeSourceDataTypeDynamic {
         }
     }
 
-    fn type_to_serial(&self, xx: &ExprContext, loc: QExprId) -> Artifact {
-        let data = &self.data;
-        serialize_definition_set(xx, loc, &data.set);
-        let artifact_id = data.artifact_id.borrow().clone().expect("type_to_serial: data type artifact_id not set");
-        Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        }
-    }
 }
 
 impl Value for TypeSourceDataTypeDynamic {
@@ -795,9 +786,6 @@ impl Type for TypeSourceDataTypeRefDynamic {
         "definition_set_data_type_ref".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl Value for TypeSourceDataTypeRefDynamic {

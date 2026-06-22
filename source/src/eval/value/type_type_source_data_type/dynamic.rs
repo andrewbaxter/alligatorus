@@ -46,41 +46,6 @@ pub(crate) struct TypeTypeSourceDataTypeDynamic;
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
 
 impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
-    fn from_serial(&self, xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        er_seq_cv!(loc, erb, {
-            let serial: ArtifactDataDefSetDataType =
-                erb.must_res(
-                    serde_json::from_value(
-                        data.clone(),
-                    ).map_err(|e| format!("Failed to parse defset data type: {}", e)),
-                )?;
-            let def_set = erb.must_res(load_def_set(xx, &serial.def_set))?;
-            let data_types = def_set.data_types.borrow();
-            let dt_data =
-                data_types
-                    .iter()
-                    .find(|dt| dt.identity == serial.identity)
-                    .expect("Data type not found in definition set")
-                    .clone();
-            drop(data_types);
-            return Ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::None
-                },
-                value: Rc::new(TypeSourceDataTypeConst { data: dt_data }),
-            });
-        })
-    }
-
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Value>) -> EResult<Artifact> {
-        let dt = must_downcast_ref::<TypeSourceDataTypeConst>(self_.as_ref());
-        let artifact_id = dt.serialize_data_type(xx, loc);
-        EResult::ok(Artifact {
-            deserializer: artifact_id,
-            data: serde_json::Value::Null,
-        })
-    }
 }
 
 impl AspectType for TypeTypeSourceDataTypeDynamic {
@@ -130,9 +95,6 @@ impl Type for TypeTypeSourceDataTypeDynamic {
         "definition_set_data_type_type".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl Value for TypeTypeSourceDataTypeDynamic {

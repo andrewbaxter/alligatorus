@@ -144,9 +144,6 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     Ok((Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }), codes))
 }
 
-pub(crate) fn serialize_type_ref(xx: &ExprContext, loc: QExprId, type_: &dyn Type) -> Artifact {
-    type_.type_to_serial(xx, loc)
-}
 pub(crate) struct TypeSourceDataTypeConstructorDynamic;
 
 impl Aspect for TypeSourceDataTypeConstructorDynamic { }

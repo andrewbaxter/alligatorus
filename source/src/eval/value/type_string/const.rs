@@ -63,25 +63,6 @@ pub(crate) struct TypeStringConst;
 impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
-    fn from_serial(&self, _xx: &ExprContext, loc: QExprId, data: &serde_json::Value) -> EvalRes {
-        match data {
-            serde_json::Value::String(s) => {
-                EvalRes::ok(CodeValue {
-                    code: Code {
-                        loc: loc,
-                        code: Code_::None,
-                    },
-                    value: Rc::new(ValueStringConst(s.clone())) as Rc<dyn Value>,
-                })
-            },
-            _ => EvalRes::err(loc, "Expected string data for string type".to_string()),
-        }
-    }
-
-    fn to_serial(&self, _xx: &ExprContext, _loc: QExprId, value: Rc<dyn Value>) -> EResult<Artifact> {
-        let s = must_downcast_ref::<ValueStringConst>(value.as_ref()).0.clone();
-        EResult::ok(Self::build_artifact(s))
-    }
 }
 
 impl AspectBind for TypeStringConst {
@@ -192,9 +173,6 @@ impl Type for TypeStringConst {
         return format!("string");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl ExporterRootDelegate for TypeStringConst {

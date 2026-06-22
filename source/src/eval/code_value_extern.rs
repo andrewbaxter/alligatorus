@@ -2,8 +2,6 @@ use {
     crate::{
         artifact::{
             Artifact,
-            ArtifactExporter,
-            ArtifactIdBuiltin,
             ExporterAny,
         },
         code_dynamic::{
@@ -109,25 +107,6 @@ impl Push for CodeValueExtern {
         to_v8(scope, self.0).into()
     }
 }
-pub(crate) struct DeserializerCodeValueExtern;
-
-impl ArtifactExporter for DeserializerCodeValueExtern {
-    fn type_from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((Rc::new(TypeCodeValueExternDynamic), Code {
-            loc,
-            code: Code_::None,
-        }))
-    }
-
-    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::err(loc, "CodeValueExtern values are not artifact-serializable".to_string())
-    }
-}
 
 pub(crate) struct ExprContextPush(pub Rc<ExprContext>);
 
@@ -145,9 +124,6 @@ impl Push for ExprContextPush {
     }
 }
 
-pub(crate) fn register_artifact_deserializer(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
-    m.insert(TypeCodeValueExternDynamic::artifact_id(), Rc::new(DeserializerCodeValueExtern));
-}
 pub(crate) struct TypeCodeValueExternDynamic;
 
 impl Aspect for TypeCodeValueExternDynamic { }
@@ -356,9 +332,6 @@ impl Type for TypeCodeValueExternDynamic {
         "CodeValueExtern".to_string()
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl Value for TypeCodeValueExternDynamic {

@@ -214,9 +214,6 @@ impl Type for TypeExpr {
         return format!("expr");
     }
 
-    fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
-        Self::build_type_artifact()
-    }
 }
 
 impl ExporterRootDelegate for TypeExpr {
