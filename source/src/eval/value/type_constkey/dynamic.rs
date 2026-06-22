@@ -15,10 +15,7 @@ use {
             },
             value::{
                 type_any::r#const::TypeAnyConst,
-                type_root::r#const::{
-                    TypeRoot,
-                    ExporterRootDelegate,
-                },
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -175,19 +172,6 @@ impl Type for TypeConstkeyDynamic {
 
     fn desc(&self) -> String {
         "constkey".to_string()
-    }
-}
-
-impl ExporterRootDelegate for TypeConstkeyDynamic {
-    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactConstkeyDynamic>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
-        );
-    }
-
-    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        return EResult::ok(serde_json::to_value(ArtifactConstkeyDynamic).unwrap());
     }
 }
 
