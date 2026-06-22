@@ -1,32 +1,15 @@
-use {
-    crate::{
-        artifact::{
-            Artifact,
-            ArtifactExporter,
-            ArtifactId,
-            ArtifactIdBuiltin,
-        },
-        eval::{
-            expr_artifact::ArtifactExpr,
-            value::type_source_interface::BuiltinInterfaceKind,
-        },
-        langhelp::{
-            Code,
-            CodeValue,
-            Code_,
-            DefSetId,
-            EResult,
-            EvalRes,
-            ExprContext,
-            QExprId,
-            Type,
-            Unique,
-            Value,
-        },
+use crate::{
+    artifact::{
+        Artifact,
+        ArtifactId,
     },
-    std::{
-        collections::HashMap,
-        rc::Rc,
+    eval::{
+        expr_artifact::ArtifactExpr,
+        value::type_source_interface::BuiltinInterfaceKind,
+    },
+    langhelp::{
+        DefSetId,
+        Unique,
     },
 };
 
@@ -127,33 +110,4 @@ pub(crate) enum ArtifactExternal {
         local_id: usize,
         unique: Unique,
     },
-}
-pub(crate) struct DeserializerRef;
-
-impl ArtifactExporter for DeserializerRef {
-    fn type_from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((Rc::new(super::dynamic::TypeSourceDataTypeRefDynamic), Code {
-            loc,
-            code: Code_::None,
-        }))
-    }
-
-    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(super::dynamic::TypeSourceDataTypeRefDynamic) as Rc<dyn Value>,
-        })
-    }
-}
-
-pub(crate) fn register(m: &mut HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>) {
-    m.insert(super::dynamic::TypeSourceDataTypeRefDynamic::artifact_id(), Rc::new(DeserializerRef));
 }
