@@ -1,8 +1,8 @@
 pub mod scope_entry;
 
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         eval::value::type_any,
         langhelp::{
             Aspect,
@@ -30,7 +30,6 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::value_pending_import::PendingImportState,
 };
 
 struct PendingImportBind {
@@ -63,6 +62,16 @@ impl TypePendingImport {
             code: cv.code,
             value: self.resolved.clone(),
         }
+    }
+}
+
+impl ExporterAny for TypePendingImport {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -106,16 +115,6 @@ impl Type for TypePendingImport {
 
     fn desc(&self) -> String {
         "pending import".to_string()
-    }
-}
-
-impl ExporterAny for TypePendingImport {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

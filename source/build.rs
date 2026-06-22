@@ -78,7 +78,6 @@ fn main() {
     interface_specs.extend(buildsrc::traits::specs());
     buildsrc::interfaces::build(&mut out, &mut builtin_unique_ids, &mut scope_ids, interface_specs);
     buildsrc::identities::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
-    buildsrc::artifacts::build(&mut out);
     buildsrc::push_structs::build(&mut out, &mut builtin_unique_ids, buildsrc::traits::specs());
     buildsrc::push_fns::build(&mut out, &mut scope_ids);
     fs::write(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("gen.rs"), out.to_string()).unwrap();

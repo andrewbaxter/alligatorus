@@ -1,13 +1,12 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
         artifact::{
             Artifact,
             ArtifactBody,
             ArtifactBodyExporter,
             ArtifactExporter,
-            ArtifactIdBuiltin,
             ArtifactIdSource,
+            ExporterAny,
         },
         eval::value::{
             type_list::dynamic::TypeListDynamic,
@@ -53,7 +52,7 @@ pub enum TypeRoot {
 impl TypeRoot {
     fn self_to_serial_exporter(self) -> ArtifactBodyExporter {
         match self {
-            TypeRoot::Root => ArtifactBodyExporter::BuiltinRef(builtin_artifact_exporter_root_id()),
+            TypeRoot::Root => ArtifactBodyExporter::Root,
             _ => ArtifactBodyExporter::Body(Box::new(ArtifactBody {
                 data: serde_json::to_value(self).unwrap(),
                 exporter: TypeRoot::Root.self_to_serial_exporter(),
@@ -121,6 +120,16 @@ impl AspectArtifact for TypeRoot {
     }
 }
 
+impl ExporterAny for TypeRoot {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeRoot {
     fn as_value(&self) -> Rc<dyn Value> {
         return Rc::new(*self);
@@ -139,16 +148,6 @@ impl Type for TypeRoot {
             TypeRoot::ListDynamic => "List type (dynamic)",
             TypeRoot::NullConst => "Null type (const)",
         });
-    }
-}
-
-impl ExporterAny for TypeRoot {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

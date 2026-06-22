@@ -46,7 +46,6 @@ use {
 
 pub(crate) struct ValuePendingImport {
     pub entry: CompileResultEntry,
-    pub gx: Arc<GlobalContext>,
     pub resolved: RefCell<Option<EResult<Rc<dyn Value>>>>,
 }
 

@@ -1,5 +1,6 @@
 use {
     crate::{
+        eval::value::type_root::r#const::TypeRoot,
         langhelp::{
             CompileId,
             EResult,
@@ -10,7 +11,10 @@ use {
             Type,
             Value,
         },
-        r#gen::aspect_artifact_get,
+        r#gen::{
+            AspectArtifact,
+            aspect_artifact_get,
+        },
     },
     flowcontrol::shed,
     serde::{
@@ -65,7 +69,7 @@ pub(crate) struct ArtifactBody {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum ArtifactBodyExporter {
     Body(Box<ArtifactBody>),
-    BuiltinRef(ArtifactIdBuiltin),
+    Root,
     SourceRef(ArtifactIdSource),
 }
 
@@ -74,10 +78,6 @@ struct ArtifactDeserializerFromAny {
 }
 
 pub(crate) type ArtifactFinalizer = Box<dyn FnOnce(&ExprContext, QExprId) -> ()>;
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
-#[serde(transparent)]
-pub(crate) struct ArtifactIdBuiltin(pub usize);
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -154,11 +154,8 @@ pub(crate) fn deserialize_artifact(
                         };
                         break 'any any;
                     },
-                    ArtifactBodyExporter::BuiltinRef(id) => {
-                        let Some(out) = xx.vx.ix.builtin_artifact_exporters.get(&id) else {
-                            return EResult::err(loc, format!("Unknown builtin artifact ID: {:?}", id));
-                        };
-                        break 'exporter out;
+                    ArtifactBodyExporter::Root => {
+                        break 'exporter TypeRoot::Root.exporter();
                     },
                 }
             };

@@ -152,7 +152,6 @@ pub(crate) struct CodeValue {
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_artifact_exporters: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>,
     pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, Rc<dyn Type>)>>,
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
@@ -366,7 +365,7 @@ pub(crate) enum External {
 
 pub(crate) struct GlobalContext {
     pub(crate) artifacts: Box<dyn Artifacts>,
-    pub(crate) compile_results: Mutex<HashMap<CompileId, Arc<CompileResultEntry>>>,
+    pub(crate) compile_results: Mutex<HashMap<CompileId, CompileResultEntry>>,
     pub(crate) generated_dynamic_scripts: Mutex<Vec<String>>,
     pub(crate) sources: Box<dyn Sources>,
 }
@@ -391,28 +390,6 @@ pub(crate) struct ImportStateId(pub usize);
 pub(crate) struct LogEntry {
     pub(crate) message: String,
     pub(crate) timestamp_ms: u64,
-}
-
-pub(crate) fn make_builtin_deserializers() -> HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>> {
-    let mut m: HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>> = HashMap::new();
-    type_null::artifact::register(&mut m);
-    type_string::artifact::register(&mut m);
-    type_number::artifact::register(&mut m);
-    type_type_source_data_type::artifact::register(&mut m);
-    type_type_source_data_type_constructor::artifact::register(&mut m);
-    type_source_function::artifact::register(&mut m);
-    record::artifact::register(&mut m);
-    tuple::artifact::register(&mut m);
-    type_list::artifact::register(&mut m);
-    type_map::artifact::register(&mut m);
-    type_option::artifact::register(&mut m);
-    type_source_data_type::artifact::register(&mut m);
-    type_source_tagged_union::artifact::register(&mut m);
-    type_any::artifact::register(&mut m);
-    type_source_interface::artifact::register(&mut m);
-    type_expr::register_expr_artifact(&mut m);
-    code_value_extern::register_artifact_deserializer(&mut m);
-    m
 }
 
 pub(crate) type QExprId = (SourceId, ExprId);

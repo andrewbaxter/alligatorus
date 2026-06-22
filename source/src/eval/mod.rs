@@ -73,7 +73,6 @@ use {
             must_downcast_ref,
         },
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeDyn,
@@ -86,6 +85,7 @@ use {
             CompileResultEntry,
             ConstKey,
             Counter,
+            EResult,
             EvalContext,
             EvalRes,
             ExprContext,
@@ -103,7 +103,6 @@ use {
             Unique,
             Value,
             downcast_value,
-            make_builtin_deserializers,
         },
         r#gen::{
             ASPECT_COMPILE_SCOPE_ID,
@@ -349,7 +348,6 @@ pub(crate) fn compile_importid(
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
-        builtin_artifact_exporters: make_builtin_deserializers(),
         deserialized_artifacts: RefCell::new(HashMap::new()),
         isolate: Rc::new(RefCell::new(v8::Isolate::new(Default::default()))),
         import_state: import_state,
@@ -1007,7 +1005,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 if let Some(entry) = results.get(&compile_id) {
                     entry.clone()
                 } else {
-                    let entry = Arc::new(CompileResultEntry { result: Default::default(), });
+                    let entry = CompileResultEntry::default();
                     let started = Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
                     std::thread::spawn({
                         let started_clone = started.clone();
@@ -1034,22 +1032,16 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     entry
                 }
             };
-            let state = Rc::new(value::value_pending_import::PendingImportState {
-                entry,
-                gx: xx.vx.ix.gx.clone(),
+            let value = Rc::new(value::value_pending_import::ValuePendingImport {
+                entry: entry,
+                resolved: RefCell::new(None),
             });
-            if state.imported_needs_v8_bundle() {
-                return Ok(state.resolve(xx));
-            }
             return Ok(CodeValue {
                 code: Code {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: Rc::new(value::value_pending_import::ValuePendingImport {
-                    state,
-                    resolved: RefCell::new(None),
-                }),
+                value: value,
             });
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
