@@ -2,8 +2,6 @@ use {
     crate::{
         artifact::{
             Artifact,
-            ArtifactExporter,
-            ArtifactIdBuiltin,
             ExporterAny,
         },
         code_dynamic::{
@@ -27,7 +25,10 @@ use {
             from_v8_ref,
             value::{
                 type_any::r#const::TypeAnyConst,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    TypeRoot,
+                    TypeRootExporter,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_empty::r#const::ValueEmptyConst,
             },
@@ -71,38 +72,13 @@ use {
     },
 };
 
-pub(crate) struct DeserializerTypeExpr;
-
-impl ArtifactExporter for DeserializerTypeExpr {
-    fn type_from_serial(
-        &self,
-        _xx: &ExprContext,
-        loc: QExprId,
-        _data: &serde_json::Value,
-    ) -> EResult<(Rc<dyn Type>, Code)> {
-        EResult::ok((Rc::new(TypeExpr), Code {
-            loc,
-            code: Code_::None,
-        }))
-    }
-
-    fn value_from_serial(&self, _xx: &ExprContext, loc: QExprId, _data: &serde_json::Value) -> EvalRes {
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(TypeExpr) as Rc<dyn Value>,
-        })
-    }
-}
-
-pub(crate) fn register_expr_artifact(
-    m: &mut std::collections::HashMap<ArtifactIdBuiltin, Rc<dyn ArtifactExporter>>,
-) {
-    m.insert(TypeExpr::artifact_id(), Rc::new(DeserializerTypeExpr));
-}
 pub(crate) struct TypeExpr;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactExpr;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactExprStagedPlaceholder;
 
 impl Aspect for TypeExpr { }
 
@@ -243,6 +219,19 @@ impl Type for TypeExpr {
     }
 }
 
+impl TypeRootExporter for TypeExpr {
+    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactExpr>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+        );
+    }
+
+    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::ok(serde_json::to_value(ArtifactExpr).unwrap());
+    }
+}
+
 impl Value for TypeExpr {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
@@ -309,6 +298,19 @@ impl Type for TypeExprStagedPlaceholder {
 
     fn desc(&self) -> String {
         "stage result".to_string()
+    }
+}
+
+impl TypeRootExporter for TypeExprStagedPlaceholder {
+    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactExprStagedPlaceholder>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+        );
+    }
+
+    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::ok(serde_json::to_value(ArtifactExprStagedPlaceholder).unwrap());
     }
 }
 

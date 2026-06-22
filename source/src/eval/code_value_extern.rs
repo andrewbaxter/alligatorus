@@ -26,7 +26,10 @@ use {
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_code_source::TypeCodeStructDynamic,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    TypeRoot,
+                    TypeRootExporter,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,
                 value_dynamic::{
@@ -369,6 +372,9 @@ impl Value for TypeCodeValueExternDynamic {
 }
 pub(crate) struct TypeExprContextPushDynamic;
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactExprContextPushDynamic;
+
 impl Aspect for TypeExprContextPushDynamic { }
 
 impl AspectBind for TypeExprContextPushDynamic {
@@ -453,6 +459,19 @@ impl Type for TypeExprContextPushDynamic {
 
     fn desc(&self) -> String {
         "ExprContextPush".to_string()
+    }
+}
+
+impl TypeRootExporter for TypeExprContextPushDynamic {
+    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactExprContextPushDynamic>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+        );
+    }
+
+    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::ok(serde_json::to_value(ArtifactExprContextPushDynamic).unwrap());
     }
 }
 
