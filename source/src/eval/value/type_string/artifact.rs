@@ -25,6 +25,9 @@ use {
 
 pub(crate) type ArtifactDataString = String;
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactStringType;
+
 pub(crate) struct DeserializerConst;
 
 impl ArtifactExporter for DeserializerConst {

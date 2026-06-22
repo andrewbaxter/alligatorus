@@ -139,7 +139,7 @@ impl TypeRootExporter for TypeNullConst {
     }
 
     fn self_to_artifact_data(xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        return EResult::Ok(serde_json::to_value(ArtifactNull {}).unwrap());
+        return EResult::ok(serde_json::to_value(ArtifactNull).unwrap());
     }
 }
 

@@ -23,6 +23,9 @@ use {
     },
 };
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactNumberType;
+
 pub(crate) struct DeserializerConst;
 
 impl ArtifactExporter for DeserializerConst {

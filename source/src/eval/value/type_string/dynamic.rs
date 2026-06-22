@@ -28,6 +28,7 @@ use {
                     TypeRoot,
                     TypeRootExporter,
                 },
+                type_string::artifact::ArtifactStringType,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -350,11 +351,14 @@ impl Type for TypeStringDynamic {
 
 impl TypeRootExporter for TypeStringDynamic {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
-        return EResult::from(loc, serde_json::from_value::<()>(data).map(|_| Rc::new(Self) as Rc<dyn Any>));
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactStringType>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+        );
     }
 
     fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        return EResult::ok(serde_json::to_value(()).unwrap());
+        return EResult::ok(serde_json::to_value(ArtifactStringType).unwrap());
     }
 }
 

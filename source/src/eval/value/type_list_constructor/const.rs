@@ -6,7 +6,11 @@ use {
                 TypeAnyConst,
                 ValueAnyConst,
             },
-            type_root::r#const::TypeRoot,
+            type_list_constructor::artifact::ArtifactListConstructorType,
+            type_root::r#const::{
+                TypeRoot,
+                TypeRootExporter,
+            },
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
@@ -109,6 +113,19 @@ impl Type for TypeListConstructorConst {
 
     fn desc(&self) -> String {
         "list constructor".to_string()
+    }
+}
+
+impl TypeRootExporter for TypeListConstructorConst {
+    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactListConstructorType>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+        );
+    }
+
+    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::ok(serde_json::to_value(ArtifactListConstructorType).unwrap());
     }
 }
 
