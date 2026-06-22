@@ -9,7 +9,7 @@ use {
             type_map_constructor::artifact::ArtifactMapConstructorType,
             type_root::r#const::{
                 TypeRoot,
-                TypeRootExporter,
+                ExporterRootDelegate,
             },
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -156,7 +156,7 @@ impl Type for TypeMapConstructorConst {
     }
 }
 
-impl TypeRootExporter for TypeMapConstructorConst {
+impl ExporterRootDelegate for TypeMapConstructorConst {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

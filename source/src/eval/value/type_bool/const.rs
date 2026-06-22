@@ -6,7 +6,7 @@ use {
             type_bool::artifact::ArtifactBoolType,
             type_root::r#const::{
                 TypeRoot,
-                TypeRootExporter,
+                ExporterRootDelegate,
             },
             value_bool::r#const::ValueBoolConst,
         },
@@ -103,7 +103,7 @@ impl Type for TypeBoolConst {
     }
 }
 
-impl TypeRootExporter for TypeBoolConst {
+impl ExporterRootDelegate for TypeBoolConst {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

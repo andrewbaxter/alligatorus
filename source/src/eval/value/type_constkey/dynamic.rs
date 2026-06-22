@@ -17,7 +17,7 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
@@ -178,7 +178,7 @@ impl Type for TypeConstkeyDynamic {
     }
 }
 
-impl TypeRootExporter for TypeConstkeyDynamic {
+impl ExporterRootDelegate for TypeConstkeyDynamic {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

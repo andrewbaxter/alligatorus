@@ -13,7 +13,7 @@ use {
             type_any::r#const::TypeAnyConst,
             type_root::r#const::{
                 TypeRoot,
-                TypeRootExporter,
+                ExporterRootDelegate,
             },
             type_string::{
                 artifact::ArtifactStringType,
@@ -197,7 +197,7 @@ impl Type for TypeStringConst {
     }
 }
 
-impl TypeRootExporter for TypeStringConst {
+impl ExporterRootDelegate for TypeStringConst {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

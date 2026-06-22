@@ -28,7 +28,7 @@ use {
                 type_code_source::TypeCodeStructDynamic,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,
@@ -462,7 +462,7 @@ impl Type for TypeExprContextPushDynamic {
     }
 }
 
-impl TypeRootExporter for TypeExprContextPushDynamic {
+impl ExporterRootDelegate for TypeExprContextPushDynamic {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

@@ -19,7 +19,7 @@ use {
                 type_null::artifact::ArtifactNull,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
@@ -248,7 +248,7 @@ impl Type for TypeNullDynamic {
     }
 }
 
-impl TypeRootExporter for TypeNullDynamic {
+impl ExporterRootDelegate for TypeNullDynamic {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

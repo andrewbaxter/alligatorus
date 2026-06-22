@@ -36,7 +36,7 @@ use {
                 type_null::dynamic::TypeNullDynamic,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
@@ -345,7 +345,7 @@ impl Type for TypeListDynamic {
     }
 }
 
-impl TypeRootExporter for TypeListDynamic {
+impl ExporterRootDelegate for TypeListDynamic {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         let data = match serde_json::from_value::<ArtifactListType>(data) {
             Ok(v) => v,
@@ -463,7 +463,7 @@ impl Type for TypeListNewDynamic {
     }
 }
 
-impl TypeRootExporter for TypeListNewDynamic {
+impl ExporterRootDelegate for TypeListNewDynamic {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         let data = match serde_json::from_value::<ArtifactListNewType>(data) {
             Ok(v) => v,

@@ -24,7 +24,7 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
@@ -280,7 +280,7 @@ impl Type for TypeFunctionDynamic {
     }
 }
 
-impl TypeRootExporter for TypeFunctionDynamic {
+impl ExporterRootDelegate for TypeFunctionDynamic {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         let data = match serde_json::from_value::<ArtifactFunctionDynamic>(data) {
             Ok(v) => v,

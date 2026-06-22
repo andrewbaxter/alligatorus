@@ -31,7 +31,7 @@ use {
                 type_number::artifact::ArtifactNumberType,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
@@ -400,7 +400,7 @@ impl Type for TypeNumberDynamic {
     }
 }
 
-impl TypeRootExporter for TypeNumberDynamic {
+impl ExporterRootDelegate for TypeNumberDynamic {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

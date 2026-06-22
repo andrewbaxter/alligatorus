@@ -45,8 +45,8 @@ use {
                 },
                 type_null::dynamic::TypeNullDynamic,
                 type_root::r#const::{
+                    ExporterRootDelegate,
                     TypeRoot,
-                    TypeRootExporter,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
@@ -320,6 +320,69 @@ impl ExporterAny for TypeMapDynamic {
     }
 }
 
+impl ExporterRootDelegate for TypeMapDynamic {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactMapType>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut key_type = deserialize_artifact(xx, loc, data.key_type);
+        key_type.push_errors(&mut errors);
+        let Some(key_type) = key_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut value_type = deserialize_artifact(xx, loc, data.value_type);
+        value_type.push_errors(&mut errors);
+        let Some(value_type) = value_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(Rc::new(TypeMapDynamic {
+                key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+            })),
+        };
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeMapDynamic>().unwrap();
+        let mut errors = None;
+        let mut key_art = serialize_artifact(xx, loc, &self_.key_type);
+        key_art.push_errors(&mut errors);
+        let Some(key_art) = key_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut value_art = serialize_artifact(xx, loc, &self_.value_type);
+        value_art.push_errors(&mut errors);
+        let Some(value_art) = value_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(serde_json::to_value(ArtifactMapType {
+                key_type: key_art,
+                value_type: value_art,
+            }).unwrap()),
+        };
+    }
+}
+
 impl Push for TypeMapDynamic {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
@@ -512,73 +575,6 @@ impl Type for TypeMapDynamic {
     }
 }
 
-impl TypeRootExporter for TypeMapDynamic {
-    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
-        let data = match serde_json::from_value::<ArtifactMapType>(data) {
-            Ok(v) => v,
-            Err(e) => {
-                return EResult::err(loc, e.to_string());
-            },
-        };
-        let mut errors = None;
-        let mut key_type = deserialize_artifact(xx, loc, data.key_type);
-        key_type.push_errors(&mut errors);
-        let Some(key_type) = key_type.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let mut value_type = deserialize_artifact(xx, loc, data.value_type);
-        value_type.push_errors(&mut errors);
-        let Some(value_type) = value_type.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors: errors,
-            v: Some(
-                Rc::new(TypeMapDynamic {
-                    key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                    value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                }),
-            ),
-        };
-    }
-
-    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        let self_ = self_.downcast::<TypeMapDynamic>().unwrap();
-        let mut errors = None;
-        let mut key_art = serialize_artifact(xx, loc, &self_.key_type);
-        key_art.push_errors(&mut errors);
-        let Some(key_art) = key_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let mut value_art = serialize_artifact(xx, loc, &self_.value_type);
-        value_art.push_errors(&mut errors);
-        let Some(value_art) = value_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors: errors,
-            v: Some(
-                serde_json::to_value(ArtifactMapType {
-                    key_type: key_art,
-                    value_type: value_art,
-                }).unwrap(),
-            ),
-        };
-    }
-}
-
 impl Value for TypeMapDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
@@ -626,32 +622,7 @@ impl ExporterAny for TypeMapGetFnDynamic {
     }
 }
 
-impl Type for TypeMapGetFnDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(self.clone())
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
-        }
-        None
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to map get fn".to_string())
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert map get fn".to_string())
-    }
-
-    fn desc(&self) -> String {
-        format!("map get fn")
-    }
-}
-
-impl TypeRootExporter for TypeMapGetFnDynamic {
+impl ExporterRootDelegate for TypeMapGetFnDynamic {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         let data = match serde_json::from_value::<ArtifactMapGetFnType>(data) {
             Ok(v) => v,
@@ -678,12 +649,10 @@ impl TypeRootExporter for TypeMapGetFnDynamic {
         };
         return EResult {
             errors: errors,
-            v: Some(
-                Rc::new(TypeMapGetFnDynamic {
-                    key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                    value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                }),
-            ),
+            v: Some(Rc::new(TypeMapGetFnDynamic {
+                key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+            })),
         };
     }
 
@@ -708,13 +677,36 @@ impl TypeRootExporter for TypeMapGetFnDynamic {
         };
         return EResult {
             errors: errors,
-            v: Some(
-                serde_json::to_value(ArtifactMapGetFnType {
-                    key_type: key_art,
-                    value_type: value_art,
-                }).unwrap(),
-            ),
+            v: Some(serde_json::to_value(ArtifactMapGetFnType {
+                key_type: key_art,
+                value_type: value_art,
+            }).unwrap()),
         };
+    }
+}
+
+impl Type for TypeMapGetFnDynamic {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(self.clone())
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        None
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to map get fn".to_string())
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert map get fn".to_string())
+    }
+
+    fn desc(&self) -> String {
+        format!("map get fn")
     }
 }
 
@@ -768,35 +760,7 @@ impl ExporterAny for TypeMapNewDynamic {
     }
 }
 
-impl Type for TypeMapNewDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeMapNewDynamic {
-            key_type: self.key_type.clone(),
-            value_type: self.value_type.clone(),
-        })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
-        }
-        None
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to map new".to_string())
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert map new".to_string())
-    }
-
-    fn desc(&self) -> String {
-        format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
-    }
-}
-
-impl TypeRootExporter for TypeMapNewDynamic {
+impl ExporterRootDelegate for TypeMapNewDynamic {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         let data = match serde_json::from_value::<ArtifactMapNewType>(data) {
             Ok(v) => v,
@@ -823,12 +787,10 @@ impl TypeRootExporter for TypeMapNewDynamic {
         };
         return EResult {
             errors: errors,
-            v: Some(
-                Rc::new(TypeMapNewDynamic {
-                    key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                    value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                }),
-            ),
+            v: Some(Rc::new(TypeMapNewDynamic {
+                key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+            })),
         };
     }
 
@@ -853,13 +815,39 @@ impl TypeRootExporter for TypeMapNewDynamic {
         };
         return EResult {
             errors: errors,
-            v: Some(
-                serde_json::to_value(ArtifactMapNewType {
-                    key_type: key_art,
-                    value_type: value_art,
-                }).unwrap(),
-            ),
+            v: Some(serde_json::to_value(ArtifactMapNewType {
+                key_type: key_art,
+                value_type: value_art,
+            }).unwrap()),
         };
+    }
+}
+
+impl Type for TypeMapNewDynamic {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(TypeMapNewDynamic {
+            key_type: self.key_type.clone(),
+            value_type: self.value_type.clone(),
+        })
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        None
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert to map new".to_string())
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, "Cannot convert map new".to_string())
+    }
+
+    fn desc(&self) -> String {
+        format!("map({}, {}).new", self.key_type.desc(), self.value_type.desc())
     }
 }
 

@@ -35,8 +35,8 @@ use {
                     TypeOptionArtifact,
                 },
                 type_root::r#const::{
+                    ExporterRootDelegate,
                     TypeRoot,
-                    TypeRootExporter,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
@@ -222,6 +222,51 @@ impl ExporterAny for TypeOptionDynamic {
     }
 }
 
+impl ExporterRootDelegate for TypeOptionDynamic {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactOptionType>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut element_type = deserialize_artifact(xx, loc, data.element_type);
+        element_type.push_errors(&mut errors);
+        let Some(element_type) = element_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                Rc::new(
+                    TypeOptionDynamic { element_type: element_type.downcast::<TypeFromAny>().unwrap().0.clone() },
+                ),
+            ),
+        };
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeOptionDynamic>().unwrap();
+        let mut errors = None;
+        let mut element_art = serialize_artifact(xx, loc, &self_.element_type);
+        element_art.push_errors(&mut errors);
+        let Some(element_art) = element_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(serde_json::to_value(ArtifactOptionType { element_type: element_art }).unwrap()),
+        };
+    }
+}
+
 impl Push for TypeOptionDynamic {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
@@ -310,51 +355,6 @@ impl Type for TypeOptionDynamic {
     }
 }
 
-impl TypeRootExporter for TypeOptionDynamic {
-    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
-        let data = match serde_json::from_value::<ArtifactOptionType>(data) {
-            Ok(v) => v,
-            Err(e) => {
-                return EResult::err(loc, e.to_string());
-            },
-        };
-        let mut errors = None;
-        let mut element_type = deserialize_artifact(xx, loc, data.element_type);
-        element_type.push_errors(&mut errors);
-        let Some(element_type) = element_type.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors: errors,
-            v: Some(
-                Rc::new(TypeOptionDynamic {
-                    element_type: element_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                }),
-            ),
-        };
-    }
-
-    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        let self_ = self_.downcast::<TypeOptionDynamic>().unwrap();
-        let mut errors = None;
-        let mut element_art = serialize_artifact(xx, loc, &self_.element_type);
-        element_art.push_errors(&mut errors);
-        let Some(element_art) = element_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors: errors,
-            v: Some(serde_json::to_value(ArtifactOptionType { element_type: element_art }).unwrap()),
-        };
-    }
-}
-
 impl Value for TypeOptionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
@@ -411,6 +411,53 @@ impl ExporterAny for TypeOptionVariantConstructorDynamic {
     }
 }
 
+impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactOptionVariantConstructor>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut element_type = deserialize_artifact(xx, loc, data.element_type);
+        element_type.push_errors(&mut errors);
+        let Some(element_type) = element_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(Rc::new(TypeOptionVariantConstructorDynamic {
+                element_type: element_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                is_some: data.is_some,
+            })),
+        };
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeOptionVariantConstructorDynamic>().unwrap();
+        let mut errors = None;
+        let mut element_art = serialize_artifact(xx, loc, &self_.element_type);
+        element_art.push_errors(&mut errors);
+        let Some(element_art) = element_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(serde_json::to_value(ArtifactOptionVariantConstructor {
+                element_type: element_art,
+                is_some: self_.is_some,
+            }).unwrap()),
+        };
+    }
+}
+
 impl Type for TypeOptionVariantConstructorDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
@@ -438,57 +485,6 @@ impl Type for TypeOptionVariantConstructorDynamic {
             "none"
         };
         format!("option({}).{}", self.element_type.desc(), tag)
-    }
-}
-
-impl TypeRootExporter for TypeOptionVariantConstructorDynamic {
-    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
-        let data = match serde_json::from_value::<ArtifactOptionVariantConstructor>(data) {
-            Ok(v) => v,
-            Err(e) => {
-                return EResult::err(loc, e.to_string());
-            },
-        };
-        let mut errors = None;
-        let mut element_type = deserialize_artifact(xx, loc, data.element_type);
-        element_type.push_errors(&mut errors);
-        let Some(element_type) = element_type.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors: errors,
-            v: Some(
-                Rc::new(TypeOptionVariantConstructorDynamic {
-                    element_type: element_type.downcast::<TypeFromAny>().unwrap().0.clone(),
-                    is_some: data.is_some,
-                }),
-            ),
-        };
-    }
-
-    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        let self_ = self_.downcast::<TypeOptionVariantConstructorDynamic>().unwrap();
-        let mut errors = None;
-        let mut element_art = serialize_artifact(xx, loc, &self_.element_type);
-        element_art.push_errors(&mut errors);
-        let Some(element_art) = element_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors: errors,
-            v: Some(
-                serde_json::to_value(ArtifactOptionVariantConstructor {
-                    element_type: element_art,
-                    is_some: self_.is_some,
-                }).unwrap(),
-            ),
-        };
     }
 }
 

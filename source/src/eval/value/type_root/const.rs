@@ -13,6 +13,7 @@ use {
                 TypeCodeValueExternDynamic,
                 TypeExprContextPushDynamic,
             },
+            definition_set::DefinitionSet,
             pull_type_dispatch::{
                 TypeAspectLookupFnType,
                 TypeTypeRef,
@@ -131,70 +132,9 @@ use {
     },
 };
 
-pub(crate) trait TypeRootExporter {
+pub(crate) trait ExporterRootDelegate {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>>;
     fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value>;
-}
-
-#[derive(Clone, Copy, Serialize, Deserialize)]
-pub enum TypeRoot {
-    AnyScopeEntryDynamic,
-    AnyTargetDynamic,
-    AspectDynamic,
-    AspectLookupFnType,
-    BoolConst,
-    BoolDynamic,
-    CodeDynCastFn,
-    CodeDynHandleDynamic,
-    CodeEnumDynamic,
-    CodeStructDynamic,
-    CodeValueExternDynamic,
-    ConstkeyDynamic,
-    Expr,
-    ExprContextPushDynamic,
-    ExprStagedPlaceholder,
-    FunctionAspectDynamic,
-    FunctionCastValueDynamic,
-    FunctionDynamic,
-    ListConstructorConst,
-    ListDynamic,
-    ListNewDynamic,
-    MapConstructorConst,
-    MapDynamic,
-    MapGetFnDynamic,
-    MapNewDynamic,
-    NullConst,
-    NullDynamic,
-    NumberConst,
-    NumberDynamic,
-    OptionConstructorConst,
-    OptionDynamic,
-    OptionVariantConstructorDynamic,
-    Pull,
-    PullAspect,
-    Root,
-    SourceDataTypeConstructorConst,
-    SourceDataTypeConstructorDynamic,
-    SourceDataTypeDynamic,
-    SourceDataTypeRefDynamic,
-    SourceExportsLiftedConst,
-    SourceFunctionConst,
-    SourceFunctionDynamic,
-    SourceInterfaceConst,
-    SourceInterfaceDynamic,
-    SourceTaggedUnionConst,
-    SourceTaggedUnionConstructorConst,
-    SourceTaggedUnionConstructorDynamic,
-    SourceTaggedUnionDynamic,
-    SourceTaggedUnionRefDynamic,
-    StringConst,
-    StringDynamic,
-    TypeRef,
-    TypeSourceDataTypeConstructorDynamic,
-    TypeSourceDataTypeDynamic,
-    TypeSourceFunctionDynamic,
-    Unique,
-    ValueDynamic,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -211,6 +151,7 @@ pub enum ExporterRoot {
     CodeStructDynamic,
     CodeValueExternDynamic,
     ConstkeyDynamic,
+    DefinitionSet,
     Expr,
     ExprContextPushDynamic,
     ExprStagedPlaceholder,
@@ -289,10 +230,19 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::CodeDynHandleDynamic => TypeCodeDynHandleDynamic::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::CodeEnumDynamic => TypeCodeEnumDynamic::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::CodeStructDynamic => TypeCodeStructDynamic::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::CodeValueExternDynamic => TypeCodeValueExternDynamic::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::CodeValueExternDynamic => TypeCodeValueExternDynamic::self_from_artifact_data(
+                &xx,
+                loc,
+                data,
+            ),
             ExporterRoot::ConstkeyDynamic => TypeConstkeyDynamic::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::DefinitionSet => DefinitionSet::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::Expr => TypeExpr::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::ExprContextPushDynamic => TypeExprContextPushDynamic::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::ExprContextPushDynamic => TypeExprContextPushDynamic::self_from_artifact_data(
+                &xx,
+                loc,
+                data,
+            ),
             ExporterRoot::ExprStagedPlaceholder => TypeExprStagedPlaceholder::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::FunctionAspectDynamic => TypeFunctionAspectDynamic::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::FunctionCastValueDynamic => TypeFunctionCastValueDynamic::self_from_artifact_data(
@@ -312,9 +262,14 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::NullDynamic => TypeNullDynamic::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::NumberDynamic => TypeNumberDynamic::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::OptionConstructorConst => TypeOptionConstructorConst::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::OptionConstructorConst => TypeOptionConstructorConst::self_from_artifact_data(
+                &xx,
+                loc,
+                data,
+            ),
             ExporterRoot::OptionDynamic => TypeOptionDynamic::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::OptionVariantConstructorDynamic => TypeOptionVariantConstructorDynamic::self_from_artifact_data(
+            ExporterRoot::OptionVariantConstructorDynamic => TypeOptionVariantConstructorDynamic
+            ::self_from_artifact_data(
                 &xx,
                 loc,
                 data,
@@ -326,7 +281,8 @@ impl ArtifactExporter for ExporterRoot {
                 loc,
                 data,
             ),
-            ExporterRoot::SourceDataTypeConstructorDynamic => TypeSourceDataTypeConstructorDynamic::self_from_artifact_data(
+            ExporterRoot::SourceDataTypeConstructorDynamic => TypeSourceDataTypeConstructorDynamic
+            ::self_from_artifact_data(
                 &xx,
                 loc,
                 data,
@@ -345,8 +301,16 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::SourceFunctionDynamic => TypeSourceFunctionDynamic::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::SourceInterfaceDynamic => TypeSourceInterfaceDynamic::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::SourceInterfaceDynamic => TypeSourceInterfaceDynamic::self_from_artifact_data(
+                &xx,
+                loc,
+                data,
+            ),
+            ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_from_artifact_data(
+                &xx,
+                loc,
+                data,
+            ),
             ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst
             ::self_from_artifact_data(
                 &xx,
@@ -426,11 +390,16 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::CodeStructDynamic => TypeCodeStructDynamic::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::CodeValueExternDynamic => TypeCodeValueExternDynamic::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::ConstkeyDynamic => TypeConstkeyDynamic::self_to_artifact_data(xx, loc, self_),
+            ExporterRoot::DefinitionSet => DefinitionSet::self_to_artifact_data(&xx, loc, self_),
             ExporterRoot::Expr => TypeExpr::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::ExprContextPushDynamic => TypeExprContextPushDynamic::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::ExprStagedPlaceholder => TypeExprStagedPlaceholder::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::FunctionAspectDynamic => TypeFunctionAspectDynamic::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::FunctionCastValueDynamic => TypeFunctionCastValueDynamic::self_to_artifact_data(xx, loc, self_),
+            ExporterRoot::FunctionCastValueDynamic => TypeFunctionCastValueDynamic::self_to_artifact_data(
+                xx,
+                loc,
+                self_,
+            ),
             ExporterRoot::FunctionDynamic => TypeFunctionDynamic::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::ListConstructorConst => TypeListConstructorConst::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::ListDynamic => TypeListDynamic::self_to_artifact_data(xx, loc, self_),
@@ -457,20 +426,30 @@ impl ArtifactExporter for ExporterRoot {
                 loc,
                 self_,
             ),
-            ExporterRoot::SourceDataTypeConstructorDynamic => TypeSourceDataTypeConstructorDynamic::self_to_artifact_data(
+            ExporterRoot::SourceDataTypeConstructorDynamic => TypeSourceDataTypeConstructorDynamic
+            ::self_to_artifact_data(
                 xx,
                 loc,
                 self_,
             ),
             ExporterRoot::SourceDataTypeDynamic => TypeSourceDataTypeDynamic::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceDataTypeRefDynamic => TypeSourceDataTypeRefDynamic::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceExportsLiftedConst => TypeSourceExportsLiftedConst::self_to_artifact_data(xx, loc, self_),
+            ExporterRoot::SourceDataTypeRefDynamic => TypeSourceDataTypeRefDynamic::self_to_artifact_data(
+                xx,
+                loc,
+                self_,
+            ),
+            ExporterRoot::SourceExportsLiftedConst => TypeSourceExportsLiftedConst::self_to_artifact_data(
+                xx,
+                loc,
+                self_,
+            ),
             ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::SourceFunctionDynamic => TypeSourceFunctionDynamic::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::SourceInterfaceDynamic => TypeSourceInterfaceDynamic::self_to_artifact_data(xx, loc, self_),
             ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst::self_to_artifact_data(
+            ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst
+            ::self_to_artifact_data(
                 xx,
                 loc,
                 self_,
@@ -481,7 +460,11 @@ impl ArtifactExporter for ExporterRoot {
                 loc,
                 self_,
             ),
-            ExporterRoot::SourceTaggedUnionDynamic => TypeSourceTaggedUnionDynamic::self_to_artifact_data(xx, loc, self_),
+            ExporterRoot::SourceTaggedUnionDynamic => TypeSourceTaggedUnionDynamic::self_to_artifact_data(
+                xx,
+                loc,
+                self_,
+            ),
             ExporterRoot::SourceTaggedUnionRefDynamic => TypeSourceTaggedUnionRefDynamic::self_to_artifact_data(
                 xx,
                 loc,
@@ -522,6 +505,67 @@ impl ArtifactExporter for ExporterRoot {
             exporter: self.self_to_serial_exporter(),
         }));
     }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub enum TypeRoot {
+    AnyScopeEntryDynamic,
+    AnyTargetDynamic,
+    AspectDynamic,
+    AspectLookupFnType,
+    BoolConst,
+    BoolDynamic,
+    CodeDynCastFn,
+    CodeDynHandleDynamic,
+    CodeEnumDynamic,
+    CodeStructDynamic,
+    CodeValueExternDynamic,
+    ConstkeyDynamic,
+    Expr,
+    ExprContextPushDynamic,
+    ExprStagedPlaceholder,
+    FunctionAspectDynamic,
+    FunctionCastValueDynamic,
+    FunctionDynamic,
+    ListConstructorConst,
+    ListDynamic,
+    ListNewDynamic,
+    MapConstructorConst,
+    MapDynamic,
+    MapGetFnDynamic,
+    MapNewDynamic,
+    NullConst,
+    NullDynamic,
+    NumberConst,
+    NumberDynamic,
+    OptionConstructorConst,
+    OptionDynamic,
+    OptionVariantConstructorDynamic,
+    Pull,
+    PullAspect,
+    Root,
+    SourceDataTypeConstructorConst,
+    SourceDataTypeConstructorDynamic,
+    SourceDataTypeDynamic,
+    SourceDataTypeRefDynamic,
+    SourceExportsLiftedConst,
+    SourceFunctionConst,
+    SourceFunctionDynamic,
+    SourceInterfaceConst,
+    SourceInterfaceDynamic,
+    SourceTaggedUnionConst,
+    SourceTaggedUnionConstructorConst,
+    SourceTaggedUnionConstructorDynamic,
+    SourceTaggedUnionDynamic,
+    SourceTaggedUnionRefDynamic,
+    StringConst,
+    StringDynamic,
+    TypeRef,
+    TypeSourceDataTypeConstructorDynamic,
+    TypeSourceDataTypeDynamic,
+    TypeSourceFunctionDynamic,
+    Unique,
+    ValueDynamic,
 }
 
 impl AspectArtifact for TypeRoot {

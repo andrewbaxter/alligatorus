@@ -13,7 +13,7 @@ use {
             },
             type_root::r#const::{
                 TypeRoot,
-                TypeRootExporter,
+                ExporterRootDelegate,
             },
             value_bool::r#const::ValueBoolConst,
             value_number::r#const::ValueNumberConst,
@@ -239,7 +239,7 @@ impl Type for TypeNumberConst {
     }
 }
 
-impl TypeRootExporter for TypeNumberConst {
+impl ExporterRootDelegate for TypeNumberConst {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

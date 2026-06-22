@@ -27,7 +27,7 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::{
                     TypeRoot,
-                    TypeRootExporter,
+                    ExporterRootDelegate,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_empty::r#const::ValueEmptyConst,
@@ -219,7 +219,7 @@ impl Type for TypeExpr {
     }
 }
 
-impl TypeRootExporter for TypeExpr {
+impl ExporterRootDelegate for TypeExpr {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,
@@ -301,7 +301,7 @@ impl Type for TypeExprStagedPlaceholder {
     }
 }
 
-impl TypeRootExporter for TypeExprStagedPlaceholder {
+impl ExporterRootDelegate for TypeExprStagedPlaceholder {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

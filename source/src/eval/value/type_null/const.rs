@@ -14,7 +14,7 @@ use {
             type_null::artifact::ArtifactNull,
             type_root::r#const::{
                 TypeRoot,
-                TypeRootExporter,
+                ExporterRootDelegate,
             },
             value_null::r#const::ValueNullConst,
         },
@@ -130,7 +130,7 @@ impl Type for TypeNullConst {
     }
 }
 
-impl TypeRootExporter for TypeNullConst {
+impl ExporterRootDelegate for TypeNullConst {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,

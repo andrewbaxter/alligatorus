@@ -9,7 +9,7 @@ use {
             type_list_constructor::artifact::ArtifactListConstructorType,
             type_root::r#const::{
                 TypeRoot,
-                TypeRootExporter,
+                ExporterRootDelegate,
             },
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
@@ -116,7 +116,7 @@ impl Type for TypeListConstructorConst {
     }
 }
 
-impl TypeRootExporter for TypeListConstructorConst {
+impl ExporterRootDelegate for TypeListConstructorConst {
     fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,
