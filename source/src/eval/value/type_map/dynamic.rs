@@ -3,6 +3,9 @@ use {
         artifact::{
             Artifact,
             ExporterAny,
+            TypeFromAny,
+            deserialize_artifact,
+            serialize_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -39,7 +42,10 @@ use {
                     TypeMapArtifact,
                 },
                 type_null::dynamic::TypeNullDynamic,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    TypeRoot,
+                    TypeRootExporter,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
@@ -502,6 +508,73 @@ impl Type for TypeMapDynamic {
             value_type: value_artifact,
         };
         TypeMapArtifact::build_artifact(serde_json::to_value(&payload).expect("Failed to serialize map type"))
+    }
+}
+
+impl TypeRootExporter for TypeMapDynamic {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactMapType>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut key_type = deserialize_artifact(xx, loc, data.key_type);
+        key_type.push_errors(&mut errors);
+        let Some(key_type) = key_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut value_type = deserialize_artifact(xx, loc, data.value_type);
+        value_type.push_errors(&mut errors);
+        let Some(value_type) = value_type.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                Rc::new(TypeMapDynamic {
+                    key_type: key_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                    value_type: value_type.downcast::<TypeFromAny>().unwrap().0.clone(),
+                }),
+            ),
+        };
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeMapDynamic>().unwrap();
+        let mut errors = None;
+        let mut key_art = serialize_artifact(xx, loc, &self_.key_type);
+        key_art.push_errors(&mut errors);
+        let Some(key_art) = key_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut value_art = serialize_artifact(xx, loc, &self_.value_type);
+        value_art.push_errors(&mut errors);
+        let Some(value_art) = value_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                serde_json::to_value(ArtifactMapType {
+                    key_type: key_art,
+                    value_type: value_art,
+                }).unwrap(),
+            ),
+        };
     }
 }
 

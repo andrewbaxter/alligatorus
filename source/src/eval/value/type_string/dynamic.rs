@@ -24,7 +24,10 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    TypeRoot,
+                    TypeRootExporter,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -342,6 +345,16 @@ impl Type for TypeStringDynamic {
 
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         Self::build_type_artifact()
+    }
+}
+
+impl TypeRootExporter for TypeStringDynamic {
+    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(loc, serde_json::from_value::<()>(data).map(|_| Rc::new(Self) as Rc<dyn Any>));
+    }
+
+    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::ok(serde_json::to_value(()).unwrap());
     }
 }
 

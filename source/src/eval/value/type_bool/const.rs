@@ -3,7 +3,10 @@ use {
         artifact::ExporterAny,
         eval::value::{
             type_any::r#const::TypeAnyConst,
-            type_root::r#const::TypeRoot,
+            type_root::r#const::{
+                TypeRoot,
+                TypeRootExporter,
+            },
             value_bool::r#const::ValueBoolConst,
         },
         invariant::must_downcast_ref,
@@ -96,6 +99,16 @@ impl Type for TypeBoolConst {
 
     fn desc(&self) -> String {
         return format!("bool");
+    }
+}
+
+impl TypeRootExporter for TypeBoolConst {
+    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        return EResult::from(loc, serde_json::from_value::<()>(data).map(|_| Rc::new(Self) as Rc<dyn Any>));
+    }
+
+    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        return EResult::ok(serde_json::to_value(()).unwrap());
     }
 }
 
