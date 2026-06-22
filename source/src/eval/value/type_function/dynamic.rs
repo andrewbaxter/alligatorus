@@ -1,6 +1,12 @@
 use {
     crate::{
-        artifact::ExporterAny,
+        artifact::{
+            Artifact,
+            ExporterAny,
+            TypeFromAny,
+            deserialize_artifact,
+            serialize_artifact,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicCall,
@@ -16,7 +22,10 @@ use {
             value::{
                 tuple::Tuple,
                 type_any::r#const::TypeAnyConst,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    TypeRoot,
+                    TypeRootExporter,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -160,6 +169,12 @@ pub(crate) struct TypeFunctionDynamic {
     pub ret: Rc<dyn Type>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactFunctionDynamic {
+    pub arg: Artifact,
+    pub ret: Artifact,
+}
+
 impl Aspect for TypeFunctionDynamic { }
 
 impl AspectBind for TypeFunctionDynamic {
@@ -262,6 +277,71 @@ impl Type for TypeFunctionDynamic {
 
     fn desc(&self) -> String {
         return format!("dynamic func");
+    }
+}
+
+impl TypeRootExporter for TypeFunctionDynamic {
+    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+        let data = match serde_json::from_value::<ArtifactFunctionDynamic>(data) {
+            Ok(v) => v,
+            Err(e) => {
+                return EResult::err(loc, e.to_string());
+            },
+        };
+        let mut errors = None;
+        let mut arg = deserialize_artifact(xx, loc, data.arg);
+        arg.push_errors(&mut errors);
+        let Some(arg) = arg.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut ret = deserialize_artifact(xx, loc, data.ret);
+        ret.push_errors(&mut errors);
+        let Some(ret) = ret.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(
+                Rc::new(TypeFunctionDynamic {
+                    arg: arg.downcast::<TypeFromAny>().unwrap().0.clone(),
+                    ret: ret.downcast::<TypeFromAny>().unwrap().0.clone(),
+                }),
+            ),
+        };
+    }
+
+    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
+        let self_ = self_.downcast::<TypeFunctionDynamic>().unwrap();
+        let mut errors = None;
+        let mut arg_art = serialize_artifact(xx, loc, &self_.arg);
+        arg_art.push_errors(&mut errors);
+        let Some(arg_art) = arg_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut ret_art = serialize_artifact(xx, loc, &self_.ret);
+        ret_art.push_errors(&mut errors);
+        let Some(ret_art) = ret_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors: errors,
+            v: Some(serde_json::to_value(ArtifactFunctionDynamic {
+                arg: arg_art,
+                ret: ret_art,
+            }).unwrap()),
+        };
     }
 }
 
