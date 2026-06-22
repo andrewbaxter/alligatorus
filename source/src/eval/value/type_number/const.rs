@@ -1,14 +1,16 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
-        eval::{            value::{
-                tuple::scope_entry::ScopeEntryValue,
-                type_any::r#const::TypeAnyConst,
-                type_number::dynamic::TypeNumberDynamic,
-                value_bool::r#const::ValueBoolConst,
-                value_number::r#const::ValueNumberConst,
-            },
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
+        eval::value::{
+            tuple::scope_entry::ScopeEntryValue,
+            type_any::r#const::TypeAnyConst,
+            type_number::dynamic::TypeNumberDynamic,
+            type_root::r#const::TypeRoot,
+            value_bool::r#const::ValueBoolConst,
+            value_number::r#const::ValueNumberConst,
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -155,6 +157,16 @@ impl AspectOperatorLt for TypeNumberConst {
     }
 }
 
+impl ExporterAny for TypeNumberConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeNumberConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNumberConst)
@@ -221,22 +233,12 @@ impl Type for TypeNumberConst {
     }
 }
 
-impl ExporterAny for TypeNumberConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeNumberConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::NumberConst))
     }
 }

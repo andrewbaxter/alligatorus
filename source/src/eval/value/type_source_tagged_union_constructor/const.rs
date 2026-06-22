@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,
@@ -15,6 +15,7 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
+                type_root::r#const::TypeRoot,
                 type_source_tagged_union::{
                     SourceTaggedUnionData,
                     r#const::TypeSourceTaggedUnionConst,
@@ -85,6 +86,16 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
     }
 }
 
+impl ExporterAny for TypeSourceTaggedUnionConstructorConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceTaggedUnionConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
@@ -124,22 +135,12 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
     }
 }
 
-impl ExporterAny for TypeSourceTaggedUnionConstructorConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceTaggedUnionConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceTaggedUnionConstructorConst))
     }
 }

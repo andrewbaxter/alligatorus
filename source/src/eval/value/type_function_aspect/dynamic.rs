@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -13,6 +13,7 @@ use {
                 ValueAnyConst,
             },
             type_option::dynamic::TypeOptionDynamic,
+            type_root::r#const::TypeRoot,
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
             type_source_interface::SourceInterfaceRef,
             value_dynamic::{
@@ -22,11 +23,11 @@ use {
             value_pull::aspect::TypePullAspect,
         },
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
+            EResult,
             EvalRes,
             ExprContext,
             External,
@@ -156,6 +157,16 @@ impl AspectInitialBind for TypeFunctionAspectDynamic {
     }
 }
 
+impl ExporterAny for TypeFunctionAspectDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeFunctionAspectDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeFunctionAspectDynamic) })
@@ -176,22 +187,12 @@ impl Type for TypeFunctionAspectDynamic {
     }
 }
 
-impl ExporterAny for TypeFunctionAspectDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeFunctionAspectDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::FunctionAspectDynamic))
     }
 }

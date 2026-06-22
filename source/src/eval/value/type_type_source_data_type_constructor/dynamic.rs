@@ -1,13 +1,15 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
-        eval::{            value::{
-                type_any::r#const::TypeAnyConst,
-                type_source_data_type_constructor::{
-                    TypeSourceDataTypeConstructorConst,
-                    dynamic::deserialize_defset_ctor_as_type,
-                },
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
+        eval::value::{
+            type_any::r#const::TypeAnyConst,
+            type_root::r#const::TypeRoot,
+            type_source_data_type_constructor::{
+                TypeSourceDataTypeConstructorConst,
+                dynamic::deserialize_defset_ctor_as_type,
             },
         },
         invariant::must_downcast_ref,
@@ -69,6 +71,16 @@ impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
     }
 }
 
+impl ExporterAny for TypeTypeSourceDataTypeConstructorDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
@@ -104,22 +116,12 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl ExporterAny for TypeTypeSourceDataTypeConstructorDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeTypeSourceDataTypeConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::TypeSourceDataTypeConstructorDynamic))
     }
 }

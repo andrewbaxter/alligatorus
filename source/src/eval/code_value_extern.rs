@@ -1,9 +1,11 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
-    crate::artifact::ArtifactExporter,
-    crate::artifact::ArtifactIdBuiltin,
     crate::{
+        artifact::{
+            Artifact,
+            ArtifactExporter,
+            ArtifactIdBuiltin,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -11,7 +13,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -23,6 +26,7 @@ use {
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_code_source::TypeCodeStructDynamic,
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,
                 value_dynamic::{
@@ -249,6 +253,16 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
     }
 }
 
+impl ExporterAny for TypeCodeValueExternDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeCodeValueExternDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeCodeValueExternDynamic)
@@ -344,23 +358,13 @@ impl Type for TypeCodeValueExternDynamic {
     }
 }
 
-impl ExporterAny for TypeCodeValueExternDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeCodeValueExternDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::CodeValueExternDynamic))
     }
 }
 pub(crate) struct TypeExprContextPushDynamic;
@@ -388,6 +392,16 @@ impl AspectConsumeDynamic for TypeExprContextPushDynamic {
 impl AspectStackValueDynamic for TypeExprContextPushDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         dynamic_stack_to_value(loc, value, Rc::new(TypeExprContextPushDynamic))
+    }
+}
+
+impl ExporterAny for TypeExprContextPushDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -442,23 +456,13 @@ impl Type for TypeExprContextPushDynamic {
     }
 }
 
-impl ExporterAny for TypeExprContextPushDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeExprContextPushDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::ExprContextPushDynamic))
     }
 }
 

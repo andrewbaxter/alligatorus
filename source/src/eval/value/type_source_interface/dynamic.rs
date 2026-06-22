@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -19,6 +19,7 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -144,6 +145,16 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
     }
 }
 
+impl ExporterAny for TypeSourceInterfaceDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceInterfaceDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceInterfaceDynamic) })
@@ -259,22 +270,12 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 }
 
-impl ExporterAny for TypeSourceInterfaceDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceInterfaceDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceInterfaceDynamic))
     }
 }

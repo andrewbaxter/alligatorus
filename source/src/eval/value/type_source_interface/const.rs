@@ -1,14 +1,17 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
@@ -19,6 +22,7 @@ use {
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -205,6 +209,16 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
     }
 }
 
+impl ExporterAny for TypeSourceInterfaceConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceInterfaceConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }) })
@@ -327,23 +341,13 @@ impl Type for TypeSourceInterfaceConst {
     }
 }
 
-impl ExporterAny for TypeSourceInterfaceConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceInterfaceConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceInterfaceConst))
     }
 }
 pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;

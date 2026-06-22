@@ -1,9 +1,11 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
-    crate::artifact::ArtifactId,
-    crate::artifact::deserialize_artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ArtifactId,
+            ExporterAny,
+            deserialize_artifact,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -11,7 +13,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            definition_set::serialize_definition_set,
+            TargetBindSub,
+            definition_set::serialize_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -347,6 +350,16 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
     }
 }
 
+impl ExporterAny for TypeSourceDataTypeConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceDataTypeConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
@@ -539,16 +552,6 @@ impl Type for TypeSourceDataTypeConst {
             deserializer: artifact_id,
             data: serde_json::Value::Null,
         }
-    }
-}
-
-impl ExporterAny for TypeSourceDataTypeConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

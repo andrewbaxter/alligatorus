@@ -1,8 +1,11 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
-        eval::{            definition_set::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
+        eval::{
+            definition_set::{
                 DefinitionSet,
                 serialize_definition_set,
             },
@@ -12,6 +15,7 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
+                type_root::r#const::TypeRoot,
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_function::r#const::TypeSourceFunctionConst,
             },
@@ -156,6 +160,16 @@ impl AspectField for TypeSourceExportsLiftedConst {
     }
 }
 
+impl ExporterAny for TypeSourceExportsLiftedConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) })
@@ -195,22 +209,12 @@ impl Type for TypeSourceExportsLiftedConst {
     }
 }
 
-impl ExporterAny for TypeSourceExportsLiftedConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceExportsLiftedConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceExportsLiftedConst))
     }
 }

@@ -3,11 +3,11 @@ pub mod dynamic;
 pub mod r#const;
 
 use {
-    crate::artifact::{
-        ArtifactId,
-        impl_serialize_independent_artifact as produce_independent_artifact,
-    },
     crate::{
+        artifact::{
+            ArtifactId,
+            impl_serialize_independent_artifact as produce_independent_artifact,
+        },
         code_dynamic::CodeDynamic,
         eval::{
             JsSourceBuilder,

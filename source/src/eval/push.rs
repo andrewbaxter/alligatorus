@@ -58,48 +58,6 @@ pub(crate) trait Push: Sized + 'static {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
 }
 
-pub(crate) trait PushKey: Sized + Ord + 'static {
-    fn from_dynamic_key(s: &str) -> Result<Self, String>;
-    fn to_dynamic_key(&self) -> String;
-}
-
-pub(crate) struct AnyType(pub Rc<dyn Type>);
-
-impl Push for AnyType {
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeAnyDynamic)
-    }
-
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        AnyType(super::rc_type_from_v8(&*value))
-    }
-
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("AnyType should not be sent back to v8")
-    }
-}
-
-pub(crate) fn push_method_name(s: &str) -> &str {
-    s.strip_suffix('_').unwrap_or(s)
-}
-
-pub(crate) struct StagedExpr(pub Rc<dyn Value>);
-
-impl Push for StagedExpr {
-    fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeExpr)
-    }
-
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
-        StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
-    }
-
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("StagedExpr should not be sent back to v8")
-    }
-}
-
 impl Push for () {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeNullDynamic)
@@ -249,16 +207,6 @@ impl Push for ConstKey {
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let s = self.to_str();
         v8::String::new(scope, &s).unwrap().into()
-    }
-}
-
-impl PushKey for ConstKey {
-    fn from_dynamic_key(s: &str) -> Result<Self, String> {
-        ConstKey::from_str(s)
-    }
-
-    fn to_dynamic_key(&self) -> String {
-        self.to_str()
     }
 }
 
@@ -421,5 +369,57 @@ impl Push for TargetBindSub {
 
     fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         unimplemented!("TargetBindSub::into_v8: cross-dynamic `TargetBindSub` transfer not yet wired");
+    }
+}
+
+pub(crate) trait PushKey: Sized + Ord + 'static {
+    fn from_dynamic_key(s: &str) -> Result<Self, String>;
+    fn to_dynamic_key(&self) -> String;
+}
+
+impl PushKey for ConstKey {
+    fn from_dynamic_key(s: &str) -> Result<Self, String> {
+        ConstKey::from_str(s)
+    }
+
+    fn to_dynamic_key(&self) -> String {
+        self.to_str()
+    }
+}
+
+pub(crate) struct AnyType(pub Rc<dyn Type>);
+
+impl Push for AnyType {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeAnyDynamic)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        AnyType(super::rc_type_from_v8(&*value))
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("AnyType should not be sent back to v8")
+    }
+}
+
+pub(crate) fn push_method_name(s: &str) -> &str {
+    s.strip_suffix('_').unwrap_or(s)
+}
+
+pub(crate) struct StagedExpr(pub Rc<dyn Value>);
+
+impl Push for StagedExpr {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeExpr)
+    }
+
+    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
+        StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
+    }
+
+    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("StagedExpr should not be sent back to v8")
     }
 }

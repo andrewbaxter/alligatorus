@@ -1,15 +1,16 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         eval::value::{
             type_any::r#const::TypeAnyConst,
+            type_root::r#const::TypeRoot,
             value_bool::r#const::ValueBoolConst,
         },
         invariant::must_downcast_ref,
         langhelp::{
-            EResult,
             Aspect,
             CodeValue,
+            EResult,
             EvalRes,
             ExprContext,
             QExprId,
@@ -37,6 +38,16 @@ impl Aspect for TypeBoolConst { }
 impl AspectBoolConst for TypeBoolConst {
     fn get(&self, value: &dyn Value) -> bool {
         return must_downcast_ref::<ValueBoolConst>(value).0;
+    }
+}
+
+impl ExporterAny for TypeBoolConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -88,22 +99,12 @@ impl Type for TypeBoolConst {
     }
 }
 
-impl ExporterAny for TypeBoolConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeBoolConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::BoolConst))
     }
 }

@@ -1,13 +1,14 @@
 use {
-    crate::artifact::Artifact,
-    crate::artifact::ArtifactExporter,
-    crate::artifact::ArtifactIdBuiltin,
-    crate::artifact::deserialize_type_artifact,
     crate::{
-        eval::{            value::record::{
-                Record,
-                RecordField,
-            },
+        artifact::{
+            Artifact,
+            ArtifactExporter,
+            ArtifactIdBuiltin,
+            deserialize_type_artifact,
+        },
+        eval::value::record::{
+            Record,
+            RecordField,
         },
         langhelp::{
             Code,

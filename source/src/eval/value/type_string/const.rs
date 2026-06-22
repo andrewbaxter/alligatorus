@@ -1,17 +1,19 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicType,
         },
-        eval::{            value::{
-                tuple::scope_entry::ScopeEntryValue,
-                type_any::r#const::TypeAnyConst,
-                type_string::dynamic::TypeStringDynamic,
-                value_string::r#const::ValueStringConst,
-            },
+        eval::value::{
+            tuple::scope_entry::ScopeEntryValue,
+            type_any::r#const::TypeAnyConst,
+            type_root::r#const::TypeRoot,
+            type_string::dynamic::TypeStringDynamic,
+            value_string::r#const::ValueStringConst,
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -115,6 +117,16 @@ impl AspectStringConst for TypeStringConst {
     }
 }
 
+impl ExporterAny for TypeStringConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeStringConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringConst)
@@ -179,22 +191,12 @@ impl Type for TypeStringConst {
     }
 }
 
-impl ExporterAny for TypeStringConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::StringConst))
     }
 }

@@ -1,19 +1,20 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         eval::value::{
             type_any::r#const::{
                 TypeAnyConst,
                 ValueAnyConst,
             },
+            type_root::r#const::TypeRoot,
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
         },
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
+            EResult,
             EvalRes,
             ExprContext,
             QExprId,
@@ -113,6 +114,16 @@ impl AspectInitialBind for TypeMapConstructorConst {
     }
 }
 
+impl ExporterAny for TypeMapConstructorConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeMapConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapConstructorConst)
@@ -141,22 +152,12 @@ impl Type for TypeMapConstructorConst {
     }
 }
 
-impl ExporterAny for TypeMapConstructorConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeMapConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::MapConstructorConst))
     }
 }

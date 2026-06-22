@@ -31,7 +31,10 @@ use {
                 type_function::dynamic::TypeFunctionDynamic,
                 type_list::artifact::ArtifactListType,
                 type_null::dynamic::TypeNullDynamic,
-                type_root::r#const::TypeRootExporter,
+                type_root::r#const::{
+                    TypeRoot,
+                    TypeRootExporter,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
                 type_string::dynamic::TypeStringDynamic,
@@ -390,12 +393,12 @@ impl Value for TypeListDynamic {
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(TypeAnyConst));
+        return EResult::ok(Rc::new(TypeRoot::ListDynamic));
     }
 }
 
 #[derive(Clone)]
-struct TypeListNewDynamic {
+pub(crate) struct TypeListNewDynamic {
     element_type: Rc<dyn Type>,
 }
 
@@ -463,6 +466,6 @@ impl Value for TypeListNewDynamic {
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(TypeAnyConst));
+        return EResult::ok(Rc::new(TypeRoot::ListNewDynamic));
     }
 }

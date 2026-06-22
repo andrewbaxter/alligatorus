@@ -1,10 +1,10 @@
+pub mod artifact;
 pub mod code_dynamic;
 pub mod eval;
 pub mod invariant;
 pub mod langhelp;
 pub mod r#gen;
 pub mod syntax;
-pub mod artifact;
 #[cfg(test)]
 mod tests;
 

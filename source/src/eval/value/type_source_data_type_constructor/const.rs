@@ -1,23 +1,27 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::ArtifactId,
-    crate::artifact::impl_serialize_independent_artifact as produce_independent_artifact,
-    crate::artifact::ArtifactDataDefSetCtorData,
-    crate::artifact::ArtifactDataDefSetCtorMethod,
     crate::{
+        artifact::{
+            ArtifactDataDefSetCtorData,
+            ArtifactDataDefSetCtorMethod,
+            ArtifactId,
+            ExporterAny,
+            impl_serialize_independent_artifact as produce_independent_artifact,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
             CodeDynamicNewObject,
             CodeDynamicType,
         },
-        eval::{            typecheck_convert,
+        eval::{
+            typecheck_convert,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_any::r#const::{
                     TypeAnyConst,
                     ValueAnyConst,
                 },
+                type_root::r#const::TypeRoot,
                 type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
         },
@@ -50,7 +54,8 @@ use {
         rc::Rc,
     },
     super::{
-        TypeSourceDataTypeConstructorConst,        dynamic::serialize_type_ref,
+        TypeSourceDataTypeConstructorConst,
+        dynamic::serialize_type_ref,
     },
 };
 
@@ -139,6 +144,16 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
     }
 }
 
+impl ExporterAny for TypeSourceDataTypeConstructorConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceDataTypeConstructorConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) })
@@ -179,22 +194,12 @@ impl Type for TypeSourceDataTypeConstructorConst {
     }
 }
 
-impl ExporterAny for TypeSourceDataTypeConstructorConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceDataTypeConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceDataTypeConstructorConst))
     }
 }

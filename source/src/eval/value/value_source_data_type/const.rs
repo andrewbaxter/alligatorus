@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         eval::value::type_source_data_type::{
             SourceDataTypeData,
             r#const::TypeSourceDataTypeConst,

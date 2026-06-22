@@ -1,9 +1,10 @@
 use {
-    crate::artifact::ArtifactExporter,
-    crate::artifact::ArtifactIdBuiltin,
     crate::{
-        eval::{            value::value_number::r#const::ValueNumberConst,
+        artifact::{
+            ArtifactExporter,
+            ArtifactIdBuiltin,
         },
+        eval::value::value_number::r#const::ValueNumberConst,
         langhelp::{
             Code,
             CodeValue,

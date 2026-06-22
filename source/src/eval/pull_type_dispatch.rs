@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         eval::{
             const_eval,
             expr::Expr,
@@ -19,6 +19,7 @@ use {
                     TypeOption,
                     ValueOption,
                 },
+                type_root::r#const::TypeRoot,
                 type_source_data_type::SourceDataTypeData,
                 type_source_interface::BuiltinInterfaceKind,
                 value_null::r#const::ValueNullConst,
@@ -26,12 +27,12 @@ use {
         },
         invariant::must_downcast_ref,
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
             ConstKey,
+            EResult,
             EvalRes,
             ExprContext,
             QExprId,
@@ -416,7 +417,7 @@ impl Value for TypeAspectLookupFn {
         EResult::ok(Rc::new(TypeAspectLookupFnType))
     }
 }
-struct TypeAspectLookupFnType;
+pub(crate) struct TypeAspectLookupFnType;
 
 impl Aspect for TypeAspectLookupFnType { }
 
@@ -433,6 +434,16 @@ impl AspectFunction for TypeAspectLookupFnType {
             },
             value: Rc::new(ValueOption { is_some }),
         })
+    }
+}
+
+impl ExporterAny for TypeAspectLookupFnType {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -465,23 +476,13 @@ impl Type for TypeAspectLookupFnType {
     }
 }
 
-impl ExporterAny for TypeAspectLookupFnType {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeAspectLookupFnType {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::AspectLookupFnType))
     }
 }
 pub(crate) struct TypeTypeRef;
@@ -525,6 +526,16 @@ impl AspectField for TypeTypeRef {
     }
 }
 
+impl ExporterAny for TypeTypeRef {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeTypeRef {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeRef)
@@ -554,23 +565,13 @@ impl Type for TypeTypeRef {
     }
 }
 
-impl ExporterAny for TypeTypeRef {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeTypeRef {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::TypeRef))
     }
 }
 

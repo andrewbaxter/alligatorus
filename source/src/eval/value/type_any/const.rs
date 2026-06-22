@@ -1,14 +1,17 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
@@ -174,6 +177,16 @@ impl AspectType for TypeAnyConst {
     }
 }
 
+impl ExporterAny for TypeAnyConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeAnyConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAnyConst)
@@ -252,16 +265,6 @@ impl Type for TypeAnyConst {
 
     fn type_to_serial(&self, _xx: &ExprContext, _loc: QExprId) -> Artifact {
         Self::build_type_artifact()
-    }
-}
-
-impl ExporterAny for TypeAnyConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

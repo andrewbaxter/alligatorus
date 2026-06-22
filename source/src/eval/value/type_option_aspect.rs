@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         eval::value::{
             type_bool::dynamic::TypeBoolDynamic,
             type_function::dynamic::TypeFunctionDynamic,
@@ -9,12 +9,12 @@ use {
         },
         invariant::must_downcast_ref,
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
             ConstKey,
+            EResult,
             EvalRes,
             ExprContext,
             QExprId,
@@ -100,6 +100,16 @@ impl AspectField for TypeOption {
     }
 }
 
+impl ExporterAny for TypeOption {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeOption {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeOption)
@@ -126,16 +136,6 @@ impl Type for TypeOption {
 
     fn desc(&self) -> String {
         "option".to_string()
-    }
-}
-
-impl ExporterAny for TypeOption {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 
@@ -166,6 +166,16 @@ impl AspectFunction for TypeOptionIsSomeFn {
     }
 }
 
+impl ExporterAny for TypeOptionIsSomeFn {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeOptionIsSomeFn {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeOptionIsSomeFn)
@@ -192,16 +202,6 @@ impl Type for TypeOptionIsSomeFn {
 
     fn desc(&self) -> String {
         "option.is_some".to_string()
-    }
-}
-
-impl ExporterAny for TypeOptionIsSomeFn {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

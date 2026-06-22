@@ -1,11 +1,12 @@
 use {
-    crate::artifact::Artifact,
-    crate::artifact::ArtifactExporter,
-    crate::artifact::ArtifactIdBuiltin,
-    crate::artifact::deserialize_type_artifact,
     crate::{
-        eval::{            value::type_option::dynamic::TypeOptionDynamic,
+        artifact::{
+            Artifact,
+            ArtifactExporter,
+            ArtifactIdBuiltin,
+            deserialize_type_artifact,
         },
+        eval::value::type_option::dynamic::TypeOptionDynamic,
         langhelp::{
             Code,
             CodeValue,

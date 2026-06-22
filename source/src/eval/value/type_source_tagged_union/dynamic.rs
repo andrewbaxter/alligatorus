@@ -1,7 +1,9 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -9,7 +11,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
@@ -21,6 +24,7 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -135,6 +139,16 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionDynamic {
                 type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
             }),
         }
+    }
+}
+
+impl ExporterAny for TypeSourceTaggedUnionDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -274,23 +288,13 @@ impl Type for TypeSourceTaggedUnionDynamic {
     }
 }
 
-impl ExporterAny for TypeSourceTaggedUnionDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceTaggedUnionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceTaggedUnionDynamic))
     }
 }
 pub(crate) struct TypeSourceTaggedUnionRefDynamic;
@@ -349,6 +353,16 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionRefDynamic {
                 type_: Rc::new(TypeSourceTaggedUnionRefDynamic),
             }),
         }
+    }
+}
+
+impl ExporterAny for TypeSourceTaggedUnionRefDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -463,23 +477,13 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
     }
 }
 
-impl ExporterAny for TypeSourceTaggedUnionRefDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceTaggedUnionRefDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceTaggedUnionRefDynamic))
     }
 }
 

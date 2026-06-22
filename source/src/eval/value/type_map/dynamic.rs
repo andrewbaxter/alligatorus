@@ -1,7 +1,9 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -12,7 +14,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_set,
@@ -36,6 +39,7 @@ use {
                     TypeMapArtifact,
                 },
                 type_null::dynamic::TypeNullDynamic,
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
@@ -299,6 +303,16 @@ impl AspectStackValueDynamic for TypeMapDynamic {
     }
 }
 
+impl ExporterAny for TypeMapDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Push for TypeMapDynamic {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
@@ -491,28 +505,18 @@ impl Type for TypeMapDynamic {
     }
 }
 
-impl ExporterAny for TypeMapDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeMapDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::MapDynamic))
     }
 }
 
 #[derive(Clone)]
-struct TypeMapGetFnDynamic {
+pub(crate) struct TypeMapGetFnDynamic {
     key_type: Rc<dyn Type>,
     self_code: Rc<CodeDynamic>,
     value_type: Rc<dyn Type>,
@@ -535,6 +539,16 @@ impl AspectFunction for TypeMapGetFnDynamic {
                 }),
             }));
         });
+    }
+}
+
+impl ExporterAny for TypeMapGetFnDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -563,28 +577,18 @@ impl Type for TypeMapGetFnDynamic {
     }
 }
 
-impl ExporterAny for TypeMapGetFnDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeMapGetFnDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::MapGetFnDynamic))
     }
 }
 
 #[derive(Clone)]
-struct TypeMapNewDynamic {
+pub(crate) struct TypeMapNewDynamic {
     key_type: Rc<dyn Type>,
     value_type: Rc<dyn Type>,
 }
@@ -610,6 +614,16 @@ impl AspectFunction for TypeMapNewDynamic {
             }
         }
         typecheck_convert(xx, loc, instance_type.as_ref(), argument)
+    }
+}
+
+impl ExporterAny for TypeMapNewDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -641,23 +655,13 @@ impl Type for TypeMapNewDynamic {
     }
 }
 
-impl ExporterAny for TypeMapNewDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeMapNewDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::MapNewDynamic))
     }
 }
 

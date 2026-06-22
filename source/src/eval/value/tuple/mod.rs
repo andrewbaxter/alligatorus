@@ -2,9 +2,11 @@ pub mod artifact;
 pub mod scope_entry;
 
 use {
-    crate::artifact::ExporterAny,
     crate::{
-        artifact::Artifact,
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -29,11 +31,11 @@ use {
         },
         invariant::must_downcast_box,
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
+            EResult,
             EvalRes,
             ExprContext,
             ExprErr,
@@ -287,6 +289,16 @@ impl AspectTuple for Tuple {
     }
 }
 
+impl ExporterAny for Tuple {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for Tuple {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone_as_type())
@@ -464,16 +476,6 @@ impl Type for Tuple {
         artifact::TypeTupleArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize tuple type"),
         )
-    }
-}
-
-impl ExporterAny for Tuple {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

@@ -1,16 +1,19 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
-    crate::artifact::ArtifactExporter,
-    crate::artifact::ArtifactIdBuiltin,
     crate::{
+        artifact::{
+            Artifact,
+            ArtifactExporter,
+            ArtifactIdBuiltin,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -24,6 +27,7 @@ use {
             from_v8_ref,
             value::{
                 type_any::r#const::TypeAnyConst,
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_empty::r#const::ValueEmptyConst,
             },
@@ -156,6 +160,16 @@ impl AspectType for TypeExpr {
     }
 }
 
+impl ExporterAny for TypeExpr {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeExpr {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeExpr)
@@ -229,23 +243,13 @@ impl Type for TypeExpr {
     }
 }
 
-impl ExporterAny for TypeExpr {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeExpr {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::Expr))
     }
 }
 pub(crate) struct TypeExprStagedPlaceholder;
@@ -267,6 +271,16 @@ impl AspectLiftDynamic for TypeExprStagedPlaceholder {
     ) -> Result<Rc<dyn Value>, String> {
         let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
+    }
+}
+
+impl ExporterAny for TypeExprStagedPlaceholder {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -298,23 +312,13 @@ impl Type for TypeExprStagedPlaceholder {
     }
 }
 
-impl ExporterAny for TypeExprStagedPlaceholder {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeExprStagedPlaceholder {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::ExprStagedPlaceholder))
     }
 }
 

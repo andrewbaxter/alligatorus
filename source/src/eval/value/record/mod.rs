@@ -2,9 +2,11 @@ pub mod artifact;
 pub mod scope_entry;
 
 use {
-    crate::artifact::ExporterAny,
     crate::{
-        artifact::Artifact,
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -34,12 +36,12 @@ use {
             must_downcast_ref,
         },
         langhelp::{
-            EResult,
             Aspect,
             Code,
             CodeValue,
             Code_,
             ConstKey,
+            EResult,
             EvalRes,
             ExprContext,
             ExprErr,
@@ -424,6 +426,16 @@ impl AspectInitialBind for Record {
     }
 }
 
+impl ExporterAny for Record {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for Record {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone_as_type())
@@ -605,16 +617,6 @@ impl Type for Record {
         artifact::TypeRecordArtifact::build_artifact(
             serde_json::to_value(&payload).expect("Failed to serialize record type"),
         )
-    }
-}
-
-impl ExporterAny for Record {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

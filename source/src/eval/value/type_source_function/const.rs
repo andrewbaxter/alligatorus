@@ -1,13 +1,16 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
             CodeDynamicType,
         },
-        eval::{            definition_set::serialize_definition_set,
+        eval::{
+            definition_set::serialize_definition_set,
             from_v8_ref,
             push::Push,
             to_v8,
@@ -18,6 +21,7 @@ use {
                     ValueAnyConst,
                 },
                 type_function::dynamic::dynamic_call,
+                type_root::r#const::TypeRoot,
             },
         },
         invariant::must_downcast_ref,
@@ -125,6 +129,16 @@ impl AspectType for TypeSourceFunctionConst {
     }
 }
 
+impl ExporterAny for TypeSourceFunctionConst {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeSourceFunctionConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceFunctionConst { data: self.data.clone() }) })
@@ -170,23 +184,13 @@ impl Type for TypeSourceFunctionConst {
     }
 }
 
-impl ExporterAny for TypeSourceFunctionConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeSourceFunctionConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::SourceFunctionConst))
     }
 }
 

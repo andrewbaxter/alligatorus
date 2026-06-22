@@ -1,7 +1,9 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBlock,
@@ -10,7 +12,8 @@ use {
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_consume_to_dynamic,
@@ -21,6 +24,7 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -217,6 +221,16 @@ impl AspectType for TypeStringDynamic {
     }
 }
 
+impl ExporterAny for TypeStringDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeStringDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringDynamic)
@@ -331,22 +345,12 @@ impl Type for TypeStringDynamic {
     }
 }
 
-impl ExporterAny for TypeStringDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeStringDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::StringDynamic))
     }
 }

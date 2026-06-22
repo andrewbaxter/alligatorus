@@ -1,8 +1,11 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
-        eval::{            aspect::AspectPull,
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
+        eval::{
+            aspect::AspectPull,
             definition_set::serialize_definition_set,
             pull_type_dispatch::{
                 pull_aspect_v8,
@@ -14,15 +17,16 @@ use {
             },
             value::{
                 type_any::r#const::TypeAnyConst,
+                type_root::r#const::TypeRoot,
                 type_source_data_type::SourceDataTypeData,
                 type_source_interface::SourceInterfaceRef,
                 value_pull::aspect::TypePullAspect,
             },
         },
         langhelp::{
-            EResult,
             Aspect,
             CodeValue,
+            EResult,
             EvalRes,
             ExprContext,
             QExprId,
@@ -52,6 +56,16 @@ pub(crate) struct TypePull {
 }
 
 impl Aspect for TypePull { }
+
+impl ExporterAny for TypePull {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
 
 impl Type for TypePull {
     fn as_value(&self) -> Rc<dyn Value> {
@@ -125,22 +139,12 @@ impl Type for TypePull {
     }
 }
 
-impl ExporterAny for TypePull {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypePull {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::Pull))
     }
 }

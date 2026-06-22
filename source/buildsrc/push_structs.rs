@@ -987,23 +987,27 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
             }
             impl crate:: artifact:: ExporterAny for #type_name {
-                fn as_type(self) -> crate:: langhelp:: EResult<std:: rc:: Rc<dyn crate:: langhelp:: Value>> {
+                fn as_type(self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
                     unimplemented!()
                 }
-                fn as_value(self) -> crate:: langhelp:: EResult<std:: rc:: Rc<dyn crate:: langhelp:: Value>> {
+
+                fn as_value(self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
                     unimplemented!()
                 }
             }
             impl crate:: langhelp:: Value for #type_name {
-                fn as_exporter_any(&self) -> std:: rc:: Rc<dyn crate:: artifact:: ExporterAny> {
+                fn as_exporter_any(&self) -> std::rc::Rc<dyn crate::artifact::ExporterAny> {
                     unimplemented!()
                 }
+
                 fn type_(
                     &self,
                     _xx: &crate::langhelp::ExprContext,
                     _loc: crate::langhelp::QExprId,
-                ) -> crate:: langhelp:: EResult<std::rc::Rc<dyn crate::langhelp::Type>> {
-                    crate:: langhelp:: EResult:: ok(std::rc::Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst))
+                ) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Type>> {
+                    crate::langhelp::EResult::ok(
+                        std::rc::Rc::new(crate::eval::value::type_any::r#const::TypeAnyConst)
+                    )
                 }
             }
             impl crate:: langhelp:: Aspect for #type_name {

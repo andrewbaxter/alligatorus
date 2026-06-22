@@ -324,20 +324,6 @@ impl TestArtifacts {
     }
 }
 
-struct TestSources {
-    modules: HashMap<String, (SourceId, SourceModule)>,
-}
-
-impl Sources for TestSources {
-    fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String> {
-        match spec {
-            SourceSpecAbsolute::Virtual(name) => {
-                self.modules.get(&name).cloned().ok_or_else(|| format!("Module not found: {}", name))
-            },
-        }
-    }
-}
-
 impl Artifacts for Arc<TestArtifacts> {
     fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
         self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
@@ -352,5 +338,19 @@ impl Artifacts for Arc<TestArtifacts> {
 
     fn set(&self, id: ArtifactId, data: Artifact) {
         self.data.lock().unwrap().insert(id, data);
+    }
+}
+
+struct TestSources {
+    modules: HashMap<String, (SourceId, SourceModule)>,
+}
+
+impl Sources for TestSources {
+    fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String> {
+        match spec {
+            SourceSpecAbsolute::Virtual(name) => {
+                self.modules.get(&name).cloned().ok_or_else(|| format!("Module not found: {}", name))
+            },
+        }
     }
 }

@@ -1,13 +1,16 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
-    crate::artifact::ArtifactDataDefSetDataType,
     crate::{
-        eval::{            definition_set::load_def_set,
+        artifact::{
+            Artifact,
+            ArtifactDataDefSetDataType,
+            ExporterAny,
+        },
+        eval::{
+            definition_set::load_def_set,
             value::{
                 type_any::r#const::TypeAnyConst,
-                type_source_data_type::{                    r#const::TypeSourceDataTypeConst,
-                },
+                type_root::r#const::TypeRoot,
+                type_source_data_type::r#const::TypeSourceDataTypeConst,
             },
         },
         invariant::must_downcast_ref,
@@ -87,6 +90,16 @@ impl AspectType for TypeTypeSourceDataTypeDynamic {
     }
 }
 
+impl ExporterAny for TypeTypeSourceDataTypeDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeTypeSourceDataTypeDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
@@ -122,22 +135,12 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     }
 }
 
-impl ExporterAny for TypeTypeSourceDataTypeDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeTypeSourceDataTypeDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::TypeSourceDataTypeDynamic))
     }
 }

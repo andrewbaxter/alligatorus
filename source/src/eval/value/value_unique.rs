@@ -1,6 +1,6 @@
 use {
-    crate::artifact::ExporterAny,
     crate::{
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -14,6 +14,7 @@ use {
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_bool::dynamic::TypeBoolDynamic,
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_bool::r#const::ValueBoolConst,
             },
@@ -164,6 +165,16 @@ impl AspectOperatorEq for TypeUnique {
     }
 }
 
+impl ExporterAny for TypeUnique {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeUnique {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeUnique)
@@ -205,23 +216,23 @@ impl Type for TypeUnique {
     }
 }
 
-impl ExporterAny for TypeUnique {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeUnique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::Unique))
+    }
+}
+
+impl ExporterAny for Unique {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -236,16 +247,6 @@ impl Push for Unique {
 
     fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         to_v8(scope, self).into()
-    }
-}
-
-impl ExporterAny for Unique {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

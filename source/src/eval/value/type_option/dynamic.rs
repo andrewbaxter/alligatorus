@@ -1,14 +1,17 @@
 use {
-    crate::artifact::ExporterAny,
-    crate::artifact::Artifact,
     crate::{
+        artifact::{
+            Artifact,
+            ExporterAny,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicNewObject,
             CodeDynamicType,
         },
         eval::{
-            TargetBindSub,            dynamic_util::{
+            TargetBindSub,
+            dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
                 dynamic_set,
@@ -27,6 +30,7 @@ use {
                     ArtifactOptionType,
                     TypeOptionArtifact,
                 },
+                type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_data_type_constructor::dynamic::serialize_type_ref,
                 value_dynamic::{
@@ -201,6 +205,16 @@ impl AspectTaggedUnion for TypeOptionDynamic {
     }
 }
 
+impl ExporterAny for TypeOptionDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Push for TypeOptionDynamic {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
@@ -289,23 +303,13 @@ impl Type for TypeOptionDynamic {
     }
 }
 
-impl ExporterAny for TypeOptionDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeOptionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::OptionDynamic))
     }
 }
 
@@ -345,6 +349,16 @@ impl AspectFunction for TypeOptionVariantConstructorDynamic {
     }
 }
 
+impl ExporterAny for TypeOptionVariantConstructorDynamic {
+    fn as_type(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeOptionVariantConstructorDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
@@ -375,22 +389,12 @@ impl Type for TypeOptionVariantConstructorDynamic {
     }
 }
 
-impl ExporterAny for TypeOptionVariantConstructorDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeOptionVariantConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         unimplemented!()
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAnyConst))
+        EResult::ok(Rc::new(TypeRoot::OptionVariantConstructorDynamic))
     }
 }
