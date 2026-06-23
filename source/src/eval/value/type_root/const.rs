@@ -48,7 +48,12 @@ use {
 };
 
 pub(crate) trait ExporterRootDelegate {
-    fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>>;
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>>;
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
@@ -94,36 +99,56 @@ impl ArtifactExporter for ExporterRoot {
         id: Option<ArtifactIdSource>,
         data: serde_json::Value,
     ) -> EResult<Rc<dyn std::any::Any>> {
+        let id_ref = id.as_ref();
         let res: EResult<Rc<dyn Any>> = match self {
-            ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_from_artifact_data(
                 &xx,
                 loc,
+                id_ref,
                 data,
             ),
             ExporterRoot::SourceExportsLiftedConst => TypeSourceExportsLiftedConst::self_from_artifact_data(
                 &xx,
                 loc,
+                id_ref,
                 data,
             ),
-            ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
+            ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_from_artifact_data(
                 &xx,
                 loc,
+                id_ref,
                 data,
             ),
             ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst
             ::self_from_artifact_data(
                 &xx,
                 loc,
+                id_ref,
                 data,
             ),
-            ExporterRoot::StringConst => TypeStringConst::self_from_artifact_data(&xx, loc, data),
-            ExporterRoot::Unique => TypeUnique::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::StringConst => TypeStringConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::Unique => TypeUnique::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Root => EResult::from(
                 loc,
                 serde_json::from_value::<TypeRoot>(data).map(|r| Rc::new(r).into()),

@@ -223,9 +223,15 @@ pub(crate) fn impl_deserialize_independent_artifact<
     data: serde_json::Value,
     create: impl FnOnce(T) -> Result<(Rc<dyn ExporterAny>, Vec<Artifact>, ArtifactFinalizer), String>,
 ) -> EResult<Rc<dyn ExporterAny>> {
-    let data = serde_json::from_value(data).map_err(|e| e.to_string())?;
-    let (out, dependencies, finalizer) = create(data)?;
-    xx.vx.ix.deserialized_artifacts.borrow_mut().insert(id.clone(), Rc::new(out.clone()));
+    let data = match serde_json::from_value(data) {
+        Ok(v) => v,
+        Err(e) => return EResult::err(loc, e.to_string()),
+    };
+    let (out, dependencies, finalizer) = match create(data) {
+        Ok(v) => v,
+        Err(e) => return EResult::err(loc, e),
+    };
+    xx.vx.ix.deserialized_artifacts.borrow_mut().insert(id.clone(), out.clone());
     let mut errors = None;
     for dep in dependencies {
         let res = deserialize_artifact(xx, loc, dep);
@@ -286,3 +292,15 @@ pub(crate) fn serialize_artifact(xx: &ExprContext, loc: QExprId, v: &dyn Value) 
 pub(crate) struct TypeFromAny(pub Rc<dyn Type>);
 
 pub(crate) struct ValueFromAny(pub Rc<dyn Value>);
+
+pub(crate) struct ExporterDataAny<T: 'static>(pub T);
+
+impl<T: 'static> ExporterAny for ExporterDataAny<T> {
+    fn as_type(self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}

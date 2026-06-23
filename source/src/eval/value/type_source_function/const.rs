@@ -3,8 +3,12 @@ use {
         artifact::{
             Artifact,
             ArtifactBody,
+            ArtifactIdSource,
             ExporterAny,
+            ExporterDataAny,
+            impl_deserialize_independent_artifact,
             impl_serialize_independent_artifact,
+            serialize_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -12,7 +16,10 @@ use {
             CodeDynamicType,
         },
         eval::{
-            definition_set::serialize_definition_set,
+            definition_set::{
+                DefinitionSet,
+                serialize_definition_set,
+            },
             value::type_root::r#const::ExporterRootDelegate,
             from_v8_ref,
             push::Push,
@@ -33,10 +40,12 @@ use {
             Code,
             CodeValue,
             Code_,
+            DefSetId,
             EResult,
             EvalRes,
             ExprContext,
             QExprId,
+            ScopeEntryId,
             Type,
             Unique,
             Value,
@@ -170,32 +179,143 @@ impl Value for TypeSourceFunctionConst {
 struct ArtifactNewSourceFunction {
     name: Option<String>,
     compiled_js: String,
+    arg_type: Artifact,
+    ret_type: Artifact,
+    scope_entry_id: usize,
+    def_set_id: DefSetId,
+    def_set: Artifact,
 }
 
 impl ExporterRootDelegate for TypeSourceFunctionConst {
     fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _data: serde_json::Value,
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
     ) -> EResult<Rc<dyn Any>> {
-        unimplemented!()
+        let Some(id) = id else {
+            return EResult::err(loc, "TypeSourceFunctionConst requires an artifact id to deserialize".to_string());
+        };
+        let id_owned = id.clone();
+        let res =
+            impl_deserialize_independent_artifact::<
+                ArtifactNewSourceFunction,
+            >(xx, loc, id, data, move |body: ArtifactNewSourceFunction| {
+                let set = dumpster::unsync::Gc::new(DefinitionSet::new(body.def_set_id));
+                let func_data = dumpster::unsync::Gc::new(super::SourceFunctionData {
+                    arg_type: std::cell::RefCell::new(None),
+                    artifact_id: std::cell::RefCell::new(None),
+                    captured_externals: std::cell::RefCell::new(Vec::new()),
+                    compiled_js: std::cell::RefCell::new(Some(body.compiled_js.clone())),
+                    description: std::cell::RefCell::new(None),
+                    impl_expr: std::cell::RefCell::new(None),
+                    name: body.name.clone(),
+                    new_artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
+                    ret_type: std::cell::RefCell::new(None),
+                    scope_entry_id: std::cell::Cell::new(
+                        Some(ScopeEntryId::Def(body.def_set_id, body.scope_entry_id)),
+                    ),
+                    set: set,
+                });
+                let func_for_finalizer = func_data.clone();
+                let arg_type_art = body.arg_type;
+                let ret_type_art = body.ret_type;
+                let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(func_data.clone()));
+                let deps = vec![body.def_set, arg_type_art.clone(), ret_type_art.clone()];
+                let finalizer: crate::artifact::ArtifactFinalizer =
+                    Box::new(move |xx: &ExprContext, loc: QExprId| {
+                        if let Some(v) =
+                            crate::artifact::deserialize_type_artifact(xx, loc, arg_type_art.clone()).v {
+                            *func_for_finalizer.arg_type.borrow_mut() = Some(v);
+                        }
+                        if let Some(v) =
+                            crate::artifact::deserialize_type_artifact(xx, loc, ret_type_art.clone()).v {
+                            *func_for_finalizer.ret_type.borrow_mut() = Some(v);
+                        }
+                    });
+                Ok((out, deps, finalizer))
+            });
+        let mut errors = res.errors;
+        let Some(any) = res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(any) as Rc<dyn Any>),
+        };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
-        _loc: QExprId,
+        loc: QExprId,
         self_: Rc<dyn Any>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceFunctionConst>().expect("expected TypeSourceFunctionConst");
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
-            let body = ArtifactNewSourceFunction {
-                name: self_.data.name.clone(),
-                compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),
+        let arg_type =
+            self_.data.arg_type.borrow().clone().unwrap_or_else(|| {
+                Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+            });
+        let ret_type =
+            self_.data.ret_type.borrow().clone().unwrap_or_else(|| {
+                Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+            });
+        let arg_art = serialize_artifact(xx, loc, arg_type.as_value().as_ref());
+        let mut errors = arg_art.errors;
+        let Some(arg_art) = arg_art.v else {
+            return EResult {
+                errors,
+                v: None,
             };
-            make_body(serde_json::to_value(&body).unwrap())
-        });
-        EResult::ok(art)
+        };
+        let ret_art = serialize_artifact(xx, loc, ret_type.as_value().as_ref());
+        if let Some(errors1) = ret_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(ret_art) = ret_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let set_const =
+            super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                set: self_.data.set.clone(),
+            };
+        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
+        if let Some(errors1) = def_set_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(def_set_art) = def_set_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let scope_entry_id_index = match self_.data.scope_entry_id.get() {
+            Some(ScopeEntryId::Def(_, idx)) => idx,
+            _ => 0,
+        };
+        let art =
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+                let body = ArtifactNewSourceFunction {
+                    name: self_.data.name.clone(),
+                    compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),
+                    arg_type: arg_art,
+                    ret_type: ret_art,
+                    scope_entry_id: scope_entry_id_index,
+                    def_set_id: self_.data.set.def_set_id,
+                    def_set: def_set_art,
+                };
+                make_body(serde_json::to_value(&body).unwrap())
+            });
+        return EResult {
+            errors,
+            v: Some(art),
+        };
     }
 }
 

@@ -205,11 +205,51 @@ struct ArtifactNewDefSet {
 
 impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
     fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _data: serde_json::Value,
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
     ) -> EResult<Rc<dyn Any>> {
-        unimplemented!()
+        let Some(id) = id else {
+            return EResult::err(
+                loc,
+                "TypeSourceExportsLiftedConst requires an artifact id to deserialize".to_string(),
+            );
+        };
+        let id_owned = id.clone();
+        let res =
+            crate::artifact::impl_deserialize_independent_artifact::<
+                ArtifactNewDefSet,
+            >(xx, loc, id, data, move |body: ArtifactNewDefSet| {
+                let set = Gc::new(DefinitionSet::new(body.def_set_id));
+                *set.new_artifact_id.borrow_mut() = Some(id_owned.clone());
+                let deps: Vec<Artifact> =
+                    body.members.iter().chain(body.dependencies.iter()).cloned().collect();
+                let out: Rc<dyn ExporterAny> =
+                    Rc::new(crate::artifact::ExporterDataAny(TypeSourceExportsLiftedConst { set: set.clone() }));
+                let set_for_finalizer = set.clone();
+                let finalizer: crate::artifact::ArtifactFinalizer =
+                    Box::new(move |xx: &ExprContext, _loc: QExprId| {
+                        xx
+                            .vx
+                            .definition_sets
+                            .borrow_mut()
+                            .entry(set_for_finalizer.def_set_id)
+                            .or_insert_with(|| set_for_finalizer.clone());
+                    });
+                Ok((out, deps, finalizer))
+            });
+        let errors = res.errors;
+        let Some(any) = res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(any) as Rc<dyn Any>),
+        };
     }
 
     fn self_to_serial(

@@ -227,7 +227,12 @@ impl Type for TypeUnique {
 }
 
 impl ExporterRootDelegate for TypeUnique {
-    fn self_from_artifact_data(_xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>> {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
         return EResult::from(
             loc,
             serde_json::from_value::<ArtifactUnique>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),

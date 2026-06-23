@@ -4,9 +4,13 @@ use {
             Artifact,
             ArtifactBody,
             ArtifactId,
+            ArtifactIdSource,
             ExporterAny,
+            ExporterDataAny,
             deserialize_artifact,
+            impl_deserialize_independent_artifact,
             impl_serialize_independent_artifact,
+            serialize_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -430,38 +434,279 @@ impl Value for TypeSourceDataTypeConst {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceDataMethod {
+    name: String,
+    field_name: String,
+    arg_type: Artifact,
+    ret_type: Artifact,
+    compiled_js: String,
+    scope_entry_id: usize,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceInterfaceMethodImpl {
+    interface_method_index: usize,
+    compiled_js: String,
+    scope_entry_id: usize,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceInterfaceImpl {
+    interface: Artifact,
+    method_impls: Vec<ArtifactNewSourceInterfaceMethodImpl>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
 struct ArtifactNewSourceDataType {
     name: Option<String>,
     identity: Unique,
     data_field: String,
+    def_set_id: crate::langhelp::DefSetId,
+    def_set: Artifact,
+    underlying_type: Artifact,
+    methods: Vec<ArtifactNewSourceDataMethod>,
+    interface_impls: Vec<ArtifactNewSourceInterfaceImpl>,
 }
 
 impl ExporterRootDelegate for TypeSourceDataTypeConst {
     fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _data: serde_json::Value,
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
     ) -> EResult<Rc<dyn Any>> {
-        unimplemented!()
+        let Some(id) = id else {
+            return EResult::err(loc, "TypeSourceDataTypeConst requires an artifact id to deserialize".to_string());
+        };
+        let id_owned = id.clone();
+        let res =
+            impl_deserialize_independent_artifact::<
+                ArtifactNewSourceDataType,
+            >(xx, loc, id, data, move |body: ArtifactNewSourceDataType| {
+                let set =
+                    dumpster::unsync::Gc::new(crate::eval::definition_set::DefinitionSet::new(body.def_set_id));
+                let dt_data = dumpster::unsync::Gc::new(super::SourceDataTypeData {
+                    artifact_id: RefCell::new(None),
+                    new_artifact_id: RefCell::new(Some(id_owned.clone())),
+                    set: set,
+                    name: body.name.clone(),
+                    identity: body.identity.clone(),
+                    data_field: body.data_field.clone(),
+                    description: RefCell::new(None),
+                    underlying_type: crate::invariant::DeserialLazy::new(),
+                    methods: RefCell::new(Vec::new()),
+                    interface_impls: RefCell::new(Vec::new()),
+                });
+                let dt_for_finalizer = dt_data.clone();
+                let underlying_art = body.underlying_type.clone();
+                let methods_serial = body.methods;
+                let iface_impls_serial = body.interface_impls;
+                let mut deps: Vec<Artifact> = Vec::new();
+                deps.push(body.def_set);
+                deps.push(underlying_art.clone());
+                for m in &methods_serial {
+                    deps.push(m.arg_type.clone());
+                    deps.push(m.ret_type.clone());
+                }
+                for impl_data in &iface_impls_serial {
+                    deps.push(impl_data.interface.clone());
+                }
+                let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(dt_data.clone()));
+                let finalizer: crate::artifact::ArtifactFinalizer =
+                    Box::new(move |xx: &ExprContext, loc: QExprId| {
+                        if let Some(t) =
+                            crate::artifact::deserialize_type_artifact(xx, loc, underlying_art).v {
+                            dt_for_finalizer.underlying_type.set(t);
+                        }
+                        let def_set_id = dt_for_finalizer.set.def_set_id;
+                        let methods: Vec<Rc<super::SourceDataMethodData>> = methods_serial.into_iter().map(|m| {
+                            let arg_type = crate::artifact::deserialize_type_artifact(xx, loc, m.arg_type).v;
+                            let ret_type = crate::artifact::deserialize_type_artifact(xx, loc, m.ret_type).v;
+                            Rc::new(super::SourceDataMethodData {
+                                artifact_id: RefCell::new(None),
+                                name: m.name,
+                                field_name: m.field_name,
+                                arg_type: RefCell::new(arg_type),
+                                ret_type: RefCell::new(ret_type),
+                                impl_expr: RefCell::new(None),
+                                compiled_js: RefCell::new(Some(m.compiled_js)),
+                                captured_externals: RefCell::new(Vec::new()),
+                                scope_entry_id: std::cell::Cell::new(
+                                    Some(ScopeEntryId::Def(def_set_id, m.scope_entry_id)),
+                                ),
+                                inner_scope_entry_id: std::cell::Cell::new(None),
+                            })
+                        }).collect();
+                        *dt_for_finalizer.methods.borrow_mut() = methods;
+                        let iface_impls: Vec<super::SourceDataTypeInterfaceImplData> =
+                            iface_impls_serial.into_iter().filter_map(|impl_data| {
+                                let iface_any =
+                                    crate::artifact::deserialize_artifact(xx, loc, impl_data.interface).v?;
+                                let iface_data =
+                                    iface_any
+                                        .downcast::<ExporterDataAny<dumpster::unsync::Gc<super::super::type_source_interface::SourceInterfaceData>>>()
+                                        .ok()?;
+                                let method_impls = impl_data.method_impls.into_iter().map(|m| {
+                                    super::SourceDataTypeInterfaceMethodImplData {
+                                        artifact_id: RefCell::new(None),
+                                        interface_method_index: m.interface_method_index,
+                                        impl_expr: RefCell::new(None),
+                                        impl_expr_artifact: RefCell::new(None),
+                                        compiled_js: RefCell::new(Some(m.compiled_js)),
+                                        captured_externals: RefCell::new(Vec::new()),
+                                        scope_entry_id: std::cell::Cell::new(
+                                            Some(ScopeEntryId::Def(def_set_id, m.scope_entry_id)),
+                                        ),
+                                        inner_scope_entry_id: std::cell::Cell::new(None),
+                                    }
+                                }).collect();
+                                Some(super::SourceDataTypeInterfaceImplData {
+                                    artifact_id: RefCell::new(None),
+                                    interface: iface_data.0.clone(),
+                                    method_impls,
+                                })
+                            }).collect();
+                        *dt_for_finalizer.interface_impls.borrow_mut() = iface_impls;
+                    });
+                Ok((out, deps, finalizer))
+            });
+        let errors = res.errors;
+        let Some(any) = res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(any) as Rc<dyn Any>),
+        };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
-        _loc: QExprId,
+        loc: QExprId,
         self_: Rc<dyn Any>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceDataTypeConst>().expect("expected TypeSourceDataTypeConst");
+        let mut errors = None;
+        let underlying_type = self_.data.underlying_type.get().clone();
+        let underlying_art = serialize_artifact(xx, loc, underlying_type.as_value().as_ref());
+        if let Some(errors1) = underlying_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(underlying_art) = underlying_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let set_const =
+            super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                set: self_.data.set.clone(),
+            };
+        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
+        if let Some(errors1) = def_set_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(def_set_art) = def_set_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut methods: Vec<ArtifactNewSourceDataMethod> = Vec::new();
+        for m in self_.data.methods.borrow().iter() {
+            let arg_type =
+                m.arg_type.borrow().clone().unwrap_or_else(|| {
+                    Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+                });
+            let ret_type =
+                m.ret_type.borrow().clone().unwrap_or_else(|| {
+                    Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+                });
+            let arg_art = serialize_artifact(xx, loc, arg_type.as_value().as_ref());
+            if let Some(errors1) = arg_art.errors {
+                errors.get_or_insert_default().extend(errors1);
+            }
+            let Some(arg_art) = arg_art.v else {
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            };
+            let ret_art = serialize_artifact(xx, loc, ret_type.as_value().as_ref());
+            if let Some(errors1) = ret_art.errors {
+                errors.get_or_insert_default().extend(errors1);
+            }
+            let Some(ret_art) = ret_art.v else {
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            };
+            let scope_idx = match m.scope_entry_id.get() {
+                Some(ScopeEntryId::Def(_, idx)) => idx,
+                _ => 0,
+            };
+            methods.push(ArtifactNewSourceDataMethod {
+                name: m.name.clone(),
+                field_name: m.field_name.clone(),
+                arg_type: arg_art,
+                ret_type: ret_art,
+                compiled_js: m.compiled_js.borrow().clone().unwrap_or_default(),
+                scope_entry_id: scope_idx,
+            });
+        }
+        let mut interface_impls: Vec<ArtifactNewSourceInterfaceImpl> = Vec::new();
+        for impl_data in self_.data.interface_impls.borrow().iter() {
+            let iface_const = TypeSourceInterfaceConst { data: impl_data.interface.clone() };
+            let iface_art = serialize_artifact(xx, loc, &iface_const as &dyn Value);
+            if let Some(errors1) = iface_art.errors {
+                errors.get_or_insert_default().extend(errors1);
+            }
+            let Some(iface_art) = iface_art.v else {
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            };
+            let method_impls: Vec<ArtifactNewSourceInterfaceMethodImpl> =
+                impl_data.method_impls.iter().map(|m| {
+                    let scope_idx = match m.scope_entry_id.get() {
+                        Some(ScopeEntryId::Def(_, idx)) => idx,
+                        _ => 0,
+                    };
+                    ArtifactNewSourceInterfaceMethodImpl {
+                        interface_method_index: m.interface_method_index,
+                        compiled_js: m.compiled_js.borrow().clone().unwrap_or_default(),
+                        scope_entry_id: scope_idx,
+                    }
+                }).collect();
+            interface_impls.push(ArtifactNewSourceInterfaceImpl {
+                interface: iface_art,
+                method_impls,
+            });
+        }
         let art =
             impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
                 let body = ArtifactNewSourceDataType {
                     name: self_.data.name.clone(),
                     identity: self_.data.identity.clone(),
                     data_field: self_.data.data_field.clone(),
+                    def_set_id: self_.data.set.def_set_id,
+                    def_set: def_set_art,
+                    underlying_type: underlying_art,
+                    methods,
+                    interface_impls,
                 };
                 make_body(serde_json::to_value(&body).unwrap())
             });
-        EResult::ok(art)
+        return EResult {
+            errors,
+            v: Some(art),
+        };
     }
 }
 
