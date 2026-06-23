@@ -281,18 +281,16 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
                 let out: Rc<dyn ExporterAny> = Rc::new(crate::artifact::ExporterDataAny(tu_data.clone()));
                 let finalizer: crate::artifact::ArtifactFinalizer =
                     Box::new(move |xx: &ExprContext, loc: QExprId| {
-                        let mut variants = Vec::with_capacity(variants_serial.len());
-                        for v in &variants_serial {
-                            let t = crate::artifact::deserialize_type_artifact(xx, loc, v.type_.clone());
-                            let Some(t_val) = t.v else {
-                                continue;
-                            };
-                            variants.push(super::SourceTaggedUnionVariant {
-                                js_tag: v.js_tag.clone(),
-                                tag: v.tag.clone(),
-                                type_: t_val,
-                            });
-                        }
+                        let variants: Vec<super::SourceTaggedUnionVariant> =
+                            variants_serial.iter().map(|v| {
+                                super::SourceTaggedUnionVariant {
+                                    js_tag: v.js_tag.clone(),
+                                    tag: v.tag.clone(),
+                                    type_: crate::artifact::deserialize_type_artifact(xx, loc, v.type_.clone())
+                                        .v
+                                        .expect("Failed to deserialize tagged union variant type"),
+                                }
+                            }).collect();
                         *tu_for_finalizer.variants.borrow_mut() = variants;
                     });
                 Ok((out, deps, finalizer))
