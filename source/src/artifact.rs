@@ -47,7 +47,7 @@ pub(crate) trait Artifacts: Send + Sync {
 }
 
 pub(crate) trait ExporterAny: Any {
-    fn as_type(self) -> EResult<Rc<dyn Value>>;
+    fn as_type(self) -> EResult<Rc<dyn Type>>;
     fn as_value(self) -> EResult<Rc<dyn Value>>;
 }
 
@@ -192,25 +192,25 @@ pub(crate) fn deserialize_type_artifact(
 ) -> EResult<Rc<dyn Type>> {
     let res = deserialize_artifact(xx, loc, artifact);
     let mut errors = res.errors;
-    let v = match res.v {
-        Some(v) => {
-            let Ok(v) = v.downcast::<TypeFromAny>() else {
-                errors.get_or_insert_default().push(ExprErr {
-                    errors: vec![ExprSubErr::Opaque("Artifact didn't deserialize to type".to_string())],
-                    loc: loc,
-                });
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            Some(v.v.clone())
-        },
-        None => None,
+    let Some(v) = res.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
+    };
+    let v = v.as_type();
+    if let Some(errors1) = v.errors {
+        errors.get_or_insert_default().extend(errors1);
+    }
+    let Some(v) = v.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
     };
     return EResult {
         errors: res.errors,
-        v: v,
+        v: Some(v),
     };
 }
 
