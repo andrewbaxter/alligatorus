@@ -9,6 +9,8 @@ use {
             ExporterAny,
         },
         eval::value::{
+            record::Record,
+            tuple::Tuple,
             type_bool::r#const::TypeBoolConst,
             type_null::r#const::TypeNullConst,
             type_number::r#const::TypeNumberConst,
@@ -150,6 +152,8 @@ impl ArtifactExporter for ExporterRoot {
                 data,
             ),
             ExporterRoot::StringConst => TypeStringConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::Record => Record::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::Tuple => Tuple::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Unique => TypeUnique::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Root => EResult::from(
                 loc,
@@ -209,6 +213,8 @@ impl ArtifactExporter for ExporterRoot {
                 make_body,
             ),
             ExporterRoot::StringConst => TypeStringConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::Record => Record::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::Tuple => Tuple::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Unique => TypeUnique::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Root => EResult::ok(Artifact::Body(make_body(serde_json::to_value(self).unwrap()))),
         };
@@ -297,10 +303,12 @@ impl TypeRoot {
 }
 
 impl AspectArtifact for TypeRoot {
-    fn exporter(&self, xx: &ExprContext, loc: QExprId) -> Rc<dyn ArtifactExporter> {
+    fn exporter(&self) -> Rc<dyn ArtifactExporter> {
         return Rc::new(self.exporter_for().unwrap());
     }
 }
+
+impl crate::langhelp::Aspect for TypeRoot { }
 
 impl ExporterAny for TypeRoot {
     fn as_type(self) -> EResult<Rc<dyn Value>> {
