@@ -67,6 +67,7 @@ pub enum ExporterRoot {
     BoolConst,
     NullConst,
     NumberConst,
+    Record,
     Root,
     SourceDataTypeConst,
     SourceDataTypeConstructorConst,
@@ -76,6 +77,7 @@ pub enum ExporterRoot {
     SourceTaggedUnionConst,
     SourceTaggedUnionConstructorConst,
     StringConst,
+    Tuple,
     Unique,
 }
 
