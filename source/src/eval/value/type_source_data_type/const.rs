@@ -2,9 +2,11 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
             ArtifactId,
             ExporterAny,
             deserialize_artifact,
+            impl_serialize_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -22,6 +24,7 @@ use {
             import_install::install_imported_type_iface,
             value::{
                 type_pull::TypePull,
+                type_root::r#const::ExporterRootDelegate,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_interface::{
                     BuiltinInterfaceKind,
@@ -423,6 +426,42 @@ impl Value for TypeSourceDataTypeConst {
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
         EResult::ok(Rc::new(TypeTypeSourceDataTypeDynamic))
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceDataType {
+    name: Option<String>,
+    identity: Unique,
+    data_field: String,
+}
+
+impl ExporterRootDelegate for TypeSourceDataTypeConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        unimplemented!()
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        _loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceDataTypeConst>().expect("expected TypeSourceDataTypeConst");
+        let art =
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+                let body = ArtifactNewSourceDataType {
+                    name: self_.data.name.clone(),
+                    identity: self_.data.identity.clone(),
+                    data_field: self_.data.data_field.clone(),
+                };
+                make_body(serde_json::to_value(&body).unwrap())
+            });
+        EResult::ok(art)
     }
 }
 

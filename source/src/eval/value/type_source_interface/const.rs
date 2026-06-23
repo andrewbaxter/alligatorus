@@ -2,7 +2,9 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
             ExporterAny,
+            impl_serialize_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -22,7 +24,10 @@ use {
                 },
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -333,6 +338,42 @@ impl Value for TypeSourceInterfaceConst {
         EResult::ok(Rc::new(TypeRoot::SourceInterfaceConst))
     }
 }
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceInterface {
+    identity: Unique,
+    description: Option<String>,
+    is_aspect: bool,
+}
+
+impl ExporterRootDelegate for TypeSourceInterfaceConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        unimplemented!()
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        _loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceInterfaceConst>().expect("expected TypeSourceInterfaceConst");
+        let art =
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+                let body = ArtifactNewSourceInterface {
+                    identity: self_.data.identity.clone(),
+                    description: self_.data.description.borrow().clone(),
+                    is_aspect: self_.data.is_aspect.get(),
+                };
+                make_body(serde_json::to_value(&body).unwrap())
+            });
+        EResult::ok(art)
+    }
+}
+
 pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
 
 impl Aspect for TypeSourceInterfaceConstAspectTypeImpl { }

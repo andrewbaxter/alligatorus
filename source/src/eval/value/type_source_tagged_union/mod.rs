@@ -17,6 +17,7 @@ use {
 
 pub(crate) struct SourceTaggedUnionData {
     pub identity: Unique,
+    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub next_tag_id: Counter,
     pub variants: RefCell<Vec<SourceTaggedUnionVariant>>,
 }

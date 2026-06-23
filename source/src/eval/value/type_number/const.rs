@@ -2,6 +2,7 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
             ExporterAny,
         },
         eval::value::{
@@ -230,8 +231,13 @@ impl ExporterRootDelegate for TypeNumberConst {
         );
     }
 
-    fn self_to_artifact_data(_xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        return EResult::ok(serde_json::to_value(ArtifactNumberType).unwrap());
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNumberType).unwrap())));
     }
 }
 

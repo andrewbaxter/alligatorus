@@ -98,6 +98,7 @@ pub fn build(
         iface_build_entries.push(quote!{
             let #f = dumpster:: unsync:: Gc:: new(crate:: eval:: value:: type_source_interface:: SourceInterfaceData {
                 artifact_id: RefCell:: new(None),
+                new_artifact_id: RefCell:: new(None),
                 builtin_kind: Some(crate:: eval:: value:: type_source_interface:: BuiltinInterfaceKind::#kind,),
                 set: builtin_def_set.clone(),
                 description: std:: cell:: RefCell:: new(Some(#description.to_string())),

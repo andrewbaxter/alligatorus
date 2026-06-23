@@ -138,8 +138,13 @@ impl ExporterRootDelegate for TypeNullConst {
         );
     }
 
-    fn self_to_artifact_data(xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn Any>) -> EResult<serde_json::Value> {
-        return EResult::ok(serde_json::to_value(ArtifactNull).unwrap());
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNull).unwrap())));
     }
 }
 

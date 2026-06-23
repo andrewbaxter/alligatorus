@@ -233,6 +233,7 @@ pub(crate) struct SourceDataTypeData {
     pub interface_impls: RefCell<Vec<SourceDataTypeInterfaceImplData>>,
     pub methods: RefCell<Vec<Rc<SourceDataMethodData>>>,
     pub name: Option<String>,
+    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub set: Gc<DefinitionSet>,
     pub underlying_type: DeserialLazy<Rc<dyn Type>>,
 }

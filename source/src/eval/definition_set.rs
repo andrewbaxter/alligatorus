@@ -107,6 +107,7 @@ pub(crate) struct DefinitionSet {
     pub finished: Cell<bool>,
     pub functions: RefCell<Vec<Gc<SourceFunctionData>>>,
     pub interfaces: RefCell<Vec<Gc<SourceInterfaceData>>>,
+    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub next_entry_id: Counter,
     pub next_field_id: Counter,
     pub next_interface_method_id: Counter,
@@ -164,6 +165,7 @@ impl DefinitionSet {
     pub fn new(def_set_id: DefSetId) -> Self {
         DefinitionSet {
             artifact_id: RefCell::new(None),
+            new_artifact_id: RefCell::new(None),
             def_set_id: def_set_id,
             functions: RefCell::new(Vec::new()),
             data_types: RefCell::new(Vec::new()),
@@ -286,6 +288,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                     methods: RefCell::new(Vec::new()),
                     interface_impls: RefCell::new(Vec::new()),
                     artifact_id: RefCell::new(Some(member_artifact_id.clone())),
+                    new_artifact_id: RefCell::new(None),
                 });
                 xx
                     .vx
@@ -309,6 +312,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                     ret_type: RefCell::new(None),
                     scope_entry_id: Cell::new(Some(ScopeEntryId::Def(def_set_id, func_serial.entry_id))),
                     artifact_id: RefCell::new(Some(member_artifact_id.clone())),
+                    new_artifact_id: RefCell::new(None),
                     compiled_js: RefCell::new(Some(func_serial.compiled_js.clone())),
                     captured_externals: RefCell::new(Vec::new()),
                 });
@@ -386,6 +390,7 @@ pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact_id: &ArtifactId) -
                                     ).expect("Failed to parse user iface artifact");
                                 dumpster::unsync::Gc::new(SourceInterfaceData {
                                     artifact_id: RefCell::new(Some(user_iface_id.clone())),
+                                    new_artifact_id: RefCell::new(None),
                                     builtin_kind: None,
                                     set: set.clone(),
                                     description: RefCell::new(user_iface.description.clone()),

@@ -2,7 +2,9 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
             ExporterAny,
+            impl_serialize_independent_artifact,
         },
         eval::{
             definition_set::{
@@ -15,7 +17,10 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
                 type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
                 type_source_function::r#const::TypeSourceFunctionConst,
             },
@@ -26,6 +31,7 @@ use {
             CodeValue,
             Code_,
             ConstKey,
+            DefSetId,
             EResult,
             EvalRes,
             ExprContext,
@@ -187,6 +193,114 @@ impl Type for TypeSourceExportsLiftedConst {
 
     fn desc(&self) -> String {
         format!("definition_set_exports")
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewDefSet {
+    def_set_id: DefSetId,
+    members: Vec<Artifact>,
+    dependencies: Vec<Artifact>,
+}
+
+impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        unimplemented!()
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
+        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.set.new_artifact_id, || {
+            let mut members: Vec<Artifact> = Vec::new();
+            for dt in self_.set.data_types.borrow().iter() {
+                let dt_const = Rc::new(super::super::type_source_data_type::r#const::TypeSourceDataTypeConst {
+                    data: dt.clone(),
+                });
+                let inner_make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> =
+                    Box::new(|data| ArtifactBody {
+                        data,
+                        exporter: crate::artifact::ArtifactBodyExporter::Body(Box::new(ArtifactBody {
+                            data: serde_json::to_value(
+                                crate::eval::value::type_root::r#const::ExporterRoot::SourceDataTypeConst,
+                            ).unwrap(),
+                            exporter: crate::artifact::ArtifactBodyExporter::Root,
+                        })),
+                    });
+                if let Some(m) =
+                    super::super::type_source_data_type::r#const::TypeSourceDataTypeConst::self_to_serial(
+                        xx,
+                        loc,
+                        dt_const,
+                        inner_make_body,
+                    ).v {
+                    members.push(m);
+                }
+            }
+            for f in self_.set.functions.borrow().iter() {
+                let f_const = Rc::new(super::super::type_source_function::r#const::TypeSourceFunctionConst {
+                    data: f.clone(),
+                });
+                let inner_make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> =
+                    Box::new(|data| ArtifactBody {
+                        data,
+                        exporter: crate::artifact::ArtifactBodyExporter::Body(Box::new(ArtifactBody {
+                            data: serde_json::to_value(
+                                crate::eval::value::type_root::r#const::ExporterRoot::SourceFunctionConst,
+                            ).unwrap(),
+                            exporter: crate::artifact::ArtifactBodyExporter::Root,
+                        })),
+                    });
+                if let Some(m) =
+                    super::super::type_source_function::r#const::TypeSourceFunctionConst::self_to_serial(
+                        xx,
+                        loc,
+                        f_const,
+                        inner_make_body,
+                    ).v {
+                    members.push(m);
+                }
+            }
+            for i in self_.set.interfaces.borrow().iter() {
+                let i_const = Rc::new(super::super::type_source_interface::r#const::TypeSourceInterfaceConst {
+                    data: i.clone(),
+                });
+                let inner_make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> =
+                    Box::new(|data| ArtifactBody {
+                        data,
+                        exporter: crate::artifact::ArtifactBodyExporter::Body(Box::new(ArtifactBody {
+                            data: serde_json::to_value(
+                                crate::eval::value::type_root::r#const::ExporterRoot::SourceInterfaceConst,
+                            ).unwrap(),
+                            exporter: crate::artifact::ArtifactBodyExporter::Root,
+                        })),
+                    });
+                if let Some(m) =
+                    super::super::type_source_interface::r#const::TypeSourceInterfaceConst::self_to_serial(
+                        xx,
+                        loc,
+                        i_const,
+                        inner_make_body,
+                    ).v {
+                    members.push(m);
+                }
+            }
+            let body = ArtifactNewDefSet {
+                def_set_id: self_.set.def_set_id,
+                members,
+                dependencies: Vec::new(),
+            };
+            make_body(serde_json::to_value(&body).unwrap())
+        });
+        EResult::ok(art)
     }
 }
 

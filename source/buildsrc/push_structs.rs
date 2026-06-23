@@ -147,6 +147,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
                             ),
                             artifact_id: RefCell::new(None),
+                            new_artifact_id: RefCell::new(None),
                             compiled_js: RefCell::new(None),
                             captured_externals: RefCell::new(Vec::new()),
                         });
@@ -174,6 +175,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             identity,
                             data_field,
                             artifact_id: RefCell::new(None),
+                            new_artifact_id: RefCell::new(None),
                         });
                         ds.data_types.borrow_mut().push(dt_data.clone());
                         let data_type_ref = Rc::new(SourceDataTypeRef { data: dt_data });

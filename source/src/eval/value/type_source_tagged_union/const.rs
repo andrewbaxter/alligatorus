@@ -2,7 +2,9 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
             ExporterAny,
+            impl_serialize_independent_artifact,
         },
         code_dynamic::CodeDynamic,
         eval::{
@@ -16,7 +18,10 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
@@ -230,5 +235,35 @@ impl Value for TypeSourceTaggedUnionConst {
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
         EResult::ok(Rc::new(TypeRoot::SourceTaggedUnionConst))
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceTaggedUnion {
+    identity: Unique,
+}
+
+impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        unimplemented!()
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        _loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceTaggedUnionConst>().expect("expected TypeSourceTaggedUnionConst");
+        let art =
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+                let body = ArtifactNewSourceTaggedUnion { identity: self_.data.identity.clone() };
+                make_body(serde_json::to_value(&body).unwrap())
+            });
+        EResult::ok(art)
     }
 }

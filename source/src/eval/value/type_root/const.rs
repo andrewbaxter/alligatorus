@@ -12,7 +12,9 @@ use {
             type_bool::r#const::TypeBoolConst,
             type_null::r#const::TypeNullConst,
             type_number::r#const::TypeNumberConst,
+            type_source_data_type::r#const::TypeSourceDataTypeConst,
             type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+            type_source_exports::r#const::TypeSourceExportsLiftedConst,
             type_source_function::r#const::TypeSourceFunctionConst,
             type_source_interface::r#const::TypeSourceInterfaceConst,
             type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
@@ -47,7 +49,12 @@ use {
 
 pub(crate) trait ExporterRootDelegate {
     fn self_from_artifact_data(xx: &ExprContext, loc: QExprId, data: serde_json::Value) -> EResult<Rc<dyn Any>>;
-    fn self_to_artifact_data(xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<serde_json::Value>;
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact>;
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -58,6 +65,7 @@ pub enum ExporterRoot {
     Root,
     SourceDataTypeConst,
     SourceDataTypeConstructorConst,
+    SourceExportsLiftedConst,
     SourceFunctionConst,
     SourceInterfaceConst,
     SourceTaggedUnionConst,
@@ -90,7 +98,13 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, data),
+            ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(&xx, loc, data),
             ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_from_artifact_data(
+                &xx,
+                loc,
+                data,
+            ),
+            ExporterRoot::SourceExportsLiftedConst => TypeSourceExportsLiftedConst::self_from_artifact_data(
                 &xx,
                 loc,
                 data,
@@ -132,40 +146,45 @@ impl ArtifactExporter for ExporterRoot {
     }
 
     fn to_serial(self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn std::any::Any>) -> EResult<Artifact> {
-        let mut errors = None;
-        let mut data = match self {
-            ExporterRoot::BoolConst => TypeBoolConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::NullConst => TypeNullConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::NumberConst => TypeNumberConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_to_artifact_data(
-                xx,
-                loc,
-                self_,
-            ),
-            ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst
-            ::self_to_artifact_data(
-                xx,
-                loc,
-                self_,
-            ),
-            ExporterRoot::StringConst => TypeStringConst::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::Unique => TypeUnique::self_to_artifact_data(xx, loc, self_),
-            ExporterRoot::Root => EResult::ok(serde_json::to_value(self).unwrap()),
-        };
-        data.push_errors(&mut errors);
-        let Some(data) = data.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult::ok(Artifact::Body(ArtifactBody {
-            data: data,
+        let make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> = Box::new(move |data| ArtifactBody {
+            data,
             exporter: self.self_to_serial_exporter(),
-        }));
+        });
+        return match self {
+            ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::NullConst => TypeNullConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::NumberConst => TypeNumberConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
+            ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
+            ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
+            ExporterRoot::SourceExportsLiftedConst => TypeSourceExportsLiftedConst::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
+            ExporterRoot::StringConst => TypeStringConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::Unique => TypeUnique::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::Root => EResult::ok(Artifact::Body(make_body(serde_json::to_value(self).unwrap()))),
+        };
     }
 }
 
@@ -238,6 +257,7 @@ impl TypeRoot {
             TypeRoot::NumberConst => Some(ExporterRoot::NumberConst),
             TypeRoot::Root => Some(ExporterRoot::Root),
             TypeRoot::SourceDataTypeConstructorConst => Some(ExporterRoot::SourceDataTypeConstructorConst),
+            TypeRoot::SourceExportsLiftedConst => Some(ExporterRoot::SourceExportsLiftedConst),
             TypeRoot::SourceFunctionConst => Some(ExporterRoot::SourceFunctionConst),
             TypeRoot::SourceInterfaceConst => Some(ExporterRoot::SourceInterfaceConst),
             TypeRoot::SourceTaggedUnionConst => Some(ExporterRoot::SourceTaggedUnionConst),

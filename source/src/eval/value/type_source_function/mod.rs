@@ -59,6 +59,7 @@ pub(crate) struct SourceFunctionData {
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,
+    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub set: Gc<DefinitionSet>,

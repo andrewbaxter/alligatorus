@@ -115,6 +115,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
     }).collect();
     let set = dumpster::unsync::Gc::new(DefinitionSet {
         artifact_id: std::cell::RefCell::new(None),
+        new_artifact_id: std::cell::RefCell::new(None),
         def_set_id: serial.def_set_id,
         functions: std::cell::RefCell::new(Vec::new()),
         data_types: std::cell::RefCell::new(Vec::new()),
@@ -139,6 +140,7 @@ pub(crate) fn deserialize_defset_ctor_as_type(
         identity: serial.identity.clone(),
         data_field: serial.data_field,
         artifact_id: std::cell::RefCell::new(None),
+        new_artifact_id: std::cell::RefCell::new(None),
     });
     set.data_types.borrow_mut().push(dt_data.clone());
     Ok((Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }), codes))

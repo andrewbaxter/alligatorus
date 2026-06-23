@@ -2,7 +2,9 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
             ExporterAny,
+            impl_serialize_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -11,6 +13,7 @@ use {
         },
         eval::{
             definition_set::serialize_definition_set,
+            value::type_root::r#const::ExporterRootDelegate,
             from_v8_ref,
             push::Push,
             to_v8,
@@ -160,6 +163,39 @@ impl Value for TypeSourceFunctionConst {
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
         EResult::ok(Rc::new(TypeRoot::SourceFunctionConst))
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ArtifactNewSourceFunction {
+    name: Option<String>,
+    compiled_js: String,
+}
+
+impl ExporterRootDelegate for TypeSourceFunctionConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        unimplemented!()
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        _loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceFunctionConst>().expect("expected TypeSourceFunctionConst");
+        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            let body = ArtifactNewSourceFunction {
+                name: self_.data.name.clone(),
+                compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),
+            };
+            make_body(serde_json::to_value(&body).unwrap())
+        });
+        EResult::ok(art)
     }
 }
 

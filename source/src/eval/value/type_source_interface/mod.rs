@@ -52,6 +52,7 @@ pub(crate) struct SourceInterfaceData {
     pub identity: Unique,
     pub is_aspect: Cell<bool>,
     pub methods: RefCell<Vec<Rc<SourceInterfaceMethodData>>>,
+    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub set: Gc<DefinitionSet>,
 }
 
