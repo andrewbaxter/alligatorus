@@ -495,14 +495,15 @@ pub(crate) fn compile_importid(
                     result: CompileResResult::Err(e),
                 },
             };
-            let value = match value_serial.exporter().to_serial(&xx, root_loc, eval_value.as_exporter_any()).into_res() {
-                Ok(v) => v,
-                Err(e) => return CompileRes {
-                    logs,
-                    generated_dynamic_scripts: vec![],
-                    result: CompileResResult::Err(e),
-                },
-            };
+            let value =
+                match value_serial.exporter().to_serial(&xx, root_loc, eval_value.as_exporter_any()).into_res() {
+                    Ok(v) => v,
+                    Err(e) => return CompileRes {
+                        logs,
+                        generated_dynamic_scripts: vec![],
+                        result: CompileResResult::Err(e),
+                    },
+                };
             return CompileRes {
                 logs,
                 generated_dynamic_scripts: mem::take(&mut *fx.generated_dynamic_scripts.lock().unwrap()),
@@ -2303,10 +2304,8 @@ fn eval(
                 target: Rc::new(TargetDynamic) as Rc<dyn Target>,
             });
             let loc = (ex_slot.ex.ix.source_id, ExprId(0));
-            let value_type = inner_value
-                .type_(&xx, loc)
-                .into_res()
-                .expect("__cve_extract: inner CV type_() returned errors");
+            let value_type =
+                inner_value.type_(&xx, loc).into_res().expect("__cve_extract: inner CV type_() returned errors");
             if let Some(aspect_str) = aspect_string_const_get_maybe(&xx, value_type.as_ref()) {
                 let s = aspect_str.get(inner_value.as_ref());
                 rv.set(v8::String::new(scope, &s).unwrap().into());
@@ -2389,10 +2388,8 @@ fn eval(
                 target,
             });
             let loc = (ex_slot.ex.ix.source_id, ExprId(0));
-            let type_ref: Rc<dyn Type> = value
-                .type_(&xx, loc)
-                .into_res()
-                .expect("value_get_type: type_() returned errors");
+            let type_ref: Rc<dyn Type> =
+                value.type_(&xx, loc).into_res().expect("value_get_type: type_() returned errors");
             let type_ref_push = Push::into_v8(TypeRefPush { type_ref }, scope);
             rv.set(type_ref_push);
         }
@@ -3604,7 +3601,10 @@ impl Target for TargetDynamic {
     fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let vtype = match cv.value.type_(xx, loc).into_res() {
             Ok(v) => v,
-            Err(errors) => return EResult { errors: Some(errors), v: None },
+            Err(errors) => return EResult {
+                errors: Some(errors),
+                v: None,
+            },
         };
         if let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) {
             return bind_dyn.bind_dynamic(xx, loc, cv);

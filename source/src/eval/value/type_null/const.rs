@@ -13,8 +13,8 @@ use {
             type_any::r#const::TypeAnyConst,
             type_null::artifact::ArtifactNull,
             type_root::r#const::{
-                TypeRoot,
                 ExporterRootDelegate,
+                TypeRoot,
             },
             value_null::r#const::ValueNullConst,
         },
@@ -81,6 +81,41 @@ impl AspectArtifact for TypeNullConst {
 
 impl AspectNull for TypeNullConst { }
 
+impl ExporterAny for TypeNullConst {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(Self));
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        return EResult::ok(Rc::new(ValueNullConst));
+    }
+}
+
+impl ExporterRootDelegate for TypeNullConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactNull>(
+                data,
+            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
+        );
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNull).unwrap())));
+    }
+}
+
 impl Type for TypeNullConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNullConst)
@@ -127,39 +162,6 @@ impl Type for TypeNullConst {
 
     fn desc(&self) -> String {
         return format!("null");
-    }
-}
-
-impl ExporterRootDelegate for TypeNullConst {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactNull>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
-    }
-
-    fn self_to_serial(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNull).unwrap())));
-    }
-}
-
-impl ExporterAny for TypeNullConst {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(Self));
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(ValueNullConst));
     }
 }
 

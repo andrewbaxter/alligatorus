@@ -38,11 +38,10 @@ use {
     },
 };
 
-#[derive(Clone)]
-pub(crate) struct TypeOptionConstructorConst;
-
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactOptionConstructorConst;
+#[derive(Clone)]
+pub(crate) struct TypeOptionConstructorConst;
 
 impl Aspect for TypeOptionConstructorConst { }
 

@@ -500,7 +500,6 @@ impl Type for TypeMapDynamic {
     fn desc(&self) -> String {
         format!("map({}, {})", self.key_type.desc(), self.value_type.desc())
     }
-
 }
 
 impl Value for TypeMapDynamic {

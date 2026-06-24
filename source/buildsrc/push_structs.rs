@@ -446,7 +446,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     body: quote!{
                         let iface_data = &self_.interface_ref.data;
                         let field_name =
-                            format!("_im{}", crate::eval::definition_set::next_interface_method_id(iface_data.set.borrow().as_ref().unwrap()));
+                            format!(
+                                "_im{}",
+                                crate::eval::definition_set::next_interface_method_id(
+                                    iface_data.set.borrow().as_ref().unwrap()
+                                )
+                            );
                         let method = Rc::new(SourceInterfaceMethodData {
                             name,
                             arg_type: RefCell::new(None),
@@ -665,12 +670,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     compiled_js: RefCell::new(None),
                                     captured_externals: RefCell::new(Vec::new()),
                                     scope_entry_id: Cell::new(
-                                        Some(
-                                            crate::langhelp::ScopeEntryId::Def(
-                                                ds.def_set_id,
-                                                aspect_id_entry_id
-                                            )
-                                        ),
+                                        Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, aspect_id_entry_id)),
                                     ),
                                     inner_scope_entry_id: Cell::new(None),
                                 });
@@ -1076,7 +1076,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 ) -> crate:: langhelp:: EvalRes {
                     let source_type = match cv.value.type_(xx, loc).into_res() {
                         Ok(v) => v,
-                        Err(errors) => return crate::langhelp::EvalRes { errors: Some(errors), v: None },
+                        Err(errors) => return crate::langhelp::EvalRes {
+                            errors: Some(errors),
+                            v: None
+                        },
                     };
                     if source_type.aspect(xx, &#identity_fn()).is_some() {
                         return crate:: langhelp:: EvalRes:: ok(crate:: langhelp:: CodeValue {
@@ -1217,9 +1220,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                         impl_expr_artifact: RefCell::new(None),
                         compiled_js: RefCell::new(None),
                         captured_externals: RefCell::new(Vec::new()),
-                        scope_entry_id: Cell::new(
-                            Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),
-                        ),
+                        scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),),
                         inner_scope_entry_id: Cell::new(None),
                     });
                 },

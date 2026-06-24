@@ -310,7 +310,6 @@ impl Type for TypeStringDynamic {
     fn desc(&self) -> String {
         return format!("dynamic string");
     }
-
 }
 
 impl Value for TypeStringDynamic {

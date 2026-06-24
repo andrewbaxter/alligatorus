@@ -463,6 +463,81 @@ impl ExporterAny for Record {
     }
 }
 
+impl ExporterRootDelegate for Record {
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        let body: ArtifactRecordType = match serde_json::from_value(data) {
+            Ok(v) => v,
+            Err(e) => return EResult::err(loc, e.to_string()),
+        };
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
+        let mut fields = BTreeMap::new();
+        for (key, field_art) in body.fields {
+            let res = deserialize_type_artifact(xx, loc, field_art);
+            if let Some(errors1) = res.errors {
+                errors.get_or_insert_default().extend(errors1);
+            }
+            let Some(t) = res.v else {
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            };
+            fields.insert(key, RecordField::Dynamic(t));
+        }
+        return EResult {
+            errors,
+            v: Some(Rc::new(Record {
+                base: None,
+                fields,
+            }) as Rc<dyn crate::artifact::ExporterAny>),
+        };
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<Record>().expect("expected Record");
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
+        let mut fields = BTreeMap::new();
+        for (key, field) in self_.fields.iter() {
+            let t = match field {
+                RecordField::Dynamic(t) => t.clone(),
+                RecordField::EvalRes(er) => match &er.v {
+                    Some(cv) => cv.value.type_(xx, loc).v.expect("Record field type unavailable"),
+                    None => return EResult::err(loc, "Record field has no value to serialize".to_string()),
+                },
+            };
+            let art = serialize_artifact(xx, loc, t.as_value().as_ref());
+            if let Some(errors1) = art.errors {
+                errors.get_or_insert_default().extend(errors1);
+            }
+            let Some(art) = art.v else {
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            };
+            fields.insert(key.clone(), art);
+        }
+        let cell = std::cell::RefCell::new(None);
+        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &cell, || {
+            make_body(serde_json::to_value(&ArtifactRecordType { fields }).unwrap())
+        });
+        return EResult {
+            errors,
+            v: Some(art),
+        };
+    }
+}
+
 impl Type for Record {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone_as_type())
@@ -629,7 +704,6 @@ impl Type for Record {
             format!("{:?}: {}", k, t_desc)
         }).collect::<Vec<_>>().join(", "))
     }
-
 }
 
 impl Value for Record {
@@ -769,81 +843,5 @@ impl AspectLiftDynamic for RecordLiftDynamic {
             base: None,
             fields: fields,
         }))
-    }
-}
-
-impl ExporterRootDelegate for Record {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        let body: ArtifactRecordType = match serde_json::from_value(data) {
-            Ok(v) => v,
-            Err(e) => return EResult::err(loc, e.to_string()),
-        };
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let mut fields = BTreeMap::new();
-        for (key, field_art) in body.fields {
-            let res = deserialize_type_artifact(xx, loc, field_art);
-            if let Some(errors1) = res.errors {
-                errors.get_or_insert_default().extend(errors1);
-            }
-            let Some(t) = res.v else {
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            fields.insert(key, RecordField::Dynamic(t));
-        }
-        return EResult {
-            errors,
-            v: Some(Rc::new(Record {
-                base: None,
-                fields,
-            }) as Rc<dyn crate::artifact::ExporterAny>),
-        };
-    }
-
-    fn self_to_serial(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ = self_.downcast::<Record>().expect("expected Record");
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let mut fields = BTreeMap::new();
-        for (key, field) in self_.fields.iter() {
-            let t = match field {
-                RecordField::Dynamic(t) => t.clone(),
-                RecordField::EvalRes(er) => match &er.v {
-                    Some(cv) => cv.value.type_(xx, loc).v.expect("Record field type unavailable"),
-                    None => return EResult::err(loc, "Record field has no value to serialize".to_string()),
-                },
-            };
-            let art = serialize_artifact(xx, loc, t.as_value().as_ref());
-            if let Some(errors1) = art.errors {
-                errors.get_or_insert_default().extend(errors1);
-            }
-            let Some(art) = art.v else {
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            fields.insert(key.clone(), art);
-        }
-        let cell = std::cell::RefCell::new(None);
-        let art =
-            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &cell, || {
-                make_body(serde_json::to_value(&ArtifactRecordType { fields }).unwrap())
-            });
-        return EResult {
-            errors,
-            v: Some(art),
-        };
     }
 }

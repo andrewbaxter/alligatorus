@@ -77,6 +77,9 @@ use {
     },
 };
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactExprContextPushDynamic;
+
 pub(crate) struct CodeValueExtern(pub Rc<RefCell<Option<CodeValue>>>);
 
 impl CodeValueExtern {
@@ -120,7 +123,6 @@ impl Push for ExprContextPush {
         to_v8(scope, self.0).into()
     }
 }
-
 pub(crate) struct TypeCodeValueExternDynamic;
 
 impl Aspect for TypeCodeValueExternDynamic { }
@@ -334,7 +336,6 @@ impl Type for TypeCodeValueExternDynamic {
     fn desc(&self) -> String {
         "CodeValueExtern".to_string()
     }
-
 }
 
 impl Value for TypeCodeValueExternDynamic {
@@ -347,9 +348,6 @@ impl Value for TypeCodeValueExternDynamic {
     }
 }
 pub(crate) struct TypeExprContextPushDynamic;
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactExprContextPushDynamic;
 
 impl Aspect for TypeExprContextPushDynamic { }
 

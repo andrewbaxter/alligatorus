@@ -51,13 +51,6 @@ pub(crate) trait ExporterAny: Any {
     fn as_value(&self) -> EResult<Rc<dyn Value>>;
 }
 
-impl dyn ExporterAny {
-    pub(crate) fn downcast<T: ExporterAny>(self: Rc<Self>) -> Result<Rc<T>, Rc<dyn Any>> {
-        let any: Rc<dyn Any> = self;
-        any.downcast::<T>()
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Artifact {
@@ -231,33 +224,63 @@ pub(crate) fn deserialize_type_artifact(
     };
 }
 
-pub(crate) fn independent_finalize_deserialize_type_artifact(
+pub(crate) struct ExporterDataAny<T: 'static>(pub T);
+
+impl<T: 'static> ExporterAny for ExporterDataAny<T> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
+pub(crate) fn impl_deserialize_independent_artifact<
+    T: DeserializeOwned,
+>(
     xx: &ExprContext,
     loc: QExprId,
-    artifact: Artifact,
-) -> EResult<Rc<dyn Type>> {
-    let res = independent_finalize_deserialize_artifact(xx, loc, artifact);
-    let mut errors = res.errors;
-    let Some(v) = res.v else {
-        return EResult {
-            errors,
-            v: None,
-        };
+    id: &ArtifactIdSource,
+    data: serde_json::Value,
+    create: impl FnOnce(T) -> Result<(Rc<dyn ExporterAny>, Vec<Artifact>, ArtifactFinalizer), String>,
+) -> EResult<Rc<dyn ExporterAny>> {
+    let data = match serde_json::from_value(data) {
+        Ok(v) => v,
+        Err(e) => return EResult::err(loc, e.to_string()),
     };
-    let v = v.as_type();
-    if let Some(errors1) = v.errors {
-        errors.get_or_insert_default().extend(errors1);
+    let (out, dependencies, finalizer) = match create(data) {
+        Ok(v) => v,
+        Err(e) => return EResult::err(loc, e),
+    };
+    xx.vx.ix.deserialized_artifacts.borrow_mut().insert(id.clone(), out.clone());
+    let mut errors: Option<Vec<ExprErr>> = None;
+    for dep in dependencies {
+        let res = deserialize_artifact(xx, loc, dep);
+        if let Some(errors1) = res.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
     }
-    let Some(v) = v.v else {
-        return EResult {
-            errors,
-            v: None,
-        };
-    };
+    finalizer(xx, loc);
     return EResult {
         errors,
-        v: Some(v),
+        v: Some(out),
     };
+}
+
+pub(crate) fn impl_serialize_independent_artifact(
+    artifacts: &dyn Artifacts,
+    cell: &std::cell::RefCell<Option<ArtifactIdSource>>,
+    produce: impl FnOnce() -> ArtifactBody,
+) -> Artifact {
+    if let Some(existing_id) = cell.borrow().clone() {
+        return Artifact::Ref(existing_id);
+    }
+    let id = artifacts.reserve_id();
+    *cell.borrow_mut() = Some(id.clone());
+    let artifact = produce();
+    artifacts.set(id.clone(), artifact);
+    return Artifact::Ref(id);
 }
 
 pub(crate) fn independent_finalize_deserialize_artifact(
@@ -265,11 +288,7 @@ pub(crate) fn independent_finalize_deserialize_artifact(
     loc: QExprId,
     artifact: Artifact,
 ) -> EResult<Rc<dyn ExporterAny>> {
-    fn lookup_ref(
-        xx: &ExprContext,
-        loc: QExprId,
-        id: ArtifactIdSource,
-    ) -> EResult<Rc<dyn ExporterAny>> {
+    fn lookup_ref(xx: &ExprContext, loc: QExprId, id: ArtifactIdSource) -> EResult<Rc<dyn ExporterAny>> {
         match xx.vx.ix.deserialized_artifacts.borrow().get(&id) {
             Some(v) => EResult::ok(v.clone()),
             None => EResult::err(
@@ -282,11 +301,7 @@ pub(crate) fn independent_finalize_deserialize_artifact(
         }
     }
 
-    fn walk_body(
-        xx: &ExprContext,
-        loc: QExprId,
-        body: ArtifactBody,
-    ) -> EResult<Rc<dyn ExporterAny>> {
+    fn walk_body(xx: &ExprContext, loc: QExprId, body: ArtifactBody) -> EResult<Rc<dyn ExporterAny>> {
         let mut errors: Option<Vec<ExprErr>> = None;
         let exporter_any = match body.exporter {
             ArtifactBodyExporter::Body(inner) => {
@@ -359,51 +374,33 @@ pub(crate) fn independent_finalize_deserialize_artifact(
     }
 }
 
-pub(crate) fn impl_deserialize_independent_artifact<
-    T: DeserializeOwned,
->(
+pub(crate) fn independent_finalize_deserialize_type_artifact(
     xx: &ExprContext,
     loc: QExprId,
-    id: &ArtifactIdSource,
-    data: serde_json::Value,
-    create: impl FnOnce(T) -> Result<(Rc<dyn ExporterAny>, Vec<Artifact>, ArtifactFinalizer), String>,
-) -> EResult<Rc<dyn ExporterAny>> {
-    let data = match serde_json::from_value(data) {
-        Ok(v) => v,
-        Err(e) => return EResult::err(loc, e.to_string()),
+    artifact: Artifact,
+) -> EResult<Rc<dyn Type>> {
+    let res = independent_finalize_deserialize_artifact(xx, loc, artifact);
+    let mut errors = res.errors;
+    let Some(v) = res.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
     };
-    let (out, dependencies, finalizer) = match create(data) {
-        Ok(v) => v,
-        Err(e) => return EResult::err(loc, e),
-    };
-    xx.vx.ix.deserialized_artifacts.borrow_mut().insert(id.clone(), out.clone());
-    let mut errors: Option<Vec<ExprErr>> = None;
-    for dep in dependencies {
-        let res = deserialize_artifact(xx, loc, dep);
-        if let Some(errors1) = res.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
+    let v = v.as_type();
+    if let Some(errors1) = v.errors {
+        errors.get_or_insert_default().extend(errors1);
     }
-    finalizer(xx, loc);
+    let Some(v) = v.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
+    };
     return EResult {
         errors,
-        v: Some(out),
+        v: Some(v),
     };
-}
-
-pub(crate) fn impl_serialize_independent_artifact(
-    artifacts: &dyn Artifacts,
-    cell: &std::cell::RefCell<Option<ArtifactIdSource>>,
-    produce: impl FnOnce() -> ArtifactBody,
-) -> Artifact {
-    if let Some(existing_id) = cell.borrow().clone() {
-        return Artifact::Ref(existing_id);
-    }
-    let id = artifacts.reserve_id();
-    *cell.borrow_mut() = Some(id.clone());
-    let artifact = produce();
-    artifacts.set(id.clone(), artifact);
-    return Artifact::Ref(id);
 }
 
 pub(crate) fn serialize_artifact(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> EResult<Artifact> {
@@ -465,14 +462,9 @@ impl ExporterAny for ValueFromAny {
     }
 }
 
-pub(crate) struct ExporterDataAny<T: 'static>(pub T);
-
-impl<T: 'static> ExporterAny for ExporterDataAny<T> {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+impl dyn ExporterAny {
+    pub(crate) fn downcast<T: ExporterAny>(self: Rc<Self>) -> Result<Rc<T>, Rc<dyn Any>> {
+        let any: Rc<dyn Any> = self;
+        any.downcast::<T>()
     }
 }

@@ -9,8 +9,8 @@ use {
             type_any::r#const::TypeAnyConst,
             type_bool::artifact::ArtifactBoolType,
             type_root::r#const::{
-                TypeRoot,
                 ExporterRootDelegate,
+                TypeRoot,
             },
             value_bool::r#const::ValueBoolConst,
         },
@@ -59,6 +59,31 @@ impl ExporterAny for TypeBoolConst {
     }
 }
 
+impl ExporterRootDelegate for TypeBoolConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactBoolType>(
+                data,
+            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
+        );
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactBoolType).unwrap())));
+    }
+}
+
 impl Type for TypeBoolConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeBoolConst)
@@ -104,29 +129,6 @@ impl Type for TypeBoolConst {
 
     fn desc(&self) -> String {
         return format!("bool");
-    }
-}
-
-impl ExporterRootDelegate for TypeBoolConst {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactBoolType>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
-    }
-
-    fn self_to_serial(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactBoolType).unwrap())));
     }
 }
 

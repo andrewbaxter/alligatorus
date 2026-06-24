@@ -59,11 +59,10 @@ use {
     },
 };
 
-#[derive(Clone)]
-pub(crate) struct TypeConstkeyDynamic;
-
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactConstkeyDynamic;
+#[derive(Clone)]
+pub(crate) struct TypeConstkeyDynamic;
 
 impl Aspect for TypeConstkeyDynamic { }
 

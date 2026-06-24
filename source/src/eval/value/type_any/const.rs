@@ -261,7 +261,6 @@ impl Type for TypeAnyConst {
     fn desc(&self) -> String {
         "type".to_string()
     }
-
 }
 
 impl Value for TypeAnyConst {

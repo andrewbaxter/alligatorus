@@ -217,7 +217,6 @@ impl Type for TypeNullDynamic {
     fn desc(&self) -> String {
         return format!("dynamic null");
     }
-
 }
 
 impl Value for TypeNullDynamic {

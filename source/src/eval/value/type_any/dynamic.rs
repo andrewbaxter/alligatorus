@@ -319,7 +319,6 @@ impl Type for TypeAnyDynamic {
     fn desc(&self) -> String {
         "dynamic type".to_string()
     }
-
 }
 
 impl Value for TypeAnyDynamic {

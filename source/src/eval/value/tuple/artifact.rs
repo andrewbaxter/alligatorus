@@ -4,5 +4,4 @@ use crate::artifact::Artifact;
 pub(crate) struct ArtifactTupleType {
     pub elements: Vec<Artifact>,
 }
-
 pub(crate) struct TypeTupleArtifact;

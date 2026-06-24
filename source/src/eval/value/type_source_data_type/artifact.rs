@@ -12,11 +12,11 @@ use crate::{
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSet {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data_types: Vec<Artifact>,
     pub def_set_id: DefSetId,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<Artifact>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub data_types: Vec<Artifact>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<Artifact>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -26,13 +26,13 @@ pub(crate) struct ArtifactDataDefSet {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetDataType {
     pub data_field: String,
-    pub def_set_id: DefSetId,
     pub def_set: Artifact,
+    pub def_set_id: DefSetId,
     pub identity: Unique,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub methods: Vec<ArtifactDataDefSetMethod>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub interface_impls: Vec<ArtifactDataDefSetInterfaceImpl>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub methods: Vec<ArtifactDataDefSetMethod>,
     pub name: Option<String>,
     pub underlying_type: Artifact,
 }
@@ -43,8 +43,8 @@ pub(crate) struct ArtifactDataDefSetFunction {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
-    pub def_set_id: DefSetId,
     pub def_set: Artifact,
+    pub def_set_id: DefSetId,
     pub entry_id: usize,
     pub name: Option<String>,
     pub ret_type: Artifact,
@@ -52,15 +52,15 @@ pub(crate) struct ArtifactDataDefSetFunction {
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterface {
-    pub def_set_id: DefSetId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub def_set: Artifact,
+    pub def_set_id: DefSetId,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub identity: Unique,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_aspect: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub methods: Vec<ArtifactDataDefSetInterfaceMethod>,
 }
 

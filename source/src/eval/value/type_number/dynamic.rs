@@ -390,7 +390,6 @@ impl Type for TypeNumberDynamic {
     fn desc(&self) -> String {
         return format!("dynamic number");
     }
-
 }
 
 impl Value for TypeNumberDynamic {

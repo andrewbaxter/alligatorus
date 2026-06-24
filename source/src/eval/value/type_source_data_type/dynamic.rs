@@ -623,7 +623,6 @@ impl Type for TypeSourceDataTypeDynamic {
             None => format!("data_type({})", data.name.as_deref().unwrap_or("?")),
         }
     }
-
 }
 
 impl Value for TypeSourceDataTypeDynamic {
@@ -785,7 +784,6 @@ impl Type for TypeSourceDataTypeRefDynamic {
     fn desc(&self) -> String {
         "definition_set_data_type_ref".to_string()
     }
-
 }
 
 impl Value for TypeSourceDataTypeRefDynamic {

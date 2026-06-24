@@ -288,7 +288,6 @@ impl Type for TypeSourceTaggedUnionDynamic {
     fn desc(&self) -> String {
         format!("tagged_union_dyn")
     }
-
 }
 
 impl Value for TypeSourceTaggedUnionDynamic {
@@ -480,7 +479,6 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
     fn desc(&self) -> String {
         "tagged_union_ref".to_string()
     }
-
 }
 
 impl Value for TypeSourceTaggedUnionRefDynamic {

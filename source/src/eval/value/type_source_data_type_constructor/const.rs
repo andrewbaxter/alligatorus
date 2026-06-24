@@ -1,3 +1,4 @@
+use super::artifact::ArtifactDataSourceDataTypeConstructor;
 use {
     crate::{
         artifact::{
@@ -64,7 +65,6 @@ use {
 
 // TODO(porting): serialize_ctor removed pending serialize_type_ref design.
 // Constructor types are now serialized as part of the parent DefinitionSet.
-
 impl Aspect for TypeSourceDataTypeConstructorConst { }
 
 impl AspectBind for TypeSourceDataTypeConstructorConst {
@@ -130,58 +130,6 @@ impl ExporterAny for TypeSourceDataTypeConstructorConst {
     }
 }
 
-impl Type for TypeSourceDataTypeConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) })
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as
-                        Box<dyn AspectFunction>,
-                ),
-            );
-        }
-        if *key == aspect_bind_aspect_id() {
-            return Some(
-                Box::new(
-                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as Box<dyn AspectBind>,
-                ),
-            );
-        }
-        return None;
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
-    }
-
-    fn desc(&self) -> String {
-        match self.data.description.borrow().as_deref() {
-            Some(d) => d.to_string(),
-            None => format!("definition_set_data_type_constructor"),
-        }
-    }
-}
-
-impl Value for TypeSourceDataTypeConstructorConst {
-    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
-    }
-
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeRoot::SourceDataTypeConstructorConst))
-    }
-}
-
-use super::artifact::ArtifactDataSourceDataTypeConstructor;
-
 impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
     fn self_from_artifact_data(
         xx: &ExprContext,
@@ -196,32 +144,46 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
             );
         };
         let id_owned = id.clone();
-        let holder: Rc<std::cell::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>> =
+        let holder:
+            Rc<
+                std
+                ::cell
+                ::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>,
+            > =
             Rc::new(std::cell::RefCell::new(None));
         let holder_for_finalizer = holder.clone();
         let res =
-            impl_deserialize_independent_artifact::<
-                ArtifactDataSourceDataTypeConstructor,
-            >(xx, loc, id, data, move |body: ArtifactDataSourceDataTypeConstructor| {
-                let data_type_art = body.data_type;
-                let deps = vec![data_type_art.clone()];
-                let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(holder.clone()));
-                let finalizer: crate::artifact::ArtifactFinalizer =
-                    Box::new(move |xx: &ExprContext, loc: QExprId| {
-                        if let Some(parent_any) =
-                            independent_finalize_deserialize_artifact(xx, loc, data_type_art).v {
-                            let rc_any: Rc<dyn Any> = parent_any;
-                            if let Ok(wrapped) =
-                                rc_any
-                                    .downcast::<ExporterDataAny<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>() {
-                                let dt_data = wrapped.0.clone();
-                                *dt_data.constructor_artifact_id.borrow_mut() = Some(id_owned.clone());
-                                *holder_for_finalizer.borrow_mut() = Some(dt_data);
+            impl_deserialize_independent_artifact::<ArtifactDataSourceDataTypeConstructor>(
+                xx,
+                loc,
+                id,
+                data,
+                move |body: ArtifactDataSourceDataTypeConstructor| {
+                    let data_type_art = body.data_type;
+                    let deps = vec![data_type_art.clone()];
+                    let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(holder.clone()));
+                    let finalizer: crate::artifact::ArtifactFinalizer =
+                        Box::new(move |xx: &ExprContext, loc: QExprId| {
+                            if let Some(parent_any) =
+                                independent_finalize_deserialize_artifact(xx, loc, data_type_art).v {
+                                let rc_any: Rc<dyn Any> = parent_any;
+                                if let Ok(wrapped) =
+                                    rc_any.downcast::<
+                                        ExporterDataAny<
+                                            dumpster
+                                            ::unsync
+                                            ::Gc<super::super::type_source_data_type::SourceDataTypeData>,
+                                        >,
+                                    >() {
+                                    let dt_data = wrapped.0.clone();
+                                    *dt_data.constructor_artifact_id.borrow_mut() = Some(id_owned.clone());
+                                    *holder_for_finalizer.borrow_mut() = Some(dt_data);
+                                }
                             }
-                        }
-                    });
-                Ok((out, deps, finalizer))
-            });
+                        });
+                    Ok((out, deps, finalizer))
+                },
+            );
         let errors = res.errors;
         let Some(any) = res.v else {
             return EResult {
@@ -271,5 +233,55 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
             errors,
             v: Some(art),
         };
+    }
+}
+
+impl Type for TypeSourceDataTypeConstructorConst {
+    fn as_value(&self) -> Rc<dyn Value> {
+        Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) })
+    }
+
+    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == aspect_function_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as
+                        Box<dyn AspectFunction>,
+                ),
+            );
+        }
+        if *key == aspect_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as Box<dyn AspectBind>,
+                ),
+            );
+        }
+        return None;
+    }
+
+    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert to data_type_constructor"))
+    }
+
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
+        EvalRes::err(loc, format!("Cannot convert data_type_constructor"))
+    }
+
+    fn desc(&self) -> String {
+        match self.data.description.borrow().as_deref() {
+            Some(d) => d.to_string(),
+            None => format!("definition_set_data_type_constructor"),
+        }
+    }
+}
+
+impl Value for TypeSourceDataTypeConstructorConst {
+    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
+        unimplemented!()
+    }
+
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeRoot::SourceDataTypeConstructorConst))
     }
 }

@@ -303,7 +303,6 @@ impl Type for TypeOptionDynamic {
     fn desc(&self) -> String {
         format!("option({})", self.element_type.desc())
     }
-
 }
 
 impl Value for TypeOptionDynamic {

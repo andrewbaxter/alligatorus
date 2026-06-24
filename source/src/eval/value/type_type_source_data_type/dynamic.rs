@@ -78,7 +78,6 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     fn desc(&self) -> String {
         "definition_set_data_type_type".to_string()
     }
-
 }
 
 impl Value for TypeTypeSourceDataTypeDynamic {

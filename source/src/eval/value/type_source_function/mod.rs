@@ -138,7 +138,6 @@ impl SourceFunctionData {
         *self.compiled_js.borrow_mut() = Some(compiled);
         Ok(())
     }
-
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData {

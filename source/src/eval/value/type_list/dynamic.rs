@@ -259,6 +259,16 @@ impl AspectStackValueDynamic for TypeListDynamic {
     }
 }
 
+impl ExporterAny for TypeListDynamic {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Push for TypeListDynamic {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeAnyConst)
@@ -344,16 +354,6 @@ impl Type for TypeListDynamic {
     }
 }
 
-impl ExporterAny for TypeListDynamic {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl Value for TypeListDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
@@ -402,6 +402,16 @@ impl AspectFunction for TypeListNewDynamic {
     }
 }
 
+impl ExporterAny for TypeListNewDynamic {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 impl Type for TypeListNewDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() })
@@ -424,16 +434,6 @@ impl Type for TypeListNewDynamic {
 
     fn desc(&self) -> String {
         format!("list({}).new", self.element_type.desc())
-    }
-}
-
-impl ExporterAny for TypeListNewDynamic {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
     }
 }
 

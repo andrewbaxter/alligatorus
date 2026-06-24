@@ -170,7 +170,6 @@ impl SourceDataMethodData {
         *self.compiled_js.borrow_mut() = Some(compiled);
         Ok(())
     }
-
 }
 
 pub(crate) struct SourceDataTypeData {
@@ -201,7 +200,6 @@ impl SourceDataTypeData {
         }
         Ok(())
     }
-
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceDataTypeData {
@@ -431,7 +429,6 @@ impl SourceDataTypeInterfaceMethodImplData {
         *self.compiled_js.borrow_mut() = Some(compiled);
         Ok(())
     }
-
 }
 
 pub(crate) struct SourceDataTypeRef {

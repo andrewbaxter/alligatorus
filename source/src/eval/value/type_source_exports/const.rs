@@ -155,6 +155,53 @@ impl ExporterAny for TypeSourceExportsLiftedConst {
     }
 }
 
+impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        // Delegate to the def-set deserializer; wrap the resulting Gc`<DefinitionSet>`
+        // into a TypeSourceExportsLiftedConst.
+        let any = crate::eval::definition_set::definition_set_from_artifact_data(xx, loc, id, data);
+        let mut errors = any.errors;
+        let Some(any) = any.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let wrapped = match any.downcast::<crate::artifact::ExporterDataAny<Gc<DefinitionSet>>>() {
+            Ok(v) => v,
+            Err(_) => {
+                return EResult::err(
+                    loc,
+                    "TypeSourceExportsLiftedConst: def_set deserializer returned wrong type".to_string(),
+                );
+            },
+        };
+        let out: Rc<dyn crate::artifact::ExporterAny> =
+            Rc::new(crate::artifact::ExporterDataAny(TypeSourceExportsLiftedConst { set: wrapped.0.clone() }));
+        let _ = &mut errors;
+        return EResult {
+            errors,
+            v: Some(out),
+        };
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ =
+            self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
+        EResult::ok(serialize_definition_set(xx, loc, &self_.set))
+    }
+}
+
 impl Type for TypeSourceExportsLiftedConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) })
@@ -191,53 +238,6 @@ impl Type for TypeSourceExportsLiftedConst {
 
     fn desc(&self) -> String {
         format!("definition_set_exports")
-    }
-}
-
-impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        // Delegate to the def-set deserializer; wrap the resulting Gc<DefinitionSet>
-        // into a TypeSourceExportsLiftedConst.
-        let any =
-            crate::eval::definition_set::definition_set_from_artifact_data(xx, loc, id, data);
-        let mut errors = any.errors;
-        let Some(any) = any.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let wrapped = match any.downcast::<crate::artifact::ExporterDataAny<Gc<DefinitionSet>>>() {
-            Ok(v) => v,
-            Err(_) => {
-                return EResult::err(
-                    loc,
-                    "TypeSourceExportsLiftedConst: def_set deserializer returned wrong type".to_string(),
-                );
-            },
-        };
-        let out: Rc<dyn crate::artifact::ExporterAny> =
-            Rc::new(crate::artifact::ExporterDataAny(TypeSourceExportsLiftedConst { set: wrapped.0.clone() }));
-        let _ = &mut errors;
-        return EResult {
-            errors,
-            v: Some(out),
-        };
-    }
-
-    fn self_to_serial(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ = self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
-        EResult::ok(serialize_definition_set(xx, loc, &self_.set))
     }
 }
 

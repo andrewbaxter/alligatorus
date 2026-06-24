@@ -69,13 +69,11 @@ use {
     },
 };
 
-pub(crate) struct TypeExpr;
-
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactExpr;
-
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactExprStagedPlaceholder;
+pub(crate) struct TypeExpr;
 
 impl Aspect for TypeExpr { }
 
@@ -222,7 +220,6 @@ impl Type for TypeExpr {
     fn desc(&self) -> String {
         return format!("expr");
     }
-
 }
 
 impl Value for TypeExpr {

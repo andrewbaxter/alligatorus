@@ -122,7 +122,6 @@ impl Type for TypePull {
     fn desc(&self) -> String {
         pull_desc(&self.data)
     }
-
 }
 
 impl Value for TypePull {

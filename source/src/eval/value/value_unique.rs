@@ -19,8 +19,8 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_bool::dynamic::TypeBoolDynamic,
                 type_root::r#const::{
-                    TypeRoot,
                     ExporterRootDelegate,
+                    TypeRoot,
                 },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_bool::r#const::ValueBoolConst,
@@ -62,6 +62,9 @@ use {
     },
 };
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactUnique;
+
 pub(crate) struct ScopeEntryUniqueDualMode {
     pub dynamic_key: ScopeEntryId,
     pub unique: Unique,
@@ -82,9 +85,6 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
     }
 }
 pub(crate) struct TypeUnique;
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactUnique;
 
 impl Aspect for TypeUnique { }
 
@@ -185,6 +185,31 @@ impl ExporterAny for TypeUnique {
     }
 }
 
+impl ExporterRootDelegate for TypeUnique {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactUnique>(
+                data,
+            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
+        );
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactUnique).unwrap())));
+    }
+}
+
 impl Type for TypeUnique {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeUnique)
@@ -223,29 +248,6 @@ impl Type for TypeUnique {
 
     fn desc(&self) -> String {
         "unique".to_string()
-    }
-}
-
-impl ExporterRootDelegate for TypeUnique {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactUnique>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
-    }
-
-    fn self_to_serial(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactUnique).unwrap())));
     }
 }
 

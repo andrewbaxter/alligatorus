@@ -10,5 +10,4 @@ use {
 pub(crate) struct ArtifactRecordType {
     pub fields: BTreeMap<ConstKey, Artifact>,
 }
-
 pub(crate) struct TypeRecordArtifact;

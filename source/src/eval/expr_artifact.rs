@@ -192,10 +192,7 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
                 deserialize_artifact(xx, loc, value.clone())
                     .into_res()
                     .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?;
-            let v = cv
-                .as_value()
-                .into_res()
-                .map_err(|e| format!("Failed to extract Literal value: {:?}", e))?;
+            let v = cv.as_value().into_res().map_err(|e| format!("Failed to extract Literal value: {:?}", e))?;
             Expr_::Literal(make_lit_value(v))
         },
         ArtifactExpr_::Lower { expr } => Expr_::Lower(ExprLower { expr: Rc::new(expr_from_artifact(xx, expr)?) }),

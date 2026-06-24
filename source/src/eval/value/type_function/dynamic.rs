@@ -67,6 +67,12 @@ use {
     },
 };
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ArtifactFunctionDynamic {
+    pub arg: Artifact,
+    pub ret: Artifact,
+}
+
 pub(crate) fn dynamic_call(
     xx: &ExprContext,
     loc: QExprId,
@@ -161,12 +167,6 @@ pub(crate) fn dynamic_call(
 pub(crate) struct TypeFunctionDynamic {
     pub arg: Rc<dyn Type>,
     pub ret: Rc<dyn Type>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactFunctionDynamic {
-    pub arg: Artifact,
-    pub ret: Artifact,
 }
 
 impl Aspect for TypeFunctionDynamic { }

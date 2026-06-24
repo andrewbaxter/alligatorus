@@ -13,8 +13,8 @@ use {
             tuple::scope_entry::ScopeEntryValue,
             type_any::r#const::TypeAnyConst,
             type_root::r#const::{
-                TypeRoot,
                 ExporterRootDelegate,
+                TypeRoot,
             },
             type_string::{
                 artifact::ArtifactStringType,
@@ -118,6 +118,31 @@ impl ExporterAny for TypeStringConst {
     }
 }
 
+impl ExporterRootDelegate for TypeStringConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<ArtifactStringType>(
+                data,
+            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
+        );
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactStringType).unwrap())));
+    }
+}
+
 impl Type for TypeStringConst {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringConst)
@@ -175,30 +200,6 @@ impl Type for TypeStringConst {
 
     fn desc(&self) -> String {
         return format!("string");
-    }
-
-}
-
-impl ExporterRootDelegate for TypeStringConst {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactStringType>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
-    }
-
-    fn self_to_serial(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactStringType).unwrap())));
     }
 }
 

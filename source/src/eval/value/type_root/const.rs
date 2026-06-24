@@ -164,7 +164,9 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::Unique => TypeUnique::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Root => EResult::from(
                 loc,
-                serde_json::from_value::<TypeRoot>(data).map(|r| Rc::new(r) as Rc<dyn crate::artifact::ExporterAny>),
+                serde_json::from_value::<TypeRoot>(
+                    data,
+                ).map(|r| Rc::new(r) as Rc<dyn crate::artifact::ExporterAny>),
             ),
         };
         let mut errors: Option<Vec<ExprErr>> = None;
@@ -183,7 +185,12 @@ impl ArtifactExporter for ExporterRoot {
         };
     }
 
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn crate::artifact::ExporterAny>) -> EResult<Artifact> {
+    fn to_serial(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+    ) -> EResult<Artifact> {
         let me = *self;
         let make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> = Box::new(move |data| ArtifactBody {
             data,
@@ -271,7 +278,6 @@ pub enum TypeRoot {
     OptionVariantConstructorDynamic,
     Pull,
     PullAspect,
-    Record,
     Root,
     SourceDataTypeConstructorConst,
     SourceDataTypeConstructorDynamic,
@@ -289,7 +295,6 @@ pub enum TypeRoot {
     SourceTaggedUnionRefDynamic,
     StringConst,
     StringDynamic,
-    Tuple,
     TypeRef,
     TypeSourceDataTypeConstructorDynamic,
     TypeSourceDataTypeDynamic,

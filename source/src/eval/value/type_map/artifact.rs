@@ -1,7 +1,7 @@
 use crate::artifact::Artifact;
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactMapType {
+pub(crate) struct ArtifactMapGetFnType {
     pub key_type: Artifact,
     pub value_type: Artifact,
 }
@@ -13,9 +13,8 @@ pub(crate) struct ArtifactMapNewType {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactMapGetFnType {
+pub(crate) struct ArtifactMapType {
     pub key_type: Artifact,
     pub value_type: Artifact,
 }
-
 pub(crate) struct TypeMapArtifact;

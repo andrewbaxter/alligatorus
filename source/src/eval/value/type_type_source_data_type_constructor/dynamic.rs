@@ -79,7 +79,6 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     fn desc(&self) -> String {
         "definition_set_data_type_constructor_type".to_string()
     }
-
 }
 
 impl Value for TypeTypeSourceDataTypeConstructorDynamic {
