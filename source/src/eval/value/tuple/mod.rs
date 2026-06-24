@@ -308,6 +308,12 @@ impl ExporterAny for Tuple {
     }
 }
 
+impl crate::r#gen::AspectArtifact for Tuple {
+    fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
+        Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::Tuple)
+    }
+}
+
 impl ExporterRootDelegate for Tuple {
     fn self_from_artifact_data(
         xx: &ExprContext,
@@ -402,7 +408,7 @@ impl Type for Tuple {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
         }
         if *key == crate::r#gen::aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeRoot::Tuple) as Box<dyn crate::r#gen::AspectArtifact>));
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn crate::r#gen::AspectArtifact>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             let element_lifts: Vec<Box<dyn AspectLiftDynamic>> = self.elements.iter().map(|e| {

@@ -463,6 +463,12 @@ impl ExporterAny for Record {
     }
 }
 
+impl crate::r#gen::AspectArtifact for Record {
+    fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
+        Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::Record)
+    }
+}
+
 impl ExporterRootDelegate for Record {
     fn self_from_artifact_data(
         xx: &ExprContext,
@@ -577,7 +583,7 @@ impl Type for Record {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
         }
         if *key == crate::r#gen::aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeRoot::Record) as Box<dyn crate::r#gen::AspectArtifact>));
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn crate::r#gen::AspectArtifact>));
         }
         return None;
     }

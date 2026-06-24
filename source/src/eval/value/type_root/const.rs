@@ -331,8 +331,6 @@ impl TypeRoot {
             TypeRoot::SourceTaggedUnionConst => Some(ExporterRoot::SourceTaggedUnionConst),
             TypeRoot::SourceTaggedUnionConstructorConst => Some(ExporterRoot::SourceTaggedUnionConstructorConst),
             TypeRoot::StringConst => Some(ExporterRoot::StringConst),
-            TypeRoot::Record => Some(ExporterRoot::Record),
-            TypeRoot::Tuple => Some(ExporterRoot::Tuple),
             TypeRoot::Unique => Some(ExporterRoot::Unique),
             _ => None,
         };
@@ -405,8 +403,6 @@ impl Type for TypeRoot {
             TypeRoot::OptionVariantConstructorDynamic => "Option variant constructor type (dynamic)",
             TypeRoot::Pull => "Pull type",
             TypeRoot::PullAspect => "Pull aspect type",
-            TypeRoot::Record => "Record type",
-            TypeRoot::Tuple => "Tuple type",
             TypeRoot::SourceDataTypeConstructorConst => "Source data type constructor (const)",
             TypeRoot::SourceDataTypeConstructorDynamic => "Source data type constructor (dynamic)",
             TypeRoot::SourceDataTypeDynamic => "Source data type (dynamic)",
