@@ -448,7 +448,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                     name: "exporter",
                     doc: doc("Returns the exporter"),
                     params: vec![],
-                    ret: "Rc<dyn ArtifactExporter>",
+                    ret: "Rc<dyn crate::artifact::ArtifactExporter>",
                 },
             ],
         },

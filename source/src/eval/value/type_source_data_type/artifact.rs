@@ -1,8 +1,5 @@
 use crate::{
-    artifact::{
-        Artifact,
-        ArtifactId,
-    },
+    artifact::Artifact,
     eval::{
         expr_artifact::ArtifactExpr,
         value::type_source_interface::BuiltinInterfaceKind,
@@ -17,16 +14,23 @@ use crate::{
 pub(crate) struct ArtifactDataDefSet {
     pub def_set_id: DefSetId,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub dependencies: Vec<ArtifactId>,
-    pub members: Vec<ArtifactId>,
+    pub dependencies: Vec<Artifact>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data_types: Vec<ArtifactDataDefSetDataType>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub functions: Vec<ArtifactDataDefSetFunction>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub interfaces: Vec<ArtifactDataDefSetInterface>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetDataType {
     pub data_field: String,
-    pub def_set: ArtifactId,
     pub identity: Unique,
-    pub members: Vec<ArtifactId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub methods: Vec<ArtifactDataDefSetMethod>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub interface_impls: Vec<ArtifactDataDefSetInterfaceImpl>,
     pub name: Option<String>,
     pub underlying_type: Artifact,
 }
@@ -37,7 +41,6 @@ pub(crate) struct ArtifactDataDefSetFunction {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
-    pub def_set: ArtifactId,
     pub entry_id: usize,
     pub name: Option<String>,
     pub ret_type: Artifact,
@@ -57,9 +60,9 @@ pub(crate) struct ArtifactDataDefSetInterface {
 pub(crate) struct ArtifactDataDefSetInterfaceImpl {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub builtin_kind: Option<BuiltinInterfaceKind>,
-    pub method_impls: Vec<ArtifactId>,
+    pub method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user_iface: Option<ArtifactId>,
+    pub user_iface: Option<Artifact>,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]

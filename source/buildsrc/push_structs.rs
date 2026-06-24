@@ -147,7 +147,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
                             ),
                             artifact_id: RefCell::new(None),
-                            new_artifact_id: RefCell::new(None),
                             compiled_js: RefCell::new(None),
                             captured_externals: RefCell::new(Vec::new()),
                         });
@@ -175,7 +174,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             identity,
                             data_field,
                             artifact_id: RefCell::new(None),
-                            new_artifact_id: RefCell::new(None),
                         });
                         ds.data_types.borrow_mut().push(dt_data.clone());
                         let data_type_ref = Rc::new(SourceDataTypeRef { data: dt_data });
@@ -519,7 +517,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let field_name = format!("_{}", dt_data.set.next_field_id.next());
                         let entry_id = dt_data.set.next_entry_id.next();
                         let method = Rc::new(SourceDataMethodData {
-                            artifact_id: RefCell::new(None),
                             name,
                             arg_type: RefCell::new(None),
                             impl_expr: RefCell::new(None),
@@ -558,7 +555,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(expr) => {
                                     let entry_id = dt_data.set.next_entry_id.next();
                                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
-                                        artifact_id: RefCell::new(None),
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                                         impl_expr_artifact: RefCell::new(None),
@@ -580,7 +576,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             }
                         }
                         dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
-                            artifact_id: RefCell::new(None),
                             interface: iface_data.clone(),
                             method_impls,
                         });
@@ -657,7 +652,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     ),
                                 };
                                 method_impls.push(SourceDataTypeInterfaceMethodImplData {
-                                    artifact_id: RefCell::new(None),
                                     interface_method_index: imethod_idx,
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
                                     impl_expr_artifact: RefCell::new(None),
@@ -702,7 +696,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             }
                         }
                         dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
-                            artifact_id: RefCell::new(None),
                             interface: iface_data.clone(),
                             method_impls,
                         });
@@ -1206,7 +1199,6 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                 Some(expr) => {
                     let entry_id = dt_data.set.next_entry_id.next();
                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
-                        artifact_id: RefCell::new(None),
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                         impl_expr_artifact: RefCell::new(None),
@@ -1228,7 +1220,6 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
             }
         }
         dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
-            artifact_id: RefCell::new(None),
             interface: iface_data,
             method_impls,
         });

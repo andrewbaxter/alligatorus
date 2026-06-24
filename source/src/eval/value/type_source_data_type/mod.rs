@@ -4,10 +4,6 @@ pub mod r#const;
 
 use {
     crate::{
-        artifact::{
-            ArtifactId,
-            impl_serialize_independent_artifact as produce_independent_artifact,
-        },
         code_dynamic::CodeDynamic,
         eval::{
             JsSourceBuilder,
@@ -17,15 +13,9 @@ use {
             build_cast_arg_record_type,
             code_uses_binding,
             const_eval,
-            definition_set::{
-                DefinitionSet,
-                serialize_captured_externals,
-            },
+            definition_set::DefinitionSet,
             expr::Expr,
-            expr_artifact::{
-                ArtifactExpr,
-                expr_to_artifact,
-            },
+            expr_artifact::ArtifactExpr,
             from_v8_ref,
             push::Push,
             render_code,
@@ -33,16 +23,6 @@ use {
             to_v8,
             typecheck_convert,
             value,
-            value::{
-                type_source_data_type::artifact::{
-                    ArtifactDataDefSetDataType,
-                    ArtifactDataDefSetInterface,
-                    ArtifactDataDefSetInterfaceImpl,
-                    ArtifactDataDefSetInterfaceMethod,
-                    ArtifactDataDefSetInterfaceMethodImpl,
-                    ArtifactDataDefSetMethod,
-                },
-            },
         },
         invariant::{
             DeserialLazy,
@@ -79,7 +59,6 @@ use {
 
 pub(crate) struct SourceDataMethodData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
-    pub artifact_id: RefCell<Option<ArtifactId>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub field_name: String,
@@ -192,48 +171,16 @@ impl SourceDataMethodData {
         Ok(())
     }
 
-    pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        use crate::{
-            artifact::Artifact,
-            eval::value::type_null::dynamic::TypeNullDynamic,
-            r#gen::defset_method_artifact_id,
-        };
-
-        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
-            let compiled_js = self.compiled_js.borrow().clone().unwrap_or_default();
-            let ret_type = self.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-            let arg_type: Rc<dyn Type> = self.arg_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-            let captured_externals = serialize_captured_externals(xx, loc, &self.captured_externals.borrow());
-            let entry_id = match self.scope_entry_id.get() {
-                Some(ScopeEntryId::Def(_, eid)) => eid,
-                _ => panic!("Method scope_entry_id missing or not Def"),
-            };
-            let serial = ArtifactDataDefSetMethod {
-                name: self.name.clone(),
-                entry_id,
-                field_name: self.field_name.clone(),
-                arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
-                ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                compiled_js,
-                captured_externals,
-            };
-            Artifact {
-                deserializer: crate::artifact::ArtifactId::Builtin(defset_method_artifact_id()),
-                data: serde_json::to_value(&serial).expect("Failed to serialize method"),
-            }
-        })
-    }
 }
 
 pub(crate) struct SourceDataTypeData {
-    pub artifact_id: RefCell<Option<ArtifactId>>,
+    pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub data_field: String,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
     pub interface_impls: RefCell<Vec<SourceDataTypeInterfaceImplData>>,
     pub methods: RefCell<Vec<Rc<SourceDataMethodData>>>,
     pub name: Option<String>,
-    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub set: Gc<DefinitionSet>,
     pub underlying_type: DeserialLazy<Rc<dyn Type>>,
 }
@@ -254,29 +201,6 @@ impl SourceDataTypeData {
         Ok(())
     }
 
-    pub fn serialize(&self, xx: &ExprContext, loc: QExprId, def_set_artifact_id: ArtifactId) -> ArtifactId {
-        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
-            let underlying_type = self.underlying_type.get();
-            let mut members: Vec<ArtifactId> = Vec::new();
-            for m in self.methods.borrow().iter() {
-                members.push(m.serialize(xx, loc));
-            }
-            for impl_data in self.interface_impls.borrow().iter() {
-                members.push(impl_data.serialize(xx, loc));
-            }
-            let serial = ArtifactDataDefSetDataType {
-                name: self.name.clone(),
-                data_field: self.data_field.clone(),
-                underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
-                identity: self.identity.clone(),
-                members,
-                def_set: def_set_artifact_id,
-            };
-            crate::eval::value::type_type_source_data_type::dynamic::TypeTypeSourceDataTypeDynamic::build_artifact(
-                serde_json::to_value(&serial).expect("Failed to serialize data type"),
-            )
-        })
-    }
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceDataTypeData {
@@ -291,40 +215,11 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceDataTypeData 
 }
 
 pub(crate) struct SourceDataTypeInterfaceImplData {
-    pub artifact_id: RefCell<Option<ArtifactId>>,
     pub interface: Gc<super::type_source_interface::SourceInterfaceData>,
     pub method_impls: Vec<SourceDataTypeInterfaceMethodImplData>,
 }
 
-impl SourceDataTypeInterfaceImplData {
-    pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        use crate::{
-            artifact::Artifact,
-            r#gen::defset_iface_impl_artifact_id,
-        };
-
-        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
-            let builtin_kind = self.interface.builtin_kind;
-            let method_impls: Vec<ArtifactId> = self.method_impls.iter().map(|m| m.serialize(xx, loc)).collect();
-            let user_iface = match builtin_kind {
-                Some(_) => None,
-                None => Some(self.interface.serialize(xx, loc)),
-            };
-            let serial = ArtifactDataDefSetInterfaceImpl {
-                builtin_kind,
-                user_iface,
-                method_impls,
-            };
-            Artifact {
-                deserializer: crate::artifact::ArtifactId::Builtin(defset_iface_impl_artifact_id()),
-                data: serde_json::to_value(&serial).expect("Failed to serialize iface impl"),
-            }
-        })
-    }
-}
-
 pub(crate) struct SourceDataTypeInterfaceMethodImplData {
-    pub artifact_id: RefCell<Option<ArtifactId>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
@@ -531,57 +426,6 @@ impl SourceDataTypeInterfaceMethodImplData {
         Ok(())
     }
 
-    pub fn serialize(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        use crate::{
-            artifact::Artifact,
-            r#gen::defset_iface_method_impl_artifact_id,
-        };
-
-        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
-            let compiled_js = self.compiled_js.borrow().clone().unwrap_or_default();
-            let entry_id = match self.scope_entry_id.get().expect("Interface method impl missing scope_entry_id") {
-                ScopeEntryId::Def(_, id) => id,
-                other => panic!("Interface method impl has non-Def scope_entry_id: {:?}", other),
-            };
-            if self.impl_expr_artifact.borrow().is_none() {
-                let impl_expr_value = self.impl_expr.borrow().clone();
-                if let Some(impl_expr_value) = impl_expr_value {
-                    let impl_expr_ast = must_downcast_ref::<Expr>(impl_expr_value.as_ref());
-                    if let Ok(serialized) = expr_to_artifact(xx, impl_expr_ast) {
-                        *self.impl_expr_artifact.borrow_mut() = Some(serialized);
-                    }
-                }
-            }
-            let impl_expr = self.impl_expr_artifact.borrow().clone().unwrap_or_else(|| {
-                use crate::eval::expr_artifact::{
-                    ArtifactExpr,
-                    ArtifactExpr_,
-                    ArtifactQExprId,
-                };
-
-                ArtifactExpr {
-                    loc: ArtifactQExprId(0, 0),
-                    r#type: Box::new(
-                        ArtifactExpr_::Literal {
-                            value: crate::eval::value::type_null::r#const::TypeNullConst::build_artifact(()),
-                        },
-                    ),
-                }
-            });
-            let captured_externals = serialize_captured_externals(xx, loc, &self.captured_externals.borrow());
-            let serial = ArtifactDataDefSetInterfaceMethodImpl {
-                interface_method_index: self.interface_method_index,
-                entry_id,
-                compiled_js,
-                impl_expr,
-                captured_externals,
-            };
-            Artifact {
-                deserializer: crate::artifact::ArtifactId::Builtin(defset_iface_method_impl_artifact_id()),
-                data: serde_json::to_value(&serial).expect("Failed to serialize iface method impl"),
-            }
-        })
-    }
 }
 
 pub(crate) struct SourceDataTypeRef {

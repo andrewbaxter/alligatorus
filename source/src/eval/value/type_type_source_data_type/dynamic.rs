@@ -1,17 +1,9 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ArtifactDataDefSetDataType,
-            ExporterAny,
-        },
-        eval::{
-            definition_set::load_def_set,
-            value::{
-                type_any::r#const::TypeAnyConst,
-                type_root::r#const::TypeRoot,
-                type_source_data_type::r#const::TypeSourceDataTypeConst,
-            },
+        artifact::ExporterAny,
+        eval::value::{
+            type_root::r#const::TypeRoot,
+            type_source_data_type::r#const::TypeSourceDataTypeConst,
         },
         invariant::must_downcast_ref,
         langhelp::{

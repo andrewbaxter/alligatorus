@@ -20,7 +20,6 @@ pub mod type_number;
 pub mod type_option;
 pub mod type_option_aspect;
 pub mod type_option_constructor;
-pub mod type_pending_import;
 pub mod type_pull;
 pub mod type_root;
 pub mod type_scope_entry;

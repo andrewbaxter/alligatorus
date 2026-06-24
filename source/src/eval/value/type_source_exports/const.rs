@@ -222,7 +222,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
                 ArtifactNewDefSet,
             >(xx, loc, id, data, move |body: ArtifactNewDefSet| {
                 let set = Gc::new(DefinitionSet::new(body.def_set_id));
-                *set.new_artifact_id.borrow_mut() = Some(id_owned.clone());
+                *set.artifact_id.borrow_mut() = Some(id_owned.clone());
                 let deps: Vec<Artifact> =
                     body.members.iter().chain(body.dependencies.iter()).cloned().collect();
                 let out: Rc<dyn ExporterAny> =
@@ -259,7 +259,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.set.new_artifact_id, || {
+        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.set.artifact_id, || {
             let mut members: Vec<Artifact> = Vec::new();
             for dt in self_.set.data_types.borrow().iter() {
                 let dt_const = Rc::new(super::super::type_source_data_type::r#const::TypeSourceDataTypeConst {

@@ -1,12 +1,6 @@
 use {
     crate::{
-        artifact::{
-            ArtifactDataDefSetCtorData,
-            ArtifactDataDefSetCtorMethod,
-            ArtifactId,
-            ExporterAny,
-            impl_serialize_independent_artifact as produce_independent_artifact,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -22,7 +16,6 @@ use {
                     ValueAnyConst,
                 },
                 type_root::r#const::TypeRoot,
-                type_type_source_data_type_constructor::dynamic::TypeTypeSourceDataTypeConstructorDynamic,
             },
         },
         langhelp::{
@@ -56,35 +49,8 @@ use {
     super::TypeSourceDataTypeConstructorConst,
 };
 
-impl TypeSourceDataTypeConstructorConst {
-    pub(crate) fn serialize_ctor(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.data.artifact_id, || {
-            let underlying_type = self.data.underlying_type.get();
-            let methods: Vec<ArtifactDataDefSetCtorMethod> = self.data.methods.borrow().iter().map(|m| {
-                let compiled_js = m.compiled_js.borrow();
-                let compiled_js = compiled_js.as_ref().expect("Method missing compiled JS");
-                let ret_type = m.ret_type.borrow().clone().expect("Method missing ret type");
-                ArtifactDataDefSetCtorMethod {
-                    name: m.name.clone(),
-                    field_name: m.field_name.clone(),
-                    ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                    compiled_js: compiled_js.clone(),
-                }
-            }).collect();
-            let serial_data = ArtifactDataDefSetCtorData {
-                name: self.data.name.clone(),
-                data_field: self.data.data_field.clone(),
-                underlying_type: serialize_type_ref(xx, loc, underlying_type.as_ref()),
-                identity: self.data.identity.clone(),
-                methods,
-                def_set_id: self.data.set.def_set_id,
-            };
-            TypeTypeSourceDataTypeConstructorDynamic::build_artifact(
-                serde_json::to_value(&serial_data).expect("Failed to serialize defset ctor data"),
-            )
-        })
-    }
-}
+// TODO(porting): serialize_ctor removed pending serialize_type_ref design.
+// Constructor types are now serialized as part of the parent DefinitionSet.
 
 impl Aspect for TypeSourceDataTypeConstructorConst { }
 

@@ -4,27 +4,17 @@ pub mod r#const;
 
 use {
     crate::{
-        artifact::{
-            ArtifactId,
-            impl_serialize_independent_artifact as produce_independent_artifact,
-        },
         code_dynamic::CodeDynamic,
         eval::{
             JsSourceBuilder,
             Scope,
             build_builtin_scope,
             const_eval,
-            definition_set::{
-                DefinitionSet,
-                serialize_captured_externals,
-            },
+            definition_set::DefinitionSet,
             expr::Expr,
             render_code,
             scope_entry_id_dynamic_key,
             typecheck_convert,
-            value::{
-                type_source_data_type::artifact::ArtifactDataDefSetFunction,
-            },
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -53,13 +43,12 @@ use {
 
 pub(crate) struct SourceFunctionData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
-    pub artifact_id: RefCell<Option<ArtifactId>>,
+    pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,
-    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub set: Gc<DefinitionSet>,
@@ -150,38 +139,6 @@ impl SourceFunctionData {
         Ok(())
     }
 
-    pub fn serialize(&self, xx: &ExprContext, loc: QExprId, def_set_artifact_id: ArtifactId) -> ArtifactId {
-        use crate::{
-            eval::value::type_null::dynamic::TypeNullDynamic,
-            langhelp::Type as _,
-        };
-
-        produce_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self.artifact_id, || {
-            let arg_type = self.arg_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-            let ret_type = self.ret_type.borrow().clone().unwrap_or_else(|| Rc::new(TypeNullDynamic));
-            let compiled_js = self.compiled_js.borrow().clone().unwrap_or_default();
-            let entry_id = match self.scope_entry_id.get().expect("Function missing scope_entry_id") {
-                ScopeEntryId::Def(_, id) => id,
-                other => panic!("Function has non-Def scope_entry_id: {:?}", other),
-            };
-            let captured_externals = serialize_captured_externals(xx, loc, &self.captured_externals.borrow());
-            let serial = ArtifactDataDefSetFunction {
-                name: self.name.clone(),
-                entry_id,
-                arg_type: serialize_type_ref(xx, loc, arg_type.as_ref()),
-                ret_type: serialize_type_ref(xx, loc, ret_type.as_ref()),
-                compiled_js,
-                def_set: def_set_artifact_id,
-                captured_externals,
-            };
-
-            use crate::eval::value::type_source_function::dynamic::TypeTypeSourceFunctionDynamic;
-
-            TypeTypeSourceFunctionDynamic::build_artifact(
-                serde_json::to_value(&serial).expect("Failed to serialize function"),
-            )
-        })
-    }
 }
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData {

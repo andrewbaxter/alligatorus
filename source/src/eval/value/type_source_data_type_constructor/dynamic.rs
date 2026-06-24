@@ -2,10 +2,7 @@ use {
     crate::{
         artifact::{
             Artifact,
-            ArtifactDataDefSetCtorData,
-            ArtifactId,
             ExporterAny,
-            deserialize_type_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -79,72 +76,6 @@ use {
     },
     super::TypeSourceDataTypeConstructorConst,
 };
-
-pub(crate) fn deserialize_defset_ctor_as_type(
-    xx: &ExprContext,
-    loc: QExprId,
-    data: &serde_json::Value,
-) -> Result<(Rc<dyn Type>, Vec<Code>), String> {
-    let artifact_id: ArtifactId =
-        serde_json::from_value(
-            data.clone(),
-        ).map_err(|e| format!("Failed to parse defset ctor artifact ref: {}", e))?;
-    let stored = xx.vx.ix.gx.artifacts.get(artifact_id)?;
-    let serial: ArtifactDataDefSetCtorData =
-        serde_json::from_value(stored.data).map_err(|e| format!("Failed to parse defset ctor data: {}", e))?;
-    let mut codes: Vec<Code> = Vec::new();
-    let (underlying_type, underlying_code) =
-        deserialize_type_artifact(xx, loc, &serial.underlying_type).into_res().map_err(|e| format!("{:?}", e))?;
-    codes.push(underlying_code);
-    let methods: Vec<Rc<SourceDataMethodData>> = serial.methods.iter().enumerate().map(|(i, m)| {
-        let (ret_type, ret_code) =
-            deserialize_type_artifact(xx, loc, &m.ret_type).into_res().expect("Failed to resolve method ret type");
-        codes.push(ret_code);
-        Rc::new(SourceDataMethodData {
-            artifact_id: std::cell::RefCell::new(None),
-            name: m.name.clone(),
-            arg_type: std::cell::RefCell::new(None),
-            impl_expr: std::cell::RefCell::new(None),
-            ret_type: std::cell::RefCell::new(Some(ret_type)),
-            scope_entry_id: Cell::new(Some(ScopeEntryId::Def(serial.def_set_id, i))),
-            inner_scope_entry_id: Cell::new(None),
-            field_name: m.field_name.clone(),
-            compiled_js: std::cell::RefCell::new(Some(m.compiled_js.clone())),
-            captured_externals: std::cell::RefCell::new(Vec::new()),
-        })
-    }).collect();
-    let set = dumpster::unsync::Gc::new(DefinitionSet {
-        artifact_id: std::cell::RefCell::new(None),
-        new_artifact_id: std::cell::RefCell::new(None),
-        def_set_id: serial.def_set_id,
-        functions: std::cell::RefCell::new(Vec::new()),
-        data_types: std::cell::RefCell::new(Vec::new()),
-        interfaces: std::cell::RefCell::new(Vec::new()),
-        finished: Cell::new(true),
-        next_field_id: Counter::default(),
-        next_entry_id: Counter::default(),
-        next_interface_method_id: Counter::default(),
-        dependencies: std::cell::RefCell::new(std::collections::HashMap::new()),
-    });
-    let dt_data = dumpster::unsync::Gc::new(SourceDataTypeData {
-        set: set.clone(),
-        name: serial.name,
-        description: std::cell::RefCell::new(None),
-        underlying_type: {
-            let dl = DeserialLazy::new();
-            dl.set(underlying_type);
-            dl
-        },
-        methods: std::cell::RefCell::new(methods),
-        interface_impls: std::cell::RefCell::new(Vec::new()),
-        identity: serial.identity.clone(),
-        data_field: serial.data_field,
-        artifact_id: std::cell::RefCell::new(None),
-        new_artifact_id: std::cell::RefCell::new(None),
-    });
-    set.data_types.borrow_mut().push(dt_data.clone());
-    Ok((Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data }), codes))
-}
 
 pub(crate) struct TypeSourceDataTypeConstructorDynamic;
 

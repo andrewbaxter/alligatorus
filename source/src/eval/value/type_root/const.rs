@@ -67,6 +67,7 @@ pub(crate) trait ExporterRootDelegate {
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ExporterRoot {
     BoolConst,
+    DefinitionSet,
     NullConst,
     NumberConst,
     Record,
@@ -106,6 +107,12 @@ impl ArtifactExporter for ExporterRoot {
         let id_ref = id.as_ref();
         let res: EResult<Rc<dyn Any>> = match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(
@@ -183,6 +190,12 @@ impl ArtifactExporter for ExporterRoot {
         });
         return match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
             ExporterRoot::NullConst => TypeNullConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NumberConst => TypeNumberConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_to_serial(xx, loc, self_, make_body),

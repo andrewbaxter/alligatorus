@@ -5,12 +5,8 @@ use {
             ExporterAny,
         },
         eval::value::{
-            type_any::r#const::TypeAnyConst,
             type_root::r#const::TypeRoot,
-            type_source_data_type_constructor::{
-                TypeSourceDataTypeConstructorConst,
-                dynamic::deserialize_defset_ctor_as_type,
-            },
+            type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
         },
         invariant::must_downcast_ref,
         langhelp::{

@@ -204,13 +204,12 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                 let set = dumpster::unsync::Gc::new(DefinitionSet::new(body.def_set_id));
                 let func_data = dumpster::unsync::Gc::new(super::SourceFunctionData {
                     arg_type: std::cell::RefCell::new(None),
-                    artifact_id: std::cell::RefCell::new(None),
+                    artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
                     captured_externals: std::cell::RefCell::new(Vec::new()),
                     compiled_js: std::cell::RefCell::new(Some(body.compiled_js.clone())),
                     description: std::cell::RefCell::new(None),
                     impl_expr: std::cell::RefCell::new(None),
                     name: body.name.clone(),
-                    new_artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
                     ret_type: std::cell::RefCell::new(None),
                     scope_entry_id: std::cell::Cell::new(
                         Some(ScopeEntryId::Def(body.def_set_id, body.scope_entry_id)),
@@ -300,7 +299,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
             _ => 0,
         };
         let art =
-            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
                 let body = ArtifactNewSourceFunction {
                     name: self_.data.name.clone(),
                     compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),

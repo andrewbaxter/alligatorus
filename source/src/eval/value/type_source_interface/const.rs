@@ -382,13 +382,12 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                     })
                 }).collect();
                 let iface_data = dumpster::unsync::Gc::new(super::SourceInterfaceData {
-                    artifact_id: std::cell::RefCell::new(None),
+                    artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
                     builtin_kind: body.builtin_kind,
                     description: std::cell::RefCell::new(body.description.clone()),
                     identity: body.identity.clone(),
                     is_aspect: std::cell::Cell::new(body.is_aspect),
                     methods: std::cell::RefCell::new(methods),
-                    new_artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
                     set: set,
                 });
                 let iface_for_finalizer = iface_data.clone();
@@ -475,7 +474,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
             });
         }
         let art =
-            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
                 let body = ArtifactNewSourceInterface {
                     identity: self_.data.identity.clone(),
                     description: self_.data.description.borrow().clone(),

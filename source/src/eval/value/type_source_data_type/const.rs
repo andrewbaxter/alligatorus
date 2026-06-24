@@ -3,7 +3,6 @@ use {
         artifact::{
             Artifact,
             ArtifactBody,
-            ArtifactId,
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
@@ -94,60 +93,15 @@ use {
     },
 };
 
-fn read_artifact_has_type_iface(xx: &ExprContext, dt_data: &dumpster::unsync::Gc<super::SourceDataTypeData>) -> bool {
-    let id = match dt_data.artifact_id.borrow().clone() {
-        Some(id) => id,
-        None => {
-            return dt_data.interface_impls.borrow().iter().any(|impl_data| {
-                impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
-            });
-        },
-    };
-    let art = match xx.vx.ix.gx.artifacts.get(id) {
-        Ok(a) => a,
-        Err(_) => return false,
-    };
-    let dt_serial: super::artifact::ArtifactDataDefSetDataType = match serde_json::from_value(art.data) {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
-    dt_serial.members.iter().any(|m_id| {
-        let m_art = match xx.vx.ix.gx.artifacts.get(m_id.clone()) {
-            Ok(a) => a,
-            Err(_) => return false,
-        };
-        let is_iface_impl =
-            matches!(
-                &m_art.exporter,
-                crate:: eval:: artifact:: ArtifactId:: Builtin(
-                    b
-                ) if * b == crate:: r#gen:: defset_iface_impl_artifact_id()
-            );
-        if !is_iface_impl {
-            return false;
-        }
-        let impl_serial: super::artifact::ArtifactDataDefSetInterfaceImpl = match serde_json::from_value(m_art.data) {
-            Ok(s) => s,
-            Err(_) => return false,
-        };
-        impl_serial.builtin_kind == Some(BuiltinInterfaceKind::Type)
+fn read_artifact_has_type_iface(_xx: &ExprContext, dt_data: &dumpster::unsync::Gc<super::SourceDataTypeData>) -> bool {
+    // After the artifact restructure, interface_impls are always inline on the data type.
+    dt_data.interface_impls.borrow().iter().any(|impl_data| {
+        impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
     })
 }
 
 pub(crate) struct TypeSourceDataTypeConst {
     pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
-}
-
-impl TypeSourceDataTypeConst {
-    pub(crate) fn serialize_data_type(&self, xx: &ExprContext, loc: QExprId) -> ArtifactId {
-        serialize_definition_set(xx, loc, &self.data.set);
-        self
-            .data
-            .artifact_id
-            .borrow()
-            .clone()
-            .expect("Data type artifact ID should be set by serialize_definition_set")
-    }
 }
 
 impl Aspect for TypeSourceDataTypeConst { }
@@ -486,8 +440,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                 let set =
                     dumpster::unsync::Gc::new(crate::eval::definition_set::DefinitionSet::new(body.def_set_id));
                 let dt_data = dumpster::unsync::Gc::new(super::SourceDataTypeData {
-                    artifact_id: RefCell::new(None),
-                    new_artifact_id: RefCell::new(Some(id_owned.clone())),
+                    artifact_id: RefCell::new(Some(id_owned.clone())),
                     set: set,
                     name: body.name.clone(),
                     identity: body.identity.clone(),
@@ -523,7 +476,6 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                             let arg_type = crate::artifact::deserialize_type_artifact(xx, loc, m.arg_type).v;
                             let ret_type = crate::artifact::deserialize_type_artifact(xx, loc, m.ret_type).v;
                             Rc::new(super::SourceDataMethodData {
-                                artifact_id: RefCell::new(None),
                                 name: m.name,
                                 field_name: m.field_name,
                                 arg_type: RefCell::new(arg_type),
@@ -548,7 +500,6 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                         .ok()?;
                                 let method_impls = impl_data.method_impls.into_iter().map(|m| {
                                     super::SourceDataTypeInterfaceMethodImplData {
-                                        artifact_id: RefCell::new(None),
                                         interface_method_index: m.interface_method_index,
                                         impl_expr: RefCell::new(None),
                                         impl_expr_artifact: RefCell::new(None),
@@ -561,7 +512,6 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                     }
                                 }).collect();
                                 Some(super::SourceDataTypeInterfaceImplData {
-                                    artifact_id: RefCell::new(None),
                                     interface: iface_data.0.clone(),
                                     method_impls,
                                 })
@@ -690,7 +640,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
             });
         }
         let art =
-            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
                 let body = ArtifactNewSourceDataType {
                     name: self_.data.name.clone(),
                     identity: self_.data.identity.clone(),
