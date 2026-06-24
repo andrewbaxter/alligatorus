@@ -130,11 +130,11 @@ impl AspectType for TypeSourceTaggedUnionConst {
 }
 
 impl ExporterAny for TypeSourceTaggedUnionConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -238,18 +238,10 @@ impl Value for TypeSourceTaggedUnionConst {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct ArtifactNewSourceTaggedUnionVariant {
-    tag: ConstKey,
-    js_tag: String,
-    type_: Artifact,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct ArtifactNewSourceTaggedUnion {
-    identity: Unique,
-    variants: Vec<ArtifactNewSourceTaggedUnionVariant>,
-}
+use super::artifact::{
+    ArtifactDataSourceTaggedUnion,
+    ArtifactDataSourceTaggedUnionVariant,
+};
 
 impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
     fn self_from_artifact_data(
@@ -267,8 +259,8 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         let id_owned = id.clone();
         let res =
             crate::artifact::impl_deserialize_independent_artifact::<
-                ArtifactNewSourceTaggedUnion,
-            >(xx, loc, id, data, move |body: ArtifactNewSourceTaggedUnion| {
+                ArtifactDataSourceTaggedUnion,
+            >(xx, loc, id, data, move |body: ArtifactDataSourceTaggedUnion| {
                 let tu_data = Rc::new(super::SourceTaggedUnionData {
                     identity: body.identity.clone(),
                     new_artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
@@ -286,7 +278,11 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
                                 super::SourceTaggedUnionVariant {
                                     js_tag: v.js_tag.clone(),
                                     tag: v.tag.clone(),
-                                    type_: crate::artifact::deserialize_type_artifact(xx, loc, v.type_.clone())
+                                    type_: crate::artifact::independent_finalize_deserialize_type_artifact(
+                                        xx,
+                                        loc,
+                                        v.type_.clone(),
+                                    )
                                         .v
                                         .expect("Failed to deserialize tagged union variant type"),
                                 }
@@ -315,8 +311,8 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceTaggedUnionConst>().expect("expected TypeSourceTaggedUnionConst");
-        let mut errors = None;
-        let mut variants_serial: Vec<ArtifactNewSourceTaggedUnionVariant> = Vec::new();
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
+        let mut variants_serial: Vec<ArtifactDataSourceTaggedUnionVariant> = Vec::new();
         for v in self_.data.variants.borrow().iter() {
             let type_art = crate::artifact::serialize_artifact(xx, loc, v.type_.as_value().as_ref());
             if let Some(errors1) = type_art.errors {
@@ -328,7 +324,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
                     v: None,
                 };
             };
-            variants_serial.push(ArtifactNewSourceTaggedUnionVariant {
+            variants_serial.push(ArtifactDataSourceTaggedUnionVariant {
                 tag: v.tag.clone(),
                 js_tag: v.js_tag.clone(),
                 type_: type_art,
@@ -336,7 +332,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         }
         let art =
             impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
-                let body = ArtifactNewSourceTaggedUnion {
+                let body = ArtifactDataSourceTaggedUnion {
                     identity: self_.data.identity.clone(),
                     variants: variants_serial,
                 };

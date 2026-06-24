@@ -162,11 +162,11 @@ impl AspectType for TypeAnyConst {
 }
 
 impl ExporterAny for TypeAnyConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -264,11 +264,11 @@ pub(crate) struct ValueAnyConst {
 }
 
 impl ExporterAny for ValueAnyConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

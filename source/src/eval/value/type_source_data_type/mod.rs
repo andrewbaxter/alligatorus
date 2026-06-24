@@ -181,7 +181,7 @@ pub(crate) struct SourceDataTypeData {
     pub interface_impls: RefCell<Vec<SourceDataTypeInterfaceImplData>>,
     pub methods: RefCell<Vec<Rc<SourceDataMethodData>>>,
     pub name: Option<String>,
-    pub set: Gc<DefinitionSet>,
+    pub set: RefCell<Option<Gc<DefinitionSet>>>,
     pub underlying_type: DeserialLazy<Rc<dyn Type>>,
 }
 
@@ -205,7 +205,11 @@ impl SourceDataTypeData {
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceDataTypeData {
     fn accept(&self, visitor: &mut V) -> Result<(), ()> {
-        visitor.visit_unsync(&self.set);
+        let set = self.set.try_borrow().map_err(|_| ())?;
+        if let Some(s) = set.as_ref() {
+            visitor.visit_unsync(s);
+        }
+        drop(set);
         let impls = self.interface_impls.try_borrow().map_err(|_| ())?;
         for impl_data in impls.iter() {
             visitor.visit_unsync(&impl_data.interface);

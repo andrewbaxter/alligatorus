@@ -99,11 +99,11 @@ impl AspectFunction for TypeCodeDynCastFn {
 }
 
 impl ExporterAny for TypeCodeDynCastFn {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -226,11 +226,11 @@ impl AspectStackValueDynamic for TypeCodeDynHandleDynamic {
 }
 
 impl ExporterAny for TypeCodeDynHandleDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -363,11 +363,11 @@ impl AspectTaggedUnion for TypeCodeEnumDynamic {
 }
 
 impl ExporterAny for TypeCodeEnumDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -504,11 +504,11 @@ impl AspectStackValueDynamic for TypeCodeStructDynamic {
 }
 
 impl ExporterAny for TypeCodeStructDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

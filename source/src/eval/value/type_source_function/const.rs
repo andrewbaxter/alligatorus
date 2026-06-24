@@ -16,10 +16,7 @@ use {
             CodeDynamicType,
         },
         eval::{
-            definition_set::{
-                DefinitionSet,
-                serialize_definition_set,
-            },
+            definition_set::DefinitionSet,
             value::type_root::r#const::ExporterRootDelegate,
             from_v8_ref,
             push::Push,
@@ -89,7 +86,7 @@ impl AspectBind for TypeSourceFunctionConst {
 impl AspectFunction for TypeSourceFunctionConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         {
-            let set = &self.data.set;
+            let set = self.data.set.borrow().as_ref().unwrap().clone();
             xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         }
         let scope_id = self.data.scope_entry_id.get().expect("Definition set function not registered");
@@ -111,11 +108,11 @@ impl AspectType for TypeSourceFunctionConst {
 }
 
 impl ExporterAny for TypeSourceFunctionConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -175,16 +172,7 @@ impl Value for TypeSourceFunctionConst {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct ArtifactNewSourceFunction {
-    name: Option<String>,
-    compiled_js: String,
-    arg_type: Artifact,
-    ret_type: Artifact,
-    scope_entry_id: usize,
-    def_set_id: DefSetId,
-    def_set: Artifact,
-}
+use super::super::type_source_data_type::artifact::ArtifactDataDefSetFunction;
 
 impl ExporterRootDelegate for TypeSourceFunctionConst {
     fn self_from_artifact_data(
@@ -199,9 +187,8 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
         let id_owned = id.clone();
         let res =
             impl_deserialize_independent_artifact::<
-                ArtifactNewSourceFunction,
-            >(xx, loc, id, data, move |body: ArtifactNewSourceFunction| {
-                let set = dumpster::unsync::Gc::new(DefinitionSet::new(body.def_set_id));
+                ArtifactDataDefSetFunction,
+            >(xx, loc, id, data, move |body: ArtifactDataDefSetFunction| {
                 let func_data = dumpster::unsync::Gc::new(super::SourceFunctionData {
                     arg_type: std::cell::RefCell::new(None),
                     artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
@@ -212,23 +199,41 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                     name: body.name.clone(),
                     ret_type: std::cell::RefCell::new(None),
                     scope_entry_id: std::cell::Cell::new(
-                        Some(ScopeEntryId::Def(body.def_set_id, body.scope_entry_id)),
+                        Some(ScopeEntryId::Def(body.def_set_id, body.entry_id)),
                     ),
-                    set: set,
+                    set: std::cell::RefCell::new(None),
                 });
                 let func_for_finalizer = func_data.clone();
                 let arg_type_art = body.arg_type;
                 let ret_type_art = body.ret_type;
+                let def_set_art = body.def_set.clone();
                 let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(func_data.clone()));
                 let deps = vec![body.def_set, arg_type_art.clone(), ret_type_art.clone()];
                 let finalizer: crate::artifact::ArtifactFinalizer =
                     Box::new(move |xx: &ExprContext, loc: QExprId| {
+                        if let Some(ds_any) =
+                            crate::artifact::independent_finalize_deserialize_artifact(xx, loc, def_set_art).v {
+                            let rc_any: Rc<dyn Any> = ds_any;
+                            if let Ok(wrapped) =
+                                rc_any
+                                    .downcast::<ExporterDataAny<dumpster::unsync::Gc<DefinitionSet>>>() {
+                                *func_for_finalizer.set.borrow_mut() = Some(wrapped.0.clone());
+                            }
+                        }
                         if let Some(v) =
-                            crate::artifact::deserialize_type_artifact(xx, loc, arg_type_art.clone()).v {
+                            crate::artifact::independent_finalize_deserialize_type_artifact(
+                                xx,
+                                loc,
+                                arg_type_art.clone(),
+                            ).v {
                             *func_for_finalizer.arg_type.borrow_mut() = Some(v);
                         }
                         if let Some(v) =
-                            crate::artifact::deserialize_type_artifact(xx, loc, ret_type_art.clone()).v {
+                            crate::artifact::independent_finalize_deserialize_type_artifact(
+                                xx,
+                                loc,
+                                ret_type_art.clone(),
+                            ).v {
                             *func_for_finalizer.ret_type.borrow_mut() = Some(v);
                         }
                     });
@@ -282,7 +287,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
         };
         let set_const =
             super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
-                set: self_.data.set.clone(),
+                set: self_.data.set.borrow().as_ref().unwrap().clone(),
             };
         let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
         if let Some(errors1) = def_set_art.errors {
@@ -294,20 +299,27 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                 v: None,
             };
         };
-        let scope_entry_id_index = match self_.data.scope_entry_id.get() {
+        let entry_id_index = match self_.data.scope_entry_id.get() {
             Some(ScopeEntryId::Def(_, idx)) => idx,
             _ => 0,
         };
+        let captured_externals =
+            crate::eval::definition_set::serialize_captured_externals(
+                xx,
+                loc,
+                &self_.data.captured_externals.borrow(),
+            );
         let art =
             impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
-                let body = ArtifactNewSourceFunction {
+                let body = ArtifactDataDefSetFunction {
                     name: self_.data.name.clone(),
                     compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),
                     arg_type: arg_art,
                     ret_type: ret_art,
-                    scope_entry_id: scope_entry_id_index,
-                    def_set_id: self_.data.set.def_set_id,
+                    entry_id: entry_id_index,
+                    def_set_id: self_.data.set.borrow().as_ref().unwrap().def_set_id,
                     def_set: def_set_art,
+                    captured_externals,
                 };
                 make_body(serde_json::to_value(&body).unwrap())
             });

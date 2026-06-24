@@ -324,11 +324,11 @@ impl AspectArtifact for TypeRoot {
 impl crate::langhelp::Aspect for TypeRoot { }
 
 impl ExporterAny for TypeRoot {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

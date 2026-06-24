@@ -15,11 +15,11 @@ use {
 pub(crate) struct ValueBoolConst(pub bool);
 
 impl ExporterAny for ValueBoolConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

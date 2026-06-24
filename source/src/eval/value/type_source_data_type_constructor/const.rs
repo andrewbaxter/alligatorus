@@ -66,7 +66,7 @@ impl AspectBind for TypeSourceDataTypeConstructorConst {
 impl AspectFunction for TypeSourceDataTypeConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         {
-            let set = &self.data.set;
+            let set = self.data.set.borrow().as_ref().unwrap().clone();
             xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         }
         let underlying_type = self.data.underlying_type.get().clone();
@@ -108,11 +108,11 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
 }
 
 impl ExporterAny for TypeSourceDataTypeConstructorConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

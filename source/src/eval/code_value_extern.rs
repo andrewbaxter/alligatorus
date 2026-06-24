@@ -230,11 +230,11 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
 }
 
 impl ExporterAny for TypeCodeValueExternDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -372,11 +372,11 @@ impl AspectStackValueDynamic for TypeExprContextPushDynamic {
 }
 
 impl ExporterAny for TypeExprContextPushDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

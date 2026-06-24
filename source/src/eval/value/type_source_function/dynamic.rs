@@ -116,7 +116,7 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
-        let set = &func_ref.data.set;
+        let set = func_ref.data.set.borrow().as_ref().unwrap().clone();
         xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: func_type }))
@@ -139,11 +139,11 @@ impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
 }
 
 impl ExporterAny for TypeSourceFunctionDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -241,11 +241,11 @@ impl AspectArtifact for TypeTypeSourceFunctionDynamic {
 }
 
 impl ExporterAny for TypeTypeSourceFunctionDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

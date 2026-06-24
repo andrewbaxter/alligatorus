@@ -143,11 +143,11 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionDynamic {
 }
 
 impl ExporterAny for TypeSourceTaggedUnionDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -354,11 +354,11 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionRefDynamic {
 }
 
 impl ExporterAny for TypeSourceTaggedUnionRefDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

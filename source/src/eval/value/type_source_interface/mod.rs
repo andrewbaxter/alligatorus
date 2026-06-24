@@ -44,7 +44,7 @@ pub(crate) struct SourceInterfaceData {
     pub identity: Unique,
     pub is_aspect: Cell<bool>,
     pub methods: RefCell<Vec<Rc<SourceInterfaceMethodData>>>,
-    pub set: Gc<DefinitionSet>,
+    pub set: RefCell<Option<Gc<DefinitionSet>>>,
 }
 
 impl SourceInterfaceData {
@@ -59,7 +59,10 @@ impl SourceInterfaceData {
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceInterfaceData {
     fn accept(&self, visitor: &mut V) -> Result<(), ()> {
-        visitor.visit_unsync(&self.set);
+        let set = self.set.try_borrow().map_err(|_| ())?;
+        if let Some(s) = set.as_ref() {
+            visitor.visit_unsync(s);
+        }
         Ok(())
     }
 }

@@ -202,11 +202,11 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
 }
 
 impl ExporterAny for TypeSourceInterfaceConst {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -338,23 +338,10 @@ impl Value for TypeSourceInterfaceConst {
         EResult::ok(Rc::new(TypeRoot::SourceInterfaceConst))
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-struct ArtifactNewSourceInterfaceMethod {
-    name: String,
-    field_name: String,
-    arg_type: Artifact,
-    ret_type: Artifact,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct ArtifactNewSourceInterface {
-    identity: Unique,
-    description: Option<String>,
-    is_aspect: bool,
-    builtin_kind: Option<super::BuiltinInterfaceKind>,
-    methods: Vec<ArtifactNewSourceInterfaceMethod>,
-    def_set_id: crate::langhelp::DefSetId,
-}
+use super::super::type_source_data_type::artifact::{
+    ArtifactDataDefSetInterface,
+    ArtifactDataDefSetInterfaceMethod,
+};
 
 impl ExporterRootDelegate for TypeSourceInterfaceConst {
     fn self_from_artifact_data(
@@ -369,15 +356,13 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
         let id_owned = id.clone();
         let res =
             crate::artifact::impl_deserialize_independent_artifact::<
-                ArtifactNewSourceInterface,
-            >(xx, loc, id, data, move |body: ArtifactNewSourceInterface| {
-                let set =
-                    dumpster::unsync::Gc::new(crate::eval::definition_set::DefinitionSet::new(body.def_set_id));
-                let methods: Vec<Rc<super::SourceInterfaceMethodData>> = body.methods.iter().map(|_| {
+                ArtifactDataDefSetInterface,
+            >(xx, loc, id, data, move |body: ArtifactDataDefSetInterface| {
+                let methods: Vec<Rc<super::SourceInterfaceMethodData>> = body.methods.iter().map(|m| {
                     Rc::new(super::SourceInterfaceMethodData {
                         arg_type: std::cell::RefCell::new(None),
-                        field_name: String::new(),
-                        name: String::new(),
+                        field_name: m.field_name.clone(),
+                        name: m.name.clone(),
                         ret_type: std::cell::RefCell::new(None),
                     })
                 }).collect();
@@ -388,11 +373,13 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                     identity: body.identity.clone(),
                     is_aspect: std::cell::Cell::new(body.is_aspect),
                     methods: std::cell::RefCell::new(methods),
-                    set: set,
+                    set: std::cell::RefCell::new(None),
                 });
                 let iface_for_finalizer = iface_data.clone();
                 let methods_serial = body.methods;
+                let def_set_art = body.def_set.clone();
                 let mut deps: Vec<Artifact> = Vec::new();
+                deps.push(body.def_set);
                 for m in &methods_serial {
                     deps.push(m.arg_type.clone());
                     deps.push(m.ret_type.clone());
@@ -400,15 +387,32 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                 let out: Rc<dyn ExporterAny> = Rc::new(crate::artifact::ExporterDataAny(iface_data.clone()));
                 let finalizer: crate::artifact::ArtifactFinalizer =
                     Box::new(move |xx: &ExprContext, loc: QExprId| {
+                        if let Some(ds_any) =
+                            crate::artifact::independent_finalize_deserialize_artifact(xx, loc, def_set_art).v {
+                            let rc_any: Rc<dyn std::any::Any> = ds_any;
+                            if let Ok(wrapped) =
+                                rc_any
+                                    .downcast::<crate::artifact::ExporterDataAny<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>>>() {
+                                *iface_for_finalizer.set.borrow_mut() = Some(wrapped.0.clone());
+                            }
+                        }
                         let methods_borrow = iface_for_finalizer.methods.borrow();
                         for (i, m_serial) in methods_serial.iter().enumerate() {
                             let m = &methods_borrow[i];
-                            let arg = crate::artifact::deserialize_type_artifact(xx, loc, m_serial.arg_type.clone());
-                            if let Some(v) = arg.v {
+                            if let Some(v) =
+                                crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    xx,
+                                    loc,
+                                    m_serial.arg_type.clone(),
+                                ).v {
                                 *m.arg_type.borrow_mut() = Some(v);
                             }
-                            let ret = crate::artifact::deserialize_type_artifact(xx, loc, m_serial.ret_type.clone());
-                            if let Some(v) = ret.v {
+                            if let Some(v) =
+                                crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    xx,
+                                    loc,
+                                    m_serial.ret_type.clone(),
+                                ).v {
                                 *m.ret_type.borrow_mut() = Some(v);
                             }
                         }
@@ -435,8 +439,8 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceInterfaceConst>().expect("expected TypeSourceInterfaceConst");
-        let mut errors = None;
-        let mut methods_serial: Vec<ArtifactNewSourceInterfaceMethod> = Vec::new();
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
+        let mut methods_serial: Vec<ArtifactDataDefSetInterfaceMethod> = Vec::new();
         for m in self_.data.methods.borrow().iter() {
             let arg_type =
                 m.arg_type.borrow().clone().unwrap_or_else(|| {
@@ -466,22 +470,37 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                     v: None,
                 };
             };
-            methods_serial.push(ArtifactNewSourceInterfaceMethod {
+            methods_serial.push(ArtifactDataDefSetInterfaceMethod {
                 name: m.name.clone(),
                 field_name: m.field_name.clone(),
                 arg_type: arg_art,
                 ret_type: ret_art,
             });
         }
+        let set_const =
+            super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                set: self_.data.set.borrow().as_ref().unwrap().clone(),
+            };
+        let def_set_art = crate::artifact::serialize_artifact(xx, loc, &set_const as &dyn Value);
+        if let Some(errors1) = def_set_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(def_set_art) = def_set_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
         let art =
             impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
-                let body = ArtifactNewSourceInterface {
+                let body = ArtifactDataDefSetInterface {
                     identity: self_.data.identity.clone(),
                     description: self_.data.description.borrow().clone(),
                     is_aspect: self_.data.is_aspect.get(),
                     builtin_kind: self_.data.builtin_kind,
                     methods: methods_serial,
-                    def_set_id: self_.data.set.def_set_id,
+                    def_set_id: self_.data.set.borrow().as_ref().unwrap().def_set_id,
+                    def_set: def_set_art,
                 };
                 make_body(serde_json::to_value(&body).unwrap())
             });

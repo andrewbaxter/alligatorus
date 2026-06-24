@@ -137,7 +137,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let ds = self_.inner.clone();
                         let entry_id = ds.next_entry_id.next();
                         let func_data = Gc::new(SourceFunctionData {
-                            set: ds.clone(),
+                            set: RefCell::new(Some(ds.clone())),
                             name: Some(name),
                             description: RefCell::new(None),
                             impl_expr: RefCell::new(None),
@@ -165,7 +165,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let data_field = format!("_{}", ds.next_field_id.next());
                         let dt_data = Gc::new(SourceDataTypeData {
-                            set: ds.clone(),
+                            set: RefCell::new(Some(ds.clone())),
                             name: Some(name),
                             description: RefCell::new(None),
                             underlying_type: crate::invariant::DeserialLazy::new(),
@@ -214,7 +214,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let iface_data = Gc::new(SourceInterfaceData {
                             artifact_id: RefCell::new(None),
                             builtin_kind: None,
-                            set: ds.clone(),
+                            set: RefCell::new(Some(ds.clone())),
                             description: RefCell::new(None),
                             is_aspect: Cell::new(false),
                             methods: RefCell::new(Vec::new()),
@@ -444,7 +444,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     body: quote!{
                         let iface_data = &self_.interface_ref.data;
                         let field_name =
-                            format!("_im{}", crate::eval::definition_set::next_interface_method_id(&iface_data.set));
+                            format!("_im{}", crate::eval::definition_set::next_interface_method_id(iface_data.set.borrow().as_ref().unwrap()));
                         let method = Rc::new(SourceInterfaceMethodData {
                             name,
                             arg_type: RefCell::new(None),
@@ -514,15 +514,16 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     ret: "SourceObjectMethodResult",
                     body: quote!{
                         let dt_data = &self_.data_type_ref.data;
-                        let field_name = format!("_{}", dt_data.set.next_field_id.next());
-                        let entry_id = dt_data.set.next_entry_id.next();
+                        let ds = dt_data.set.borrow().as_ref().unwrap().clone();
+                        let field_name = format!("_{}", ds.next_field_id.next());
+                        let entry_id = ds.next_entry_id.next();
                         let method = Rc::new(SourceDataMethodData {
                             name,
                             arg_type: RefCell::new(None),
                             impl_expr: RefCell::new(None),
                             ret_type: RefCell::new(None),
                             scope_entry_id: Cell::new(
-                                Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id,),)
+                                Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
                             ),
                             inner_scope_entry_id: Cell::new(None),
                             field_name,
@@ -549,11 +550,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         };
                         let mut method_impls = Vec::new();
                         let dt_data = &self_.data_type_ref.data;
+                        let ds = dt_data.set.borrow().as_ref().unwrap().clone();
                         for (imethod_idx, imethod_name) in &iface_method_names {
                             let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
                             match record_entries.get(&const_key) {
                                 Some(expr) => {
-                                    let entry_id = dt_data.set.next_entry_id.next();
+                                    let entry_id = ds.next_entry_id.next();
                                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
@@ -561,7 +563,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         compiled_js: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
-                                            Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id,),)
+                                            Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
                                         ),
                                         inner_scope_entry_id: Cell::new(None),
                                     });
@@ -589,13 +591,13 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     ret: "Rc<SourceInterfaceRef>",
                     body: quote!{
                         let record_entries = record;
-                        let ds = self_.data_type_ref.data.set.clone();
+                        let ds = self_.data_type_ref.data.set.borrow().as_ref().unwrap().clone();
                         let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let iface_data = Gc::new(SourceInterfaceData {
                             artifact_id: RefCell::new(None),
                             builtin_kind: None,
-                            set: ds.clone(),
+                            set: RefCell::new(Some(ds.clone())),
                             description: RefCell::new(None),
                             is_aspect: Cell::new(true),
                             methods: RefCell::new(Vec::new()),
@@ -638,13 +640,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         }));
                         *iface_data.methods.borrow_mut() = methods;
                         let dt_data = &self_.data_type_ref.data;
+                        let ds = dt_data.set.borrow().as_ref().unwrap().clone();
                         let mut method_impls = Vec::new();
                         let all_method_names: Vec<String> =
                             iface_data.methods.borrow().iter().map(|m| m.name.clone()).collect();
                         for (imethod_idx, imethod_name) in all_method_names.iter().enumerate() {
                             if imethod_name == "aspect_id" {
                                 let unique_clone = identity.clone();
-                                let aspect_id_entry_id = dt_data.set.next_entry_id.next();
+                                let aspect_id_entry_id = ds.next_entry_id.next();
                                 let unique_literal = crate::eval::expr::Expr {
                                     loc: (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)),
                                     r#type: crate::eval::expr::Expr_::Literal(
@@ -660,7 +663,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     scope_entry_id: Cell::new(
                                         Some(
                                             crate::langhelp::ScopeEntryId::Def(
-                                                dt_data.set.def_set_id,
+                                                ds.def_set_id,
                                                 aspect_id_entry_id
                                             )
                                         ),
@@ -672,7 +675,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
                             match record_entries.get(&const_key) {
                                 Some(expr) => {
-                                    let entry_id = dt_data.set.next_entry_id.next();
+                                    let entry_id = ds.next_entry_id.next();
                                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: imethod_idx,
@@ -681,7 +684,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         compiled_js: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
-                                            Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id)),
+                                            Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),
                                         ),
                                         inner_scope_entry_id: Cell::new(None),
                                     });
@@ -1184,7 +1187,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
     let iface_field = format_ident!("{}", iface_field);
     quote!{
         let record_entries = record;
-        let import_id = self_.data_type_ref.data.set.def_set_id.0.0;
+        let import_id = self_.data_type_ref.data.set.borrow().as_ref().unwrap().def_set_id.0.0;
         let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_id);
         let iface_data = builtin_ifaces.#iface_field.clone();
         let iface_method_names: Vec<(usize, String)> = {
@@ -1193,11 +1196,12 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
         };
         let mut method_impls = Vec::new();
         let dt_data = &self_.data_type_ref.data;
+        let ds = dt_data.set.borrow().as_ref().unwrap().clone();
         for (imethod_idx, imethod_name) in &iface_method_names {
             let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
             match record_entries.get(&const_key) {
                 Some(expr) => {
-                    let entry_id = dt_data.set.next_entry_id.next();
+                    let entry_id = ds.next_entry_id.next();
                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
@@ -1205,7 +1209,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                         compiled_js: RefCell::new(None),
                         captured_externals: RefCell::new(Vec::new()),
                         scope_entry_id: Cell::new(
-                            Some(crate::langhelp::ScopeEntryId::Def(dt_data.set.def_set_id, entry_id)),
+                            Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),
                         ),
                         inner_scope_entry_id: Cell::new(None),
                     });

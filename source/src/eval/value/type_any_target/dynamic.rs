@@ -87,11 +87,11 @@ impl AspectStackValueDynamic for TypeAnyTargetDynamic {
 }
 
 impl ExporterAny for TypeAnyTargetDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

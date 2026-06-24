@@ -348,11 +348,11 @@ impl AspectType for TypeSourceDataTypeDynamic {
 }
 
 impl ExporterAny for TypeSourceDataTypeDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -694,11 +694,11 @@ impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
 }
 
 impl ExporterAny for TypeSourceDataTypeRefDynamic {
-    fn as_type(self) -> EResult<Rc<dyn Value>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }

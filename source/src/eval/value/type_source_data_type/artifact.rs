@@ -16,16 +16,18 @@ pub(crate) struct ArtifactDataDefSet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<Artifact>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub data_types: Vec<ArtifactDataDefSetDataType>,
+    pub data_types: Vec<Artifact>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub functions: Vec<ArtifactDataDefSetFunction>,
+    pub functions: Vec<Artifact>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub interfaces: Vec<ArtifactDataDefSetInterface>,
+    pub interfaces: Vec<Artifact>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetDataType {
     pub data_field: String,
+    pub def_set_id: DefSetId,
+    pub def_set: Artifact,
     pub identity: Unique,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub methods: Vec<ArtifactDataDefSetMethod>,
@@ -41,6 +43,8 @@ pub(crate) struct ArtifactDataDefSetFunction {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
+    pub def_set_id: DefSetId,
+    pub def_set: Artifact,
     pub entry_id: usize,
     pub name: Option<String>,
     pub ret_type: Artifact,
@@ -48,11 +52,15 @@ pub(crate) struct ArtifactDataDefSetFunction {
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactDataDefSetInterface {
+    pub def_set_id: DefSetId,
+    pub def_set: Artifact,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub identity: Unique,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_aspect: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub builtin_kind: Option<BuiltinInterfaceKind>,
     pub methods: Vec<ArtifactDataDefSetInterfaceMethod>,
 }
 
@@ -79,7 +87,8 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
     pub entry_id: usize,
-    pub impl_expr: ArtifactExpr,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub impl_expr: Option<ArtifactExpr>,
     pub interface_method_index: usize,
 }
 

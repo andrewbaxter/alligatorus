@@ -51,7 +51,7 @@ pub(crate) struct SourceFunctionData {
     pub name: Option<String>,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
-    pub set: Gc<DefinitionSet>,
+    pub set: RefCell<Option<Gc<DefinitionSet>>>,
 }
 
 impl SourceFunctionData {
@@ -143,7 +143,10 @@ impl SourceFunctionData {
 
 unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData {
     fn accept(&self, visitor: &mut V) -> Result<(), ()> {
-        visitor.visit_unsync(&self.set);
+        let set = self.set.try_borrow().map_err(|_| ())?;
+        if let Some(s) = set.as_ref() {
+            visitor.visit_unsync(s);
+        }
         Ok(())
     }
 }

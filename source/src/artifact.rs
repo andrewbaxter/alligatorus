@@ -47,8 +47,8 @@ pub(crate) trait Artifacts: Send + Sync {
 }
 
 pub(crate) trait ExporterAny: Any {
-    fn as_type(self) -> EResult<Rc<dyn Type>>;
-    fn as_value(self) -> EResult<Rc<dyn Value>>;
+    fn as_type(&self) -> EResult<Rc<dyn Type>>;
+    fn as_value(&self) -> EResult<Rc<dyn Value>>;
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -214,6 +214,134 @@ pub(crate) fn deserialize_type_artifact(
     };
 }
 
+pub(crate) fn independent_finalize_deserialize_type_artifact(
+    xx: &ExprContext,
+    loc: QExprId,
+    artifact: Artifact,
+) -> EResult<Rc<dyn Type>> {
+    let res = independent_finalize_deserialize_artifact(xx, loc, artifact);
+    let mut errors = res.errors;
+    let Some(v) = res.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
+    };
+    let v = v.as_type();
+    if let Some(errors1) = v.errors {
+        errors.get_or_insert_default().extend(errors1);
+    }
+    let Some(v) = v.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
+    };
+    return EResult {
+        errors,
+        v: Some(v),
+    };
+}
+
+pub(crate) fn independent_finalize_deserialize_artifact(
+    xx: &ExprContext,
+    loc: QExprId,
+    artifact: Artifact,
+) -> EResult<Rc<dyn ExporterAny>> {
+    fn lookup_ref(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: ArtifactIdSource,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        match xx.vx.ix.deserialized_artifacts.borrow().get(&id) {
+            Some(v) => EResult::ok(v.clone()),
+            None => EResult::err(
+                loc,
+                format!(
+                    "independent_finalize_deserialize_artifact: artifact {:?} not in cache; deserializer must declare it as a dependency",
+                    id,
+                ),
+            ),
+        }
+    }
+
+    fn walk_body(
+        xx: &ExprContext,
+        loc: QExprId,
+        body: ArtifactBody,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        let mut errors = None;
+        let exporter_any = match body.exporter {
+            ArtifactBodyExporter::Body(inner) => {
+                let res = walk_body(xx, loc, *inner);
+                if let Some(errors1) = res.errors {
+                    errors.get_or_insert_default().extend(errors1);
+                }
+                let Some(any) = res.v else {
+                    return EResult {
+                        errors,
+                        v: None,
+                    };
+                };
+                any
+            },
+            ArtifactBodyExporter::SourceRef(id) => {
+                let res = lookup_ref(xx, loc, id);
+                if let Some(errors1) = res.errors {
+                    errors.get_or_insert_default().extend(errors1);
+                }
+                let Some(any) = res.v else {
+                    return EResult {
+                        errors,
+                        v: None,
+                    };
+                };
+                any
+            },
+            ArtifactBodyExporter::Root => {
+                let res = TypeRoot::Root.exporter().from_serial(xx, loc, None, body.data);
+                if let Some(errors1) = res.errors {
+                    errors.get_or_insert_default().extend(errors1);
+                }
+                return EResult {
+                    errors,
+                    v: res.v,
+                };
+            },
+        };
+        let exporter = match exporter_any.downcast::<ArtifactDeserializerFromAny>() {
+            Ok(v) => v,
+            Err(_) => {
+                errors.get_or_insert_default().push(ExprErr {
+                    errors: vec![
+                        ExprSubErr::Opaque(
+                            "independent_finalize_deserialize_artifact: exporter reference is not a deserializer".to_string(),
+                        ),
+                    ],
+                    loc,
+                });
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            },
+        };
+        let res = exporter.v.from_serial(xx, loc, None, body.data);
+        if let Some(errors1) = res.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        return EResult {
+            errors,
+            v: res.v,
+        };
+    }
+
+    match artifact {
+        Artifact::Body(body) => walk_body(xx, loc, body),
+        Artifact::Ref(id) => lookup_ref(xx, loc, id),
+    }
+}
+
 pub(crate) fn impl_deserialize_independent_artifact<
     T: DeserializeOwned,
 >(
@@ -296,11 +424,11 @@ pub(crate) struct ValueFromAny(pub Rc<dyn Value>);
 pub(crate) struct ExporterDataAny<T: 'static>(pub T);
 
 impl<T: 'static> ExporterAny for ExporterDataAny<T> {
-    fn as_type(self) -> EResult<Rc<dyn Type>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
     }
 
-    fn as_value(self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
