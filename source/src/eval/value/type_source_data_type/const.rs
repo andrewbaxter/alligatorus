@@ -32,7 +32,7 @@ use {
             },
             import_install::install_imported_type_iface,
             value::{
-                type_pull::TypePull,
+                type_pull::r#const::TypePull,
                 type_root::r#const::ExporterRootDelegate,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_interface::{
@@ -738,7 +738,8 @@ impl AspectType for TypeSourceDataTypeConstAspectType {
                 .and_then(|v| v.isolate_bundle.borrow().clone());
         Rc::new(TypePull {
             data: self.data.clone(),
-            bundle,
+            bundle: RefCell::new(bundle),
+            artifact_id: RefCell::new(None),
         })
     }
 }

@@ -70,6 +70,7 @@ pub enum ExporterRoot {
     DefinitionSet,
     NullConst,
     NumberConst,
+    Pull,
     Record,
     Root,
     SourceDataTypeConst,
@@ -115,6 +116,12 @@ impl ArtifactExporter for ExporterRoot {
             ),
             ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(
                 &xx,
                 loc,
@@ -206,6 +213,12 @@ impl ArtifactExporter for ExporterRoot {
             ),
             ExporterRoot::NullConst => TypeNullConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NumberConst => TypeNumberConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
             ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_to_serial(
                 xx,
@@ -309,6 +322,7 @@ impl TypeRoot {
             TypeRoot::BoolConst => Some(ExporterRoot::BoolConst),
             TypeRoot::NullConst => Some(ExporterRoot::NullConst),
             TypeRoot::NumberConst => Some(ExporterRoot::NumberConst),
+            TypeRoot::Pull => Some(ExporterRoot::Pull),
             TypeRoot::Root => Some(ExporterRoot::Root),
             TypeRoot::SourceDataTypeConstructorConst => Some(ExporterRoot::SourceDataTypeConstructorConst),
             TypeRoot::SourceExportsLiftedConst => Some(ExporterRoot::SourceExportsLiftedConst),

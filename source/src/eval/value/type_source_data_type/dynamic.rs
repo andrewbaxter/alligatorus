@@ -35,7 +35,7 @@ use {
                 type_code_source::TypeCodeDynHandleDynamic,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
-                type_pull::TypePull,
+                type_pull::r#const::TypePull,
                 type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_source_interface::{
@@ -342,7 +342,8 @@ impl AspectType for TypeSourceDataTypeDynamic {
                 .and_then(|v| v.isolate_bundle.borrow().clone());
         Rc::new(TypePull {
             data,
-            bundle,
+            bundle: std::cell::RefCell::new(bundle),
+            artifact_id: std::cell::RefCell::new(None),
         })
     }
 }

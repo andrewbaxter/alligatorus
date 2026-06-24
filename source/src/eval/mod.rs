@@ -48,7 +48,7 @@ use {
                 PullTarget,
             },
             value::{
-                type_pull::TypePull,
+                type_pull::r#const::TypePull,
                 type_source_data_type::{
                     SourceDataTypeRef,
                     dynamic::TypeSourceDataTypeDynamic,
@@ -2748,7 +2748,8 @@ fn eval(
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let type_: Rc<dyn Type> = Rc::new(TypePull {
                     data: template.data.clone(),
-                    bundle: Some(instance_global),
+                    bundle: std::cell::RefCell::new(Some(instance_global)),
+                    artifact_id: std::cell::RefCell::new(None),
                 });
                 let ext = rc_type_to_v8(scope, type_);
                 rv.set(ext.into());
