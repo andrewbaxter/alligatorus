@@ -1,4 +1,3 @@
-use super::artifact::ArtifactDataSourceDataTypeConstructor;
 use {
     crate::{
         artifact::{
@@ -60,7 +59,10 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::TypeSourceDataTypeConstructorConst,
+    super::{
+        TypeSourceDataTypeConstructorConst,
+        artifact::ArtifactDataSourceDataTypeConstructor,
+    },
 };
 
 // TODO(porting): serialize_ctor removed pending serialize_type_ref design.
@@ -122,11 +124,11 @@ impl AspectFunction for TypeSourceDataTypeConstructorConst {
 
 impl ExporterAny for TypeSourceDataTypeConstructorConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -278,7 +280,7 @@ impl Type for TypeSourceDataTypeConstructorConst {
 
 impl Value for TypeSourceDataTypeConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

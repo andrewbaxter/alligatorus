@@ -138,11 +138,11 @@ impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
 
 impl ExporterAny for TypeSourceFunctionDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeSourceFunctionDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeSourceFunctionDynamic));
     }
 }
 
@@ -224,7 +224,7 @@ impl Type for TypeSourceFunctionDynamic {
 
 impl Value for TypeSourceFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeSourceFunctionDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -237,11 +237,11 @@ impl Aspect for TypeTypeSourceFunctionDynamic { }
 
 impl ExporterAny for TypeTypeSourceFunctionDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeTypeSourceFunctionDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeTypeSourceFunctionDynamic));
     }
 }
 
@@ -269,7 +269,7 @@ impl Type for TypeTypeSourceFunctionDynamic {
 
 impl Value for TypeTypeSourceFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeTypeSourceFunctionDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

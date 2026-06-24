@@ -306,11 +306,11 @@ impl AspectStackValueDynamic for TypeMapDynamic {
 
 impl ExporterAny for TypeMapDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -504,7 +504,7 @@ impl Type for TypeMapDynamic {
 
 impl Value for TypeMapDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -541,11 +541,11 @@ impl AspectFunction for TypeMapGetFnDynamic {
 
 impl ExporterAny for TypeMapGetFnDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -576,7 +576,7 @@ impl Type for TypeMapGetFnDynamic {
 
 impl Value for TypeMapGetFnDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -622,11 +622,11 @@ impl AspectFunction for TypeMapNewDynamic {
 
 impl ExporterAny for TypeMapNewDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -660,7 +660,7 @@ impl Type for TypeMapNewDynamic {
 
 impl Value for TypeMapNewDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

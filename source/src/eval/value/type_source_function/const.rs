@@ -1,4 +1,3 @@
-use super::super::type_source_data_type::artifact::ArtifactDataDefSetFunction;
 use {
     crate::{
         artifact::{
@@ -66,8 +65,10 @@ use {
         any::Any,
         rc::Rc,
     },
+    super::super::type_source_data_type::artifact::ArtifactDataDefSetFunction,
 };
 
+#[derive(Clone)]
 pub(crate) struct TypeSourceFunctionConst {
     pub data: dumpster::unsync::Gc<super::SourceFunctionData>,
 }
@@ -115,11 +116,11 @@ impl AspectType for TypeSourceFunctionConst {
 
 impl ExporterAny for TypeSourceFunctionConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -326,7 +327,7 @@ impl Type for TypeSourceFunctionConst {
 
 impl Value for TypeSourceFunctionConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

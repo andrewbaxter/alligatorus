@@ -1,4 +1,3 @@
-use super::artifact::ArtifactDataSourceTaggedUnionConstructor;
 use {
     crate::{
         artifact::{
@@ -62,8 +61,10 @@ use {
         any::Any,
         rc::Rc,
     },
+    super::artifact::ArtifactDataSourceTaggedUnionConstructor,
 };
 
+#[derive(Clone)]
 pub(crate) struct TypeSourceTaggedUnionConstructorConst {
     pub data: Rc<SourceTaggedUnionData>,
     pub variant_index: usize,
@@ -102,11 +103,11 @@ impl AspectFunction for TypeSourceTaggedUnionConstructorConst {
 
 impl ExporterAny for TypeSourceTaggedUnionConstructorConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -251,7 +252,7 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
 
 impl Value for TypeSourceTaggedUnionConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

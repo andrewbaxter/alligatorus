@@ -177,11 +177,11 @@ impl AspectOperatorEq for TypeUnique {
 
 impl ExporterAny for TypeUnique {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        EResult::ok(Rc::new(TypeUnique))
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        EResult::ok(Rc::new(TypeUnique))
     }
 }
 
@@ -253,7 +253,7 @@ impl Type for TypeUnique {
 
 impl Value for TypeUnique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        Rc::new(TypeUnique)
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -267,7 +267,7 @@ impl ExporterAny for Unique {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        EResult::ok(Rc::new(*self))
     }
 }
 
@@ -287,7 +287,7 @@ impl Push for Unique {
 
 impl Value for Unique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        Rc::new(*self)
     }
 
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

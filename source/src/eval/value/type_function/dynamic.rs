@@ -212,11 +212,11 @@ impl AspectInitialBind for TypeFunctionDynamic {
 
 impl ExporterAny for TypeFunctionDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -276,7 +276,7 @@ impl Type for TypeFunctionDynamic {
 
 impl Value for TypeFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

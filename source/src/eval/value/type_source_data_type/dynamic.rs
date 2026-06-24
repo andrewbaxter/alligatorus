@@ -109,6 +109,7 @@ use {
     },
 };
 
+#[derive(Clone)]
 pub(crate) struct TypeSourceDataTypeDynamic {
     pub data: Gc<SourceDataTypeData>,
 }
@@ -350,11 +351,11 @@ impl AspectType for TypeSourceDataTypeDynamic {
 
 impl ExporterAny for TypeSourceDataTypeDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -628,7 +629,7 @@ impl Type for TypeSourceDataTypeDynamic {
 
 impl Value for TypeSourceDataTypeDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -695,11 +696,11 @@ impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
 
 impl ExporterAny for TypeSourceDataTypeRefDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeSourceDataTypeRefDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeSourceDataTypeRefDynamic));
     }
 }
 
@@ -789,7 +790,7 @@ impl Type for TypeSourceDataTypeRefDynamic {
 
 impl Value for TypeSourceDataTypeRefDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeSourceDataTypeRefDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

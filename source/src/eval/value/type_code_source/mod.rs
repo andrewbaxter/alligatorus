@@ -100,11 +100,11 @@ impl AspectFunction for TypeCodeDynCastFn {
 
 impl ExporterAny for TypeCodeDynCastFn {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeDynCastFn));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeDynCastFn));
     }
 }
 
@@ -139,7 +139,7 @@ impl Type for TypeCodeDynCastFn {
 
 impl Value for TypeCodeDynCastFn {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeCodeDynCastFn);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -233,11 +233,11 @@ impl AspectStackValueDynamic for TypeCodeDynHandleDynamic {
 
 impl ExporterAny for TypeCodeDynHandleDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeDynHandleDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeDynHandleDynamic));
     }
 }
 
@@ -310,7 +310,7 @@ impl Type for TypeCodeDynHandleDynamic {
 
 impl Value for TypeCodeDynHandleDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeCodeDynHandleDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -370,11 +370,11 @@ impl AspectTaggedUnion for TypeCodeEnumDynamic {
 
 impl ExporterAny for TypeCodeEnumDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeEnumDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeEnumDynamic));
     }
 }
 
@@ -427,7 +427,7 @@ impl Type for TypeCodeEnumDynamic {
 
 impl Value for TypeCodeEnumDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeCodeEnumDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -517,11 +517,11 @@ impl AspectStackValueDynamic for TypeCodeStructDynamic {
 
 impl ExporterAny for TypeCodeStructDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeStructDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeStructDynamic));
     }
 }
 
@@ -574,7 +574,7 @@ impl Type for TypeCodeStructDynamic {
 
 impl Value for TypeCodeStructDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeCodeStructDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

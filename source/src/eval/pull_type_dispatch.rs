@@ -408,6 +408,7 @@ fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> O
     None
 }
 
+#[derive(Clone)]
 struct TypeAspectLookupFn {
     receiver: Rc<dyn Value>,
 }
@@ -418,13 +419,13 @@ impl ExporterAny for TypeAspectLookupFn {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Value for TypeAspectLookupFn {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -453,11 +454,11 @@ impl AspectFunction for TypeAspectLookupFnType {
 
 impl ExporterAny for TypeAspectLookupFnType {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeAspectLookupFnType));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeAspectLookupFnType));
     }
 }
 
@@ -492,7 +493,7 @@ impl Type for TypeAspectLookupFnType {
 
 impl Value for TypeAspectLookupFnType {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeAspectLookupFnType);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -548,11 +549,11 @@ impl AspectField for TypeTypeRef {
 
 impl ExporterAny for TypeTypeRef {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeTypeRef));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeTypeRef));
     }
 }
 
@@ -587,7 +588,7 @@ impl Type for TypeTypeRef {
 
 impl Value for TypeTypeRef {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeTypeRef);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -595,6 +596,7 @@ impl Value for TypeTypeRef {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct ValueTypeRef {
     pub type_: Rc<dyn Type>,
 }
@@ -605,13 +607,13 @@ impl ExporterAny for ValueTypeRef {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Value for ValueTypeRef {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

@@ -85,6 +85,7 @@ use {
     },
 };
 
+#[derive(Clone)]
 pub(crate) struct Tuple {
     pub elements: Vec<TupleElement>,
 }
@@ -298,19 +299,19 @@ impl AspectTuple for Tuple {
     }
 }
 
-impl ExporterAny for Tuple {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 impl crate::r#gen::AspectArtifact for Tuple {
     fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
         Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::Tuple)
+    }
+}
+
+impl ExporterAny for Tuple {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(self.clone()));
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -552,7 +553,7 @@ impl Type for Tuple {
 
 impl Value for Tuple {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -578,6 +579,7 @@ enum TupleBindSubResult {
     Target(TargetBindSub),
 }
 
+#[derive(Clone)]
 pub(crate) enum TupleElement {
     Dynamic(Rc<dyn Type>),
     EvalRes(EvalRes),

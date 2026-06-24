@@ -104,11 +104,11 @@ impl AspectStackValueDynamic for TypeBoolDynamic {
 
 impl ExporterAny for TypeBoolDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeBoolDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeBoolDynamic));
     }
 }
 
@@ -206,7 +206,7 @@ impl Type for TypeBoolDynamic {
 
 impl Value for TypeBoolDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeBoolDynamic);
     }
 
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

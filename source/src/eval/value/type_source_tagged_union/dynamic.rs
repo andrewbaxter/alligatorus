@@ -80,6 +80,7 @@ use {
 };
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub(crate) struct TypeSourceTaggedUnionDynamic {
     pub data: Rc<SourceTaggedUnionData>,
 }
@@ -144,11 +145,11 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionDynamic {
 
 impl ExporterAny for TypeSourceTaggedUnionDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -292,7 +293,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
 
 impl Value for TypeSourceTaggedUnionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -360,11 +361,11 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionRefDynamic {
 
 impl ExporterAny for TypeSourceTaggedUnionRefDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeSourceTaggedUnionRefDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeSourceTaggedUnionRefDynamic));
     }
 }
 
@@ -483,7 +484,7 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
 
 impl Value for TypeSourceTaggedUnionRefDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeSourceTaggedUnionRefDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

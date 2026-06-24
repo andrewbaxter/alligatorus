@@ -88,11 +88,11 @@ impl AspectStackValueDynamic for TypeAnyTargetDynamic {
 
 impl ExporterAny for TypeAnyTargetDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeAnyTargetDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeAnyTargetDynamic));
     }
 }
 
@@ -130,7 +130,7 @@ impl Type for TypeAnyTargetDynamic {
 
 impl Value for TypeAnyTargetDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeAnyTargetDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

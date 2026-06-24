@@ -1,9 +1,3 @@
-use super::artifact::{
-    ArtifactDataDefSetDataType,
-    ArtifactDataDefSetInterfaceImpl,
-    ArtifactDataDefSetInterfaceMethodImpl,
-    ArtifactDataDefSetMethod,
-};
 use {
     crate::{
         artifact::{
@@ -97,6 +91,12 @@ use {
         cell::RefCell,
         rc::Rc,
     },
+    super::artifact::{
+        ArtifactDataDefSetDataType,
+        ArtifactDataDefSetInterfaceImpl,
+        ArtifactDataDefSetInterfaceMethodImpl,
+        ArtifactDataDefSetMethod,
+    },
 };
 
 fn read_artifact_has_type_iface(
@@ -110,6 +110,7 @@ fn read_artifact_has_type_iface(
     })
 }
 
+#[derive(Clone)]
 pub(crate) struct TypeSourceDataTypeConst {
     pub data: dumpster::unsync::Gc<super::SourceDataTypeData>,
 }
@@ -201,11 +202,11 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
 
 impl ExporterAny for TypeSourceDataTypeConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -716,7 +717,7 @@ impl Type for TypeSourceDataTypeConst {
 
 impl Value for TypeSourceDataTypeConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

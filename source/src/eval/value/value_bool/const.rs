@@ -12,6 +12,7 @@ use {
     std::rc::Rc,
 };
 
+#[derive(Clone, Copy)]
 pub(crate) struct ValueBoolConst(pub bool);
 
 impl ExporterAny for ValueBoolConst {
@@ -20,13 +21,13 @@ impl ExporterAny for ValueBoolConst {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        EResult::ok(Rc::new(*self))
     }
 }
 
 impl Value for ValueBoolConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        Rc::new(*self)
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

@@ -154,11 +154,11 @@ impl AspectInitialBind for TypeFunctionCastValueDynamic {
 
 impl ExporterAny for TypeFunctionCastValueDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeFunctionCastValueDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeFunctionCastValueDynamic));
     }
 }
 
@@ -184,7 +184,7 @@ impl Type for TypeFunctionCastValueDynamic {
 
 impl Value for TypeFunctionCastValueDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeFunctionCastValueDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

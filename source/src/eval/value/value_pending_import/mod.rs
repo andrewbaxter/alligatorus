@@ -20,6 +20,7 @@ use {
     },
 };
 
+#[derive(Clone)]
 pub(crate) struct ValuePendingImport {
     pub entry: CompileResultEntry,
     pub resolved: RefCell<Option<EResult<Rc<dyn Value>>>>,

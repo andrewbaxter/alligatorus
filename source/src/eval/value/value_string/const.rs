@@ -12,6 +12,7 @@ use {
     std::rc::Rc,
 };
 
+#[derive(Clone)]
 pub(crate) struct ValueStringConst(pub String);
 
 impl ExporterAny for ValueStringConst {
@@ -20,13 +21,13 @@ impl ExporterAny for ValueStringConst {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        EResult::ok(Rc::new(self.clone()))
     }
 }
 
 impl Value for ValueStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        Rc::new(self.clone())
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

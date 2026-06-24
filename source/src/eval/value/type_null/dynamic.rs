@@ -141,11 +141,11 @@ impl AspectType for TypeNullDynamic {
 
 impl ExporterAny for TypeNullDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeNullDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeNullDynamic));
     }
 }
 
@@ -221,7 +221,7 @@ impl Type for TypeNullDynamic {
 
 impl Value for TypeNullDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeNullDynamic);
     }
 
     fn type_(&self, _ex: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

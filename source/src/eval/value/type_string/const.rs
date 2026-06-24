@@ -110,11 +110,11 @@ impl AspectStringConst for TypeStringConst {
 
 impl ExporterAny for TypeStringConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeStringConst));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeStringConst));
     }
 }
 
@@ -205,7 +205,7 @@ impl Type for TypeStringConst {
 
 impl Value for TypeStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeStringConst);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

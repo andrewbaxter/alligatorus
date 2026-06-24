@@ -82,11 +82,11 @@ impl AspectInitialBind for TypeListConstructorConst {
 
 impl ExporterAny for TypeListConstructorConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeListConstructorConst));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeListConstructorConst));
     }
 }
 
@@ -120,7 +120,7 @@ impl Type for TypeListConstructorConst {
 
 impl Value for TypeListConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeListConstructorConst);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

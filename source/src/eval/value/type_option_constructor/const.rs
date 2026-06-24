@@ -85,11 +85,11 @@ impl AspectInitialBind for TypeOptionConstructorConst {
 
 impl ExporterAny for TypeOptionConstructorConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeOptionConstructorConst));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeOptionConstructorConst));
     }
 }
 
@@ -123,7 +123,7 @@ impl Type for TypeOptionConstructorConst {
 
 impl Value for TypeOptionConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeOptionConstructorConst);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

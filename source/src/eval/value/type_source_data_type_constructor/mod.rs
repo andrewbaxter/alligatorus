@@ -14,6 +14,7 @@ use {
     std::rc::Rc,
 };
 
+#[derive(Clone)]
 pub(crate) struct TypeSourceDataTypeConstructorConst {
     pub data: dumpster::unsync::Gc<super::type_source_data_type::SourceDataTypeData>,
 }

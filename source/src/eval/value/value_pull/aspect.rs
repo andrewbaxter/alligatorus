@@ -48,6 +48,7 @@ use {
     },
 };
 
+#[derive(Clone)]
 pub(crate) struct TypePullAspect {
     pub bundle: Option<v8::Global<v8::Object>>,
     pub iface_ref: Rc<SourceInterfaceRef>,
@@ -152,11 +153,11 @@ impl AspectInitialBind for TypePullAspect {
 
 impl ExporterAny for TypePullAspect {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -194,7 +195,7 @@ impl Type for TypePullAspect {
 
 impl Value for TypePullAspect {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

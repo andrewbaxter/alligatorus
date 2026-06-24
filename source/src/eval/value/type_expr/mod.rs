@@ -133,11 +133,11 @@ impl AspectType for TypeExpr {
 
 impl ExporterAny for TypeExpr {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeExpr));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeExpr));
     }
 }
 
@@ -224,7 +224,7 @@ impl Type for TypeExpr {
 
 impl Value for TypeExpr {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeExpr);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -255,11 +255,11 @@ impl AspectLiftDynamic for TypeExprStagedPlaceholder {
 
 impl ExporterAny for TypeExprStagedPlaceholder {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeExprStagedPlaceholder));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeExprStagedPlaceholder));
     }
 }
 
@@ -293,7 +293,7 @@ impl Type for TypeExprStagedPlaceholder {
 
 impl Value for TypeExprStagedPlaceholder {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeExprStagedPlaceholder);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -307,13 +307,13 @@ impl ExporterAny for Expr {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Value for Expr {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

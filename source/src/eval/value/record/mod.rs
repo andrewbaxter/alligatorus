@@ -453,19 +453,28 @@ impl AspectInitialBind for Record {
     }
 }
 
-impl ExporterAny for Record {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+impl Clone for Record {
+    fn clone(&self) -> Self {
+        return Record {
+            base: self.base.as_ref().map(|b| b.clone_base()),
+            fields: self.fields.clone(),
+        };
     }
 }
 
 impl crate::r#gen::AspectArtifact for Record {
     fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
         Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::Record)
+    }
+}
+
+impl ExporterAny for Record {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(self.clone()));
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
@@ -714,7 +723,7 @@ impl Type for Record {
 
 impl Value for Record {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -813,6 +822,7 @@ impl RecordBase for RecordBaseDynamic {
     }
 }
 
+#[derive(Clone)]
 pub(crate) enum RecordField {
     Dynamic(Rc<dyn Type>),
     EvalRes(EvalRes),

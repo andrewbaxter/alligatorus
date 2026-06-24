@@ -12,6 +12,7 @@ use {
     std::rc::Rc,
 };
 
+#[derive(Clone)]
 pub(crate) struct ValueEmptyConst {
     pub type_: Rc<dyn Type>,
 }
@@ -22,13 +23,13 @@ impl ExporterAny for ValueEmptyConst {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        EResult::ok(Rc::new(self.clone()))
     }
 }
 
 impl Value for ValueEmptyConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        Rc::new(self.clone())
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

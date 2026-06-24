@@ -233,11 +233,11 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
 
 impl ExporterAny for TypeCodeValueExternDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
     }
 }
 
@@ -340,7 +340,7 @@ impl Type for TypeCodeValueExternDynamic {
 
 impl Value for TypeCodeValueExternDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeCodeValueExternDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
@@ -377,11 +377,11 @@ impl AspectStackValueDynamic for TypeExprContextPushDynamic {
 
 impl ExporterAny for TypeExprContextPushDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeExprContextPushDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(TypeExprContextPushDynamic));
     }
 }
 
@@ -444,7 +444,7 @@ impl Type for TypeExprContextPushDynamic {
 
 impl Value for TypeExprContextPushDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(TypeExprContextPushDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

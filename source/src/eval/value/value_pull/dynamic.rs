@@ -18,6 +18,7 @@ use {
     std::rc::Rc,
 };
 
+#[derive(Clone)]
 pub(crate) struct ValuePull {
     pub bundle: v8::Global<v8::Object>,
 }
@@ -28,13 +29,13 @@ impl ExporterAny for ValuePull {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Value for ValuePull {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        unimplemented!()
+        return Rc::new(self.clone());
     }
 
     fn type_(&self, xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
