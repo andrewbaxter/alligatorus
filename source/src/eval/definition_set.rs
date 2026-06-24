@@ -376,13 +376,27 @@ pub(crate) fn serialize_captured_externals(
                     expr,
                 }
             },
-            External::StageLiftCell(cell) => ArtifactExternal::StageLift {
-                local_id,
-                source_type: todo!("serialize_type_ref pending design"),
+            External::StageLiftCell(cell) => {
+                let value = cell.source_type.as_value();
+                let source_type =
+                    crate::artifact::serialize_artifact(xx, loc, value.as_ref())
+                        .into_res()
+                        .expect("Failed to serialize captured StageLiftCell source type");
+                ArtifactExternal::StageLift {
+                    local_id,
+                    source_type,
+                }
             },
-            External::Type(type_) => ArtifactExternal::Type {
-                local_id,
-                type_artifact: todo!("serialize_type_ref pending design"),
+            External::Type(type_) => {
+                let value = type_.as_value();
+                let type_artifact =
+                    crate::artifact::serialize_artifact(xx, loc, value.as_ref())
+                        .into_res()
+                        .expect("Failed to serialize captured External::Type");
+                ArtifactExternal::Type {
+                    local_id,
+                    type_artifact,
+                }
             },
             External::Unique(u) => ArtifactExternal::Unique {
                 local_id,
