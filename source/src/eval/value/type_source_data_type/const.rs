@@ -107,6 +107,9 @@ pub(crate) struct TypeSourceDataTypeConst {
 impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
+    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceDataTypeConst)
+    }
 }
 
 impl AspectBind for TypeSourceDataTypeConst {
@@ -519,6 +522,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                 };
                                 let method_impls = impl_data.method_impls.into_iter().map(|m| {
                                     super::SourceDataTypeInterfaceMethodImplData {
+                                        artifact_id: RefCell::new(None),
                                         interface_method_index: m.interface_method_index,
                                         impl_expr: RefCell::new(None),
                                         impl_expr_artifact: RefCell::new(m.impl_expr.clone()),

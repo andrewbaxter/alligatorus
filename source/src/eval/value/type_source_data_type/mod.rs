@@ -225,6 +225,7 @@ pub(crate) struct SourceDataTypeInterfaceImplData {
 }
 
 pub(crate) struct SourceDataTypeInterfaceMethodImplData {
+    pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,

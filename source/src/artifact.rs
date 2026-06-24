@@ -37,7 +37,7 @@ pub(crate) trait ArtifactExporter {
         id: Option<ArtifactIdSource>,
         data: serde_json::Value,
     ) -> EResult<Rc<dyn ExporterAny>>;
-    fn to_serial(self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact>;
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact>;
 }
 
 pub(crate) trait Artifacts: Send + Sync {
@@ -419,7 +419,27 @@ pub(crate) fn serialize_artifact(xx: &ExprContext, loc: QExprId, v: &dyn Value) 
 
 pub(crate) struct TypeFromAny(pub Rc<dyn Type>);
 
+impl ExporterAny for TypeFromAny {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(self.0.clone());
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
+    }
+}
+
 pub(crate) struct ValueFromAny(pub Rc<dyn Value>);
+
+impl ExporterAny for ValueFromAny {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        return EResult::ok(self.0.clone());
+    }
+}
 
 pub(crate) struct ExporterDataAny<T: 'static>(pub T);
 

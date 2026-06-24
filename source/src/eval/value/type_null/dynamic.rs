@@ -40,7 +40,6 @@ use {
             Value,
         },
         r#gen::{
-            AspectArtifact,
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
@@ -50,7 +49,6 @@ use {
             AspectStackValueDynamic,
             AspectType,
             ScopeEntry,
-            aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -73,9 +71,6 @@ use {
 pub(crate) struct TypeNullDynamic;
 
 impl Aspect for TypeNullDynamic { }
-
-impl AspectArtifact for TypeNullDynamic {
-}
 
 impl AspectBind for TypeNullDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
@@ -162,9 +157,6 @@ impl Type for TypeNullDynamic {
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectStackValueDynamic>));
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_lift_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftDynamic>));

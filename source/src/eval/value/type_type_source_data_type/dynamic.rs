@@ -20,9 +20,7 @@ use {
             Value,
         },
         r#gen::{
-            AspectArtifact,
             AspectType,
-            aspect_artifact_aspect_id,
             aspect_type_aspect_id,
             type_type_identity,
         },
@@ -36,9 +34,6 @@ use {
 pub(crate) struct TypeTypeSourceDataTypeDynamic;
 
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
-
-impl AspectArtifact for TypeTypeSourceDataTypeDynamic {
-}
 
 impl AspectType for TypeTypeSourceDataTypeDynamic {
     fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
@@ -65,9 +60,6 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == type_type_identity() {
             return Some(Box::new(true));
-        }
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectArtifact>));
         }
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectType>));

@@ -70,6 +70,9 @@ pub(crate) struct TypeAnyConst;
 impl Aspect for TypeAnyConst { }
 
 impl AspectArtifact for TypeAnyConst {
+    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
+        unimplemented!()
+    }
 }
 
 impl AspectBind for TypeAnyConst {

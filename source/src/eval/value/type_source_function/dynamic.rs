@@ -51,7 +51,6 @@ use {
             Value,
         },
         r#gen::{
-            AspectArtifact,
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
@@ -60,7 +59,6 @@ use {
             AspectStackValueDynamic,
             FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
-            aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -237,9 +235,6 @@ pub(crate) struct TypeTypeSourceFunctionDynamic;
 
 impl Aspect for TypeTypeSourceFunctionDynamic { }
 
-impl AspectArtifact for TypeTypeSourceFunctionDynamic {
-}
-
 impl ExporterAny for TypeTypeSourceFunctionDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
         unimplemented!()
@@ -256,9 +251,6 @@ impl Type for TypeTypeSourceFunctionDynamic {
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeSourceFunctionDynamic) as Box<dyn AspectArtifact>));
-        }
         None
     }
 

@@ -64,6 +64,9 @@ pub(crate) struct TypeStringConst;
 impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
+    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::StringConst)
+    }
 }
 
 impl AspectBind for TypeStringConst {

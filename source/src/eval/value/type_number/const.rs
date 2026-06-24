@@ -65,6 +65,9 @@ pub(crate) struct TypeNumberConst;
 impl Aspect for TypeNumberConst { }
 
 impl AspectArtifact for TypeNumberConst {
+    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::NumberConst)
+    }
 }
 
 impl AspectBind for TypeNumberConst {

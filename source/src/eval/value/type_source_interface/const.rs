@@ -88,6 +88,9 @@ pub(crate) struct TypeSourceInterfaceConst {
 impl Aspect for TypeSourceInterfaceConst { }
 
 impl AspectArtifact for TypeSourceInterfaceConst {
+    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceInterfaceConst)
+    }
 }
 
 impl AspectAspect for TypeSourceInterfaceConst {

@@ -174,6 +174,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             identity,
                             data_field,
                             artifact_id: RefCell::new(None),
+                            constructor_artifact_id: RefCell::new(None),
                         });
                         ds.data_types.borrow_mut().push(dt_data.clone());
                         let data_type_ref = Rc::new(SourceDataTypeRef { data: dt_data });
@@ -199,6 +200,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             variants: RefCell::new(Vec::new()),
                             identity,
                             next_tag_id: crate::langhelp::Counter::default(),
+                            new_artifact_id: RefCell::new(None),
                         });
                         SourceTaggedUnionBuilder { data }
                     },
@@ -557,6 +559,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(expr) => {
                                     let entry_id = ds.next_entry_id.next();
                                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                                        artifact_id: RefCell::new(None),
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                                         impl_expr_artifact: RefCell::new(None),
@@ -655,6 +658,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     ),
                                 };
                                 method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                                    artifact_id: RefCell::new(None),
                                     interface_method_index: imethod_idx,
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
                                     impl_expr_artifact: RefCell::new(None),
@@ -735,6 +739,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             js_tag,
                             tag: crate::langhelp::ConstKey::String(tag),
                             type_: type_ref.0,
+                            constructor_artifact_id: RefCell::new(None),
                         });
                         idx
                     };
@@ -985,11 +990,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 crate:: langhelp:: Unique:: Builtin(#builtin_unique_id)
             }
             impl crate:: artifact:: ExporterAny for #type_name {
-                fn as_type(self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
+                fn as_type(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Type>> {
                     unimplemented!()
                 }
 
-                fn as_value(self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
+                fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
                     unimplemented!()
                 }
             }
@@ -1069,7 +1074,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     loc: crate:: langhelp:: QExprId,
                     cv: crate:: langhelp:: CodeValue,
                 ) -> crate:: langhelp:: EvalRes {
-                    let source_type = cv.value.type_(xx, loc);
+                    let source_type = match cv.value.type_(xx, loc).into_res() {
+                        Ok(v) => v,
+                        Err(errors) => return crate::langhelp::EvalRes { errors: Some(errors), v: None },
+                    };
                     if source_type.aspect(xx, &#identity_fn()).is_some() {
                         return crate:: langhelp:: EvalRes:: ok(crate:: langhelp:: CodeValue {
                             code: cv.code,
@@ -1139,7 +1147,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     key: crate::langhelp::CodeValue,
                 ) -> crate::langhelp::EvalRes {
                     crate::er_seq_cv!(loc, erb, {
-                        let key_type = key.value.type_(xx, loc);
+                        let key_type = erb.must_er(key.value.type_(xx, loc))?;
                         let key_string =
                             erb.must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
                         let key_name = key_string.get(key.value.as_ref());
@@ -1203,6 +1211,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                 Some(expr) => {
                     let entry_id = ds.next_entry_id.next();
                     method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                        artifact_id: RefCell::new(None),
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                         impl_expr_artifact: RefCell::new(None),

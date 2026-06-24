@@ -56,17 +56,17 @@ impl ArtifactExporter for TypeNullConst {
         loc: QExprId,
         id: Option<ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn ExporterAny>> {
         return EResult {
             errors: None,
             v: Some(Rc::new(ValueFromAny(Rc::new(ValueNullConst)))),
         };
     }
 
-    fn to_serial(self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn Any>) -> EResult<Artifact> {
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(ArtifactBody {
             data: serde_json::Value::Null,
-            exporter: TypeRoot::NullConst.self_to_serial(),
+            exporter: crate::artifact::ArtifactBodyExporter::Root,
         }));
     }
 }
@@ -75,7 +75,7 @@ impl Aspect for TypeNullConst { }
 
 impl AspectArtifact for TypeNullConst {
     fn exporter(&self) -> Rc<dyn ArtifactExporter> {
-        return Rc::new(self);
+        return Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::NullConst);
     }
 }
 

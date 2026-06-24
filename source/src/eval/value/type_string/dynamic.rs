@@ -50,7 +50,6 @@ use {
             Value,
         },
         r#gen::{
-            AspectArtifact,
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
@@ -62,7 +61,6 @@ use {
             AspectStringDynamic,
             AspectType,
             ScopeEntry,
-            aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -88,9 +86,6 @@ use {
 pub(crate) struct TypeStringDynamic;
 
 impl Aspect for TypeStringDynamic { }
-
-impl AspectArtifact for TypeStringDynamic {
-}
 
 impl AspectBind for TypeStringDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
@@ -216,9 +211,6 @@ impl Type for TypeStringDynamic {
     }
 
     fn aspect(&self, _ex: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == aspect_artifact_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectArtifact>));
-        }
         if *key == aspect_string_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectStringDynamic>));
         }

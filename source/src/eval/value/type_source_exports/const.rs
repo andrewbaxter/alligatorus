@@ -60,6 +60,9 @@ pub(crate) struct TypeSourceExportsLiftedConst {
 impl Aspect for TypeSourceExportsLiftedConst { }
 
 impl AspectArtifact for TypeSourceExportsLiftedConst {
+    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceExportsLiftedConst)
+    }
 }
 
 impl AspectBind for TypeSourceExportsLiftedConst {
