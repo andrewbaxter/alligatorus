@@ -175,6 +175,7 @@ impl SourceDataMethodData {
 
 pub(crate) struct SourceDataTypeData {
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
+    pub constructor_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub data_field: String,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,

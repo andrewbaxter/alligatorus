@@ -3,11 +3,14 @@ pub mod dynamic;
 pub mod r#const;
 
 use {
-    crate::langhelp::{
-        ConstKey,
-        Counter,
-        Type,
-        Unique,
+    crate::{
+        artifact::ArtifactIdSource,
+        langhelp::{
+            ConstKey,
+            Counter,
+            Type,
+            Unique,
+        },
     },
     std::{
         cell::RefCell,
@@ -27,6 +30,7 @@ pub(crate) struct SourceTaggedUnionRef {
 }
 
 pub(crate) struct SourceTaggedUnionVariant {
+    pub constructor_artifact_id: RefCell<Option<ArtifactIdSource>>,
     pub js_tag: String,
     pub tag: ConstKey,
     pub type_: Rc<dyn Type>,

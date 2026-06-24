@@ -1,6 +1,16 @@
 use {
     crate::{
-        artifact::ExporterAny,
+        artifact::{
+            Artifact,
+            ArtifactBody,
+            ArtifactIdSource,
+            ExporterAny,
+            ExporterDataAny,
+            impl_deserialize_independent_artifact,
+            impl_serialize_independent_artifact,
+            independent_finalize_deserialize_artifact,
+            serialize_artifact,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -15,7 +25,10 @@ use {
                     TypeAnyConst,
                     ValueAnyConst,
                 },
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
             },
         },
         langhelp::{
@@ -164,5 +177,99 @@ impl Value for TypeSourceDataTypeConstructorConst {
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
         EResult::ok(Rc::new(TypeRoot::SourceDataTypeConstructorConst))
+    }
+}
+
+use super::artifact::ArtifactDataSourceDataTypeConstructor;
+
+impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn Any>> {
+        let Some(id) = id else {
+            return EResult::err(
+                loc,
+                "TypeSourceDataTypeConstructorConst requires an artifact id to deserialize".to_string(),
+            );
+        };
+        let id_owned = id.clone();
+        let holder: Rc<std::cell::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>> =
+            Rc::new(std::cell::RefCell::new(None));
+        let holder_for_finalizer = holder.clone();
+        let res =
+            impl_deserialize_independent_artifact::<
+                ArtifactDataSourceDataTypeConstructor,
+            >(xx, loc, id, data, move |body: ArtifactDataSourceDataTypeConstructor| {
+                let data_type_art = body.data_type;
+                let deps = vec![data_type_art.clone()];
+                let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(holder.clone()));
+                let finalizer: crate::artifact::ArtifactFinalizer =
+                    Box::new(move |xx: &ExprContext, loc: QExprId| {
+                        if let Some(parent_any) =
+                            independent_finalize_deserialize_artifact(xx, loc, data_type_art).v {
+                            let rc_any: Rc<dyn Any> = parent_any;
+                            if let Ok(wrapped) =
+                                rc_any
+                                    .downcast::<ExporterDataAny<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>() {
+                                let dt_data = wrapped.0.clone();
+                                *dt_data.constructor_artifact_id.borrow_mut() = Some(id_owned.clone());
+                                *holder_for_finalizer.borrow_mut() = Some(dt_data);
+                            }
+                        }
+                    });
+                Ok((out, deps, finalizer))
+            });
+        let errors = res.errors;
+        let Some(any) = res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(any) as Rc<dyn Any>),
+        };
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn Any>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ =
+            self_
+                .downcast::<TypeSourceDataTypeConstructorConst>()
+                .expect("expected TypeSourceDataTypeConstructorConst");
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
+        let dt_const =
+            super::super::type_source_data_type::r#const::TypeSourceDataTypeConst { data: self_.data.clone() };
+        let data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
+        if let Some(errors1) = data_type_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(data_type_art) = data_type_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let art =
+            impl_serialize_independent_artifact(
+                xx.vx.ix.gx.artifacts.as_ref(),
+                &self_.data.constructor_artifact_id,
+                || {
+                    let body = ArtifactDataSourceDataTypeConstructor { data_type: data_type_art };
+                    make_body(serde_json::to_value(&body).unwrap())
+                },
+            );
+        return EResult {
+            errors,
+            v: Some(art),
+        };
     }
 }

@@ -276,6 +276,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
                         let variants: Vec<super::SourceTaggedUnionVariant> =
                             variants_serial.iter().map(|v| {
                                 super::SourceTaggedUnionVariant {
+                                    constructor_artifact_id: std::cell::RefCell::new(None),
                                     js_tag: v.js_tag.clone(),
                                     tag: v.tag.clone(),
                                     type_: crate::artifact::independent_finalize_deserialize_type_artifact(

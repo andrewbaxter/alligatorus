@@ -411,6 +411,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
             >(xx, loc, id, data, move |body: ArtifactDataDefSetDataType| {
                 let dt_data = dumpster::unsync::Gc::new(super::SourceDataTypeData {
                     artifact_id: RefCell::new(Some(id_owned.clone())),
+                    constructor_artifact_id: RefCell::new(None),
                     set: RefCell::new(None),
                     name: body.name.clone(),
                     identity: body.identity.clone(),
