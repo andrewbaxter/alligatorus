@@ -1,10 +1,11 @@
 use {
     crate::{
-        langhelp::{
-            Artifact,
-            ArtifactId,
+        artifact::{
+            ArtifactBody,
             ArtifactIdSource,
             Artifacts,
+        },
+        langhelp::{
             CompileId,
             GlobalContext,
             ImportStateId,
@@ -311,7 +312,7 @@ fn strip_main_body_wrap(s: String) -> String {
 }
 
 pub(super) struct TestArtifacts {
-    pub data: Mutex<HashMap<ArtifactId, Artifact>>,
+    pub data: Mutex<HashMap<ArtifactIdSource, ArtifactBody>>,
     next_id: Mutex<usize>,
 }
 
@@ -325,18 +326,18 @@ impl TestArtifacts {
 }
 
 impl Artifacts for Arc<TestArtifacts> {
-    fn get(&self, id: ArtifactId) -> Result<Artifact, String> {
+    fn get(&self, id: ArtifactIdSource) -> Result<ArtifactBody, String> {
         self.data.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Artifact not found: {:?}", id))
     }
 
-    fn reserve_id(&self) -> ArtifactId {
+    fn reserve_id(&self) -> ArtifactIdSource {
         let mut next = self.next_id.lock().unwrap();
         let id = *next;
         *next += 1;
-        ArtifactId::Source(ArtifactIdSource(CompileId(ImportStateId(0), SourceId(0)), id))
+        ArtifactIdSource(CompileId(ImportStateId(0), SourceId(0)), id)
     }
 
-    fn set(&self, id: ArtifactId, data: Artifact) {
+    fn set(&self, id: ArtifactIdSource, data: ArtifactBody) {
         self.data.lock().unwrap().insert(id, data);
     }
 }
