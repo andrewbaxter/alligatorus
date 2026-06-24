@@ -92,7 +92,13 @@ impl AspectConsumeDynamic for TypeAnyConst {
         if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
             return EResult::ok(js.clone());
         }
-        let meta_type = cv.value.type_(xx, loc);
+        let meta_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EResult {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EResult {
@@ -223,7 +229,13 @@ impl Type for TypeAnyConst {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        let meta_type = cv.value.type_(xx, loc);
+        let meta_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {

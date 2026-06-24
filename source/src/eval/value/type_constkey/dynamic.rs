@@ -144,7 +144,7 @@ impl Type for TypeConstkeyDynamic {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let source_type = cv.value.type_(xx, loc);
+            let source_type = erb.must_er(cv.value.type_(xx, loc))?;
             if let Some(aspect_string) = aspect_string_const_get_maybe(xx, source_type.as_ref()) {
                 let s = aspect_string.get(cv.value.as_ref());
                 let canonical = ConstKey::String(s).to_str();

@@ -46,7 +46,13 @@ impl Aspect for TypeMapConstructorConst { }
 
 impl AspectFunction for TypeMapConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_type = argument.value.type_(xx, loc);
+        let arg_type = match argument.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let arg_tuple = match aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             Some(t) => t,
             None => return EvalRes::err(loc, "map() requires a tuple of (key_type, value_type)".to_string()),
@@ -73,7 +79,13 @@ impl AspectFunction for TypeMapConstructorConst {
                 errors: Some(e),
             },
         };
-        let key_meta = key_cv.value.type_(xx, loc);
+        let key_meta = match key_cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_at = match aspect_type_get(xx, loc, key_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {
@@ -82,7 +94,13 @@ impl AspectFunction for TypeMapConstructorConst {
             },
         };
         let key_type = key_at.type_(key_cv.value.as_ref());
-        let value_meta = value_cv.value.type_(xx, loc);
+        let value_meta = match value_cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let value_at = match aspect_type_get(xx, loc, value_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {

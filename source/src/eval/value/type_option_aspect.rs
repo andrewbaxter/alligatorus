@@ -65,7 +65,13 @@ impl Aspect for TypeOption { }
 
 impl AspectField for TypeOption {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = key.value.type_(xx, loc);
+        let key_type = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes {

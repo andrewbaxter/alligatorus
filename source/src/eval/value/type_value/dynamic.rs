@@ -94,7 +94,13 @@ impl AspectField for TypeValueDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "value.field: receiver has no runtime code".to_string()),
         };
-        let key_type = key.value.type_(xx, loc);
+        let key_type = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes {

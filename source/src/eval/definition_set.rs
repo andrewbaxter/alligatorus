@@ -318,7 +318,7 @@ pub(crate) fn definition_set_from_artifact_data(
     loc: QExprId,
     id: Option<&ArtifactIdSource>,
     data: serde_json::Value,
-) -> crate::langhelp::EResult<Rc<dyn Any>> {
+) -> crate::langhelp::EResult<Rc<dyn crate::artifact::ExporterAny>> {
     let id = match id {
         Some(id) => id,
         None => return crate::langhelp::EResult::err(
@@ -406,7 +406,7 @@ pub(crate) fn definition_set_from_artifact_data(
             v: None,
         };
     };
-    let rc: Rc<dyn Any> = any;
+    let rc: Rc<dyn crate::artifact::ExporterAny> = any;
     crate::langhelp::EResult {
         errors,
         v: Some(rc),
@@ -416,7 +416,7 @@ pub(crate) fn definition_set_from_artifact_data(
 pub(crate) fn definition_set_to_serial(
     xx: &ExprContext,
     loc: QExprId,
-    self_: Rc<dyn Any>,
+    self_: Rc<dyn crate::artifact::ExporterAny>,
     _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
 ) -> crate::langhelp::EResult<Artifact> {
     let wrapped =

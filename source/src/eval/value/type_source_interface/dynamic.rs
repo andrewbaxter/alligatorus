@@ -200,7 +200,13 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if source_type.aspect(xx, &interface_ref_type_identity()).is_some() ||
             source_type.aspect(xx, &interface_const_identity()).is_some() {
             return EvalRes::ok(CodeValue {

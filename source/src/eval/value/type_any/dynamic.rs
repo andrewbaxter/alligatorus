@@ -104,7 +104,13 @@ impl AspectField for TypeAnyDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "any.field: receiver has no runtime code".to_string()),
         };
-        let key_type = key.value.type_(xx, loc);
+        let key_type = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes {
@@ -143,7 +149,13 @@ impl AspectFunction for TypeAnyDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "any.call: function has no runtime code".to_string()),
         };
-        let arg_type = argument.value.type_(xx, loc);
+        let arg_type = match argument.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let consume = match aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()).into_res() {
             Ok(c) => c,
             Err(e) => return EvalRes {
@@ -268,7 +280,13 @@ impl Type for TypeAnyDynamic {
         if matches!(cv.code.code, Code_::Dyn(_)) {
             return EvalRes::ok(cv);
         }
-        let meta_type = cv.value.type_(xx, loc);
+        let meta_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let aspect_type = match aspect_type_get(xx, loc, meta_type.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {

@@ -180,7 +180,9 @@ pub(crate) fn pull_can_cast_from(
     let Some(out_cv) = res.v else {
         return false;
     };
-    let v_type = out_cv.value.type_(xx, loc);
+    let Some(v_type) = out_cv.value.type_(xx, loc).v else {
+        return false;
+    };
     if let Some(b) = aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
         return b.get(out_cv.value.as_ref());
     }
@@ -254,7 +256,13 @@ pub(crate) fn pull_cast_from(
     let Some(impl_expr) = lookup_impl(data, "cast_from") else {
         return EvalRes::err(loc, "User-defined type missing cast_from impl".to_string());
     };
-    let source_type = cv.value.type_(xx, loc);
+    let source_type = match cv.value.type_(xx, loc).into_res() {
+        Ok(v) => v,
+        Err(e) => return EvalRes {
+            v: None,
+            errors: Some(e),
+        },
+    };
     run_impl(impl_expr, xx, loc, source_type, cv)
 }
 
@@ -295,7 +303,13 @@ pub(crate) fn pull_cast_from_v8(
         Some(k) => k,
         None => return EvalRes::err(loc, "cv key alloc".to_string()),
     };
-    let source_type = cv.value.type_(xx, loc);
+    let source_type = match cv.value.type_(xx, loc).into_res() {
+        Ok(v) => v,
+        Err(e) => return EvalRes {
+            v: None,
+            errors: Some(e),
+        },
+    };
     let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(cv)));
     let cve_ext = to_v8(scope, cve_cell);
     arg_obj.set(scope, cv_key.into(), cve_ext.into());
@@ -491,7 +505,13 @@ impl Aspect for TypeTypeRef { }
 
 impl AspectField for TypeTypeRef {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = key.value.type_(xx, loc);
+        let key_type = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(s) => s,
             Err(e) => return EvalRes {

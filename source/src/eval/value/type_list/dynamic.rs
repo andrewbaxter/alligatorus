@@ -111,7 +111,13 @@ impl AspectConsumeDynamic for TypeListDynamic {
 
 impl AspectField for TypeListDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = key.value.type_(xx, loc);
+        let key_type = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
@@ -310,7 +316,13 @@ impl Type for TypeListDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if aspect_list_dynamic_get_maybe(xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
@@ -329,6 +341,16 @@ impl Type for TypeListDynamic {
 
     fn desc(&self) -> String {
         format!("list({})", self.element_type.desc())
+    }
+}
+
+impl ExporterAny for TypeListDynamic {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -352,7 +374,7 @@ impl Aspect for TypeListNewDynamic { }
 impl AspectFunction for TypeListNewDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let arg_type = argument.value.type_(xx, loc);
+            let arg_type = erb.must_er(argument.value.type_(xx, loc))?;
             let mut js_elements = vec![];
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
                 let elements = arg_tuple.take_elements(argument.value);
@@ -402,6 +424,16 @@ impl Type for TypeListNewDynamic {
 
     fn desc(&self) -> String {
         format!("list({}).new", self.element_type.desc())
+    }
+}
+
+impl ExporterAny for TypeListNewDynamic {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 

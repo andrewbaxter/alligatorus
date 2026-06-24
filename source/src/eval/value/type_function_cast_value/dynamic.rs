@@ -60,7 +60,13 @@ impl Aspect for TypeFunctionCastValueDynamic { }
 
 impl AspectFunction for TypeFunctionCastValueDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_type = argument.value.type_(xx, loc);
+        let arg_type = match argument.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let arg_tuple = match aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             Some(t) => t,
             None => return EvalRes::err(
@@ -98,7 +104,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                 loc,
                 format!(
                     "cast_value: type argument's value is not `TypeSourceDataTypeConst` (got {})",
-                    type_.value.type_(xx, loc).desc(),
+                    type_.value.type_(xx, loc).v.map(|t| t.desc()).unwrap_or_else(|| "?".to_string()),
                 ),
             ),
         };

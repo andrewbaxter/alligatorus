@@ -77,7 +77,7 @@ impl AspectBind for TypeSourceExportsLiftedConst {
 impl AspectField for TypeSourceExportsLiftedConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
+            let key_type = erb.must_er(key.value.type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             {
@@ -200,7 +200,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
         loc: QExprId,
         id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         // Delegate to the def-set deserializer; wrap the resulting Gc<DefinitionSet>
         // into a TypeSourceExportsLiftedConst.
         let any =
@@ -221,7 +221,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
                 );
             },
         };
-        let out: Rc<dyn Any> =
+        let out: Rc<dyn crate::artifact::ExporterAny> =
             Rc::new(crate::artifact::ExporterDataAny(TypeSourceExportsLiftedConst { set: wrapped.0.clone() }));
         let _ = &mut errors;
         return EResult {
@@ -233,7 +233,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");

@@ -147,7 +147,7 @@ impl AspectField for TypeCodeValueExternDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            let key_type = key.value.type_(xx, loc);
+            let key_type = erb.must_er(key.value.type_(xx, loc))?;
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
             if key_str == "code" {
@@ -278,7 +278,13 @@ impl Type for TypeCodeValueExternDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if source_type.aspect(xx, &code_value_extern_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
@@ -410,7 +416,13 @@ impl Type for TypeExprContextPushDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if source_type.aspect(xx, &expr_context_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,

@@ -403,7 +403,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
         loc: QExprId,
         id: Option<&ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let Some(id) = id else {
             return EResult::err(loc, "TypeSourceDataTypeConst requires an artifact id to deserialize".to_string());
         };
@@ -552,14 +552,14 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
         };
         return EResult {
             errors,
-            v: Some(Rc::new(any) as Rc<dyn Any>),
+            v: Some(any),
         };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceDataTypeConst>().expect("expected TypeSourceDataTypeConst");

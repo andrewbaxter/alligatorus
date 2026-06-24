@@ -371,7 +371,7 @@ impl Type for Tuple {
                     Some(TupleElement::Dynamic(t)) => t.clone(),
                     Some(TupleElement::EvalRes(er)) => {
                         match &er.v {
-                            Some(cv) => cv.value.type_(xx, loc),
+                            Some(cv) => erb.must_er(cv.value.type_(xx, loc))?,
                             None => return erb.err_new(format!("Tuple cast_from: dest element {} missing", i)),
                         }
                     },
@@ -490,7 +490,7 @@ fn tuple_element_type(xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dy
     match e {
         TupleElement::Dynamic(t) => t.clone(),
         TupleElement::EvalRes(er) => match &er.v {
-            Some(cv) => cv.value.type_(xx, loc),
+            Some(cv) => cv.value.type_(xx, loc).v.expect("Tuple element type unavailable"),
             None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
         },
     }
@@ -542,12 +542,12 @@ impl ExporterRootDelegate for Tuple {
         loc: QExprId,
         _id: Option<&ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let body: ArtifactTupleType = match serde_json::from_value(data) {
             Ok(v) => v,
             Err(e) => return EResult::err(loc, e.to_string()),
         };
-        let mut errors = None;
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let mut elements = Vec::new();
         for elem_art in body.elements {
             let res = deserialize_type_artifact(xx, loc, elem_art);
@@ -564,18 +564,18 @@ impl ExporterRootDelegate for Tuple {
         }
         return EResult {
             errors,
-            v: Some(Rc::new(Tuple { elements }) as Rc<dyn Any>),
+            v: Some(Rc::new(Tuple { elements }) as Rc<dyn crate::artifact::ExporterAny>),
         };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<Tuple>().expect("expected Tuple");
-        let mut errors = None;
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let mut elements: Vec<Artifact> = Vec::new();
         for e in self_.elements.iter() {
             let t = match e {

@@ -192,7 +192,7 @@ impl Type for TypeNullDynamic {
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = cv.value.type_(ex, loc);
+            let type_ = erb.must_er(cv.value.type_(ex, loc))?;
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,

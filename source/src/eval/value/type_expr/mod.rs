@@ -182,7 +182,13 @@ impl Type for TypeExpr {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
             if let Some(expr) = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<Expr>() {
                 return EvalRes::ok(CodeValue {
@@ -192,7 +198,13 @@ impl Type for TypeExpr {
             }
             return EvalRes::ok(cv);
         }
-        let type_rc = cv.value.type_(xx, loc);
+        let type_rc = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let expr = Expr {
             loc,
             r#type: Expr_::Literal(make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>)),

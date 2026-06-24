@@ -129,7 +129,13 @@ impl AspectConsumeDynamic for TypeMapDynamic {
 
 impl AspectField for TypeMapDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = key.value.type_(xx, loc);
+        let key_type = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
@@ -384,7 +390,13 @@ impl Type for TypeMapDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if let Some(source_map) = aspect_map_dynamic_get_maybe(xx, source_type.as_ref()) {
             let key_match =
                 std::any::Any::type_id(source_map.key_type().as_ref() as &dyn std::any::Any) ==
@@ -587,7 +599,13 @@ impl AspectFunction for TypeMapNewDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
         });
-        let arg_type = argument.value.type_(xx, loc);
+        let arg_type = match argument.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if let Some(t) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             if t.element_types().is_empty() {
                 return er_seq_cv!(loc, erb, {

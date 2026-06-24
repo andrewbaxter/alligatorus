@@ -124,7 +124,7 @@ impl AspectConsumeDynamic for TypeSourceInterfaceConst {
 impl AspectField for TypeSourceInterfaceConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
+            let key_type = erb.must_er(key.value.type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let (field_name, arg_type, ret_type) = {
@@ -292,7 +292,13 @@ impl Type for TypeSourceInterfaceConst {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let identity = self.data.identity.clone();
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if source_type.aspect(xx, &identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
@@ -352,7 +358,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
         loc: QExprId,
         id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let Some(id) = id else {
             return EResult::err(loc, "TypeSourceInterfaceConst requires an artifact id to deserialize".to_string());
         };
@@ -431,14 +437,14 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
         };
         return EResult {
             errors,
-            v: Some(Rc::new(any) as Rc<dyn Any>),
+            v: Some(any),
         };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceInterfaceConst>().expect("expected TypeSourceInterfaceConst");

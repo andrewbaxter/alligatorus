@@ -48,7 +48,13 @@ pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue
     if matches!(cv.code.code, Code_::None) {
         return EResult::ok(None);
     }
-    let vtype = cv.value.type_(xx, loc);
+    let vtype = match cv.value.type_(xx, loc).into_res() {
+        Ok(v) => v,
+        Err(e) => return EResult {
+            v: None,
+            errors: Some(e),
+        },
+    };
     dynamic_consume_to_dynamic(xx, loc, cv).map(|c| Some(TargetBindSub {
         data: Code {
             loc: loc,
@@ -63,7 +69,13 @@ pub(crate) fn bind_via_target(
     loc: QExprId,
     cv: CodeValue,
 ) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-    let vtype = cv.value.type_(xx, loc);
+    let vtype = match cv.value.type_(xx, loc).into_res() {
+        Ok(v) => v,
+        Err(e) => return EResult {
+            v: None,
+            errors: Some(e),
+        },
+    };
     if matches!(cv.code.code, Code_::None) {
         return EResult::ok((cv.code, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>));
     }
@@ -123,7 +135,7 @@ pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, valu
             v.type_.clone()
         };
         let value = erb.must_er(typecheck_convert(xx, loc, target_type.as_ref(), value))?;
-        let value_type = value.value.type_(xx, loc);
+        let value_type = erb.must_er(value.value.type_(xx, loc))?;
         er_all!(erb, {
             value_to_dynamic = aspect_consume_dynamic_get(xx, loc, value_type.as_ref()),
             self_code = self_.code.cast::<CodeDynamic>(),

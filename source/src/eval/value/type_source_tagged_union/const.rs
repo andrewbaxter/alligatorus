@@ -203,7 +203,13 @@ impl Type for TypeSourceTaggedUnionConst {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = cv.value.type_(xx, loc);
+        let source_type = match cv.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         if source_type.aspect(xx, &self.data.identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
@@ -249,7 +255,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         loc: QExprId,
         id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let Some(id) = id else {
             return EResult::err(
                 loc,
@@ -301,14 +307,14 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         };
         return EResult {
             errors,
-            v: Some(Rc::new(any) as Rc<dyn Any>),
+            v: Some(any),
         };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceTaggedUnionConst>().expect("expected TypeSourceTaggedUnionConst");

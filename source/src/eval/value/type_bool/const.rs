@@ -82,7 +82,7 @@ impl Type for TypeBoolConst {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
-            let type_ = value.type_(xx, loc);
+            let type_ = erb.must_er(value.type_(xx, loc))?;
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
@@ -113,17 +113,17 @@ impl ExporterRootDelegate for TypeBoolConst {
         loc: QExprId,
         _id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         return EResult::from(
             loc,
-            serde_json::from_value::<ArtifactBoolType>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+            serde_json::from_value::<ArtifactBoolType>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
         );
     }
 
     fn self_to_serial(
         _xx: &ExprContext,
         _loc: QExprId,
-        _self_: Rc<dyn Any>,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactBoolType).unwrap())));

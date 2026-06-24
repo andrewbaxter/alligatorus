@@ -62,7 +62,13 @@ impl Aspect for TypeFunctionAspectDynamic { }
 
 impl AspectFunction for TypeFunctionAspectDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_type = argument.value.type_(xx, loc);
+        let arg_type = match argument.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let arg_tuple = match aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
             Some(t) => t,
             None => return EvalRes::err(
@@ -93,7 +99,13 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 errors: Some(e),
             },
         };
-        let key_meta = key.value.type_(xx, loc);
+        let key_meta = match key.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let key_type = match aspect_type_get_maybe(xx, key_meta.as_ref()) {
             Some(at) => at.type_(key.value.as_ref()),
             None => key_meta.clone(),

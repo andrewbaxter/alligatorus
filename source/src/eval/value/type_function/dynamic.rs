@@ -76,7 +76,7 @@ pub(crate) fn dynamic_call(
     argument: CodeValue,
 ) -> EvalRes {
     return er_seq_cv!(loc, erb, {
-        let arg_value_type = argument.value.type_(xx, loc);
+        let arg_value_type = erb.must_er(argument.value.type_(xx, loc))?;
         let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, ret_type.as_ref()))?;
         if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_value_type.as_ref()) {
             let param_types = if let Some(param_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
@@ -192,7 +192,7 @@ impl AspectConsumeDynamic for TypeFunctionDynamic {
 impl AspectFunction for TypeFunctionDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let func_type = function.value.type_(xx, loc);
+            let func_type = erb.must_er(function.value.type_(xx, loc))?;
             let func_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, func_type.as_ref()))?;
             let func_code = erb.must_er(func_to_dynamic.to_dynamic(xx, loc, function))?;
             let result = erb.must_er(dynamic_call(xx, loc, func_code, self.arg.clone(), self.ret.clone(), argument))?;
@@ -253,7 +253,7 @@ impl Type for TypeFunctionDynamic {
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let source_type = cv.value.type_(ex, loc);
+            let source_type = erb.must_er(cv.value.type_(ex, loc))?;
             erb.must_er(aspect_function_get(ex, loc, source_type.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,

@@ -89,8 +89,8 @@ pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Res
     let mut all_errors = vec![];
     let mut all_scripts = vec![];
     for (_, entry) in gx.compile_results.lock().unwrap().iter() {
-        let guard = entry.result.read().unwrap();
-        if let Some(Ok(r)) = guard.as_ref() {
+        let guard = entry.read().unwrap();
+        if let Some(r) = guard.as_ref() {
             all_errors.extend(collect_errors(r));
             all_scripts.extend(r.generated_dynamic_scripts.iter().cloned());
         }

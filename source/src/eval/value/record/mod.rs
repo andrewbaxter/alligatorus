@@ -205,7 +205,13 @@ impl Record {
             for (key, result) in bind_results {
                 match result {
                     BindSubResult::Const(cv) => {
-                        let field_type = cv.value.type_(xx, loc);
+                        let field_type = match cv.value.type_(xx, loc).into_res() {
+                            Ok(v) => v,
+                            Err(errs) => {
+                                scope_fields.insert(key, RecordScopeField::Error(errs));
+                                continue;
+                            },
+                        };
                         let bind_res = match aspect_bind_get(xx, loc, field_type.as_ref()).into_res() {
                             Ok(fb) => fb.bind(xx, loc, cv),
                             Err(errs) => EResult {
@@ -236,7 +242,13 @@ impl Record {
                     target_fields.push((key.clone(), sub));
                 },
                 BindSubResult::Const(cv) => {
-                    let field_type = cv.value.type_(xx, loc);
+                    let field_type = match cv.value.type_(xx, loc).into_res() {
+                        Ok(v) => v,
+                        Err(errs) => {
+                            scope_fields.insert(key, RecordScopeField::Error(errs));
+                            continue;
+                        },
+                    };
                     let bind_res = match aspect_bind_get(xx, loc, field_type.as_ref()).into_res() {
                         Ok(fb) => fb.bind(xx, loc, cv),
                         Err(errs) => EResult {
@@ -340,7 +352,13 @@ impl AspectConsumeDynamic for Record {
                         errors.extend(errs);
                     }
                     if let Some(elem_cv) = elem_res.v {
-                        let elem_value_type = elem_cv.value.type_(xx, loc);
+                        let elem_value_type = match elem_cv.value.type_(xx, loc).into_res() {
+                            Ok(v) => v,
+                            Err(e) => {
+                                errors.extend(e);
+                                continue;
+                            },
+                        };
                         if let Some(to_dynamic) = aspect_consume_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
                             match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
                                 Ok(js) => js_fields.push((key.to_str(), js)),
@@ -380,7 +398,7 @@ impl AspectConsumeDynamic for Record {
 impl AspectField for Record {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv_inline(loc, |erb| {
-            let key_type = key.value.type_(xx, loc);
+            let key_type = erb.must_er(key.value.type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             let const_key = ConstKey::String(key_name.clone());
@@ -635,7 +653,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
     match f {
         RecordField::Dynamic(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
-            Some(cv) => cv.value.type_(xx, loc),
+            Some(cv) => cv.value.type_(xx, loc).v.expect("Record field type unavailable"),
             None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
         },
     }
@@ -760,12 +778,12 @@ impl ExporterRootDelegate for Record {
         loc: QExprId,
         _id: Option<&ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let body: ArtifactRecordType = match serde_json::from_value(data) {
             Ok(v) => v,
             Err(e) => return EResult::err(loc, e.to_string()),
         };
-        let mut errors = None;
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let mut fields = BTreeMap::new();
         for (key, field_art) in body.fields {
             let res = deserialize_type_artifact(xx, loc, field_art);
@@ -785,18 +803,18 @@ impl ExporterRootDelegate for Record {
             v: Some(Rc::new(Record {
                 base: None,
                 fields,
-            }) as Rc<dyn Any>),
+            }) as Rc<dyn crate::artifact::ExporterAny>),
         };
     }
 
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<Record>().expect("expected Record");
-        let mut errors = None;
+        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let mut fields = BTreeMap::new();
         for (key, field) in self_.fields.iter() {
             let t = match field {

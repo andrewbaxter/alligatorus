@@ -137,7 +137,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let data = &self.data;
         return er_seq_cv!(loc, erb, {
-            let key_type = key.value.type_(xx, loc);
+            let key_type = erb.must_er(key.value.type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_name = key_string.get(key.value.as_ref());
             type MethodLookup = (String, Rc<dyn Type>, Rc<dyn Type>);

@@ -45,7 +45,13 @@ impl Aspect for TypeListConstructorConst { }
 
 impl AspectFunction for TypeListConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_meta = argument.value.type_(xx, loc);
+        let arg_meta = match argument.value.type_(xx, loc).into_res() {
+            Ok(v) => v,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
         let aspect_type = match aspect_type_get(xx, loc, arg_meta.as_ref()).into_res() {
             Ok(at) => at,
             Err(e) => return EvalRes {

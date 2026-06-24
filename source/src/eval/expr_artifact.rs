@@ -189,10 +189,14 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
         ),
         ArtifactExpr_::Literal { value } => {
             let cv =
-                deserialize_artifact(xx, loc, value)
+                deserialize_artifact(xx, loc, value.clone())
                     .into_res()
                     .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?;
-            Expr_::Literal(make_lit_value(cv.value))
+            let v = cv
+                .as_value()
+                .into_res()
+                .map_err(|e| format!("Failed to extract Literal value: {:?}", e))?;
+            Expr_::Literal(make_lit_value(v))
         },
         ArtifactExpr_::Lower { expr } => Expr_::Lower(ExprLower { expr: Rc::new(expr_from_artifact(xx, expr)?) }),
         ArtifactExpr_::Match { base, cases, element_key, fallback } => Expr_::Match(ExprMatch {
@@ -283,14 +287,19 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
         Expr_::Import(e) => ArtifactExpr_::Import { spec: expr_to_artifact(xx, &e.spec)? },
         Expr_::Literal(p) => {
             let value = p.peek().ok_or_else(|| "Cannot serialize consumed Literal".to_string())?;
-            let value_type = value.type_(xx, expr.loc);
+            let value_type =
+                value
+                    .type_(xx, expr.loc)
+                    .into_res()
+                    .map_err(|e| format!("Literal value type unavailable: {:?}", e))?;
             let aspect_artifact =
                 aspect_artifact_get(xx, expr.loc, value_type.as_ref())
                     .into_res()
                     .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?;
             let artifact =
                 aspect_artifact
-                    .to_serial(xx, expr.loc, value)
+                    .exporter()
+                    .to_serial(xx, expr.loc, value.as_exporter_any())
                     .into_res()
                     .map_err(|e| format!("Failed to serialize Literal value: {:?}", e))?;
             ArtifactExpr_::Literal { value: artifact }

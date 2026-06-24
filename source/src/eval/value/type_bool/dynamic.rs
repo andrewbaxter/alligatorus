@@ -150,7 +150,7 @@ impl Type for TypeBoolDynamic {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = cv.value.type_(xx, loc);
+            let type_ = erb.must_er(cv.value.type_(xx, loc))?;
             if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
                 let mut seq = vec![];

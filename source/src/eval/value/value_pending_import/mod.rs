@@ -82,13 +82,13 @@ impl Value for ValuePendingImport {
             };
         };
         let mut t = v.type_(xx, loc);
+        t.push_errors(&mut errors);
         let Some(t) = t.v else {
             return EResult {
                 errors,
                 v: None,
             };
         };
-        t.push_errors(&mut errors);
         return EResult {
             errors,
             v: Some(t),

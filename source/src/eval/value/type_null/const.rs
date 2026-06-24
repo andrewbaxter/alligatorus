@@ -106,7 +106,7 @@ impl Type for TypeNullConst {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = cv.value.type_(xx, loc);
+            let type_ = erb.must_er(cv.value.type_(xx, loc))?;
             erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
@@ -136,20 +136,30 @@ impl ExporterRootDelegate for TypeNullConst {
         loc: QExprId,
         _id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         return EResult::from(
             loc,
-            serde_json::from_value::<ArtifactNull>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+            serde_json::from_value::<ArtifactNull>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
         );
     }
 
     fn self_to_serial(
         _xx: &ExprContext,
         _loc: QExprId,
-        _self_: Rc<dyn Any>,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNull).unwrap())));
+    }
+}
+
+impl ExporterAny for TypeNullConst {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        return EResult::ok(Rc::new(Self));
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        return EResult::ok(Rc::new(ValueNullConst));
     }
 }
 

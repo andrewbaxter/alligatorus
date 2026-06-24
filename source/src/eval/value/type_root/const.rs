@@ -55,11 +55,11 @@ pub(crate) trait ExporterRootDelegate {
         loc: QExprId,
         id: Option<&ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>>;
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>>;
     fn self_to_serial(
         xx: &ExprContext,
         loc: QExprId,
-        self_: Rc<dyn Any>,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact>;
 }
@@ -103,9 +103,9 @@ impl ArtifactExporter for ExporterRoot {
         loc: QExprId,
         id: Option<ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn std::any::Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let id_ref = id.as_ref();
-        let res: EResult<Rc<dyn Any>> = match self {
+        let res: EResult<Rc<dyn crate::artifact::ExporterAny>> = match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_from_artifact_data(
                 &xx,
@@ -164,12 +164,12 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::Unique => TypeUnique::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Root => EResult::from(
                 loc,
-                serde_json::from_value::<TypeRoot>(data).map(|r| Rc::new(r).into()),
+                serde_json::from_value::<TypeRoot>(data).map(|r| Rc::new(r) as Rc<dyn crate::artifact::ExporterAny>),
             ),
         };
-        let mut errors = None;
+        let mut errors: Option<Vec<ExprErr>> = None;
         if let Some(errors1) = res.errors {
-            errors.get_or_default().extend(errors1);
+            errors.get_or_insert_default().extend(errors1);
         }
         let Some(data) = res.v else {
             return EResult {
@@ -183,10 +183,11 @@ impl ArtifactExporter for ExporterRoot {
         };
     }
 
-    fn to_serial(self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn std::any::Any>) -> EResult<Artifact> {
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn crate::artifact::ExporterAny>) -> EResult<Artifact> {
+        let me = *self;
         let make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> = Box::new(move |data| ArtifactBody {
             data,
-            exporter: self.self_to_serial_exporter(),
+            exporter: me.self_to_serial_exporter(),
         });
         return match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
@@ -229,7 +230,7 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::Record => Record::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Tuple => Tuple::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Unique => TypeUnique::self_to_serial(xx, loc, self_, make_body),
-            ExporterRoot::Root => EResult::ok(Artifact::Body(make_body(serde_json::to_value(self).unwrap()))),
+            ExporterRoot::Root => EResult::ok(Artifact::Body(make_body(serde_json::to_value(me).unwrap()))),
         };
     }
 }
@@ -270,6 +271,7 @@ pub enum TypeRoot {
     OptionVariantConstructorDynamic,
     Pull,
     PullAspect,
+    Record,
     Root,
     SourceDataTypeConstructorConst,
     SourceDataTypeConstructorDynamic,
@@ -287,6 +289,7 @@ pub enum TypeRoot {
     SourceTaggedUnionRefDynamic,
     StringConst,
     StringDynamic,
+    Tuple,
     TypeRef,
     TypeSourceDataTypeConstructorDynamic,
     TypeSourceDataTypeDynamic,
@@ -309,6 +312,8 @@ impl TypeRoot {
             TypeRoot::SourceTaggedUnionConst => Some(ExporterRoot::SourceTaggedUnionConst),
             TypeRoot::SourceTaggedUnionConstructorConst => Some(ExporterRoot::SourceTaggedUnionConstructorConst),
             TypeRoot::StringConst => Some(ExporterRoot::StringConst),
+            TypeRoot::Record => Some(ExporterRoot::Record),
+            TypeRoot::Tuple => Some(ExporterRoot::Tuple),
             TypeRoot::Unique => Some(ExporterRoot::Unique),
             _ => None,
         };
@@ -339,7 +344,7 @@ impl Type for TypeRoot {
     }
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
-        if key == aspect_artifact_aspect_id() && self.exporter_for().is_some() {
+        if *key == aspect_artifact_aspect_id() && self.exporter_for().is_some() {
             return Some(Box::new(*self));
         }
         return None;
@@ -381,6 +386,8 @@ impl Type for TypeRoot {
             TypeRoot::OptionVariantConstructorDynamic => "Option variant constructor type (dynamic)",
             TypeRoot::Pull => "Pull type",
             TypeRoot::PullAspect => "Pull aspect type",
+            TypeRoot::Record => "Record type",
+            TypeRoot::Tuple => "Tuple type",
             TypeRoot::SourceDataTypeConstructorConst => "Source data type constructor (const)",
             TypeRoot::SourceDataTypeConstructorDynamic => "Source data type constructor (dynamic)",
             TypeRoot::SourceDataTypeDynamic => "Source data type (dynamic)",

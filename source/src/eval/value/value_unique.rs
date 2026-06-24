@@ -232,17 +232,17 @@ impl ExporterRootDelegate for TypeUnique {
         loc: QExprId,
         _id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
-    ) -> EResult<Rc<dyn Any>> {
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         return EResult::from(
             loc,
-            serde_json::from_value::<ArtifactUnique>(data).map(|_| Rc::new(Self) as Rc<dyn Any>),
+            serde_json::from_value::<ArtifactUnique>(data).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
         );
     }
 
     fn self_to_serial(
         _xx: &ExprContext,
         _loc: QExprId,
-        _self_: Rc<dyn Any>,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactUnique).unwrap())));
