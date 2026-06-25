@@ -119,7 +119,7 @@ impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceDataTypeConst)
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceDataTypeValueConst)
     }
 }
 

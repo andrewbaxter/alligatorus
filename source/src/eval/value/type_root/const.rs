@@ -24,6 +24,7 @@ use {
             type_string::r#const::TypeStringConst,
             value_bool::r#const::ValueBoolConst,
             value_number::r#const::ValueNumberConst,
+            value_source_data_type::r#const::ValueSourceDataTypeConst,
             value_string::r#const::ValueStringConst,
             value_unique::TypeUnique,
         },
@@ -80,6 +81,7 @@ pub enum ExporterRoot {
     Root,
     SourceDataTypeConst,
     SourceDataTypeConstructorConst,
+    SourceDataTypeValueConst,
     SourceExportsLiftedConst,
     SourceFunctionConst,
     SourceInterfaceConst,
@@ -131,6 +133,12 @@ impl ArtifactExporter for ExporterRoot {
                 data,
             ),
             ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
+            ExporterRoot::SourceDataTypeValueConst => ValueSourceDataTypeConst::self_from_artifact_data(
                 &xx,
                 loc,
                 id_ref,
@@ -232,6 +240,12 @@ impl ArtifactExporter for ExporterRoot {
                 make_body,
             ),
             ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::SourceDataTypeValueConst => ValueSourceDataTypeConst::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
             ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_to_serial(
                 xx,
                 loc,

@@ -2,7 +2,10 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactExporter,
+            ArtifactIdSource,
             ExporterAny,
+            serialize_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -65,13 +68,35 @@ use {
     },
 };
 
+pub(crate) struct ExporterAnyDelegate;
+
+impl ArtifactExporter for ExporterAnyDelegate {
+    fn from_serial(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        return EResult::err(loc, "ExporterAnyDelegate::from_serial should not be invoked".to_string());
+    }
+
+    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
+        let inner = match self_.downcast::<ValueAnyConst>() {
+            Ok(v) => v.inner.clone(),
+            Err(_) => return EResult::err(loc, "ExporterAnyDelegate: expected ValueAnyConst".to_string()),
+        };
+        let inner_val: &dyn Value_ = inner.as_ref();
+        return serialize_artifact(xx, loc, inner_val);
+    }
+}
 pub(crate) struct TypeAnyConst;
 
 impl Aspect for TypeAnyConst { }
 
 impl AspectArtifact for TypeAnyConst {
-    fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        unimplemented!()
+    fn exporter(&self) -> Rc<dyn ArtifactExporter> {
+        Rc::new(ExporterAnyDelegate)
     }
 }
 
