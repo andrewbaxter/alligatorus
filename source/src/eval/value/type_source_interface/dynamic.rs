@@ -40,7 +40,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectAspect,
@@ -79,12 +79,12 @@ pub(crate) struct TypeSourceInterfaceDynamic;
 impl Aspect for TypeSourceInterfaceDynamic { }
 
 impl AspectAspect for TypeSourceInterfaceDynamic {
-    fn get_iface_data(&self, value: &dyn Value) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+    fn get_iface_data(&self, value: &dyn Value_) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
         let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
         iface_ref.data.clone()
     }
 
-    fn get_unique(&self, value: &dyn Value) -> Unique {
+    fn get_unique(&self, value: &dyn Value_) -> Unique {
         let iface_ref = must_downcast_ref::<Rc<SourceInterfaceRef>>(value as &dyn std::any::Any);
         iface_ref.data.identity.clone()
     }
@@ -123,7 +123,7 @@ impl AspectLiftDynamic for TypeSourceInterfaceDynamic {
         xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let iface_ref: Rc<SourceInterfaceRef> = from_v8_ref::<Rc<SourceInterfaceRef>>(&value).clone();
         let iface_type: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: iface_type }))
@@ -140,7 +140,7 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceInterfaceDynamic),
-            }),
+            }).into(),
         }
     }
 }
@@ -150,13 +150,13 @@ impl ExporterAny for TypeSourceInterfaceDynamic {
         return EResult::ok(Rc::new(TypeSourceInterfaceDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeSourceInterfaceDynamic));
     }
 }
 
 impl Type for TypeSourceInterfaceDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceInterfaceDynamic) })
     }
 
@@ -214,7 +214,7 @@ impl Type for TypeSourceInterfaceDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceInterfaceDynamic),
-                }),
+                }).into(),
             });
         }
         EvalRes::err(loc, format!("Cannot convert to interface_ref"))
@@ -229,7 +229,7 @@ impl Type for TypeSourceInterfaceDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: dest_rc,
-                }),
+                }).into(),
             });
         }
         if type_.aspect(xx, &type_type_identity()).is_some() {
@@ -261,7 +261,7 @@ impl Type for TypeSourceInterfaceDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: dest_rc,
-                }),
+                }).into(),
             });
         }
         EvalRes::err(loc, format!("Cannot convert interface_ref"))
@@ -276,7 +276,7 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 }
 
-impl Value for TypeSourceInterfaceDynamic {
+impl Value_ for TypeSourceInterfaceDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceInterfaceDynamic);
     }

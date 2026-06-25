@@ -24,7 +24,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBoolConst,
@@ -44,7 +44,7 @@ pub(crate) struct TypeBoolConst;
 impl Aspect for TypeBoolConst { }
 
 impl AspectBoolConst for TypeBoolConst {
-    fn get(&self, value: &dyn Value) -> bool {
+    fn get(&self, value: &dyn Value_) -> bool {
         return must_downcast_ref::<ValueBoolConst>(value).0;
     }
 }
@@ -54,7 +54,7 @@ impl ExporterAny for TypeBoolConst {
         return EResult::ok(Rc::new(TypeBoolConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(ValueTypeBoolConst));
     }
 }
@@ -80,7 +80,7 @@ impl ExporterRootDelegate for TypeBoolConst {
 }
 
 impl Type for TypeBoolConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueTypeBoolConst)
     }
 
@@ -106,7 +106,7 @@ impl Type for TypeBoolConst {
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
+                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref()))).into()
             });
         });
     }
@@ -117,7 +117,7 @@ impl Type for TypeBoolConst {
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
+                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref()))).into()
             });
         });
     }
@@ -127,7 +127,7 @@ impl Type for TypeBoolConst {
     }
 }
 
-impl Value for TypeBoolConst {
+impl Value_ for TypeBoolConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(ValueTypeBoolConst);
     }

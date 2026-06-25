@@ -42,7 +42,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -109,7 +109,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
@@ -130,7 +130,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
-            }),
+            }).into(),
         }
     }
 }
@@ -140,13 +140,13 @@ impl ExporterAny for TypeSourceTaggedUnionConstructorDynamic {
         return EResult::ok(Rc::new(TypeSourceTaggedUnionConstructorDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeSourceTaggedUnionConstructorDynamic));
     }
 }
 
 impl Type for TypeSourceTaggedUnionConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
 
@@ -223,7 +223,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            }).into(),
         })
     }
 
@@ -232,7 +232,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl Value for TypeSourceTaggedUnionConstructorDynamic {
+impl Value_ for TypeSourceTaggedUnionConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceTaggedUnionConstructorDynamic);
     }

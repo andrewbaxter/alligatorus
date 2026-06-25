@@ -6,7 +6,7 @@ use {
             Code_,
             ExprContext,
             QExprId,
-            Value,
+            Value_,
         },
         r#gen::ScopeEntry,
     },
@@ -14,7 +14,7 @@ use {
 };
 
 pub(crate) struct ScopeEntryValue {
-    pub value: Rc<dyn Value>,
+    pub value: Rc<dyn Value_>,
 }
 
 impl ScopeEntry for ScopeEntryValue {
@@ -24,7 +24,7 @@ impl ScopeEntry for ScopeEntryValue {
                 loc,
                 code: Code_::None,
             },
-            value: self.value.clone(),
+            value: self.value.clone().into(),
         }
     }
 }

@@ -32,7 +32,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -164,7 +164,7 @@ impl AspectInitialBind for TypeAnyConst {
 }
 
 impl AspectType for TypeAnyConst {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
         let wrapper = must_downcast_ref::<ValueAnyConst>(value);
         wrapper.inner.clone()
     }
@@ -175,13 +175,13 @@ impl ExporterAny for TypeAnyConst {
         return EResult::ok(Rc::new(TypeAnyConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeAnyConst));
     }
 }
 
 impl Type for TypeAnyConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeAnyConst)
     }
 
@@ -254,7 +254,7 @@ impl Type for TypeAnyConst {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
-            value: Rc::new(super::dynamic::TypeAnyDynamic),
+            value: Rc::new(super::dynamic::TypeAnyDynamic).into(),
         })
     }
 
@@ -263,7 +263,7 @@ impl Type for TypeAnyConst {
     }
 }
 
-impl Value for TypeAnyConst {
+impl Value_ for TypeAnyConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAnyConst);
     }
@@ -283,12 +283,12 @@ impl ExporterAny for ValueAnyConst {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value for ValueAnyConst {
+impl Value_ for ValueAnyConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

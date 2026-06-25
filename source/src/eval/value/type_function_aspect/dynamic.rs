@@ -35,7 +35,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             ASPECT_LOOKUP_FN_SCOPE_ID,
@@ -77,7 +77,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             ),
         };
         let CodeValue { code: _argument_code, value: argument_value } = argument;
-        let elements = arg_tuple.take_elements(argument_value);
+        let elements = arg_tuple.take_elements(argument_value.into_direct());
         if elements.len() != 2 {
             return EvalRes::err(
                 loc,
@@ -155,7 +155,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: option_type,
-            }),
+            }).into(),
         })
     }
 }
@@ -174,13 +174,13 @@ impl ExporterAny for TypeFunctionAspectDynamic {
         return EResult::ok(Rc::new(TypeFunctionAspectDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeFunctionAspectDynamic));
     }
 }
 
 impl Type for TypeFunctionAspectDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeFunctionAspectDynamic) })
     }
 
@@ -199,7 +199,7 @@ impl Type for TypeFunctionAspectDynamic {
     }
 }
 
-impl Value for TypeFunctionAspectDynamic {
+impl Value_ for TypeFunctionAspectDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeFunctionAspectDynamic);
     }

@@ -33,7 +33,7 @@ use {
             ScopeEntryId,
             SourceId,
             Type,
-            Value,
+            Value_,
             downcast_value,
         },
         r#gen::{
@@ -316,7 +316,7 @@ impl Push for Rc<dyn Target> {
     }
 }
 
-impl Push for Rc<dyn Value> {
+impl Push for Rc<dyn Value_> {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeValueDynamic)
     }
@@ -407,7 +407,7 @@ pub(crate) fn push_method_name(s: &str) -> &str {
     s.strip_suffix('_').unwrap_or(s)
 }
 
-pub(crate) struct StagedExpr(pub Rc<dyn Value>);
+pub(crate) struct StagedExpr(pub Rc<dyn Value_>);
 
 impl Push for StagedExpr {
     fn dynamic_type() -> Rc<dyn Type> {

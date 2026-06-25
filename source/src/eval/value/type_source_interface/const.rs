@@ -48,7 +48,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -99,11 +99,11 @@ impl AspectArtifact for TypeSourceInterfaceConst {
 }
 
 impl AspectAspect for TypeSourceInterfaceConst {
-    fn get_iface_data(&self, _value: &dyn Value) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
+    fn get_iface_data(&self, _value: &dyn Value_) -> dumpster::unsync::Gc<super::SourceInterfaceData> {
         self.data.clone()
     }
 
-    fn get_unique(&self, _value: &dyn Value) -> Unique {
+    fn get_unique(&self, _value: &dyn Value_) -> Unique {
         self.data.identity.clone()
     }
 }
@@ -163,7 +163,7 @@ impl AspectField for TypeSourceInterfaceConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: field_type,
-                }),
+                }).into(),
             });
         });
     }
@@ -204,7 +204,7 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
-            }),
+            }).into(),
         }
     }
 }
@@ -214,7 +214,7 @@ impl ExporterAny for TypeSourceInterfaceConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -364,7 +364,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
             super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
                 set: self_.data.set.borrow().as_ref().unwrap().clone(),
             };
-        let def_set_art = crate::artifact::serialize_artifact(xx, loc, &set_const as &dyn Value);
+        let def_set_art = crate::artifact::serialize_artifact(xx, loc, &set_const as &dyn Value_);
         if let Some(errors1) = def_set_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -394,7 +394,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
 }
 
 impl Type for TypeSourceInterfaceConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }) })
     }
 
@@ -484,7 +484,7 @@ impl Type for TypeSourceInterfaceConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
-                }),
+                }).into(),
             });
         }
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
@@ -497,7 +497,7 @@ impl Type for TypeSourceInterfaceConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(super::dynamic::TypeSourceInterfaceDynamic),
-                }),
+                }).into(),
             };
             return super::dynamic::TypeSourceInterfaceDynamic.cast_to(xx, loc, dyn_cv, type_);
         }
@@ -516,7 +516,7 @@ impl Type for TypeSourceInterfaceConst {
     }
 }
 
-impl Value for TypeSourceInterfaceConst {
+impl Value_ for TypeSourceInterfaceConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -530,7 +530,7 @@ pub(crate) struct TypeSourceInterfaceConstAspectTypeImpl;
 impl Aspect for TypeSourceInterfaceConstAspectTypeImpl { }
 
 impl AspectType for TypeSourceInterfaceConstAspectTypeImpl {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
         Rc::new(super::dynamic::TypeSourceInterfaceDynamic)
     }
 }

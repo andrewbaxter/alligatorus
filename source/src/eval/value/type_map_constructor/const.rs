@@ -21,7 +21,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectFunction,
@@ -57,7 +57,7 @@ impl AspectFunction for TypeMapConstructorConst {
             Some(t) => t,
             None => return EvalRes::err(loc, "map() requires a tuple of (key_type, value_type)".to_string()),
         };
-        let elements = arg_tuple.take_elements(argument.value);
+        let elements = arg_tuple.take_elements(argument.value.into_direct());
         if elements.len() != 2 {
             return EvalRes::err(
                 loc,
@@ -118,7 +118,7 @@ impl AspectFunction for TypeMapConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: map_type }),
+            value: Rc::new(ValueAnyConst { inner: map_type }).into(),
         })
     }
 }
@@ -137,13 +137,13 @@ impl ExporterAny for TypeMapConstructorConst {
         return EResult::ok(Rc::new(TypeMapConstructorConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeMapConstructorConst));
     }
 }
 
 impl Type for TypeMapConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeMapConstructorConst)
     }
 
@@ -170,7 +170,7 @@ impl Type for TypeMapConstructorConst {
     }
 }
 
-impl Value for TypeMapConstructorConst {
+impl Value_ for TypeMapConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeMapConstructorConst);
     }

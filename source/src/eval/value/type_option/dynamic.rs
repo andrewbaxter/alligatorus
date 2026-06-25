@@ -48,7 +48,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -143,7 +143,7 @@ impl AspectField for TypeOptionDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: var_type }),
+                value: Rc::new(ValueAnyConst { inner: var_type }).into(),
             })
         };
         match key_name.as_str() {
@@ -196,7 +196,7 @@ impl AspectStackValueDynamic for TypeOptionDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }),
+            }).into(),
         }
     }
 }
@@ -212,7 +212,7 @@ impl ExporterAny for TypeOptionDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -233,7 +233,7 @@ impl Push for TypeOptionDynamic {
 }
 
 impl Type for TypeOptionDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(self.clone())
     }
 
@@ -290,7 +290,7 @@ impl Type for TypeOptionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                }).into(),
             });
         }
         EvalRes::err(loc, "Cannot convert to option".to_string())
@@ -305,7 +305,7 @@ impl Type for TypeOptionDynamic {
     }
 }
 
-impl Value for TypeOptionDynamic {
+impl Value_ for TypeOptionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -356,13 +356,13 @@ impl ExporterAny for TypeOptionVariantConstructorDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeOptionVariantConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(self.clone())
     }
 
@@ -391,7 +391,7 @@ impl Type for TypeOptionVariantConstructorDynamic {
     }
 }
 
-impl Value for TypeOptionVariantConstructorDynamic {
+impl Value_ for TypeOptionVariantConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

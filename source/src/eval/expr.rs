@@ -2,7 +2,7 @@ use {
     crate::langhelp::{
         CodeValue,
         QExprId,
-        Value,
+        Value_,
     },
     std::{
         cell::RefCell,
@@ -164,19 +164,19 @@ pub(crate) struct ExprTuple {
 
 #[derive(Clone)]
 pub(crate) enum LitValue {
-    Once(Rc<RefCell<Option<Rc<dyn Value>>>>),
-    Shared(Rc<dyn Value>),
+    Once(Rc<RefCell<Option<Rc<dyn Value_>>>>),
+    Shared(Rc<dyn Value_>),
 }
 
 impl LitValue {
-    pub(crate) fn consume(&self) -> Rc<dyn Value> {
+    pub(crate) fn consume(&self) -> Rc<dyn Value_> {
         match self {
             LitValue::Shared(v) => v.clone(),
             LitValue::Once(cell) => cell.borrow_mut().take().expect("Once Literal already consumed"),
         }
     }
 
-    pub(crate) fn peek(&self) -> Option<Rc<dyn Value>> {
+    pub(crate) fn peek(&self) -> Option<Rc<dyn Value_>> {
         match self {
             LitValue::Shared(v) => Some(v.clone()),
             LitValue::Once(cell) => cell.borrow().clone(),
@@ -184,11 +184,11 @@ impl LitValue {
     }
 }
 
-pub(crate) fn make_lit_value(v: Rc<dyn Value>) -> LitValue {
+pub(crate) fn make_lit_value(v: Rc<dyn Value_>) -> LitValue {
     LitValue::Shared(v)
 }
 
-pub(crate) fn make_lit_value_once(v: Rc<dyn Value>) -> LitValue {
+pub(crate) fn make_lit_value_once(v: Rc<dyn Value_>) -> LitValue {
     LitValue::Once(Rc::new(RefCell::new(Some(v))))
 }
 
@@ -197,5 +197,5 @@ pub(crate) enum Module {
 }
 
 pub(crate) struct StagedExprCell {
-    pub value: RefCell<Option<Rc<dyn Value>>>,
+    pub value: RefCell<Option<Rc<dyn Value_>>>,
 }

@@ -10,7 +10,7 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value,
+            Value_,
         },
     },
     dumpster::unsync::Gc,
@@ -24,7 +24,7 @@ use {
 pub(crate) struct ValueSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
     pub isolate_bundle: RefCell<Option<v8::Global<v8::Object>>>,
-    pub underlying: Rc<dyn Value>,
+    pub underlying: Rc<dyn Value_>,
 }
 
 impl ExporterAny for ValueSourceDataTypeConst {
@@ -32,12 +32,12 @@ impl ExporterAny for ValueSourceDataTypeConst {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         EResult::ok(Rc::new(self.clone()))
     }
 }
 
-impl Value for ValueSourceDataTypeConst {
+impl Value_ for ValueSourceDataTypeConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(self.clone())
     }

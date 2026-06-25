@@ -49,7 +49,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -114,7 +114,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
         xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
             from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
@@ -132,7 +132,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConstructorDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceDataTypeConstructorDynamic),
-            }),
+            }).into(),
         }
     }
 }
@@ -142,13 +142,13 @@ impl ExporterAny for TypeSourceDataTypeConstructorDynamic {
         return EResult::ok(Rc::new(TypeSourceDataTypeConstructorDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeSourceDataTypeConstructorDynamic));
     }
 }
 
 impl Type for TypeSourceDataTypeConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeSourceDataTypeConstructorDynamic)
     }
 
@@ -219,7 +219,7 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            }).into(),
         })
     }
 
@@ -228,7 +228,7 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl Value for TypeSourceDataTypeConstructorDynamic {
+impl Value_ for TypeSourceDataTypeConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceDataTypeConstructorDynamic);
     }

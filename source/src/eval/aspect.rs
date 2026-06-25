@@ -15,7 +15,7 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectField,
@@ -70,12 +70,12 @@ impl ExporterAny for AspectPull {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value for AspectPull {
+impl Value_ for AspectPull {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -88,7 +88,7 @@ impl Value for AspectPull {
 fn clone_cv(cv: &CodeValue) -> CodeValue {
     CodeValue {
         code: cv.code.clone(),
-        value: cv.value.clone(),
+        value: cv.value.clone().into(),
     }
 }
 

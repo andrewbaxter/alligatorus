@@ -43,7 +43,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -94,7 +94,7 @@ impl AspectConsumeDynamic for TypeExpr {
         if let Some(js) = cv.code.cast::<CodeDynamic>().v.flatten() {
             return EResult::ok(js.clone());
         }
-        let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
+        let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value.into_direct())) });
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
         EResult::ok(CodeDynamic {
@@ -119,14 +119,14 @@ impl AspectLiftDynamic for TypeExpr {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }
 
 impl AspectType for TypeExpr {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
         Rc::new(TypeExpr)
     }
 }
@@ -136,13 +136,13 @@ impl ExporterAny for TypeExpr {
         return EResult::ok(Rc::new(TypeExpr));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeExpr));
     }
 }
 
 impl Type for TypeExpr {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeExpr)
     }
 
@@ -191,7 +191,7 @@ impl Type for TypeExpr {
             if let Some(expr) = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<Expr>() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(expr.clone()),
+                    value: Rc::new(expr.clone()).into(),
                 });
             }
             return EvalRes::ok(cv);
@@ -205,11 +205,13 @@ impl Type for TypeExpr {
         };
         let expr = Expr {
             loc,
-            r#type: Expr_::Literal(make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value>)),
+            r#type: Expr_::Literal(
+                make_lit_value(Rc::new(ValueEmptyConst { type_: type_rc }) as Rc<dyn Value_>),
+            ),
         };
         return EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(expr),
+            value: Rc::new(expr).into(),
         });
     }
 
@@ -222,7 +224,7 @@ impl Type for TypeExpr {
     }
 }
 
-impl Value for TypeExpr {
+impl Value_ for TypeExpr {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeExpr);
     }
@@ -247,7 +249,7 @@ impl AspectLiftDynamic for TypeExprStagedPlaceholder {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
     }
@@ -258,13 +260,13 @@ impl ExporterAny for TypeExprStagedPlaceholder {
         return EResult::ok(Rc::new(TypeExprStagedPlaceholder));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeExprStagedPlaceholder));
     }
 }
 
 impl Type for TypeExprStagedPlaceholder {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeExprStagedPlaceholder)
     }
 
@@ -291,7 +293,7 @@ impl Type for TypeExprStagedPlaceholder {
     }
 }
 
-impl Value for TypeExprStagedPlaceholder {
+impl Value_ for TypeExprStagedPlaceholder {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeExprStagedPlaceholder);
     }
@@ -306,12 +308,12 @@ impl ExporterAny for Expr {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value for Expr {
+impl Value_ for Expr {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

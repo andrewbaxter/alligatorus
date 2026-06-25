@@ -75,7 +75,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             methods: vec![AspectMethod {
                 name: "get",
                 doc: doc(""),
-                params: vec![("value", "&dyn crate::langhelp::Value")],
+                params: vec![("value", "&dyn crate::langhelp::Value_")],
                 ret: "bool",
             }],
         },
@@ -86,7 +86,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             methods: vec![AspectMethod {
                 name: "get",
                 doc: doc(""),
-                params: vec![("value", "&dyn crate::langhelp::Value")],
+                params: vec![("value", "&dyn crate::langhelp::Value_")],
                 ret: "f64",
             }],
         },
@@ -97,18 +97,18 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             methods: vec![AspectMethod {
                 name: "get",
                 doc: doc(""),
-                params: vec![("value", "&dyn crate::langhelp::Value")],
+                params: vec![("value", "&dyn crate::langhelp::Value_")],
                 ret: "String",
             }],
         },
         AspectSpec {
             name: "Type",
-            doc: doc("Converts a known type Value into a type rust value"),
+            doc: doc("Converts a known type Value_ into a type rust value"),
             builtin_unique_id: 1010,
             methods: vec![AspectMethod {
                 name: "type_",
                 doc: doc(""),
-                params: vec![("value", "&dyn crate::langhelp::Value")],
+                params: vec![("value", "&dyn crate::langhelp::Value_")],
                 ret: "std::rc::Rc<dyn crate::langhelp::Type>",
             }],
         },
@@ -159,7 +159,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                     // TODO what's this
                     name: "take_elements",
                     doc: doc(""),
-                    params: vec![("value", "std::rc::Rc<dyn crate::langhelp::Value>")],
+                    params: vec![("value", "std::rc::Rc<dyn crate::langhelp::Value_>")],
                     ret: "Vec<crate::langhelp::EvalRes>",
                 },
             ],
@@ -408,7 +408,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                         ("scope", "&v8::PinScope"),
                         ("self_", "v8::Local<v8::Value>"),
                     ],
-                    ret: "Result<std::rc::Rc<dyn crate::langhelp::Value>, String>",
+                    ret: "Result<std::rc::Rc<dyn crate::langhelp::Value_>, String>",
                 },
             ],
         },
@@ -461,14 +461,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                 AspectMethod {
                     name: "get_unique",
                     doc: doc(""),
-                    params: vec![("value", "&dyn crate::langhelp::Value")],
+                    params: vec![("value", "&dyn crate::langhelp::Value_")],
                     ret: "crate::langhelp::Unique",
                 },
                 AspectMethod {
                     // TODO
                     name: "get_iface_data",
                     doc: doc(""),
-                    params: vec![("value", "&dyn crate::langhelp::Value")],
+                    params: vec![("value", "&dyn crate::langhelp::Value_")],
                     ret: "dumpster::unsync::Gc<crate::eval::value::type_source_interface::SourceInterfaceData>",
                 },
             ],

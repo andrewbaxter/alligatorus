@@ -74,7 +74,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
                         source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                         type_: field_type,
-                    }),
+                    }).into(),
                 });
             }
         });
@@ -838,7 +838,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
                             source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                             type_: field_type,
-                        }),
+                        }).into(),
                     });
                 }
             }
@@ -877,7 +877,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
                             source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                             type_: field_type,
-                        }),
+                        }).into(),
                     });
                 }
             }
@@ -994,11 +994,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     unimplemented!()
                 }
 
-                fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
+                fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value_>> {
                     unimplemented!()
                 }
             }
-            impl crate:: langhelp:: Value for #type_name {
+            impl crate:: langhelp:: Value_ for #type_name {
                 fn as_exporter_any(&self) -> std::rc::Rc<dyn crate::artifact::ExporterAny> {
                     unimplemented!()
                 }
@@ -1019,7 +1019,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 fn desc(&self) -> String {
                     #desc_str.to_string()
                 }
-                fn as_value(&self) -> std:: rc:: Rc < dyn crate:: langhelp:: Value > {
+                fn as_value(&self) -> std:: rc:: Rc < dyn crate:: langhelp:: Value_ > {
                     std:: rc:: Rc:: new(#type_name)
                 }
                 fn aspect(
@@ -1087,7 +1087,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             value: std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
                                 source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new(#type_name),
-                            }),
+                            }).into(),
                         });
                     }
                     crate:: langhelp:: EvalRes:: err(loc, #cannot_convert_to_msg.to_string())
@@ -1137,7 +1137,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         value: std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
                             source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                             type_: std:: rc:: Rc:: new(#type_name),
-                        }),
+                        }).into(),
                     }
                 }
             }

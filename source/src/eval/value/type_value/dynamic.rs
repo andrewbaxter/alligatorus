@@ -38,7 +38,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -130,7 +130,7 @@ impl AspectField for TypeValueDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeTypeRefPushDynamic),
-                }),
+                }).into(),
             });
         }
         EvalRes::err(loc, format!("value has no field '{}' (only 'type')", key_name))
@@ -167,13 +167,13 @@ impl ExporterAny for TypeValueDynamic {
         return EResult::ok(Rc::new(TypeValueDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeValueDynamic));
     }
 }
 
 impl Type for TypeValueDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeValueDynamic)
     }
 
@@ -230,7 +230,7 @@ impl Type for TypeValueDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_type_rc,
-            }),
+            }).into(),
         })
     }
 
@@ -239,7 +239,7 @@ impl Type for TypeValueDynamic {
     }
 }
 
-impl Value for TypeValueDynamic {
+impl Value_ for TypeValueDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeValueDynamic);
     }

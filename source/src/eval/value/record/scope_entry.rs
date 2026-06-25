@@ -85,7 +85,7 @@ impl ScopeEntry for ScopeEntryRecordBound {
             value: Rc::new(Record {
                 base: base,
                 fields: result_fields,
-            }),
+            }).into(),
         }
     }
 }
@@ -110,7 +110,7 @@ impl ScopeEntry for ScopeEntryRecordDynamic {
                 fields: self.fields.iter().map(|(k, t)| {
                     (k.clone(), RecordField::Dynamic(t.clone()))
                 }).collect(),
-            }),
+            }).into(),
         }
     }
 }

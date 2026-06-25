@@ -35,7 +35,7 @@ use {
             GlobalContext,
             QExprId,
             Type,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -280,7 +280,7 @@ impl ExporterAny for ExporterRoot {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         unimplemented!()
     }
 }
@@ -382,13 +382,13 @@ impl ExporterAny for TypeRoot {
         return EResult::ok(Rc::new(*self));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(*self));
     }
 }
 
 impl Type for TypeRoot {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         return Rc::new(*self);
     }
 
@@ -457,13 +457,13 @@ impl Type for TypeRoot {
             TypeRoot::TypeSourceDataTypeDynamic => "Type source data type (dynamic)",
             TypeRoot::TypeSourceFunctionDynamic => "Type source function (dynamic)",
             TypeRoot::Unique => "Unique type",
-            TypeRoot::ValueDynamic => "Value type (dynamic)",
+            TypeRoot::ValueDynamic => "Value_ type (dynamic)",
             TypeRoot::Root => "Root type",
         });
     }
 }
 
-impl Value for TypeRoot {
+impl Value_ for TypeRoot {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(*self);
     }

@@ -21,7 +21,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectFunction,
@@ -66,7 +66,7 @@ impl AspectFunction for TypeListConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: list_type }),
+            value: Rc::new(ValueAnyConst { inner: list_type }).into(),
         })
     }
 }
@@ -85,13 +85,13 @@ impl ExporterAny for TypeListConstructorConst {
         return EResult::ok(Rc::new(TypeListConstructorConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeListConstructorConst));
     }
 }
 
 impl Type for TypeListConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeListConstructorConst)
     }
 
@@ -118,7 +118,7 @@ impl Type for TypeListConstructorConst {
     }
 }
 
-impl Value for TypeListConstructorConst {
+impl Value_ for TypeListConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeListConstructorConst);
     }

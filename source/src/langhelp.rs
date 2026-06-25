@@ -76,8 +76,8 @@ pub(crate) trait Sources: Send + Sync {
     fn get(&self, spec: SourceSpecAbsolute) -> Result<(SourceId, SourceModule), String>;
 }
 
-pub(crate) trait Type: Value {
-    fn as_value(&self) -> Rc<dyn Value>;
+pub(crate) trait Type: Value_ {
+    fn as_value(&self) -> Rc<dyn Value_>;
 
     fn aspect(&self, _xx: &ExprContext, _key: &Unique) -> Option<Box<dyn Any>> {
         return None;
@@ -105,7 +105,7 @@ pub(crate) trait Type: Value {
     fn desc(&self) -> String;
 }
 
-pub(crate) trait Value: Any {
+pub(crate) trait Value_: Any {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny>;
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>>;
 }
@@ -143,7 +143,7 @@ pub(crate) enum Code_ {
 #[derive(Clone)]
 pub(crate) struct CodeValue {
     pub(crate) code: Code,
-    pub(crate) value: Rc<dyn Value>,
+    pub(crate) value: Value,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Copy, Debug)]
@@ -241,7 +241,7 @@ impl Counter {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct DefSetId(pub CompileId, pub usize);
 
-pub(crate) fn downcast_value<T: Value>(v: Rc<dyn Value>) -> Rc<T> {
+pub(crate) fn downcast_value<T: Value_>(v: Rc<dyn Value_>) -> Rc<T> {
     assert!((v.as_ref() as &dyn Any).is::<T>(), "downcast_value: expected {}", std::any::type_name::<T>());
     let raw = Rc::into_raw(v) as *const T;
     unsafe {
@@ -414,4 +414,112 @@ pub(crate) struct SourceId(pub usize);
 pub(crate) enum Unique {
     Builtin(usize),
     Source(CompileId, usize),
+}
+
+#[derive(Clone)]
+pub(crate) enum Value {
+    Direct(Rc<dyn Value_>),
+    Import(Rc<crate::eval::value::value_pending_import::ValuePendingImport>),
+}
+
+impl Value {
+    pub(crate) fn as_exporter_any(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn ExporterAny>> {
+        let mut r = self.resolve(xx, loc);
+        let mut errors = None;
+        r.push_errors(&mut errors);
+        let Some(v) = r.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        EResult {
+            errors,
+            v: Some(v.as_exporter_any()),
+        }
+    }
+
+    pub(crate) fn as_ref(&self) -> &dyn Value_ {
+        self.expect_direct().as_ref()
+    }
+
+    pub(crate) fn downcast<T: Value_>(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<T>> {
+        let mut r = self.resolve(xx, loc);
+        let mut errors = None;
+        r.push_errors(&mut errors);
+        let Some(v) = r.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let any: Rc<dyn Any> = v;
+        match any.downcast::<T>() {
+            Ok(t) => EResult {
+                errors,
+                v: Some(t),
+            },
+            Err(_) => EResult::err(
+                loc,
+                format!("Value::downcast: not the expected type {}", std::any::type_name::<T>()),
+            ),
+        }
+    }
+
+    pub(crate) fn expect_direct(&self) -> &Rc<dyn Value_> {
+        match self {
+            Value::Direct(v) => v,
+            Value::Import(_) => panic!("Value::expect_direct called on Import variant"),
+        }
+    }
+
+    pub(crate) fn into_direct(self) -> Rc<dyn Value_> {
+        match self {
+            Value::Direct(v) => v,
+            Value::Import(_) => panic!("Value::into_direct called on Import variant"),
+        }
+    }
+
+    pub(crate) fn resolve(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Value_>> {
+        match self {
+            Value::Direct(v) => EResult::ok(v.clone()),
+            Value::Import(i) => i.resolve(xx, loc),
+        }
+    }
+
+    pub(crate) fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
+        let mut r = self.resolve(xx, loc);
+        let mut errors = None;
+        r.push_errors(&mut errors);
+        let Some(v) = r.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut t = v.type_(xx, loc);
+        t.push_errors(&mut errors);
+        EResult {
+            errors,
+            v: t.v,
+        }
+    }
+}
+
+impl From<Rc<crate::eval::value::value_pending_import::ValuePendingImport>> for Value {
+    fn from(v: Rc<crate::eval::value::value_pending_import::ValuePendingImport>) -> Self {
+        Value::Import(v)
+    }
+}
+
+impl From<Rc<dyn Value_>> for Value {
+    fn from(v: Rc<dyn Value_>) -> Self {
+        Value::Direct(v)
+    }
+}
+
+impl<T: Value_> From<Rc<T>> for Value {
+    fn from(v: Rc<T>) -> Self {
+        Value::Direct(v)
+    }
 }

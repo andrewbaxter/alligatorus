@@ -42,7 +42,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -119,7 +119,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            }),
+            }).into(),
         }
     }
 }
@@ -131,7 +131,7 @@ impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
 }
 
 impl AspectType for TypeSourceTaggedUnionConst {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
         Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
     }
 }
@@ -141,7 +141,7 @@ impl ExporterAny for TypeSourceTaggedUnionConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -252,7 +252,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
 }
 
 impl Type for TypeSourceTaggedUnionConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) })
     }
 
@@ -328,7 +328,7 @@ impl Type for TypeSourceTaggedUnionConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-                }),
+                }).into(),
             });
         }
         EvalRes::ok(CodeValue {
@@ -336,7 +336,7 @@ impl Type for TypeSourceTaggedUnionConst {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            }),
+            }).into(),
         })
     }
 
@@ -345,7 +345,7 @@ impl Type for TypeSourceTaggedUnionConst {
     }
 }
 
-impl Value for TypeSourceTaggedUnionConst {
+impl Value_ for TypeSourceTaggedUnionConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

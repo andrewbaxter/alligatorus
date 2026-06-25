@@ -37,7 +37,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -93,7 +93,7 @@ impl AspectFunction for TypeCodeDynCastFn {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: target_type,
-            }),
+            }).into(),
         })
     }
 }
@@ -103,13 +103,13 @@ impl ExporterAny for TypeCodeDynCastFn {
         return EResult::ok(Rc::new(TypeCodeDynCastFn));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeCodeDynCastFn));
     }
 }
 
 impl Type for TypeCodeDynCastFn {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) })
     }
 
@@ -137,7 +137,7 @@ impl Type for TypeCodeDynCastFn {
     }
 }
 
-impl Value for TypeCodeDynCastFn {
+impl Value_ for TypeCodeDynCastFn {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeCodeDynCastFn);
     }
@@ -197,7 +197,7 @@ impl AspectField for TypeCodeDynHandleDynamic {
                         loc,
                         code: Code_::Dyn(Rc::new(self_code)),
                     },
-                    value: Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) }),
+                    value: Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) }).into(),
                 })
             },
             _ => EvalRes::err(loc, format!("Field '{}' not found on code_dyn handle", key_name)),
@@ -236,13 +236,13 @@ impl ExporterAny for TypeCodeDynHandleDynamic {
         return EResult::ok(Rc::new(TypeCodeDynHandleDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeCodeDynHandleDynamic));
     }
 }
 
 impl Type for TypeCodeDynHandleDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynHandleDynamic) })
     }
 
@@ -295,7 +295,7 @@ impl Type for TypeCodeDynHandleDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            }).into(),
         })
     }
 
@@ -308,7 +308,7 @@ impl Type for TypeCodeDynHandleDynamic {
     }
 }
 
-impl Value for TypeCodeDynHandleDynamic {
+impl Value_ for TypeCodeDynHandleDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeCodeDynHandleDynamic);
     }
@@ -373,13 +373,13 @@ impl ExporterAny for TypeCodeEnumDynamic {
         return EResult::ok(Rc::new(TypeCodeEnumDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeCodeEnumDynamic));
     }
 }
 
 impl Type for TypeCodeEnumDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeEnumDynamic) })
     }
 
@@ -425,7 +425,7 @@ impl Type for TypeCodeEnumDynamic {
     }
 }
 
-impl Value for TypeCodeEnumDynamic {
+impl Value_ for TypeCodeEnumDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeCodeEnumDynamic);
     }
@@ -481,7 +481,7 @@ impl AspectField for TypeCodeStructDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeCodeEnumDynamic),
-                    }),
+                    }).into(),
                 })
             },
             _ => EvalRes::err(loc, format!("Field '{}' not found on Code struct", key_name)),
@@ -520,13 +520,13 @@ impl ExporterAny for TypeCodeStructDynamic {
         return EResult::ok(Rc::new(TypeCodeStructDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeCodeStructDynamic));
     }
 }
 
 impl Type for TypeCodeStructDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeStructDynamic) })
     }
 
@@ -572,7 +572,7 @@ impl Type for TypeCodeStructDynamic {
     }
 }
 
-impl Value for TypeCodeStructDynamic {
+impl Value_ for TypeCodeStructDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeCodeStructDynamic);
     }

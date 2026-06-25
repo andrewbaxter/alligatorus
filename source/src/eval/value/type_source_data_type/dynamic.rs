@@ -64,7 +64,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -210,7 +210,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                             value: Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::Expr,
                                 type_: dispatch_type.clone(),
-                            }),
+                            }).into(),
                         };
                         let v = erb.must_er(underlying_field.field(xx, loc, underlying_cv, key))?;
                         return Ok(v);
@@ -237,7 +237,7 @@ impl AspectField for TypeSourceDataTypeDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: field_type,
-                }),
+                }).into(),
             });
         });
     }
@@ -288,7 +288,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
         xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         {
             let data = &self.data;
             let underlying_type = data.underlying_type.get().clone();
@@ -329,13 +329,13 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() }),
-            }),
+            }).into(),
         }
     }
 }
 
 impl AspectType for TypeSourceDataTypeDynamic {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
         let data = self.data.clone();
         let bundle =
             (value as &dyn std::any::Any)
@@ -354,13 +354,13 @@ impl ExporterAny for TypeSourceDataTypeDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeSourceDataTypeDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() })
     }
 
@@ -478,7 +478,7 @@ impl Type for TypeSourceDataTypeDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceDataTypeDynamic { data: self.data.clone() }),
-                }),
+                }).into(),
             });
         }
         if type_.aspect(xx, &type_type_identity()).is_some() {
@@ -517,7 +517,7 @@ impl Type for TypeSourceDataTypeDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeAnyDynamic),
-                    }),
+                    }).into(),
                 });
             }
         }
@@ -575,7 +575,7 @@ impl Type for TypeSourceDataTypeDynamic {
                         value: Rc::new(ValueDynamic {
                             source: ValueDynamicSource::Expr,
                             type_: result_type,
-                        }),
+                        }).into(),
                     });
                 }
                 return EvalRes::ok(CodeValue {
@@ -583,7 +583,7 @@ impl Type for TypeSourceDataTypeDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeSourceInterfaceConst { data: impl_data.interface.clone() }),
-                    }),
+                    }).into(),
                 });
             }
         }
@@ -612,7 +612,7 @@ impl Type for TypeSourceDataTypeDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeAspectDynamic),
-                }),
+                }).into(),
             });
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
@@ -627,7 +627,7 @@ impl Type for TypeSourceDataTypeDynamic {
     }
 }
 
-impl Value for TypeSourceDataTypeDynamic {
+impl Value_ for TypeSourceDataTypeDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -673,7 +673,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
         xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
         Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
     }
@@ -689,7 +689,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeRefDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceDataTypeRefDynamic),
-            }),
+            }).into(),
         }
     }
 }
@@ -699,13 +699,13 @@ impl ExporterAny for TypeSourceDataTypeRefDynamic {
         return EResult::ok(Rc::new(TypeSourceDataTypeRefDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeSourceDataTypeRefDynamic));
     }
 }
 
 impl Type for TypeSourceDataTypeRefDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeSourceDataTypeRefDynamic)
     }
 
@@ -775,7 +775,7 @@ impl Type for TypeSourceDataTypeRefDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            }).into(),
         })
     }
 
@@ -788,7 +788,7 @@ impl Type for TypeSourceDataTypeRefDynamic {
     }
 }
 
-impl Value for TypeSourceDataTypeRefDynamic {
+impl Value_ for TypeSourceDataTypeRefDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceDataTypeRefDynamic);
     }

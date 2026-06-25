@@ -77,7 +77,9 @@ pub(crate) fn bind_via_target(
         },
     };
     if matches!(cv.code.code, Code_::None) {
-        return EResult::ok((cv.code, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>));
+        return EResult::ok(
+            (cv.code, Box::new(ScopeEntryValue { value: cv.value.into_direct() }) as Box<dyn ScopeEntry>),
+        );
     }
     let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
         return EResult::err(loc, format!("Type ({}) is missing aspect AspectBindDynamic", vtype.desc()));
@@ -199,7 +201,7 @@ pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc
         value: Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
             type_,
-        }),
+        }).into(),
     }
 }
 

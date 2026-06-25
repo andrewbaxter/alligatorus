@@ -101,7 +101,7 @@ use {
             SourceId,
             Type,
             Unique,
-            Value,
+            Value_,
             downcast_value,
         },
         r#gen::{
@@ -256,7 +256,7 @@ pub(crate) fn build_builtin_scope(
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }),
+            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }).into(),
         };
         let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
         let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;
@@ -525,7 +525,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None,
                     },
-                    value: p.consume(),
+                    value: p.consume().into(),
                 }),
                 errors: None,
             };
@@ -612,7 +612,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
                         entries.push(binding.0);
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
-                        last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
+                        last_val = Some(crate::langhelp::Value::Direct(Rc::new(ValueNullConst)));
                     } else {
                         let r = erb.must_er(const_eval(&child_xx, sub))?;
                         entries.push(r.code);
@@ -621,7 +621,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
                 return Ok(CodeValue {
                     code: erb.must_er(xx.target.seq(expr.loc, entries))?,
-                    value: last_val.unwrap_or_else(|| Rc::new(ValueNullConst) as Rc<dyn Value>)
+                    value: last_val.unwrap_or_else(|| crate::langhelp::Value::Direct(Rc::new(ValueNullConst)))
                 });
             });
         },
@@ -814,7 +814,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None,
                     },
-                    value: Rc::new(e.expr.as_ref().clone()),
+                    value: Rc::new(e.expr.as_ref().clone()).into(),
                 });
             }
             return er_seq_cv!(expr.loc, erb, {
@@ -853,7 +853,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: Rc::new(Tuple { elements: elements }),
+                value: Rc::new(Tuple { elements: elements }).into(),
             });
         },
         Expr_::Record(r) => {
@@ -908,7 +908,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 value: Rc::new(Record {
                     base: None,
                     fields,
-                }),
+                }).into(),
             });
         },
         Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
@@ -1056,7 +1056,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: value,
+                value: crate::langhelp::Value::Import(value).into(),
             });
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {
@@ -1089,7 +1089,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None
                     },
-                    value: Rc::new(ValueNullConst),
+                    value: Rc::new(ValueNullConst).into(),
                 });
             } else {
                 let conditions: Vec<(CodeValue, &Expr)> =
@@ -1265,7 +1265,7 @@ fn eval(
                 loc: root_loc,
                 code: Code_::None,
             },
-            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }),
+            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }).into(),
         };
         let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
         let bind = aspect_bind_get(&xx, root_loc, any_const_type.as_ref()).into_res()?;
@@ -1343,7 +1343,7 @@ fn eval(
 
             enum StageLowerValue {
                 Expr(Expr),
-                Value(Rc<dyn Value>),
+                Value(Rc<dyn Value_>),
             }
 
             let lower_count =
@@ -1586,7 +1586,9 @@ fn eval(
             let new_tree =
                 clone_with_lower_substitutions(&tree, 0, 0, &mut values.into_iter(), &mut graft_values.into_iter());
             let result_cell =
-                Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(new_tree) as Rc<dyn Value>)) });
+                Rc::new(
+                    expr::StagedExprCell { value: RefCell::new(Some(Rc::new(new_tree) as Rc<dyn Value_>)) },
+                );
             let ext = to_v8(scope, result_cell);
             rv.set(ext.into());
         }
@@ -1620,7 +1622,7 @@ fn eval(
 
     struct DefFuncInfo {
         arg_type: Rc<dyn Type>,
-        impl_expr_ast: Rc<dyn Value>,
+        impl_expr_ast: Rc<dyn Value_>,
         ret_type: Rc<dyn Type>,
         scope_entry_id: ScopeEntryId,
     }
@@ -2091,7 +2093,7 @@ fn eval(
     if !has_js {
         let logs = dynamic_scope.get_slot::<V8LogStore>().unwrap().logs.take();
         return Ok(EvalResult {
-            value: fallback_value.expect("No JS and no fallback value"),
+            value: fallback_value.expect("No JS and no fallback value").into_direct(),
             logs,
         });
     }
@@ -2288,10 +2290,10 @@ fn eval(
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
-            let inner_value: Rc<dyn Value> = {
+            let inner_value: Rc<dyn Value_> = {
                 let guard = cve_cell.borrow();
                 let cv = guard.as_ref().expect("__cve_extract: inner CodeValue already consumed");
-                cv.value.clone()
+                cv.value.clone().into_direct()
             };
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
             let xx = Rc::new(ExprContext {
@@ -2360,9 +2362,14 @@ fn eval(
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
                 from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
-            let value: Rc<dyn Value> = {
+            let value: Rc<dyn Value_> = {
                 let borrow = cve_cell.borrow();
-                borrow.as_ref().expect("__cve_get_value: inner CodeValue already consumed").value.clone()
+                borrow
+                    .as_ref()
+                    .expect("__cve_get_value: inner CodeValue already consumed")
+                    .value
+                    .clone()
+                    .into_direct()
             };
             let ext = rc_value_to_v8(scope, value);
             rv.set(ext.into());
@@ -2375,7 +2382,7 @@ fn eval(
             args: v8::FunctionCallbackArguments<'s>,
             mut rv: v8::ReturnValue<'s>,
         ) {
-            let value: Rc<dyn Value> = rc_value_from_v8(&*args.get(0));
+            let value: Rc<dyn Value_> = rc_value_from_v8(&*args.get(0));
             let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
             let target: Rc<dyn Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
@@ -2531,7 +2538,7 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let value: Rc<dyn Value> = rc_value_from_v8(&*args.get(0));
+                let value: Rc<dyn Value_> = rc_value_from_v8(&*args.get(0));
                 let type_: Rc<dyn Type> = rc_type_from_v8(&*args.get(1));
                 let type_const = crate::invariant::must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
                 let vud = crate::invariant::must_downcast_ref::<ValuePull>(value.as_ref());
@@ -2843,7 +2850,7 @@ fn eval(
                         args.get(1),
                     ).expect("__data_instance_to_value: expected JS object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let value: Rc<dyn Value> = Rc::new(ValuePull { bundle: instance_global });
+                let value: Rc<dyn Value_> = Rc::new(ValuePull { bundle: instance_global });
                 let ext = rc_value_to_v8(scope, value);
                 rv.set(ext.into());
             }
@@ -2995,8 +3002,8 @@ fn eval(
         v8::Script::compile(dynamic_scope, v8::String::new(dynamic_scope, &dynamic_source).unwrap(), None).unwrap();
     match script.run(dynamic_scope) {
         Some(stage2) => {
-            let value: Rc<dyn Value> = match fallback_value {
-                Some(v) => v,
+            let value: Rc<dyn Value_> = match fallback_value {
+                Some(v) => v.into_direct(),
                 None => {
                     let value_from_js = aspect_lift_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
                     value_from_js.lift(&xx, &*dynamic_scope, stage2).map_err(|e| vec![ExprErr {
@@ -3056,10 +3063,10 @@ fn eval(
 
 struct EvalResult {
     logs: Vec<LogEntry>,
-    value: Rc<dyn Value>,
+    value: Rc<dyn Value_>,
 }
 
-fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<ConstKey, String> {
+fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value_) -> Result<ConstKey, String> {
     let vtype = v.type_(xx, loc).into_res().map_err(|e| format!("{:?}", e))?;
     if let Some(a) = aspect_string_const_get_maybe(xx, vtype.as_ref()) {
         return Ok(ConstKey::String(a.get(v)));
@@ -3133,13 +3140,13 @@ pub(crate) fn rc_type_to_v8<
     to_v8(scope, value)
 }
 
-pub(crate) fn rc_value_from_v8(value: &v8::Value) -> Rc<dyn Value> {
-    from_v8_ref::<Rc<dyn Value>>(value).clone()
+pub(crate) fn rc_value_from_v8(value: &v8::Value) -> Rc<dyn Value_> {
+    from_v8_ref::<Rc<dyn Value_>>(value).clone()
 }
 
 pub(crate) fn rc_value_to_v8<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Value>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Value_>) -> v8::Local<'s, v8::External> {
     to_v8(scope, value)
 }
 
@@ -3662,7 +3669,7 @@ impl Target for TargetDynamic {
         graft_values: Vec<CodeValue>,
     ) -> EvalRes {
         let tree_cell =
-            Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
+            Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value_>)) });
         let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
         let tree_js = CodeDynamic {
@@ -3679,7 +3686,8 @@ impl Target for TargetDynamic {
                 let vtype = erb.must_er(cv.value.type_(xx, loc))?;
                 match cv.code.code {
                     Code_::None => {
-                        let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
+                        let cell =
+                            Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value.into_direct())), });
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
                         stage_args.push(CodeDynamic {
@@ -3720,7 +3728,7 @@ impl Target for TargetDynamic {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: cv.value,
+                            value: cv.value.into(),
                         })));
                         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::CodeValueExternCell(cell)));
@@ -3755,7 +3763,7 @@ impl Target for TargetDynamic {
                 value: Rc::new(value::value_dynamic::ValueDynamic {
                     source: value::value_dynamic::ValueDynamicSource::Expr,
                     type_: Rc::new(value::type_expr::TypeExprStagedPlaceholder),
-                }),
+                }).into(),
             });
         });
     }
@@ -3774,19 +3782,16 @@ pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value:
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
-        let source =
-            if let Some(pending) =
-                (source.value.as_ref() as
-                    &dyn
-                        std::any::Any).downcast_ref::<crate::eval::value::value_pending_import::ValuePendingImport>() {
+        let source = match &source.value {
+            crate::langhelp::Value::Import(pending) => {
                 let resolved = erb.must_er(pending.resolve(xx, loc))?;
                 CodeValue {
                     code: source.code,
-                    value: resolved,
+                    value: resolved.into(),
                 }
-            } else {
-                source
-            };
+            },
+            crate::langhelp::Value::Direct(_) => source,
+        };
         let source_type = erb.must_er(source.value.type_(xx, loc))?;
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {

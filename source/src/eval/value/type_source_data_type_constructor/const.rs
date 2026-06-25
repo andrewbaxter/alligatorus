@@ -43,7 +43,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -74,7 +74,7 @@ impl AspectBind for TypeSourceDataTypeConstructorConst {
         EResult::ok((Code {
             loc: loc,
             code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: cv.value.into_direct() }) as Box<dyn ScopeEntry>))
     }
 }
 
@@ -127,7 +127,7 @@ impl ExporterAny for TypeSourceDataTypeConstructorConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -212,7 +212,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
         let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let dt_const =
             super::super::type_source_data_type::r#const::TypeSourceDataTypeConst { data: self_.data.clone() };
-        let data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
+        let data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value_);
         if let Some(errors1) = data_type_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -239,7 +239,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
 }
 
 impl Type for TypeSourceDataTypeConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) })
     }
 
@@ -278,7 +278,7 @@ impl Type for TypeSourceDataTypeConstructorConst {
     }
 }
 
-impl Value for TypeSourceDataTypeConstructorConst {
+impl Value_ for TypeSourceDataTypeConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

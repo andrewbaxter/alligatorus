@@ -33,7 +33,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -71,7 +71,7 @@ impl AspectBind for TypeSourceExportsLiftedConst {
         EResult::ok((Code {
             loc: loc,
             code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: Rc::from(cv.value) }) as Box<dyn ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: cv.value.into_direct() }) as Box<dyn ScopeEntry>))
     }
 }
 
@@ -97,7 +97,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(ValueAnyConst { inner: func_type, }),
+                            value: Rc::new(ValueAnyConst { inner: func_type, }).into(),
                         });
                     }
                 }
@@ -113,7 +113,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(ValueAnyConst { inner: ctor_type, }),
+                            value: Rc::new(ValueAnyConst { inner: ctor_type, }).into(),
                         });
                     }
                 }
@@ -151,7 +151,7 @@ impl ExporterAny for TypeSourceExportsLiftedConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -204,7 +204,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
 }
 
 impl Type for TypeSourceExportsLiftedConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) })
     }
 
@@ -242,7 +242,7 @@ impl Type for TypeSourceExportsLiftedConst {
     }
 }
 
-impl Value for TypeSourceExportsLiftedConst {
+impl Value_ for TypeSourceExportsLiftedConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

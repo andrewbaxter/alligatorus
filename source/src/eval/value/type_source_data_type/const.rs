@@ -57,7 +57,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -156,7 +156,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
         xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let underlying_type = self.data.underlying_type.get().clone();
         let underlying_lift =
             aspect_lift_dynamic_get_maybe(
@@ -195,7 +195,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
-            }),
+            }).into(),
         }
     }
 }
@@ -205,7 +205,7 @@ impl ExporterAny for TypeSourceDataTypeConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -416,7 +416,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
             super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
                 set: self_.data.set.borrow().as_ref().unwrap().clone(),
             };
-        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
+        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value_);
         if let Some(errors1) = def_set_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -477,7 +477,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                 Some(_) => None,
                 None => {
                     let iface_const = TypeSourceInterfaceConst { data: impl_data.interface.clone() };
-                    let iface_art = serialize_artifact(xx, loc, &iface_const as &dyn Value);
+                    let iface_art = serialize_artifact(xx, loc, &iface_const as &dyn Value_);
                     if let Some(errors1) = iface_art.errors {
                         errors.get_or_insert_default().extend(errors1);
                     }
@@ -536,7 +536,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
 }
 
 impl Type for TypeSourceDataTypeConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeSourceDataTypeConst { data: self.data.clone() })
     }
 
@@ -664,7 +664,7 @@ impl Type for TypeSourceDataTypeConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceDataTypeConst { data: self.data.clone() }),
-                }),
+                }).into(),
             });
         }
         for (iface_data, identity) in iface_data {
@@ -675,7 +675,7 @@ impl Type for TypeSourceDataTypeConst {
                         value: Rc::new(ValueDynamic {
                             source: ValueDynamicSource::Expr,
                             type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
-                        }),
+                        }).into(),
                     };
                     let dyn_type = super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() };
                     return dyn_type.cast_to(xx, loc, dyn_cv, type_);
@@ -685,7 +685,7 @@ impl Type for TypeSourceDataTypeConst {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeSourceInterfaceConst { data: iface_data }),
-                    }),
+                    }).into(),
                 });
             }
         }
@@ -695,7 +695,7 @@ impl Type for TypeSourceDataTypeConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
-                }),
+                }).into(),
             };
             let dyn_type = super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() };
             return dyn_type.cast_to(xx, loc, dyn_cv, type_);
@@ -715,7 +715,7 @@ impl Type for TypeSourceDataTypeConst {
     }
 }
 
-impl Value for TypeSourceDataTypeConst {
+impl Value_ for TypeSourceDataTypeConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -732,7 +732,7 @@ pub(crate) struct TypeSourceDataTypeConstAspectType {
 impl Aspect for TypeSourceDataTypeConstAspectType { }
 
 impl AspectType for TypeSourceDataTypeConstAspectType {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
         let bundle =
             (value as &dyn std::any::Any)
                 .downcast_ref::<ValueSourceDataTypeConst>()

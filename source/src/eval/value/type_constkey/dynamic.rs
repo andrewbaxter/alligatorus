@@ -36,7 +36,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -104,13 +104,13 @@ impl ExporterAny for TypeConstkeyDynamic {
         return EResult::ok(Rc::new(TypeConstkeyDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeConstkeyDynamic));
     }
 }
 
 impl Type for TypeConstkeyDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeConstkeyDynamic)
     }
 
@@ -158,7 +158,7 @@ impl Type for TypeConstkeyDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeConstkeyDynamic),
-                    }),
+                    }).into(),
                 });
             }
             return erb.err_new(format!("Cannot convert {} to constkey", source_type.desc()));
@@ -174,7 +174,7 @@ impl Type for TypeConstkeyDynamic {
     }
 }
 
-impl Value for TypeConstkeyDynamic {
+impl Value_ for TypeConstkeyDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeConstkeyDynamic);
     }

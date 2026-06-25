@@ -39,7 +39,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -90,7 +90,7 @@ pub(crate) fn dynamic_call(
             } else {
                 vec![arg_type.clone()]
             };
-            let elements = arg_tuple.take_elements(argument.value);
+            let elements = arg_tuple.take_elements(argument.value.into_direct());
             let (elements, param_types) =
                 if elements.is_empty() && param_types.len() == 1 &&
                     aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
@@ -106,7 +106,7 @@ pub(crate) fn dynamic_call(
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(Tuple { elements: vec![], }),
+                        value: Rc::new(Tuple { elements: vec![], }).into(),
                     };
                     let arg_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), unit_cv))?;
@@ -215,13 +215,13 @@ impl ExporterAny for TypeFunctionDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeFunctionDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeFunctionDynamic {
             arg: self.arg.clone(),
             ret: self.ret.clone(),
@@ -260,7 +260,7 @@ impl Type for TypeFunctionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                }).into(),
             });
         });
     }
@@ -274,7 +274,7 @@ impl Type for TypeFunctionDynamic {
     }
 }
 
-impl Value for TypeFunctionDynamic {
+impl Value_ for TypeFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

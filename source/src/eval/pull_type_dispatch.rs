@@ -39,7 +39,7 @@ use {
             Scope,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectField,
@@ -74,7 +74,7 @@ impl ScopeEntry for ArgRecordFactory {
                 loc: self.loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueTypeRef { type_: self.source_type.clone() }),
+            value: Rc::new(ValueTypeRef { type_: self.source_type.clone() }).into(),
         })));
         fields.insert(ConstKey::String("cv".to_string()), RecordField::EvalRes(EvalRes::ok(clone_cv(&self.cv))));
         fields.insert(ConstKey::String("xx".to_string()), RecordField::EvalRes(EvalRes::ok(CodeValue {
@@ -82,7 +82,7 @@ impl ScopeEntry for ArgRecordFactory {
                 loc: self.loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueNullConst),
+            value: Rc::new(ValueNullConst).into(),
         })));
         CodeValue {
             code: Code {
@@ -92,7 +92,7 @@ impl ScopeEntry for ArgRecordFactory {
             value: Rc::new(Record {
                 base: None,
                 fields,
-            }),
+            }).into(),
         }
     }
 }
@@ -104,11 +104,11 @@ fn cast_from_field_name(data: &Gc<SourceDataTypeData>) -> Option<String> {
 fn clone_cv(cv: &CodeValue) -> CodeValue {
     CodeValue {
         code: cv.code.clone(),
-        value: cv.value.clone(),
+        value: cv.value.clone().into(),
     }
 }
 
-fn lookup_impl<'a>(data: &'a Gc<SourceDataTypeData>, method_name: &str) -> Option<Rc<dyn Value>> {
+fn lookup_impl<'a>(data: &'a Gc<SourceDataTypeData>, method_name: &str) -> Option<Rc<dyn Value_>> {
     let impls = data.interface_impls.borrow();
     for impl_data in impls.iter() {
         if impl_data.interface.builtin_kind != Some(BuiltinInterfaceKind::Type) {
@@ -174,7 +174,7 @@ pub(crate) fn pull_can_cast_from(
             loc,
             code: Code_::None,
         },
-        value: Rc::new(ValueNullConst),
+        value: Rc::new(ValueNullConst).into(),
     };
     let res = run_impl(impl_expr, xx, loc, source_type_rc, placeholder_cv);
     let Some(out_cv) = res.v else {
@@ -362,7 +362,7 @@ pub(crate) fn pull_desc(data: &Gc<SourceDataTypeData>) -> String {
 }
 
 fn run_impl(
-    impl_expr: Rc<dyn Value>,
+    impl_expr: Rc<dyn Value_>,
     xx: &ExprContext,
     loc: QExprId,
     source_type: Rc<dyn Type>,
@@ -410,7 +410,7 @@ fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> O
 
 #[derive(Clone)]
 struct TypeAspectLookupFn {
-    receiver: Rc<dyn Value>,
+    receiver: Rc<dyn Value_>,
 }
 
 impl ExporterAny for TypeAspectLookupFn {
@@ -418,12 +418,12 @@ impl ExporterAny for TypeAspectLookupFn {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value for TypeAspectLookupFn {
+impl Value_ for TypeAspectLookupFn {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -447,7 +447,7 @@ impl AspectFunction for TypeAspectLookupFnType {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueOption { is_some }),
+            value: Rc::new(ValueOption { is_some }).into(),
         })
     }
 }
@@ -457,13 +457,13 @@ impl ExporterAny for TypeAspectLookupFnType {
         return EResult::ok(Rc::new(TypeAspectLookupFnType));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeAspectLookupFnType));
     }
 }
 
 impl Type for TypeAspectLookupFnType {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeAspectLookupFnType)
     }
 
@@ -491,7 +491,7 @@ impl Type for TypeAspectLookupFnType {
     }
 }
 
-impl Value for TypeAspectLookupFnType {
+impl Value_ for TypeAspectLookupFnType {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAspectLookupFnType);
     }
@@ -527,7 +527,7 @@ impl AspectField for TypeTypeRef {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(TypeAspectLookupFn { receiver: self_.value }),
+                value: Rc::new(TypeAspectLookupFn { receiver: self_.value.into_direct() }).into(),
             });
         }
         EvalRes::err(loc, format!("Field '{}' not found on type reference", key_name))
@@ -552,13 +552,13 @@ impl ExporterAny for TypeTypeRef {
         return EResult::ok(Rc::new(TypeTypeRef));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeTypeRef));
     }
 }
 
 impl Type for TypeTypeRef {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeTypeRef)
     }
 
@@ -586,7 +586,7 @@ impl Type for TypeTypeRef {
     }
 }
 
-impl Value for TypeTypeRef {
+impl Value_ for TypeTypeRef {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeTypeRef);
     }
@@ -606,12 +606,12 @@ impl ExporterAny for ValueTypeRef {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value for ValueTypeRef {
+impl Value_ for ValueTypeRef {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

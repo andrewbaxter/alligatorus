@@ -7,8 +7,7 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            Type,
-            Value,
+            Value_,
         },
     },
     std::{
@@ -20,11 +19,11 @@ use {
 #[derive(Clone)]
 pub(crate) struct ValuePendingImport {
     pub entry: CompileResultEntry,
-    pub resolved: RefCell<Option<EResult<Rc<dyn Value>>>>,
+    pub resolved: RefCell<Option<EResult<Rc<dyn Value_>>>>,
 }
 
 impl ValuePendingImport {
-    pub(crate) fn resolve(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Value>> {
+    pub(crate) fn resolve(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Value_>> {
         let mut cached = self.resolved.borrow_mut();
         if let Some(v) = cached.as_ref() {
             return v.clone();
@@ -61,35 +60,5 @@ impl ValuePendingImport {
         };
         *cached = Some(out.clone());
         out
-    }
-}
-
-impl Value for ValuePendingImport {
-    fn as_exporter_any(&self) -> Rc<dyn crate::artifact::ExporterAny> {
-        unreachable!();
-    }
-
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
-        let mut v = self.resolve(xx, loc);
-        let mut errors = None;
-        v.push_errors(&mut errors);
-        let Some(v) = v.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let mut t = v.type_(xx, loc);
-        t.push_errors(&mut errors);
-        let Some(t) = t.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors,
-            v: Some(t),
-        };
     }
 }

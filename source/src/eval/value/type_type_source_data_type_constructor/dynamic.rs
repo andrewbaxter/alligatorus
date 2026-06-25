@@ -18,7 +18,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectType,
@@ -37,7 +37,7 @@ pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 
 impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
         let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(value);
         Rc::new(TypeSourceDataTypeConstructorConst { data: ctor.data.clone() })
     }
@@ -48,13 +48,13 @@ impl ExporterAny for TypeTypeSourceDataTypeConstructorDynamic {
         return EResult::ok(Rc::new(TypeTypeSourceDataTypeConstructorDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeTypeSourceDataTypeConstructorDynamic));
     }
 }
 
 impl Type for TypeTypeSourceDataTypeConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
 
@@ -81,7 +81,7 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl Value for TypeTypeSourceDataTypeConstructorDynamic {
+impl Value_ for TypeTypeSourceDataTypeConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeTypeSourceDataTypeConstructorDynamic);
     }

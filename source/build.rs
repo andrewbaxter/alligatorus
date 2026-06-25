@@ -33,6 +33,7 @@ fn main() {
             ScopeEntryId,
             Unique,
             Value,
+            Value_,
         };
         use crate::eval::TargetDynamic;
         use crate::eval::V8EvalContextSlot;

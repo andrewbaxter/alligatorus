@@ -45,7 +45,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -106,7 +106,7 @@ impl ExporterAny for TypeSourceTaggedUnionConstructorConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -181,7 +181,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
                 .expect("expected TypeSourceTaggedUnionConstructorConst");
         let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let tu_const = TypeSourceTaggedUnionConst { data: self_.data.clone() };
-        let tu_art = serialize_artifact(xx, loc, &tu_const as &dyn Value);
+        let tu_art = serialize_artifact(xx, loc, &tu_const as &dyn Value_);
         if let Some(errors1) = tu_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -212,7 +212,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
 }
 
 impl Type for TypeSourceTaggedUnionConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceTaggedUnionConstructorConst {
             data: self.data.clone(),
             variant_index: self.variant_index,
@@ -250,7 +250,7 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
     }
 }
 
-impl Value for TypeSourceTaggedUnionConstructorConst {
+impl Value_ for TypeSourceTaggedUnionConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

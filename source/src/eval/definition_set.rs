@@ -49,7 +49,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectLiftDynamic,
@@ -303,7 +303,8 @@ pub(crate) fn deserialize_captured_externals(
             ArtifactExternal::StagedExpr { local_id, expr } => {
                 let expr =
                     expr_from_artifact(xx, expr).expect("Failed to deserialize captured StagedExprCell expr");
-                let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value>)) });
+                let cell =
+                    Rc::new(StagedExprCell { value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value_>)) });
                 (ScopeEntryId::Local(*local_id), External::StagedExprCell(cell))
             },
             ArtifactExternal::StageLift { local_id, source_type } => {
@@ -417,17 +418,17 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
         let data_types: Vec<Artifact> = set.data_types.borrow().iter().filter_map(|dt| {
             let dt_const =
                 crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst { data: dt.clone() };
-            serialize_artifact(xx, loc, &dt_const as &dyn Value).v
+            serialize_artifact(xx, loc, &dt_const as &dyn Value_).v
         }).collect();
         let functions: Vec<Artifact> = set.functions.borrow().iter().filter_map(|f| {
             let f_const =
                 crate::eval::value::type_source_function::r#const::TypeSourceFunctionConst { data: f.clone() };
-            serialize_artifact(xx, loc, &f_const as &dyn Value).v
+            serialize_artifact(xx, loc, &f_const as &dyn Value_).v
         }).collect();
         let interfaces: Vec<Artifact> = set.interfaces.borrow().iter().filter_map(|i| {
             let i_const =
                 crate::eval::value::type_source_interface::r#const::TypeSourceInterfaceConst { data: i.clone() };
-            serialize_artifact(xx, loc, &i_const as &dyn Value).v
+            serialize_artifact(xx, loc, &i_const as &dyn Value_).v
         }).collect();
         let dependencies: Vec<Artifact> = {
             let deps = set.dependencies.borrow();
@@ -461,7 +462,7 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let obj =
             v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lift")?;
         let dk = v8::String::new(scope, "_d").unwrap();

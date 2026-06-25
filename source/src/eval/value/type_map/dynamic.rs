@@ -61,7 +61,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
             downcast_value,
         },
         r#gen::{
@@ -154,7 +154,7 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: new_type }),
+                value: Rc::new(ValueAnyConst { inner: new_type }).into(),
             });
         }
         return er_seq_cv!(loc, erb, {
@@ -173,7 +173,7 @@ impl AspectField for TypeMapDynamic {
                     value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapGetFnDynamic {
                         key_type: self.key_type.clone(),
                         value_type: self.value_type.clone(),
-                    }) }),
+                    }) }).into(),
                 });
             }
             let access_code = CodeDynamicType::FieldUse(CodeDynamicFieldUse {
@@ -191,7 +191,7 @@ impl AspectField for TypeMapDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }),
+                }).into(),
             });
         });
     }
@@ -299,7 +299,7 @@ impl AspectStackValueDynamic for TypeMapDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }),
+            }).into(),
         }
     }
 }
@@ -309,7 +309,7 @@ impl ExporterAny for TypeMapDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -330,7 +330,7 @@ impl Push for TypeMapDynamic {
 }
 
 impl Type for TypeMapDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeMapDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
@@ -426,11 +426,13 @@ impl Type for TypeMapDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                }).into(),
             });
         }
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record Rc not unique in map cast");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.into_direct()))
+                .ok()
+                .expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
@@ -443,14 +445,14 @@ impl Type for TypeMapDynamic {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(ValueStringConst(s.clone()),),
+                        value: Rc::new(ValueStringConst(s.clone()),).into(),
                     },
                     ConstKey::Usize(n) => CodeValue {
                         code: Code {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(ValueNumberConst(*n as f64),),
+                        value: Rc::new(ValueNumberConst(*n as f64),).into(),
                     },
                 };
                 let key_cv = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), key_cv))?;
@@ -488,7 +490,7 @@ impl Type for TypeMapDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                }).into(),
             });
         });
     }
@@ -502,7 +504,7 @@ impl Type for TypeMapDynamic {
     }
 }
 
-impl Value for TypeMapDynamic {
+impl Value_ for TypeMapDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -544,13 +546,13 @@ impl ExporterAny for TypeMapGetFnDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeMapGetFnDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(self.clone())
     }
 
@@ -574,7 +576,7 @@ impl Type for TypeMapGetFnDynamic {
     }
 }
 
-impl Value for TypeMapGetFnDynamic {
+impl Value_ for TypeMapGetFnDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -625,13 +627,13 @@ impl ExporterAny for TypeMapNewDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeMapNewDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeMapNewDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
@@ -658,7 +660,7 @@ impl Type for TypeMapNewDynamic {
     }
 }
 
-impl Value for TypeMapNewDynamic {
+impl Value_ for TypeMapNewDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

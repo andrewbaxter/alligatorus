@@ -33,7 +33,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -72,7 +72,7 @@ impl AspectBind for TypeStringConst {
         EResult::ok((Code {
             loc: loc,
             code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>))
+        }, Box::new(ScopeEntryValue { value: cv.value.into_direct() }) as Box<dyn ScopeEntry>))
     }
 }
 
@@ -101,7 +101,7 @@ impl AspectField for TypeStringConst {
 }
 
 impl AspectStringConst for TypeStringConst {
-    fn get(&self, value: &dyn Value) -> String {
+    fn get(&self, value: &dyn Value_) -> String {
         return must_downcast_ref::<ValueStringConst>(value).0.clone();
     }
 }
@@ -111,7 +111,7 @@ impl ExporterAny for TypeStringConst {
         return EResult::ok(Rc::new(TypeStringConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(ValueTypeStringConst));
     }
 }
@@ -137,7 +137,7 @@ impl ExporterRootDelegate for TypeStringConst {
 }
 
 impl Type for TypeStringConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(ValueTypeStringConst)
     }
 
@@ -175,7 +175,7 @@ impl Type for TypeStringConst {
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
+                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref()))).into()
             });
         });
     }
@@ -186,7 +186,7 @@ impl Type for TypeStringConst {
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
+                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref()))).into()
             });
         });
     }
@@ -196,7 +196,7 @@ impl Type for TypeStringConst {
     }
 }
 
-impl Value for TypeStringConst {
+impl Value_ for TypeStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(ValueTypeStringConst);
     }

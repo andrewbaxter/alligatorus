@@ -26,7 +26,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -91,13 +91,13 @@ impl ExporterAny for TypeAnyScopeEntryDynamic {
         return EResult::ok(Rc::new(TypeAnyScopeEntryDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeAnyScopeEntryDynamic));
     }
 }
 
 impl Type for TypeAnyScopeEntryDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeAnyScopeEntryDynamic)
     }
 
@@ -128,7 +128,7 @@ impl Type for TypeAnyScopeEntryDynamic {
     }
 }
 
-impl Value for TypeAnyScopeEntryDynamic {
+impl Value_ for TypeAnyScopeEntryDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAnyScopeEntryDynamic);
     }

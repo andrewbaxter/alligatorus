@@ -48,7 +48,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -112,7 +112,7 @@ impl AspectLiftDynamic for TypeSourceFunctionDynamic {
         xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
         let set = func_ref.data.set.borrow().as_ref().unwrap().clone();
         xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
@@ -131,7 +131,7 @@ impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceFunctionDynamic),
-            }),
+            }).into(),
         }
     }
 }
@@ -141,13 +141,13 @@ impl ExporterAny for TypeSourceFunctionDynamic {
         return EResult::ok(Rc::new(TypeSourceFunctionDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeSourceFunctionDynamic));
     }
 }
 
 impl Type for TypeSourceFunctionDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeSourceFunctionDynamic)
     }
 
@@ -213,7 +213,7 @@ impl Type for TypeSourceFunctionDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            }).into(),
         })
     }
 
@@ -222,7 +222,7 @@ impl Type for TypeSourceFunctionDynamic {
     }
 }
 
-impl Value for TypeSourceFunctionDynamic {
+impl Value_ for TypeSourceFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceFunctionDynamic);
     }
@@ -240,13 +240,13 @@ impl ExporterAny for TypeTypeSourceFunctionDynamic {
         return EResult::ok(Rc::new(TypeTypeSourceFunctionDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeTypeSourceFunctionDynamic));
     }
 }
 
 impl Type for TypeTypeSourceFunctionDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeTypeSourceFunctionDynamic)
     }
 
@@ -267,7 +267,7 @@ impl Type for TypeTypeSourceFunctionDynamic {
     }
 }
 
-impl Value for TypeTypeSourceFunctionDynamic {
+impl Value_ for TypeTypeSourceFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeTypeSourceFunctionDynamic);
     }

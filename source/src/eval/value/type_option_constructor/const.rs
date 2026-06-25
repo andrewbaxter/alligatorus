@@ -21,7 +21,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectFunction,
@@ -69,7 +69,7 @@ impl AspectFunction for TypeOptionConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: opt_type }),
+            value: Rc::new(ValueAnyConst { inner: opt_type }).into(),
         })
     }
 }
@@ -88,13 +88,13 @@ impl ExporterAny for TypeOptionConstructorConst {
         return EResult::ok(Rc::new(TypeOptionConstructorConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeOptionConstructorConst));
     }
 }
 
 impl Type for TypeOptionConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeOptionConstructorConst)
     }
 
@@ -121,7 +121,7 @@ impl Type for TypeOptionConstructorConst {
     }
 }
 
-impl Value for TypeOptionConstructorConst {
+impl Value_ for TypeOptionConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeOptionConstructorConst);
     }

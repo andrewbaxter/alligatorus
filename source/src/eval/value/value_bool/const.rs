@@ -12,7 +12,7 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value,
+            Value_,
         },
     },
     std::rc::Rc,
@@ -26,7 +26,7 @@ impl ExporterAny for ValueBoolConst {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         EResult::ok(Rc::new(*self))
     }
 }
@@ -61,7 +61,7 @@ impl ExporterRootDelegate for ValueBoolConst {
     }
 }
 
-impl Value for ValueBoolConst {
+impl Value_ for ValueBoolConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(*self)
     }

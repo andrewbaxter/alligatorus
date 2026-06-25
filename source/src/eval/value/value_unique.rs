@@ -38,7 +38,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -80,7 +80,7 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
-            value: Rc::new(self.unique),
+            value: Rc::new(self.unique).into(),
         }
     }
 }
@@ -93,7 +93,8 @@ impl AspectBind for TypeUnique {
         EResult::ok(
             (
                 cv.code,
-                Box::new(super::tuple::scope_entry::ScopeEntryValue { value: cv.value }) as Box<dyn ScopeEntry>,
+                Box::new(super::tuple::scope_entry::ScopeEntryValue { value: cv.value.into_direct() }) as
+                    Box<dyn ScopeEntry>,
             ),
         )
     }
@@ -124,7 +125,7 @@ impl AspectOperatorEq for TypeUnique {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueBoolConst(b == r)),
+                value: Rc::new(ValueBoolConst(b == r)).into(),
             });
         }
         let base_dyn = match aspect_consume_dynamic_get(xx, loc, self).into_res() {
@@ -180,7 +181,7 @@ impl ExporterAny for TypeUnique {
         EResult::ok(Rc::new(TypeUnique))
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         EResult::ok(Rc::new(TypeUnique))
     }
 }
@@ -211,7 +212,7 @@ impl ExporterRootDelegate for TypeUnique {
 }
 
 impl Type for TypeUnique {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeUnique)
     }
 
@@ -251,7 +252,7 @@ impl Type for TypeUnique {
     }
 }
 
-impl Value for TypeUnique {
+impl Value_ for TypeUnique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(TypeUnique)
     }
@@ -266,7 +267,7 @@ impl ExporterAny for Unique {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         EResult::ok(Rc::new(*self))
     }
 }
@@ -285,7 +286,7 @@ impl Push for Unique {
     }
 }
 
-impl Value for Unique {
+impl Value_ for Unique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(*self)
     }

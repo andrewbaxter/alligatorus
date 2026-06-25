@@ -28,7 +28,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -90,7 +90,7 @@ impl AspectLiftDynamic for TypeAspectDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
         let aspect_pull = (&*aspect as &dyn std::any::Any).downcast_ref::<AspectPull>().unwrap().clone();
         Ok(Rc::new(aspect_pull))
@@ -108,13 +108,13 @@ impl ExporterAny for TypeAspectDynamic {
         return EResult::ok(Rc::new(TypeAspectDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeAspectDynamic));
     }
 }
 
 impl Type for TypeAspectDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeAspectDynamic)
     }
 
@@ -152,7 +152,7 @@ impl Type for TypeAspectDynamic {
     }
 }
 
-impl Value for TypeAspectDynamic {
+impl Value_ for TypeAspectDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAspectDynamic);
     }

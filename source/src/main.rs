@@ -54,7 +54,7 @@ use {
             ImportStateId,
             LogEntry,
             SourceId,
-            Value,
+            Value_,
         },
         syntax::{
             ExprId,
@@ -120,9 +120,9 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
             loc: (source_id, m.id),
             r#type: match &m.r#type {
                 SourceExpr_::Literal(lit) => Expr_::Literal(make_lit_value(match lit {
-                    SourceLiteral::Null => Rc::new(ValueNullConst) as Rc<dyn Value>,
-                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as Rc<dyn Value>,
-                    SourceLiteral::Number(n) => Rc::new(ValueNumberConst(n.into_inner())) as Rc<dyn Value>,
+                    SourceLiteral::Null => Rc::new(ValueNullConst) as Rc<dyn Value_>,
+                    SourceLiteral::String(l) => Rc::new(ValueStringConst(l.clone())) as Rc<dyn Value_>,
+                    SourceLiteral::Number(n) => Rc::new(ValueNumberConst(n.into_inner())) as Rc<dyn Value_>,
                 })),
                 SourceExpr_::ScopeUse(expr) => Expr_::ScopeUse(
                     ExprScopeUse { key: Rc::new(source_expr_to_expr(source_id, &expr.key)) },
@@ -146,7 +146,7 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                     base: Rc::new(Expr {
                         loc: (source_id, m.id),
                         r#type: Expr_::Literal(
-                            make_lit_value(Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn Value>),
+                            make_lit_value(Rc::new(ValueStringConst(expr.base.clone())) as Rc<dyn Value_>),
                         ),
                     }),
                     value: Rc::new(source_expr_to_expr(source_id, &expr.value)),

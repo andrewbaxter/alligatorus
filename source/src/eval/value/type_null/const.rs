@@ -28,7 +28,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectArtifact,
@@ -85,7 +85,7 @@ impl ExporterAny for TypeNullConst {
         return EResult::ok(Rc::new(Self));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(ValueNullConst));
     }
 }
@@ -116,7 +116,7 @@ impl ExporterRootDelegate for TypeNullConst {
 }
 
 impl Type for TypeNullConst {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeNullConst)
     }
 
@@ -144,7 +144,7 @@ impl Type for TypeNullConst {
             erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst)
+                value: Rc::new(ValueNullConst).into()
             });
         });
     }
@@ -154,7 +154,7 @@ impl Type for TypeNullConst {
             erb.must_er(aspect_null_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst)
+                value: Rc::new(ValueNullConst).into()
             });
         });
     }
@@ -164,7 +164,7 @@ impl Type for TypeNullConst {
     }
 }
 
-impl Value for TypeNullConst {
+impl Value_ for TypeNullConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(Self);
     }

@@ -42,7 +42,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -134,7 +134,7 @@ impl AspectField for TypeAnyDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeAnyDynamic),
-            }),
+            }).into(),
         })
     }
 
@@ -185,7 +185,7 @@ impl AspectFunction for TypeAnyDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeAnyDynamic),
-            }),
+            }).into(),
         })
     }
 }
@@ -205,7 +205,7 @@ impl AspectLiftDynamic for TypeAnyDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value>, String> {
+    ) -> Result<Rc<dyn Value_>, String> {
         let type_ = rc_type_from_v8(&*value);
         Ok(type_.as_value())
     }
@@ -218,7 +218,7 @@ impl AspectStackValueDynamic for TypeAnyDynamic {
 }
 
 impl AspectType for TypeAnyDynamic {
-    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
         Rc::new(TypeAnyDynamic)
     }
 }
@@ -228,13 +228,13 @@ impl ExporterAny for TypeAnyDynamic {
         return EResult::ok(Rc::new(TypeAnyDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeAnyDynamic));
     }
 }
 
 impl Type for TypeAnyDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeAnyDynamic)
     }
 
@@ -308,7 +308,7 @@ impl Type for TypeAnyDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeAnyDynamic),
-            }),
+            }).into(),
         })
     }
 
@@ -321,7 +321,7 @@ impl Type for TypeAnyDynamic {
     }
 }
 
-impl Value for TypeAnyDynamic {
+impl Value_ for TypeAnyDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAnyDynamic);
     }

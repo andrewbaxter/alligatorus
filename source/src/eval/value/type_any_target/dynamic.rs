@@ -26,7 +26,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value,
+            Value_,
         },
         r#gen::{
             AspectBind,
@@ -91,13 +91,13 @@ impl ExporterAny for TypeAnyTargetDynamic {
         return EResult::ok(Rc::new(TypeAnyTargetDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeAnyTargetDynamic));
     }
 }
 
 impl Type for TypeAnyTargetDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
+    fn as_value(&self) -> Rc<dyn Value_> {
         Rc::new(TypeAnyTargetDynamic)
     }
 
@@ -128,7 +128,7 @@ impl Type for TypeAnyTargetDynamic {
     }
 }
 
-impl Value for TypeAnyTargetDynamic {
+impl Value_ for TypeAnyTargetDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAnyTargetDynamic);
     }
