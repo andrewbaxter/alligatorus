@@ -2,6 +2,8 @@ use {
     crate::{
         artifact::{
             Artifact,
+            ArtifactBody,
+            ArtifactIdSource,
             ExporterAny,
         },
         code_dynamic::{
@@ -25,7 +27,10 @@ use {
             from_v8_ref,
             value::{
                 type_any::r#const::TypeAnyConst,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_empty::r#const::ValueEmptyConst,
             },
@@ -138,6 +143,26 @@ impl ExporterAny for TypeExpr {
 
     fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(TypeExpr));
+    }
+}
+
+impl ExporterRootDelegate for TypeExpr {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        EResult::ok(Rc::new(TypeExpr) as Rc<dyn ExporterAny>)
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        EResult::ok(Artifact::Body(make_body(serde_json::Value::Null)))
     }
 }
 

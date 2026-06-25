@@ -11,9 +11,22 @@ use {
         eval::value::{
             record::Record,
             tuple::Tuple,
-            type_bool::r#const::TypeBoolConst,
-            type_null::r#const::TypeNullConst,
-            type_number::r#const::TypeNumberConst,
+            type_bool::{
+                dynamic::TypeBoolDynamic,
+                r#const::TypeBoolConst,
+            },
+            type_expr::TypeExpr,
+            type_list::dynamic::TypeListDynamic,
+            type_map::dynamic::TypeMapDynamic,
+            type_null::{
+                dynamic::TypeNullDynamic,
+                r#const::TypeNullConst,
+            },
+            type_number::{
+                dynamic::TypeNumberDynamic,
+                r#const::TypeNumberConst,
+            },
+            type_option::dynamic::TypeOptionDynamic,
             type_source_data_type::r#const::TypeSourceDataTypeConst,
             type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
             type_source_exports::r#const::TypeSourceExportsLiftedConst,
@@ -21,7 +34,10 @@ use {
             type_source_interface::r#const::TypeSourceInterfaceConst,
             type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
             type_source_tagged_union_constructor::r#const::TypeSourceTaggedUnionConstructorConst,
-            type_string::r#const::TypeStringConst,
+            type_string::{
+                dynamic::TypeStringDynamic,
+                r#const::TypeStringConst,
+            },
             value_bool::r#const::ValueBoolConst,
             value_number::r#const::ValueNumberConst,
             value_source_data_type::r#const::ValueSourceDataTypeConst,
@@ -71,11 +87,18 @@ pub(crate) trait ExporterRootDelegate {
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ExporterRoot {
     BoolConst,
+    BoolDynamic,
     BoolValueConst,
     DefinitionSet,
+    Expr,
+    ListDynamic,
+    MapDynamic,
     NullConst,
+    NullDynamic,
     NumberConst,
+    NumberDynamic,
     NumberValueConst,
+    OptionDynamic,
     Pull,
     Record,
     Root,
@@ -88,6 +111,7 @@ pub enum ExporterRoot {
     SourceTaggedUnionConst,
     SourceTaggedUnionConstructorConst,
     StringConst,
+    StringDynamic,
     StringValueConst,
     Tuple,
     Unique,
@@ -116,6 +140,7 @@ impl ArtifactExporter for ExporterRoot {
         let id_ref = id.as_ref();
         let res: EResult<Rc<dyn crate::artifact::ExporterAny>> = match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::BoolDynamic => TypeBoolDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::BoolValueConst => ValueBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_from_artifact_data(
                 &xx,
@@ -123,9 +148,15 @@ impl ArtifactExporter for ExporterRoot {
                 id_ref,
                 data,
             ),
+            ExporterRoot::Expr => TypeExpr::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::ListDynamic => TypeListDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::MapDynamic => TypeMapDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::NullDynamic => TypeNullDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::NumberDynamic => TypeNumberDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NumberValueConst => ValueNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::OptionDynamic => TypeOptionDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_from_artifact_data(
                 &xx,
                 loc,
@@ -182,6 +213,7 @@ impl ArtifactExporter for ExporterRoot {
                 data,
             ),
             ExporterRoot::StringConst => TypeStringConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::StringDynamic => TypeStringDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::StringValueConst => ValueStringConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Record => Record::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Tuple => Tuple::self_from_artifact_data(&xx, loc, id_ref, data),
@@ -223,6 +255,7 @@ impl ArtifactExporter for ExporterRoot {
         let mut errors: Option<Vec<ExprErr>> = None;
         let res = match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::BoolDynamic => TypeBoolDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::BoolValueConst => ValueBoolConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_to_serial(
                 xx,
@@ -230,9 +263,15 @@ impl ArtifactExporter for ExporterRoot {
                 self_,
                 make_body,
             ),
+            ExporterRoot::Expr => TypeExpr::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::ListDynamic => TypeListDynamic::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::MapDynamic => TypeMapDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NullConst => TypeNullConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::NullDynamic => TypeNullDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NumberConst => TypeNumberConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::NumberDynamic => TypeNumberDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NumberValueConst => ValueNumberConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::OptionDynamic => TypeOptionDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_to_serial(
                 xx,
                 loc,
@@ -273,6 +312,7 @@ impl ArtifactExporter for ExporterRoot {
                 make_body,
             ),
             ExporterRoot::StringConst => TypeStringConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::StringDynamic => TypeStringDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::StringValueConst => ValueStringConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Record => Record::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Tuple => Tuple::self_to_serial(xx, loc, self_, make_body),
@@ -365,8 +405,15 @@ impl TypeRoot {
     fn exporter_for(&self) -> Option<ExporterRoot> {
         return match self {
             TypeRoot::BoolConst => Some(ExporterRoot::BoolConst),
+            TypeRoot::BoolDynamic => Some(ExporterRoot::BoolDynamic),
+            TypeRoot::Expr => Some(ExporterRoot::Expr),
+            TypeRoot::ListDynamic => Some(ExporterRoot::ListDynamic),
+            TypeRoot::MapDynamic => Some(ExporterRoot::MapDynamic),
             TypeRoot::NullConst => Some(ExporterRoot::NullConst),
+            TypeRoot::NullDynamic => Some(ExporterRoot::NullDynamic),
             TypeRoot::NumberConst => Some(ExporterRoot::NumberConst),
+            TypeRoot::NumberDynamic => Some(ExporterRoot::NumberDynamic),
+            TypeRoot::OptionDynamic => Some(ExporterRoot::OptionDynamic),
             TypeRoot::Pull => Some(ExporterRoot::Pull),
             TypeRoot::Root => Some(ExporterRoot::Root),
             TypeRoot::SourceDataTypeConst => Some(ExporterRoot::SourceDataTypeConst),
@@ -377,6 +424,7 @@ impl TypeRoot {
             TypeRoot::SourceTaggedUnionConst => Some(ExporterRoot::SourceTaggedUnionConst),
             TypeRoot::SourceTaggedUnionConstructorConst => Some(ExporterRoot::SourceTaggedUnionConstructorConst),
             TypeRoot::StringConst => Some(ExporterRoot::StringConst),
+            TypeRoot::StringDynamic => Some(ExporterRoot::StringDynamic),
             TypeRoot::Unique => Some(ExporterRoot::Unique),
             _ => None,
         };

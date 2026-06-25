@@ -1,6 +1,13 @@
 use {
     crate::{
-        artifact::ExporterAny,
+        artifact::{
+            Artifact,
+            ArtifactBody,
+            ArtifactIdSource,
+            ExporterAny,
+            deserialize_type_artifact,
+            serialize_artifact,
+        },
         code_dynamic::{
             CodeDynamic,
             CodeDynamicFieldUse,
@@ -24,8 +31,12 @@ use {
                     ValueAnyConst,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
+                type_list::artifact::ArtifactListType,
                 type_null::dynamic::TypeNullDynamic,
-                type_root::r#const::TypeRoot,
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
                 value_dynamic::{
@@ -266,6 +277,58 @@ impl ExporterAny for TypeListDynamic {
 
     fn as_value(&self) -> EResult<Rc<dyn Value_>> {
         return EResult::ok(Rc::new(self.clone()));
+    }
+}
+
+impl ExporterRootDelegate for TypeListDynamic {
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        let body: ArtifactListType = match serde_json::from_value(data) {
+            Ok(v) => v,
+            Err(e) => return EResult::err(loc, e.to_string()),
+        };
+        let element_res = deserialize_type_artifact(xx, loc, body.element_type);
+        let mut errors = element_res.errors;
+        let Some(element_type) = element_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(TypeListDynamic { element_type }) as Rc<dyn ExporterAny>),
+        };
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = match self_.downcast::<TypeListDynamic>() {
+            Ok(v) => v,
+            Err(_) => return EResult::err(loc, "TypeListDynamic::self_to_serial: type mismatch".to_string()),
+        };
+        let element_val: &dyn Value_ = self_.element_type.as_ref();
+        let element_art = serialize_artifact(xx, loc, element_val);
+        let mut errors = element_art.errors;
+        let Some(element_artifact) = element_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let body = ArtifactListType { element_type: element_artifact };
+        return EResult {
+            errors,
+            v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
+        };
     }
 }
 
