@@ -5,7 +5,6 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            ValueFromAny,
         },
         eval::value::type_root::r#const::ExporterRootDelegate,
         langhelp::{
@@ -41,9 +40,7 @@ impl ExporterRootDelegate for ValueStringConst {
     ) -> EResult<Rc<dyn ExporterAny>> {
         return EResult::from(
             loc,
-            serde_json::from_value::<String>(
-                data,
-            ).map(|s| Rc::new(ValueFromAny(Rc::new(ValueStringConst(s)))) as Rc<dyn ExporterAny>),
+            serde_json::from_value::<String>(data).map(|s| Rc::new(ValueStringConst(s)) as Rc<dyn ExporterAny>),
         );
     }
 

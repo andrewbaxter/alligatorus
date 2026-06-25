@@ -440,30 +440,6 @@ pub(crate) fn serialize_artifact(xx: &ExprContext, loc: QExprId, v: &dyn Value) 
     };
 }
 
-pub(crate) struct TypeFromAny(pub Rc<dyn Type>);
-
-impl ExporterAny for TypeFromAny {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(self.0.clone());
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
-pub(crate) struct ValueFromAny(pub Rc<dyn Value>);
-
-impl ExporterAny for ValueFromAny {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(self.0.clone());
-    }
-}
-
 impl dyn ExporterAny {
     pub(crate) fn downcast<T: ExporterAny>(self: Rc<Self>) -> Result<Rc<T>, Rc<dyn Any>> {
         let any: Rc<dyn Any> = self;

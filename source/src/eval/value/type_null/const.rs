@@ -7,7 +7,6 @@ use {
             ArtifactExporter,
             ArtifactIdSource,
             ExporterAny,
-            ValueFromAny,
         },
         eval::value::{
             type_any::r#const::TypeAnyConst,
@@ -59,7 +58,7 @@ impl ArtifactExporter for TypeNullConst {
     ) -> EResult<Rc<dyn ExporterAny>> {
         return EResult {
             errors: None,
-            v: Some(Rc::new(ValueFromAny(Rc::new(ValueNullConst)))),
+            v: Some(Rc::new(ValueNullConst)),
         };
     }
 

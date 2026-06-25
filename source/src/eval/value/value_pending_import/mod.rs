@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            ValueFromAny,
-            deserialize_artifact,
-        },
+        artifact::deserialize_artifact,
         langhelp::{
             CompileResResult,
             CompileResultEntry,
