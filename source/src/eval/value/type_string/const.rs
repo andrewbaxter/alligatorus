@@ -68,11 +68,23 @@ impl AspectArtifact for TypeStringConst {
 }
 
 impl AspectBind for TypeStringConst {
-    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok((Code {
-            loc: loc,
-            code: Code_::None,
-        }, Box::new(ScopeEntryValue { value: cv.value.into_direct() }) as Box<dyn ScopeEntry>))
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        let mut value_res = cv.value.resolve(xx, loc);
+        let mut errors = None;
+        value_res.push_errors(&mut errors);
+        let Some(value) = value_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some((Code {
+                loc: loc,
+                code: Code_::None,
+            }, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+        };
     }
 }
 

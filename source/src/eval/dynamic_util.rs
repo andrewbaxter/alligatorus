@@ -77,9 +77,19 @@ pub(crate) fn bind_via_target(
         },
     };
     if matches!(cv.code.code, Code_::None) {
-        return EResult::ok(
-            (cv.code, Box::new(ScopeEntryValue { value: cv.value.into_direct() }) as Box<dyn ScopeEntry>),
-        );
+        let mut value_res = cv.value.resolve(xx, loc);
+        let mut errors = None;
+        value_res.push_errors(&mut errors);
+        let Some(value) = value_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some((cv.code, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+        };
     }
     let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
         return EResult::err(loc, format!("Type ({}) is missing aspect AspectBindDynamic", vtype.desc()));

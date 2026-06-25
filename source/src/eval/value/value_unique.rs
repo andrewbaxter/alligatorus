@@ -89,14 +89,22 @@ pub(crate) struct TypeUnique;
 impl Aspect for TypeUnique { }
 
 impl AspectBind for TypeUnique {
-    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        EResult::ok(
-            (
-                cv.code,
-                Box::new(super::tuple::scope_entry::ScopeEntryValue { value: cv.value.into_direct() }) as
-                    Box<dyn ScopeEntry>,
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+        let mut value_res = cv.value.resolve(xx, loc);
+        let mut errors = None;
+        value_res.push_errors(&mut errors);
+        let Some(value) = value_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(
+                (cv.code, Box::new(super::tuple::scope_entry::ScopeEntryValue { value }) as Box<dyn ScopeEntry>),
             ),
-        )
+        };
     }
 }
 
