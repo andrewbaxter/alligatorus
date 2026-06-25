@@ -16,11 +16,9 @@ use {
                 ExporterRootDelegate,
                 TypeRoot,
             },
-            type_string::{
-                artifact::ArtifactStringType,
-                dynamic::TypeStringDynamic,
-            },
+            type_string::dynamic::TypeStringDynamic,
             value_string::r#const::ValueStringConst,
+            value_type_string::r#const::ValueTypeStringConst,
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -65,7 +63,7 @@ impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::StringConst)
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::StringValueConst)
     }
 }
 
@@ -114,23 +112,18 @@ impl ExporterAny for TypeStringConst {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeStringConst));
+        return EResult::ok(Rc::new(ValueTypeStringConst));
     }
 }
 
 impl ExporterRootDelegate for TypeStringConst {
     fn self_from_artifact_data(
         _xx: &ExprContext,
-        loc: QExprId,
+        _loc: QExprId,
         _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
+        _data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactStringType>(
-                data,
-            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
+        return EResult::ok(Rc::new(ValueTypeStringConst) as Rc<dyn crate::artifact::ExporterAny>);
     }
 
     fn self_to_serial(
@@ -139,13 +132,13 @@ impl ExporterRootDelegate for TypeStringConst {
         _self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactStringType).unwrap())));
+        return EResult::ok(Artifact::Body(make_body(serde_json::Value::Null)));
     }
 }
 
 impl Type for TypeStringConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeStringConst)
+        Rc::new(ValueTypeStringConst)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -205,7 +198,7 @@ impl Type for TypeStringConst {
 
 impl Value for TypeStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeStringConst);
+        return Rc::new(ValueTypeStringConst);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

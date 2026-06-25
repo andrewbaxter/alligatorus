@@ -8,16 +8,14 @@ use {
         eval::value::{
             tuple::scope_entry::ScopeEntryValue,
             type_any::r#const::TypeAnyConst,
-            type_number::{
-                artifact::ArtifactNumberType,
-                dynamic::TypeNumberDynamic,
-            },
+            type_number::dynamic::TypeNumberDynamic,
             type_root::r#const::{
                 ExporterRootDelegate,
                 TypeRoot,
             },
             value_bool::r#const::ValueBoolConst,
             value_number::r#const::ValueNumberConst,
+            value_type_number::r#const::ValueTypeNumberConst,
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -66,7 +64,7 @@ impl Aspect for TypeNumberConst { }
 
 impl AspectArtifact for TypeNumberConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::NumberConst)
+        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::NumberValueConst)
     }
 }
 
@@ -156,23 +154,18 @@ impl ExporterAny for TypeNumberConst {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeNumberConst));
+        return EResult::ok(Rc::new(ValueTypeNumberConst));
     }
 }
 
 impl ExporterRootDelegate for TypeNumberConst {
     fn self_from_artifact_data(
         _xx: &ExprContext,
-        loc: QExprId,
+        _loc: QExprId,
         _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
+        _data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactNumberType>(
-                data,
-            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
+        return EResult::ok(Rc::new(ValueTypeNumberConst) as Rc<dyn crate::artifact::ExporterAny>);
     }
 
     fn self_to_serial(
@@ -181,13 +174,13 @@ impl ExporterRootDelegate for TypeNumberConst {
         _self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNumberType).unwrap())));
+        return EResult::ok(Artifact::Body(make_body(serde_json::Value::Null)));
     }
 }
 
 impl Type for TypeNumberConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeNumberConst)
+        Rc::new(ValueTypeNumberConst)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -253,7 +246,7 @@ impl Type for TypeNumberConst {
 
 impl Value for TypeNumberConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeNumberConst);
+        return Rc::new(ValueTypeNumberConst);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {

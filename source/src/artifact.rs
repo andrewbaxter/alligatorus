@@ -6,7 +6,6 @@ use {
             EResult,
             ExprContext,
             ExprErr,
-            ExprSubErr,
             QExprId,
             Type,
             Value,
@@ -71,20 +70,6 @@ pub(crate) enum ArtifactBodyExporter {
     Body(Box<ArtifactBody>),
     Root,
     SourceRef(ArtifactIdSource),
-}
-
-struct ArtifactDeserializerFromAny {
-    v: Rc<dyn ArtifactExporter>,
-}
-
-impl ExporterAny for ArtifactDeserializerFromAny {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
 }
 
 pub(crate) type ArtifactFinalizer = Box<dyn FnOnce(&ExprContext, QExprId) -> ()>;
@@ -169,25 +154,17 @@ pub(crate) fn deserialize_artifact(
                     },
                 }
             };
-            let exporter = match exporter_any.downcast::<ArtifactDeserializerFromAny>() {
-                Ok(v) => v,
-                Err(e) => {
-                    errors.get_or_insert_default().push(ExprErr {
-                        errors: vec![
-                            ExprSubErr::Opaque("Artifact deserializer reference is not a deserializer".to_string(),),
-                        ],
-                        loc: loc,
-                    });
-                    return EResult {
-                        errors: errors,
-                        v: None,
-                    };
-                },
-            };
-            return EResult {
-                errors,
-                v: Some(exporter)
+            let exporter_res = exporter_any_to_artifact_exporter(xx, loc, exporter_any);
+            if let Some(errors1) = exporter_res.errors {
+                errors.get_or_insert_default().extend(errors1);
             }
+            let Some(exporter) = exporter_res.v else {
+                return EResult {
+                    errors,
+                    v: None,
+                };
+            };
+            break 'exporter exporter;
         };
         return exporter.from_serial(xx, loc, id, body.data);
     }
@@ -221,6 +198,38 @@ pub(crate) fn deserialize_type_artifact(
     return EResult {
         errors,
         v: Some(v),
+    };
+}
+
+fn exporter_any_to_artifact_exporter(
+    xx: &ExprContext,
+    loc: QExprId,
+    exporter_any: Rc<dyn ExporterAny>,
+) -> EResult<Rc<dyn ArtifactExporter>> {
+    if let Ok(er) = Rc::clone(&exporter_any).downcast::<crate::eval::value::type_root::r#const::ExporterRoot>() {
+        return EResult::ok(er as Rc<dyn ArtifactExporter>);
+    }
+    let type_res = exporter_any.as_type();
+    let mut errors = type_res.errors;
+    let Some(type_) = type_res.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
+    };
+    let asp_res = aspect_artifact_get(xx, loc, type_.as_ref());
+    if let Some(errors1) = asp_res.errors {
+        errors.get_or_insert_default().extend(errors1);
+    }
+    let Some(asp) = asp_res.v else {
+        return EResult {
+            errors,
+            v: None,
+        };
+    };
+    return EResult {
+        errors,
+        v: Some(asp.exporter()),
     };
 }
 
@@ -341,24 +350,17 @@ pub(crate) fn independent_finalize_deserialize_artifact(
                 };
             },
         };
-        let exporter = match exporter_any.downcast::<ArtifactDeserializerFromAny>() {
-            Ok(v) => v,
-            Err(_) => {
-                errors.get_or_insert_default().push(ExprErr {
-                    errors: vec![
-                        ExprSubErr::Opaque(
-                            "independent_finalize_deserialize_artifact: exporter reference is not a deserializer".to_string(),
-                        ),
-                    ],
-                    loc,
-                });
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            },
+        let exporter_res = exporter_any_to_artifact_exporter(xx, loc, exporter_any);
+        if let Some(errors1) = exporter_res.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(exporter) = exporter_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
         };
-        let res = exporter.v.from_serial(xx, loc, None, body.data);
+        let res = exporter.from_serial(xx, loc, None, body.data);
         if let Some(errors1) = res.errors {
             errors.get_or_insert_default().extend(errors1);
         }

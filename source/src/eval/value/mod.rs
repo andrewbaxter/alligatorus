@@ -49,4 +49,7 @@ pub mod value_pending_import;
 pub mod value_pull;
 pub mod value_source_data_type;
 pub mod value_string;
+pub mod value_type_bool;
+pub mod value_type_number;
+pub mod value_type_string;
 pub mod value_unique;

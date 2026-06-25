@@ -1,6 +1,13 @@
 use {
     crate::{
-        artifact::ExporterAny,
+        artifact::{
+            Artifact,
+            ArtifactBody,
+            ArtifactIdSource,
+            ExporterAny,
+            ValueFromAny,
+        },
+        eval::value::type_root::r#const::ExporterRootDelegate,
         langhelp::{
             EResult,
             ExprContext,
@@ -22,6 +29,38 @@ impl ExporterAny for ValueNumberConst {
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(*self));
+    }
+}
+
+impl ExporterRootDelegate for ValueNumberConst {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<f64>(
+                data,
+            ).map(|n| Rc::new(ValueFromAny(Rc::new(ValueNumberConst(n)))) as Rc<dyn ExporterAny>),
+        );
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let v = match self_.downcast::<ValueNumberConst>() {
+            Ok(v) => v,
+            Err(_) => return EResult::err(
+                loc,
+                "ValueNumberConst::self_to_serial: expected ValueNumberConst".to_string(),
+            ),
+        };
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(v.0).unwrap())));
     }
 }
 

@@ -3774,6 +3774,19 @@ pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value:
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
+        let source =
+            if let Some(pending) =
+                (source.value.as_ref() as
+                    &dyn
+                        std::any::Any).downcast_ref::<crate::eval::value::value_pending_import::ValuePendingImport>() {
+                let resolved = erb.must_er(pending.resolve(xx, loc))?;
+                CodeValue {
+                    code: source.code,
+                    value: resolved,
+                }
+            } else {
+                source
+            };
         let source_type = erb.must_er(source.value.type_(xx, loc))?;
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {

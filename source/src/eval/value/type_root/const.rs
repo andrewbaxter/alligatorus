@@ -22,6 +22,9 @@ use {
             type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
             type_source_tagged_union_constructor::r#const::TypeSourceTaggedUnionConstructorConst,
             type_string::r#const::TypeStringConst,
+            value_bool::r#const::ValueBoolConst,
+            value_number::r#const::ValueNumberConst,
+            value_string::r#const::ValueStringConst,
             value_unique::TypeUnique,
         },
         langhelp::{
@@ -67,9 +70,11 @@ pub(crate) trait ExporterRootDelegate {
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ExporterRoot {
     BoolConst,
+    BoolValueConst,
     DefinitionSet,
     NullConst,
     NumberConst,
+    NumberValueConst,
     Pull,
     Record,
     Root,
@@ -81,6 +86,7 @@ pub enum ExporterRoot {
     SourceTaggedUnionConst,
     SourceTaggedUnionConstructorConst,
     StringConst,
+    StringValueConst,
     Tuple,
     Unique,
 }
@@ -91,7 +97,7 @@ impl ExporterRoot {
             ExporterRoot::Root => ArtifactBodyExporter::Root,
             _ => ArtifactBodyExporter::Body(Box::new(ArtifactBody {
                 data: serde_json::to_value(self).unwrap(),
-                exporter: ExporterRoot::Root.self_to_serial_exporter(),
+                exporter: ArtifactBodyExporter::Root,
             })),
         }
     }
@@ -108,6 +114,7 @@ impl ArtifactExporter for ExporterRoot {
         let id_ref = id.as_ref();
         let res: EResult<Rc<dyn crate::artifact::ExporterAny>> = match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::BoolValueConst => ValueBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_from_artifact_data(
                 &xx,
                 loc,
@@ -116,6 +123,7 @@ impl ArtifactExporter for ExporterRoot {
             ),
             ExporterRoot::NullConst => TypeNullConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NumberConst => TypeNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::NumberValueConst => ValueNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_from_artifact_data(
                 &xx,
                 loc,
@@ -166,12 +174,13 @@ impl ArtifactExporter for ExporterRoot {
                 data,
             ),
             ExporterRoot::StringConst => TypeStringConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::StringValueConst => ValueStringConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Record => Record::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Tuple => Tuple::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Unique => TypeUnique::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::Root => EResult::from(
                 loc,
-                serde_json::from_value::<TypeRoot>(
+                serde_json::from_value::<ExporterRoot>(
                     data,
                 ).map(|r| Rc::new(r) as Rc<dyn crate::artifact::ExporterAny>),
             ),
@@ -203,8 +212,10 @@ impl ArtifactExporter for ExporterRoot {
             data,
             exporter: me.self_to_serial_exporter(),
         });
-        return match self {
+        let mut errors: Option<Vec<ExprErr>> = None;
+        let res = match self {
             ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::BoolValueConst => ValueBoolConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_to_serial(
                 xx,
                 loc,
@@ -213,6 +224,7 @@ impl ArtifactExporter for ExporterRoot {
             ),
             ExporterRoot::NullConst => TypeNullConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NumberConst => TypeNumberConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::NumberValueConst => ValueNumberConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_to_serial(
                 xx,
                 loc,
@@ -247,11 +259,29 @@ impl ArtifactExporter for ExporterRoot {
                 make_body,
             ),
             ExporterRoot::StringConst => TypeStringConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::StringValueConst => ValueStringConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Record => Record::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Tuple => Tuple::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Unique => TypeUnique::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::Root => EResult::ok(Artifact::Body(make_body(serde_json::to_value(me).unwrap()))),
         };
+        if let Some(e) = res.errors {
+            errors.get_or_insert_default().extend(e);
+        }
+        return EResult {
+            errors,
+            v: res.v,
+        };
+    }
+}
+
+impl ExporterAny for ExporterRoot {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!()
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        unimplemented!()
     }
 }
 
@@ -292,6 +322,7 @@ pub enum TypeRoot {
     Pull,
     PullAspect,
     Root,
+    SourceDataTypeConst,
     SourceDataTypeConstructorConst,
     SourceDataTypeConstructorDynamic,
     SourceDataTypeDynamic,
@@ -324,6 +355,7 @@ impl TypeRoot {
             TypeRoot::NumberConst => Some(ExporterRoot::NumberConst),
             TypeRoot::Pull => Some(ExporterRoot::Pull),
             TypeRoot::Root => Some(ExporterRoot::Root),
+            TypeRoot::SourceDataTypeConst => Some(ExporterRoot::SourceDataTypeConst),
             TypeRoot::SourceDataTypeConstructorConst => Some(ExporterRoot::SourceDataTypeConstructorConst),
             TypeRoot::SourceExportsLiftedConst => Some(ExporterRoot::SourceExportsLiftedConst),
             TypeRoot::SourceFunctionConst => Some(ExporterRoot::SourceFunctionConst),
@@ -347,11 +379,11 @@ impl crate::langhelp::Aspect for TypeRoot { }
 
 impl ExporterAny for TypeRoot {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(*self));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
+        return EResult::ok(Rc::new(*self));
     }
 }
 
@@ -362,7 +394,7 @@ impl Type for TypeRoot {
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
         if *key == aspect_artifact_aspect_id() && self.exporter_for().is_some() {
-            return Some(Box::new(*self));
+            return Some(Box::new(Box::new(*self) as Box<dyn AspectArtifact>));
         }
         return None;
     }
@@ -403,6 +435,7 @@ impl Type for TypeRoot {
             TypeRoot::OptionVariantConstructorDynamic => "Option variant constructor type (dynamic)",
             TypeRoot::Pull => "Pull type",
             TypeRoot::PullAspect => "Pull aspect type",
+            TypeRoot::SourceDataTypeConst => "Source data type (const)",
             TypeRoot::SourceDataTypeConstructorConst => "Source data type constructor (const)",
             TypeRoot::SourceDataTypeConstructorDynamic => "Source data type constructor (dynamic)",
             TypeRoot::SourceDataTypeDynamic => "Source data type (dynamic)",

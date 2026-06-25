@@ -721,7 +721,7 @@ impl Value for TypeSourceDataTypeConst {
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeTypeSourceDataTypeDynamic))
+        EResult::ok(Rc::new(crate::eval::value::type_root::r#const::TypeRoot::SourceDataTypeConst))
     }
 }
 

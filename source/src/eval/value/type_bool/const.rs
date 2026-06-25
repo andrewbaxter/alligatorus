@@ -7,12 +7,12 @@ use {
         },
         eval::value::{
             type_any::r#const::TypeAnyConst,
-            type_bool::artifact::ArtifactBoolType,
             type_root::r#const::{
                 ExporterRootDelegate,
                 TypeRoot,
             },
             value_bool::r#const::ValueBoolConst,
+            value_type_bool::r#const::ValueTypeBoolConst,
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -55,23 +55,18 @@ impl ExporterAny for TypeBoolConst {
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeBoolConst));
+        return EResult::ok(Rc::new(ValueTypeBoolConst));
     }
 }
 
 impl ExporterRootDelegate for TypeBoolConst {
     fn self_from_artifact_data(
         _xx: &ExprContext,
-        loc: QExprId,
+        _loc: QExprId,
         _id: Option<&crate::artifact::ArtifactIdSource>,
-        data: serde_json::Value,
+        _data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<ArtifactBoolType>(
-                data,
-            ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
-        );
+        return EResult::ok(Rc::new(ValueTypeBoolConst) as Rc<dyn crate::artifact::ExporterAny>);
     }
 
     fn self_to_serial(
@@ -80,13 +75,13 @@ impl ExporterRootDelegate for TypeBoolConst {
         _self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactBoolType).unwrap())));
+        return EResult::ok(Artifact::Body(make_body(serde_json::Value::Null)));
     }
 }
 
 impl Type for TypeBoolConst {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeBoolConst)
+        Rc::new(ValueTypeBoolConst)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
@@ -134,7 +129,7 @@ impl Type for TypeBoolConst {
 
 impl Value for TypeBoolConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeBoolConst);
+        return Rc::new(ValueTypeBoolConst);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
