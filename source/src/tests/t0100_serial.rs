@@ -221,20 +221,7 @@ e7 = d0_1_0_0;
 e4 = { "\"_0\"": e5, "\"_1\"": e7 };
 e3 = e4;
 }
-e3;"#, r#"var d0_1_0_0;
-{
-d0_1_0_0 = function(a1) {
-let a0 = this["\"_0\""];
-let e0;
-let e1;
-e1 = a0;
-let e2;
-e2 = null;
-e0 = e1["toUpperCase"](e2);
-return e0;
-};
-}
-let e0;
+e3;"#, r#"let e0;
 {
 let e1;
 let e2;
@@ -242,19 +229,23 @@ e2 = BUILTIN;
 let e3;
 let e4;
 let e5;
-e5 = "hello";
+{
 let e6;
-e6 = d0_1_0_0;
-e4 = { "\"_0\"": e5, "\"_1\"": e6 };
+e6 = "hello";
+e5 = e6;
+}
 let e7;
-e7 = null;
-e3 = e4["\"_1\""](e7);
+e7 = d0_1_0_0;
+e4 = { "\"_0\"": e5, "\"_1\"": e7 };
+let e8;
+e8 = null;
+e3 = e4["\"_1\""](e8);
 e1 = (e2)(e3);
 e0 = e1;
 }
 e0;"#]);
     let arts = test_artifacts.data.lock().unwrap();
-    assert_eq!(arts.len(), 3);
+    assert_eq!(arts.len(), 2);
     let mut art_jsons: Vec<String> = arts.values().map(|a| serde_json::to_string_pretty(a).unwrap()).collect();
     art_jsons.sort();
     assert_eq!(
@@ -262,32 +253,9 @@ e0;"#]);
         vec![
             r#"{
   "data": {
-    "arg_type": {
-      "data": null,
-      "type_": {
-        "builtin": 7013
-      }
-    },
-    "compiled_js": "var d0_1_0_0;\n{\nd0_1_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
-    "entry_id": 0,
-    "field_name": "_1",
-    "name": "to_string",
-    "ret_type": {
-      "data": null,
-      "type_": {
-        "builtin": 7019
-      }
-    }
-  },
-  "type_": {
-    "builtin": 7022
-  }
-}"#,
-            r#"{
-  "data": {
     "data_field": "_0",
     "def_set": {
-      "source": [
+      "ref": [
         [
           0,
           0
@@ -295,6 +263,13 @@ e0;"#]);
         0
       ]
     },
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
+    ],
     "identity": {
       "source": [
         [
@@ -304,41 +279,61 @@ e0;"#]);
         0
       ]
     },
-    "members": [
+    "methods": [
       {
-        "source": [
-          [
-            0,
-            0
-          ],
-          2
-        ]
+        "arg_type": {
+          "body": {
+            "data": null,
+            "exporter": {
+              "body": {
+                "data": "NullDynamic",
+                "exporter": "root"
+              }
+            }
+          }
+        },
+        "compiled_js": "var d0_1_0_0;\n{\nd0_1_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
+        "entry_id": 0,
+        "field_name": "_1",
+        "name": "to_string",
+        "ret_type": {
+          "body": {
+            "data": null,
+            "exporter": {
+              "body": {
+                "data": "StringDynamic",
+                "exporter": "root"
+              }
+            }
+          }
+        }
       }
     ],
     "name": "upper",
     "underlying_type": {
-      "data": null,
-      "type_": {
-        "builtin": 7019
+      "body": {
+        "data": null,
+        "exporter": {
+          "body": {
+            "data": "StringDynamic",
+            "exporter": "root"
+          }
+        }
       }
     }
   },
-  "type_": {
-    "builtin": 7009
+  "exporter": {
+    "body": {
+      "data": "SourceDataTypeConst",
+      "exporter": "root"
+    }
   }
 }"#,
             r#"{
   "data": {
-    "def_set_id": [
-      [
-        0,
-        1
-      ],
-      0
-    ],
-    "members": [
+    "data_types": [
       {
-        "source": [
+        "ref": [
           [
             0,
             0
@@ -346,10 +341,20 @@ e0;"#]);
           1
         ]
       }
+    ],
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
     ]
   },
-  "type_": {
-    "builtin": 7001
+  "exporter": {
+    "body": {
+      "data": "DefinitionSet",
+      "exporter": "root"
+    }
   }
 }"#
         ]
