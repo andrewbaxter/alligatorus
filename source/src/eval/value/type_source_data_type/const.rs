@@ -884,3 +884,13 @@ impl AspectType for TypeSourceDataTypeConstAspectType {
         })
     }
 }
+
+impl crate::artifact::ExporterAny for ExporterDataAny<dumpster::unsync::Gc<super::SourceDataTypeData>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeSourceDataTypeConst { data: self.0.clone() }))
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        EResult::ok(Rc::new(TypeSourceDataTypeConst { data: self.0.clone() }))
+    }
+}

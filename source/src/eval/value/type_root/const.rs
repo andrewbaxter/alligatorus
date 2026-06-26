@@ -89,6 +89,7 @@ pub enum ExporterRoot {
     BoolConst,
     BoolDynamic,
     BoolValueConst,
+    CodeValueExternDynamic,
     DefinitionSet,
     Expr,
     ListDynamic,
@@ -143,6 +144,16 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::BoolDynamic => TypeBoolDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::BoolValueConst => ValueBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::CodeValueExternDynamic => crate
+            ::eval
+            ::code_value_extern
+            ::TypeCodeValueExternDynamic
+            ::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_from_artifact_data(
                 &xx,
                 loc,
@@ -270,6 +281,16 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::BoolDynamic => TypeBoolDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::BoolValueConst => ValueBoolConst::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::CodeValueExternDynamic => crate
+            ::eval
+            ::code_value_extern
+            ::TypeCodeValueExternDynamic
+            ::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
             ExporterRoot::DefinitionSet => crate::eval::definition_set::definition_set_to_serial(
                 xx,
                 loc,
@@ -431,6 +452,7 @@ impl TypeRoot {
         return match self {
             TypeRoot::BoolConst => Some(ExporterRoot::BoolConst),
             TypeRoot::BoolDynamic => Some(ExporterRoot::BoolDynamic),
+            TypeRoot::CodeValueExternDynamic => Some(ExporterRoot::CodeValueExternDynamic),
             TypeRoot::Expr => Some(ExporterRoot::Expr),
             TypeRoot::ListDynamic => Some(ExporterRoot::ListDynamic),
             TypeRoot::MapDynamic => Some(ExporterRoot::MapDynamic),

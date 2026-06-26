@@ -472,3 +472,13 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))
     }
 }
+
+impl crate::artifact::ExporterAny for crate::artifact::ExporterDataAny<Gc<DefinitionSet>> {
+    fn as_type(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn Type>> {
+        unimplemented!("ExporterDataAny<Gc<DefinitionSet>>::as_type not meaningful")
+    }
+
+    fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn Value>> {
+        unimplemented!("ExporterDataAny<Gc<DefinitionSet>>::as_value not meaningful")
+    }
+}

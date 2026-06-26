@@ -268,3 +268,13 @@ impl Value for TypeSourceExportsLiftedConst {
         EResult::ok(Rc::new(TypeRoot::SourceExportsLiftedConst))
     }
 }
+
+impl crate::artifact::ExporterAny for crate::artifact::ExporterDataAny<TypeSourceExportsLiftedConst> {
+    fn as_type(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Type>> {
+        unimplemented!("ExporterDataAny<TypeSourceExportsLiftedConst>::as_type not meaningful")
+    }
+
+    fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
+        unimplemented!("ExporterDataAny<TypeSourceExportsLiftedConst>::as_value not meaningful")
+    }
+}

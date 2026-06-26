@@ -231,6 +231,26 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
     }
 }
 
+impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeCodeValueExternDynamic {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> crate::artifact::ArtifactBody>,
+    ) -> EResult<crate::artifact::Artifact> {
+        return EResult::ok(crate::artifact::Artifact::Body(make_body(serde_json::Value::Null)));
+    }
+}
+
 impl ExporterAny for TypeCodeValueExternDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
         return EResult::ok(Rc::new(TypeCodeValueExternDynamic));

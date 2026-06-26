@@ -103,3 +103,13 @@ impl Push for Rc<SourceInterfaceRef> {
         to_v8(scope, self).into()
     }
 }
+
+impl crate::artifact::ExporterAny for crate::artifact::ExporterDataAny<dumpster::unsync::Gc<SourceInterfaceData>> {
+    fn as_type(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Type>> {
+        unimplemented!("ExporterDataAny<Gc<SourceInterfaceData>>::as_type not meaningful")
+    }
+
+    fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
+        unimplemented!("ExporterDataAny<Gc<SourceInterfaceData>>::as_value not meaningful")
+    }
+}

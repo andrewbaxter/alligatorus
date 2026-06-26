@@ -265,3 +265,21 @@ impl Value for TypeSourceTaggedUnionConstructorConst {
         EResult::ok(Rc::new(TypeRoot::SourceTaggedUnionConstructorConst))
     }
 }
+
+impl crate
+::artifact
+::ExporterAny for crate
+::artifact
+::ExporterDataAny<Rc<std::cell::RefCell<Option<(Rc<SourceTaggedUnionData>, usize)>>>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!(
+            "ExporterDataAny<Rc<RefCell<Option<(Rc<SourceTaggedUnionData>, usize)>>>>::as_type not meaningful"
+        )
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn crate::langhelp::Value>> {
+        unimplemented!(
+            "ExporterDataAny<Rc<RefCell<Option<(Rc<SourceTaggedUnionData>, usize)>>>>::as_value not meaningful"
+        )
+    }
+}

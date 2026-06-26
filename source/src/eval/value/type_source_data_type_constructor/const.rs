@@ -65,6 +65,22 @@ use {
     },
 };
 
+impl crate
+::artifact
+::ExporterAny for crate
+::artifact
+::ExporterDataAny<
+    Rc<std::cell::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>>,
+> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        unimplemented!("ExporterDataAny<Rc<RefCell<Option<Gc<SourceDataTypeData>>>>>::as_type not meaningful")
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn crate::langhelp::Value>> {
+        unimplemented!("ExporterDataAny<Rc<RefCell<Option<Gc<SourceDataTypeData>>>>>::as_value not meaningful")
+    }
+}
+
 // TODO(porting): serialize_ctor removed pending serialize_type_ref design.
 // Constructor types are now serialized as part of the parent DefinitionSet.
 impl Aspect for TypeSourceDataTypeConstructorConst { }

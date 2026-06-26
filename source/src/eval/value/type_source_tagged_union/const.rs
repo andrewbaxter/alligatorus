@@ -379,3 +379,13 @@ impl Value for TypeSourceTaggedUnionConst {
         EResult::ok(Rc::new(TypeRoot::SourceTaggedUnionConst))
     }
 }
+
+impl crate::artifact::ExporterAny for crate::artifact::ExporterDataAny<Rc<super::SourceTaggedUnionData>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        EResult::ok(Rc::new(TypeSourceTaggedUnionConst { data: self.0.clone() }))
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        EResult::ok(Rc::new(TypeSourceTaggedUnionConst { data: self.0.clone() }))
+    }
+}

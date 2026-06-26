@@ -235,16 +235,6 @@ fn exporter_any_to_artifact_exporter(
 
 pub(crate) struct ExporterDataAny<T: 'static>(pub T);
 
-impl<T: 'static> ExporterAny for ExporterDataAny<T> {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        unimplemented!()
-    }
-}
-
 pub(crate) fn impl_deserialize_independent_artifact<
     T: DeserializeOwned,
 >(
