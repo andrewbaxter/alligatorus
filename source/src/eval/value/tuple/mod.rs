@@ -370,32 +370,38 @@ impl ExporterRootDelegate for Tuple {
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
-        _id: Option<&ArtifactIdSource>,
+        id: Option<&ArtifactIdSource>,
         data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        let body: ArtifactTupleType = match serde_json::from_value(data) {
-            Ok(v) => v,
-            Err(e) => return EResult::err(loc, e.to_string()),
+        let Some(id) = id else {
+            return EResult::err(loc, "Tuple requires an artifact id to deserialize".to_string());
         };
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let mut elements = Vec::new();
-        for elem_art in body.elements {
-            let res = deserialize_type_artifact(xx, loc, elem_art);
-            if let Some(errors1) = res.errors {
-                errors.get_or_insert_default().extend(errors1);
-            }
-            let Some(t) = res.v else {
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            elements.push(TupleElement::Dynamic(t));
-        }
-        return EResult {
-            errors,
-            v: Some(Rc::new(Tuple { elements }) as Rc<dyn crate::artifact::ExporterAny>),
-        };
+        let holder: Rc<std::cell::RefCell<Option<Tuple>>> = Rc::new(std::cell::RefCell::new(None));
+        let holder_for_finalizer = holder.clone();
+        return crate::artifact::impl_deserialize_independent_artifact::<ArtifactTupleType>(
+            xx,
+            loc,
+            id,
+            data,
+            move |body: ArtifactTupleType| {
+                let element_arts = body.elements;
+                let deps: Vec<Artifact> = element_arts.clone();
+                let out: Rc<dyn crate::artifact::ExporterAny> =
+                    Rc::new(crate::artifact::ExporterDataAny(holder.clone()));
+                let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+                    let mut elements = Vec::with_capacity(element_arts.len());
+                    for elem_art in element_arts {
+                        let t =
+                            crate::artifact::independent_finalize_deserialize_type_artifact(xx, loc, elem_art)
+                                .v
+                                .expect("Failed to deserialize tuple element type");
+                        elements.push(TupleElement::Dynamic(t));
+                    }
+                    *holder_for_finalizer.borrow_mut() = Some(Tuple { elements });
+                });
+                Ok((out, deps, finalizer))
+            },
+        );
     }
 
     fn self_to_serial(
@@ -695,5 +701,19 @@ impl AspectLiftDynamic for TupleLiftJs {
             })));
         }
         Ok(Rc::new(Tuple { elements: elements }))
+    }
+}
+
+impl ExporterAny for crate::artifact::ExporterDataAny<Rc<std::cell::RefCell<Option<Tuple>>>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        let borrowed = self.0.borrow();
+        let tuple = borrowed.as_ref().expect("Tuple holder not populated").clone();
+        EResult::ok(Rc::new(tuple))
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        let borrowed = self.0.borrow();
+        let tuple = borrowed.as_ref().expect("Tuple holder not populated").clone();
+        EResult::ok(Rc::new(tuple))
     }
 }

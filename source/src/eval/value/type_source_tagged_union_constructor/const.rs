@@ -272,14 +272,21 @@ impl crate
 ::artifact
 ::ExporterDataAny<Rc<std::cell::RefCell<Option<(Rc<SourceTaggedUnionData>, usize)>>>> {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!(
-            "ExporterDataAny<Rc<RefCell<Option<(Rc<SourceTaggedUnionData>, usize)>>>>::as_type not meaningful"
-        )
+        let borrowed = self.0.borrow();
+        let (data, variant_index) = borrowed.as_ref().expect("constructor holder not populated").clone();
+        EResult::ok(Rc::new(TypeSourceTaggedUnionConstructorConst {
+            data,
+            variant_index,
+        }))
     }
 
     fn as_value(&self) -> EResult<Rc<dyn crate::langhelp::Value>> {
-        unimplemented!(
-            "ExporterDataAny<Rc<RefCell<Option<(Rc<SourceTaggedUnionData>, usize)>>>>::as_value not meaningful"
-        )
+        let borrowed = self.0.borrow();
+        let (data, variant_index) = borrowed.as_ref().expect("constructor holder not populated").clone();
+        let inner: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
+            data,
+            variant_index,
+        });
+        EResult::ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner }))
     }
 }

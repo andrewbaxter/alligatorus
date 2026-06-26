@@ -152,10 +152,18 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceFunctionData 
 
 impl crate::artifact::ExporterAny for crate::artifact::ExporterDataAny<dumpster::unsync::Gc<SourceFunctionData>> {
     fn as_type(&self) -> crate::langhelp::EResult<Rc<dyn Type>> {
-        unimplemented!("ExporterDataAny<Gc<SourceFunctionData>>::as_type not meaningful")
+        crate::langhelp::EResult::ok(
+            Rc::new(
+                crate::eval::value::type_source_function::r#const::TypeSourceFunctionConst { data: self.0.clone() },
+            ),
+        )
     }
 
     fn as_value(&self) -> crate::langhelp::EResult<Rc<dyn crate::langhelp::Value>> {
-        unimplemented!("ExporterDataAny<Gc<SourceFunctionData>>::as_value not meaningful")
+        let inner: Rc<dyn Type> =
+            Rc::new(
+                crate::eval::value::type_source_function::r#const::TypeSourceFunctionConst { data: self.0.clone() },
+            );
+        crate::langhelp::EResult::ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner }))
     }
 }

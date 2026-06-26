@@ -106,10 +106,20 @@ impl Push for Rc<SourceInterfaceRef> {
 
 impl crate::artifact::ExporterAny for crate::artifact::ExporterDataAny<dumpster::unsync::Gc<SourceInterfaceData>> {
     fn as_type(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Type>> {
-        unimplemented!("ExporterDataAny<Gc<SourceInterfaceData>>::as_type not meaningful")
+        crate::langhelp::EResult::ok(
+            std::rc::Rc::new(
+                crate::eval::value::type_source_interface::r#const::TypeSourceInterfaceConst { data: self.0.clone() },
+            ),
+        )
     }
 
     fn as_value(&self) -> crate::langhelp::EResult<std::rc::Rc<dyn crate::langhelp::Value>> {
-        unimplemented!("ExporterDataAny<Gc<SourceInterfaceData>>::as_value not meaningful")
+        let inner: std::rc::Rc<dyn crate::langhelp::Type> =
+            std::rc::Rc::new(
+                crate::eval::value::type_source_interface::r#const::TypeSourceInterfaceConst { data: self.0.clone() },
+            );
+        crate::langhelp::EResult::ok(
+            std::rc::Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner }),
+        )
     }
 }

@@ -537,35 +537,41 @@ impl ExporterRootDelegate for Record {
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
-        _id: Option<&ArtifactIdSource>,
+        id: Option<&ArtifactIdSource>,
         data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        let body: ArtifactRecordType = match serde_json::from_value(data) {
-            Ok(v) => v,
-            Err(e) => return EResult::err(loc, e.to_string()),
+        let Some(id) = id else {
+            return EResult::err(loc, "Record requires an artifact id to deserialize".to_string());
         };
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let mut fields = BTreeMap::new();
-        for (key, field_art) in body.fields {
-            let res = deserialize_type_artifact(xx, loc, field_art);
-            if let Some(errors1) = res.errors {
-                errors.get_or_insert_default().extend(errors1);
-            }
-            let Some(t) = res.v else {
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            fields.insert(key, RecordField::Dynamic(t));
-        }
-        return EResult {
-            errors,
-            v: Some(Rc::new(Record {
-                base: None,
-                fields,
-            }) as Rc<dyn crate::artifact::ExporterAny>),
-        };
+        let holder: Rc<std::cell::RefCell<Option<Record>>> = Rc::new(std::cell::RefCell::new(None));
+        let holder_for_finalizer = holder.clone();
+        return crate::artifact::impl_deserialize_independent_artifact::<ArtifactRecordType>(
+            xx,
+            loc,
+            id,
+            data,
+            move |body: ArtifactRecordType| {
+                let field_arts: Vec<(ConstKey, Artifact)> = body.fields.into_iter().collect();
+                let deps: Vec<Artifact> = field_arts.iter().map(|(_, a)| a.clone()).collect();
+                let out: Rc<dyn crate::artifact::ExporterAny> =
+                    Rc::new(crate::artifact::ExporterDataAny(holder.clone()));
+                let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+                    let mut fields = BTreeMap::new();
+                    for (key, field_art) in field_arts {
+                        let t =
+                            crate::artifact::independent_finalize_deserialize_type_artifact(xx, loc, field_art)
+                                .v
+                                .expect("Failed to deserialize record field type");
+                        fields.insert(key, RecordField::Dynamic(t));
+                    }
+                    *holder_for_finalizer.borrow_mut() = Some(Record {
+                        base: None,
+                        fields,
+                    });
+                });
+                Ok((out, deps, finalizer))
+            },
+        );
     }
 
     fn self_to_serial(
@@ -946,5 +952,19 @@ impl AspectLiftDynamic for RecordLiftDynamic {
             base: None,
             fields: fields,
         }))
+    }
+}
+
+impl ExporterAny for crate::artifact::ExporterDataAny<Rc<std::cell::RefCell<Option<Record>>>> {
+    fn as_type(&self) -> EResult<Rc<dyn Type>> {
+        let borrowed = self.0.borrow();
+        let record = borrowed.as_ref().expect("Record holder not populated").clone();
+        EResult::ok(Rc::new(record))
+    }
+
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
+        let borrowed = self.0.borrow();
+        let record = borrowed.as_ref().expect("Record holder not populated").clone();
+        EResult::ok(Rc::new(record))
     }
 }

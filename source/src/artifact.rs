@@ -288,15 +288,20 @@ pub(crate) fn independent_finalize_deserialize_artifact(
     artifact: Artifact,
 ) -> EResult<Rc<dyn ExporterAny>> {
     fn lookup_ref(xx: &ExprContext, loc: QExprId, id: ArtifactIdSource) -> EResult<Rc<dyn ExporterAny>> {
-        match xx.vx.ix.deserialized_artifacts.borrow().get(&id) {
+        let cache = xx.vx.ix.deserialized_artifacts.borrow();
+        match cache.get(&id) {
             Some(v) => EResult::ok(v.clone()),
-            None => EResult::err(
-                loc,
-                format!(
-                    "independent_finalize_deserialize_artifact: artifact {:?} not in cache; deserializer must declare it as a dependency",
-                    id,
-                ),
-            ),
+            None => {
+                let cached_ids: Vec<_> = cache.keys().cloned().collect();
+                EResult::err(
+                    loc,
+                    format!(
+                        "independent_finalize_deserialize_artifact: artifact {:?} not in cache. Cached={:?}",
+                        id,
+                        cached_ids,
+                    ),
+                )
+            },
         }
     }
 

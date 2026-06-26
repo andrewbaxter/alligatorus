@@ -73,11 +73,16 @@ impl crate
     Rc<std::cell::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_data_type::SourceDataTypeData>>>>,
 > {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!("ExporterDataAny<Rc<RefCell<Option<Gc<SourceDataTypeData>>>>>::as_type not meaningful")
+        let borrowed = self.0.borrow();
+        let data = borrowed.as_ref().expect("constructor holder not populated").clone();
+        EResult::ok(Rc::new(TypeSourceDataTypeConstructorConst { data }))
     }
 
     fn as_value(&self) -> EResult<Rc<dyn crate::langhelp::Value>> {
-        unimplemented!("ExporterDataAny<Rc<RefCell<Option<Gc<SourceDataTypeData>>>>>::as_value not meaningful")
+        let borrowed = self.0.borrow();
+        let data = borrowed.as_ref().expect("constructor holder not populated").clone();
+        let inner: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data });
+        EResult::ok(Rc::new(crate::eval::value::type_any::r#const::ValueAnyConst { inner }))
     }
 }
 
