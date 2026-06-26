@@ -410,7 +410,7 @@ pub(crate) enum BindingId {
 pub(crate) struct SourceId(pub usize);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Unique {
     Builtin(usize),
     Source(CompileId, usize),

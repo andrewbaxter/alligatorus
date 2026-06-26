@@ -11,6 +11,7 @@ use crate::{
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub objects: Vec<Artifact>,
@@ -24,6 +25,7 @@ pub(crate) struct ArtifactDataDefSet {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetObject {
     pub data_field: String,
     pub def_set: Artifact,
@@ -38,6 +40,7 @@ pub(crate) struct ArtifactDataDefSetObject {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetFunction {
     pub arg_type: Artifact,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -51,6 +54,7 @@ pub(crate) struct ArtifactDataDefSetFunction {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetInterface {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub builtin_kind: Option<BuiltinInterfaceKind>,
@@ -65,6 +69,7 @@ pub(crate) struct ArtifactDataDefSetInterface {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetInterfaceImpl {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub builtin_kind: Option<BuiltinInterfaceKind>,
@@ -74,6 +79,7 @@ pub(crate) struct ArtifactDataDefSetInterfaceImpl {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetInterfaceMethod {
     pub arg_type: Artifact,
     pub field_name: String,
@@ -82,6 +88,7 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethod {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
@@ -91,6 +98,7 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSetMethod {
     pub arg_type: Artifact,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -103,6 +111,7 @@ pub(crate) struct ArtifactDataDefSetMethod {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum ArtifactExternal {
     StagedExpr {
         local_id: usize,

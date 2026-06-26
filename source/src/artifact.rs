@@ -481,6 +481,7 @@ impl dyn ExporterAny {
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum ExporterRoot {
     AnyDynamic,
     BoolConst,

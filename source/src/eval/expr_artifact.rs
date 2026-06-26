@@ -46,7 +46,7 @@ use {
 };
 
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactCondBranch {
     pub body: ArtifactExpr,
     pub condition: ArtifactExpr,
@@ -139,7 +139,7 @@ pub(crate) enum ArtifactExpr_ {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactMatchBranch {
     pub body: ArtifactExpr,
     pub condition: ArtifactExpr,

@@ -285,7 +285,7 @@ e0;"#]);
             "data": null,
             "exporter": {
               "body": {
-                "data": "NullDynamic",
+                "data": "null_dynamic",
                 "exporter": "root"
               }
             }
@@ -300,7 +300,7 @@ e0;"#]);
             "data": null,
             "exporter": {
               "body": {
-                "data": "StringDynamic",
+                "data": "string_dynamic",
                 "exporter": "root"
               }
             }
@@ -314,7 +314,7 @@ e0;"#]);
         "data": null,
         "exporter": {
           "body": {
-            "data": "StringDynamic",
+            "data": "string_dynamic",
             "exporter": "root"
           }
         }
@@ -323,7 +323,7 @@ e0;"#]);
   },
   "exporter": {
     "body": {
-      "data": "SourceObjectConst",
+      "data": "source_object_const",
       "exporter": "root"
     }
   }
@@ -351,7 +351,7 @@ e0;"#]);
   },
   "exporter": {
     "body": {
-      "data": "DefinitionSet",
+      "data": "definition_set",
       "exporter": "root"
     }
   }

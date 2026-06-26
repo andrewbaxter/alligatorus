@@ -38,6 +38,7 @@ use {
 };
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactValueSourceObject {
     pub type_artifact: Artifact,
     pub underlying: Artifact,

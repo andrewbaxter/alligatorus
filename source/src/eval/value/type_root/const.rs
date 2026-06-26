@@ -44,6 +44,7 @@ pub(crate) trait ExporterRootDelegate {
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum TypeRoot {
     AnyBindingDynamic,
     AnyTargetDynamic,
