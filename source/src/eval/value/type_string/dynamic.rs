@@ -52,7 +52,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -136,7 +136,7 @@ impl AspectField for TypeStringDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }).into(),
+                }),
             });
         });
     }
@@ -174,7 +174,7 @@ impl AspectLiftDynamic for TypeStringDynamic {
         _xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value_>, String> {
+    ) -> Result<Rc<dyn Value>, String> {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
         Ok(Rc::new(ValueStringConst(s)))
     }
@@ -195,7 +195,7 @@ impl AspectStackValueDynamic for TypeStringDynamic {
 impl AspectStringDynamic for TypeStringDynamic { }
 
 impl AspectType for TypeStringDynamic {
-    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)
     }
 }
@@ -205,7 +205,7 @@ impl ExporterAny for TypeStringDynamic {
         return EResult::ok(Rc::new(TypeStringDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeStringDynamic));
     }
 }
@@ -231,7 +231,7 @@ impl ExporterRootDelegate for TypeStringDynamic {
 }
 
 impl Type for TypeStringDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeStringDynamic)
     }
 
@@ -265,6 +265,11 @@ impl Type for TypeStringDynamic {
         }
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectType>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         return None;
     }
@@ -304,7 +309,7 @@ impl Type for TypeStringDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeStringDynamic),
-                    }).into(),
+                    }),
                 });
             } else {
                 return Ok(CodeValue {
@@ -312,7 +317,7 @@ impl Type for TypeStringDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeStringDynamic),
-                    }).into()
+                    })
                 });
             }
         });
@@ -324,7 +329,7 @@ impl Type for TypeStringDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeStringDynamic),
-            }).into(),
+            }),
         })
     }
 
@@ -337,7 +342,7 @@ impl Type for TypeStringDynamic {
     }
 }
 
-impl Value_ for TypeStringDynamic {
+impl Value for TypeStringDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeStringDynamic);
     }

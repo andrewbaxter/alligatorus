@@ -30,7 +30,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -70,7 +70,7 @@ impl AspectArtifact for TypeNumberConst {
 
 impl AspectBind for TypeNumberConst {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -104,7 +104,7 @@ impl AspectField for TypeNumberConst {
 }
 
 impl AspectNumberConst for TypeNumberConst {
-    fn get(&self, value: &dyn Value_) -> f64 {
+    fn get(&self, value: &dyn Value) -> f64 {
         return must_downcast_ref::<ValueNumberConst>(value).0;
     }
 }
@@ -120,7 +120,7 @@ impl AspectOperatorAdd for TypeNumberConst {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(ValueNumberConst(base_val + ref_val)).into(),
+                value: Rc::new(ValueNumberConst(base_val + ref_val)),
             });
         });
     }
@@ -137,7 +137,7 @@ impl AspectOperatorEq for TypeNumberConst {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(ValueBoolConst(base_val == ref_val)).into(),
+                value: Rc::new(ValueBoolConst(base_val == ref_val)),
             });
         });
     }
@@ -154,7 +154,7 @@ impl AspectOperatorLt for TypeNumberConst {
             let ref_val = ref_num.get(reference.value.as_ref());
             return Ok(CodeValue {
                 code: base.code.clone(),
-                value: Rc::new(ValueBoolConst(base_val < ref_val)).into(),
+                value: Rc::new(ValueBoolConst(base_val < ref_val)),
             });
         });
     }
@@ -165,7 +165,7 @@ impl ExporterAny for TypeNumberConst {
         return EResult::ok(Rc::new(TypeNumberConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(ValueTypeNumberConst));
     }
 }
@@ -191,7 +191,7 @@ impl ExporterRootDelegate for TypeNumberConst {
 }
 
 impl Type for TypeNumberConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueTypeNumberConst)
     }
 
@@ -217,6 +217,11 @@ impl Type for TypeNumberConst {
         if *key == aspect_operator_add_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorAdd>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -235,7 +240,7 @@ impl Type for TypeNumberConst {
             let aspect_number = erb.must_er(aspect_number_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueNumberConst(aspect_number.get(value.as_ref()))).into()
+                value: Rc::new(ValueNumberConst(aspect_number.get(value.as_ref())))
             });
         });
     }
@@ -246,7 +251,7 @@ impl Type for TypeNumberConst {
             let aspect_number = erb.must_er(aspect_number_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueNumberConst(aspect_number.get(value.as_ref()))).into()
+                value: Rc::new(ValueNumberConst(aspect_number.get(value.as_ref())))
             });
         });
     }
@@ -256,7 +261,7 @@ impl Type for TypeNumberConst {
     }
 }
 
-impl Value_ for TypeNumberConst {
+impl Value for TypeNumberConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(ValueTypeNumberConst);
     }

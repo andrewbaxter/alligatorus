@@ -10,7 +10,7 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value_,
+            Value,
         },
     },
     std::rc::Rc,
@@ -23,12 +23,12 @@ impl ExporterAny for ValueTypeStringConst {
         EResult::ok(Rc::new(TypeStringConst))
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         EResult::ok(Rc::new(ValueTypeStringConst))
     }
 }
 
-impl Value_ for ValueTypeStringConst {
+impl Value for ValueTypeStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(ValueTypeStringConst)
     }

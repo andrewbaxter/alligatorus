@@ -71,12 +71,12 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
         PushFnSpec {
             name: "new_code_value",
             builtin_scope_id: 5005,
-            args: vec![("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value_>")],
+            args: vec![("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
             body: quote!{
                 let cv = crate::langhelp::CodeValue {
                     code,
-                    value: crate::langhelp::Value::Direct(value)
+                    value
                 };
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             },

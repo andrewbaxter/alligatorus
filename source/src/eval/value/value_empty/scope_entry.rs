@@ -25,7 +25,7 @@ impl ScopeEntry for ScopeEntryEmpty {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueEmptyConst { type_: self.type_.clone() }).into(),
+            value: Rc::new(ValueEmptyConst { type_: self.type_.clone() }),
         }
     }
 }

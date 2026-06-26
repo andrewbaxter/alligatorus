@@ -33,7 +33,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -69,7 +69,7 @@ impl AspectArtifact for TypeStringConst {
 
 impl AspectBind for TypeStringConst {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -113,7 +113,7 @@ impl AspectField for TypeStringConst {
 }
 
 impl AspectStringConst for TypeStringConst {
-    fn get(&self, value: &dyn Value_) -> String {
+    fn get(&self, value: &dyn Value) -> String {
         return must_downcast_ref::<ValueStringConst>(value).0.clone();
     }
 }
@@ -123,7 +123,7 @@ impl ExporterAny for TypeStringConst {
         return EResult::ok(Rc::new(TypeStringConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(ValueTypeStringConst));
     }
 }
@@ -149,7 +149,7 @@ impl ExporterRootDelegate for TypeStringConst {
 }
 
 impl Type for TypeStringConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueTypeStringConst)
     }
 
@@ -169,6 +169,11 @@ impl Type for TypeStringConst {
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBind>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -187,7 +192,7 @@ impl Type for TypeStringConst {
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref()))).into()
+                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
             });
         });
     }
@@ -198,7 +203,7 @@ impl Type for TypeStringConst {
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref()))).into()
+                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
             });
         });
     }
@@ -208,7 +213,7 @@ impl Type for TypeStringConst {
     }
 }
 
-impl Value_ for TypeStringConst {
+impl Value for TypeStringConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(ValueTypeStringConst);
     }

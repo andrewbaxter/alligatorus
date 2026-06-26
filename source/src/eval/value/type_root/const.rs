@@ -52,7 +52,7 @@ use {
             GlobalContext,
             QExprId,
             Type,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -334,7 +334,7 @@ impl ExporterAny for ExporterRoot {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -444,19 +444,24 @@ impl ExporterAny for TypeRoot {
         return EResult::ok(Rc::new(*self));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(*self));
     }
 }
 
 impl Type for TypeRoot {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         return Rc::new(*self);
     }
 
     fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
         if *key == aspect_artifact_aspect_id() && self.exporter_for().is_some() {
             return Some(Box::new(Box::new(*self) as Box<dyn AspectArtifact>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         return None;
     }
@@ -519,13 +524,13 @@ impl Type for TypeRoot {
             TypeRoot::TypeSourceDataTypeDynamic => "Type source data type (dynamic)",
             TypeRoot::TypeSourceFunctionDynamic => "Type source function (dynamic)",
             TypeRoot::Unique => "Unique type",
-            TypeRoot::ValueDynamic => "Value_ type (dynamic)",
+            TypeRoot::ValueDynamic => "Value type (dynamic)",
             TypeRoot::Root => "Root type",
         });
     }
 }
 
-impl Value_ for TypeRoot {
+impl Value for TypeRoot {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(*self);
     }

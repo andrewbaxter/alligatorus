@@ -47,7 +47,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -83,7 +83,7 @@ impl AspectArtifact for TypeSourceFunctionConst {
 
 impl AspectBind for TypeSourceFunctionConst {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -120,7 +120,7 @@ impl AspectFunction for TypeSourceFunctionConst {
 }
 
 impl AspectType for TypeSourceFunctionConst {
-    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let f = must_downcast_ref::<TypeSourceFunctionConst>(value);
         Rc::new(TypeSourceFunctionConst { data: f.data.clone() })
     }
@@ -131,7 +131,7 @@ impl ExporterAny for TypeSourceFunctionConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -252,7 +252,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
             super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
                 set: self_.data.set.borrow().as_ref().unwrap().clone(),
             };
-        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value_);
+        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
         if let Some(errors1) = def_set_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -293,7 +293,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
 }
 
 impl Type for TypeSourceFunctionConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceFunctionConst { data: self.data.clone() }) })
     }
 
@@ -318,6 +318,11 @@ impl Type for TypeSourceFunctionConst {
                 Box::new(Box::new(TypeSourceFunctionConst { data: self.data.clone() }) as Box<dyn AspectType>),
             );
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -337,7 +342,7 @@ impl Type for TypeSourceFunctionConst {
     }
 }
 
-impl Value_ for TypeSourceFunctionConst {
+impl Value for TypeSourceFunctionConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

@@ -53,7 +53,7 @@ use {
             SourceId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -80,7 +80,7 @@ fn pull_mini_eval(
     xx: &ExprContext,
     loc: QExprId,
     data: &Gc<SourceDataTypeData>,
-    inner: Rc<dyn Value_>,
+    inner: Rc<dyn Value>,
 ) -> Result<v8::Global<v8::Object>, String> {
     let set =
         data.set.borrow().as_ref().cloned().ok_or_else(|| "Pull mini-eval: data type has no def-set".to_string())?;
@@ -96,7 +96,7 @@ fn pull_mini_eval(
             loc,
             code: Code_::None,
         },
-        value: inner.into(),
+        value: inner,
     };
     let inner_dyn = to_dyn.to_dynamic(xx, loc, inner_cv).into_res().map_err(|e| format!("to_dynamic: {:?}", e))?;
     let scope_ptr =
@@ -172,7 +172,7 @@ impl ExporterAny for TypePull {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -218,7 +218,7 @@ impl ExporterRootDelegate for TypePull {
                         .v
                         .expect("TypePull finalizer: failed to deserialize inner artifact");
                 let inner_value =
-                    inner_any.as_value().v.expect("TypePull finalizer: inner artifact did not yield a Value_");
+                    inner_any.as_value().v.expect("TypePull finalizer: inner artifact did not yield a Value");
                 let bundle =
                     pull_mini_eval(
                         xx,
@@ -242,7 +242,7 @@ impl ExporterRootDelegate for TypePull {
         let self_ = self_.downcast::<TypePull>().expect("expected TypePull");
         let mut errors: Option<Vec<ExprErr>> = None;
         let dt_const = TypeSourceDataTypeConst { data: self_.data.clone() };
-        let dt_art = serialize_artifact(xx, loc, &dt_const as &dyn Value_);
+        let dt_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
         if let Some(errors1) = dt_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -315,7 +315,7 @@ impl ExporterRootDelegate for TypePull {
 }
 
 impl Type for TypePull {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypePull {
             data: self.data.clone(),
             bundle: RefCell::new(self.bundle.borrow().clone()),
@@ -354,6 +354,11 @@ impl Type for TypePull {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(aspect_pull) as Box<dyn AspectFunction>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         None
     }
 
@@ -380,7 +385,7 @@ impl Type for TypePull {
     }
 }
 
-impl Value_ for TypePull {
+impl Value for TypePull {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(TypePull {
             data: self.data.clone(),

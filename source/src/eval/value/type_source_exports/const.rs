@@ -33,7 +33,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -68,7 +68,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
 
 impl AspectBind for TypeSourceExportsLiftedConst {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -109,7 +109,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(ValueAnyConst { inner: func_type, }).into(),
+                            value: Rc::new(ValueAnyConst { inner: func_type, }),
                         });
                     }
                 }
@@ -125,7 +125,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(ValueAnyConst { inner: ctor_type, }).into(),
+                            value: Rc::new(ValueAnyConst { inner: ctor_type, }),
                         });
                     }
                 }
@@ -163,7 +163,7 @@ impl ExporterAny for TypeSourceExportsLiftedConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -216,7 +216,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
 }
 
 impl Type for TypeSourceExportsLiftedConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceExportsLiftedConst { set: self.set.clone() }) })
     }
 
@@ -238,6 +238,11 @@ impl Type for TypeSourceExportsLiftedConst {
                 ),
             );
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -254,7 +259,7 @@ impl Type for TypeSourceExportsLiftedConst {
     }
 }
 
-impl Value_ for TypeSourceExportsLiftedConst {
+impl Value for TypeSourceExportsLiftedConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

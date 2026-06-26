@@ -43,7 +43,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -71,7 +71,7 @@ impl Aspect for TypeSourceDataTypeConstructorConst { }
 
 impl AspectBind for TypeSourceDataTypeConstructorConst {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -139,7 +139,7 @@ impl ExporterAny for TypeSourceDataTypeConstructorConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -224,7 +224,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
         let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
         let dt_const =
             super::super::type_source_data_type::r#const::TypeSourceDataTypeConst { data: self_.data.clone() };
-        let data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value_);
+        let data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
         if let Some(errors1) = data_type_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -251,7 +251,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
 }
 
 impl Type for TypeSourceDataTypeConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) })
     }
 
@@ -269,6 +269,11 @@ impl Type for TypeSourceDataTypeConstructorConst {
                 Box::new(
                     Box::new(TypeSourceDataTypeConstructorConst { data: self.data.clone() }) as Box<dyn AspectBind>,
                 ),
+            );
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
             );
         }
         return None;
@@ -290,7 +295,7 @@ impl Type for TypeSourceDataTypeConstructorConst {
     }
 }
 
-impl Value_ for TypeSourceDataTypeConstructorConst {
+impl Value for TypeSourceDataTypeConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

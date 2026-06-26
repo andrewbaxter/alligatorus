@@ -11,7 +11,7 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value_,
+            Value,
         },
         r#gen::IM_VALUE_TYPE_FIELD,
     },
@@ -28,12 +28,12 @@ impl ExporterAny for ValuePull {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value_ for ValuePull {
+impl Value for ValuePull {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

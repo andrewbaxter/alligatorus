@@ -17,7 +17,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectType,
@@ -36,7 +36,7 @@ pub(crate) struct TypeTypeSourceDataTypeDynamic;
 impl Aspect for TypeTypeSourceDataTypeDynamic { }
 
 impl AspectType for TypeTypeSourceDataTypeDynamic {
-    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let dt = must_downcast_ref::<TypeSourceDataTypeConst>(value);
         Rc::new(TypeSourceDataTypeConst { data: dt.data.clone() })
     }
@@ -47,13 +47,13 @@ impl ExporterAny for TypeTypeSourceDataTypeDynamic {
         return EResult::ok(Rc::new(TypeTypeSourceDataTypeDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeTypeSourceDataTypeDynamic));
     }
 }
 
 impl Type for TypeTypeSourceDataTypeDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeSourceDataTypeDynamic)
     }
 
@@ -63,6 +63,11 @@ impl Type for TypeTypeSourceDataTypeDynamic {
         }
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeTypeSourceDataTypeDynamic) as Box<dyn AspectType>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -80,7 +85,7 @@ impl Type for TypeTypeSourceDataTypeDynamic {
     }
 }
 
-impl Value_ for TypeTypeSourceDataTypeDynamic {
+impl Value for TypeTypeSourceDataTypeDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeTypeSourceDataTypeDynamic);
     }

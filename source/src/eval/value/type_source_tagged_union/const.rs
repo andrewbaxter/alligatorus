@@ -42,7 +42,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -52,6 +52,7 @@ use {
             AspectStackValueDynamic,
             AspectTaggedUnion,
             AspectType,
+            AspectUnlift,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -60,6 +61,7 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
             aspect_type_aspect_id,
+            aspect_unlift_aspect_id,
         },
     },
     std::{
@@ -119,7 +121,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConst {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            }).into(),
+            }),
         }
     }
 }
@@ -131,8 +133,20 @@ impl AspectTaggedUnion for TypeSourceTaggedUnionConst {
 }
 
 impl AspectType for TypeSourceTaggedUnionConst {
-    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() })
+    }
+}
+
+impl AspectUnlift for TypeSourceTaggedUnionConst {
+    fn unlift(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
+        EResult::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(super::dynamic::TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
+            }),
+        })
     }
 }
 
@@ -141,7 +155,7 @@ impl ExporterAny for TypeSourceTaggedUnionConst {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -252,7 +266,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
 }
 
 impl Type for TypeSourceTaggedUnionConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) })
     }
 
@@ -307,6 +321,11 @@ impl Type for TypeSourceTaggedUnionConst {
                 Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectType>),
             );
         }
+        if *key == aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -328,7 +347,7 @@ impl Type for TypeSourceTaggedUnionConst {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-                }).into(),
+                }),
             });
         }
         EvalRes::ok(CodeValue {
@@ -336,7 +355,7 @@ impl Type for TypeSourceTaggedUnionConst {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConst { data: self.data.clone() }),
-            }).into(),
+            }),
         })
     }
 
@@ -345,7 +364,7 @@ impl Type for TypeSourceTaggedUnionConst {
     }
 }
 
-impl Value_ for TypeSourceTaggedUnionConst {
+impl Value for TypeSourceTaggedUnionConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

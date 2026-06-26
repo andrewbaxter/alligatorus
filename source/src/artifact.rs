@@ -8,7 +8,7 @@ use {
             ExprErr,
             QExprId,
             Type,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -47,7 +47,7 @@ pub(crate) trait Artifacts: Send + Sync {
 
 pub(crate) trait ExporterAny: Any {
     fn as_type(&self) -> EResult<Rc<dyn Type>>;
-    fn as_value(&self) -> EResult<Rc<dyn Value_>>;
+    fn as_value(&self) -> EResult<Rc<dyn Value>>;
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -240,7 +240,7 @@ impl<T: 'static> ExporterAny for ExporterDataAny<T> {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         unimplemented!()
     }
 }
@@ -405,7 +405,7 @@ pub(crate) fn independent_finalize_deserialize_type_artifact(
     };
 }
 
-pub(crate) fn serialize_artifact(xx: &ExprContext, loc: QExprId, v: &dyn Value_) -> EResult<Artifact> {
+pub(crate) fn serialize_artifact(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> EResult<Artifact> {
     let mut t = v.type_(xx, loc);
     let mut errors = None;
     t.push_errors(&mut errors);

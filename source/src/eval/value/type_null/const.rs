@@ -28,7 +28,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -85,7 +85,7 @@ impl ExporterAny for TypeNullConst {
         return EResult::ok(Rc::new(Self));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(ValueNullConst));
     }
 }
@@ -116,7 +116,7 @@ impl ExporterRootDelegate for TypeNullConst {
 }
 
 impl Type for TypeNullConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNullConst)
     }
 
@@ -126,6 +126,11 @@ impl Type for TypeNullConst {
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeNullConst) as Box<dyn AspectArtifact>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         return None;
     }
@@ -144,7 +149,7 @@ impl Type for TypeNullConst {
             erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst).into()
+                value: Rc::new(ValueNullConst)
             });
         });
     }
@@ -154,7 +159,7 @@ impl Type for TypeNullConst {
             erb.must_er(aspect_null_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst).into()
+                value: Rc::new(ValueNullConst)
             });
         });
     }
@@ -164,7 +169,7 @@ impl Type for TypeNullConst {
     }
 }
 
-impl Value_ for TypeNullConst {
+impl Value for TypeNullConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(Self);
     }

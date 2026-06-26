@@ -38,7 +38,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -80,7 +80,7 @@ impl ScopeEntry for ScopeEntryUniqueDualMode {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
-            value: Rc::new(self.unique).into(),
+            value: Rc::new(self.unique),
         }
     }
 }
@@ -90,7 +90,7 @@ impl Aspect for TypeUnique { }
 
 impl AspectBind for TypeUnique {
     fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -133,7 +133,7 @@ impl AspectOperatorEq for TypeUnique {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueBoolConst(b == r)).into(),
+                value: Rc::new(ValueBoolConst(b == r)),
             });
         }
         let base_dyn = match aspect_consume_dynamic_get(xx, loc, self).into_res() {
@@ -189,7 +189,7 @@ impl ExporterAny for TypeUnique {
         EResult::ok(Rc::new(TypeUnique))
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         EResult::ok(Rc::new(TypeUnique))
     }
 }
@@ -220,7 +220,7 @@ impl ExporterRootDelegate for TypeUnique {
 }
 
 impl Type for TypeUnique {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeUnique)
     }
 
@@ -239,6 +239,11 @@ impl Type for TypeUnique {
         }
         if *key == aspect_operator_eq_aspect_id() {
             return Some(Box::new(Box::new(TypeUnique) as Box<dyn AspectOperatorEq>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -260,7 +265,7 @@ impl Type for TypeUnique {
     }
 }
 
-impl Value_ for TypeUnique {
+impl Value for TypeUnique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(TypeUnique)
     }
@@ -275,7 +280,7 @@ impl ExporterAny for Unique {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         EResult::ok(Rc::new(*self))
     }
 }
@@ -294,7 +299,7 @@ impl Push for Unique {
     }
 }
 
-impl Value_ for Unique {
+impl Value for Unique {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(*self)
     }

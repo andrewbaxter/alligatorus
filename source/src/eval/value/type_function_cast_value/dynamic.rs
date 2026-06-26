@@ -36,7 +36,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectFunction,
@@ -75,7 +75,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
             ),
         };
         let CodeValue { code: _, value: arg_value } = argument;
-        let elements = arg_tuple.take_elements(arg_value.into_direct());
+        let elements = arg_tuple.take_elements(arg_value);
         if elements.len() != 2 {
             return EvalRes::err(
                 loc,
@@ -137,7 +137,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: result_type,
-                }).into(),
+                }),
             });
         });
     }
@@ -157,13 +157,13 @@ impl ExporterAny for TypeFunctionCastValueDynamic {
         return EResult::ok(Rc::new(TypeFunctionCastValueDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeFunctionCastValueDynamic));
     }
 }
 
 impl Type for TypeFunctionCastValueDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeFunctionCastValueDynamic) })
     }
 
@@ -174,6 +174,11 @@ impl Type for TypeFunctionCastValueDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeFunctionCastValueDynamic) as Box<dyn AspectInitialBind>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         None
     }
 
@@ -182,7 +187,7 @@ impl Type for TypeFunctionCastValueDynamic {
     }
 }
 
-impl Value_ for TypeFunctionCastValueDynamic {
+impl Value for TypeFunctionCastValueDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeFunctionCastValueDynamic);
     }

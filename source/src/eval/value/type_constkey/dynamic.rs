@@ -36,7 +36,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -104,13 +104,13 @@ impl ExporterAny for TypeConstkeyDynamic {
         return EResult::ok(Rc::new(TypeConstkeyDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeConstkeyDynamic));
     }
 }
 
 impl Type for TypeConstkeyDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeConstkeyDynamic)
     }
 
@@ -129,6 +129,11 @@ impl Type for TypeConstkeyDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeConstkeyDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -158,7 +163,7 @@ impl Type for TypeConstkeyDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeConstkeyDynamic),
-                    }).into(),
+                    }),
                 });
             }
             return erb.err_new(format!("Cannot convert {} to constkey", source_type.desc()));
@@ -174,7 +179,7 @@ impl Type for TypeConstkeyDynamic {
     }
 }
 
-impl Value_ for TypeConstkeyDynamic {
+impl Value for TypeConstkeyDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeConstkeyDynamic);
     }

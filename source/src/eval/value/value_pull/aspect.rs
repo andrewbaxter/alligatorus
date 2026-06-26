@@ -30,7 +30,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectField,
@@ -120,7 +120,7 @@ impl AspectField for TypePullAspect {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: func_type,
-            }).into(),
+            }),
         })
     }
 
@@ -156,13 +156,13 @@ impl ExporterAny for TypePullAspect {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypePullAspect {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypePullAspect {
             iface_ref: self.iface_ref.clone(),
             bundle: self.bundle.clone(),
@@ -183,6 +183,11 @@ impl Type for TypePullAspect {
             }) as Box<dyn AspectInitialBind>));
         }
         if *key == aspect_function_aspect_id() {
+            if *key == crate::r#gen::aspect_unlift_aspect_id() {
+                return Some(
+                    Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                );
+            }
             return None;
         }
         None
@@ -193,7 +198,7 @@ impl Type for TypePullAspect {
     }
 }
 
-impl Value_ for TypePullAspect {
+impl Value for TypePullAspect {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

@@ -21,7 +21,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectFunction,
@@ -57,7 +57,7 @@ impl AspectFunction for TypeMapConstructorConst {
             Some(t) => t,
             None => return EvalRes::err(loc, "map() requires a tuple of (key_type, value_type)".to_string()),
         };
-        let elements = arg_tuple.take_elements(argument.value.into_direct());
+        let elements = arg_tuple.take_elements(argument.value);
         if elements.len() != 2 {
             return EvalRes::err(
                 loc,
@@ -118,7 +118,7 @@ impl AspectFunction for TypeMapConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: map_type }).into(),
+            value: Rc::new(ValueAnyConst { inner: map_type }),
         })
     }
 }
@@ -137,13 +137,13 @@ impl ExporterAny for TypeMapConstructorConst {
         return EResult::ok(Rc::new(TypeMapConstructorConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeMapConstructorConst));
     }
 }
 
 impl Type for TypeMapConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapConstructorConst)
     }
 
@@ -153,6 +153,11 @@ impl Type for TypeMapConstructorConst {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeMapConstructorConst) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -170,7 +175,7 @@ impl Type for TypeMapConstructorConst {
     }
 }
 
-impl Value_ for TypeMapConstructorConst {
+impl Value for TypeMapConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeMapConstructorConst);
     }

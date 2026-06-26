@@ -45,7 +45,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -173,7 +173,7 @@ impl AspectField for TypeCodeValueExternDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeCodeStructDynamic),
-                    }).into(),
+                    }),
                 });
             }
             if key_str == "value" {
@@ -197,7 +197,7 @@ impl AspectField for TypeCodeValueExternDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeValueDynamic),
-                    }).into(),
+                    }),
                 });
             }
             return erb.err_new(format!("CodeValueExtern has no field '{}' (only 'code' and 'value')", key_str));
@@ -236,13 +236,13 @@ impl ExporterAny for TypeCodeValueExternDynamic {
         return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
     }
 }
 
 impl Type for TypeCodeValueExternDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeCodeValueExternDynamic)
     }
 
@@ -267,6 +267,11 @@ impl Type for TypeCodeValueExternDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -293,7 +298,7 @@ impl Type for TypeCodeValueExternDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeCodeValueExternDynamic),
-                }).into(),
+                }),
             });
         }
         EvalRes::err(loc, "Cannot convert to CodeValueExtern".to_string())
@@ -329,7 +334,7 @@ impl Type for TypeCodeValueExternDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_type_rc,
-            }).into(),
+            }),
         })
     }
 
@@ -338,7 +343,7 @@ impl Type for TypeCodeValueExternDynamic {
     }
 }
 
-impl Value_ for TypeCodeValueExternDynamic {
+impl Value for TypeCodeValueExternDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeCodeValueExternDynamic);
     }
@@ -380,13 +385,13 @@ impl ExporterAny for TypeExprContextPushDynamic {
         return EResult::ok(Rc::new(TypeExprContextPushDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeExprContextPushDynamic));
     }
 }
 
 impl Type for TypeExprContextPushDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeExprContextPushDynamic)
     }
 
@@ -405,6 +410,11 @@ impl Type for TypeExprContextPushDynamic {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectStackValueDynamic>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -427,7 +437,7 @@ impl Type for TypeExprContextPushDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeExprContextPushDynamic),
-                }).into(),
+                }),
             });
         }
         EvalRes::err(loc, "Cannot convert to ExprContextPush".to_string())
@@ -442,7 +452,7 @@ impl Type for TypeExprContextPushDynamic {
     }
 }
 
-impl Value_ for TypeExprContextPushDynamic {
+impl Value for TypeExprContextPushDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeExprContextPushDynamic);
     }

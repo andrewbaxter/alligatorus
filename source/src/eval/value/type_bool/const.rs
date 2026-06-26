@@ -24,7 +24,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBoolConst,
@@ -44,7 +44,7 @@ pub(crate) struct TypeBoolConst;
 impl Aspect for TypeBoolConst { }
 
 impl AspectBoolConst for TypeBoolConst {
-    fn get(&self, value: &dyn Value_) -> bool {
+    fn get(&self, value: &dyn Value) -> bool {
         return must_downcast_ref::<ValueBoolConst>(value).0;
     }
 }
@@ -54,7 +54,7 @@ impl ExporterAny for TypeBoolConst {
         return EResult::ok(Rc::new(TypeBoolConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(ValueTypeBoolConst));
     }
 }
@@ -80,13 +80,18 @@ impl ExporterRootDelegate for TypeBoolConst {
 }
 
 impl Type for TypeBoolConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueTypeBoolConst)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_bool_const_aspect_id() {
             return Some(Box::new(Box::new(TypeBoolConst) as Box<dyn AspectBoolConst>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         return None;
     }
@@ -106,7 +111,7 @@ impl Type for TypeBoolConst {
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref()))).into()
+                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
             });
         });
     }
@@ -117,7 +122,7 @@ impl Type for TypeBoolConst {
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref()))).into()
+                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
             });
         });
     }
@@ -127,7 +132,7 @@ impl Type for TypeBoolConst {
     }
 }
 
-impl Value_ for TypeBoolConst {
+impl Value for TypeBoolConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(ValueTypeBoolConst);
     }

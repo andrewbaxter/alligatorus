@@ -45,7 +45,6 @@ pub mod value_dynamic;
 pub mod value_empty;
 pub mod value_null;
 pub mod value_number;
-pub mod value_pending_import;
 pub mod value_pull;
 pub mod value_source_data_type;
 pub mod value_string;

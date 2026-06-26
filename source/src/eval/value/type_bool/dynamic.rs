@@ -45,7 +45,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -115,7 +115,7 @@ impl ExporterAny for TypeBoolDynamic {
         return EResult::ok(Rc::new(TypeBoolDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeBoolDynamic));
     }
 }
@@ -141,7 +141,7 @@ impl ExporterRootDelegate for TypeBoolDynamic {
 }
 
 impl Type for TypeBoolDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeBoolDynamic)
     }
 
@@ -163,6 +163,11 @@ impl Type for TypeBoolDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeBoolDynamic) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         return None;
     }
@@ -203,7 +208,7 @@ impl Type for TypeBoolDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeBoolDynamic),
-                    }).into(),
+                    }),
                 });
             } else {
                 return Ok(CodeValue {
@@ -211,7 +216,7 @@ impl Type for TypeBoolDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeBoolDynamic),
-                    }).into()
+                    })
                 });
             }
         });
@@ -223,7 +228,7 @@ impl Type for TypeBoolDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeBoolDynamic),
-            }).into(),
+            }),
         })
     }
 
@@ -232,7 +237,7 @@ impl Type for TypeBoolDynamic {
     }
 }
 
-impl Value_ for TypeBoolDynamic {
+impl Value for TypeBoolDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeBoolDynamic);
     }

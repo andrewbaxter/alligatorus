@@ -58,7 +58,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -153,7 +153,7 @@ impl AspectField for TypeOptionDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: var_type }).into(),
+                value: Rc::new(ValueAnyConst { inner: var_type }),
             })
         };
         match key_name.as_str() {
@@ -206,7 +206,7 @@ impl AspectStackValueDynamic for TypeOptionDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }).into(),
+            }),
         }
     }
 }
@@ -222,7 +222,7 @@ impl ExporterAny for TypeOptionDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -262,7 +262,7 @@ impl ExporterRootDelegate for TypeOptionDynamic {
             Ok(v) => v,
             Err(_) => return EResult::err(loc, "TypeOptionDynamic::self_to_serial: type mismatch".to_string()),
         };
-        let element_val: &dyn Value_ = self_.element_type.as_ref();
+        let element_val: &dyn Value = self_.element_type.as_ref();
         let element_art = serialize_artifact(xx, loc, element_val);
         let mut errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
@@ -295,7 +295,7 @@ impl Push for TypeOptionDynamic {
 }
 
 impl Type for TypeOptionDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
     }
 
@@ -327,6 +327,11 @@ impl Type for TypeOptionDynamic {
         if *key == aspect_set_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectSet>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         None
     }
 
@@ -352,7 +357,7 @@ impl Type for TypeOptionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }).into(),
+                }),
             });
         }
         EvalRes::err(loc, "Cannot convert to option".to_string())
@@ -367,7 +372,7 @@ impl Type for TypeOptionDynamic {
     }
 }
 
-impl Value_ for TypeOptionDynamic {
+impl Value for TypeOptionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -418,19 +423,24 @@ impl ExporterAny for TypeOptionVariantConstructorDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeOptionVariantConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -453,7 +463,7 @@ impl Type for TypeOptionVariantConstructorDynamic {
     }
 }
 
-impl Value_ for TypeOptionVariantConstructorDynamic {
+impl Value for TypeOptionVariantConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

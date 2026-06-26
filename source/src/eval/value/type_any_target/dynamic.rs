@@ -26,7 +26,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -91,13 +91,13 @@ impl ExporterAny for TypeAnyTargetDynamic {
         return EResult::ok(Rc::new(TypeAnyTargetDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeAnyTargetDynamic));
     }
 }
 
 impl Type for TypeAnyTargetDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAnyTargetDynamic)
     }
 
@@ -120,6 +120,11 @@ impl Type for TypeAnyTargetDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyTargetDynamic) as Box<dyn AspectInitialBind>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         None
     }
 
@@ -128,7 +133,7 @@ impl Type for TypeAnyTargetDynamic {
     }
 }
 
-impl Value_ for TypeAnyTargetDynamic {
+impl Value for TypeAnyTargetDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAnyTargetDynamic);
     }

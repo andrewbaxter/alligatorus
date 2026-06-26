@@ -35,7 +35,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectArtifact,
@@ -86,7 +86,7 @@ impl ArtifactExporter for ExporterAnyDelegate {
             Ok(v) => v.inner.clone(),
             Err(_) => return EResult::err(loc, "ExporterAnyDelegate: expected ValueAnyConst".to_string()),
         };
-        let inner_val: &dyn Value_ = inner.as_ref();
+        let inner_val: &dyn Value = inner.as_ref();
         return serialize_artifact(xx, loc, inner_val);
     }
 }
@@ -189,7 +189,7 @@ impl AspectInitialBind for TypeAnyConst {
 }
 
 impl AspectType for TypeAnyConst {
-    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let wrapper = must_downcast_ref::<ValueAnyConst>(value);
         wrapper.inner.clone()
     }
@@ -200,13 +200,13 @@ impl ExporterAny for TypeAnyConst {
         return EResult::ok(Rc::new(TypeAnyConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeAnyConst));
     }
 }
 
 impl Type for TypeAnyConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeAnyConst)
     }
 
@@ -237,6 +237,11 @@ impl Type for TypeAnyConst {
         }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectArtifact>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -279,7 +284,7 @@ impl Type for TypeAnyConst {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
-            value: Rc::new(super::dynamic::TypeAnyDynamic).into(),
+            value: Rc::new(super::dynamic::TypeAnyDynamic),
         })
     }
 
@@ -288,7 +293,7 @@ impl Type for TypeAnyConst {
     }
 }
 
-impl Value_ for TypeAnyConst {
+impl Value for TypeAnyConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeAnyConst);
     }
@@ -308,12 +313,12 @@ impl ExporterAny for ValueAnyConst {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value_ for ValueAnyConst {
+impl Value for ValueAnyConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

@@ -56,7 +56,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -151,7 +151,7 @@ impl AspectField for TypeNumberDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: js_name, }),
                     type_: field_type,
-                }).into(),
+                }),
             });
         });
     }
@@ -201,7 +201,7 @@ impl AspectOperatorAdd for TypeNumberDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeNumberDynamic),
-                }).into(),
+                }),
             });
         });
     }
@@ -227,7 +227,7 @@ impl AspectOperatorEq for TypeNumberDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeBoolDynamic),
-                }).into(),
+                }),
             });
         });
     }
@@ -253,7 +253,7 @@ impl AspectOperatorLt for TypeNumberDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeBoolDynamic),
-                }).into(),
+                }),
             });
         });
     }
@@ -272,7 +272,7 @@ impl AspectStackValueDynamic for TypeNumberDynamic {
 }
 
 impl AspectType for TypeNumberDynamic {
-    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeNumberDynamic)
     }
 }
@@ -282,7 +282,7 @@ impl ExporterAny for TypeNumberDynamic {
         return EResult::ok(Rc::new(TypeNumberDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeNumberDynamic));
     }
 }
@@ -308,7 +308,7 @@ impl ExporterRootDelegate for TypeNumberDynamic {
 }
 
 impl Type for TypeNumberDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNumberDynamic)
     }
 
@@ -349,6 +349,11 @@ impl Type for TypeNumberDynamic {
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberDynamic) as Box<dyn AspectType>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -388,7 +393,7 @@ impl Type for TypeNumberDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeNumberDynamic),
-                    }).into(),
+                    }),
                 });
             } else {
                 return Ok(CodeValue {
@@ -396,7 +401,7 @@ impl Type for TypeNumberDynamic {
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeNumberDynamic),
-                    }).into()
+                    })
                 });
             }
         });
@@ -408,7 +413,7 @@ impl Type for TypeNumberDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeNumberDynamic),
-            }).into(),
+            }),
         })
     }
 
@@ -417,7 +422,7 @@ impl Type for TypeNumberDynamic {
     }
 }
 
-impl Value_ for TypeNumberDynamic {
+impl Value for TypeNumberDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeNumberDynamic);
     }

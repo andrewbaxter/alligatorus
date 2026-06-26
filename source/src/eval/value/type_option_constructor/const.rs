@@ -21,7 +21,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectFunction,
@@ -69,7 +69,7 @@ impl AspectFunction for TypeOptionConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: opt_type }).into(),
+            value: Rc::new(ValueAnyConst { inner: opt_type }),
         })
     }
 }
@@ -88,13 +88,13 @@ impl ExporterAny for TypeOptionConstructorConst {
         return EResult::ok(Rc::new(TypeOptionConstructorConst));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeOptionConstructorConst));
     }
 }
 
 impl Type for TypeOptionConstructorConst {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeOptionConstructorConst)
     }
 
@@ -104,6 +104,11 @@ impl Type for TypeOptionConstructorConst {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeOptionConstructorConst) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -121,7 +126,7 @@ impl Type for TypeOptionConstructorConst {
     }
 }
 
-impl Value_ for TypeOptionConstructorConst {
+impl Value for TypeOptionConstructorConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeOptionConstructorConst);
     }

@@ -39,7 +39,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -90,7 +90,7 @@ pub(crate) fn dynamic_call(
             } else {
                 vec![arg_type.clone()]
             };
-            let elements = arg_tuple.take_elements(argument.value.into_direct());
+            let elements = arg_tuple.take_elements(argument.value);
             let (elements, param_types) =
                 if elements.is_empty() && param_types.len() == 1 &&
                     aspect_null_get_maybe(xx, param_types[0].as_ref()).is_some() {
@@ -106,7 +106,7 @@ pub(crate) fn dynamic_call(
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(Tuple { elements: vec![], }).into(),
+                        value: Rc::new(Tuple { elements: vec![], }),
                     };
                     let arg_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, arg_type.as_ref()))?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, arg_type.as_ref(), unit_cv))?;
@@ -215,13 +215,13 @@ impl ExporterAny for TypeFunctionDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeFunctionDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeFunctionDynamic {
             arg: self.arg.clone(),
             ret: self.ret.clone(),
@@ -244,6 +244,11 @@ impl Type for TypeFunctionDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -260,7 +265,7 @@ impl Type for TypeFunctionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }).into(),
+                }),
             });
         });
     }
@@ -274,7 +279,7 @@ impl Type for TypeFunctionDynamic {
     }
 }
 
-impl Value_ for TypeFunctionDynamic {
+impl Value for TypeFunctionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

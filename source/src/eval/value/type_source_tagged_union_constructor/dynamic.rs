@@ -42,7 +42,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -109,7 +109,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value_>, String> {
+    ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
@@ -130,7 +130,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionConstructorDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionConstructorDynamic),
-            }).into(),
+            }),
         }
     }
 }
@@ -140,13 +140,13 @@ impl ExporterAny for TypeSourceTaggedUnionConstructorDynamic {
         return EResult::ok(Rc::new(TypeSourceTaggedUnionConstructorDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeSourceTaggedUnionConstructorDynamic));
     }
 }
 
 impl Type for TypeSourceTaggedUnionConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
 
@@ -177,6 +177,11 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(
                 Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectInitialBind>),
+            );
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
             );
         }
         return None;
@@ -223,7 +228,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }).into(),
+            }),
         })
     }
 
@@ -232,7 +237,7 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl Value_ for TypeSourceTaggedUnionConstructorDynamic {
+impl Value for TypeSourceTaggedUnionConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceTaggedUnionConstructorDynamic);
     }

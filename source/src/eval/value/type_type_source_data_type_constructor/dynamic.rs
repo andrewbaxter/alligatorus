@@ -18,7 +18,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectType,
@@ -37,7 +37,7 @@ pub(crate) struct TypeTypeSourceDataTypeConstructorDynamic;
 impl Aspect for TypeTypeSourceDataTypeConstructorDynamic { }
 
 impl AspectType for TypeTypeSourceDataTypeConstructorDynamic {
-    fn type_(&self, value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
         let ctor = must_downcast_ref::<TypeSourceDataTypeConstructorConst>(value);
         Rc::new(TypeSourceDataTypeConstructorConst { data: ctor.data.clone() })
     }
@@ -48,13 +48,13 @@ impl ExporterAny for TypeTypeSourceDataTypeConstructorDynamic {
         return EResult::ok(Rc::new(TypeTypeSourceDataTypeConstructorDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeTypeSourceDataTypeConstructorDynamic));
     }
 }
 
 impl Type for TypeTypeSourceDataTypeConstructorDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeTypeSourceDataTypeConstructorDynamic)
     }
 
@@ -64,6 +64,11 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
         }
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeTypeSourceDataTypeConstructorDynamic) as Box<dyn AspectType>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -81,7 +86,7 @@ impl Type for TypeTypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl Value_ for TypeTypeSourceDataTypeConstructorDynamic {
+impl Value for TypeTypeSourceDataTypeConstructorDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeTypeSourceDataTypeConstructorDynamic);
     }

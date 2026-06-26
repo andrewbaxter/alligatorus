@@ -42,7 +42,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -116,7 +116,7 @@ impl AspectLiftDynamic for TypeNullDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         _value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value_>, String> {
+    ) -> Result<Rc<dyn Value>, String> {
         Ok(Rc::new(ValueNullConst))
     }
 }
@@ -133,13 +133,13 @@ impl AspectStackValueDynamic for TypeNullDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeNullDynamic),
-            }).into(),
+            }),
         }
     }
 }
 
 impl AspectType for TypeNullDynamic {
-    fn type_(&self, _value: &dyn Value_) -> Rc<dyn Type> {
+    fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeNullDynamic)
     }
 }
@@ -149,7 +149,7 @@ impl ExporterAny for TypeNullDynamic {
         return EResult::ok(Rc::new(TypeNullDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeNullDynamic));
     }
 }
@@ -175,7 +175,7 @@ impl ExporterRootDelegate for TypeNullDynamic {
 }
 
 impl Type for TypeNullDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeNullDynamic)
     }
 
@@ -204,6 +204,11 @@ impl Type for TypeNullDynamic {
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectType>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -224,7 +229,7 @@ impl Type for TypeNullDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeNullDynamic),
-                }).into(),
+                }),
             });
         });
     }
@@ -235,7 +240,7 @@ impl Type for TypeNullDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeNullDynamic),
-            }).into(),
+            }),
         })
     }
 
@@ -244,7 +249,7 @@ impl Type for TypeNullDynamic {
     }
 }
 
-impl Value_ for TypeNullDynamic {
+impl Value for TypeNullDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeNullDynamic);
     }

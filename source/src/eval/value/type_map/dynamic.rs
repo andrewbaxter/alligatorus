@@ -71,7 +71,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
             downcast_value,
         },
         r#gen::{
@@ -164,7 +164,7 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: new_type }).into(),
+                value: Rc::new(ValueAnyConst { inner: new_type }),
             });
         }
         return er_seq_cv!(loc, erb, {
@@ -183,7 +183,7 @@ impl AspectField for TypeMapDynamic {
                     value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapGetFnDynamic {
                         key_type: self.key_type.clone(),
                         value_type: self.value_type.clone(),
-                    }) }).into(),
+                    }) }),
                 });
             }
             let access_code = CodeDynamicType::FieldUse(CodeDynamicFieldUse {
@@ -201,7 +201,7 @@ impl AspectField for TypeMapDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }).into(),
+                }),
             });
         });
     }
@@ -309,7 +309,7 @@ impl AspectStackValueDynamic for TypeMapDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }).into(),
+            }),
         }
     }
 }
@@ -319,7 +319,7 @@ impl ExporterAny for TypeMapDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -372,7 +372,7 @@ impl ExporterRootDelegate for TypeMapDynamic {
             Ok(v) => v,
             Err(_) => return EResult::err(loc, "TypeMapDynamic::self_to_serial: type mismatch".to_string()),
         };
-        let key_val: &dyn Value_ = self_.key_type.as_ref();
+        let key_val: &dyn Value = self_.key_type.as_ref();
         let key_art = serialize_artifact(xx, loc, key_val);
         let mut errors = key_art.errors;
         let Some(key_artifact) = key_art.v else {
@@ -381,7 +381,7 @@ impl ExporterRootDelegate for TypeMapDynamic {
                 v: None,
             };
         };
-        let value_val: &dyn Value_ = self_.value_type.as_ref();
+        let value_val: &dyn Value = self_.value_type.as_ref();
         let value_art = serialize_artifact(xx, loc, value_val);
         if let Some(errors1) = value_art.errors {
             errors.get_or_insert_default().extend(errors1);
@@ -419,7 +419,7 @@ impl Push for TypeMapDynamic {
 }
 
 impl Type for TypeMapDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(ValueAnyConst { inner: Rc::new(TypeMapDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
@@ -453,6 +453,11 @@ impl Type for TypeMapDynamic {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -515,13 +520,11 @@ impl Type for TypeMapDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }).into(),
+                }),
             });
         }
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value.into_direct()))
-                .ok()
-                .expect("Record Rc not unique in map cast");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
@@ -534,14 +537,14 @@ impl Type for TypeMapDynamic {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(ValueStringConst(s.clone()),).into(),
+                        value: Rc::new(ValueStringConst(s.clone()),),
                     },
                     ConstKey::Usize(n) => CodeValue {
                         code: Code {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(ValueNumberConst(*n as f64),).into(),
+                        value: Rc::new(ValueNumberConst(*n as f64),),
                     },
                 };
                 let key_cv = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), key_cv))?;
@@ -579,7 +582,7 @@ impl Type for TypeMapDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }).into(),
+                }),
             });
         });
     }
@@ -593,7 +596,7 @@ impl Type for TypeMapDynamic {
     }
 }
 
-impl Value_ for TypeMapDynamic {
+impl Value for TypeMapDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -635,19 +638,24 @@ impl ExporterAny for TypeMapGetFnDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeMapGetFnDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -665,7 +673,7 @@ impl Type for TypeMapGetFnDynamic {
     }
 }
 
-impl Value_ for TypeMapGetFnDynamic {
+impl Value for TypeMapGetFnDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -716,13 +724,13 @@ impl ExporterAny for TypeMapNewDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeMapNewDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeMapNewDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
@@ -732,6 +740,11 @@ impl Type for TypeMapNewDynamic {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -749,7 +762,7 @@ impl Type for TypeMapNewDynamic {
     }
 }
 
-impl Value_ for TypeMapNewDynamic {
+impl Value for TypeMapNewDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

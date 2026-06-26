@@ -22,7 +22,7 @@ use {
             ExprErr,
             QExprId,
             Type,
-            Value_,
+            Value,
         },
     },
     dumpster::unsync::Gc,
@@ -47,7 +47,7 @@ pub(crate) struct ArtifactValueSourceDataType {
 pub(crate) struct ValueSourceDataTypeConst {
     pub data: Gc<SourceDataTypeData>,
     pub isolate_bundle: RefCell<Option<v8::Global<v8::Object>>>,
-    pub underlying: Rc<dyn Value_>,
+    pub underlying: Rc<dyn Value>,
 }
 
 impl ExporterAny for ValueSourceDataTypeConst {
@@ -55,7 +55,7 @@ impl ExporterAny for ValueSourceDataTypeConst {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         EResult::ok(Rc::new(self.clone()))
     }
 }
@@ -136,7 +136,7 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
         };
         let mut errors: Option<Vec<ExprErr>> = None;
         let type_value = TypeSourceDataTypeConst { data: self_.data.clone() };
-        let type_art = serialize_artifact(xx, loc, &type_value as &dyn Value_);
+        let type_art = serialize_artifact(xx, loc, &type_value as &dyn Value);
         if let Some(errors1) = type_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -167,7 +167,7 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
     }
 }
 
-impl Value_ for ValueSourceDataTypeConst {
+impl Value for ValueSourceDataTypeConst {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(self.clone())
     }

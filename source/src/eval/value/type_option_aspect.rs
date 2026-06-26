@@ -20,7 +20,7 @@ use {
             QExprId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectField,
@@ -38,7 +38,7 @@ use {
 
 #[derive(Clone)]
 struct OptionIsSome {
-    receiver: Rc<dyn Value_>,
+    receiver: Rc<dyn Value>,
 }
 
 impl ExporterAny for OptionIsSome {
@@ -46,12 +46,12 @@ impl ExporterAny for OptionIsSome {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value_ for OptionIsSome {
+impl Value for OptionIsSome {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -87,7 +87,7 @@ impl AspectField for TypeOption {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(OptionIsSome { receiver: self_.value.into_direct() }).into(),
+                value: Rc::new(OptionIsSome { receiver: self_.value }),
             }),
             _ => EvalRes::err(loc, format!("Field '{}' not found on option", key_name)),
         }
@@ -112,19 +112,24 @@ impl ExporterAny for TypeOption {
         return EResult::ok(Rc::new(TypeOption));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeOption));
     }
 }
 
 impl Type for TypeOption {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeOption)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeOption) as Box<dyn AspectField>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -146,7 +151,7 @@ impl Type for TypeOption {
     }
 }
 
-impl Value_ for TypeOption {
+impl Value for TypeOption {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeOption);
     }
@@ -168,7 +173,7 @@ impl AspectFunction for TypeOptionIsSomeFn {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueBoolConst(opt.is_some)).into(),
+            value: Rc::new(ValueBoolConst(opt.is_some)),
         })
     }
 }
@@ -178,19 +183,24 @@ impl ExporterAny for TypeOptionIsSomeFn {
         return EResult::ok(Rc::new(TypeOptionIsSomeFn));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeOptionIsSomeFn));
     }
 }
 
 impl Type for TypeOptionIsSomeFn {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeOptionIsSomeFn)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(TypeOptionIsSomeFn) as Box<dyn AspectFunction>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -212,7 +222,7 @@ impl Type for TypeOptionIsSomeFn {
     }
 }
 
-impl Value_ for TypeOptionIsSomeFn {
+impl Value for TypeOptionIsSomeFn {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeOptionIsSomeFn);
     }
@@ -232,12 +242,12 @@ impl ExporterAny for ValueOption {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value_ for ValueOption {
+impl Value for ValueOption {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

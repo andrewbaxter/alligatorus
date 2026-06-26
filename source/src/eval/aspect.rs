@@ -15,11 +15,12 @@ use {
             ExprContext,
             QExprId,
             Type,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectField,
             AspectFunction,
+            AspectUnlift,
             IM_ASPECT_FIELD_FIELD_FIELD,
             IM_ASPECT_FUNCTION_CALL_FIELD,
         },
@@ -70,12 +71,12 @@ impl ExporterAny for AspectPull {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
-impl Value_ for AspectPull {
+impl Value for AspectPull {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -88,7 +89,7 @@ impl Value_ for AspectPull {
 fn clone_cv(cv: &CodeValue) -> CodeValue {
     CodeValue {
         code: cv.code.clone(),
-        value: cv.value.clone().into(),
+        value: cv.value.clone(),
     }
 }
 
@@ -164,3 +165,8 @@ fn dispatch_aspect_method(
     };
     EvalRes::ok(out_cv)
 }
+pub(crate) struct UnliftIdentity;
+
+impl Aspect for UnliftIdentity { }
+
+impl AspectUnlift for UnliftIdentity { }

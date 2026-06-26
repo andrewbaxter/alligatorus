@@ -45,7 +45,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -120,7 +120,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value_>, String> {
+    ) -> Result<Rc<dyn Value>, String> {
         let type_: &Rc<dyn Type> = from_v8_ref(&value);
         let type_val = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
         let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: type_val.data.clone() });
@@ -138,7 +138,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
-            }).into(),
+            }),
         }
     }
 }
@@ -148,13 +148,13 @@ impl ExporterAny for TypeSourceTaggedUnionDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeSourceTaggedUnionDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() })
     }
 
@@ -217,6 +217,11 @@ impl Type for TypeSourceTaggedUnionDynamic {
                 );
             }
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         return None;
     }
 
@@ -248,7 +253,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
-                }).into(),
+                }),
             });
         }
         if source_type.aspect(xx, &tagged_union_ref_type_identity()).is_some() {
@@ -257,7 +262,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
-                }).into(),
+                }),
             });
         }
         if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
@@ -266,7 +271,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: source_type,
-                }).into(),
+                }),
             });
         }
         EvalRes::err(loc, format!("Cannot convert {} to tagged_union_ref", source_type.desc()))
@@ -278,7 +283,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }),
-            }).into(),
+            }),
         })
     }
 
@@ -291,7 +296,7 @@ impl Type for TypeSourceTaggedUnionDynamic {
     }
 }
 
-impl Value_ for TypeSourceTaggedUnionDynamic {
+impl Value for TypeSourceTaggedUnionDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -337,7 +342,7 @@ impl AspectLiftDynamic for TypeSourceTaggedUnionRefDynamic {
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
-    ) -> Result<Rc<dyn Value_>, String> {
+    ) -> Result<Rc<dyn Value>, String> {
         let tu_ref: &Rc<super::SourceTaggedUnionRef> = from_v8_ref(&value);
         let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: tu_type }))
@@ -354,7 +359,7 @@ impl AspectStackValueDynamic for TypeSourceTaggedUnionRefDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceTaggedUnionRefDynamic),
-            }).into(),
+            }),
         }
     }
 }
@@ -364,13 +369,13 @@ impl ExporterAny for TypeSourceTaggedUnionRefDynamic {
         return EResult::ok(Rc::new(TypeSourceTaggedUnionRefDynamic));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(TypeSourceTaggedUnionRefDynamic));
     }
 }
 
 impl Type for TypeSourceTaggedUnionRefDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeSourceTaggedUnionRefDynamic)
     }
 
@@ -422,7 +427,7 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionRefDynamic),
-                }).into(),
+                }),
             });
         }
         if source_type.aspect(xx, &aspect_tagged_union_aspect_id()).is_some() {
@@ -431,7 +436,7 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceTaggedUnionRefDynamic),
-                }).into(),
+                }),
             });
         }
         EvalRes::err(loc, format!("Cannot convert {} to tagged_union_ref", source_type.desc()))
@@ -469,7 +474,7 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }).into(),
+            }),
         })
     }
 
@@ -482,7 +487,7 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
     }
 }
 
-impl Value_ for TypeSourceTaggedUnionRefDynamic {
+impl Value for TypeSourceTaggedUnionRefDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(TypeSourceTaggedUnionRefDynamic);
     }

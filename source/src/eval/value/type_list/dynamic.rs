@@ -59,7 +59,7 @@ use {
             ScopeEntryId,
             Type,
             Unique,
-            Value_,
+            Value,
         },
         r#gen::{
             AspectBind,
@@ -144,7 +144,7 @@ impl AspectField for TypeListDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: new_type }).into(),
+                value: Rc::new(ValueAnyConst { inner: new_type }),
             });
         }
         return er_seq_cv!(loc, erb, {
@@ -168,7 +168,7 @@ impl AspectField for TypeListDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }).into(),
+                }),
             });
         });
     }
@@ -265,7 +265,7 @@ impl AspectStackValueDynamic for TypeListDynamic {
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }).into(),
+            }),
         }
     }
 }
@@ -275,7 +275,7 @@ impl ExporterAny for TypeListDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
@@ -315,7 +315,7 @@ impl ExporterRootDelegate for TypeListDynamic {
             Ok(v) => v,
             Err(_) => return EResult::err(loc, "TypeListDynamic::self_to_serial: type mismatch".to_string()),
         };
-        let element_val: &dyn Value_ = self_.element_type.as_ref();
+        let element_val: &dyn Value = self_.element_type.as_ref();
         let element_art = serialize_artifact(xx, loc, element_val);
         let mut errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
@@ -348,7 +348,7 @@ impl Push for TypeListDynamic {
 }
 
 impl Type for TypeListDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeListDynamic { element_type: self.element_type.clone() })
     }
 
@@ -377,6 +377,11 @@ impl Type for TypeListDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
         }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
+        }
         None
     }
 
@@ -402,7 +407,7 @@ impl Type for TypeListDynamic {
                 value: Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }).into(),
+                }),
             });
         }
         EvalRes::err(loc, "Cannot convert to list type".to_string())
@@ -417,7 +422,7 @@ impl Type for TypeListDynamic {
     }
 }
 
-impl Value_ for TypeListDynamic {
+impl Value for TypeListDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }
@@ -440,7 +445,7 @@ impl AspectFunction for TypeListNewDynamic {
             let arg_type = erb.must_er(argument.value.type_(xx, loc))?;
             let mut js_elements = vec![];
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
-                let elements = arg_tuple.take_elements(argument.value.into_direct());
+                let elements = arg_tuple.take_elements(argument.value);
                 for elem_res in elements {
                     let elem_cv = erb.must_er(elem_res)?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
@@ -470,19 +475,24 @@ impl ExporterAny for TypeListNewDynamic {
         return EResult::ok(Rc::new(self.clone()));
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         return EResult::ok(Rc::new(self.clone()));
     }
 }
 
 impl Type for TypeListNewDynamic {
-    fn as_value(&self) -> Rc<dyn Value_> {
+    fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() })
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
+        }
+        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+            return Some(
+                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+            );
         }
         None
     }
@@ -500,7 +510,7 @@ impl Type for TypeListNewDynamic {
     }
 }
 
-impl Value_ for TypeListNewDynamic {
+impl Value for TypeListNewDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         return Rc::new(self.clone());
     }

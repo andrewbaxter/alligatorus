@@ -7,7 +7,7 @@ use {
             QExprId,
             ScopeEntryId,
             Type,
-            Value_,
+            Value,
         },
     },
     std::rc::Rc,
@@ -24,12 +24,12 @@ impl ExporterAny for ValueDynamic {
         unimplemented!()
     }
 
-    fn as_value(&self) -> EResult<Rc<dyn Value_>> {
+    fn as_value(&self) -> EResult<Rc<dyn Value>> {
         EResult::ok(Rc::new(self.clone()))
     }
 }
 
-impl Value_ for ValueDynamic {
+impl Value for ValueDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
         Rc::new(self.clone())
     }

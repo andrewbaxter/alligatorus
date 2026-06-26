@@ -77,7 +77,7 @@ pub(crate) fn bind_via_target(
         },
     };
     if matches!(cv.code.code, Code_::None) {
-        let mut value_res = cv.value.resolve(xx, loc);
+        let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
         let Some(value) = value_res.v else {
@@ -211,7 +211,7 @@ pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc
         value: Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
             type_,
-        }).into(),
+        }),
     }
 }
 
