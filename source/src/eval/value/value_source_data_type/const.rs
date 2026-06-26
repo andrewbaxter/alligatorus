@@ -6,8 +6,8 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            deserialize_artifact,
-            serialize_artifact,
+            import_artifact,
+            export_artifact,
         },
         eval::value::{
             type_root::r#const::ExporterRootDelegate,
@@ -72,7 +72,7 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
             Err(e) => return EResult::err(loc, e.to_string()),
         };
         let mut errors: Option<Vec<ExprErr>> = None;
-        let type_any = deserialize_artifact(xx, loc, body.type_artifact);
+        let type_any = import_artifact(xx, loc, body.type_artifact);
         if let Some(errors1) = type_any.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -90,7 +90,7 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
             );
         };
         let dt_data = wrapped.0.clone();
-        let underlying_any = deserialize_artifact(xx, loc, body.underlying);
+        let underlying_any = import_artifact(xx, loc, body.underlying);
         if let Some(errors1) = underlying_any.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -133,7 +133,7 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn ExporterAny>,
@@ -143,12 +143,12 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
             Ok(v) => v,
             Err(_) => return EResult::err(
                 loc,
-                "ValueSourceDataTypeConst::self_to_serial: type mismatch".to_string(),
+                "ValueSourceDataTypeConst::self_export: type mismatch".to_string(),
             ),
         };
         let mut errors: Option<Vec<ExprErr>> = None;
         let type_value = TypeSourceDataTypeConst { data: self_.data.clone() };
-        let type_art = serialize_artifact(xx, loc, &type_value as &dyn Value);
+        let type_art = export_artifact(xx, loc, &type_value as &dyn Value);
         if let Some(errors1) = type_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -158,7 +158,7 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
                 v: None,
             };
         };
-        let underlying_art = serialize_artifact(xx, loc, self_.underlying.as_ref());
+        let underlying_art = export_artifact(xx, loc, self_.underlying.as_ref());
         if let Some(errors1) = underlying_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }

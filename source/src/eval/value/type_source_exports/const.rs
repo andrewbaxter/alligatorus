@@ -8,7 +8,7 @@ use {
         eval::{
             definition_set::{
                 DefinitionSet,
-                serialize_definition_set,
+                export_definition_set,
             },
             value::{
                 tuple::scope_entry::ScopeEntryValue,
@@ -62,7 +62,7 @@ impl Aspect for TypeSourceExportsLiftedConst { }
 
 impl AspectArtifact for TypeSourceExportsLiftedConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceExportsLiftedConst)
+        std::rc::Rc::new(crate::artifact::ExporterRoot::SourceExportsLiftedConst)
     }
 }
 
@@ -203,7 +203,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -211,7 +211,7 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
     ) -> EResult<Artifact> {
         let self_ =
             self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
-        EResult::ok(serialize_definition_set(xx, loc, &self_.set))
+        EResult::ok(export_definition_set(xx, loc, &self_.set))
     }
 }
 
@@ -238,9 +238,9 @@ impl Type for TypeSourceExportsLiftedConst {
                 ),
             );
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

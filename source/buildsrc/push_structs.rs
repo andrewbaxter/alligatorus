@@ -620,8 +620,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let mut methods = Vec::new();
                         let any_type: std::rc::Rc<dyn crate::langhelp::Type> =
                             std::rc::Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
-                        let null_type: std::rc::Rc<dyn crate::langhelp::Type> =
-                            std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic);
+                        let empty_tuple_type: std::rc::Rc<dyn crate::langhelp::Type> =
+                            std::rc::Rc::new(crate::eval::value::tuple::Tuple { elements: vec![] });
                         for imethod_name in &iface_method_names {
                             let field_name =
                                 format!("_im{}", crate::eval::definition_set::next_interface_method_id(&ds));
@@ -636,7 +636,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             format!("_im{}", crate::eval::definition_set::next_interface_method_id(&ds));
                         methods.push(Rc::new(SourceInterfaceMethodData {
                             name: "aspect_id".to_string(),
-                            arg_type: RefCell::new(Some(null_type.clone())),
+                            arg_type: RefCell::new(Some(empty_tuple_type.clone())),
                             ret_type: RefCell::new(
                                 Some(
                                     std::rc::Rc::new(crate::eval::value::value_unique::TypeUnique) as

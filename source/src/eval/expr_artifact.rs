@@ -2,7 +2,7 @@ use {
     crate::{
         artifact::{
             Artifact,
-            deserialize_artifact,
+            import_artifact,
         },
         eval::expr::{
             Expr,
@@ -189,7 +189,7 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
         ),
         ArtifactExpr_::Literal { value } => {
             let cv =
-                deserialize_artifact(xx, loc, value.clone())
+                import_artifact(xx, loc, value.clone())
                     .into_res()
                     .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?;
             let v = cv.as_value().into_res().map_err(|e| format!("Failed to extract Literal value: {:?}", e))?;
@@ -296,7 +296,7 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             let artifact =
                 aspect_artifact
                     .exporter()
-                    .to_serial(xx, expr.loc, value.as_exporter_any())
+                    .export(xx, expr.loc, value.as_exporter_any())
                     .into_res()
                     .map_err(|e| format!("Failed to serialize Literal value: {:?}", e))?;
             ArtifactExpr_::Literal { value: artifact }

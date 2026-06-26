@@ -5,11 +5,12 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            deserialize_artifact,
-            impl_deserialize_independent_artifact,
-            impl_serialize_independent_artifact,
-            independent_finalize_deserialize_artifact,
-            serialize_artifact,
+            ExporterRoot,
+            import_artifact,
+            impl_import_independent_artifact,
+            impl_export_independent_artifact,
+            independent_finalize_import_artifact,
+            export_artifact,
         },
         eval::{
             JsSourceBuilder,
@@ -25,7 +26,6 @@ use {
             scope_entry_id_dynamic_key,
             value::{
                 type_root::r#const::{
-                    ExporterRoot,
                     ExporterRootDelegate,
                     TypeRoot,
                 },
@@ -186,12 +186,12 @@ impl ExporterRootDelegate for TypePull {
             return EResult::err(loc, "TypePull requires an artifact id to deserialize".to_string());
         };
         let id_owned = id.clone();
-        impl_deserialize_independent_artifact::<ArtifactDataPull>(xx, loc, id, data, move |body: ArtifactDataPull| {
+        impl_import_independent_artifact::<ArtifactDataPull>(xx, loc, id, data, move |body: ArtifactDataPull| {
             // Eagerly deserialize the data type dependency so we can construct the TypePull
-            // with a real Gc`<SourceDataTypeData>`. The cache lookup in deserialize_artifact
+            // with a real Gc`<SourceDataTypeData>`. The cache lookup in import_artifact
             // ensures the later deps loop reuses the same Gc.
             let dt_any =
-                deserialize_artifact(xx, loc, body.data_type.clone())
+                import_artifact(xx, loc, body.data_type.clone())
                     .v
                     .ok_or_else(|| "TypePull deserialize: failed to deserialize data type".to_string())?;
             let dt_rc_any: Rc<dyn Any> = dt_any;
@@ -212,7 +212,7 @@ impl ExporterRootDelegate for TypePull {
             let deps: Vec<Artifact> = vec![inner_art.clone()];
             let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
                 let inner_any =
-                    independent_finalize_deserialize_artifact(xx, loc, inner_art)
+                    independent_finalize_import_artifact(xx, loc, inner_art)
                         .v
                         .expect("TypePull finalizer: failed to deserialize inner artifact");
                 let inner_value =
@@ -231,7 +231,7 @@ impl ExporterRootDelegate for TypePull {
         })
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -248,7 +248,7 @@ impl ExporterRootDelegate for TypePull {
             exporter: crate::artifact::ArtifactBodyExporter::Root,
         });
         let null_art_for_closure = null_art.clone();
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.artifact_id, || {
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.artifact_id, || {
             let push_err = |errs: Vec<ExprErr>| {
                 errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
             };
@@ -261,7 +261,7 @@ impl ExporterRootDelegate for TypePull {
                 abort_for_closure.set(true);
             };
             let dt_const = TypeSourceDataTypeConst { data: self_.data.clone() };
-            let mut dt_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
+            let mut dt_art = export_artifact(xx, loc, &dt_const as &dyn Value);
             if let Some(errs) = dt_art.errors.take() {
                 push_err(errs);
             }
@@ -335,7 +335,7 @@ impl ExporterRootDelegate for TypePull {
                 }
             };
             drop(bundle_borrow);
-            let mut inner_art = serialize_artifact(xx, loc, inner_value.as_ref());
+            let mut inner_art = export_artifact(xx, loc, inner_value.as_ref());
             if let Some(errs) = inner_art.errors.take() {
                 push_err(errs);
             }
@@ -399,9 +399,9 @@ impl Type for TypePull {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(aspect_pull) as Box<dyn AspectFunction>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

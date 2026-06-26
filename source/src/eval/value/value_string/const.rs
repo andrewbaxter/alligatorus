@@ -44,7 +44,7 @@ impl ExporterRootDelegate for ValueStringConst {
         );
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn ExporterAny>,
@@ -54,7 +54,7 @@ impl ExporterRootDelegate for ValueStringConst {
             Ok(v) => v,
             Err(_) => return EResult::err(
                 loc,
-                "ValueStringConst::self_to_serial: expected ValueStringConst".to_string(),
+                "ValueStringConst::self_export: expected ValueStringConst".to_string(),
             ),
         };
         return EResult::ok(Artifact::Body(make_body(serde_json::Value::String(v.0.clone()))));

@@ -6,10 +6,10 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            impl_deserialize_independent_artifact,
-            impl_serialize_independent_artifact,
-            independent_finalize_deserialize_artifact,
-            serialize_artifact,
+            impl_import_independent_artifact,
+            impl_export_independent_artifact,
+            independent_finalize_import_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -129,7 +129,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
             Rc::new(std::cell::RefCell::new(None));
         let holder_for_finalizer = holder.clone();
         let res =
-            impl_deserialize_independent_artifact::<ArtifactDataSourceTaggedUnionConstructor>(
+            impl_import_independent_artifact::<ArtifactDataSourceTaggedUnionConstructor>(
                 xx,
                 loc,
                 id,
@@ -141,7 +141,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
                     let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(holder.clone()));
                     let finalizer: crate::artifact::ArtifactFinalizer =
                         Box::new(move |xx: &ExprContext, loc: QExprId| {
-                            if let Some(parent_any) = independent_finalize_deserialize_artifact(xx, loc, tu_art).v {
+                            if let Some(parent_any) = independent_finalize_import_artifact(xx, loc, tu_art).v {
                                 let rc_any: Rc<dyn Any> = parent_any;
                                 if let Ok(wrapped) =
                                     rc_any.downcast::<ExporterDataAny<Rc<SourceTaggedUnionData>>>() {
@@ -169,7 +169,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -188,9 +188,9 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
             return EResult::err(loc, format!("tagged union variant index {} out of range", variant_index));
         };
         let art =
-            impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &variant.constructor_artifact_id, || {
+            impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &variant.constructor_artifact_id, || {
                 let tu_const = TypeSourceTaggedUnionConst { data: self_.data.clone() };
-                let mut tu_art = serialize_artifact(xx, loc, &tu_const as &dyn Value);
+                let mut tu_art = export_artifact(xx, loc, &tu_const as &dyn Value);
                 if let Some(errs) = tu_art.errors.take() {
                     errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
                 }
@@ -233,9 +233,9 @@ impl Type for TypeSourceTaggedUnionConstructorConst {
                 variant_index: self.variant_index,
             }) as Box<dyn AspectFunction>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

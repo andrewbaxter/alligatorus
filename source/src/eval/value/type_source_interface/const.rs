@@ -4,7 +4,7 @@ use {
             Artifact,
             ArtifactBody,
             ExporterAny,
-            impl_serialize_independent_artifact,
+            impl_export_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -94,7 +94,7 @@ impl Aspect for TypeSourceInterfaceConst { }
 
 impl AspectArtifact for TypeSourceInterfaceConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceInterfaceConst)
+        std::rc::Rc::new(crate::artifact::ExporterRoot::SourceInterfaceConst)
     }
 }
 
@@ -231,7 +231,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
         };
         let id_owned = id.clone();
         let res =
-            crate::artifact::impl_deserialize_independent_artifact::<ArtifactDataDefSetInterface>(
+            crate::artifact::impl_import_independent_artifact::<ArtifactDataDefSetInterface>(
                 xx,
                 loc,
                 id,
@@ -267,7 +267,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                     let finalizer: crate::artifact::ArtifactFinalizer =
                         Box::new(move |xx: &ExprContext, loc: QExprId| {
                             if let Some(ds_any) =
-                                crate::artifact::independent_finalize_deserialize_artifact(xx, loc, def_set_art).v {
+                                crate::artifact::independent_finalize_import_artifact(xx, loc, def_set_art).v {
                                 let rc_any: Rc<dyn std::any::Any> = ds_any;
                                 if let Ok(wrapped) =
                                     rc_any.downcast::<
@@ -284,7 +284,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                             for (i, m_serial) in methods_serial.iter().enumerate() {
                                 let m = &methods_borrow[i];
                                 if let Some(v) =
-                                    crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    crate::artifact::independent_finalize_import_type_artifact(
                                         xx,
                                         loc,
                                         m_serial.arg_type.clone(),
@@ -292,7 +292,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                                     *m.arg_type.borrow_mut() = Some(v);
                                 }
                                 if let Some(v) =
-                                    crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    crate::artifact::independent_finalize_import_type_artifact(
                                         xx,
                                         loc,
                                         m_serial.ret_type.clone(),
@@ -317,7 +317,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -333,7 +333,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                 exporter: crate::artifact::ArtifactBodyExporter::Root,
             })
         };
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
             let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
                 errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
             };
@@ -345,11 +345,11 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                 let ret_type = m.ret_type.borrow().clone().unwrap_or_else(|| {
                     Rc::new(TypeNullDynamic) as Rc<dyn Type>
                 });
-                let mut arg_art = crate::artifact::serialize_artifact(xx, loc, arg_type.as_value().as_ref());
+                let mut arg_art = crate::artifact::export_artifact(xx, loc, arg_type.as_value().as_ref());
                 if let Some(errs) = arg_art.errors.take() {
                     push_err(errs);
                 }
-                let mut ret_art = crate::artifact::serialize_artifact(xx, loc, ret_type.as_value().as_ref());
+                let mut ret_art = crate::artifact::export_artifact(xx, loc, ret_type.as_value().as_ref());
                 if let Some(errs) = ret_art.errors.take() {
                     push_err(errs);
                 }
@@ -364,7 +364,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                 super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
                     set: self_.data.set.borrow().as_ref().unwrap().clone(),
                 };
-            let mut def_set_art = crate::artifact::serialize_artifact(xx, loc, &set_const as &dyn Value);
+            let mut def_set_art = crate::artifact::export_artifact(xx, loc, &set_const as &dyn Value);
             if let Some(errs) = def_set_art.errors.take() {
                 push_err(errs);
             }
@@ -451,9 +451,9 @@ impl Type for TypeSourceInterfaceConst {
                 ),
             );
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

@@ -5,8 +5,8 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            deserialize_type_artifact,
-            serialize_artifact,
+            import_type_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -335,7 +335,7 @@ impl ExporterRootDelegate for TypeMapDynamic {
             Ok(v) => v,
             Err(e) => return EResult::err(loc, e.to_string()),
         };
-        let key_res = deserialize_type_artifact(xx, loc, body.key_type);
+        let key_res = import_type_artifact(xx, loc, body.key_type);
         let mut errors = key_res.errors;
         let Some(key_type) = key_res.v else {
             return EResult {
@@ -343,7 +343,7 @@ impl ExporterRootDelegate for TypeMapDynamic {
                 v: None,
             };
         };
-        let value_res = deserialize_type_artifact(xx, loc, body.value_type);
+        let value_res = import_type_artifact(xx, loc, body.value_type);
         if let Some(errors1) = value_res.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -362,7 +362,7 @@ impl ExporterRootDelegate for TypeMapDynamic {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn ExporterAny>,
@@ -370,10 +370,10 @@ impl ExporterRootDelegate for TypeMapDynamic {
     ) -> EResult<Artifact> {
         let self_ = match self_.downcast::<TypeMapDynamic>() {
             Ok(v) => v,
-            Err(_) => return EResult::err(loc, "TypeMapDynamic::self_to_serial: type mismatch".to_string()),
+            Err(_) => return EResult::err(loc, "TypeMapDynamic::self_export: type mismatch".to_string()),
         };
         let key_val: &dyn Value = self_.key_type.as_ref();
-        let key_art = serialize_artifact(xx, loc, key_val);
+        let key_art = export_artifact(xx, loc, key_val);
         let mut errors = key_art.errors;
         let Some(key_artifact) = key_art.v else {
             return EResult {
@@ -382,7 +382,7 @@ impl ExporterRootDelegate for TypeMapDynamic {
             };
         };
         let value_val: &dyn Value = self_.value_type.as_ref();
-        let value_art = serialize_artifact(xx, loc, value_val);
+        let value_art = export_artifact(xx, loc, value_val);
         if let Some(errors1) = value_art.errors {
             errors.get_or_insert_default().extend(errors1);
         }
@@ -454,9 +454,9 @@ impl Type for TypeMapDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None
@@ -652,9 +652,9 @@ impl Type for TypeMapGetFnDynamic {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None
@@ -741,9 +741,9 @@ impl Type for TypeMapNewDynamic {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

@@ -8,9 +8,9 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            deserialize_type_artifact,
-            impl_serialize_independent_artifact,
-            serialize_artifact,
+            import_type_artifact,
+            impl_export_independent_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -72,7 +72,7 @@ use {
             AspectInitialBind,
             AspectLiftDynamic,
             AspectRecord,
-            AspectUnlift,
+            AspectPostDeserialize,
             RECORD_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
             aspect_bind_aspect_id,
@@ -87,8 +87,8 @@ use {
             aspect_record_aspect_id,
             aspect_record_get_maybe,
             aspect_string_const_get,
-            aspect_unlift_aspect_id,
-            aspect_unlift_get,
+            aspect_post_deserialize_aspect_id,
+            aspect_post_deserialize_get,
             type_type_identity,
         },
         syntax::ExprId,
@@ -456,10 +456,10 @@ impl AspectInitialBind for Record {
     }
 }
 
-impl AspectUnlift for Record {
-    fn unlift(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
+impl AspectPostDeserialize for Record {
+    fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
         let record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record unlift: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record post_deserialize: Rc not unique");
         let mut new_fields = BTreeMap::new();
         let mut errors = None;
         for (key, field) in record.fields.into_iter() {
@@ -480,12 +480,12 @@ impl AspectUnlift for Record {
                     let Some(field_type) = field_type_res.v else {
                         continue;
                     };
-                    let mut unlift_res = aspect_unlift_get(xx, loc, field_type.as_ref());
-                    unlift_res.push_errors(&mut errors);
-                    let Some(u) = unlift_res.v else {
+                    let mut post_deserialize_res = aspect_post_deserialize_get(xx, loc, field_type.as_ref());
+                    post_deserialize_res.push_errors(&mut errors);
+                    let Some(u) = post_deserialize_res.v else {
                         continue;
                     };
-                    let mut r = u.unlift(xx, loc, field_cv);
+                    let mut r = u.post_deserialize(xx, loc, field_cv);
                     r.push_errors(&mut errors);
                     let Some(new_cv) = r.v else {
                         continue;
@@ -519,7 +519,7 @@ impl Clone for Record {
 
 impl crate::r#gen::AspectArtifact for Record {
     fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
-        Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::Record)
+        Rc::new(crate::artifact::ExporterRoot::Record)
     }
 }
 
@@ -545,7 +545,7 @@ impl ExporterRootDelegate for Record {
         };
         let holder: Rc<std::cell::RefCell<Option<Record>>> = Rc::new(std::cell::RefCell::new(None));
         let holder_for_finalizer = holder.clone();
-        return crate::artifact::impl_deserialize_independent_artifact::<ArtifactRecordType>(
+        return crate::artifact::impl_import_independent_artifact::<ArtifactRecordType>(
             xx,
             loc,
             id,
@@ -559,7 +559,7 @@ impl ExporterRootDelegate for Record {
                     let mut fields = BTreeMap::new();
                     for (key, field_art) in field_arts {
                         let t =
-                            crate::artifact::independent_finalize_deserialize_type_artifact(xx, loc, field_art)
+                            crate::artifact::independent_finalize_import_type_artifact(xx, loc, field_art)
                                 .v
                                 .expect("Failed to deserialize record field type");
                         fields.insert(key, RecordField::Dynamic(t));
@@ -574,7 +574,7 @@ impl ExporterRootDelegate for Record {
         );
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -585,7 +585,7 @@ impl ExporterRootDelegate for Record {
             std::rc::Rc::new(std::cell::RefCell::new(None));
         let errors_for_closure = errors.clone();
         let cell = std::cell::RefCell::new(None);
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &cell, || {
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &cell, || {
             let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
                 errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
             };
@@ -627,7 +627,7 @@ impl ExporterRootDelegate for Record {
                         },
                     },
                 };
-                let mut art = serialize_artifact(xx, loc, t.as_value().as_ref());
+                let mut art = export_artifact(xx, loc, t.as_value().as_ref());
                 if let Some(errs) = art.errors.take() {
                     push_err(errs);
                 }
@@ -684,8 +684,8 @@ impl Type for Record {
         if *key == crate::r#gen::aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn crate::r#gen::AspectArtifact>));
         }
-        if *key == aspect_unlift_aspect_id() {
-            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectUnlift>));
+        if *key == aspect_post_deserialize_aspect_id() {
+            return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectPostDeserialize>));
         }
         return None;
     }

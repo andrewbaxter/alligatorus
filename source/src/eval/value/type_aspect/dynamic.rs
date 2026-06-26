@@ -140,9 +140,9 @@ impl Type for TypeAspectDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectInitialBind>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

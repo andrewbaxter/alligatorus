@@ -5,7 +5,7 @@ use {
             ArtifactExporter,
             ArtifactIdSource,
             ExporterAny,
-            serialize_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -71,23 +71,23 @@ use {
 pub(crate) struct ExporterAnyDelegate;
 
 impl ArtifactExporter for ExporterAnyDelegate {
-    fn from_serial(
+    fn import(
         &self,
         _xx: &ExprContext,
         loc: QExprId,
         _id: Option<ArtifactIdSource>,
         _data: serde_json::Value,
     ) -> EResult<Rc<dyn ExporterAny>> {
-        return EResult::err(loc, "ExporterAnyDelegate::from_serial should not be invoked".to_string());
+        return EResult::err(loc, "ExporterAnyDelegate::import should not be invoked".to_string());
     }
 
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
+    fn export(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
         let inner = match self_.downcast::<ValueAnyConst>() {
             Ok(v) => v.inner.clone(),
             Err(_) => return EResult::err(loc, "ExporterAnyDelegate: expected ValueAnyConst".to_string()),
         };
         let inner_val: &dyn Value = inner.as_ref();
-        return serialize_artifact(xx, loc, inner_val);
+        return export_artifact(xx, loc, inner_val);
     }
 }
 pub(crate) struct TypeAnyConst;
@@ -238,9 +238,9 @@ impl Type for TypeAnyConst {
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyConst) as Box<dyn AspectArtifact>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

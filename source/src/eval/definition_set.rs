@@ -8,10 +8,10 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            deserialize_artifact,
-            deserialize_type_artifact,
-            impl_deserialize_independent_artifact,
-            impl_serialize_independent_artifact,
+            import_artifact,
+            import_type_artifact,
+            impl_import_independent_artifact,
+            impl_export_independent_artifact,
         },
         eval::{
             StageLiftCell,
@@ -89,7 +89,7 @@ pub(crate) fn definition_set_from_artifact_data(
         ),
     };
     let id_owned = id.clone();
-    let res = impl_deserialize_independent_artifact::<ArtifactDataDefSet>(xx, loc, id, data, move |body| {
+    let res = impl_import_independent_artifact::<ArtifactDataDefSet>(xx, loc, id, data, move |body| {
         let set = Gc::new(DefinitionSet::new(body.def_set_id));
         *set.artifact_id.borrow_mut() = Some(id_owned.clone());
         let mut deps: Vec<Artifact> = Vec::new();
@@ -106,7 +106,7 @@ pub(crate) fn definition_set_from_artifact_data(
             let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
             for dt_art in body.data_types.iter() {
                 let any =
-                    crate::artifact::independent_finalize_deserialize_artifact(xx, loc, dt_art.clone())
+                    crate::artifact::independent_finalize_import_artifact(xx, loc, dt_art.clone())
                         .v
                         .expect("def-set data_type member missing from cache");
                 let rc_any: Rc<dyn Any> = any;
@@ -121,7 +121,7 @@ pub(crate) fn definition_set_from_artifact_data(
             let mut func_gcs: Vec<Gc<SourceFunctionData>> = Vec::new();
             for f_art in body.functions.iter() {
                 let any =
-                    crate::artifact::independent_finalize_deserialize_artifact(xx, loc, f_art.clone())
+                    crate::artifact::independent_finalize_import_artifact(xx, loc, f_art.clone())
                         .v
                         .expect("def-set function member missing from cache");
                 let rc_any: Rc<dyn Any> = any;
@@ -136,7 +136,7 @@ pub(crate) fn definition_set_from_artifact_data(
             let mut iface_gcs: Vec<Gc<SourceInterfaceData>> = Vec::new();
             for i_art in body.interfaces.iter() {
                 let any =
-                    crate::artifact::independent_finalize_deserialize_artifact(xx, loc, i_art.clone())
+                    crate::artifact::independent_finalize_import_artifact(xx, loc, i_art.clone())
                         .v
                         .expect("def-set interface member missing from cache");
                 let rc_any: Rc<dyn Any> = any;
@@ -150,7 +150,7 @@ pub(crate) fn definition_set_from_artifact_data(
             *set.interfaces.borrow_mut() = iface_gcs;
             for dep in body.dependencies {
                 let any =
-                    crate::artifact::independent_finalize_deserialize_artifact(xx, loc, dep)
+                    crate::artifact::independent_finalize_import_artifact(xx, loc, dep)
                         .v
                         .expect("def-set dependency missing from cache");
                 let rc_any: Rc<dyn Any> = any;
@@ -182,7 +182,7 @@ pub(crate) fn definition_set_from_artifact_data(
     }
 }
 
-pub(crate) fn definition_set_to_serial(
+pub(crate) fn definition_set_export(
     xx: &ExprContext,
     loc: QExprId,
     self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -191,8 +191,8 @@ pub(crate) fn definition_set_to_serial(
     let wrapped =
         self_
             .downcast::<ExporterDataAny<Gc<DefinitionSet>>>()
-            .expect("DefinitionSet self_to_serial: expected DefinitionSet");
-    crate::langhelp::EResult::ok(serialize_definition_set(xx, loc, &wrapped.0))
+            .expect("DefinitionSet self_export: expected DefinitionSet");
+    crate::langhelp::EResult::ok(export_definition_set(xx, loc, &wrapped.0))
 }
 
 pub(crate) struct DefinitionSet {
@@ -305,7 +305,7 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
     }
 }
 
-pub(crate) fn deserialize_captured_externals(
+pub(crate) fn deexport_captured_externals(
     xx: &ExprContext,
     loc: QExprId,
     serial: &[ArtifactExternal],
@@ -320,7 +320,7 @@ pub(crate) fn deserialize_captured_externals(
             },
             ArtifactExternal::StageLift { local_id, source_type } => {
                 let source_type =
-                    deserialize_type_artifact(xx, loc, source_type.clone())
+                    import_type_artifact(xx, loc, source_type.clone())
                         .into_res()
                         .expect("Failed to deserialize captured StageLiftCell source type");
                 let cell = Rc::new(StageLiftCell {
@@ -335,7 +335,7 @@ pub(crate) fn deserialize_captured_externals(
             },
             ArtifactExternal::Type { local_id, type_artifact } => {
                 let type_ =
-                    deserialize_type_artifact(xx, loc, type_artifact.clone())
+                    import_type_artifact(xx, loc, type_artifact.clone())
                         .into_res()
                         .expect("Failed to deserialize captured External::Type");
                 (ScopeEntryId::Local(*local_id), External::Type(type_))
@@ -350,7 +350,7 @@ pub(crate) fn deserialize_captured_externals(
 
 pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact: Artifact) -> Result<Gc<DefinitionSet>, String> {
     let any =
-        deserialize_artifact(xx, (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)), def_set_artifact);
+        import_artifact(xx, (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)), def_set_artifact);
     if let Some(errors) = any.errors {
         return Err(format!("Failed to deserialize def set: {:?}", errors));
     }
@@ -367,7 +367,7 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
     set.next_interface_method_id.next()
 }
 
-pub(crate) fn serialize_captured_externals(
+pub(crate) fn export_captured_externals(
     xx: &ExprContext,
     loc: QExprId,
     externals: &[(ScopeEntryId, External)],
@@ -391,7 +391,7 @@ pub(crate) fn serialize_captured_externals(
             External::StageLiftCell(cell) => {
                 let value = cell.source_type.as_value();
                 let source_type =
-                    crate::artifact::serialize_artifact(xx, loc, value.as_ref())
+                    crate::artifact::export_artifact(xx, loc, value.as_ref())
                         .into_res()
                         .expect("Failed to serialize captured StageLiftCell source type");
                 ArtifactExternal::StageLift {
@@ -402,7 +402,7 @@ pub(crate) fn serialize_captured_externals(
             External::Type(type_) => {
                 let value = type_.as_value();
                 let type_artifact =
-                    crate::artifact::serialize_artifact(xx, loc, value.as_ref())
+                    crate::artifact::export_artifact(xx, loc, value.as_ref())
                         .into_res()
                         .expect("Failed to serialize captured External::Type");
                 ArtifactExternal::Type {
@@ -421,29 +421,29 @@ pub(crate) fn serialize_captured_externals(
     }).collect()
 }
 
-// # ==================================================================== Definition set serialization delegates to member self_to_serial impls
-pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Artifact {
-    impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
-        use crate::artifact::serialize_artifact;
+// # ==================================================================== Definition set serialization delegates to member self_export impls
+pub(crate) fn export_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Artifact {
+    impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
+        use crate::artifact::export_artifact;
 
         let data_types: Vec<Artifact> = set.data_types.borrow().iter().filter_map(|dt| {
             let dt_const =
                 crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst { data: dt.clone() };
-            serialize_artifact(xx, loc, &dt_const as &dyn Value).v
+            export_artifact(xx, loc, &dt_const as &dyn Value).v
         }).collect();
         let functions: Vec<Artifact> = set.functions.borrow().iter().filter_map(|f| {
             let f_const =
                 crate::eval::value::type_source_function::r#const::TypeSourceFunctionConst { data: f.clone() };
-            serialize_artifact(xx, loc, &f_const as &dyn Value).v
+            export_artifact(xx, loc, &f_const as &dyn Value).v
         }).collect();
         let interfaces: Vec<Artifact> = set.interfaces.borrow().iter().filter_map(|i| {
             let i_const =
                 crate::eval::value::type_source_interface::r#const::TypeSourceInterfaceConst { data: i.clone() };
-            serialize_artifact(xx, loc, &i_const as &dyn Value).v
+            export_artifact(xx, loc, &i_const as &dyn Value).v
         }).collect();
         let dependencies: Vec<Artifact> = {
             let deps = set.dependencies.borrow();
-            deps.values().map(|s| serialize_definition_set(xx, loc, s)).collect()
+            deps.values().map(|s| export_definition_set(xx, loc, s)).collect()
         };
         let body = ArtifactDataDefSet {
             def_set_id: set.def_set_id,
@@ -456,7 +456,7 @@ pub(crate) fn serialize_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<
             data: serde_json::to_value(&body).expect("Failed to serialize definition set"),
             exporter: ArtifactBodyExporter::Body(Box::new(ArtifactBody {
                 data: serde_json::to_value(
-                    crate::eval::value::type_root::r#const::ExporterRoot::DefinitionSet,
+                    crate::artifact::ExporterRoot::DefinitionSet,
                 ).unwrap(),
                 exporter: ArtifactBodyExporter::Root,
             })),

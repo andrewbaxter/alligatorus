@@ -241,7 +241,7 @@ impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeCodeVa
         return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn ExporterAny>,
@@ -288,9 +288,9 @@ impl Type for TypeCodeValueExternDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeCodeValueExternDynamic) as Box<dyn AspectInitialBind>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None
@@ -431,9 +431,9 @@ impl Type for TypeExprContextPushDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

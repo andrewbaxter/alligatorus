@@ -199,9 +199,9 @@ impl Type for TypeValueDynamic {
         if *key == aspect_field_aspect_id() {
             return Some(Box::new(Box::new(TypeValueDynamic) as Box<dyn AspectField>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

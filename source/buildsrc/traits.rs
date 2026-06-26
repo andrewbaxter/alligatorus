@@ -11,7 +11,13 @@ use {
 
 pub fn specs() -> Vec<InterfaceSpec> {
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
-    let null = || TypeRef::unit(quote!(crate::eval::value::type_null::dynamic::TypeNullDynamic));
+    let empty_tuple = || TypeRef {
+        path: quote!(crate::eval::value::tuple::Tuple),
+        dynamic_type: quote!{
+            std::rc::Rc::new(crate::eval::value::tuple::Tuple { elements: vec![] }) as
+                std::rc::Rc<dyn crate::langhelp::Type>
+        },
+    };
     let string = || TypeRef::unit(quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic));
     let bool_ = || TypeRef::unit(quote!(crate::eval::value::type_bool::dynamic::TypeBoolDynamic));
     let aspect = || TypeRef::unit(quote!(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic));
@@ -32,7 +38,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 Method {
                     name: "type",
                     ret_type: any(),
-                    args: MethodArgs::Source(null()),
+                    args: MethodArgs::Source(empty_tuple()),
                 },
             ],
         },
@@ -60,7 +66,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 Method {
                     name: "desc",
                     ret_type: string(),
-                    args: MethodArgs::Source(null()),
+                    args: MethodArgs::Source(empty_tuple()),
                 },
                 Method {
                     name: "aspect",

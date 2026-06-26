@@ -5,10 +5,6 @@ use {
 
 pub fn arg_dynamic_type_expr(dynamic_types: &[TokenStream]) -> TokenStream {
     match dynamic_types.len() {
-        0 => quote!{
-            std::rc::Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic) as
-                std::rc::Rc<dyn crate::langhelp::Type>
-        },
         1 => dynamic_types[0].clone(),
         _ => {
             let elems: Vec<TokenStream> = dynamic_types.iter().map(|m| quote!{

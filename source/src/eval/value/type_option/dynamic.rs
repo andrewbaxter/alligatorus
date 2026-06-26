@@ -5,8 +5,8 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            deserialize_type_artifact,
-            serialize_artifact,
+            import_type_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -238,7 +238,7 @@ impl ExporterRootDelegate for TypeOptionDynamic {
             Ok(v) => v,
             Err(e) => return EResult::err(loc, e.to_string()),
         };
-        let element_res = deserialize_type_artifact(xx, loc, body.element_type);
+        let element_res = import_type_artifact(xx, loc, body.element_type);
         let mut errors = element_res.errors;
         let Some(element_type) = element_res.v else {
             return EResult {
@@ -252,7 +252,7 @@ impl ExporterRootDelegate for TypeOptionDynamic {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn ExporterAny>,
@@ -260,10 +260,10 @@ impl ExporterRootDelegate for TypeOptionDynamic {
     ) -> EResult<Artifact> {
         let self_ = match self_.downcast::<TypeOptionDynamic>() {
             Ok(v) => v,
-            Err(_) => return EResult::err(loc, "TypeOptionDynamic::self_to_serial: type mismatch".to_string()),
+            Err(_) => return EResult::err(loc, "TypeOptionDynamic::self_export: type mismatch".to_string()),
         };
         let element_val: &dyn Value = self_.element_type.as_ref();
-        let element_art = serialize_artifact(xx, loc, element_val);
+        let element_art = export_artifact(xx, loc, element_val);
         let mut errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
             return EResult {
@@ -327,9 +327,9 @@ impl Type for TypeOptionDynamic {
         if *key == aspect_set_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectSet>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None
@@ -439,7 +439,7 @@ impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
             Ok(v) => v,
             Err(e) => return EResult::err(loc, e.to_string()),
         };
-        let element_res = deserialize_type_artifact(xx, loc, body.element_type);
+        let element_res = import_type_artifact(xx, loc, body.element_type);
         let mut errors = element_res.errors;
         let Some(element_type) = element_res.v else {
             return EResult {
@@ -456,7 +456,7 @@ impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn ExporterAny>,
@@ -466,11 +466,11 @@ impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
             Ok(v) => v,
             Err(_) => return EResult::err(
                 loc,
-                "TypeOptionVariantConstructorDynamic::self_to_serial: type mismatch".to_string(),
+                "TypeOptionVariantConstructorDynamic::self_export: type mismatch".to_string(),
             ),
         };
         let element_val: &dyn Value = self_.element_type.as_ref();
-        let element_art = serialize_artifact(xx, loc, element_val);
+        let element_art = export_artifact(xx, loc, element_val);
         let mut errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
             return EResult {
@@ -498,9 +498,9 @@ impl Type for TypeOptionVariantConstructorDynamic {
         if *key == aspect_function_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectFunction>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

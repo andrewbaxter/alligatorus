@@ -16,7 +16,7 @@ pub mod value;
 use {
     core::mem,
     crate::{
-        artifact::deserialize_artifact,
+        artifact::import_artifact,
         code_dynamic::{
             BINDING_PREFIX,
             BUILTIN_PREFIX,
@@ -154,7 +154,7 @@ use {
             aspect_string_const_get_maybe,
             aspect_tagged_union_get,
             aspect_type_get,
-            aspect_unlift_get,
+            aspect_post_deserialize_get,
             gen_fn_list,
             gen_fn_map,
             gen_fn_option,
@@ -501,7 +501,7 @@ pub(crate) fn compile_importid(
                 },
             };
             let value =
-                match value_serial.exporter().to_serial(&xx, root_loc, eval_value.as_exporter_any()).into_res() {
+                match value_serial.exporter().export(&xx, root_loc, eval_value.as_exporter_any()).into_res() {
                     Ok(v) => v,
                     Err(e) => return CompileRes {
                         logs,
@@ -1049,7 +1049,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 },
             };
             drop(guard);
-            let exporter = erb.must_er(deserialize_artifact(xx, expr.loc, artifact))?;
+            let exporter = erb.must_er(import_artifact(xx, expr.loc, artifact))?;
             let value = erb.must_er(exporter.as_value())?;
             let cv = CodeValue {
                 code: Code {
@@ -1059,8 +1059,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 value,
             };
             let value_type = erb.must_er(cv.value.type_(xx, expr.loc))?;
-            let unlift = erb.must_er(aspect_unlift_get(xx, expr.loc, value_type.as_ref()))?;
-            let cv = erb.must_er(unlift.unlift(xx, expr.loc, cv))?;
+            let post_deserialize = erb.must_er(aspect_post_deserialize_get(xx, expr.loc, value_type.as_ref()))?;
+            let cv = erb.must_er(post_deserialize.post_deserialize(xx, expr.loc, cv))?;
             return Ok(cv);
         }),
         Expr_::If(e) => return er_seq_cv!(expr.loc, erb, {

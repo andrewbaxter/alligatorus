@@ -49,7 +49,7 @@ use {
 pub(crate) struct TypeNullConst;
 
 impl ArtifactExporter for TypeNullConst {
-    fn from_serial(
+    fn import(
         &self,
         xx: &ExprContext,
         loc: QExprId,
@@ -62,7 +62,7 @@ impl ArtifactExporter for TypeNullConst {
         };
     }
 
-    fn to_serial(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
+    fn export(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(ArtifactBody {
             data: serde_json::Value::Null,
             exporter: crate::artifact::ArtifactBodyExporter::Root,
@@ -74,7 +74,7 @@ impl Aspect for TypeNullConst { }
 
 impl AspectArtifact for TypeNullConst {
     fn exporter(&self) -> Rc<dyn ArtifactExporter> {
-        return Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::NullConst);
+        return Rc::new(crate::artifact::ExporterRoot::NullConst);
     }
 }
 
@@ -105,7 +105,7 @@ impl ExporterRootDelegate for TypeNullConst {
         );
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -127,9 +127,9 @@ impl Type for TypeNullConst {
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeNullConst) as Box<dyn AspectArtifact>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

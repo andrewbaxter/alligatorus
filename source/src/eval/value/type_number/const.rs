@@ -64,7 +64,7 @@ impl Aspect for TypeNumberConst { }
 
 impl AspectArtifact for TypeNumberConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::NumberValueConst)
+        std::rc::Rc::new(crate::artifact::ExporterRoot::NumberValueConst)
     }
 }
 
@@ -180,7 +180,7 @@ impl ExporterRootDelegate for TypeNumberConst {
         return EResult::ok(Rc::new(ValueTypeNumberConst) as Rc<dyn crate::artifact::ExporterAny>);
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -217,9 +217,9 @@ impl Type for TypeNumberConst {
         if *key == aspect_operator_add_aspect_id() {
             return Some(Box::new(Box::new(TypeNumberConst) as Box<dyn AspectOperatorAdd>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

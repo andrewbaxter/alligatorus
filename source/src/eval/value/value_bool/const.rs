@@ -44,7 +44,7 @@ impl ExporterRootDelegate for ValueBoolConst {
         );
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn ExporterAny>,
@@ -54,7 +54,7 @@ impl ExporterRootDelegate for ValueBoolConst {
             Ok(v) => v,
             Err(_) => return EResult::err(
                 loc,
-                "ValueBoolConst::self_to_serial: expected ValueBoolConst".to_string(),
+                "ValueBoolConst::self_export: expected ValueBoolConst".to_string(),
             ),
         };
         return EResult::ok(Artifact::Body(make_body(serde_json::Value::Bool(v.0))));

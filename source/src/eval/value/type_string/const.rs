@@ -63,7 +63,7 @@ impl Aspect for TypeStringConst { }
 
 impl AspectArtifact for TypeStringConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::StringValueConst)
+        std::rc::Rc::new(crate::artifact::ExporterRoot::StringValueConst)
     }
 }
 
@@ -138,7 +138,7 @@ impl ExporterRootDelegate for TypeStringConst {
         return EResult::ok(Rc::new(ValueTypeStringConst) as Rc<dyn crate::artifact::ExporterAny>);
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -169,9 +169,9 @@ impl Type for TypeStringConst {
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringConst) as Box<dyn AspectBind>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

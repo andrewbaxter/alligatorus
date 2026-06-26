@@ -209,7 +209,7 @@ impl ExporterRootDelegate for TypeUnique {
         );
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -240,9 +240,9 @@ impl Type for TypeUnique {
         if *key == aspect_operator_eq_aspect_id() {
             return Some(Box::new(Box::new(TypeUnique) as Box<dyn AspectOperatorEq>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

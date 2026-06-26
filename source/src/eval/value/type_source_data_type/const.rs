@@ -6,10 +6,10 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            deserialize_artifact,
-            impl_deserialize_independent_artifact,
-            impl_serialize_independent_artifact,
-            serialize_artifact,
+            import_artifact,
+            impl_import_independent_artifact,
+            impl_export_independent_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -19,7 +19,7 @@ use {
         },
         eval::{
             TargetBindSub,
-            definition_set::serialize_definition_set,
+            definition_set::export_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -72,7 +72,7 @@ use {
             AspectLiftDynamic,
             AspectStackValueDynamic,
             AspectType,
-            AspectUnlift,
+            AspectPostDeserialize,
             ScopeEntry,
             aspect_artifact_aspect_id,
             aspect_artifact_get_maybe,
@@ -87,7 +87,7 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get_maybe,
             aspect_type_aspect_id,
-            aspect_unlift_aspect_id,
+            aspect_post_deserialize_aspect_id,
             type_type_identity,
         },
     },
@@ -125,7 +125,7 @@ impl Aspect for TypeSourceDataTypeConst { }
 
 impl AspectArtifact for TypeSourceDataTypeConst {
     fn exporter(&self) -> std::rc::Rc<dyn crate::artifact::ArtifactExporter> {
-        std::rc::Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::SourceDataTypeValueConst)
+        std::rc::Rc::new(crate::artifact::ExporterRoot::SourceDataTypeValueConst)
     }
 }
 
@@ -314,7 +314,12 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectUnlift for TypeSourceDataTypeConst { }
+impl AspectPostDeserialize for TypeSourceDataTypeConst {
+    fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
+        let _ = (xx, loc);
+        EResult::ok(cv)
+    }
+}
 
 impl ExporterAny for TypeSourceDataTypeConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
@@ -338,7 +343,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
         };
         let id_owned = id.clone();
         let res =
-            impl_deserialize_independent_artifact::<ArtifactDataDefSetDataType>(
+            impl_import_independent_artifact::<ArtifactDataDefSetDataType>(
                 xx,
                 loc,
                 id,
@@ -378,7 +383,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                     let finalizer: crate::artifact::ArtifactFinalizer =
                         Box::new(move |xx: &ExprContext, loc: QExprId| {
                             if let Some(ds_any) =
-                                crate::artifact::independent_finalize_deserialize_artifact(xx, loc, def_set_art).v {
+                                crate::artifact::independent_finalize_import_artifact(xx, loc, def_set_art).v {
                                 let rc_any: Rc<dyn Any> = ds_any;
                                 if let Ok(wrapped) =
                                     rc_any.downcast::<
@@ -390,7 +395,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                 }
                             }
                             if let Some(t) =
-                                crate::artifact::independent_finalize_deserialize_type_artifact(
+                                crate::artifact::independent_finalize_import_type_artifact(
                                     xx,
                                     loc,
                                     underlying_art,
@@ -400,13 +405,13 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                             let def_set_id = def_set_id_body;
                             let methods: Vec<Rc<super::SourceDataMethodData>> = methods_serial.into_iter().map(|m| {
                                 let arg_type =
-                                    crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    crate::artifact::independent_finalize_import_type_artifact(
                                         xx,
                                         loc,
                                         m.arg_type,
                                     ).v;
                                 let ret_type =
-                                    crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    crate::artifact::independent_finalize_import_type_artifact(
                                         xx,
                                         loc,
                                         m.ret_type,
@@ -419,7 +424,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                     impl_expr: RefCell::new(None),
                                     compiled_js: RefCell::new(Some(m.compiled_js)),
                                     captured_externals: RefCell::new(
-                                        crate::eval::definition_set::deserialize_captured_externals(
+                                        crate::eval::definition_set::deexport_captured_externals(
                                             xx,
                                             loc,
                                             &m.captured_externals,
@@ -454,7 +459,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                                     .as_ref()
                                                     .expect("non-builtin iface impl missing user_iface");
                                             let iface_any =
-                                                crate::artifact::independent_finalize_deserialize_artifact(
+                                                crate::artifact::independent_finalize_import_artifact(
                                                     xx,
                                                     loc,
                                                     ui_art.clone(),
@@ -485,7 +490,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                             impl_expr: RefCell::new(None),
                                             compiled_js: RefCell::new(Some(m.compiled_js)),
                                             captured_externals: RefCell::new(
-                                                crate::eval::definition_set::deserialize_captured_externals(
+                                                crate::eval::definition_set::deexport_captured_externals(
                                                     xx,
                                                     loc,
                                                     &m.captured_externals,
@@ -523,7 +528,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -533,13 +538,13 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
         let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
             std::rc::Rc::new(std::cell::RefCell::new(None));
         let errors_for_closure = errors.clone();
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
             let push_err =
                 |errors: &mut Option<Vec<crate::langhelp::ExprErr>>, errs: Vec<crate::langhelp::ExprErr>| {
                     errors.get_or_insert_default().extend(errs);
                 };
             let underlying_type = self_.data.underlying_type.get().clone();
-            let mut underlying_art = serialize_artifact(xx, loc, underlying_type.as_value().as_ref());
+            let mut underlying_art = export_artifact(xx, loc, underlying_type.as_value().as_ref());
             if let Some(errs) = underlying_art.errors.take() {
                 push_err(&mut *errors_for_closure.borrow_mut(), errs);
             }
@@ -551,7 +556,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                 super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
                     set: self_.data.set.borrow().as_ref().unwrap().clone(),
                 };
-            let mut def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
+            let mut def_set_art = export_artifact(xx, loc, &set_const as &dyn Value);
             if let Some(errs) = def_set_art.errors.take() {
                 push_err(&mut *errors_for_closure.borrow_mut(), errs);
             }
@@ -567,11 +572,11 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                 let ret_type = m.ret_type.borrow().clone().unwrap_or_else(|| {
                     Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
                 });
-                let mut arg_art = serialize_artifact(xx, loc, arg_type.as_value().as_ref());
+                let mut arg_art = export_artifact(xx, loc, arg_type.as_value().as_ref());
                 if let Some(errs) = arg_art.errors.take() {
                     push_err(&mut *errors_for_closure.borrow_mut(), errs);
                 }
-                let mut ret_art = serialize_artifact(xx, loc, ret_type.as_value().as_ref());
+                let mut ret_art = export_artifact(xx, loc, ret_type.as_value().as_ref());
                 if let Some(errs) = ret_art.errors.take() {
                     push_err(&mut *errors_for_closure.borrow_mut(), errs);
                 }
@@ -580,7 +585,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                     _ => 0,
                 };
                 let captured_externals =
-                    crate::eval::definition_set::serialize_captured_externals(
+                    crate::eval::definition_set::export_captured_externals(
                         xx,
                         loc,
                         &m.captured_externals.borrow(),
@@ -616,7 +621,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                     Some(_) => None,
                     None => {
                         let iface_const = TypeSourceInterfaceConst { data: impl_data.interface.clone() };
-                        let mut iface_art = serialize_artifact(xx, loc, &iface_const as &dyn Value);
+                        let mut iface_art = export_artifact(xx, loc, &iface_const as &dyn Value);
                         if let Some(errs) = iface_art.errors.take() {
                             push_err(&mut *errors_for_closure.borrow_mut(), errs);
                         }
@@ -629,7 +634,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                         _ => 0,
                     };
                     let captured_externals =
-                        crate::eval::definition_set::serialize_captured_externals(
+                        crate::eval::definition_set::export_captured_externals(
                             xx,
                             loc,
                             &m.captured_externals.borrow(),
@@ -734,9 +739,9 @@ impl Type for TypeSourceDataTypeConst {
                 Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
             );
         }
-        if *key == aspect_unlift_aspect_id() {
+        if *key == aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectUnlift>),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectPostDeserialize>),
             );
         }
         {

@@ -6,10 +6,10 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            impl_deserialize_independent_artifact,
-            impl_serialize_independent_artifact,
-            independent_finalize_deserialize_artifact,
-            serialize_artifact,
+            impl_import_independent_artifact,
+            impl_export_independent_artifact,
+            independent_finalize_import_artifact,
+            export_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -86,7 +86,7 @@ impl crate
     }
 }
 
-// TODO(porting): serialize_ctor removed pending serialize_type_ref design.
+// TODO(porting): export_ctor removed pending export_type_ref design.
 // Constructor types are now serialized as part of the parent DefinitionSet.
 impl Aspect for TypeSourceDataTypeConstructorConst { }
 
@@ -188,7 +188,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
             Rc::new(std::cell::RefCell::new(None));
         let holder_for_finalizer = holder.clone();
         let res =
-            impl_deserialize_independent_artifact::<ArtifactDataSourceDataTypeConstructor>(
+            impl_import_independent_artifact::<ArtifactDataSourceDataTypeConstructor>(
                 xx,
                 loc,
                 id,
@@ -200,7 +200,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
                     let finalizer: crate::artifact::ArtifactFinalizer =
                         Box::new(move |xx: &ExprContext, loc: QExprId| {
                             if let Some(parent_any) =
-                                independent_finalize_deserialize_artifact(xx, loc, data_type_art).v {
+                                independent_finalize_import_artifact(xx, loc, data_type_art).v {
                                 let rc_any: Rc<dyn Any> = parent_any;
                                 if let Ok(wrapped) =
                                     rc_any.downcast::<
@@ -232,7 +232,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -246,7 +246,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
             std::rc::Rc::new(std::cell::RefCell::new(None));
         let errors_for_closure = errors.clone();
         let art =
-            impl_serialize_independent_artifact(
+            impl_export_independent_artifact(
                 xx.vx.ix.gx.artifacts.as_ref(),
                 &self_.data.constructor_artifact_id,
                 || {
@@ -254,7 +254,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
                         super::super::type_source_data_type::r#const::TypeSourceDataTypeConst {
                             data: self_.data.clone(),
                         };
-                    let mut data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
+                    let mut data_type_art = export_artifact(xx, loc, &dt_const as &dyn Value);
                     if let Some(errs) = data_type_art.errors.take() {
                         errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
                     }
@@ -295,9 +295,9 @@ impl Type for TypeSourceDataTypeConstructorConst {
                 ),
             );
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

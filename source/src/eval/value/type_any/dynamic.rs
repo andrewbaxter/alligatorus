@@ -233,7 +233,7 @@ impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeAnyDyn
         EResult::ok(Rc::new(TypeAnyDynamic) as Rc<dyn ExporterAny>)
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn ExporterAny>,
@@ -245,7 +245,7 @@ impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeAnyDyn
 
 impl crate::r#gen::AspectArtifact for TypeAnyDynamic {
     fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
-        Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::AnyDynamic)
+        Rc::new(crate::artifact::ExporterRoot::AnyDynamic)
     }
 }
 
@@ -298,9 +298,9 @@ impl Type for TypeAnyDynamic {
         if *key == crate::r#gen::aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectArtifact>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         None

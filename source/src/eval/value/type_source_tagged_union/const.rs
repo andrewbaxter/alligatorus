@@ -4,7 +4,7 @@ use {
             Artifact,
             ArtifactBody,
             ExporterAny,
-            impl_serialize_independent_artifact,
+            impl_export_independent_artifact,
         },
         code_dynamic::CodeDynamic,
         eval::{
@@ -52,7 +52,7 @@ use {
             AspectStackValueDynamic,
             AspectTaggedUnion,
             AspectType,
-            AspectUnlift,
+            AspectPostDeserialize,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -61,7 +61,7 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
             aspect_type_aspect_id,
-            aspect_unlift_aspect_id,
+            aspect_post_deserialize_aspect_id,
         },
     },
     std::{
@@ -138,8 +138,8 @@ impl AspectType for TypeSourceTaggedUnionConst {
     }
 }
 
-impl AspectUnlift for TypeSourceTaggedUnionConst {
-    fn unlift(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
+impl AspectPostDeserialize for TypeSourceTaggedUnionConst {
+    fn post_deserialize(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
         EResult::ok(CodeValue {
             code: cv.code,
             value: Rc::new(ValueDynamic {
@@ -175,7 +175,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         };
         let id_owned = id.clone();
         let res =
-            crate::artifact::impl_deserialize_independent_artifact::<ArtifactDataSourceTaggedUnion>(
+            crate::artifact::impl_import_independent_artifact::<ArtifactDataSourceTaggedUnion>(
                 xx,
                 loc,
                 id,
@@ -198,7 +198,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
                                     constructor_artifact_id: std::cell::RefCell::new(None),
                                     js_tag: v.js_tag.clone(),
                                     tag: v.tag.clone(),
-                                    type_: crate::artifact::independent_finalize_deserialize_type_artifact(
+                                    type_: crate::artifact::independent_finalize_import_type_artifact(
                                         xx,
                                         loc,
                                         v.type_.clone(),
@@ -225,7 +225,7 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         };
     }
 
-    fn self_to_serial(
+    fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
@@ -241,13 +241,13 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
                 exporter: crate::artifact::ArtifactBodyExporter::Root,
             })
         };
-        let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
             let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
                 errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
             };
             let mut variants_serial: Vec<ArtifactDataSourceTaggedUnionVariant> = Vec::new();
             for v in self_.data.variants.borrow().iter() {
-                let mut type_art = crate::artifact::serialize_artifact(xx, loc, v.type_.as_value().as_ref());
+                let mut type_art = crate::artifact::export_artifact(xx, loc, v.type_.as_value().as_ref());
                 if let Some(errs) = type_art.errors.take() {
                     push_err(errs);
                 }
@@ -327,9 +327,9 @@ impl Type for TypeSourceTaggedUnionConst {
                 Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectType>),
             );
         }
-        if *key == aspect_unlift_aspect_id() {
+        if *key == aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectUnlift>),
+                Box::new(Box::new(TypeSourceTaggedUnionConst { data: self.data.clone() }) as Box<dyn AspectPostDeserialize>),
             );
         }
         return None;

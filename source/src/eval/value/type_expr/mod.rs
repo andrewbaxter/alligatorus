@@ -156,7 +156,7 @@ impl ExporterRootDelegate for TypeExpr {
         EResult::ok(Rc::new(TypeExpr) as Rc<dyn ExporterAny>)
     }
 
-    fn self_to_serial(
+    fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
         _self_: Rc<dyn ExporterAny>,
@@ -193,9 +193,9 @@ impl Type for TypeExpr {
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectType>));
         }
-        if *key == crate::r#gen::aspect_unlift_aspect_id() {
+        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::UnliftIdentity) as Box<dyn crate::r#gen::AspectUnlift>),
+                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
             );
         }
         return None;

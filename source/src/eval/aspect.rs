@@ -20,7 +20,7 @@ use {
         r#gen::{
             AspectField,
             AspectFunction,
-            AspectUnlift,
+            AspectPostDeserialize,
             IM_ASPECT_FIELD_FIELD_FIELD,
             IM_ASPECT_FUNCTION_CALL_FIELD,
         },
@@ -165,8 +165,18 @@ fn dispatch_aspect_method(
     };
     EvalRes::ok(out_cv)
 }
-pub(crate) struct UnliftIdentity;
+pub(crate) struct PostDeserializeIdentity;
 
-impl Aspect for UnliftIdentity { }
+impl Aspect for PostDeserializeIdentity { }
 
-impl AspectUnlift for UnliftIdentity { }
+impl AspectPostDeserialize for PostDeserializeIdentity {
+    fn post_deserialize(
+        &self,
+        xx: &crate::langhelp::ExprContext,
+        loc: crate::langhelp::QExprId,
+        cv: crate::langhelp::CodeValue,
+    ) -> crate::langhelp::EResult<crate::langhelp::CodeValue> {
+        let _ = (xx, loc);
+        crate::langhelp::EResult::ok(cv)
+    }
+}
