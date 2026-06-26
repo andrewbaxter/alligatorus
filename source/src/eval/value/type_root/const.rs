@@ -86,6 +86,7 @@ pub(crate) trait ExporterRootDelegate {
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ExporterRoot {
+    AnyDynamic,
     BoolConst,
     BoolDynamic,
     BoolValueConst,
@@ -141,6 +142,12 @@ impl ArtifactExporter for ExporterRoot {
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let id_ref = id.as_ref();
         let res: EResult<Rc<dyn crate::artifact::ExporterAny>> = match self {
+            ExporterRoot::AnyDynamic => crate::eval::value::type_any::dynamic::TypeAnyDynamic::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::BoolConst => TypeBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::BoolDynamic => TypeBoolDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::BoolValueConst => ValueBoolConst::self_from_artifact_data(&xx, loc, id_ref, data),
@@ -278,6 +285,12 @@ impl ArtifactExporter for ExporterRoot {
         });
         let mut errors: Option<Vec<ExprErr>> = None;
         let res = match self {
+            ExporterRoot::AnyDynamic => crate::eval::value::type_any::dynamic::TypeAnyDynamic::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
             ExporterRoot::BoolConst => TypeBoolConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::BoolDynamic => TypeBoolDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::BoolValueConst => ValueBoolConst::self_to_serial(xx, loc, self_, make_body),

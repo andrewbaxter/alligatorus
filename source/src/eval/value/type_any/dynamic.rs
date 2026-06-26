@@ -223,6 +223,32 @@ impl AspectType for TypeAnyDynamic {
     }
 }
 
+impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeAnyDynamic {
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        EResult::ok(Rc::new(TypeAnyDynamic) as Rc<dyn ExporterAny>)
+    }
+
+    fn self_to_serial(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> crate::artifact::ArtifactBody>,
+    ) -> EResult<crate::artifact::Artifact> {
+        EResult::ok(crate::artifact::Artifact::Body(make_body(serde_json::Value::Null)))
+    }
+}
+
+impl crate::r#gen::AspectArtifact for TypeAnyDynamic {
+    fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
+        Rc::new(crate::eval::value::type_root::r#const::ExporterRoot::AnyDynamic)
+    }
+}
+
 impl ExporterAny for TypeAnyDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
         return EResult::ok(Rc::new(TypeAnyDynamic));
@@ -268,6 +294,9 @@ impl Type for TypeAnyDynamic {
         }
         if *key == aspect_type_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectType>));
+        }
+        if *key == crate::r#gen::aspect_artifact_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn crate::r#gen::AspectArtifact>));
         }
         if *key == crate::r#gen::aspect_unlift_aspect_id() {
             return Some(
@@ -332,6 +361,6 @@ impl Value for TypeAnyDynamic {
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(super::r#const::TypeAnyConst))
+        EResult::ok(Rc::new(TypeAnyDynamic))
     }
 }
