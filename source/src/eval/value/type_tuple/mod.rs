@@ -165,7 +165,7 @@ impl Tuple {
                 TupleBindSubResult::Target(sub) => {
                     target_elements.push(sub);
                 },
-                TupleBindSubResult::Const(_cv) => {
+                TupleBindSubResult::Const(_) => {
                     errors.push(ExprErr {
                         loc: loc,
                         errors: vec![

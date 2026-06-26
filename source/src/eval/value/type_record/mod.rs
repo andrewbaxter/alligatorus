@@ -324,7 +324,7 @@ impl AspectBind for Record {
 
 impl AspectBindDynamic for Record {
     fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
-        self.bind_sub(xx, loc, cv).map(|(_scope_fields, sub)| sub)
+        self.bind_sub(xx, loc, cv).map(|(_, sub)| sub)
     }
 }
 

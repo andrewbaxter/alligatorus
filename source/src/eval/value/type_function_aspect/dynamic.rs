@@ -76,7 +76,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 format!("aspect(): argument type ({}) is not a tuple — expected `(base, key)`", arg_type.desc(),),
             ),
         };
-        let CodeValue { code: _argument_code, value: argument_value } = argument;
+        let CodeValue { value: argument_value, .. } = argument;
         let elements = arg_tuple.take_elements(argument_value);
         if elements.len() != 2 {
             return EvalRes::err(

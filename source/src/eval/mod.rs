@@ -1078,7 +1078,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 }
             }
             if all_const {
-                for (val, _cond, body) in &conditions_evaluated {
+                for (val, _, body) in &conditions_evaluated {
                     if *val {
                         let body_cv = erb.must_er(const_eval(xx, body))?;
                         return Ok(body_cv);
