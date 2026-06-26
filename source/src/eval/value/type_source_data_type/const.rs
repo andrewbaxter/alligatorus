@@ -24,7 +24,10 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            import_install::install_imported_type_iface,
+            expr_artifact::{
+                expr_from_artifact,
+                expr_to_artifact,
+            },
             value::{
                 type_pull::r#const::TypePull,
                 type_root::r#const::ExporterRootDelegate,
@@ -76,6 +79,7 @@ use {
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_consume_dynamic_get,
             aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_dynamic_aspect_id,
@@ -138,8 +142,116 @@ impl AspectBindDynamic for TypeSourceDataTypeConst {
 }
 
 impl AspectConsumeDynamic for TypeSourceDataTypeConst {
-    fn to_dynamic(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone())
+    fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
+        if !matches!(cv.code.code, Code_::None) {
+            return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
+        }
+        let instance = match (cv.value.as_ref() as &dyn Any).downcast_ref::<ValueSourceDataTypeConst>() {
+            Some(i) => i,
+            None => return EResult::err(
+                loc,
+                "AspectConsumeDynamic on TypeSourceDataTypeConst: expected ValueSourceDataTypeConst".to_string(),
+            ),
+        };
+        let underlying_type = self.data.underlying_type.get().clone();
+        let mut errors = None;
+        let raw_underlying_cv = CodeValue {
+            code: Code {
+                loc,
+                code: Code_::None,
+            },
+            value: instance.underlying.clone(),
+        };
+        let mut converted_res = crate::eval::typecheck_convert(xx, loc, underlying_type.as_ref(), raw_underlying_cv);
+        converted_res.push_errors(&mut errors);
+        let Some(converted) = converted_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut to_dyn_res = aspect_consume_dynamic_get(xx, loc, underlying_type.as_ref());
+        to_dyn_res.push_errors(&mut errors);
+        let Some(to_dyn) = to_dyn_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut underlying_js_res = to_dyn.to_dynamic(xx, loc, converted);
+        underlying_js_res.push_errors(&mut errors);
+        let Some(underlying_js) = underlying_js_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let mut object_fields: Vec<(String, CodeDynamic)> =
+            vec![(ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
+        for method in self.data.methods.borrow().iter() {
+            let method_id = method.scope_entry_id.get().expect("Method scope entry ID not allocated");
+            object_fields.push((ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
+                loc,
+                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+            }));
+        }
+        for impl_data in self.data.interface_impls.borrow().iter() {
+            let iface_methods = impl_data.interface.methods.borrow();
+            for method_impl in &impl_data.method_impls {
+                let iface_method = &iface_methods[method_impl.interface_method_index];
+                let method_id =
+                    method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not allocated");
+                object_fields.push((ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
+                }));
+            }
+        }
+        EResult {
+            errors,
+            v: Some(CodeDynamic {
+                loc,
+                type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
+            }),
+        }
+    }
+}
+
+impl AspectField for TypeSourceDataTypeConst {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        let dyn_type = super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() };
+        if !matches!(self_.code.code, Code_::None) {
+            return dyn_type.field(xx, loc, self_, key);
+        }
+        let mut errors = None;
+        let mut self_code_res = self.to_dynamic(xx, loc, self_.clone());
+        self_code_res.push_errors(&mut errors);
+        let Some(self_code) = self_code_res.v else {
+            return EvalRes {
+                errors,
+                v: None,
+            };
+        };
+        let self_dynamic = CodeValue {
+            code: Code {
+                loc,
+                code: Code_::Dyn(Rc::new(self_code)),
+            },
+            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
+            }),
+        };
+        let mut res = dyn_type.field(xx, loc, self_dynamic, key);
+        res.push_errors(&mut errors);
+        EvalRes {
+            errors,
+            v: res.v,
+        }
+    }
+
+    fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }.field_type_opt(xx, key)
     }
 }
 
@@ -202,17 +314,7 @@ impl AspectStackValueDynamic for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectUnlift for TypeSourceDataTypeConst {
-    fn unlift(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
-        EResult::ok(CodeValue {
-            code: cv.code,
-            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
-                source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
-                type_: Rc::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }),
-            }),
-        })
-    }
-}
+impl AspectUnlift for TypeSourceDataTypeConst { }
 
 impl ExporterAny for TypeSourceDataTypeConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
@@ -316,7 +418,13 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                     ret_type: RefCell::new(ret_type),
                                     impl_expr: RefCell::new(None),
                                     compiled_js: RefCell::new(Some(m.compiled_js)),
-                                    captured_externals: RefCell::new(Vec::new()),
+                                    captured_externals: RefCell::new(
+                                        crate::eval::definition_set::deserialize_captured_externals(
+                                            xx,
+                                            loc,
+                                            &m.captured_externals,
+                                        ),
+                                    ),
                                     scope_entry_id: std::cell::Cell::new(
                                         Some(ScopeEntryId::Def(def_set_id, m.entry_id)),
                                     ),
@@ -371,13 +479,24 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                         },
                                     };
                                     let method_impls = impl_data.method_impls.into_iter().map(|m| {
+                                        let impl_expr_value: Option<Rc<dyn Value>> =
+                                            m
+                                                .impl_expr
+                                                .as_ref()
+                                                .and_then(|art| expr_from_artifact(xx, art).ok())
+                                                .map(|e| Rc::new(e) as Rc<dyn Value>);
                                         super::SourceDataTypeInterfaceMethodImplData {
                                             artifact_id: RefCell::new(None),
                                             interface_method_index: m.interface_method_index,
-                                            impl_expr: RefCell::new(None),
-                                            impl_expr_artifact: RefCell::new(m.impl_expr.clone()),
+                                            impl_expr: RefCell::new(impl_expr_value),
                                             compiled_js: RefCell::new(Some(m.compiled_js)),
-                                            captured_externals: RefCell::new(Vec::new()),
+                                            captured_externals: RefCell::new(
+                                                crate::eval::definition_set::deserialize_captured_externals(
+                                                    xx,
+                                                    loc,
+                                                    &m.captured_externals,
+                                                ),
+                                            ),
                                             scope_entry_id: std::cell::Cell::new(
                                                 Some(ScopeEntryId::Def(def_set_id, m.entry_id)),
                                             ),
@@ -390,6 +509,9 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                     })
                                 }).collect();
                             *dt_for_finalizer.interface_impls.borrow_mut() = iface_impls;
+                            if let Some(set) = dt_for_finalizer.set.borrow().as_ref() {
+                                let _ = crate::eval::import_install::install_def_set_to_v8(xx, loc, set);
+                            }
                         });
                     Ok((out, deps, finalizer))
                 },
@@ -515,11 +637,14 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                         loc,
                         &m.captured_externals.borrow(),
                     );
+                let impl_expr_value = m.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
+                let impl_expr_ast = must_downcast_ref::<crate::eval::expr::Expr>(impl_expr_value.as_ref());
+                let impl_expr_artifact = expr_to_artifact(xx, impl_expr_ast).expect("expr_to_artifact failed");
                 ArtifactDataDefSetInterfaceMethodImpl {
                     interface_method_index: m.interface_method_index,
                     compiled_js: m.compiled_js.borrow().clone().unwrap_or_default(),
                     entry_id: scope_idx,
-                    impl_expr: m.impl_expr_artifact.borrow().clone(),
+                    impl_expr: Some(impl_expr_artifact),
                     captured_externals,
                 }
             }).collect();
@@ -606,10 +731,7 @@ impl Type for TypeSourceDataTypeConst {
         }
         if *key == aspect_field_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }) as
-                        Box<dyn AspectField>,
-                ),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
             );
         }
         if *key == aspect_unlift_aspect_id() {

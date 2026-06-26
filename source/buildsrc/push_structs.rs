@@ -567,7 +567,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                                        impl_expr_artifact: RefCell::new(None),
                                         compiled_js: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
@@ -666,7 +665,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     artifact_id: RefCell::new(None),
                                     interface_method_index: imethod_idx,
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
-                                    impl_expr_artifact: RefCell::new(None),
                                     compiled_js: RefCell::new(None),
                                     captured_externals: RefCell::new(Vec::new()),
                                     scope_entry_id: Cell::new(
@@ -684,7 +682,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                                        impl_expr_artifact: RefCell::new(None),
                                         compiled_js: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
@@ -1217,7 +1214,6 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                         artifact_id: RefCell::new(None),
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                        impl_expr_artifact: RefCell::new(None),
                         compiled_js: RefCell::new(None),
                         captured_externals: RefCell::new(Vec::new()),
                         scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),),

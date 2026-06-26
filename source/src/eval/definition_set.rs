@@ -164,7 +164,7 @@ pub(crate) fn definition_set_from_artifact_data(
                 set.dependencies.borrow_mut().entry(dep_set.def_set_id).or_insert_with(|| dep_set.clone());
             }
             set.finished.set(true);
-            let _ = crate::eval::import_install::install_def_set_to_v8(xx, loc, &set);
+            let _ = (xx, loc);
         });
         Ok((out, deps, finalizer))
     });

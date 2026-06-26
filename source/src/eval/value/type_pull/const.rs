@@ -76,7 +76,7 @@ use {
     super::artifact::ArtifactDataPull,
 };
 
-fn pull_mini_eval(
+pub(crate) fn pull_mini_eval(
     xx: &ExprContext,
     loc: QExprId,
     data: &Gc<SourceDataTypeData>,

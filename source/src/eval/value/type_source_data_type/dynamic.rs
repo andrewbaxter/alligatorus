@@ -334,21 +334,6 @@ impl AspectStackValueDynamic for TypeSourceDataTypeDynamic {
     }
 }
 
-impl AspectType for TypeSourceDataTypeDynamic {
-    fn type_(&self, value: &dyn Value) -> Rc<dyn Type> {
-        let data = self.data.clone();
-        let bundle =
-            (value as &dyn std::any::Any)
-                .downcast_ref::<ValueSourceDataTypeConst>()
-                .and_then(|v| v.isolate_bundle.borrow().clone());
-        Rc::new(TypePull {
-            data,
-            bundle: std::cell::RefCell::new(bundle),
-            artifact_id: std::cell::RefCell::new(None),
-        })
-    }
-}
-
 impl ExporterAny for TypeSourceDataTypeDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
         return EResult::ok(Rc::new(self.clone()));
@@ -422,18 +407,6 @@ impl Type for TypeSourceDataTypeDynamic {
             for impl_data in interface_impls.iter() {
                 if *key == impl_data.interface.identity {
                     return Some(Box::new(true));
-                }
-            }
-            if *key == aspect_type_aspect_id() {
-                let has_type_impl = interface_impls.iter().any(|impl_data| {
-                    impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
-                });
-                if has_type_impl {
-                    return Some(
-                        Box::new(
-                            Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as Box<dyn AspectType>,
-                        ),
-                    );
                 }
             }
         }

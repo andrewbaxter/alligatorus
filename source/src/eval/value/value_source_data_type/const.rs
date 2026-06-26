@@ -110,9 +110,21 @@ impl ExporterRootDelegate for ValueSourceDataTypeConst {
                 v: None,
             };
         };
+        let has_type_iface = dt_data.interface_impls.borrow().iter().any(|impl_data| {
+            impl_data.interface.builtin_kind ==
+                Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::Type)
+        });
+        let isolate_bundle = if has_type_iface {
+            match crate::eval::value::type_pull::r#const::pull_mini_eval(xx, loc, &dt_data, underlying.clone()) {
+                Ok(b) => RefCell::new(Some(b)),
+                Err(e) => return EResult::err(loc, format!("ValueSourceDataTypeConst pull_mini_eval: {}", e)),
+            }
+        } else {
+            RefCell::new(None)
+        };
         let out: Rc<dyn ExporterAny> = Rc::new(ValueSourceDataTypeConst {
             data: dt_data,
-            isolate_bundle: RefCell::new(None),
+            isolate_bundle,
             underlying,
         });
         return EResult {
