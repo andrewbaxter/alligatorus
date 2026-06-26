@@ -18,7 +18,7 @@ use {
     crate::{
         artifact::import_artifact,
         code_dynamic::{
-            BINDING_PREFIX,
+            SCOPE_ENTRY_PREFIX,
             BUILTIN_PREFIX,
             CodeDynamic,
             CodeDynamicBind,
@@ -50,22 +50,22 @@ use {
             },
             value::{
                 type_pull::r#const::TypePull,
-                type_source_data_type::{
-                    SourceDataTypeRef,
-                    dynamic::TypeSourceDataTypeDynamic,
-                    r#const::TypeSourceDataTypeConst,
+                type_source_object::{
+                    SourceObjectRef,
+                    dynamic::TypeSourceObjectDynamic,
+                    r#const::TypeSourceObjectConst,
                 },
-                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+                type_source_object_new::TypeSourceObjectNewConst,
                 type_source_function::r#const::TypeSourceFunctionConst,
                 type_source_interface::{
                     SourceInterfaceRef,
                     r#const::TypeSourceInterfaceConst,
                 },
-                type_source_tagged_union::{
-                    SourceTaggedUnionRef,
-                    r#const::TypeSourceTaggedUnionConst,
+                type_source_union::{
+                    SourceUnionRef,
+                    r#const::TypeSourceUnionConst,
                 },
-                type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef,
+                type_source_union_new::SourceUnionNewRef,
                 value_pull::dynamic::ValuePull,
             },
         },
@@ -152,7 +152,7 @@ use {
             aspect_set_get,
             aspect_stack_value_dynamic_get,
             aspect_string_const_get_maybe,
-            aspect_tagged_union_get,
+            aspect_union_get,
             aspect_type_get,
             aspect_post_deserialize_get,
             gen_fn_list,
@@ -203,11 +203,11 @@ use {
     },
     v8::tc_scope,
     value::{
-        record::{
+        type_record::{
             Record,
             RecordField,
         },
-        tuple::{
+        type_tuple::{
             Tuple,
             TupleElement,
         },
@@ -222,10 +222,10 @@ pub(crate) fn build_aspect_arg_record_type(field_names: &[&str]) -> Rc<dyn Type>
     let mut fields = std::collections::BTreeMap::new();
     let cve_type: Rc<dyn Type> = Rc::new(TypeCodeValueExternDynamic);
     for name in field_names {
-        fields.insert(ConstKey::String(name.to_string()), value::record::RecordField::Dynamic(cve_type.clone()));
+        fields.insert(ConstKey::String(name.to_string()), value::type_record::RecordField::Dynamic(cve_type.clone()));
     }
-    Rc::new(value::record::Record {
-        base: Some(Box::new(value::record::RecordBaseDynamic)),
+    Rc::new(value::type_record::Record {
+        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
         fields,
     })
 }
@@ -251,7 +251,7 @@ pub(crate) fn build_builtin_scope(
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
         ("type", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
-        ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
+        ("codedyn", Rc::new(value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
         ("cve", Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
@@ -273,18 +273,18 @@ pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     let mut fields = std::collections::BTreeMap::new();
     fields.insert(
         ConstKey::String("xx".to_string()),
-        value::record::RecordField::Dynamic(Rc::new(TypeExprContextPushDynamic) as Rc<dyn Type>),
+        value::type_record::RecordField::Dynamic(Rc::new(TypeExprContextPushDynamic) as Rc<dyn Type>),
     );
     fields.insert(
         ConstKey::String("source_type".to_string()),
-        value::record::RecordField::Dynamic(Rc::new(TypeTypeRefPushDynamic) as Rc<dyn Type>),
+        value::type_record::RecordField::Dynamic(Rc::new(TypeTypeRefPushDynamic) as Rc<dyn Type>),
     );
     fields.insert(
         ConstKey::String("cv".to_string()),
-        value::record::RecordField::Dynamic(Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
+        value::type_record::RecordField::Dynamic(Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
     );
-    Rc::new(value::record::Record {
-        base: Some(Box::new(value::record::RecordBaseDynamic)),
+    Rc::new(value::type_record::Record {
+        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
         fields,
     })
 }
@@ -554,8 +554,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 return erb.err_new(format!("No bound value with id [{:?}]", constkey));
             };
             let scope = scope.values.borrow();
-            let binding = scope.get(&constkey).unwrap();
-            return Ok(binding.use_(xx, expr.loc, key.code));
+            let scope_entry = scope.get(&constkey).unwrap();
+            return Ok(scope_entry.use_(xx, expr.loc, key.code));
         }),
         Expr_::Call(p) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
@@ -614,9 +614,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         entries.push(base.code);
                         let value_type = erb.must_er(value.value.type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
-                        let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
-                        entries.push(binding.0);
-                        child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
+                        let scope_entry = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
+                        entries.push(scope_entry.0);
+                        child_xx.scope.values.borrow_mut().insert(base_constkey, scope_entry.1);
                         last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(const_eval(&child_xx, sub))?;
@@ -979,14 +979,14 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
             let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
             let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
-            let tagged_union = erb.must_er(aspect_tagged_union_get(xx, expr.loc, base_type.as_ref()))?;
-            let variants = tagged_union.variants();
+            let union = erb.must_er(aspect_union_get(xx, expr.loc, base_type.as_ref()))?;
+            let variants = union.variants();
             let mut case_tags: Vec<ConstKey> = Vec::new();
             for case in &e.cases {
                 let cond_cv = erb.must_er(const_eval(xx, &case.condition))?;
                 let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_ref()))?;
                 if !variants.iter().any(|(t, _, _)| t == &tag) {
-                    return erb.err_new(format!("Match case tag '{:?}' not found in tagged union", tag));
+                    return erb.err_new(format!("Match case tag '{:?}' not found in union", tag));
                 }
                 case_tags.push(tag);
             }
@@ -1261,7 +1261,7 @@ fn eval(
         ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
         ("type", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
         ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
-        ("codedyn", Rc::new(value::type_code_source::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
+        ("codedyn", Rc::new(value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
         ("cve", Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
     ] {
         let cv = CodeValue {
@@ -1737,12 +1737,12 @@ fn eval(
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
     let dss: Vec<_> = ex.definition_sets.borrow().values().cloned().collect();
     for ds in &dss {
-        let dts: Vec<_> = ds.data_types.borrow().iter().cloned().collect();
+        let dts: Vec<_> = ds.objects.borrow().iter().cloned().collect();
         for dt_data in &dts {
             let underlying_type: Rc<dyn Type> = dt_data.underlying_type.get().clone();
             let data_field = dt_data.data_field.clone();
             for method in dt_data.methods.borrow().iter() {
-                let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
+                let method_id = method.scope_entry_id.get().expect("Method scope_entry ID not assigned");
                 if let Some(compiled_source) = method.compiled_source.borrow().clone() {
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
@@ -1824,7 +1824,7 @@ fn eval(
                 let builtin_kind = impl_data.interface.builtin_kind;
                 for method_impl in &impl_data.method_impls {
                     let method_id =
-                        method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not assigned");
+                        method_impl.scope_entry_id.get().expect("Interface method impl scope_entry ID not assigned");
                     if let Some(compiled_source) = method_impl.compiled_source.borrow().clone() {
                         def_data_methods.push(CompiledDataMethod {
                             scope_entry_id: method_id,
@@ -1856,7 +1856,7 @@ fn eval(
                         let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                         let outer_type: Rc<dyn Type> =
                             Rc::new(
-                                value::type_source_data_type::dynamic::TypeSourceDataTypeDynamic {
+                                value::type_source_object::dynamic::TypeSourceObjectDynamic {
                                     data: dt_data.clone(),
                                 },
                             );
@@ -1876,12 +1876,12 @@ fn eval(
                                     let mut fields = std::collections::BTreeMap::new();
                                     fields.insert(
                                         ConstKey::String("key".to_string()),
-                                        value::record::RecordField::Dynamic(
-                                            Rc::new(value::value_unique::TypeUnique) as Rc<dyn Type>,
+                                        value::type_record::RecordField::Dynamic(
+                                            Rc::new(value::type_unique::r#const::TypeUnique) as Rc<dyn Type>,
                                         ),
                                     );
-                                    let arg_record_type: Rc<dyn Type> = Rc::new(value::record::Record {
-                                        base: Some(Box::new(value::record::RecordBaseDynamic)),
+                                    let arg_record_type: Rc<dyn Type> = Rc::new(value::type_record::Record {
+                                        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
                                         fields,
                                     });
                                     let arg_ib =
@@ -2183,7 +2183,7 @@ fn eval(
                 code1.push(root_loc, "}".to_string());
                 let compiled = code1.lines[start_line..].join("\n");
                 for ds in ex.definition_sets.borrow().values() {
-                    for dt_data in ds.data_types.borrow().iter() {
+                    for dt_data in ds.objects.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
                             if m.scope_entry_id.get() == Some(method.scope_entry_id) {
                                 if let Some(errs) = ds.check_mutable(root_loc).errors {
@@ -2233,11 +2233,11 @@ fn eval(
                 if let Some(iface_ref) = any.downcast_ref::<Rc<SourceInterfaceRef>>() {
                     return Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
                 }
-                if let Some(tu_ref) = any.downcast_ref::<Rc<SourceTaggedUnionRef>>() {
-                    return Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
+                if let Some(tu_ref) = any.downcast_ref::<Rc<SourceUnionRef>>() {
+                    return Rc::new(TypeSourceUnionConst { data: tu_ref.data.clone() });
                 }
-                if let Some(dt_ref) = any.downcast_ref::<Rc<SourceDataTypeRef>>() {
-                    return Rc::new(TypeSourceDataTypeDynamic { data: dt_ref.data.clone() });
+                if let Some(dt_ref) = any.downcast_ref::<Rc<SourceObjectRef>>() {
+                    return Rc::new(TypeSourceObjectDynamic { data: dt_ref.data.clone() });
                 }
                 return from_dynamic_ref::<Rc<dyn Type>>(&*value).clone();
             }
@@ -2548,7 +2548,7 @@ fn eval(
             ) {
                 let value: Rc<dyn Value> = rc_value_from_v8(&*args.get(0));
                 let type_: Rc<dyn Type> = rc_type_from_v8(&*args.get(1));
-                let type_const = crate::invariant::must_downcast_ref::<TypeSourceDataTypeConst>(type_.as_ref());
+                let type_const = crate::invariant::must_downcast_ref::<TypeSourceObjectConst>(type_.as_ref());
                 let vud = crate::invariant::must_downcast_ref::<ValuePull>(value.as_ref());
                 let _ = type_const;
                 let instance = v8::Local::new(scope, &vud.bundle);
@@ -2567,21 +2567,21 @@ fn eval(
                     cast_value_fn.into(),
                 );
 
-            fn data_type_ref_to_type_callback<
+            fn object_ref_to_type_callback<
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let dt_ref: Rc<SourceDataTypeRef> = from_dynamic_ref::<Rc<SourceDataTypeRef>>(&*args.get(0)).clone();
-                let type_: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() });
+                let dt_ref: Rc<SourceObjectRef> = from_dynamic_ref::<Rc<SourceObjectRef>>(&*args.get(0)).clone();
+                let type_: Rc<dyn Type> = Rc::new(TypeSourceObjectConst { data: dt_ref.data.clone() });
                 let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
-            let data_type_ref_to_type_fn =
-                v8::Function::builder(data_type_ref_to_type_callback).build(dynamic_scope).unwrap();
+            let object_ref_to_type_fn =
+                v8::Function::builder(object_ref_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
@@ -2590,25 +2590,25 @@ fn eval(
                     v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
-                    data_type_ref_to_type_fn.into(),
+                    object_ref_to_type_fn.into(),
                 );
 
-            fn tagged_union_ref_to_type_callback<
+            fn union_ref_to_type_callback<
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let tu_ref: Rc<SourceTaggedUnionRef> =
-                    from_dynamic_ref::<Rc<SourceTaggedUnionRef>>(&*args.get(0)).clone();
-                let type_: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
+                let tu_ref: Rc<SourceUnionRef> =
+                    from_dynamic_ref::<Rc<SourceUnionRef>>(&*args.get(0)).clone();
+                let type_: Rc<dyn Type> = Rc::new(TypeSourceUnionConst { data: tu_ref.data.clone() });
                 let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
-            let tagged_union_ref_to_type_fn =
-                v8::Function::builder(tagged_union_ref_to_type_callback).build(dynamic_scope).unwrap();
+            let union_ref_to_type_fn =
+                v8::Function::builder(union_ref_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
@@ -2617,7 +2617,7 @@ fn eval(
                     v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
-                    tagged_union_ref_to_type_fn.into(),
+                    union_ref_to_type_fn.into(),
                 );
 
             fn interface_ref_to_type_callback<
@@ -2674,23 +2674,23 @@ fn eval(
                     function_const_to_type_fn.into(),
                 );
 
-            fn data_type_constructor_to_type_callback<
+            fn object_new_to_type_callback<
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
-                    from_dynamic_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&*args.get(0)).clone();
+                let ctor_ref: Rc<TypeSourceObjectNewConst> =
+                    from_dynamic_ref::<Rc<TypeSourceObjectNewConst>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> =
-                    Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
+                    Rc::new(TypeSourceObjectNewConst { data: ctor_ref.data.clone() });
                 let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
-            let data_type_constructor_to_type_fn =
-                v8::Function::builder(data_type_constructor_to_type_callback).build(dynamic_scope).unwrap();
+            let object_new_to_type_fn =
+                v8::Function::builder(object_new_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
@@ -2702,26 +2702,26 @@ fn eval(
                     )
                         .unwrap()
                         .cast(),
-                    data_type_constructor_to_type_fn.into(),
+                    object_new_to_type_fn.into(),
                 );
 
-            fn tagged_union_constructor_to_type_callback<
+            fn union_new_to_type_callback<
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let ctor_ref: Rc<SourceTaggedUnionConstructorRef> =
-                    from_dynamic_ref::<Rc<SourceTaggedUnionConstructorRef>>(&*args.get(0)).clone();
+                let ctor_ref: Rc<SourceUnionNewRef> =
+                    from_dynamic_ref::<Rc<SourceUnionNewRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
                         crate
                         ::eval
                         ::value
-                        ::type_source_tagged_union_constructor
+                        ::type_source_union_new
                         ::r#const
-                        ::TypeSourceTaggedUnionConstructorConst {
+                        ::TypeSourceUnionNewConst {
                             data: ctor_ref.data.clone(),
                             variant_index: ctor_ref.variant_index,
                         },
@@ -2730,8 +2730,8 @@ fn eval(
                 rv.set(ext.into());
             }
 
-            let tagged_union_constructor_to_type_fn =
-                v8::Function::builder(tagged_union_constructor_to_type_callback).build(dynamic_scope).unwrap();
+            let union_new_to_type_fn =
+                v8::Function::builder(union_new_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
@@ -2743,7 +2743,7 @@ fn eval(
                     )
                         .unwrap()
                         .cast(),
-                    tagged_union_constructor_to_type_fn.into(),
+                    union_new_to_type_fn.into(),
                 );
 
             fn data_instance_to_type_callback<
@@ -2755,7 +2755,7 @@ fn eval(
             ) {
                 let template_type: Rc<dyn Type> = from_dynamic_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
                 let template =
-                    crate::invariant::must_downcast_ref::<TypeSourceDataTypeConst>(template_type.as_ref());
+                    crate::invariant::must_downcast_ref::<TypeSourceObjectConst>(template_type.as_ref());
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
@@ -3352,7 +3352,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
 
 pub(crate) fn scope_entry_id_dynamic_key(e: ScopeEntryId) -> String {
     match e {
-        ScopeEntryId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
+        ScopeEntryId::Local(id) => format!("{}{}", SCOPE_ENTRY_PREFIX, id),
         ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
         ScopeEntryId::Def(def_set_id, entry_id) => {
             format!("{}{}_{}_{}_{}", DEF_PREFIX, (def_set_id.0).0.0, (def_set_id.0).1.0, def_set_id.1, entry_id,)
@@ -3424,7 +3424,7 @@ impl Target for TargetDynamic {
                     .unwrap()
                     .clone();
             dynamic_code_fields.push((key.to_str(), cd));
-            dynamic_fields.insert(key, value::record::RecordField::Dynamic(sub.type_));
+            dynamic_fields.insert(key, value::type_record::RecordField::Dynamic(sub.type_));
         }
         let record_type = Rc::new(Record {
             base: None,

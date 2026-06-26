@@ -5,7 +5,7 @@ use {
             dynamic_util::throw_error,
             from_dynamic_ref,
             value::{
-                tuple::{
+                type_tuple::{
                     Tuple,
                     TupleElement,
                 },
@@ -13,7 +13,7 @@ use {
                 type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic,
                 type_any_target::dynamic::TypeAnyTargetDynamic,
                 type_bool::dynamic::TypeBoolDynamic,
-                type_code_source::TypeCodeDynHandleDynamic,
+                type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
                 type_constkey::dynamic::TypeConstkeyDynamic,
                 type_expr::TypeExpr,
                 type_map::dynamic::TypeMapDynamic,

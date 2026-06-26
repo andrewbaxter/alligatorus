@@ -26,8 +26,8 @@ use {
             from_dynamic_ref,
             value::{
                 type_any::r#const::ValueAnyConst,
-                type_source_data_type::{
-                    SourceDataTypeData,
+                type_source_object::{
+                    SourceObjectData,
                     artifact::{
                         ArtifactDataDefSet,
                         ArtifactExternal,
@@ -93,7 +93,7 @@ pub(crate) fn definition_set_from_artifact_data(
         let set = Gc::new(DefinitionSet::new(body.def_set_id));
         *set.artifact_id.borrow_mut() = Some(id_owned.clone());
         let mut deps: Vec<Artifact> = Vec::new();
-        deps.extend(body.data_types.iter().cloned());
+        deps.extend(body.objects.iter().cloned());
         deps.extend(body.functions.iter().cloned());
         deps.extend(body.interfaces.iter().cloned());
         deps.extend(body.dependencies.iter().cloned());
@@ -103,21 +103,21 @@ pub(crate) fn definition_set_from_artifact_data(
         let finalizer: ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
             let set = set_for_finalizer.clone();
             let body = body_for_finalizer;
-            let mut dt_gcs: Vec<Gc<SourceDataTypeData>> = Vec::new();
-            for dt_art in body.data_types.iter() {
+            let mut dt_gcs: Vec<Gc<SourceObjectData>> = Vec::new();
+            for dt_art in body.objects.iter() {
                 let any =
                     crate::artifact::independent_finalize_import_artifact(xx, loc, dt_art.clone())
                         .v
-                        .expect("def-set data_type member missing from cache");
+                        .expect("def-set object member missing from cache");
                 let rc_any: Rc<dyn Any> = any;
                 let wrapped =
                     rc_any
-                        .downcast::<ExporterDataAny<Gc<SourceDataTypeData>>>()
+                        .downcast::<ExporterDataAny<Gc<SourceObjectData>>>()
                         .ok()
-                        .expect("def-set data_type artifact had wrong type");
+                        .expect("def-set object artifact had wrong type");
                 dt_gcs.push(wrapped.0.clone());
             }
-            *set.data_types.borrow_mut() = dt_gcs;
+            *set.objects.borrow_mut() = dt_gcs;
             let mut func_gcs: Vec<Gc<SourceFunctionData>> = Vec::new();
             for f_art in body.functions.iter() {
                 let any =
@@ -197,7 +197,7 @@ pub(crate) fn definition_set_export(
 
 pub(crate) struct DefinitionSet {
     pub artifact_id: RefCell<Option<ArtifactIdSource>>,
-    pub data_types: RefCell<Vec<Gc<SourceDataTypeData>>>,
+    pub objects: RefCell<Vec<Gc<SourceObjectData>>>,
     pub def_set_id: DefSetId,
     pub dependencies: RefCell<std::collections::HashMap<DefSetId, Gc<DefinitionSet>>>,
     pub finished: Cell<bool>,
@@ -242,8 +242,8 @@ impl DefinitionSet {
         for func_data in self.functions.borrow().iter() {
             func_data.finish(&inner_xx, root_loc)?;
         }
-        for dt_data in self.data_types.borrow().iter() {
-            crate::eval::value::type_source_data_type::SourceDataTypeData::finish(dt_data, &inner_xx, root_loc)?;
+        for dt_data in self.objects.borrow().iter() {
+            crate::eval::value::type_source_object::SourceObjectData::finish(dt_data, &inner_xx, root_loc)?;
         }
         for iface in self.interfaces.borrow().iter() {
             iface.finish().map_err(|e| vec![crate::langhelp::ExprErr {
@@ -274,7 +274,7 @@ impl DefinitionSet {
             artifact_id: RefCell::new(None),
             def_set_id: def_set_id,
             functions: RefCell::new(Vec::new()),
-            data_types: RefCell::new(Vec::new()),
+            objects: RefCell::new(Vec::new()),
             interfaces: RefCell::new(Vec::new()),
             finished: Cell::new(false),
             next_field_id: Counter::default(),
@@ -292,11 +292,11 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
             visitor.visit_unsync(f);
         }
         drop(functions);
-        let data_types = self.data_types.try_borrow().map_err(|_| ())?;
-        for dt in data_types.iter() {
+        let objects = self.objects.try_borrow().map_err(|_| ())?;
+        for dt in objects.iter() {
             visitor.visit_unsync(dt);
         }
-        drop(data_types);
+        drop(objects);
         let interfaces = self.interfaces.try_borrow().map_err(|_| ())?;
         for i in interfaces.iter() {
             visitor.visit_unsync(i);
@@ -375,7 +375,7 @@ pub(crate) fn export_captured_externals(
     externals.iter().map(|(id, ext)| {
         let local_id = match id {
             ScopeEntryId::Local(n) => *n,
-            other => panic!("captured external has non-Local scope entry id: {:?}", other),
+            other => panic!("captured external has non-Local scope_entry id: {:?}", other),
         };
         match ext {
             External::StagedExprCell(cell) => {
@@ -426,9 +426,9 @@ pub(crate) fn export_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<Def
     impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
         use crate::artifact::export_artifact;
 
-        let data_types: Vec<Artifact> = set.data_types.borrow().iter().filter_map(|dt| {
+        let objects: Vec<Artifact> = set.objects.borrow().iter().filter_map(|dt| {
             let dt_const =
-                crate::eval::value::type_source_data_type::r#const::TypeSourceDataTypeConst { data: dt.clone() };
+                crate::eval::value::type_source_object::r#const::TypeSourceObjectConst { data: dt.clone() };
             export_artifact(xx, loc, &dt_const as &dyn Value).v
         }).collect();
         let functions: Vec<Artifact> = set.functions.borrow().iter().filter_map(|f| {
@@ -447,7 +447,7 @@ pub(crate) fn export_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<Def
         };
         let body = ArtifactDataDefSet {
             def_set_id: set.def_set_id,
-            data_types,
+            objects,
             functions,
             interfaces,
             dependencies,

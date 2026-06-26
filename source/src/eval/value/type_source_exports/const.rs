@@ -11,13 +11,13 @@ use {
                 export_definition_set,
             },
             value::{
-                tuple::scope_entry::ScopeEntryValue,
+                type_tuple::scope_entry::ScopeEntryValue,
                 type_any::r#const::ValueAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+                type_source_object_new::TypeSourceObjectNewConst,
                 type_source_function::r#const::TypeSourceFunctionConst,
             },
         },
@@ -115,11 +115,11 @@ impl AspectField for TypeSourceExportsLiftedConst {
                 }
             }
             {
-                let data_types = self.set.data_types.borrow();
-                for dt_data in data_types.iter() {
+                let objects = self.set.objects.borrow();
+                for dt_data in objects.iter() {
                     if dt_data.name.as_deref() == Some(&key_name) {
                         let ctor_type: Rc<dyn Type> =
-                            Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() });
+                            Rc::new(TypeSourceObjectNewConst { data: dt_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
@@ -147,10 +147,10 @@ impl AspectField for TypeSourceExportsLiftedConst {
             }
         }
         {
-            let data_types = self.set.data_types.borrow();
-            for dt_data in data_types.iter() {
+            let objects = self.set.objects.borrow();
+            for dt_data in objects.iter() {
                 if dt_data.name.as_deref() == Some(key.as_str()) {
-                    return Some(Rc::new(TypeSourceDataTypeConstructorConst { data: dt_data.clone() }));
+                    return Some(Rc::new(TypeSourceObjectNewConst { data: dt_data.clone() }));
                 }
             }
         }

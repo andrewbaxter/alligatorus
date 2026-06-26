@@ -79,7 +79,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::super::type_source_data_type::artifact::{
+    super::super::type_source_object::artifact::{
         ArtifactDataDefSetInterface,
         ArtifactDataDefSetInterfaceMethod,
     },

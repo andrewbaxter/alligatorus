@@ -8,10 +8,10 @@ pub fn arg_dynamic_type_expr(dynamic_types: &[TokenStream]) -> TokenStream {
         1 => dynamic_types[0].clone(),
         _ => {
             let elems: Vec<TokenStream> = dynamic_types.iter().map(|m| quote!{
-                crate:: eval:: value:: tuple:: TupleElement:: Dynamic(#m)
+                crate:: eval:: value:: type_tuple:: TupleElement:: Dynamic(#m)
             }).collect();
             quote!{
-                std::rc::Rc::new(crate::eval::value::tuple::Tuple { elements: vec![#(#elems), *], }) as
+                std::rc::Rc::new(crate::eval::value::type_tuple::Tuple { elements: vec![#(#elems), *], }) as
                     std::rc::Rc<dyn crate::langhelp::Type>
             }
         },

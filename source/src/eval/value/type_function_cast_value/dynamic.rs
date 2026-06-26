@@ -14,9 +14,9 @@ use {
             },
             type_root::r#const::TypeRoot,
             type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-            type_source_data_type::{
-                dynamic::TypeSourceDataTypeDynamic,
-                r#const::TypeSourceDataTypeConst,
+            type_source_object::{
+                dynamic::TypeSourceObjectDynamic,
+                r#const::TypeSourceObjectConst,
             },
             value_dynamic::{
                 ValueDynamic,
@@ -98,19 +98,19 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
             },
         };
         let type_value_any: &dyn Any = type_.value.as_ref();
-        let data = match type_value_any.downcast_ref::<TypeSourceDataTypeConst>() {
+        let data = match type_value_any.downcast_ref::<TypeSourceObjectConst>() {
             Some(t) => t.data.clone(),
             None => return EvalRes::err(
                 loc,
                 format!(
-                    "cast_value: type argument's value is not `TypeSourceDataTypeConst` (got {})",
+                    "cast_value: type argument's value is not `TypeSourceObjectConst` (got {})",
                     type_.value.type_(xx, loc).v.map(|t| t.desc()).unwrap_or_else(|| "?".to_string()),
                 ),
             ),
         };
         return er_seq_cv!(loc, erb, {
             let value_code = erb.must_er(value.code.cast::<CodeDynamic>())?.unwrap().clone();
-            let template: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: data.clone() });
+            let template: Rc<dyn Type> = Rc::new(TypeSourceObjectConst { data: data.clone() });
             let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
             xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
             let type_code = CodeDynamic {
@@ -128,7 +128,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                     args: vec![value_code, type_code],
                 }),
             };
-            let result_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeDynamic { data });
+            let result_type: Rc<dyn Type> = Rc::new(TypeSourceObjectDynamic { data });
             return Ok(CodeValue {
                 code: Code {
                     loc,

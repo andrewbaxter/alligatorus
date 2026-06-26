@@ -69,7 +69,7 @@ use {
             AspectInitialBind,
             AspectSet,
             AspectStackValueDynamic,
-            AspectTaggedUnion,
+            AspectUnion,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -82,7 +82,7 @@ use {
             aspect_stack_value_dynamic_aspect_id,
             aspect_stack_value_dynamic_get,
             aspect_string_const_get,
-            aspect_tagged_union_aspect_id,
+            aspect_union_aspect_id,
             type_option_identity,
         },
     },
@@ -211,7 +211,7 @@ impl AspectStackValueDynamic for TypeOptionDynamic {
     }
 }
 
-impl AspectTaggedUnion for TypeOptionDynamic {
+impl AspectUnion for TypeOptionDynamic {
     fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
         self.variants_internal()
     }
@@ -321,8 +321,8 @@ impl Type for TypeOptionDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectInitialBind>));
         }
-        if *key == aspect_tagged_union_aspect_id() {
-            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectTaggedUnion>));
+        if *key == aspect_union_aspect_id() {
+            return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectUnion>));
         }
         if *key == aspect_set_aspect_id() {
             return Some(Box::new(Box::new(self.clone()) as Box<dyn AspectSet>));

@@ -20,7 +20,7 @@ use {
                 ValueDynamic,
                 ValueDynamicSource,
             },
-            value_pull::aspect::TypePullAspect,
+            type_pull::aspect::TypePullAspect,
         },
         langhelp::{
             Aspect,

@@ -324,14 +324,21 @@ e0;"#]);
   },
   "exporter": {
     "body": {
-      "data": "SourceDataTypeConst",
+      "data": "SourceObjectConst",
       "exporter": "root"
     }
   }
 }"#,
             r#"{
   "data": {
-    "data_types": [
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
+    ],
+    "objects": [
       {
         "ref": [
           [
@@ -341,13 +348,6 @@ e0;"#]);
           0
         ]
       }
-    ],
-    "def_set_id": [
-      [
-        0,
-        1
-      ],
-      0
     ]
   },
   "exporter": {

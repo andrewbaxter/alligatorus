@@ -17,7 +17,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         ("interface_const_identity", 6004),
         ("interface_ref_type_identity", 6005),
         ("type_type_identity", 6006),
-        ("tagged_union_ref_type_identity", 6007),
+        ("union_ref_type_identity", 6007),
         ("type_option_identity", 6008),
         ("type_code_struct_identity", 6009),
         ("type_code_enum_identity", 6010),

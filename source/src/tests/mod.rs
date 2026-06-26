@@ -1,13 +1,13 @@
 mod helpers;
 mod t0000_basic;
 mod t0010_define_func;
-mod t0020_define_data;
+mod t0020_define_object;
 mod t0030_define_interface;
 mod t0040_lists;
 mod t0050_numbers;
 mod t0060_scope;
 mod t0070_foreach;
-mod t0080_taggedunion;
+mod t0080_union;
 mod t0090_maps;
 mod t0100_serial;
 mod t0110_const_folding;

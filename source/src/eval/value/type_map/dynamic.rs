@@ -29,7 +29,7 @@ use {
             to_dynamic_ext,
             typecheck_convert,
             value::{
-                record::{
+                type_record::{
                     Record,
                     RecordField,
                 },

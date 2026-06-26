@@ -71,7 +71,7 @@ pub struct SourceExprBind {
     pub value: Box<SourceExpr>,
 }
 
-/// Refer to a binding in scope.
+/// Refer to a scope_entry in scope.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprBindingUse {
@@ -183,7 +183,7 @@ pub struct SourceExprSeq {
     pub exprs: Vec<SourceExpr>,
 }
 
-/// Modify the value of a value field or an existing binding.
+/// Modify the value of a value field or an existing scope_entry.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprSet {

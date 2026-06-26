@@ -14,7 +14,7 @@ use {
             to_dynamic_ext,
             typecheck_convert,
             value::{
-                type_source_data_type::SourceDataTypeData,
+                type_source_object::SourceObjectData,
                 type_source_interface::BuiltinInterfaceKind,
             },
         },
@@ -66,7 +66,7 @@ pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &G
             );
         collect_externals(&func_name, &func_data.captured_externals.borrow());
     }
-    for dt in set.data_types.borrow().iter() {
+    for dt in set.objects.borrow().iter() {
         for method in dt.methods.borrow().iter() {
             let func_name =
                 scope_entry_id_dynamic_key(
@@ -104,7 +104,7 @@ pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &G
             }
         }
     }
-    for dt in set.data_types.borrow().iter() {
+    for dt in set.objects.borrow().iter() {
         for method in dt.methods.borrow().iter() {
             if let Some(dynamic_code) = method.compiled_source.borrow().clone() {
                 for line in dynamic_code.lines() {
@@ -139,7 +139,7 @@ pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &G
 pub(crate) fn install_imported_type_iface(
     xx: &ExprContext,
     loc: QExprId,
-    dt_data: &Gc<SourceDataTypeData>,
+    dt_data: &Gc<SourceObjectData>,
     underlying_js: CodeDynamic,
 ) -> Result<v8::Global<v8::Object>, String> {
     let body_ex = Rc::new(EvalContext {

@@ -29,12 +29,12 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_source_data_type::{
-                    SourceDataTypeData,
-                    r#const::TypeSourceDataTypeConst,
+                type_source_object::{
+                    SourceObjectData,
+                    r#const::TypeSourceObjectConst,
                 },
                 type_source_interface::SourceInterfaceRef,
-                value_pull::aspect::TypePullAspect,
+                type_pull::aspect::TypePullAspect,
             },
         },
         langhelp::{
@@ -77,11 +77,11 @@ use {
 pub(crate) fn pull_mini_eval(
     xx: &ExprContext,
     loc: QExprId,
-    data: &Gc<SourceDataTypeData>,
+    data: &Gc<SourceObjectData>,
     inner: Rc<dyn Value>,
 ) -> Result<v8::Global<v8::Object>, String> {
     let set =
-        data.set.borrow().as_ref().cloned().ok_or_else(|| "Pull mini-eval: data type has no def-set".to_string())?;
+        data.set.borrow().as_ref().cloned().ok_or_else(|| "Pull mini-eval: object has no def-set".to_string())?;
     install_def_set_to_dynamic(xx, loc, &set)?;
     let underlying_type = data.underlying_type.get().clone();
     let to_dyn =
@@ -154,7 +154,7 @@ pub(crate) fn pull_mini_eval(
 pub(crate) struct TypePull {
     pub artifact_id: RefCell<Option<ArtifactIdSource>>,
     pub bundle: RefCell<Option<v8::Global<v8::Object>>>,
-    pub data: Gc<SourceDataTypeData>,
+    pub data: Gc<SourceObjectData>,
 }
 
 impl Aspect for TypePull { }
@@ -187,19 +187,19 @@ impl ExporterRootDelegate for TypePull {
         };
         let id_owned = id.clone();
         impl_import_independent_artifact::<ArtifactDataPull>(xx, loc, id, data, move |body: ArtifactDataPull| {
-            // Eagerly deserialize the data type dependency so we can construct the TypePull
-            // with a real Gc`<SourceDataTypeData>`. The cache lookup in import_artifact
+            // Eagerly deserialize the object dependency so we can construct the TypePull
+            // with a real Gc`<SourceObjectData>`. The cache lookup in import_artifact
             // ensures the later deps loop reuses the same Gc.
             let dt_any =
-                import_artifact(xx, loc, body.data_type.clone())
+                import_artifact(xx, loc, body.object.clone())
                     .v
-                    .ok_or_else(|| "TypePull deserialize: failed to deserialize data type".to_string())?;
+                    .ok_or_else(|| "TypePull deserialize: failed to deserialize object".to_string())?;
             let dt_rc_any: Rc<dyn Any> = dt_any;
             let dt_wrapped =
                 dt_rc_any
-                    .downcast::<crate::artifact::ExporterDataAny<Gc<SourceDataTypeData>>>()
+                    .downcast::<crate::artifact::ExporterDataAny<Gc<SourceObjectData>>>()
                     .map_err(
-                        |_| "TypePull deserialize: data type artifact did not yield SourceDataTypeData".to_string(),
+                        |_| "TypePull deserialize: object artifact did not yield SourceObjectData".to_string(),
                     )?;
             let data = dt_wrapped.0.clone();
             let pull = Rc::new(TypePull {
@@ -260,7 +260,7 @@ impl ExporterRootDelegate for TypePull {
                 errors_for_closure.borrow_mut().get_or_insert_default().push(err);
                 abort_for_closure.set(true);
             };
-            let dt_const = TypeSourceDataTypeConst { data: self_.data.clone() };
+            let dt_const = TypeSourceObjectConst { data: self_.data.clone() };
             let mut dt_art = export_artifact(xx, loc, &dt_const as &dyn Value);
             if let Some(errs) = dt_art.errors.take() {
                 push_err(errs);
@@ -270,7 +270,7 @@ impl ExporterRootDelegate for TypePull {
             let Some(bundle) = bundle_borrow.as_ref() else {
                 push_err_one(loc, "Cannot serialize Pull type without an instantiated bundle".to_string());
                 return make_body(serde_json::to_value(&ArtifactDataPull {
-                    data_type: dt_art,
+                    object: dt_art,
                     inner: null_art_for_closure.clone(),
                 }).unwrap());
             };
@@ -283,7 +283,7 @@ impl ExporterRootDelegate for TypePull {
                         format!("Underlying type ({}) missing AspectLift", underlying_type.desc()),
                     );
                     return make_body(serde_json::to_value(&ArtifactDataPull {
-                        data_type: dt_art,
+                        object: dt_art,
                         inner: null_art_for_closure.clone(),
                     }).unwrap());
                 },
@@ -293,7 +293,7 @@ impl ExporterRootDelegate for TypePull {
                 None => {
                     push_err_one(loc, "Pull serialize requires active dynamic scope to lift inner data".to_string());
                     return make_body(serde_json::to_value(&ArtifactDataPull {
-                        data_type: dt_art,
+                        object: dt_art,
                         inner: null_art_for_closure.clone(),
                     }).unwrap());
                 },
@@ -308,7 +308,7 @@ impl ExporterRootDelegate for TypePull {
                     None => {
                         push_err_one(loc, "Pull serialize: data field key alloc".to_string());
                         return make_body(serde_json::to_value(&ArtifactDataPull {
-                            data_type: dt_art,
+                            object: dt_art,
                             inner: null_art_for_closure.clone(),
                         }).unwrap());
                     },
@@ -318,7 +318,7 @@ impl ExporterRootDelegate for TypePull {
                     None => {
                         push_err_one(loc, "Pull serialize: missing data field on instance".to_string());
                         return make_body(serde_json::to_value(&ArtifactDataPull {
-                            data_type: dt_art,
+                            object: dt_art,
                             inner: null_art_for_closure.clone(),
                         }).unwrap());
                     },
@@ -328,7 +328,7 @@ impl ExporterRootDelegate for TypePull {
                     Err(e) => {
                         push_err_one(loc, format!("Pull serialize lift: {}", e));
                         return make_body(serde_json::to_value(&ArtifactDataPull {
-                            data_type: dt_art,
+                            object: dt_art,
                             inner: null_art_for_closure.clone(),
                         }).unwrap());
                     },
@@ -340,7 +340,7 @@ impl ExporterRootDelegate for TypePull {
                 push_err(errs);
             }
             let body = ArtifactDataPull {
-                data_type: dt_art,
+                object: dt_art,
                 inner: inner_art.v.unwrap_or_else(|| null_art_for_closure.clone()),
             };
             make_body(serde_json::to_value(&body).unwrap())

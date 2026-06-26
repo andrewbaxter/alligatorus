@@ -23,7 +23,7 @@ use {
             to_dynamic_ext,
             value::{
                 type_any::r#const::TypeAnyConst,
-                type_code_source::TypeCodeStructDynamic,
+                type_code_struct::dynamic::TypeCodeStructDynamic,
                 type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,

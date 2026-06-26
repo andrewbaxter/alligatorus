@@ -6,7 +6,7 @@ use {
             ExporterAny,
         },
         eval::value::{
-            tuple::scope_entry::ScopeEntryValue,
+            type_tuple::scope_entry::ScopeEntryValue,
             type_any::r#const::TypeAnyConst,
             type_number::dynamic::TypeNumberDynamic,
             type_root::r#const::{

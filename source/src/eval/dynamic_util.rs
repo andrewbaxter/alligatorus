@@ -12,7 +12,7 @@ use {
             TargetBindSub,
             typecheck_convert,
             value::{
-                tuple::scope_entry::ScopeEntryValue,
+                type_tuple::scope_entry::ScopeEntryValue,
                 type_null::dynamic::TypeNullDynamic,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
                 value_dynamic::{

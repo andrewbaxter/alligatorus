@@ -4,7 +4,7 @@ use crate::langhelp::{
     ScopeEntryId,
 };
 
-pub(crate) const BINDING_PREFIX: &str = "a";
+pub(crate) const SCOPE_ENTRY_PREFIX: &str = "a";
 pub(crate) const BUILTIN_PREFIX: &str = "b";
 pub(crate) const DEF_PREFIX: &str = "d";
 pub(crate) const EXPR_PREFIX: &str = "e";

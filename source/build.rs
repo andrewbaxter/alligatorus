@@ -47,20 +47,20 @@ fn main() {
             SourceFunctionData,
             r#const::TypeSourceFunctionConst
         };
-        use crate::eval::value::type_source_tagged_union::{
-            SourceTaggedUnionData,
-            SourceTaggedUnionRef,
-            SourceTaggedUnionVariant,
+        use crate::eval::value::type_source_union::{
+            SourceUnionData,
+            SourceUnionRef,
+            SourceUnionVariant,
         };
-        use crate::eval::value::type_source_tagged_union_constructor::SourceTaggedUnionConstructorRef;
-        use crate::eval::value::type_source_data_type::{
+        use crate::eval::value::type_source_union_new::SourceUnionNewRef;
+        use crate::eval::value::type_source_object::{
             SourceDataMethodData,
-            SourceDataTypeData,
-            SourceDataTypeInterfaceImplData,
-            SourceDataTypeInterfaceMethodImplData,
-            SourceDataTypeRef,
+            SourceObjectData,
+            SourceObjectInterfaceImplData,
+            SourceObjectInterfaceMethodImplData,
+            SourceObjectRef,
         };
-        use crate::eval::value::type_source_data_type_constructor::TypeSourceDataTypeConstructorConst;
+        use crate::eval::value::type_source_object_new::TypeSourceObjectNewConst;
         use crate::eval::value::type_source_interface::{
             SourceInterfaceData,
             SourceInterfaceMethodData,

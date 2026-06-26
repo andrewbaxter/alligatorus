@@ -1,8 +1,8 @@
 use {
     crate::{
         eval::value::{
-            record::Record,
-            tuple::Tuple,
+            type_record::Record,
+            type_tuple::Tuple,
             type_bool::{
                 dynamic::TypeBoolDynamic,
                 r#const::TypeBoolConst,
@@ -23,22 +23,22 @@ use {
                 ExporterRootDelegate,
                 TypeRoot,
             },
-            type_source_data_type::r#const::TypeSourceDataTypeConst,
-            type_source_data_type_constructor::TypeSourceDataTypeConstructorConst,
+            type_source_object::r#const::TypeSourceObjectConst,
+            type_source_object_new::TypeSourceObjectNewConst,
             type_source_exports::r#const::TypeSourceExportsLiftedConst,
             type_source_function::r#const::TypeSourceFunctionConst,
             type_source_interface::r#const::TypeSourceInterfaceConst,
-            type_source_tagged_union::r#const::TypeSourceTaggedUnionConst,
-            type_source_tagged_union_constructor::r#const::TypeSourceTaggedUnionConstructorConst,
+            type_source_union::r#const::TypeSourceUnionConst,
+            type_source_union_new::r#const::TypeSourceUnionNewConst,
             type_string::{
                 dynamic::TypeStringDynamic,
                 r#const::TypeStringConst,
             },
             value_bool::r#const::ValueBoolConst,
             value_number::r#const::ValueNumberConst,
-            value_source_data_type::r#const::ValueSourceDataTypeConst,
+            value_source_object::r#const::ValueSourceObjectConst,
             value_string::r#const::ValueStringConst,
-            value_unique::TypeUnique,
+            type_unique::r#const::TypeUnique,
         },
         langhelp::{
             CompileId,
@@ -502,14 +502,14 @@ pub enum ExporterRoot {
     Pull,
     Record,
     Root,
-    SourceDataTypeConst,
-    SourceDataTypeConstructorConst,
-    SourceDataTypeValueConst,
+    SourceObjectConst,
+    SourceObjectNewConst,
+    SourceObjectValueConst,
     SourceExportsLiftedConst,
     SourceFunctionConst,
     SourceInterfaceConst,
-    SourceTaggedUnionConst,
-    SourceTaggedUnionConstructorConst,
+    SourceUnionConst,
+    SourceUnionNewConst,
     StringConst,
     StringDynamic,
     StringValueConst,
@@ -591,19 +591,19 @@ impl ArtifactExporter for ExporterRoot {
                 id_ref,
                 data,
             ),
-            ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_from_artifact_data(
+            ExporterRoot::SourceObjectConst => TypeSourceObjectConst::self_from_artifact_data(
                 &xx,
                 loc,
                 id_ref,
                 data,
             ),
-            ExporterRoot::SourceDataTypeValueConst => ValueSourceDataTypeConst::self_from_artifact_data(
+            ExporterRoot::SourceObjectValueConst => ValueSourceObjectConst::self_from_artifact_data(
                 &xx,
                 loc,
                 id_ref,
                 data,
             ),
-            ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_from_artifact_data(
+            ExporterRoot::SourceObjectNewConst => TypeSourceObjectNewConst::self_from_artifact_data(
                 &xx,
                 loc,
                 id_ref,
@@ -627,13 +627,13 @@ impl ArtifactExporter for ExporterRoot {
                 id_ref,
                 data,
             ),
-            ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_from_artifact_data(
+            ExporterRoot::SourceUnionConst => TypeSourceUnionConst::self_from_artifact_data(
                 &xx,
                 loc,
                 id_ref,
                 data,
             ),
-            ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst
+            ExporterRoot::SourceUnionNewConst => TypeSourceUnionNewConst
             ::self_from_artifact_data(
                 &xx,
                 loc,
@@ -734,14 +734,14 @@ impl ArtifactExporter for ExporterRoot {
                 self_,
                 make_body,
             ),
-            ExporterRoot::SourceDataTypeConst => TypeSourceDataTypeConst::self_export(xx, loc, self_, make_body),
-            ExporterRoot::SourceDataTypeValueConst => ValueSourceDataTypeConst::self_export(
+            ExporterRoot::SourceObjectConst => TypeSourceObjectConst::self_export(xx, loc, self_, make_body),
+            ExporterRoot::SourceObjectValueConst => ValueSourceObjectConst::self_export(
                 xx,
                 loc,
                 self_,
                 make_body,
             ),
-            ExporterRoot::SourceDataTypeConstructorConst => TypeSourceDataTypeConstructorConst::self_export(
+            ExporterRoot::SourceObjectNewConst => TypeSourceObjectNewConst::self_export(
                 xx,
                 loc,
                 self_,
@@ -749,13 +749,13 @@ impl ArtifactExporter for ExporterRoot {
             ),
             ExporterRoot::SourceFunctionConst => TypeSourceFunctionConst::self_export(xx, loc, self_, make_body),
             ExporterRoot::SourceInterfaceConst => TypeSourceInterfaceConst::self_export(xx, loc, self_, make_body),
-            ExporterRoot::SourceTaggedUnionConst => TypeSourceTaggedUnionConst::self_export(
+            ExporterRoot::SourceUnionConst => TypeSourceUnionConst::self_export(
                 xx,
                 loc,
                 self_,
                 make_body,
             ),
-            ExporterRoot::SourceTaggedUnionConstructorConst => TypeSourceTaggedUnionConstructorConst::self_export(
+            ExporterRoot::SourceUnionNewConst => TypeSourceUnionNewConst::self_export(
                 xx,
                 loc,
                 self_,

@@ -12,9 +12,9 @@ use {
 pub fn specs() -> Vec<InterfaceSpec> {
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
     let empty_tuple = || TypeRef {
-        path: quote!(crate::eval::value::tuple::Tuple),
+        path: quote!(crate::eval::value::type_tuple::Tuple),
         dynamic_type: quote!{
-            std::rc::Rc::new(crate::eval::value::tuple::Tuple { elements: vec![] }) as
+            std::rc::Rc::new(crate::eval::value::type_tuple::Tuple { elements: vec![] }) as
                 std::rc::Rc<dyn crate::langhelp::Type>
         },
     };

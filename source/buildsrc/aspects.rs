@@ -165,8 +165,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             ],
         },
         AspectSpec {
-            name: "TaggedUnion",
-            doc: doc("Identity aspect for tagged union"),
+            name: "Union",
+            doc: doc("Identity aspect for union"),
             builtin_unique_id: 1014,
             methods: vec![AspectMethod {
                 name: "variants",
@@ -315,7 +315,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         },
         AspectSpec {
             name: "Bind",
-            doc: doc("Creates code to bind a value, and returns the binding (scope entry)."),
+            doc: doc("Creates code to bind a value, and returns the scope_entry (scope_entry)."),
             builtin_unique_id: 1022,
             methods: vec![
                 //. .
@@ -335,7 +335,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         AspectSpec {
             name: "BindDynamic",
             doc: doc(
-                "Creates code to prepare a value for binding, used by the Dynamic target (call tree rooted in Bind). This may be called recursively, e.g. in records, to prepare elements. If None, the value does not require dynamic binding - this is used by records/tuples to determine if the containing record/tuple also needs dynamic binding.",
+                "Creates code to prepare a value for scope_entry, used by the Dynamic target (call tree rooted in Bind). This may be called recursively, e.g. in records, to prepare elements. If None, the value does not require dynamic scope_entry - this is used by records/tuples to determine if the containing record/tuple also needs dynamic scope_entry.",
             ),
             builtin_unique_id: 1023,
             methods: vec![
@@ -620,7 +620,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                 scope.values.borrow_mut(
                 ).insert(
                     ConstKey:: String(#key.to_string()),
-                    Box::new(crate::eval::value::value_unique::ScopeEntryUniqueDualMode {
+                    Box::new(crate::eval::value::type_unique::r#const::ScopeEntryUniqueDualMode {
                         dynamic_key,
                         unique,
                     }) as Box<dyn crate::r#gen::ScopeEntry>,
@@ -638,7 +638,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             scope: & crate:: langhelp:: Scope,
             builtin_scope_entries: & mut Vec <(String, ScopeEntryId, Rc < dyn crate:: langhelp:: Type >,) >,
         ) {
-            let unique_type: Rc<dyn crate::langhelp::Type> = Rc::new(crate::eval::value::value_unique::TypeUnique);
+            let unique_type: Rc<dyn crate::langhelp::Type> = Rc::new(crate::eval::value::type_unique::r#const::TypeUnique);
             #(#reg_entries) *
         }
     });

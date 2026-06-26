@@ -28,7 +28,7 @@ use {
                 },
                 type_root::r#const::TypeRoot,
                 type_scope_entry::dynamic::ScopeEntryDynamicBinding,
-                type_source_data_type::artifact::ArtifactDataDefSetFunction,
+                type_source_object::artifact::ArtifactDataDefSetFunction,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,

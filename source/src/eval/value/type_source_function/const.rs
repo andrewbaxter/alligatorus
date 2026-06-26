@@ -21,7 +21,7 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                tuple::scope_entry::ScopeEntryValue,
+                type_tuple::scope_entry::ScopeEntryValue,
                 type_any::r#const::{
                     TypeAnyConst,
                     ValueAnyConst,
@@ -65,7 +65,7 @@ use {
         any::Any,
         rc::Rc,
     },
-    super::super::type_source_data_type::artifact::ArtifactDataDefSetFunction,
+    super::super::type_source_object::artifact::ArtifactDataDefSetFunction,
 };
 
 #[derive(Clone)]

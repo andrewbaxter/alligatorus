@@ -164,7 +164,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let data_field = format!("_{}", ds.next_field_id.next());
-                        let dt_data = Gc::new(SourceDataTypeData {
+                        let dt_data = Gc::new(SourceObjectData {
                             set: RefCell::new(Some(ds.clone())),
                             name: Some(name),
                             description: RefCell::new(None),
@@ -174,11 +174,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             identity,
                             data_field,
                             artifact_id: RefCell::new(None),
-                            constructor_artifact_id: RefCell::new(None),
+                            new_artifact_id: RefCell::new(None),
                         });
-                        ds.data_types.borrow_mut().push(dt_data.clone());
-                        let data_type_ref = Rc::new(SourceDataTypeRef { data: dt_data });
-                        SourceObjectResult { data_type_ref }
+                        ds.objects.borrow_mut().push(dt_data.clone());
+                        let object_ref = Rc::new(SourceObjectRef { data: dt_data });
+                        SourceObjectResult { object_ref }
                     },
                 },
                 PushMethod {
@@ -192,17 +192,17 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 PushMethod {
                     name: "union",
                     args: vec![],
-                    ret: "SourceTaggedUnionBuilder",
+                    ret: "SourceUnionBuilder",
                     body: quote!{
                         let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
-                        let data = Rc::new(SourceTaggedUnionData {
+                        let data = Rc::new(SourceUnionData {
                             variants: RefCell::new(Vec::new()),
                             identity,
                             next_tag_id: crate::langhelp::Counter::default(),
                             new_artifact_id: RefCell::new(None),
                         });
-                        SourceTaggedUnionBuilder { data }
+                        SourceUnionBuilder { data }
                     },
                 },
                 PushMethod {
@@ -478,22 +478,22 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
         PushStructSpec {
             name: "SourceObjectResult",
             builtin_unique_id: 3006,
-            data_fields: vec![("data_type_ref", "Rc<SourceDataTypeRef>")],
+            data_fields: vec![("object_ref", "Rc<SourceObjectRef>")],
             extra_aspect_fn: None,
             fields: vec![
                 //. .
                 PushField {
                     name: "type_ref_",
-                    ret: "Rc<SourceDataTypeRef>",
+                    ret: "Rc<SourceObjectRef>",
                     body: quote!{
-                        self_.data_type_ref.clone()
+                        self_.object_ref.clone()
                     },
                 },
                 PushField {
                     name: "new_",
-                    ret: "Rc<TypeSourceDataTypeConstructorConst>",
+                    ret: "Rc<TypeSourceObjectNewConst>",
                     body: quote!{
-                        Rc::new(TypeSourceDataTypeConstructorConst { data: self_.data_type_ref.data.clone(), })
+                        Rc::new(TypeSourceObjectNewConst { data: self_.object_ref.data.clone(), })
                     },
                 },
             ],
@@ -504,7 +504,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![("description", "String")],
                     ret: "()",
                     body: quote!{
-                        *self_.data_type_ref.data.description.borrow_mut() = Some(description);
+                        *self_.object_ref.data.description.borrow_mut() = Some(description);
                     },
                 },
                 PushMethod {
@@ -512,7 +512,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![("type_ref", "AnyType")],
                     ret: "()",
                     body: quote!{
-                        self_.data_type_ref.data.underlying_type.set(type_ref.0);
+                        self_.object_ref.data.underlying_type.set(type_ref.0);
                     },
                 },
                 PushMethod {
@@ -520,7 +520,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![("name", "String")],
                     ret: "SourceObjectMethodResult",
                     body: quote!{
-                        let dt_data = &self_.data_type_ref.data;
+                        let dt_data = &self_.object_ref.data;
                         let ds = dt_data.set.borrow().as_ref().unwrap().clone();
                         let field_name = format!("_{}", ds.next_field_id.next());
                         let entry_id = ds.next_entry_id.next();
@@ -556,14 +556,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
                         };
                         let mut method_impls = Vec::new();
-                        let dt_data = &self_.data_type_ref.data;
+                        let dt_data = &self_.object_ref.data;
                         let ds = dt_data.set.borrow().as_ref().unwrap().clone();
                         for (imethod_idx, imethod_name) in &iface_method_names {
                             let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
                             match record_entries.get(&const_key) {
                                 Some(expr) => {
                                     let entry_id = ds.next_entry_id.next();
-                                    method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                                    method_impls.push(SourceObjectInterfaceMethodImplData {
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
@@ -584,7 +584,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 },
                             }
                         }
-                        dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
+                        dt_data.interface_impls.borrow_mut().push(SourceObjectInterfaceImplData {
                             interface: iface_data.clone(),
                             method_impls,
                         });
@@ -598,7 +598,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     ret: "Rc<SourceInterfaceRef>",
                     body: quote!{
                         let record_entries = record;
-                        let ds = self_.data_type_ref.data.set.borrow().as_ref().unwrap().clone();
+                        let ds = self_.object_ref.data.set.borrow().as_ref().unwrap().clone();
                         let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let iface_data = Gc::new(SourceInterfaceData {
@@ -621,7 +621,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let any_type: std::rc::Rc<dyn crate::langhelp::Type> =
                             std::rc::Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic);
                         let empty_tuple_type: std::rc::Rc<dyn crate::langhelp::Type> =
-                            std::rc::Rc::new(crate::eval::value::tuple::Tuple { elements: vec![] });
+                            std::rc::Rc::new(crate::eval::value::type_tuple::Tuple { elements: vec![] });
                         for imethod_name in &iface_method_names {
                             let field_name =
                                 format!("_im{}", crate::eval::definition_set::next_interface_method_id(&ds));
@@ -639,14 +639,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             arg_type: RefCell::new(Some(empty_tuple_type.clone())),
                             ret_type: RefCell::new(
                                 Some(
-                                    std::rc::Rc::new(crate::eval::value::value_unique::TypeUnique) as
+                                    std::rc::Rc::new(crate::eval::value::type_unique::r#const::TypeUnique) as
                                         std::rc::Rc<dyn crate::langhelp::Type>
                                 )
                             ),
                             field_name: aspect_unique_field,
                         }));
                         *iface_data.methods.borrow_mut() = methods;
-                        let dt_data = &self_.data_type_ref.data;
+                        let dt_data = &self_.object_ref.data;
                         let ds = dt_data.set.borrow().as_ref().unwrap().clone();
                         let mut method_impls = Vec::new();
                         let all_method_names: Vec<String> =
@@ -661,7 +661,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         crate::eval::expr::LitValue::Shared(std::rc::Rc::new(unique_clone)),
                                     ),
                                 };
-                                method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                                method_impls.push(SourceObjectInterfaceMethodImplData {
                                     artifact_id: RefCell::new(None),
                                     interface_method_index: imethod_idx,
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
@@ -678,7 +678,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             match record_entries.get(&const_key) {
                                 Some(expr) => {
                                     let entry_id = ds.next_entry_id.next();
-                                    method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                                    method_impls.push(SourceObjectInterfaceMethodImplData {
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
@@ -699,7 +699,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 },
                             }
                         }
-                        dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
+                        dt_data.interface_impls.borrow_mut().push(SourceObjectInterfaceImplData {
                             interface: iface_data.clone(),
                             method_impls,
                         });
@@ -712,35 +712,35 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
             extra_field_type_opt_arms: vec![],
         },
         PushStructSpec {
-            name: "SourceTaggedUnionBuilder",
+            name: "SourceUnionBuilder",
             builtin_unique_id: 3007,
-            data_fields: vec![("data", "Rc<SourceTaggedUnionData>")],
+            data_fields: vec![("data", "Rc<SourceUnionData>")],
             extra_aspect_fn: None,
             fields: vec![PushField {
                 name: "type_",
-                ret: "Rc<SourceTaggedUnionRef>",
+                ret: "Rc<SourceUnionRef>",
                 body: quote!{
-                    Rc::new(SourceTaggedUnionRef { data: self_.data.clone() })
+                    Rc::new(SourceUnionRef { data: self_.data.clone() })
                 },
             }],
             methods: vec![PushMethod {
                 name: "variant",
                 args: vec![("tag", "String"), ("type_ref", "AnyType")],
-                ret: "Rc<SourceTaggedUnionConstructorRef>",
+                ret: "Rc<SourceUnionNewRef>",
                 body: quote!{
                     let variant_index = {
                         let mut variants = self_.data.variants.borrow_mut();
                         let idx = variants.len();
                         let js_tag = format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next(),);
-                        variants.push(SourceTaggedUnionVariant {
+                        variants.push(SourceUnionVariant {
                             js_tag,
                             tag: crate::langhelp::ConstKey::String(tag),
                             type_: type_ref.0,
-                            constructor_artifact_id: RefCell::new(None),
+                            new_artifact_id: RefCell::new(None),
                         });
                         idx
                     };
-                    Rc::new(SourceTaggedUnionConstructorRef {
+                    Rc::new(SourceUnionNewRef {
                         data: self_.data.clone(),
                         variant_index,
                     })
@@ -1195,7 +1195,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
     let iface_field = format_ident!("{}", iface_field);
     quote!{
         let record_entries = record;
-        let import_id = self_.data_type_ref.data.set.borrow().as_ref().unwrap().def_set_id.0.0;
+        let import_id = self_.object_ref.data.set.borrow().as_ref().unwrap().def_set_id.0.0;
         let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_id);
         let iface_data = builtin_ifaces.#iface_field.clone();
         let iface_method_names: Vec<(usize, String)> = {
@@ -1203,14 +1203,14 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
             methods.iter().enumerate().map(|(i, m)| (i, m.name.clone())).collect()
         };
         let mut method_impls = Vec::new();
-        let dt_data = &self_.data_type_ref.data;
+        let dt_data = &self_.object_ref.data;
         let ds = dt_data.set.borrow().as_ref().unwrap().clone();
         for (imethod_idx, imethod_name) in &iface_method_names {
             let const_key = crate::langhelp::ConstKey::String(imethod_name.clone());
             match record_entries.get(&const_key) {
                 Some(expr) => {
                     let entry_id = ds.next_entry_id.next();
-                    method_impls.push(SourceDataTypeInterfaceMethodImplData {
+                    method_impls.push(SourceObjectInterfaceMethodImplData {
                         artifact_id: RefCell::new(None),
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
@@ -1229,7 +1229,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                 },
             }
         }
-        dt_data.interface_impls.borrow_mut().push(SourceDataTypeInterfaceImplData {
+        dt_data.interface_impls.borrow_mut().push(SourceObjectInterfaceImplData {
             interface: iface_data,
             method_impls,
         });

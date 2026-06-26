@@ -48,7 +48,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.bind("nvalue_binding", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
             //. .
-            mb.str("binding"),
+            mb.str("scope_entry"),
             mb.scope_use("string"),
         ]))),
     );
@@ -310,7 +310,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.bind(
             "nscope_entry",
-            mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs scope entry")),
+            mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs scope_entry")),
         ),
     );
     exprs.push(

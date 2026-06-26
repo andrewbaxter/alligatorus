@@ -8,19 +8,19 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                record::{
+                type_record::{
                     Record,
                     RecordField,
                 },
                 type_any::r#const::TypeAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
-                type_option_aspect::{
+                type_option::r#const::{
                     TypeOption,
                     ValueOption,
                 },
                 type_root::r#const::TypeRoot,
-                type_source_data_type::SourceDataTypeData,
+                type_source_object::SourceObjectData,
                 type_source_interface::BuiltinInterfaceKind,
                 value_null::r#const::ValueNullConst,
             },
@@ -97,7 +97,7 @@ impl ScopeEntry for ArgRecordFactory {
     }
 }
 
-fn cast_from_field_name(data: &Gc<SourceDataTypeData>) -> Option<String> {
+fn cast_from_field_name(data: &Gc<SourceObjectData>) -> Option<String> {
     type_method_field_name(data, "cast_from")
 }
 
@@ -109,7 +109,7 @@ fn clone_cv(cv: &CodeValue) -> CodeValue {
 }
 
 pub(crate) fn pull_aspect_v8(
-    data: &Gc<SourceDataTypeData>,
+    data: &Gc<SourceObjectData>,
     bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     _loc: QExprId,
@@ -142,7 +142,7 @@ pub(crate) fn pull_aspect_v8(
 }
 
 pub(crate) fn pull_can_cast_from_v8(
-    data: &Gc<SourceDataTypeData>,
+    data: &Gc<SourceObjectData>,
     bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     _loc: QExprId,
@@ -200,7 +200,7 @@ pub(crate) fn pull_can_cast_from_v8(
 }
 
 pub(crate) fn pull_cast_from_v8(
-    data: &Gc<SourceDataTypeData>,
+    data: &Gc<SourceObjectData>,
     bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
     loc: QExprId,
@@ -290,11 +290,11 @@ pub(crate) fn pull_cast_from_v8(
     EvalRes::ok(out_cv)
 }
 
-pub(crate) fn pull_desc(data: &Gc<SourceDataTypeData>) -> String {
+pub(crate) fn pull_desc(data: &Gc<SourceObjectData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
 }
 
-fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> Option<String> {
+fn type_method_field_name(data: &Gc<SourceObjectData>, method_name: &str) -> Option<String> {
     let impls = data.interface_impls.borrow();
     for impl_data in impls.iter() {
         if impl_data.interface.builtin_kind != Some(BuiltinInterfaceKind::Type) {
