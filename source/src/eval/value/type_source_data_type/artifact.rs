@@ -87,8 +87,6 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     pub captured_externals: Vec<ArtifactExternal>,
     pub compiled_js: String,
     pub entry_id: usize,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub impl_expr: Option<ArtifactExpr>,
     pub interface_method_index: usize,
 }
 

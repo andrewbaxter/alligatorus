@@ -17,9 +17,7 @@ use {
             import_install::install_def_set_to_v8,
             pull_type_dispatch::{
                 pull_aspect_v8,
-                pull_can_cast_from,
                 pull_can_cast_from_v8,
-                pull_cast_from,
                 pull_cast_from_v8,
                 pull_desc,
             },
@@ -410,17 +408,15 @@ impl Type for TypePull {
     }
 
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
-        if let Some(bundle) = self.bundle.borrow().as_ref() {
-            return pull_can_cast_from_v8(&self.data, bundle, xx, loc, source_type);
-        }
-        pull_can_cast_from(&self.data, xx, loc, source_type)
+        let bundle = self.bundle.borrow();
+        let bundle = bundle.as_ref().expect("TypePull::can_cast_from called before bundle populated");
+        pull_can_cast_from_v8(&self.data, bundle, xx, loc, source_type)
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        if let Some(bundle) = self.bundle.borrow().as_ref() {
-            return pull_cast_from_v8(&self.data, bundle, xx, loc, cv);
-        }
-        pull_cast_from(&self.data, xx, loc, cv)
+        let bundle = self.bundle.borrow();
+        let bundle = bundle.as_ref().expect("TypePull::cast_from called before bundle populated");
+        pull_cast_from_v8(&self.data, bundle, xx, loc, cv)
     }
 
     fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {

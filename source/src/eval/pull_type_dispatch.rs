@@ -108,22 +108,6 @@ fn clone_cv(cv: &CodeValue) -> CodeValue {
     }
 }
 
-fn lookup_impl<'a>(data: &'a Gc<SourceDataTypeData>, method_name: &str) -> Option<Rc<dyn Value>> {
-    let impls = data.interface_impls.borrow();
-    for impl_data in impls.iter() {
-        if impl_data.interface.builtin_kind != Some(BuiltinInterfaceKind::Type) {
-            continue;
-        }
-        let methods = impl_data.interface.methods.borrow();
-        for method_impl in &impl_data.method_impls {
-            if methods[method_impl.interface_method_index].name == method_name {
-                return method_impl.impl_expr.borrow().clone();
-            }
-        }
-    }
-    None
-}
-
 pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceDataTypeData>,
     bundle: &v8::Global<v8::Object>,
@@ -155,38 +139,6 @@ pub(crate) fn pull_aspect_v8(
     }
     let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*some_val).clone();
     Some(aspect)
-}
-
-pub(crate) fn pull_can_cast_from(
-    data: &Gc<SourceDataTypeData>,
-    xx: &ExprContext,
-    loc: QExprId,
-    source_type: &dyn Type,
-) -> bool {
-    let Some(impl_expr) = lookup_impl(data, "can_cast_from") else {
-        return false;
-    };
-    let Some(source_type_rc) = source_type.clone_rc() else {
-        return false;
-    };
-    let placeholder_cv = CodeValue {
-        code: Code {
-            loc,
-            code: Code_::None,
-        },
-        value: Rc::new(ValueNullConst),
-    };
-    let res = run_impl(impl_expr, xx, loc, source_type_rc, placeholder_cv);
-    let Some(out_cv) = res.v else {
-        return false;
-    };
-    let Some(v_type) = out_cv.value.type_(xx, loc).v else {
-        return false;
-    };
-    if let Some(b) = aspect_bool_const_get_maybe(xx, v_type.as_ref()) {
-        return b.get(out_cv.value.as_ref());
-    }
-    false
 }
 
 pub(crate) fn pull_can_cast_from_v8(
@@ -245,25 +197,6 @@ pub(crate) fn pull_can_cast_from_v8(
         return false;
     };
     result.boolean_value(scope)
-}
-
-pub(crate) fn pull_cast_from(
-    data: &Gc<SourceDataTypeData>,
-    xx: &ExprContext,
-    loc: QExprId,
-    cv: CodeValue,
-) -> EvalRes {
-    let Some(impl_expr) = lookup_impl(data, "cast_from") else {
-        return EvalRes::err(loc, "User-defined type missing cast_from impl".to_string());
-    };
-    let source_type = match cv.value.type_(xx, loc).into_res() {
-        Ok(v) => v,
-        Err(e) => return EvalRes {
-            v: None,
-            errors: Some(e),
-        },
-    };
-    run_impl(impl_expr, xx, loc, source_type, cv)
 }
 
 pub(crate) fn pull_cast_from_v8(
@@ -359,37 +292,6 @@ pub(crate) fn pull_cast_from_v8(
 
 pub(crate) fn pull_desc(data: &Gc<SourceDataTypeData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
-}
-
-fn run_impl(
-    impl_expr: Rc<dyn Value>,
-    xx: &ExprContext,
-    loc: QExprId,
-    source_type: Rc<dyn Type>,
-    cv: CodeValue,
-) -> EvalRes {
-    let arg_factory = ArgRecordFactory {
-        loc,
-        source_type,
-        cv,
-    };
-    let child_scope_values: HashMap<ConstKey, Box<dyn ScopeEntry>> = HashMap::new();
-    let child_scope = Rc::new(Scope {
-        values: RefCell::new(child_scope_values),
-        parent: Some(xx.scope.clone()),
-    });
-    child_scope
-        .values
-        .borrow_mut()
-        .insert(ConstKey::String("arg".to_string()), Box::new(arg_factory) as Box<dyn ScopeEntry>);
-    let child_xx = Rc::new(ExprContext {
-        vx: xx.vx.clone(),
-        import_state: xx.import_state.clone(),
-        scope: child_scope,
-        target: xx.target.clone(),
-    });
-    let expr_ast = must_downcast_ref::<Expr>(impl_expr.as_ref());
-    const_eval(&child_xx, expr_ast)
 }
 
 fn type_method_field_name(data: &Gc<SourceDataTypeData>, method_name: &str) -> Option<String> {

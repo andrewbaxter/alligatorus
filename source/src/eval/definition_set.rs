@@ -209,6 +209,18 @@ pub(crate) struct DefinitionSet {
 }
 
 impl DefinitionSet {
+    pub fn check_mutable(&self, loc: crate::langhelp::QExprId) -> crate::langhelp::EResult<()> {
+        if self.finished.get() {
+            return crate::langhelp::EResult::err(
+                loc,
+                format!("definition set {:?} has been finalized; mutation not allowed", self.def_set_id,),
+            );
+        }
+        crate::langhelp::EResult::ok(())
+    }
+}
+
+impl DefinitionSet {
     pub fn finish(&self, xx: &ExprContext) -> Result<(), Vec<crate::langhelp::ExprErr>> {
         if self.finished.get() {
             return Ok(());

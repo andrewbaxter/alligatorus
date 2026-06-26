@@ -479,17 +479,10 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                         },
                                     };
                                     let method_impls = impl_data.method_impls.into_iter().map(|m| {
-                                        let impl_expr_value: Option<Rc<dyn Value>> =
-                                            m
-                                                .impl_expr
-                                                .as_ref()
-                                                .and_then(|art| expr_from_artifact(xx, art).ok())
-                                                .map(|e| Rc::new(e) as Rc<dyn Value>);
                                         super::SourceDataTypeInterfaceMethodImplData {
                                             artifact_id: RefCell::new(None),
                                             interface_method_index: m.interface_method_index,
-                                            impl_expr: RefCell::new(impl_expr_value),
-                                            impl_expr_artifact: RefCell::new(m.impl_expr.clone()),
+                                            impl_expr: RefCell::new(None),
                                             compiled_js: RefCell::new(Some(m.compiled_js)),
                                             captured_externals: RefCell::new(
                                                 crate::eval::definition_set::deserialize_captured_externals(
@@ -592,6 +585,14 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                         loc,
                         &m.captured_externals.borrow(),
                     );
+                let compiled_js = m.compiled_js.borrow().clone().unwrap_or_else(|| {
+                    eprintln!(
+                        "DBG serialize data-type method '{}' (scope_id={:?}) WITHOUT compiled_js",
+                        m.name.as_str(),
+                        m.scope_entry_id.get(),
+                    );
+                    String::new()
+                });
                 methods.push(ArtifactDataDefSetMethod {
                     name: m.name.clone(),
                     field_name: m.field_name.clone(),
@@ -603,7 +604,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                         data: serde_json::Value::Null,
                         exporter: crate::artifact::ArtifactBodyExporter::Root,
                     })),
-                    compiled_js: m.compiled_js.borrow().clone().unwrap_or_default(),
+                    compiled_js,
                     entry_id: scope_idx,
                     captured_externals,
                 });
@@ -633,17 +634,17 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                             loc,
                             &m.captured_externals.borrow(),
                         );
-                    let impl_expr_artifact = m.impl_expr_artifact.borrow().clone().unwrap_or_else(|| {
-                        let impl_expr_value =
-                            m.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
-                        let impl_expr_ast = must_downcast_ref::<crate::eval::expr::Expr>(impl_expr_value.as_ref());
-                        expr_to_artifact(xx, impl_expr_ast).expect("expr_to_artifact failed")
+                    let compiled_js = m.compiled_js.borrow().clone().unwrap_or_else(|| {
+                        panic!(
+                            "serialize interface method_impl (interface_method_index={}, scope_id={:?}) without compiled_js",
+                            m.interface_method_index,
+                            m.scope_entry_id.get(),
+                        )
                     });
                     ArtifactDataDefSetInterfaceMethodImpl {
                         interface_method_index: m.interface_method_index,
-                        compiled_js: m.compiled_js.borrow().clone().unwrap_or_default(),
+                        compiled_js,
                         entry_id: scope_idx,
-                        impl_expr: Some(impl_expr_artifact),
                         captured_externals,
                     }
                 }).collect();

@@ -1836,11 +1836,6 @@ fn eval(
                     let impl_expr_value =
                         method_impl.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
-                    if method_impl.impl_expr_artifact.borrow().is_none() {
-                        if let Ok(snapshot) = crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast) {
-                            *method_impl.impl_expr_artifact.borrow_mut() = Some(snapshot);
-                        }
-                    }
                     let ret_type: Rc<dyn Type> = {
                         let iface_methods = impl_data.interface.methods.borrow();
                         let iface_method = &iface_methods[method_impl.interface_method_index];
@@ -2134,6 +2129,9 @@ fn eval(
         for ds in ex.definition_sets.borrow().values() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.scope_entry_id.get() == Some(*scope_id) {
+                    if let Some(errs) = ds.check_mutable(root_loc).errors {
+                        return Err(errs);
+                    }
                     *func_data.compiled_js.borrow_mut() = Some(compiled.clone());
                 }
             }
@@ -2188,12 +2186,18 @@ fn eval(
                     for dt_data in ds.data_types.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
                             if m.scope_entry_id.get() == Some(method.scope_entry_id) {
+                                if let Some(errs) = ds.check_mutable(root_loc).errors {
+                                    return Err(errs);
+                                }
                                 *m.compiled_js.borrow_mut() = Some(compiled.clone());
                             }
                         }
                         for impl_data in dt_data.interface_impls.borrow().iter() {
                             for m in &impl_data.method_impls {
                                 if m.scope_entry_id.get() == Some(method.scope_entry_id) {
+                                    if let Some(errs) = ds.check_mutable(root_loc).errors {
+                                        return Err(errs);
+                                    }
                                     *m.compiled_js.borrow_mut() = Some(compiled.clone());
                                 }
                             }
