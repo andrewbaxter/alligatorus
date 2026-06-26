@@ -9,16 +9,16 @@ use {
             QExprId,
             Type,
         },
-        r#gen::ScopeEntry,
+        r#gen::Binding,
     },
     std::rc::Rc,
 };
 
-pub(crate) struct ScopeEntryEmpty {
+pub(crate) struct BindingEmpty {
     pub type_: Rc<dyn Type>,
 }
 
-impl ScopeEntry for ScopeEntryEmpty {
+impl Binding for BindingEmpty {
     fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {

@@ -13,7 +13,7 @@ use {
             definition_set::DefinitionSet,
             expr::Expr,
             render_code,
-            scope_entry_id_dynamic_key,
+            binding_id_dynamic_key,
             typecheck_convert,
         },
         invariant::must_downcast_ref,
@@ -25,7 +25,7 @@ use {
             ExprErr,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Value,
         },
@@ -44,13 +44,13 @@ use {
 pub(crate) struct SourceFunctionData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
-    pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
+    pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
-    pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub binding_id: Cell<Option<BindingId>>,
     pub set: RefCell<Option<Gc<DefinitionSet>>>,
 }
 
@@ -85,7 +85,7 @@ impl SourceFunctionData {
                 ),
             ],
         }])?;
-        let scope_id = self.scope_entry_id.get().unwrap();
+        let scope_id = self.binding_id.get().unwrap();
         let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
@@ -94,7 +94,7 @@ impl SourceFunctionData {
             dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
-        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+        let arg_id = BindingId::Local(body_ex.next_local_id.next());
         let mut body_scope = build_builtin_scope(xx, root_loc, &builtin_scope_entries)?;
         if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
@@ -121,14 +121,14 @@ impl SourceFunctionData {
         let impl_code = impl_cv.code.cast::<CodeDynamic>().into_res()?.unwrap().clone();
         let captured = func_xx.vx.externals.borrow().clone();
         let mut code1 = DynamicSourceBuilder::default();
-        let func_name = scope_entry_id_dynamic_key(scope_id);
+        let func_name = binding_id_dynamic_key(scope_id);
         code1.push(root_loc, format!("var {};", func_name));
         code1.push(root_loc, "{".to_string());
         for (id, _) in &captured {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             code1.push(root_loc, format!("let {} = globalThis[\"{}_{}\"];", local_key, func_name, local_key));
         }
-        code1.push(root_loc, format!("{} = function({}) {{", func_name, scope_entry_id_dynamic_key(arg_id)));
+        code1.push(root_loc, format!("{} = function({}) {{", func_name, binding_id_dynamic_key(arg_id)));
         let body_var = render_code(&mut code1, &impl_code);
         code1.push(root_loc, format!("return {};", body_var));
         code1.push(root_loc, "};".to_string());

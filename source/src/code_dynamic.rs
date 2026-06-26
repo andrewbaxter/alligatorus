@@ -1,10 +1,10 @@
 use crate::langhelp::{
     CodeDyn,
     QExprId,
-    ScopeEntryId,
+    BindingId,
 };
 
-pub(crate) const SCOPE_ENTRY_PREFIX: &str = "a";
+pub(crate) const BINDING_PREFIX: &str = "a";
 pub(crate) const BUILTIN_PREFIX: &str = "b";
 pub(crate) const DEF_PREFIX: &str = "d";
 pub(crate) const EXPR_PREFIX: &str = "e";
@@ -21,19 +21,19 @@ impl CodeDyn for CodeDynamic { }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicBind {
-    pub(crate) base: ScopeEntryId,
+    pub(crate) base: BindingId,
     pub(crate) value: Box<CodeDynamic>,
 }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicBindingSet {
-    pub(crate) base: ScopeEntryId,
+    pub(crate) base: BindingId,
     pub(crate) value: Box<CodeDynamic>,
 }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicBindingUse {
-    pub(crate) id: ScopeEntryId,
+    pub(crate) id: BindingId,
 }
 
 #[derive(Clone)]
@@ -70,14 +70,14 @@ pub(crate) struct CodeDynamicFieldUse {
 pub(crate) struct CodeDynamicForeach {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) body: Box<CodeDynamic>,
-    pub(crate) element_key: ScopeEntryId,
+    pub(crate) element_key: BindingId,
 }
 
 #[derive(Clone)]
 pub(crate) struct CodeDynamicForeachMap {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) body: Box<CodeDynamic>,
-    pub(crate) element_key: ScopeEntryId,
+    pub(crate) element_key: BindingId,
 }
 
 #[derive(Clone)]
@@ -90,7 +90,7 @@ pub(crate) struct CodeDynamicIf {
 pub(crate) struct CodeDynamicMatch {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) cases: Vec<CodeDynamicMatchBranch>,
-    pub(crate) element_key: ScopeEntryId,
+    pub(crate) element_key: BindingId,
     pub(crate) fallback: Option<Box<CodeDynamic>>,
 }
 

@@ -21,7 +21,7 @@ use {
             },
             rc_type_from_v8,
             value::{
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -39,7 +39,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -54,7 +54,7 @@ use {
             AspectLift,
             AspectStackValueDynamic,
             AspectType,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -81,7 +81,7 @@ pub(crate) struct TypeAnyDynamic;
 impl Aspect for TypeAnyDynamic { }
 
 impl AspectBind for TypeAnyDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -191,8 +191,8 @@ impl AspectFunction for TypeAnyDynamic {
 }
 
 impl AspectInitialBind for TypeAnyDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeAnyDynamic),
         })
@@ -329,7 +329,7 @@ impl Type for TypeAnyDynamic {
             },
         };
         let type_ = aspect_type.type_(cv.value.as_ref());
-        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EvalRes::ok(CodeValue {
             code: Code {

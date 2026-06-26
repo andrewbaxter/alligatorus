@@ -44,7 +44,7 @@ use {
         r#gen::{
             AspectField,
             AspectFunction,
-            ScopeEntry,
+            Binding,
             TypeRefPush,
             aspect_bool_const_get_maybe,
             aspect_field_aspect_id,
@@ -66,7 +66,7 @@ pub(crate) struct ArgRecordFactory {
     pub(crate) source_type: Rc<dyn Type>,
 }
 
-impl ScopeEntry for ArgRecordFactory {
+impl Binding for ArgRecordFactory {
     fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let mut fields = std::collections::BTreeMap::new();
         fields.insert(ConstKey::String("source_type".to_string()), RecordField::EvalRes(EvalRes::ok(CodeValue {

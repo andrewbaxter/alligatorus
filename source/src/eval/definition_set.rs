@@ -46,7 +46,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -309,14 +309,14 @@ pub(crate) fn deexport_captured_externals(
     xx: &ExprContext,
     loc: QExprId,
     serial: &[ArtifactExternal],
-) -> Vec<(ScopeEntryId, External)> {
+) -> Vec<(BindingId, External)> {
     serial.iter().map(|ext| {
         match ext {
             ArtifactExternal::StagedExpr { local_id, expr } => {
                 let expr =
                     expr_from_artifact(xx, expr).expect("Failed to deserialize captured StagedExprCell expr");
                 let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value>)) });
-                (ScopeEntryId::Local(*local_id), External::StagedExprCell(cell))
+                (BindingId::Local(*local_id), External::StagedExprCell(cell))
             },
             ArtifactExternal::StageLift { local_id, source_type } => {
                 let source_type =
@@ -331,17 +331,17 @@ pub(crate) fn deexport_captured_externals(
                     scope: xx.scope.clone(),
                     target: xx.target.clone(),
                 });
-                (ScopeEntryId::Local(*local_id), External::StageLiftCell(cell))
+                (BindingId::Local(*local_id), External::StageLiftCell(cell))
             },
             ArtifactExternal::Type { local_id, type_artifact } => {
                 let type_ =
                     import_type_artifact(xx, loc, type_artifact.clone())
                         .into_res()
                         .expect("Failed to deserialize captured External::Type");
-                (ScopeEntryId::Local(*local_id), External::Type(type_))
+                (BindingId::Local(*local_id), External::Type(type_))
             },
             ArtifactExternal::Unique { local_id, unique } => (
-                ScopeEntryId::Local(*local_id),
+                BindingId::Local(*local_id),
                 External::Unique(*unique),
             ),
         }
@@ -370,12 +370,12 @@ pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
 pub(crate) fn export_captured_externals(
     xx: &ExprContext,
     loc: QExprId,
-    externals: &[(ScopeEntryId, External)],
+    externals: &[(BindingId, External)],
 ) -> Vec<ArtifactExternal> {
     externals.iter().map(|(id, ext)| {
         let local_id = match id {
-            ScopeEntryId::Local(n) => *n,
-            other => panic!("captured external has non-Local scope_entry id: {:?}", other),
+            BindingId::Local(n) => *n,
+            other => panic!("captured external has non-Local binding id: {:?}", other),
         };
         match ext {
             External::StagedExprCell(cell) => {

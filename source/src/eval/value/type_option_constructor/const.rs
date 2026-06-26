@@ -7,7 +7,7 @@ use {
                 ValueAnyConst,
             },
             type_root::r#const::TypeRoot,
-            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_binding::dynamic::BindingDynamicBinding,
         },
         langhelp::{
             Aspect,
@@ -18,7 +18,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -26,7 +26,7 @@ use {
         r#gen::{
             AspectFunction,
             AspectInitialBind,
-            ScopeEntry,
+            Binding,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_type_get,
@@ -75,8 +75,8 @@ impl AspectFunction for TypeOptionConstructorConst {
 }
 
 impl AspectInitialBind for TypeOptionConstructorConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeOptionConstructorConst),
         })

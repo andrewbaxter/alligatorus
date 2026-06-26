@@ -20,7 +20,7 @@ use {
                 type_tuple::Tuple,
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -36,7 +36,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -47,7 +47,7 @@ use {
             AspectConsumeDynamic,
             AspectFunction,
             AspectInitialBind,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -172,7 +172,7 @@ pub(crate) struct TypeFunctionDynamic {
 impl Aspect for TypeFunctionDynamic { }
 
 impl AspectBind for TypeFunctionDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -202,8 +202,8 @@ impl AspectFunction for TypeFunctionDynamic {
 }
 
 impl AspectInitialBind for TypeFunctionDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(self.clone()),
         })

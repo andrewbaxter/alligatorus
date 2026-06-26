@@ -21,7 +21,7 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                type_tuple::scope_entry::ScopeEntryValue,
+                type_tuple::binding::BindingValue,
                 type_any::r#const::{
                     TypeAnyConst,
                     ValueAnyConst,
@@ -44,7 +44,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -54,7 +54,7 @@ use {
             AspectBind,
             AspectFunction,
             AspectType,
-            ScopeEntry,
+            Binding,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_function_aspect_id,
@@ -82,7 +82,7 @@ impl AspectArtifact for TypeSourceFunctionConst {
 }
 
 impl AspectBind for TypeSourceFunctionConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
@@ -97,7 +97,7 @@ impl AspectBind for TypeSourceFunctionConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
         };
     }
 }
@@ -108,7 +108,7 @@ impl AspectFunction for TypeSourceFunctionConst {
             let set = self.data.set.borrow().as_ref().unwrap().clone();
             xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         }
-        let scope_id = self.data.scope_entry_id.get().expect("Definition set function not registered");
+        let scope_id = self.data.binding_id.get().expect("Definition set function not registered");
         let arg_type = self.data.arg_type.borrow().clone().expect("Definition set function missing arg type");
         let ret_type = self.data.ret_type.borrow().clone().expect("Definition set function missing return type");
         let func_code = CodeDynamic {
@@ -163,8 +163,8 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                         impl_expr: std::cell::RefCell::new(None),
                         name: body.name.clone(),
                         ret_type: std::cell::RefCell::new(None),
-                        scope_entry_id: std::cell::Cell::new(
-                            Some(ScopeEntryId::Def(body.def_set_id, body.entry_id)),
+                        binding_id: std::cell::Cell::new(
+                            Some(BindingId::Def(body.def_set_id, body.entry_id)),
                         ),
                         set: std::cell::RefCell::new(None),
                     });
@@ -259,8 +259,8 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
             if let Some(errs) = def_set_art.errors.take() {
                 push_err(errs);
             }
-            let entry_id_index = match self_.data.scope_entry_id.get() {
-                Some(ScopeEntryId::Def(_, idx)) => idx,
+            let entry_id_index = match self_.data.binding_id.get() {
+                Some(BindingId::Def(_, idx)) => idx,
                 _ => 0,
             };
             let captured_externals =

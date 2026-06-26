@@ -10,7 +10,7 @@ use {
             CodeDynamicType,
         },
         eval::value::{
-            type_tuple::scope_entry::ScopeEntryValue,
+            type_tuple::binding::BindingValue,
             type_any::r#const::TypeAnyConst,
             type_root::r#const::{
                 ExporterRootDelegate,
@@ -41,7 +41,7 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectStringConst,
-            ScopeEntry,
+            Binding,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -68,7 +68,7 @@ impl AspectArtifact for TypeStringConst {
 }
 
 impl AspectBind for TypeStringConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
@@ -83,7 +83,7 @@ impl AspectBind for TypeStringConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
         };
     }
 }

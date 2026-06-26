@@ -1,5 +1,5 @@
 pub mod artifact;
-pub mod scope_entry;
+pub mod binding;
 
 use {
     crate::{
@@ -31,10 +31,10 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_empty::{
                     r#const::ValueEmptyConst,
-                    scope_entry::ScopeEntryEmpty,
+                    binding::BindingEmpty,
                 },
             },
         },
@@ -51,7 +51,7 @@ use {
             ExprSubErr,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             SourceId,
             Type,
             Unique,
@@ -66,7 +66,7 @@ use {
             AspectLift,
             AspectTuple,
             AspectPostDeserialize,
-            ScopeEntry,
+            Binding,
             TUPLE_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -170,7 +170,7 @@ impl Tuple {
                         loc: loc,
                         errors: vec![
                             ExprSubErr::Opaque(
-                                format!("Tuple element is const but other elements require target scope_entry"),
+                                format!("Tuple element is const but other elements require target binding"),
                             ),
                         ],
                     });
@@ -200,7 +200,7 @@ impl Tuple {
 impl Aspect for Tuple { }
 
 impl AspectBind for Tuple {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let tuple_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
         match self.bind_sub(xx, loc, cv).into_res() {
             Err(errs) => EResult {
@@ -211,14 +211,14 @@ impl AspectBind for Tuple {
                 EResult::ok((Code {
                     loc: loc,
                     code: Code_::None,
-                }, Box::new(ScopeEntryEmpty { type_: tuple_type }) as Box<dyn ScopeEntry>))
+                }, Box::new(BindingEmpty { type_: tuple_type }) as Box<dyn Binding>))
             },
             Ok(Some(sub)) => {
                 let (code, js_key) = xx.target.bind(xx, loc, sub);
-                EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
+                EResult::ok((code, Box::new(BindingDynamicBinding {
                     dynamic_key: js_key,
                     type_: tuple_type,
-                }) as Box<dyn ScopeEntry>))
+                }) as Box<dyn Binding>))
             },
         }
     }
@@ -275,8 +275,8 @@ impl AspectConsumeDynamic for Tuple {
 }
 
 impl AspectInitialBind for Tuple {
-    fn initial_bind(&self, _dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryEmpty { type_: Rc::new(self.clone_as_type()) as Rc<dyn Type> })
+    fn initial_bind(&self, _dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingEmpty { type_: Rc::new(self.clone_as_type()) as Rc<dyn Type> })
     }
 }
 
@@ -583,7 +583,7 @@ impl Type for Tuple {
             for (i, elem) in tuple.elements.into_iter().enumerate() {
                 let converted_cv = match elem {
                     TupleElement::Dynamic(t) => {
-                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        let id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::Type(t)));
                         CodeValue {
                             code: Code {

@@ -118,7 +118,7 @@ pub fn build(
                     data: builtin_ifaces.#f
                 });
                 if #register_in_scope {
-                    let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
+                    let dynamic_key = BindingId:: Builtin(#scope_id);
                     if register_dynamic {
                         let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
                         dynamic_scope
@@ -126,7 +126,7 @@ pub fn build(
                             .global(dynamic_scope)
                             .set(
                                 dynamic_scope,
-                                v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
+                                v8::String::new(dynamic_scope, &crate::eval::binding_id_dynamic_key(dynamic_key),)
                                     .unwrap()
                                     .cast(),
                                 dynamic_val.into(),
@@ -189,7 +189,7 @@ pub fn build(
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
             scope: & crate:: langhelp:: Scope,
-            builtin_scope_entries: & mut Vec <(String, ScopeEntryId, Rc < dyn crate:: langhelp:: Type >,) >,
+            builtin_scope_entries: & mut Vec <(String, BindingId, Rc < dyn crate:: langhelp:: Type >,) >,
             import_state: crate:: langhelp:: ImportStateId,
         ) -> Result <(),
         Vec < crate:: langhelp:: ExprErr >> {

@@ -10,7 +10,7 @@ use {
             type_any::r#const::TypeAnyConst,
             type_function::dynamic::TypeFunctionDynamic,
             type_root::r#const::TypeRoot,
-            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_binding::dynamic::BindingDynamicBinding,
             type_source_interface::SourceInterfaceRef,
             value_dynamic::{
                 ValueDynamic,
@@ -27,7 +27,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -35,7 +35,7 @@ use {
         r#gen::{
             AspectField,
             AspectInitialBind,
-            ScopeEntry,
+            Binding,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
@@ -140,8 +140,8 @@ impl AspectField for TypePullAspect {
 }
 
 impl AspectInitialBind for TypePullAspect {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypePullAspect {
                 iface_ref: self.iface_ref.clone(),

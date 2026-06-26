@@ -45,7 +45,7 @@ pub(crate) trait ExporterRootDelegate {
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum TypeRoot {
-    AnyScopeEntryDynamic,
+    AnyBindingDynamic,
     AnyTargetDynamic,
     AspectDynamic,
     AspectLookupFnType,
@@ -174,7 +174,7 @@ impl Type for TypeRoot {
 
     fn desc(&self) -> String {
         return format!("{} type", match self {
-            TypeRoot::AnyScopeEntryDynamic => "Any scope_entry type (dynamic)",
+            TypeRoot::AnyBindingDynamic => "Any binding type (dynamic)",
             TypeRoot::AnyTargetDynamic => "Any target type (dynamic)",
             TypeRoot::AspectDynamic => "Aspect type (dynamic)",
             TypeRoot::AspectLookupFnType => "Aspect lookup fn type",

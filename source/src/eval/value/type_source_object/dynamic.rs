@@ -29,7 +29,7 @@ use {
                     dynamic::TypeAnyDynamic,
                     r#const::TypeAnyConst,
                 },
-                type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic,
+                type_any_binding::dynamic::TypeAnyBindingDynamic,
                 type_any_target::dynamic::TypeAnyTargetDynamic,
                 type_aspect::dynamic::TypeAspectDynamic,
                 type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
@@ -37,7 +37,7 @@ use {
                 type_null::dynamic::TypeNullDynamic,
                 type_pull::r#const::TypePull,
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_source_interface::{
                     BuiltinInterfaceKind,
                     r#const::TypeSourceInterfaceConst,
@@ -61,7 +61,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -77,12 +77,12 @@ use {
             AspectType,
             DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
             DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
-            DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
             DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -117,7 +117,7 @@ pub(crate) struct TypeSourceObjectDynamic {
 impl Aspect for TypeSourceObjectDynamic { }
 
 impl AspectBind for TypeSourceObjectDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -274,8 +274,8 @@ impl AspectField for TypeSourceObjectDynamic {
 }
 
 impl AspectInitialBind for TypeSourceObjectDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeSourceObjectDynamic { data: self.data.clone() }),
         })
@@ -469,7 +469,7 @@ impl Type for TypeSourceObjectDynamic {
                     _ => return EvalRes::err(loc, format!("cast {} → any: source has no runtime code", self.desc())),
                 };
                 let template: Rc<dyn Type> = Rc::new(TypeSourceObjectConst { data: self.data.clone() });
-                let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                let template_id = BindingId::Local(xx.vx.next_local_id.next());
                 xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
                 let template_code = CodeDynamic {
                     loc,
@@ -502,15 +502,15 @@ impl Type for TypeSourceObjectDynamic {
         let interface_impls = data.interface_impls.borrow();
         for impl_data in interface_impls.iter() {
             if type_.aspect(xx, &impl_data.interface.identity).is_some() {
-                let runtime_setup: Option<(ScopeEntryId, Rc<dyn Type>)> = match impl_data.interface.builtin_kind {
+                let runtime_setup: Option<(BindingId, Rc<dyn Type>)> = match impl_data.interface.builtin_kind {
                     Some(BuiltinInterfaceKind::Type) => Some(
                         (DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID, Rc::new(TypeAnyDynamic)),
                     ),
                     Some(BuiltinInterfaceKind::Target) => Some(
                         (DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID, Rc::new(TypeAnyTargetDynamic)),
                     ),
-                    Some(BuiltinInterfaceKind::ScopeEntry) => Some(
-                        (DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID, Rc::new(TypeAnyScopeEntryDynamic)),
+                    Some(BuiltinInterfaceKind::Binding) => Some(
+                        (DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID, Rc::new(TypeAnyBindingDynamic)),
                     ),
                     Some(BuiltinInterfaceKind::Value) => Some(
                         (DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID, Rc::new(TypeValueDynamic)),
@@ -529,7 +529,7 @@ impl Type for TypeSourceObjectDynamic {
                         ),
                     };
                     let template: Rc<dyn Type> = Rc::new(TypeSourceObjectConst { data: self.data.clone() });
-                    let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                    let template_id = BindingId::Local(xx.vx.next_local_id.next());
                     xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
                     let template_code = CodeDynamic {
                         loc,
@@ -619,7 +619,7 @@ pub(crate) struct TypeSourceObjectRefDynamic;
 impl Aspect for TypeSourceObjectRefDynamic { }
 
 impl AspectBind for TypeSourceObjectRefDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -637,8 +637,8 @@ impl AspectConsumeDynamic for TypeSourceObjectRefDynamic {
 }
 
 impl AspectInitialBind for TypeSourceObjectRefDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeSourceObjectRefDynamic),
         })

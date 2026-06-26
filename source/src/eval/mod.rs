@@ -18,7 +18,7 @@ use {
     crate::{
         artifact::import_artifact,
         code_dynamic::{
-            SCOPE_ENTRY_PREFIX,
+            BINDING_PREFIX,
             BUILTIN_PREFIX,
             CodeDynamic,
             CodeDynamicBind,
@@ -45,7 +45,7 @@ use {
             dynamic_util::wrap_with_carry,
             expr::make_lit_value_once,
             pull_scope_dispatch::{
-                PullScopeEntry,
+                PullBinding,
                 PullTarget,
             },
             value::{
@@ -98,7 +98,7 @@ use {
             LogEntry,
             QExprId,
             Scope,
-            ScopeEntryId,
+            BindingId,
             SourceId,
             Type,
             Unique,
@@ -116,7 +116,7 @@ use {
             CVE_GET_VALUE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
             DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
-            DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
@@ -126,7 +126,7 @@ use {
             INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
             RECORD_TO_TYPE_FN_SCOPE_ID,
             STAGE_FN_SCOPE_ID,
-            ScopeEntry,
+            Binding,
             TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID,
             TUPLE_TO_TYPE_FN_SCOPE_ID,
@@ -233,9 +233,9 @@ pub(crate) fn build_aspect_arg_record_type(field_names: &[&str]) -> Rc<dyn Type>
 pub(crate) fn build_builtin_scope(
     xx: &ExprContext,
     loc: QExprId,
-    builtin_scope_entries: &[(String, ScopeEntryId, Rc<dyn Type>)],
-) -> Result<HashMap<ConstKey, Box<dyn ScopeEntry>>, Vec<ExprErr>> {
-    let mut scope_entries = HashMap::<ConstKey, Box<dyn ScopeEntry>>::new();
+    builtin_scope_entries: &[(String, BindingId, Rc<dyn Type>)],
+) -> Result<HashMap<ConstKey, Box<dyn Binding>>, Vec<ExprErr>> {
+    let mut scope_entries = HashMap::<ConstKey, Box<dyn Binding>>::new();
     for (name, dynamic_key, type_) in builtin_scope_entries {
         let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
         scope_entries.insert(ConstKey::String(name.clone()), ib.initial_bind(*dynamic_key));
@@ -289,7 +289,7 @@ pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
     })
 }
 
-pub(crate) fn code_uses_binding(code: &CodeDynamic, target_id: ScopeEntryId) -> bool {
+pub(crate) fn code_uses_binding(code: &CodeDynamic, target_id: BindingId) -> bool {
     match &code.type_ {
         CodeDynamicType::BindingUse(b) => b.id == target_id,
         CodeDynamicType::BindingSet(b) => code_uses_binding(b.value.as_ref(), target_id),
@@ -554,8 +554,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 return erb.err_new(format!("No bound value with id [{:?}]", constkey));
             };
             let scope = scope.values.borrow();
-            let scope_entry = scope.get(&constkey).unwrap();
-            return Ok(scope_entry.use_(xx, expr.loc, key.code));
+            let binding = scope.get(&constkey).unwrap();
+            return Ok(binding.use_(xx, expr.loc, key.code));
         }),
         Expr_::Call(p) => return er_seq_cv!(expr.loc, erb, {
             er_all!(erb, {
@@ -614,9 +614,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         entries.push(base.code);
                         let value_type = erb.must_er(value.value.type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
-                        let scope_entry = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
-                        entries.push(scope_entry.0);
-                        child_xx.scope.values.borrow_mut().insert(base_constkey, scope_entry.1);
+                        let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
+                        entries.push(binding.0);
+                        child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
                         last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(const_eval(&child_xx, sub))?;
@@ -954,7 +954,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
             let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
             let iterable = erb.must_er(aspect_iterable_get(xx, expr.loc, base_type.as_ref()))?;
-            let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            let element_scope_id = BindingId::Local(xx.vx.next_local_id.next());
             let child_scope = Rc::new(Scope {
                 values: RefCell::new(HashMap::new()),
                 parent: Some(xx.scope.clone()),
@@ -1239,7 +1239,7 @@ fn eval(
         target: target.clone(),
     });
     let register_dynamic = !cix.builtins_registered.get();
-    let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
+    let mut builtin_scope_entries: Vec<(String, BindingId, Rc<dyn Type>)> = Vec::new();
     gen_register_builtin_fns(&xx, root_loc, register_dynamic, dynamic_scope, &scope, &mut builtin_scope_entries)?;
     gen_register_builtin_interfaces(
         &xx,
@@ -1304,7 +1304,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(dynamic_key)).unwrap().cast(),
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(dynamic_key)).unwrap().cast(),
                     dynamic_value,
                 );
         }
@@ -1602,7 +1602,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(STAGE_FN_SCOPE_ID)).unwrap().cast(),
                     stage_fn.into(),
                 );
         }
@@ -1628,7 +1628,7 @@ fn eval(
         arg_type: Rc<dyn Type>,
         impl_expr_ast: Rc<dyn Value>,
         ret_type: Rc<dyn Type>,
-        scope_entry_id: ScopeEntryId,
+        binding_id: BindingId,
     }
 
     let mut precompiled_def_funcs: Vec<String> = vec![];
@@ -1648,18 +1648,18 @@ fn eval(
                 let arg_type = func_data.arg_type.borrow().clone().expect("Definition set function missing arg type");
                 let ret_type =
                     func_data.ret_type.borrow().clone().expect("Definition set function missing return type");
-                let scope_id = func_data.scope_entry_id.get().expect("Definition set function not registered");
+                let scope_id = func_data.binding_id.get().expect("Definition set function not registered");
                 infos.push(DefFuncInfo {
                     impl_expr_ast,
                     arg_type,
                     ret_type,
-                    scope_entry_id: scope_id,
+                    binding_id: scope_id,
                 });
             }
         }
         infos
     };
-    let mut def_funcs: Vec<(ScopeEntryId, Option<ScopeEntryId>, CodeDynamic, Vec<(ScopeEntryId, External)>)> =
+    let mut def_funcs: Vec<(BindingId, Option<BindingId>, CodeDynamic, Vec<(BindingId, External)>)> =
         vec![];
     for info in &def_func_infos {
         let impl_expr_ast = must_downcast_ref::<Expr>(info.impl_expr_ast.as_ref());
@@ -1670,7 +1670,7 @@ fn eval(
             dynamic_scope: std::cell::Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
-        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+        let arg_id = BindingId::Local(body_ex.next_local_id.next());
         let func_xx = {
             let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
             if let Some(arg_ib) = aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
@@ -1708,30 +1708,30 @@ fn eval(
         let captured = func_xx.vx.externals.borrow().clone();
         for ds in ex.definition_sets.borrow().values() {
             for func_data in ds.functions.borrow().iter() {
-                if func_data.scope_entry_id.get() == Some(info.scope_entry_id) {
+                if func_data.binding_id.get() == Some(info.binding_id) {
                     *func_data.captured_externals.borrow_mut() = captured.clone();
                 }
             }
         }
-        def_funcs.push((info.scope_entry_id, Some(arg_id), impl_code, captured));
+        def_funcs.push((info.binding_id, Some(arg_id), impl_code, captured));
     }
 
     enum CompiledDataMethodBody {
         Fresh {
-            inner_scope_entry_id: ScopeEntryId,
+            inner_binding_id: BindingId,
             data_field: String,
             impl_code: CodeDynamic,
             is_arg_method: bool,
-            outer_id: ScopeEntryId,
-            arg_param_id: ScopeEntryId,
+            outer_id: BindingId,
+            arg_param_id: BindingId,
         },
         Precompiled(String),
     }
 
     struct CompiledDataMethod {
         body: CompiledDataMethodBody,
-        captured_externals: Vec<(ScopeEntryId, External)>,
-        scope_entry_id: ScopeEntryId,
+        captured_externals: Vec<(BindingId, External)>,
+        binding_id: BindingId,
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
@@ -1742,10 +1742,10 @@ fn eval(
             let underlying_type: Rc<dyn Type> = dt_data.underlying_type.get().clone();
             let data_field = dt_data.data_field.clone();
             for method in dt_data.methods.borrow().iter() {
-                let method_id = method.scope_entry_id.get().expect("Method scope_entry ID not assigned");
+                let method_id = method.binding_id.get().expect("Method binding ID not assigned");
                 if let Some(compiled_source) = method.compiled_source.borrow().clone() {
                     def_data_methods.push(CompiledDataMethod {
-                        scope_entry_id: method_id,
+                        binding_id: method_id,
                         body: CompiledDataMethodBody::Precompiled(compiled_source),
                         captured_externals: method.captured_externals.borrow().clone(),
                     });
@@ -1762,10 +1762,10 @@ fn eval(
                     dynamic_scope: std::cell::Cell::new(None),
                     definition_sets: RefCell::new(std::collections::HashMap::new()),
                 });
-                let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-                method.inner_scope_entry_id.set(Some(self_id));
-                let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-                let outer_id = ScopeEntryId::Builtin(usize::MAX);
+                let self_id = BindingId::Local(body_ex.next_local_id.next());
+                method.inner_binding_id.set(Some(self_id));
+                let arg_id = BindingId::Local(body_ex.next_local_id.next());
+                let outer_id = BindingId::Builtin(usize::MAX);
                 let method_xx = {
                     let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                     if let Some(self_ib) = aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
@@ -1808,9 +1808,9 @@ fn eval(
                 let captured = method_xx.vx.externals.borrow().clone();
                 *method.captured_externals.borrow_mut() = captured.clone();
                 def_data_methods.push(CompiledDataMethod {
-                    scope_entry_id: method_id,
+                    binding_id: method_id,
                     body: CompiledDataMethodBody::Fresh {
-                        inner_scope_entry_id: self_id,
+                        inner_binding_id: self_id,
                         data_field: data_field.clone(),
                         impl_code,
                         is_arg_method: false,
@@ -1824,10 +1824,10 @@ fn eval(
                 let builtin_kind = impl_data.interface.builtin_kind;
                 for method_impl in &impl_data.method_impls {
                     let method_id =
-                        method_impl.scope_entry_id.get().expect("Interface method impl scope_entry ID not assigned");
+                        method_impl.binding_id.get().expect("Interface method impl binding ID not assigned");
                     if let Some(compiled_source) = method_impl.compiled_source.borrow().clone() {
                         def_data_methods.push(CompiledDataMethod {
-                            scope_entry_id: method_id,
+                            binding_id: method_id,
                             body: CompiledDataMethodBody::Precompiled(compiled_source),
                             captured_externals: method_impl.captured_externals.borrow().clone(),
                         });
@@ -1848,10 +1848,10 @@ fn eval(
                         dynamic_scope: std::cell::Cell::new(None),
                         definition_sets: RefCell::new(std::collections::HashMap::new()),
                     });
-                    let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-                    method_impl.inner_scope_entry_id.set(Some(self_id));
-                    let outer_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-                    let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+                    let self_id = BindingId::Local(body_ex.next_local_id.next());
+                    method_impl.inner_binding_id.set(Some(self_id));
+                    let outer_id = BindingId::Local(body_ex.next_local_id.next());
+                    let arg_id = BindingId::Local(body_ex.next_local_id.next());
                     let method_xx = {
                         let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
                         let outer_type: Rc<dyn Type> =
@@ -1902,7 +1902,7 @@ fn eval(
                             },
                             Some(value::type_source_interface::BuiltinInterfaceKind::AspectFunction) |
                             Some(value::type_source_interface::BuiltinInterfaceKind::AspectField) |
-                            Some(value::type_source_interface::BuiltinInterfaceKind::ScopeEntry) |
+                            Some(value::type_source_interface::BuiltinInterfaceKind::Binding) |
                             Some(value::type_source_interface::BuiltinInterfaceKind::Target) => {
                                 if let Some(self_ib) = aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                                     body_scope.insert(
@@ -1936,7 +1936,7 @@ fn eval(
                                         "key",
                                     ],
                                     (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::ScopeEntry),
+                                        Some(value::type_source_interface::BuiltinInterfaceKind::Binding),
                                         "use",
                                     ) => vec![
                                         "loc",
@@ -2075,9 +2075,9 @@ fn eval(
                     let captured = method_xx.vx.externals.borrow().clone();
                     *method_impl.captured_externals.borrow_mut() = captured.clone();
                     def_data_methods.push(CompiledDataMethod {
-                        scope_entry_id: method_id,
+                        binding_id: method_id,
                         body: CompiledDataMethodBody::Fresh {
-                            inner_scope_entry_id: self_id,
+                            inner_binding_id: self_id,
                             data_field: data_field.clone(),
                             impl_code,
                             is_arg_method: matches!(
@@ -2109,15 +2109,15 @@ fn eval(
     }
     for (scope_id, arg_scope_id, impl_code, captured_externals) in &def_funcs {
         let start_line = code1.lines.len();
-        let func_name = scope_entry_id_dynamic_key(*scope_id);
+        let func_name = binding_id_dynamic_key(*scope_id);
         code1.push(root_loc, format!("var {};", func_name));
         code1.push(root_loc, "{".to_string());
         for (id, _) in captured_externals {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             code1.push(root_loc, format!("let {} = globalThis[\"{}_{}\"];", local_key, func_name, local_key,));
         }
         if let Some(arg_id) = arg_scope_id {
-            code1.push(root_loc, format!("{} = function({}) {{", func_name, scope_entry_id_dynamic_key(*arg_id)));
+            code1.push(root_loc, format!("{} = function({}) {{", func_name, binding_id_dynamic_key(*arg_id)));
         } else {
             code1.push(root_loc, format!("{} = function() {{", func_name));
         }
@@ -2128,7 +2128,7 @@ fn eval(
         let compiled = code1.lines[start_line..].join("\n");
         for ds in ex.definition_sets.borrow().values() {
             for func_data in ds.functions.borrow().iter() {
-                if func_data.scope_entry_id.get() == Some(*scope_id) {
+                if func_data.binding_id.get() == Some(*scope_id) {
                     if let Some(errs) = ds.check_mutable(root_loc).errors {
                         return Err(errs);
                     }
@@ -2141,7 +2141,7 @@ fn eval(
         match &method.body {
             CompiledDataMethodBody
             ::Fresh {
-                inner_scope_entry_id,
+                inner_binding_id,
                 data_field,
                 impl_code,
                 is_arg_method,
@@ -2149,12 +2149,12 @@ fn eval(
                 arg_param_id,
             } => {
                 let start_line = code1.lines.len();
-                let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
-                let self_key = scope_entry_id_dynamic_key(*inner_scope_entry_id);
+                let func_name = binding_id_dynamic_key(method.binding_id);
+                let self_key = binding_id_dynamic_key(*inner_binding_id);
                 code1.push(root_loc, format!("var {};", func_name));
                 code1.push(root_loc, "{".to_string());
                 for (id, _) in &method.captured_externals {
-                    let local_key = scope_entry_id_dynamic_key(*id);
+                    let local_key = binding_id_dynamic_key(*id);
                     code1.push(
                         root_loc,
                         format!("let {} = globalThis[\"{}_{}\"];", local_key, func_name, local_key,),
@@ -2163,7 +2163,7 @@ fn eval(
                 if *is_arg_method {
                     code1.push(root_loc, format!("{} = function({}) {{", func_name, self_key));
                 } else {
-                    let arg_key = scope_entry_id_dynamic_key(*arg_param_id);
+                    let arg_key = binding_id_dynamic_key(*arg_param_id);
                     code1.push(root_loc, format!("{} = function({}) {{", func_name, arg_key));
                     code1.push(
                         root_loc,
@@ -2175,7 +2175,7 @@ fn eval(
                     );
                 }
                 if code_uses_binding(impl_code, *outer_id) {
-                    code1.push(root_loc, format!("let {} = this;", scope_entry_id_dynamic_key(*outer_id)));
+                    code1.push(root_loc, format!("let {} = this;", binding_id_dynamic_key(*outer_id)));
                 }
                 let body_var = render_code(&mut code1, impl_code);
                 code1.push(root_loc, format!("return {};", body_var));
@@ -2185,7 +2185,7 @@ fn eval(
                 for ds in ex.definition_sets.borrow().values() {
                     for dt_data in ds.objects.borrow().iter() {
                         for m in dt_data.methods.borrow().iter() {
-                            if m.scope_entry_id.get() == Some(method.scope_entry_id) {
+                            if m.binding_id.get() == Some(method.binding_id) {
                                 if let Some(errs) = ds.check_mutable(root_loc).errors {
                                     return Err(errs);
                                 }
@@ -2194,7 +2194,7 @@ fn eval(
                         }
                         for impl_data in dt_data.interface_impls.borrow().iter() {
                             for m in &impl_data.method_impls {
-                                if m.scope_entry_id.get() == Some(method.scope_entry_id) {
+                                if m.binding_id.get() == Some(method.binding_id) {
                                     if let Some(errs) = ds.check_mutable(root_loc).errors {
                                         return Err(errs);
                                     }
@@ -2466,7 +2466,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(RECORD_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(RECORD_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     record_to_type_fn.into(),
@@ -2477,7 +2477,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(TUPLE_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(TUPLE_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     tuple_to_type_fn.into(),
@@ -2488,7 +2488,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CVE_GET_VALUE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CVE_GET_VALUE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     cve_get_value_fn.into(),
@@ -2499,7 +2499,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CVE_EXTRACT_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CVE_EXTRACT_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     cve_extract_fn.into(),
@@ -2511,7 +2511,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CVE_GET_CODE_ENUM_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CVE_GET_CODE_ENUM_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     cve_get_code_enum_fn.into(),
@@ -2522,7 +2522,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(VALUE_GET_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(VALUE_GET_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     value_get_type_fn.into(),
@@ -2533,7 +2533,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(ASPECT_LOOKUP_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(ASPECT_LOOKUP_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     aspect_lookup_fn.into(),
@@ -2561,7 +2561,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(CAST_VALUE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CAST_VALUE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     cast_value_fn.into(),
@@ -2587,7 +2587,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     object_ref_to_type_fn.into(),
@@ -2614,7 +2614,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     union_ref_to_type_fn.into(),
@@ -2641,7 +2641,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(INTERFACE_REF_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(INTERFACE_REF_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     interface_ref_to_type_fn.into(),
@@ -2668,7 +2668,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     function_const_to_type_fn.into(),
@@ -2698,7 +2698,7 @@ fn eval(
                     dynamic_scope,
                     v8::String::new(
                         dynamic_scope,
-                        &scope_entry_id_dynamic_key(DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID),
+                        &binding_id_dynamic_key(DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID),
                     )
                         .unwrap()
                         .cast(),
@@ -2739,7 +2739,7 @@ fn eval(
                     dynamic_scope,
                     v8::String::new(
                         dynamic_scope,
-                        &scope_entry_id_dynamic_key(TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID),
+                        &binding_id_dynamic_key(TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID),
                     )
                         .unwrap()
                         .cast(),
@@ -2777,7 +2777,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     data_instance_to_type_fn.into(),
@@ -2807,13 +2807,13 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     data_instance_to_target_fn.into(),
                 );
 
-            fn data_instance_to_scope_entry_callback<
+            fn data_instance_to_binding_callback<
                 's,
             >(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
@@ -2823,15 +2823,15 @@ fn eval(
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
-                    ).expect("__data_instance_to_scope_entry: expected dynamic object for instance");
+                    ).expect("__data_instance_to_binding: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
-                let entry: Rc<dyn ScopeEntry> = Rc::new(PullScopeEntry { instance: instance_global });
-                let ext = rc_scope_entry_to_dynamic_ext(scope, entry);
+                let entry: Rc<dyn Binding> = Rc::new(PullBinding { instance: instance_global });
+                let ext = rc_binding_to_dynamic_ext(scope, entry);
                 rv.set(ext.into());
             }
 
-            let data_instance_to_scope_entry_fn =
-                v8::Function::builder(data_instance_to_scope_entry_callback).build(dynamic_scope).unwrap();
+            let data_instance_to_binding_fn =
+                v8::Function::builder(data_instance_to_binding_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
@@ -2839,11 +2839,11 @@ fn eval(
                     dynamic_scope,
                     v8::String::new(
                         dynamic_scope,
-                        &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID),
+                        &binding_id_dynamic_key(DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID),
                     )
                         .unwrap()
                         .cast(),
-                    data_instance_to_scope_entry_fn.into(),
+                    data_instance_to_binding_fn.into(),
                 );
 
             fn data_instance_to_value_callback<
@@ -2870,7 +2870,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     data_instance_to_value_fn.into(),
@@ -2900,7 +2900,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     data_instance_to_aspect_fn.into(),
@@ -2930,7 +2930,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(DATA_INSTANCE_TO_CODE_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_INSTANCE_TO_CODE_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     data_instance_to_code_fn.into(),
@@ -2954,7 +2954,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &scope_entry_id_dynamic_key(UNIQUE_EQ_FN_SCOPE_ID))
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(UNIQUE_EQ_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     unique_eq_fn.into(),
@@ -2963,18 +2963,18 @@ fn eval(
         }
     }
     let mut all_externals: Vec<(String, External)> =
-        ex.externals.borrow().iter().map(|(id, v)| (scope_entry_id_dynamic_key(*id), v.clone())).collect();
+        ex.externals.borrow().iter().map(|(id, v)| (binding_id_dynamic_key(*id), v.clone())).collect();
     for method in &def_data_methods {
-        let func_name = scope_entry_id_dynamic_key(method.scope_entry_id);
+        let func_name = binding_id_dynamic_key(method.binding_id);
         for (id, value) in &method.captured_externals {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             all_externals.push((format!("{}_{}", func_name, local_key), value.clone()));
         }
     }
     for (scope_id, _, _, captured) in &def_funcs {
-        let func_name = scope_entry_id_dynamic_key(*scope_id);
+        let func_name = binding_id_dynamic_key(*scope_id);
         for (id, value) in captured {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             all_externals.push((format!("{}_{}", func_name, local_key), value.clone()));
         }
     }
@@ -3118,13 +3118,13 @@ impl DynamicSourceBuilder {
     }
 }
 
-pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn ScopeEntry> {
-    from_dynamic_ref::<Rc<dyn ScopeEntry>>(value).clone()
+pub(crate) fn rc_binding_from_v8(value: &v8::Value) -> Rc<dyn Binding> {
+    from_dynamic_ref::<Rc<dyn Binding>>(value).clone()
 }
 
-pub(crate) fn rc_scope_entry_to_dynamic_ext<
+pub(crate) fn rc_binding_to_dynamic_ext<
     's,
->(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn ScopeEntry>) -> v8::Local<'s, v8::External> {
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Binding>) -> v8::Local<'s, v8::External> {
     to_dynamic_ext(scope, value)
 }
 
@@ -3158,9 +3158,9 @@ pub(crate) fn rc_value_to_dynamic_ext<
     to_dynamic_ext(scope, value)
 }
 
-pub(crate) struct RcScopeEntryWrap(pub Rc<dyn ScopeEntry>);
+pub(crate) struct RcBindingWrap(pub Rc<dyn Binding>);
 
-impl ScopeEntry for RcScopeEntryWrap {
+impl Binding for RcBindingWrap {
     fn use_(&self, xx: &ExprContext, loc: QExprId, code: Code) -> CodeValue {
         self.0.use_(xx, loc, code)
     }
@@ -3174,7 +3174,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
             for entry in &c.entries {
                 match entry {
                     CodeDynamicBlockEntry::Bind(b) => {
-                        let bind_key = scope_entry_id_dynamic_key(b.base);
+                        let bind_key = binding_id_dynamic_key(b.base);
                         lines.push(code.loc, format!("let {};", bind_key));
                         lines.push(code.loc, "{".to_string());
                         let val_var = render_code(lines, &b.value);
@@ -3194,7 +3194,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
             lines.push(code.loc, format!("{} = {};", out, serde_json::to_string(c).unwrap()));
         },
         CodeDynamicType::BindingUse(c) => {
-            lines.push(code.loc, format!("{} = {};", out, scope_entry_id_dynamic_key(c.id)));
+            lines.push(code.loc, format!("{} = {};", out, binding_id_dynamic_key(c.id)));
         },
         CodeDynamicType::Call(c) => {
             if let CodeDynamicType::FieldUse(f) = &c.func.type_ {
@@ -3236,7 +3236,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
         },
         CodeDynamicType::BindingSet(c) => {
             let val_var = render_code(lines, &c.value);
-            lines.push(code.loc, format!("{} = {};", scope_entry_id_dynamic_key(c.base), val_var));
+            lines.push(code.loc, format!("{} = {};", binding_id_dynamic_key(c.base), val_var));
             lines.push(code.loc, format!("{} = null;", out));
         },
         CodeDynamicType::FieldSet(c) => {
@@ -3304,7 +3304,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
         },
         CodeDynamicType::Foreach(c) => {
             let base_var = render_code(lines, &c.base);
-            let elem_key = scope_entry_id_dynamic_key(c.element_key);
+            let elem_key = binding_id_dynamic_key(c.element_key);
             lines.push(code.loc, format!("for (let {} of {}) {{", elem_key, base_var));
             let body_var = render_code(lines, &c.body);
             lines.push(code.loc, format!("{} = {};", out, body_var));
@@ -3312,7 +3312,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
         },
         CodeDynamicType::ForeachMap(c) => {
             let base_var = render_code(lines, &c.base);
-            let elem_key = scope_entry_id_dynamic_key(c.element_key);
+            let elem_key = binding_id_dynamic_key(c.element_key);
             lines.push(code.loc, format!("for (let __entry of Object.entries({})) {{", base_var));
             lines.push(
                 code.loc,
@@ -3329,7 +3329,7 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
         },
         CodeDynamicType::Match(c) => {
             let base_var = render_code(lines, &c.base);
-            let elem_key = scope_entry_id_dynamic_key(c.element_key);
+            let elem_key = binding_id_dynamic_key(c.element_key);
             lines.push(code.loc, format!("{{ let [{}, {}] = Object.entries({})[0];", TAG_VAR, elem_key, base_var));
             lines.push(code.loc, format!("switch ({}) {{", TAG_VAR));
             for case in &c.cases {
@@ -3350,11 +3350,11 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
     return out;
 }
 
-pub(crate) fn scope_entry_id_dynamic_key(e: ScopeEntryId) -> String {
+pub(crate) fn binding_id_dynamic_key(e: BindingId) -> String {
     match e {
-        ScopeEntryId::Local(id) => format!("{}{}", SCOPE_ENTRY_PREFIX, id),
-        ScopeEntryId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
-        ScopeEntryId::Def(def_set_id, entry_id) => {
+        BindingId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
+        BindingId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
+        BindingId::Def(def_set_id, entry_id) => {
             format!("{}{}_{}_{}_{}", DEF_PREFIX, (def_set_id.0).0.0, (def_set_id.0).1.0, def_set_id.1, entry_id,)
         },
     }
@@ -3386,7 +3386,7 @@ pub(crate) struct TargetBindSub {
 pub(crate) struct TargetDynamic;
 
 impl Target for TargetDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, BindingId) {
         let dynamic_code =
             sub
                 .data
@@ -3395,7 +3395,7 @@ impl Target for TargetDynamic {
                 .expect("TargetDynamic bind: expected CodeDynamic")
                 .unwrap()
                 .clone();
-        let js_key = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let js_key = BindingId::Local(xx.vx.next_local_id.next());
         let code = Code {
             loc: loc,
             code: Code_::Dyn(Rc::new(CodeDynamic {
@@ -3548,7 +3548,7 @@ impl Target for TargetDynamic {
             let base_type = erb.must_er(base.value.type_(xx, loc))?;
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
             let base_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, base))?;
-            let element_scope_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            let element_scope_id = BindingId::Local(xx.vx.next_local_id.next());
             let mut dynamic_cases = Vec::new();
             let mut result_type: Option<Rc<dyn Type>> = None;
             for (tag, variant_type, body_expr) in &cases {
@@ -3678,7 +3678,7 @@ impl Target for TargetDynamic {
     ) -> EvalRes {
         let tree_cell =
             Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(tree) as Rc<dyn Value>)) });
-        let tree_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let tree_id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((tree_id, External::StagedExprCell(tree_cell)));
         let tree_js = CodeDynamic {
             loc,
@@ -3695,7 +3695,7 @@ impl Target for TargetDynamic {
                 match cv.code.code {
                     Code_::None => {
                         let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
-                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        let id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
                         stage_args.push(CodeDynamic {
                             loc,
@@ -3715,7 +3715,7 @@ impl Target for TargetDynamic {
                             scope: xx.scope.clone(),
                             target: xx.target.clone(),
                         });
-                        let lift_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        let lift_id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
                         let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
                         let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
@@ -3737,7 +3737,7 @@ impl Target for TargetDynamic {
                             },
                             value: cv.value,
                         })));
-                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        let id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::CodeValueExternCell(cell)));
                         stage_args.push(CodeDynamic {
                             loc,

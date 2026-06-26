@@ -22,7 +22,7 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -39,7 +39,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -53,7 +53,7 @@ use {
             AspectUnion,
             AspectType,
             AspectPostDeserialize,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -85,7 +85,7 @@ pub(crate) struct TypeSourceUnionConst {
 impl Aspect for TypeSourceUnionConst { }
 
 impl AspectBind for TypeSourceUnionConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -103,8 +103,8 @@ impl AspectConsumeDynamic for TypeSourceUnionConst {
 }
 
 impl AspectInitialBind for TypeSourceUnionConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeSourceUnionConst { data: self.data.clone() }),
         })

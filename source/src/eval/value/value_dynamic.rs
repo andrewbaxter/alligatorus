@@ -5,7 +5,7 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Value,
         },
@@ -46,7 +46,7 @@ pub(crate) struct ValueDynamicDataAccess {
 
 #[derive(Clone, Copy)]
 pub(crate) struct ValueDynamicDataScope {
-    pub key: ScopeEntryId,
+    pub key: BindingId,
 }
 
 #[derive(Clone)]

@@ -13,7 +13,7 @@ use {
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
             },
         },
         langhelp::{
@@ -23,7 +23,7 @@ use {
             EResult,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -34,13 +34,13 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectStackValueDynamic,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
-            builtin_scope_entry_iface_identity,
+            builtin_binding_iface_identity,
         },
     },
     std::{
@@ -49,76 +49,76 @@ use {
     },
 };
 
-pub(crate) struct TypeAnyScopeEntryDynamic;
+pub(crate) struct TypeAnyBindingDynamic;
 
-impl Aspect for TypeAnyScopeEntryDynamic { }
+impl Aspect for TypeAnyBindingDynamic { }
 
-impl AspectBind for TypeAnyScopeEntryDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+impl AspectBind for TypeAnyBindingDynamic {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
 
-impl AspectBindDynamic for TypeAnyScopeEntryDynamic {
+impl AspectBindDynamic for TypeAnyBindingDynamic {
     fn bind_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         bind_dynamic_default(xx, loc, cv)
     }
 }
 
-impl AspectConsumeDynamic for TypeAnyScopeEntryDynamic {
+impl AspectConsumeDynamic for TypeAnyBindingDynamic {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         dynamic_consume_to_dynamic(xx, loc, cv)
     }
 }
 
-impl AspectInitialBind for TypeAnyScopeEntryDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+impl AspectInitialBind for TypeAnyBindingDynamic {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
-            type_: Rc::new(TypeAnyScopeEntryDynamic),
+            type_: Rc::new(TypeAnyBindingDynamic),
         })
     }
 }
 
-impl AspectStackValueDynamic for TypeAnyScopeEntryDynamic {
+impl AspectStackValueDynamic for TypeAnyBindingDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
-        dynamic_stack_to_value(loc, value, Rc::new(TypeAnyScopeEntryDynamic))
+        dynamic_stack_to_value(loc, value, Rc::new(TypeAnyBindingDynamic))
     }
 }
 
-impl ExporterAny for TypeAnyScopeEntryDynamic {
+impl ExporterAny for TypeAnyBindingDynamic {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(TypeAnyScopeEntryDynamic));
+        return EResult::ok(Rc::new(TypeAnyBindingDynamic));
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeAnyScopeEntryDynamic));
+        return EResult::ok(Rc::new(TypeAnyBindingDynamic));
     }
 }
 
-impl Type for TypeAnyScopeEntryDynamic {
+impl Type for TypeAnyBindingDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeAnyScopeEntryDynamic)
+        Rc::new(TypeAnyBindingDynamic)
     }
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        if *key == builtin_scope_entry_iface_identity() {
+        if *key == builtin_binding_iface_identity() {
             return Some(Box::new(true));
         }
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyScopeEntryDynamic) as Box<dyn AspectConsumeDynamic>));
+            return Some(Box::new(Box::new(TypeAnyBindingDynamic) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_bind_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyScopeEntryDynamic) as Box<dyn AspectBindDynamic>));
+            return Some(Box::new(Box::new(TypeAnyBindingDynamic) as Box<dyn AspectBindDynamic>));
         }
         if *key == aspect_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyScopeEntryDynamic) as Box<dyn AspectBind>));
+            return Some(Box::new(Box::new(TypeAnyBindingDynamic) as Box<dyn AspectBind>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyScopeEntryDynamic) as Box<dyn AspectStackValueDynamic>));
+            return Some(Box::new(Box::new(TypeAnyBindingDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_initial_bind_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyScopeEntryDynamic) as Box<dyn AspectInitialBind>));
+            return Some(Box::new(Box::new(TypeAnyBindingDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
@@ -129,16 +129,16 @@ impl Type for TypeAnyScopeEntryDynamic {
     }
 
     fn desc(&self) -> String {
-        "scope_entry".to_string()
+        "binding".to_string()
     }
 }
 
-impl Value for TypeAnyScopeEntryDynamic {
+impl Value for TypeAnyBindingDynamic {
     fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeAnyScopeEntryDynamic);
+        return Rc::new(TypeAnyBindingDynamic);
     }
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeRoot::AnyScopeEntryDynamic))
+        EResult::ok(Rc::new(TypeRoot::AnyBindingDynamic))
     }
 }

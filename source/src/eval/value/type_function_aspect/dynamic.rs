@@ -14,7 +14,7 @@ use {
             },
             type_option::dynamic::TypeOptionDynamic,
             type_root::r#const::TypeRoot,
-            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_binding::dynamic::BindingDynamicBinding,
             type_source_interface::SourceInterfaceRef,
             value_dynamic::{
                 ValueDynamic,
@@ -32,7 +32,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -41,7 +41,7 @@ use {
             ASPECT_LOOKUP_FN_SCOPE_ID,
             AspectFunction,
             AspectInitialBind,
-            ScopeEntry,
+            Binding,
             aspect_aspect_get_maybe,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
@@ -125,7 +125,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "aspect(): base has no runtime code".to_string()),
         };
-        let unique_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let unique_id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((unique_id, External::Unique(unique)));
         let unique_code = CodeDynamic {
             loc,
@@ -161,8 +161,8 @@ impl AspectFunction for TypeFunctionAspectDynamic {
 }
 
 impl AspectInitialBind for TypeFunctionAspectDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeFunctionAspectDynamic),
         })

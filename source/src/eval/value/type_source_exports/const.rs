@@ -11,7 +11,7 @@ use {
                 export_definition_set,
             },
             value::{
-                type_tuple::scope_entry::ScopeEntryValue,
+                type_tuple::binding::BindingValue,
                 type_any::r#const::ValueAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
@@ -39,7 +39,7 @@ use {
             AspectArtifact,
             AspectBind,
             AspectField,
-            ScopeEntry,
+            Binding,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
             aspect_field_aspect_id,
@@ -67,7 +67,7 @@ impl AspectArtifact for TypeSourceExportsLiftedConst {
 }
 
 impl AspectBind for TypeSourceExportsLiftedConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
@@ -82,7 +82,7 @@ impl AspectBind for TypeSourceExportsLiftedConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
         };
     }
 }

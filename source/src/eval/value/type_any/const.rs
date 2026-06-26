@@ -18,7 +18,7 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            value::type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            value::type_binding::dynamic::BindingDynamicBinding,
         },
         invariant::must_downcast_ref,
         langhelp::{
@@ -32,7 +32,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -46,7 +46,7 @@ use {
             AspectFunction,
             AspectInitialBind,
             AspectType,
-            ScopeEntry,
+            Binding,
             aspect_artifact_aspect_id,
             aspect_artifact_get,
             aspect_bind_aspect_id,
@@ -101,7 +101,7 @@ impl AspectArtifact for TypeAnyConst {
 }
 
 impl AspectBind for TypeAnyConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -132,7 +132,7 @@ impl AspectConsumeDynamic for TypeAnyConst {
             },
         };
         let type_ = aspect_type.type_(cv.value.as_ref());
-        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EResult::ok(CodeDynamic {
             loc,
@@ -180,8 +180,8 @@ impl AspectFunction for TypeAnyConst {
 }
 
 impl AspectInitialBind for TypeAnyConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeAnyConst),
         })
@@ -274,7 +274,7 @@ impl Type for TypeAnyConst {
             },
         };
         let type_ = aspect_type.type_(cv.value.as_ref());
-        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EvalRes::ok(CodeValue {
             code: Code {

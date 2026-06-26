@@ -30,7 +30,7 @@ fn main() {
             ExprContext,
             QExprId,
             Scope,
-            ScopeEntryId,
+            BindingId,
             Unique,
             Value,
         };
@@ -39,7 +39,7 @@ fn main() {
         use crate::eval::DynamicLogStore;
         use crate::eval::DynamicUniqueCounter;
         use crate::langhelp::LogEntry;
-        use crate::eval::RcScopeEntryWrap;
+        use crate::eval::RcBindingWrap;
         use crate::eval::const_eval;
         use crate::eval::definition_set::DefinitionSet;
         use crate::eval::expr::Expr;

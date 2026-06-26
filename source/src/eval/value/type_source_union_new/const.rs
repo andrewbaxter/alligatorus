@@ -50,7 +50,7 @@ use {
         r#gen::{
             AspectBind,
             AspectFunction,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_get,
             aspect_function_aspect_id,
@@ -73,7 +73,7 @@ pub(crate) struct TypeSourceUnionNewConst {
 impl Aspect for TypeSourceUnionNewConst { }
 
 impl AspectBind for TypeSourceUnionNewConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }

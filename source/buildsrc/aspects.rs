@@ -307,15 +307,15 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                     doc: doc(""),
                     params: vec![
                         //. .
-                        ("dynamic_key", "crate::langhelp::ScopeEntryId"),
+                        ("dynamic_key", "crate::langhelp::BindingId"),
                     ],
-                    ret: "Box<dyn crate::r#gen::ScopeEntry>",
+                    ret: "Box<dyn crate::r#gen::Binding>",
                     },
             ],
         },
         AspectSpec {
             name: "Bind",
-            doc: doc("Creates code to bind a value, and returns the scope_entry (scope_entry)."),
+            doc: doc("Creates code to bind a value, and returns the binding (binding)."),
             builtin_unique_id: 1022,
             methods: vec![
                 //. .
@@ -328,14 +328,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                         ("loc", "crate::langhelp::QExprId"),
                         ("cv", "crate::langhelp::CodeValue"),
                     ],
-                    ret: "crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)>",
+                    ret: "crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::Binding>)>",
                     },
             ],
         },
         AspectSpec {
             name: "BindDynamic",
             doc: doc(
-                "Creates code to prepare a value for scope_entry, used by the Dynamic target (call tree rooted in Bind). This may be called recursively, e.g. in records, to prepare elements. If None, the value does not require dynamic scope_entry - this is used by records/tuples to determine if the containing record/tuple also needs dynamic scope_entry.",
+                "Creates code to prepare a value for binding, used by the Dynamic target (call tree rooted in Bind). This may be called recursively, e.g. in records, to prepare elements. If None, the value does not require dynamic binding - this is used by records/tuples to determine if the containing record/tuple also needs dynamic binding.",
             ),
             builtin_unique_id: 1023,
             methods: vec![
@@ -451,7 +451,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                         ("xx", "&crate::langhelp::ExprContext"),
                         ("loc", "crate::langhelp::QExprId"),
                         ("base", "crate::langhelp::CodeValue"),
-                        ("element_key", "crate::langhelp::ScopeEntryId"),
+                        ("element_key", "crate::langhelp::BindingId"),
                         ("body", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EvalRes",
@@ -570,7 +570,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         #(#aspect_token_items) *
     });
 
-    struct AspectScopeEntry {
+    struct AspectBinding {
         aspect_fn: &'static str,
         key: &'static str,
         scope_id: usize,
@@ -579,17 +579,17 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
     let mut reg_entries: Vec<TokenStream> = Vec::new();
     for e in &[
         //. .
-        AspectScopeEntry {
+        AspectBinding {
             key: "aspect_string_dynamic",
             scope_id: 4001,
             aspect_fn: "aspect_string_dynamic",
         },
-        AspectScopeEntry {
+        AspectBinding {
             key: "aspect_function_id",
             scope_id: 4002,
             aspect_fn: "aspect_function",
         },
-        AspectScopeEntry {
+        AspectBinding {
             key: "aspect_field_id",
             scope_id: 4003,
             aspect_fn: "aspect_field",
@@ -601,7 +601,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         let aspect_id_fn = format_ident!("{}_aspect_id", e.aspect_fn);
         reg_entries.push(quote!{
             {
-                let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
+                let dynamic_key = BindingId:: Builtin(#scope_id);
                 let unique = crate:: r#gen:: #aspect_id_fn();
                 if register_dynamic {
                     let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
@@ -610,7 +610,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                         .global(dynamic_scope)
                         .set(
                             dynamic_scope,
-                            v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
+                            v8::String::new(dynamic_scope, &crate::eval::binding_id_dynamic_key(dynamic_key),)
                                 .unwrap()
                                 .cast(),
                             unique_dynamic.into(),
@@ -620,10 +620,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                 scope.values.borrow_mut(
                 ).insert(
                     ConstKey:: String(#key.to_string()),
-                    Box::new(crate::eval::value::type_unique::r#const::ScopeEntryUniqueDualMode {
+                    Box::new(crate::eval::value::type_unique::r#const::BindingUniqueDualMode {
                         dynamic_key,
                         unique,
-                    }) as Box<dyn crate::r#gen::ScopeEntry>,
+                    }) as Box<dyn crate::r#gen::Binding>,
                 );
             }
         });
@@ -636,7 +636,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
             scope: & crate:: langhelp:: Scope,
-            builtin_scope_entries: & mut Vec <(String, ScopeEntryId, Rc < dyn crate:: langhelp:: Type >,) >,
+            builtin_scope_entries: & mut Vec <(String, BindingId, Rc < dyn crate:: langhelp:: Type >,) >,
         ) {
             let unique_type: Rc<dyn crate::langhelp::Type> = Rc::new(crate::eval::value::type_unique::r#const::TypeUnique);
             #(#reg_entries) *

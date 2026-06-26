@@ -23,7 +23,7 @@ use {
                 pull_desc,
             },
             render_code,
-            scope_entry_id_dynamic_key,
+            binding_id_dynamic_key,
             value::{
                 type_root::r#const::{
                     ExporterRootDelegate,
@@ -112,19 +112,19 @@ pub(crate) fn pull_mini_eval(
     let mut field_decls: Vec<(String, String)> = Vec::new();
     field_decls.push((ConstKey::String(data.data_field.clone()).to_str(), underlying_var));
     for method in data.methods.borrow().iter() {
-        let id = method.scope_entry_id.get().ok_or_else(|| "Method scope_entry_id not allocated".to_string())?;
-        field_decls.push((ConstKey::String(method.field_name.clone()).to_str(), scope_entry_id_dynamic_key(id)));
+        let id = method.binding_id.get().ok_or_else(|| "Method binding_id not allocated".to_string())?;
+        field_decls.push((ConstKey::String(method.field_name.clone()).to_str(), binding_id_dynamic_key(id)));
     }
     for impl_data in data.interface_impls.borrow().iter() {
         let methods = impl_data.interface.methods.borrow();
         for m in &impl_data.method_impls {
             let id =
                 m
-                    .scope_entry_id
+                    .binding_id
                     .get()
-                    .ok_or_else(|| "Interface method impl scope_entry_id not allocated".to_string())?;
+                    .ok_or_else(|| "Interface method impl binding_id not allocated".to_string())?;
             let field_name = methods[m.interface_method_index].field_name.clone();
-            field_decls.push((ConstKey::String(field_name).to_str(), scope_entry_id_dynamic_key(id)));
+            field_decls.push((ConstKey::String(field_name).to_str(), binding_id_dynamic_key(id)));
         }
     }
     let obj_lit =

@@ -31,7 +31,7 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_empty::r#const::ValueEmptyConst,
             },
         },
@@ -45,7 +45,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -57,7 +57,7 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectType,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -83,7 +83,7 @@ pub(crate) struct TypeExpr;
 impl Aspect for TypeExpr { }
 
 impl AspectBind for TypeExpr {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -100,7 +100,7 @@ impl AspectConsumeDynamic for TypeExpr {
             return EResult::ok(dynamic_code.clone());
         }
         let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
-        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+        let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
         EResult::ok(CodeDynamic {
             loc,
@@ -110,8 +110,8 @@ impl AspectConsumeDynamic for TypeExpr {
 }
 
 impl AspectInitialBind for TypeExpr {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeExpr),
         })

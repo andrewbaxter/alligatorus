@@ -10,7 +10,7 @@ use {
             expr::Expr,
             rc_type_to_dynamic_ext,
             render_code,
-            scope_entry_id_dynamic_key,
+            binding_id_dynamic_key,
             to_dynamic_ext,
             typecheck_convert,
             value::{
@@ -27,7 +27,7 @@ use {
             External,
             QExprId,
             Scope,
-            ScopeEntryId,
+            BindingId,
             Type,
         },
         r#gen::aspect_initial_bind_get,
@@ -53,32 +53,32 @@ pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &G
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let mut installed_externals: Vec<(String, External)> = Vec::new();
-    let mut collect_externals = |func_name: &str, captured: &[(ScopeEntryId, External)]| {
+    let mut collect_externals = |func_name: &str, captured: &[(BindingId, External)]| {
         for (id, value) in captured {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             installed_externals.push((format!("{}_{}", func_name, local_key), value.clone()));
         }
     };
     for func_data in set.functions.borrow().iter() {
         let func_name =
-            scope_entry_id_dynamic_key(
-                func_data.scope_entry_id.get().ok_or_else(|| "func missing scope_entry_id".to_string())?,
+            binding_id_dynamic_key(
+                func_data.binding_id.get().ok_or_else(|| "func missing binding_id".to_string())?,
             );
         collect_externals(&func_name, &func_data.captured_externals.borrow());
     }
     for dt in set.objects.borrow().iter() {
         for method in dt.methods.borrow().iter() {
             let func_name =
-                scope_entry_id_dynamic_key(
-                    method.scope_entry_id.get().ok_or_else(|| "method missing scope_entry_id".to_string())?,
+                binding_id_dynamic_key(
+                    method.binding_id.get().ok_or_else(|| "method missing binding_id".to_string())?,
                 );
             collect_externals(&func_name, &method.captured_externals.borrow());
         }
         for impl_data in dt.interface_impls.borrow().iter() {
             for m in &impl_data.method_impls {
                 let func_name =
-                    scope_entry_id_dynamic_key(
-                        m.scope_entry_id.get().ok_or_else(|| "iface method missing scope_entry_id".to_string())?,
+                    binding_id_dynamic_key(
+                        m.binding_id.get().ok_or_else(|| "iface method missing binding_id".to_string())?,
                     );
                 collect_externals(&func_name, &m.captured_externals.borrow());
             }
@@ -154,19 +154,19 @@ pub(crate) fn install_imported_type_iface(
     let underlying_type = dt_data.underlying_type.get().clone();
 
     enum BodyShape {
-        ArgMethod(ScopeEntryId),
-        SelfMethod(ScopeEntryId, String),
+        ArgMethod(BindingId),
+        SelfMethod(BindingId, String),
     }
 
-    let mut method_codes: Vec<(ScopeEntryId, BodyShape, CodeDynamic)> = Vec::new();
+    let mut method_codes: Vec<(BindingId, BodyShape, CodeDynamic)> = Vec::new();
     for impl_data in dt_data.interface_impls.borrow().iter() {
         let is_type_iface = impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type);
         for method_impl in &impl_data.method_impls {
             let method_id =
                 method_impl
-                    .scope_entry_id
+                    .binding_id
                     .get()
-                    .ok_or_else(|| "Interface method impl missing scope_entry_id".to_string())?;
+                    .ok_or_else(|| "Interface method impl missing binding_id".to_string())?;
             let impl_expr_value =
                 method_impl
                     .impl_expr
@@ -183,8 +183,8 @@ pub(crate) fn install_imported_type_iface(
                     .clone()
                     .ok_or_else(|| "Interface method missing return type".to_string())?
             };
-            let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-            method_impl.inner_scope_entry_id.set(Some(self_id));
+            let self_id = BindingId::Local(body_ex.next_local_id.next());
+            method_impl.inner_binding_id.set(Some(self_id));
             let mut body_scope =
                 build_builtin_scope(
                     xx,
@@ -252,7 +252,7 @@ pub(crate) fn install_imported_type_iface(
         let key =
             v8::String::new(
                 scope,
-                &scope_entry_id_dynamic_key(*id),
+                &binding_id_dynamic_key(*id),
             ).ok_or_else(|| "external key alloc".to_string())?;
         let dynamic_val: v8::Local<v8::Value> = match ext {
             External::StagedExprCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
@@ -265,11 +265,11 @@ pub(crate) fn install_imported_type_iface(
     }
     let mut code = DynamicSourceBuilder::default();
     for (method_id, shape, impl_code) in &method_codes {
-        let func_name = scope_entry_id_dynamic_key(*method_id);
+        let func_name = binding_id_dynamic_key(*method_id);
         let start_line = code.lines.len();
         match shape {
             BodyShape::ArgMethod(arg_id) => {
-                code.push(loc, format!("function {}({}) {{", func_name, scope_entry_id_dynamic_key(*arg_id)));
+                code.push(loc, format!("function {}({}) {{", func_name, binding_id_dynamic_key(*arg_id)));
             },
             BodyShape::SelfMethod(self_id, data_field) => {
                 code.push(loc, format!("function {}() {{", func_name));
@@ -277,7 +277,7 @@ pub(crate) fn install_imported_type_iface(
                     loc,
                     format!(
                         "let {} = this[{}];",
-                        scope_entry_id_dynamic_key(*self_id),
+                        binding_id_dynamic_key(*self_id),
                         serde_json::to_string(&ConstKey::String(data_field.clone()).to_str(),).unwrap(),
                     ),
                 );
@@ -288,7 +288,7 @@ pub(crate) fn install_imported_type_iface(
         code.push(loc, "}".to_string());
         let compiled = code.lines[start_line..].join("\n");
         if let Some(slot) = dt_data.interface_impls.borrow().iter().find_map(|i| {
-            i.method_impls.iter().find(|m| m.scope_entry_id.get() == Some(*method_id))
+            i.method_impls.iter().find(|m| m.binding_id.get() == Some(*method_id))
         }) {
             *slot.compiled_source.borrow_mut() = Some(compiled);
         }
@@ -298,19 +298,19 @@ pub(crate) fn install_imported_type_iface(
     let mut field_decls: Vec<(String, String)> = Vec::new();
     field_decls.push((ConstKey::String(dt_data.data_field.clone()).to_str(), underlying_var));
     for method in dt_data.methods.borrow().iter() {
-        let id = method.scope_entry_id.get().ok_or_else(|| "Method scope_entry_id not allocated".to_string())?;
-        field_decls.push((ConstKey::String(method.field_name.clone()).to_str(), scope_entry_id_dynamic_key(id)));
+        let id = method.binding_id.get().ok_or_else(|| "Method binding_id not allocated".to_string())?;
+        field_decls.push((ConstKey::String(method.field_name.clone()).to_str(), binding_id_dynamic_key(id)));
     }
     for impl_data in dt_data.interface_impls.borrow().iter() {
         let methods = impl_data.interface.methods.borrow();
         for m in &impl_data.method_impls {
             let id =
                 m
-                    .scope_entry_id
+                    .binding_id
                     .get()
-                    .ok_or_else(|| "Interface method impl scope_entry_id not allocated".to_string())?;
+                    .ok_or_else(|| "Interface method impl binding_id not allocated".to_string())?;
             let field_name = methods[m.interface_method_index].field_name.clone();
-            field_decls.push((ConstKey::String(field_name).to_str(), scope_entry_id_dynamic_key(id)));
+            field_decls.push((ConstKey::String(field_name).to_str(), binding_id_dynamic_key(id)));
         }
     }
     let obj_lit =

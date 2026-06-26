@@ -47,7 +47,7 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
@@ -68,7 +68,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -85,7 +85,7 @@ use {
             AspectMapDynamic,
             AspectSet,
             AspectStackValueDynamic,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -120,7 +120,7 @@ pub(crate) struct TypeMapDynamic {
 impl Aspect for TypeMapDynamic { }
 
 impl AspectBind for TypeMapDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -225,8 +225,8 @@ impl AspectField for TypeMapDynamic {
 }
 
 impl AspectInitialBind for TypeMapDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(self.clone()),
         })
@@ -251,7 +251,7 @@ impl AspectIterable for TypeMapDynamic {
         xx: &ExprContext,
         loc: QExprId,
         base: CodeValue,
-        element_key: ScopeEntryId,
+        element_key: BindingId,
         body: CodeValue,
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {

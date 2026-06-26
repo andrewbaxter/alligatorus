@@ -1,7 +1,7 @@
 pub mod type_record;
 pub mod type_tuple;
 pub mod type_any;
-pub mod type_any_scope_entry;
+pub mod type_any_binding;
 pub mod type_any_target;
 pub mod type_aspect;
 pub mod type_bool;
@@ -24,7 +24,7 @@ pub mod type_option;
 pub mod type_option_constructor;
 pub mod type_pull;
 pub mod type_root;
-pub mod type_scope_entry;
+pub mod type_binding;
 pub mod type_source_object;
 pub mod type_source_object_new;
 pub mod type_source_exports;

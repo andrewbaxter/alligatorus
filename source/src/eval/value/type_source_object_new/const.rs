@@ -20,7 +20,7 @@ use {
         eval::{
             typecheck_convert,
             value::{
-                type_tuple::scope_entry::ScopeEntryValue,
+                type_tuple::binding::BindingValue,
                 type_any::r#const::{
                     TypeAnyConst,
                     ValueAnyConst,
@@ -48,7 +48,7 @@ use {
         r#gen::{
             AspectBind,
             AspectFunction,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_get,
             aspect_function_aspect_id,
@@ -91,7 +91,7 @@ impl crate
 impl Aspect for TypeSourceObjectNewConst { }
 
 impl AspectBind for TypeSourceObjectNewConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
@@ -106,7 +106,7 @@ impl AspectBind for TypeSourceObjectNewConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
         };
     }
 }
@@ -124,7 +124,7 @@ impl AspectFunction for TypeSourceObjectNewConst {
             let underlying_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
             let mut object_fields = vec![(ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
             for method in self.data.methods.borrow().iter() {
-                let method_id = method.scope_entry_id.get().expect("Method scope_entry ID not allocated");
+                let method_id = method.binding_id.get().expect("Method binding ID not allocated");
                 object_fields.push((ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
@@ -135,7 +135,7 @@ impl AspectFunction for TypeSourceObjectNewConst {
                 for method_impl in &impl_data.method_impls {
                     let iface_method = &iface_methods[method_impl.interface_method_index];
                     let method_id =
-                        method_impl.scope_entry_id.get().expect("Interface method impl scope_entry ID not allocated");
+                        method_impl.binding_id.get().expect("Interface method impl binding ID not allocated");
                     object_fields.push((ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
                         loc,
                         type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),

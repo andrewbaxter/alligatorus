@@ -34,7 +34,7 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
                 value_dynamic::{
                     ValueDynamic,
@@ -53,7 +53,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -71,7 +71,7 @@ use {
             AspectSet,
             AspectStackValueDynamic,
             AspectType,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -107,7 +107,7 @@ pub(crate) struct TypeNumberDynamic;
 impl Aspect for TypeNumberDynamic { }
 
 impl AspectBind for TypeNumberDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -171,8 +171,8 @@ impl AspectField for TypeNumberDynamic {
 }
 
 impl AspectInitialBind for TypeNumberDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeNumberDynamic),
         })

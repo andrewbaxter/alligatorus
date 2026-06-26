@@ -118,15 +118,15 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             builtin_scope_id: 5009,
             args: vec![
                 ("target_arg", "Rc<dyn crate::r#gen::Target>"),
-                ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::ScopeEntry>>"),
+                ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::Binding>>"),
             ],
             ret: "crate::eval::code_value_extern::ExprContextPush",
             body: quote!{
                 let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
                 let parent_ex = ex_slot.ex.clone();
-                let mut scope_values: HashMap<ConstKey, Box<dyn crate::r#gen::ScopeEntry>> = HashMap::new();
+                let mut scope_values: HashMap<ConstKey, Box<dyn crate::r#gen::Binding>> = HashMap::new();
                 for (k, v) in scope_arg {
-                    scope_values.insert(k, Box::new(RcScopeEntryWrap(v)));
+                    scope_values.insert(k, Box::new(RcBindingWrap(v)));
                 }
                 let new_scope = Rc::new(Scope {
                     values: RefCell::new(scope_values),
@@ -195,7 +195,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 v8:: HandleScope <'_ >>,
             ) ->(
                 &'static str,
-                crate::langhelp::ScopeEntryId,
+                crate::langhelp::BindingId,
                 std:: rc:: Rc < dyn crate:: langhelp:: Type >,
                 v8:: Local <'s,
                 v8:: Value >,
@@ -215,7 +215,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 }
                 (
                     #name_str,
-                    crate:: langhelp:: ScopeEntryId:: Builtin(#builtin_scope_id),
+                    crate:: langhelp:: BindingId:: Builtin(#builtin_scope_id),
                     std:: rc:: Rc:: new(crate:: eval:: value:: type_function:: dynamic:: TypeFunctionDynamic {
                         arg: #arg_dynamic_type,
                         ret: <#ret_ty as crate:: eval:: push:: Push >:: dynamic_type(),
@@ -241,7 +241,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             scope: & crate:: langhelp:: Scope,
             builtin_scope_entries: & mut Vec <(
                 String,
-                crate::langhelp::ScopeEntryId,
+                crate::langhelp::BindingId,
                 std:: rc:: Rc < dyn crate:: langhelp:: Type >,
             ) >,
         ) -> Result <(),
@@ -253,7 +253,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                         .global(dynamic_scope)
                         .set(
                             dynamic_scope,
-                            v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
+                            v8::String::new(dynamic_scope, &crate::eval::binding_id_dynamic_key(dynamic_key),)
                                 .unwrap()
                                 .cast(),
                             dynamic_value,

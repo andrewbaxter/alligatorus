@@ -13,7 +13,7 @@ use {
                 ValueAnyConst,
             },
             type_root::r#const::TypeRoot,
-            type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+            type_binding::dynamic::BindingDynamicBinding,
             type_source_object::{
                 dynamic::TypeSourceObjectDynamic,
                 r#const::TypeSourceObjectConst,
@@ -33,7 +33,7 @@ use {
             ExprContext,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -42,7 +42,7 @@ use {
             AspectFunction,
             AspectInitialBind,
             CAST_VALUE_FN_SCOPE_ID,
-            ScopeEntry,
+            Binding,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_tuple_get_maybe,
@@ -111,7 +111,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
         return er_seq_cv!(loc, erb, {
             let value_code = erb.must_er(value.code.cast::<CodeDynamic>())?.unwrap().clone();
             let template: Rc<dyn Type> = Rc::new(TypeSourceObjectConst { data: data.clone() });
-            let template_id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+            let template_id = BindingId::Local(xx.vx.next_local_id.next());
             xx.vx.externals.borrow_mut().push((template_id, External::Type(template)));
             let type_code = CodeDynamic {
                 loc,
@@ -144,8 +144,8 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
 }
 
 impl AspectInitialBind for TypeFunctionCastValueDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeFunctionCastValueDynamic),
         })

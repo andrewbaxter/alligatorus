@@ -48,7 +48,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(
         mb.bind("nvalue_binding", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
             //. .
-            mb.str("scope_entry"),
+            mb.str("binding"),
             mb.scope_use("string"),
         ]))),
     );
@@ -309,21 +309,21 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     );
     exprs.push(
         mb.bind(
-            "nscope_entry",
-            mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs scope_entry")),
+            "nbinding",
+            mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs binding")),
         ),
     );
     exprs.push(
         mb.call(
-            mb.field(mb.scope_use("nscope_entry"), mb.str("set_inner")),
+            mb.field(mb.scope_use("nbinding"), mb.str("set_inner")),
             mb.record(vec![("name", mb.scope_use("string")), ("type", mb.scope_use("type"))]),
         ),
     );
     exprs.push(
         impl_iface(
             mb,
-            "nscope_entry",
-            "scope_entry",
+            "nbinding",
+            "binding",
             vec![
                 (
                     "use",
@@ -528,7 +528,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                                     mb.bind(
                                         "console_entry",
                                         mb.call(
-                                            mb.lower(mb.field(mb.scope_use("nscope_entry"), mb.str("new"))),
+                                            mb.lower(mb.field(mb.scope_use("nbinding"), mb.str("new"))),
                                             mb.record(
                                                 vec![
                                                     ("name", mb.str("console")),

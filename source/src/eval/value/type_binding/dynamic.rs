@@ -16,21 +16,21 @@ use {
             Code_,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
         },
-        r#gen::ScopeEntry,
+        r#gen::Binding,
     },
     std::rc::Rc,
 };
 
 #[derive(Clone)]
-pub(crate) struct ScopeEntryDynamicBinding {
-    pub dynamic_key: ScopeEntryId,
+pub(crate) struct BindingDynamicBinding {
+    pub dynamic_key: BindingId,
     pub type_: Rc<dyn Type>,
 }
 
-impl ScopeEntry for ScopeEntryDynamicBinding {
+impl Binding for BindingDynamicBinding {
     fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         return CodeValue {
             code: Code {

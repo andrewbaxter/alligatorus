@@ -10,7 +10,7 @@ use {
                     TupleElement,
                 },
                 type_any::dynamic::TypeAnyDynamic,
-                type_any_scope_entry::dynamic::TypeAnyScopeEntryDynamic,
+                type_any_binding::dynamic::TypeAnyBindingDynamic,
                 type_any_target::dynamic::TypeAnyTargetDynamic,
                 type_bool::dynamic::TypeBoolDynamic,
                 type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
@@ -30,14 +30,14 @@ use {
             ConstKey,
             EResult,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             SourceId,
             Type,
             Value,
             downcast_value,
         },
         r#gen::{
-            ScopeEntry,
+            Binding,
             Target,
         },
         syntax::ExprId,
@@ -288,17 +288,17 @@ impl<T: Push> Push for Option<T> {
     }
 }
 
-impl Push for Rc<dyn ScopeEntry> {
+impl Push for Rc<dyn Binding> {
     fn dynamic_type() -> Rc<dyn Type> {
-        Rc::new(TypeAnyScopeEntryDynamic)
+        Rc::new(TypeAnyBindingDynamic)
     }
 
     fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        super::rc_scope_entry_from_v8(&*value)
+        super::rc_binding_from_v8(&*value)
     }
 
     fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        super::rc_scope_entry_to_dynamic_ext(scope, self).into()
+        super::rc_binding_to_dynamic_ext(scope, self).into()
     }
 }
 
@@ -330,17 +330,17 @@ impl Push for Rc<dyn Value> {
     }
 }
 
-impl Push for ScopeEntryId {
+impl Push for BindingId {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)
     }
 
     fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
-        unimplemented!("ScopeEntryId::from_dynamic: user-defined target dispatch not yet routed through v8",);
+        unimplemented!("BindingId::from_dynamic: user-defined target dispatch not yet routed through v8",);
     }
 
     fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("ScopeEntryId::into_dynamic: cross-dynamic `ScopeEntryId` transfer not yet wired",);
+        unimplemented!("BindingId::into_dynamic: cross-dynamic `BindingId` transfer not yet wired",);
     }
 }
 

@@ -1,5 +1,5 @@
 pub mod artifact;
-pub mod scope_entry;
+pub mod binding;
 
 use {
     crate::{
@@ -57,7 +57,7 @@ use {
             ExprSubErr,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             SourceId,
             Type,
             Unique,
@@ -74,7 +74,7 @@ use {
             AspectRecord,
             AspectPostDeserialize,
             RECORD_TO_TYPE_FN_SCOPE_ID,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_bind_get,
@@ -93,10 +93,10 @@ use {
         },
         syntax::ExprId,
     },
-    scope_entry::{
+    binding::{
         RecordScopeField,
-        ScopeEntryRecordBound,
-        ScopeEntryRecordDynamic,
+        BindingRecordBound,
+        BindingRecordDynamic,
     },
     std::{
         any::Any,
@@ -296,7 +296,7 @@ impl Record {
 impl Aspect for Record { }
 
 impl AspectBind for Record {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         match self.bind_sub(xx, loc, cv).into_res() {
             Err(errs) => EResult {
                 v: None,
@@ -306,17 +306,17 @@ impl AspectBind for Record {
                 EResult::ok((Code {
                     loc: loc,
                     code: Code_::None,
-                }, Box::new(ScopeEntryRecordBound {
+                }, Box::new(BindingRecordBound {
                     fields: scope_fields,
                     js_key: None,
-                }) as Box<dyn ScopeEntry>))
+                }) as Box<dyn Binding>))
             },
             Ok((scope_fields, Some(sub))) => {
                 let (code, js_key) = xx.target.bind(xx, loc, sub);
-                EResult::ok((code, Box::new(ScopeEntryRecordBound {
+                EResult::ok((code, Box::new(BindingRecordBound {
                     fields: scope_fields,
                     js_key: Some(js_key),
-                }) as Box<dyn ScopeEntry>))
+                }) as Box<dyn Binding>))
             },
         }
     }
@@ -443,8 +443,8 @@ impl AspectField for Record {
 }
 
 impl AspectInitialBind for Record {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryRecordDynamic {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingRecordDynamic {
             dynamic_key: dynamic_key,
             fields: self.fields.iter().map(|(k, f)| {
                 (k.clone(), match f {
@@ -751,7 +751,7 @@ impl Type for Record {
             for (key, field) in record.fields {
                 let converted_cv = match field {
                     RecordField::Dynamic(t) => {
-                        let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
+                        let id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::Type(t)));
                         CodeValue {
                             code: Code {

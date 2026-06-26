@@ -32,7 +32,7 @@ use {
             },
         },
         r#gen::{
-            ScopeEntry,
+            Binding,
             Target,
         },
         syntax::{
@@ -151,7 +151,7 @@ pub(crate) struct CodeValue {
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_scope_entries: RefCell<Vec<(String, ScopeEntryId, Rc<dyn Type>)>>,
+    pub(crate) builtin_scope_entries: RefCell<Vec<(String, BindingId, Rc<dyn Type>)>>,
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) def_set_counter: Counter,
@@ -323,7 +323,7 @@ impl<T: Clone> Clone for EResult<T> {
 
 pub(crate) struct EvalContext {
     pub(crate) definition_sets: RefCell<HashMap<DefSetId, dumpster::unsync::Gc<DefinitionSet>>>,
-    pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
+    pub(crate) externals: RefCell<Vec<(BindingId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
     pub(crate) dynamic_scope: std
@@ -395,11 +395,11 @@ pub(crate) type QExprId = (SourceId, ExprId);
 
 pub(crate) struct Scope {
     pub(crate) parent: Option<Rc<Scope>>,
-    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn ScopeEntry>>>,
+    pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn Binding>>>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
-pub(crate) enum ScopeEntryId {
+pub(crate) enum BindingId {
     Builtin(usize),
     Def(DefSetId, usize),
     Local(usize),

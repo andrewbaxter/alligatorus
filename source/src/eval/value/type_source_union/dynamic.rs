@@ -25,7 +25,7 @@ use {
                     ValueAnyConst,
                 },
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -42,7 +42,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -55,7 +55,7 @@ use {
             AspectLift,
             AspectStackValueDynamic,
             AspectUnion,
-            ScopeEntry,
+            Binding,
             TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -88,7 +88,7 @@ pub(crate) struct TypeSourceUnionDynamic {
 impl Aspect for TypeSourceUnionDynamic { }
 
 impl AspectBind for TypeSourceUnionDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -106,8 +106,8 @@ impl AspectConsumeDynamic for TypeSourceUnionDynamic {
 }
 
 impl AspectInitialBind for TypeSourceUnionDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeSourceUnionDynamic { data: self.data.clone() }),
         })
@@ -310,7 +310,7 @@ pub(crate) struct TypeSourceUnionRefDynamic;
 impl Aspect for TypeSourceUnionRefDynamic { }
 
 impl AspectBind for TypeSourceUnionRefDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -328,8 +328,8 @@ impl AspectConsumeDynamic for TypeSourceUnionRefDynamic {
 }
 
 impl AspectInitialBind for TypeSourceUnionRefDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeSourceUnionRefDynamic),
         })

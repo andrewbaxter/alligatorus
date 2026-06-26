@@ -12,9 +12,9 @@ use {
             TargetBindSub,
             typecheck_convert,
             value::{
-                type_tuple::scope_entry::ScopeEntryValue,
+                type_tuple::binding::BindingValue,
                 type_null::dynamic::TypeNullDynamic,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -35,7 +35,7 @@ use {
             Type,
         },
         r#gen::{
-            ScopeEntry,
+            Binding,
             aspect_bind_dynamic_get_maybe,
             aspect_consume_dynamic_get,
             aspect_stack_value_dynamic_get,
@@ -68,7 +68,7 @@ pub(crate) fn bind_via_target(
     xx: &ExprContext,
     loc: QExprId,
     cv: CodeValue,
-) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+) -> EResult<(Code, Box<dyn Binding>)> {
     let vtype = match cv.value.type_(xx, loc).into_res() {
         Ok(v) => v,
         Err(e) => return EResult {
@@ -88,7 +88,7 @@ pub(crate) fn bind_via_target(
         };
         return EResult {
             errors,
-            v: Some((cv.code, Box::new(ScopeEntryValue { value }) as Box<dyn ScopeEntry>)),
+            v: Some((cv.code, Box::new(BindingValue { value }) as Box<dyn Binding>)),
         };
     }
     let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
@@ -102,10 +102,10 @@ pub(crate) fn bind_via_target(
         },
         Ok(Some(sub)) => {
             let (code, js_key) = xx.target.bind(xx, loc, sub);
-            EResult::ok((code, Box::new(ScopeEntryDynamicBinding {
+            EResult::ok((code, Box::new(BindingDynamicBinding {
                 dynamic_key: js_key,
                 type_: vtype,
-            }) as Box<dyn ScopeEntry>))
+            }) as Box<dyn Binding>))
         },
         Ok(None) => {
             EResult::err(loc, format!("Type ({}) returned None from AspectBindDynamic", vtype.desc()))

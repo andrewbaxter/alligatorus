@@ -31,7 +31,7 @@ pub(crate) enum BuiltinInterfaceKind {
     AspectField,
     AspectFunction,
     CodeDyn,
-    ScopeEntry,
+    Binding,
     Target,
     Type,
     Value,

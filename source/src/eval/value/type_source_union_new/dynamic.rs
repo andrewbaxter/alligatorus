@@ -22,7 +22,7 @@ use {
                     ValueAnyConst,
                 },
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -39,7 +39,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -51,7 +51,7 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectStackValueDynamic,
-            ScopeEntry,
+            Binding,
             TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -77,7 +77,7 @@ pub(crate) struct TypeSourceUnionNewDynamic;
 impl Aspect for TypeSourceUnionNewDynamic { }
 
 impl AspectBind for TypeSourceUnionNewDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -95,8 +95,8 @@ impl AspectConsumeDynamic for TypeSourceUnionNewDynamic {
 }
 
 impl AspectInitialBind for TypeSourceUnionNewDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeSourceUnionNewDynamic),
         })

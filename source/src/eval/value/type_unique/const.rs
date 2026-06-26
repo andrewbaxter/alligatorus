@@ -22,7 +22,7 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 value_bool::r#const::ValueBoolConst,
             },
         },
@@ -35,7 +35,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -45,7 +45,7 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectOperatorEq,
-            ScopeEntry,
+            Binding,
             UNIQUE_EQ_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -65,12 +65,12 @@ use {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(crate) struct ArtifactUnique;
 
-pub(crate) struct ScopeEntryUniqueDualMode {
-    pub dynamic_key: ScopeEntryId,
+pub(crate) struct BindingUniqueDualMode {
+    pub dynamic_key: BindingId,
     pub unique: Unique,
 }
 
-impl ScopeEntry for ScopeEntryUniqueDualMode {
+impl Binding for BindingUniqueDualMode {
     fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
@@ -89,7 +89,7 @@ pub(crate) struct TypeUnique;
 impl Aspect for TypeUnique { }
 
 impl AspectBind for TypeUnique {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
@@ -102,7 +102,7 @@ impl AspectBind for TypeUnique {
         return EResult {
             errors,
             v: Some(
-                (cv.code, Box::new(super::super::type_tuple::scope_entry::ScopeEntryValue { value }) as Box<dyn ScopeEntry>),
+                (cv.code, Box::new(super::super::type_tuple::binding::BindingValue { value }) as Box<dyn Binding>),
             ),
         };
     }
@@ -115,8 +115,8 @@ impl AspectConsumeDynamic for TypeUnique {
 }
 
 impl AspectInitialBind for TypeUnique {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeUnique),
         })

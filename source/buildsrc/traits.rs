@@ -86,14 +86,14 @@ pub fn specs() -> Vec<InterfaceSpec> {
             ],
         },
         InterfaceSpec {
-            name: "scope_entry",
+            name: "binding",
             builtin_unique_id: 2005,
             scope_id: 3005,
             field_prefix: "se",
-            kind: "ScopeEntry",
+            kind: "Binding",
             description: None,
             register_in_scope: true,
-            rust_trait_name: Some("ScopeEntry"),
+            rust_trait_name: Some("Binding"),
             methods: vec![Method {
                 name: "use_",
                 ret_type: TypeRef::via_push(quote!(crate::langhelp::CodeValue)),
@@ -119,7 +119,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 //. .
                 Method {
                     name: "bind",
-                    ret_type: TypeRef::via_push(quote!((crate::langhelp::Code, crate::langhelp::ScopeEntryId))),
+                    ret_type: TypeRef::via_push(quote!((crate::langhelp::Code, crate::langhelp::BindingId))),
                     args: MethodArgs::Rust(MethodSig {
                         context: vec![
                             ("xx", quote!(&crate::langhelp::ExprContext)),

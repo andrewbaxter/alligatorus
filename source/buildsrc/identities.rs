@@ -43,7 +43,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         ("CVE_GET_VALUE_FN_SCOPE_ID", 7005),
         ("DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID", 7006),
         ("DATA_INSTANCE_TO_CODE_FN_SCOPE_ID", 7007),
-        ("DATA_INSTANCE_TO_SCOPE_ENTRY_FN_SCOPE_ID", 7008),
+        ("DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID", 7008),
         ("DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID", 7009),
         ("DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID", 7010),
         ("DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID", 7011),
@@ -66,7 +66,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         local_consts.push(quote!{
             pub(
                 crate
-            ) const #name_ident: crate:: langhelp:: ScopeEntryId = crate:: langhelp:: ScopeEntryId:: Builtin(#scope_id);
+            ) const #name_ident: crate:: langhelp:: BindingId = crate:: langhelp:: BindingId:: Builtin(#scope_id);
         });
     }
     out.extend(quote!{

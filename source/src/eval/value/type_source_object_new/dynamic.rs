@@ -24,7 +24,7 @@ use {
                     ValueAnyConst,
                 },
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_source_object::{
                     SourceDataMethodData,
                     SourceObjectData,
@@ -46,7 +46,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -59,7 +59,7 @@ use {
             AspectLift,
             AspectStackValueDynamic,
             DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -82,7 +82,7 @@ pub(crate) struct TypeSourceObjectNewDynamic;
 impl Aspect for TypeSourceObjectNewDynamic { }
 
 impl AspectBind for TypeSourceObjectNewDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -100,8 +100,8 @@ impl AspectConsumeDynamic for TypeSourceObjectNewDynamic {
 }
 
 impl AspectInitialBind for TypeSourceObjectNewDynamic {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeSourceObjectNewDynamic),
         })

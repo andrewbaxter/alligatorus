@@ -31,7 +31,7 @@ use {
             value::{
                 type_pull::r#const::TypePull,
                 type_root::r#const::ExporterRootDelegate,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_source_interface::{
                     BuiltinInterfaceKind,
                     SourceInterfaceData,
@@ -57,7 +57,7 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -73,7 +73,7 @@ use {
             AspectStackValueDynamic,
             AspectType,
             AspectPostDeserialize,
-            ScopeEntry,
+            Binding,
             aspect_artifact_aspect_id,
             aspect_artifact_get_maybe,
             aspect_bind_aspect_id,
@@ -130,7 +130,7 @@ impl AspectArtifact for TypeSourceObjectConst {
 }
 
 impl AspectBind for TypeSourceObjectConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -189,7 +189,7 @@ impl AspectConsumeDynamic for TypeSourceObjectConst {
         let mut object_fields: Vec<(String, CodeDynamic)> =
             vec![(ConstKey::String(self.data.data_field.clone()).to_str(), underlying_js)];
         for method in self.data.methods.borrow().iter() {
-            let method_id = method.scope_entry_id.get().expect("Method scope_entry ID not allocated");
+            let method_id = method.binding_id.get().expect("Method binding ID not allocated");
             object_fields.push((ConstKey::String(method.field_name.clone()).to_str(), CodeDynamic {
                 loc,
                 type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
@@ -200,7 +200,7 @@ impl AspectConsumeDynamic for TypeSourceObjectConst {
             for method_impl in &impl_data.method_impls {
                 let iface_method = &iface_methods[method_impl.interface_method_index];
                 let method_id =
-                    method_impl.scope_entry_id.get().expect("Interface method impl scope_entry ID not allocated");
+                    method_impl.binding_id.get().expect("Interface method impl binding ID not allocated");
                 object_fields.push((ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
@@ -256,8 +256,8 @@ impl AspectField for TypeSourceObjectConst {
 }
 
 impl AspectInitialBind for TypeSourceObjectConst {
-    fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key: dynamic_key,
             type_: Rc::new(TypeSourceObjectConst { data: self.data.clone() }),
         })
@@ -430,10 +430,10 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                                             &m.captured_externals,
                                         ),
                                     ),
-                                    scope_entry_id: std::cell::Cell::new(
-                                        Some(ScopeEntryId::Def(def_set_id, m.entry_id)),
+                                    binding_id: std::cell::Cell::new(
+                                        Some(BindingId::Def(def_set_id, m.entry_id)),
                                     ),
-                                    inner_scope_entry_id: std::cell::Cell::new(None),
+                                    inner_binding_id: std::cell::Cell::new(None),
                                 })
                             }).collect();
                             *dt_for_finalizer.methods.borrow_mut() = methods;
@@ -449,7 +449,7 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                                         Some(BuiltinInterfaceKind::AspectField) => builtin_ifaces
                                             .aspect_field
                                             .clone(),
-                                        Some(BuiltinInterfaceKind::ScopeEntry) => builtin_ifaces.scope_entry.clone(),
+                                        Some(BuiltinInterfaceKind::Binding) => builtin_ifaces.binding.clone(),
                                         Some(BuiltinInterfaceKind::Target) => builtin_ifaces.target.clone(),
                                         Some(BuiltinInterfaceKind::CodeDyn) => builtin_ifaces.code_dyn.clone(),
                                         None => {
@@ -496,10 +496,10 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                                                     &m.captured_externals,
                                                 ),
                                             ),
-                                            scope_entry_id: std::cell::Cell::new(
-                                                Some(ScopeEntryId::Def(def_set_id, m.entry_id)),
+                                            binding_id: std::cell::Cell::new(
+                                                Some(BindingId::Def(def_set_id, m.entry_id)),
                                             ),
-                                            inner_scope_entry_id: std::cell::Cell::new(None),
+                                            inner_binding_id: std::cell::Cell::new(None),
                                         }
                                     }).collect();
                                     Some(super::SourceObjectInterfaceImplData {
@@ -580,8 +580,8 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                 if let Some(errs) = ret_art.errors.take() {
                     push_err(&mut *errors_for_closure.borrow_mut(), errs);
                 }
-                let scope_idx = match m.scope_entry_id.get() {
-                    Some(ScopeEntryId::Def(_, idx)) => idx,
+                let scope_idx = match m.binding_id.get() {
+                    Some(BindingId::Def(_, idx)) => idx,
                     _ => 0,
                 };
                 let captured_externals =
@@ -594,7 +594,7 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                     eprintln!(
                         "DBG serialize data-type method '{}' (scope_id={:?}) WITHOUT compiled_source",
                         m.name.as_str(),
-                        m.scope_entry_id.get(),
+                        m.binding_id.get(),
                     );
                     String::new()
                 });
@@ -629,8 +629,8 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                     },
                 };
                 let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> = impl_data.method_impls.iter().map(|m| {
-                    let scope_idx = match m.scope_entry_id.get() {
-                        Some(ScopeEntryId::Def(_, idx)) => idx,
+                    let scope_idx = match m.binding_id.get() {
+                        Some(BindingId::Def(_, idx)) => idx,
                         _ => 0,
                     };
                     let captured_externals =
@@ -643,7 +643,7 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                         panic!(
                             "serialize interface method_impl (interface_method_index={}, scope_id={:?}) without compiled_source",
                             m.interface_method_index,
-                            m.scope_entry_id.get(),
+                            m.binding_id.get(),
                         )
                     });
                     ArtifactDataDefSetInterfaceMethodImpl {

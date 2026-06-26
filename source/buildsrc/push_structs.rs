@@ -143,8 +143,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             impl_expr: RefCell::new(None),
                             arg_type: RefCell::new(None),
                             ret_type: RefCell::new(None),
-                            scope_entry_id: Cell::new(
-                                Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
+                            binding_id: Cell::new(
+                                Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)
                             ),
                             artifact_id: RefCell::new(None),
                             compiled_source: RefCell::new(None),
@@ -529,10 +529,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             arg_type: RefCell::new(None),
                             impl_expr: RefCell::new(None),
                             ret_type: RefCell::new(None),
-                            scope_entry_id: Cell::new(
-                                Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
+                            binding_id: Cell::new(
+                                Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)
                             ),
-                            inner_scope_entry_id: Cell::new(None),
+                            inner_binding_id: Cell::new(None),
                             field_name,
                             compiled_source: RefCell::new(None),
                             captured_externals: RefCell::new(Vec::new()),
@@ -569,10 +569,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                                         compiled_source: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
-                                        scope_entry_id: Cell::new(
-                                            Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
+                                        binding_id: Cell::new(
+                                            Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)
                                         ),
-                                        inner_scope_entry_id: Cell::new(None),
+                                        inner_binding_id: Cell::new(None),
                                     });
                                 },
                                 None => {
@@ -667,10 +667,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
                                     compiled_source: RefCell::new(None),
                                     captured_externals: RefCell::new(Vec::new()),
-                                    scope_entry_id: Cell::new(
-                                        Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, aspect_id_entry_id)),
+                                    binding_id: Cell::new(
+                                        Some(crate::langhelp::BindingId::Def(ds.def_set_id, aspect_id_entry_id)),
                                     ),
-                                    inner_scope_entry_id: Cell::new(None),
+                                    inner_binding_id: Cell::new(None),
                                 });
                                 continue;
                             }
@@ -684,10 +684,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                                         compiled_source: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
-                                        scope_entry_id: Cell::new(
-                                            Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),
+                                        binding_id: Cell::new(
+                                            Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id)),
                                         ),
-                                        inner_scope_entry_id: Cell::new(None),
+                                        inner_binding_id: Cell::new(None),
                                     });
                                 },
                                 None => {
@@ -1116,7 +1116,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     xx: &crate::langhelp::ExprContext,
                     loc: crate::langhelp::QExprId,
                     cv: crate::langhelp::CodeValue,
-                ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::ScopeEntry>)> {
+                ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::Binding>)> {
                     crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
                 }
             }
@@ -1216,8 +1216,8 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                         compiled_source: RefCell::new(None),
                         captured_externals: RefCell::new(Vec::new()),
-                        scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),),
-                        inner_scope_entry_id: Cell::new(None),
+                        binding_id: Cell::new(Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id)),),
+                        inner_binding_id: Cell::new(None),
                     });
                 },
                 None => {

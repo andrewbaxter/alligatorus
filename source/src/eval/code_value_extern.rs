@@ -25,7 +25,7 @@ use {
                 type_any::r#const::TypeAnyConst,
                 type_code_struct::dynamic::TypeCodeStructDynamic,
                 type_root::r#const::TypeRoot,
-                type_scope_entry::dynamic::ScopeEntryDynamicBinding,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,
                 value_dynamic::{
                     ValueDynamic,
@@ -57,7 +57,7 @@ use {
             CVE_EXTRACT_FN_SCOPE_ID,
             CVE_GET_CODE_ENUM_FN_SCOPE_ID,
             CVE_GET_VALUE_FN_SCOPE_ID,
-            ScopeEntry,
+            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -128,7 +128,7 @@ pub(crate) struct TypeCodeValueExternDynamic;
 impl Aspect for TypeCodeValueExternDynamic { }
 
 impl AspectBind for TypeCodeValueExternDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }
@@ -217,8 +217,8 @@ impl AspectField for TypeCodeValueExternDynamic {
 }
 
 impl AspectInitialBind for TypeCodeValueExternDynamic {
-    fn initial_bind(&self, dynamic_key: crate::langhelp::ScopeEntryId) -> Box<dyn ScopeEntry> {
-        Box::new(ScopeEntryDynamicBinding {
+    fn initial_bind(&self, dynamic_key: crate::langhelp::BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
             dynamic_key,
             type_: Rc::new(TypeCodeValueExternDynamic),
         })
@@ -377,7 +377,7 @@ pub(crate) struct TypeExprContextPushDynamic;
 impl Aspect for TypeExprContextPushDynamic { }
 
 impl AspectBind for TypeExprContextPushDynamic {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn ScopeEntry>)> {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         bind_via_target(xx, loc, cv)
     }
 }

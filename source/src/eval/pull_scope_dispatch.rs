@@ -14,25 +14,25 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
         },
         r#gen::{
-            IM_SCOPE_ENTRY_USE_FIELD,
-            ScopeEntry,
+            IM_BINDING_USE_FIELD,
+            Binding,
             Target,
         },
     },
     std::rc::Rc,
 };
 
-pub(crate) struct PullScopeEntry {
+pub(crate) struct PullBinding {
     pub instance: v8::Global<v8::Object>,
 }
 
-impl ScopeEntry for PullScopeEntry {
+impl Binding for PullBinding {
     fn use_(&self, xx: &ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
-        let scope_ptr = xx.vx.dynamic_scope.get().expect("PullScopeEntry::use_: no active dynamic scope");
+        let scope_ptr = xx.vx.dynamic_scope.get().expect("PullBinding::use_: no active dynamic scope");
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };
@@ -40,16 +40,16 @@ impl ScopeEntry for PullScopeEntry {
         let method_key =
             v8::String::new(
                 scope,
-                &ConstKey::String(IM_SCOPE_ENTRY_USE_FIELD.to_string()).to_str(),
-            ).expect("PullScopeEntry::use_: alloc _im_se0 key");
+                &ConstKey::String(IM_BINDING_USE_FIELD.to_string()).to_str(),
+            ).expect("PullBinding::use_: alloc _im_se0 key");
         let method_val =
-            instance.get(scope, method_key.into()).expect("PullScopeEntry::use_: instance missing _im_se0");
+            instance.get(scope, method_key.into()).expect("PullBinding::use_: instance missing _im_se0");
         let method_fn =
-            v8::Local::<v8::Function>::try_from(method_val).expect("PullScopeEntry::use_: _im_se0 not a function");
+            v8::Local::<v8::Function>::try_from(method_val).expect("PullBinding::use_: _im_se0 not a function");
         let recv: v8::Local<v8::Value> = instance.into();
         let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
         let result =
-            method_fn.call(scope, recv, &[null_arg]).expect("PullScopeEntry::use_: _im_se0 returned no value");
+            method_fn.call(scope, recv, &[null_arg]).expect("PullBinding::use_: _im_se0 returned no value");
         <CodeValue as Push>::from_dynamic(scope, result)
     }
 }
@@ -59,7 +59,7 @@ pub(crate) struct PullTarget {
 }
 
 impl Target for PullTarget {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, BindingId) {
         let _ = &self.instance;
         TargetDynamic.bind(xx, loc, sub)
     }

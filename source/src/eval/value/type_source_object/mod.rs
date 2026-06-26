@@ -18,7 +18,7 @@ use {
             from_dynamic_ref,
             push::Push,
             render_code,
-            scope_entry_id_dynamic_key,
+            binding_id_dynamic_key,
             to_dynamic_ext,
             typecheck_convert,
             value,
@@ -36,7 +36,7 @@ use {
             ExprSubErr,
             External,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
             Unique,
             Value,
@@ -58,14 +58,14 @@ use {
 
 pub(crate) struct SourceDataMethodData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
-    pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
+    pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub field_name: String,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
-    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub inner_binding_id: Cell<Option<BindingId>>,
     pub name: String,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
-    pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub binding_id: Cell<Option<BindingId>>,
 }
 
 impl SourceDataMethodData {
@@ -95,7 +95,7 @@ impl SourceDataMethodData {
                 ExprSubErr::Opaque(format!("Data type '{}' method '{}' is missing a return type", dt_name, self.name)),
             ],
         }])?;
-        let method_id = self.scope_entry_id.get().unwrap();
+        let method_id = self.binding_id.get().unwrap();
         let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
@@ -104,10 +104,10 @@ impl SourceDataMethodData {
             dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
-        let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-        self.inner_scope_entry_id.set(Some(self_id));
-        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-        let outer_id = ScopeEntryId::Builtin(usize::MAX);
+        let self_id = BindingId::Local(body_ex.next_local_id.next());
+        self.inner_binding_id.set(Some(self_id));
+        let arg_id = BindingId::Local(body_ex.next_local_id.next());
+        let outer_id = BindingId::Builtin(usize::MAX);
         let mut body_scope = build_builtin_scope(xx, root_loc, &builtin_scope_entries)?;
         if let Some(self_ib) = aspect_initial_bind_get_maybe(xx, underlying_type.as_ref()) {
             body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
@@ -139,15 +139,15 @@ impl SourceDataMethodData {
         let impl_code = impl_cv.code.cast::<CodeDynamic>().into_res()?.unwrap().clone();
         let captured = method_xx.vx.externals.borrow().clone();
         let mut code1 = DynamicSourceBuilder::default();
-        let func_name = scope_entry_id_dynamic_key(method_id);
-        let self_key = scope_entry_id_dynamic_key(self_id);
+        let func_name = binding_id_dynamic_key(method_id);
+        let self_key = binding_id_dynamic_key(self_id);
         code1.push(root_loc, format!("var {};", func_name));
         code1.push(root_loc, "{".to_string());
         for (id, _) in &captured {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             code1.push(root_loc, format!("let {} = globalThis[\"{}_{}\"];", local_key, func_name, local_key));
         }
-        let arg_key = scope_entry_id_dynamic_key(arg_id);
+        let arg_key = binding_id_dynamic_key(arg_id);
         code1.push(root_loc, format!("{} = function({}) {{", func_name, arg_key));
         code1.push(
             root_loc,
@@ -158,7 +158,7 @@ impl SourceDataMethodData {
             ),
         );
         if code_uses_binding(&impl_code, outer_id) {
-            code1.push(root_loc, format!("let {} = this;", scope_entry_id_dynamic_key(outer_id)));
+            code1.push(root_loc, format!("let {} = this;", binding_id_dynamic_key(outer_id)));
         }
         let body_var = render_code(&mut code1, &impl_code);
         code1.push(root_loc, format!("return {};", body_var));
@@ -223,12 +223,12 @@ pub(crate) struct SourceObjectInterfaceImplData {
 
 pub(crate) struct SourceObjectInterfaceMethodImplData {
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
-    pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
+    pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
-    pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub inner_binding_id: Cell<Option<BindingId>>,
     pub interface_method_index: usize,
-    pub scope_entry_id: Cell<Option<ScopeEntryId>>,
+    pub binding_id: Cell<Option<BindingId>>,
 }
 
 impl SourceObjectInterfaceMethodImplData {
@@ -254,7 +254,7 @@ impl SourceObjectInterfaceMethodImplData {
             let iface_method = &iface_methods[self.interface_method_index];
             iface_method.ret_type.borrow().clone().unwrap()
         };
-        let method_id = self.scope_entry_id.get().unwrap();
+        let method_id = self.binding_id.get().unwrap();
         let builtin_kind = interface.builtin_kind;
         let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
         let body_ex = Rc::new(EvalContext {
@@ -264,10 +264,10 @@ impl SourceObjectInterfaceMethodImplData {
             dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
-        let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-        self.inner_scope_entry_id.set(Some(self_id));
-        let outer_id = ScopeEntryId::Local(body_ex.next_local_id.next());
-        let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
+        let self_id = BindingId::Local(body_ex.next_local_id.next());
+        self.inner_binding_id.set(Some(self_id));
+        let outer_id = BindingId::Local(body_ex.next_local_id.next());
+        let arg_id = BindingId::Local(body_ex.next_local_id.next());
         let mut body_scope = build_builtin_scope(xx, root_loc, &builtin_scope_entries)?;
         let outer_type: Rc<dyn Type> =
             Rc::new(super::type_source_object::dynamic::TypeSourceObjectDynamic { data: dt_data.clone() });
@@ -302,7 +302,7 @@ impl SourceObjectInterfaceMethodImplData {
             },
             Some(super::type_source_interface::BuiltinInterfaceKind::AspectFunction) |
             Some(super::type_source_interface::BuiltinInterfaceKind::AspectField) |
-            Some(super::type_source_interface::BuiltinInterfaceKind::ScopeEntry) |
+            Some(super::type_source_interface::BuiltinInterfaceKind::Binding) |
             Some(super::type_source_interface::BuiltinInterfaceKind::Target) => {
                 if let Some(self_ib) = aspect_initial_bind_get_maybe(xx, underlying_type.as_ref()) {
                     body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
@@ -317,7 +317,7 @@ impl SourceObjectInterfaceMethodImplData {
                     (Some(super::type_source_interface::BuiltinInterfaceKind::AspectField), "field_type_opt") => {
                         vec!["key"]
                     },
-                    (Some(super::type_source_interface::BuiltinInterfaceKind::ScopeEntry), "use") => {
+                    (Some(super::type_source_interface::BuiltinInterfaceKind::Binding), "use") => {
                         vec!["loc", "code"]
                     },
                     (Some(super::type_source_interface::BuiltinInterfaceKind::Target), "bind") => {
@@ -393,18 +393,18 @@ impl SourceObjectInterfaceMethodImplData {
         let captured = method_xx.vx.externals.borrow().clone();
         let is_arg_method = matches!(builtin_kind, Some(super::type_source_interface::BuiltinInterfaceKind::Type));
         let mut code1 = DynamicSourceBuilder::default();
-        let func_name = scope_entry_id_dynamic_key(method_id);
-        let self_key = scope_entry_id_dynamic_key(self_id);
+        let func_name = binding_id_dynamic_key(method_id);
+        let self_key = binding_id_dynamic_key(self_id);
         code1.push(root_loc, format!("var {};", func_name));
         code1.push(root_loc, "{".to_string());
         for (id, _) in &captured {
-            let local_key = scope_entry_id_dynamic_key(*id);
+            let local_key = binding_id_dynamic_key(*id);
             code1.push(root_loc, format!("let {} = globalThis[\"{}_{}\"];", local_key, func_name, local_key));
         }
         if is_arg_method {
             code1.push(root_loc, format!("{} = function({}) {{", func_name, self_key));
         } else {
-            let arg_key = scope_entry_id_dynamic_key(arg_id);
+            let arg_key = binding_id_dynamic_key(arg_id);
             code1.push(root_loc, format!("{} = function({}) {{", func_name, arg_key));
             code1.push(
                 root_loc,
@@ -416,7 +416,7 @@ impl SourceObjectInterfaceMethodImplData {
             );
         }
         if code_uses_binding(&impl_code, outer_id) {
-            code1.push(root_loc, format!("let {} = this;", scope_entry_id_dynamic_key(outer_id)));
+            code1.push(root_loc, format!("let {} = this;", binding_id_dynamic_key(outer_id)));
         }
         let body_var = render_code(&mut code1, &impl_code);
         code1.push(root_loc, format!("return {};", body_var));

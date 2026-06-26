@@ -14,10 +14,10 @@ use {
             ExprContext,
             ExprErr,
             QExprId,
-            ScopeEntryId,
+            BindingId,
             Type,
         },
-        r#gen::ScopeEntry,
+        r#gen::Binding,
     },
     std::{
         collections::BTreeMap,
@@ -33,19 +33,19 @@ use {
 pub(crate) enum RecordScopeField {
     Dynamic(Rc<dyn Type>),
     Error(Vec<ExprErr>),
-    Scope(Box<dyn ScopeEntry>),
+    Scope(Box<dyn Binding>),
 }
 
-pub(crate) struct ScopeEntryRecordBound {
+pub(crate) struct BindingRecordBound {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
-    pub js_key: Option<ScopeEntryId>,
+    pub js_key: Option<BindingId>,
 }
 
-impl ScopeEntry for ScopeEntryRecordBound {
+impl Binding for BindingRecordBound {
     fn use_(&self, xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         let has_dynamic = self.fields.values().any(|f| matches!(f, RecordScopeField::Dynamic(_)));
         let (use_code, base) = if has_dynamic {
-            let js_key = self.js_key.expect("ScopeEntryRecordDynamic with dynamic fields must have js_key");
+            let js_key = self.js_key.expect("BindingRecordDynamic with dynamic fields must have js_key");
             (Code {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(CodeDynamic {
@@ -90,12 +90,12 @@ impl ScopeEntry for ScopeEntryRecordBound {
     }
 }
 
-pub(crate) struct ScopeEntryRecordDynamic {
-    pub dynamic_key: ScopeEntryId,
+pub(crate) struct BindingRecordDynamic {
+    pub dynamic_key: BindingId,
     pub fields: BTreeMap<ConstKey, Rc<dyn Type>>,
 }
 
-impl ScopeEntry for ScopeEntryRecordDynamic {
+impl Binding for BindingRecordDynamic {
     fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
         CodeValue {
             code: Code {
