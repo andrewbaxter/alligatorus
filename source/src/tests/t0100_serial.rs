@@ -45,7 +45,6 @@ e0;"#]);
 fn test_00200_import_definitionset() {
     setup_v8();
     let (gx, test_artifacts) = new_gx_with_artifacts([
-        //. .
         ("other", {
             let mb = ModuleBuilder::default();
             SourceModule::V1(

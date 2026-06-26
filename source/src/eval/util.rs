@@ -24,7 +24,6 @@ macro_rules! er_all{
         $($i: ident = $e: expr,) *
     }) => {
         $(let $i = $v.must_er($e);) * 
-        //. .
         $(let $i = $i ?;) *
     };
 }

@@ -86,8 +86,6 @@ impl crate
     }
 }
 
-// TODO(porting): export_ctor removed pending export_type_ref design.
-// Constructor types are now serialized as part of the parent DefinitionSet.
 impl Aspect for TypeSourceObjectNewConst { }
 
 impl AspectBind for TypeSourceObjectNewConst {

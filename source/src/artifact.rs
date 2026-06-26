@@ -71,7 +71,6 @@ pub(crate) trait ArtifactExporter {
         &self,
         xx: &ExprContext,
         loc: QExprId,
-        // None for inline artifacts (e.g. sometimes trivial exporters)
         id: Option<ArtifactIdSource>,
         data: serde_json::Value,
     ) -> EResult<Rc<dyn ExporterAny>>;

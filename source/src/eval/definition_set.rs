@@ -421,7 +421,6 @@ pub(crate) fn export_captured_externals(
     }).collect()
 }
 
-// # ==================================================================== Definition set serialization delegates to member self_export impls
 pub(crate) fn export_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Artifact {
     impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &set.artifact_id, || {
         use crate::artifact::export_artifact;

@@ -175,8 +175,6 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
         id: Option<&crate::artifact::ArtifactIdSource>,
         data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        // Delegate to the def-set deserializer; wrap the resulting Gc`<DefinitionSet>`
-        // into a TypeSourceExportsLiftedConst.
         let any = crate::eval::definition_set::definition_set_from_artifact_data(xx, loc, id, data);
         let mut errors = any.errors;
         let Some(any) = any.v else {

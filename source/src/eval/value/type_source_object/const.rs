@@ -109,8 +109,6 @@ fn read_artifact_has_type_iface(
     _xx: &ExprContext,
     dt_data: &dumpster::unsync::Gc<super::SourceObjectData>,
 ) -> bool {
-    // After the artifact restructure, interface_impls are always inline on the data
-    // type.
     dt_data.interface_impls.borrow().iter().any(|impl_data| {
         impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
     })

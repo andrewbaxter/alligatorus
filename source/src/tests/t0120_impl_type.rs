@@ -24,11 +24,9 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                     mb.bind("u", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
                     mb.call(mb.field(mb.scope_use("u"), mb.str("set_inner")), mb.scope_use("null")),
                     mb.call(mb.field(mb.scope_use("u"), mb.str("value")), iface_methods(mb, vec![
-                        //. .
                         ("type", mb.scope_use("inner")),
                     ])),
                     mb.call(mb.field(mb.scope_use("u"), mb.str("type")), iface_methods(mb, vec![
-                        //. .
                         (
                             "can_cast_from",
                             mb.seq(
@@ -132,7 +130,6 @@ fn test_00100_impl_type() {
 fn test_00200_impl_type_import() {
     setup_v8();
     let gx = new_gx([
-        //. .
         ("other", SourceModule::V1({
             let mb = ModuleBuilder::default();
             build_upper_type(&mb)

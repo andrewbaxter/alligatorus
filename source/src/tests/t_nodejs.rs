@@ -47,14 +47,12 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
     exprs.push(mb.bind("nvalue_base", mb.call(mb.field(mb.scope_use("d"), mb.str("union")), mb.tuple(vec![]))));
     exprs.push(
         mb.bind("nvalue_binding", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
-            //. .
             mb.str("binding"),
             mb.scope_use("string"),
         ]))),
     );
     exprs.push(
         mb.bind("nvalue_expr", mb.call(mb.field(mb.scope_use("nvalue_base"), mb.str("variant")), mb.tuple(vec![
-            //. .
             mb.str("expr"),
             mb.scope_use("null"),
         ]))),
@@ -63,7 +61,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         mb.bind("nvalue", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs value"))),
     );
     exprs.push(mb.call(mb.field(mb.scope_use("nvalue"), mb.str("set_inner")), mb.record(vec![
-        //. .
         ("base", mb.field(mb.scope_use("nvalue_base"), mb.str("type"))),
         ("type", mb.scope_use("type")),
     ])));
@@ -101,7 +98,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         mb.call(
             mb.field(mb.scope_use("ntype_str"), mb.str("impl_interface")),
             mb.tuple(vec![mb.field(mb.scope_use("aspect_consume_nodejs"), mb.str("type")), iface_methods(mb, vec![
-                //. .
                 ("to_code", nvalue_to_code(mb, mb.scope_use("arg"))),
             ])]),
         ),
@@ -110,7 +106,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         mb.bind("ntype_func", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("nodejs function"))),
     );
     exprs.push(mb.call(mb.field(mb.scope_use("ntype_func"), mb.str("set_inner")), mb.record(vec![
-        //. .
         ("arg", mb.scope_use("type")),
         ("ret", mb.scope_use("type")),
     ])));
@@ -479,7 +474,6 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
         mb.call(
             mb.field(mb.scope_use("napp_build"), mb.str("impl")),
             mb.tuple(vec![mb.tuple(vec![]), mb.scope_use("string"), mb.stage(mb.seq(vec![
-                //. .
                 mb.match_(
                     mb.field(mb.scope_use("inner"), mb.str("root")),
                     mb.str("root"),
@@ -640,7 +634,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             mb.bind(
                 "code_tu_call",
                 mb.call(mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")), mb.tuple(vec![
-                    //. .
                     mb.str("call"),
                     mb.record(vec![("func", mb.scope_use("code")), ("arg", mb.scope_use("code"))]),
                 ])),
@@ -655,7 +648,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             mb.bind(
                 "code_tu_field",
                 mb.call(mb.field(mb.scope_use("code_tu_builder"), mb.str("variant")), mb.tuple(vec![
-                    //. .
                     mb.str("field"),
                     mb.record(vec![("base", mb.scope_use("code")), ("field", mb.scope_use("code"))]),
                 ])),
@@ -765,15 +757,12 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             ),
             mb.bind("render_inner", mb.field(mb.scope_use("render_inner_builder"), mb.str("func"))),
             mb.call(mb.field(mb.scope_use("render_inner_builder"), mb.str("impl")), mb.tuple(vec![mb.record(vec![
-                //. .
                 ("context", mb.record(vec![
-                    //. .
                     ("expr_count", mb.scope_use("number")),
                     ("out", mb.call(mb.scope_use("list"), mb.scope_use("string"))),
                 ])),
                 ("code", mb.scope_use("code")),
             ]), mb.scope_use("string"), mb.stage(mb.seq(vec![
-                //. .
                 mb.bind(
                     "key",
                     mb.call(
@@ -781,7 +770,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                             mb.call(
                                 mb.field(mb.call(mb.scope_use("list"), mb.scope_use("string")), mb.str("new")),
                                 mb.tuple(vec![
-                                    //. .
                                     mb.str("e"),
                                     mb.call(
                                         mb.field(
@@ -825,16 +813,12 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                     mb.str("code"),
                     vec![
-                        //. .
                         (mb.str("call"), mb.seq(vec![
-                            //. .
                             mb.bind("func", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
-                                //. .
                                 ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
                                 ("code", mb.field(mb.scope_use("code"), mb.str("func"))),
                             ]))),
                             mb.bind("rendered_arg", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
-                                //. .
                                 ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
                                 ("code", mb.field(mb.scope_use("code"), mb.str("arg"))),
                             ]))),
@@ -848,21 +832,17 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
                             mb.call(mb.field(mb.scope_use("value"), mb.str("push")), mb.str(")")),
                         ])),
                         (mb.str("lit_str"), mb.seq(vec![
-                            //. .
                             mb.call(
                                 mb.field(mb.scope_use("value"), mb.str("push")),
                                 mb.call(mb.scope_use("str_to_json"), mb.scope_use("code")),
                             ),
                         ])),
                         (mb.str("field"), mb.seq(vec![
-                            //. .
                             mb.bind("base", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
-                                //. .
                                 ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
                                 ("code", mb.field(mb.scope_use("code"), mb.str("base"))),
                             ]))),
                             mb.bind("field", mb.call(mb.lower(mb.scope_use("render_inner")), mb.record(vec![
-                                //. .
                                 ("context", mb.field(mb.scope_use("arg"), mb.str("context"))),
                                 ("code", mb.field(mb.scope_use("code"), mb.str("field"))),
                             ]))),
@@ -896,9 +876,7 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             mb.call(
                 mb.field(mb.scope_use("render_builder"), mb.str("impl")),
                 mb.tuple(vec![mb.scope_use("code"), mb.scope_use("string"), mb.stage(mb.seq(vec![
-                    //. .
                     mb.bind("context", mb.record(vec![
-                        //. .
                         (
                             "out",
                             mb.call(
@@ -923,7 +901,6 @@ fn build_nodejs_code(mb: &ModuleBuilder) -> SourceExpr {
             ),
             mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
             mb.record(vec![
-                //. .
                 ("type", mb.scope_use("code")),
                 ("call", mb.scope_use("code_call")),
                 ("lit_str", mb.scope_use("code_lit_str")),
@@ -2238,7 +2215,6 @@ e0;"#);
 fn test_0010_nodejs_helloworld() {
     setup_v8();
     let gx = new_gx([
-        //. .
         ("nodejs", SourceModule::V1({
             let mb = ModuleBuilder::default();
             mb.lower(build_nodejs(&mb))
@@ -2246,7 +2222,6 @@ fn test_0010_nodejs_helloworld() {
         ("main", SourceModule::V1({
             let mb = ModuleBuilder::default();
             mb.seq(vec![
-                //. .
                 mb.bind("nodejs", mb.import(mb.str("nodejs"))),
                 mb.bind("app", mb.call(mb.scope_use("nodejs"), mb.tuple(vec![]))),
                 mb.call(

@@ -187,9 +187,6 @@ impl ExporterRootDelegate for TypePull {
         };
         let id_owned = id.clone();
         impl_import_independent_artifact::<ArtifactDataPull>(xx, loc, id, data, move |body: ArtifactDataPull| {
-            // Eagerly deserialize the object dependency so we can construct the TypePull
-            // with a real Gc`<SourceObjectData>`. The cache lookup in import_artifact
-            // ensures the later deps loop reuses the same Gc.
             let dt_any =
                 import_artifact(xx, loc, body.object.clone())
                     .v
