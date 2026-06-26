@@ -99,6 +99,7 @@ pub enum ExporterRoot {
     NumberDynamic,
     NumberValueConst,
     OptionDynamic,
+    OptionVariantConstructorDynamic,
     Pull,
     Record,
     Root,
@@ -157,6 +158,18 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::NumberDynamic => TypeNumberDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::NumberValueConst => ValueNumberConst::self_from_artifact_data(&xx, loc, id_ref, data),
             ExporterRoot::OptionDynamic => TypeOptionDynamic::self_from_artifact_data(&xx, loc, id_ref, data),
+            ExporterRoot::OptionVariantConstructorDynamic => crate
+            ::eval
+            ::value
+            ::type_option
+            ::dynamic
+            ::TypeOptionVariantConstructorDynamic
+            ::self_from_artifact_data(
+                &xx,
+                loc,
+                id_ref,
+                data,
+            ),
             ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_from_artifact_data(
                 &xx,
                 loc,
@@ -272,6 +285,18 @@ impl ArtifactExporter for ExporterRoot {
             ExporterRoot::NumberDynamic => TypeNumberDynamic::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::NumberValueConst => ValueNumberConst::self_to_serial(xx, loc, self_, make_body),
             ExporterRoot::OptionDynamic => TypeOptionDynamic::self_to_serial(xx, loc, self_, make_body),
+            ExporterRoot::OptionVariantConstructorDynamic => crate
+            ::eval
+            ::value
+            ::type_option
+            ::dynamic
+            ::TypeOptionVariantConstructorDynamic
+            ::self_to_serial(
+                xx,
+                loc,
+                self_,
+                make_body,
+            ),
             ExporterRoot::Pull => crate::eval::value::type_pull::r#const::TypePull::self_to_serial(
                 xx,
                 loc,
@@ -414,6 +439,7 @@ impl TypeRoot {
             TypeRoot::NumberConst => Some(ExporterRoot::NumberConst),
             TypeRoot::NumberDynamic => Some(ExporterRoot::NumberDynamic),
             TypeRoot::OptionDynamic => Some(ExporterRoot::OptionDynamic),
+            TypeRoot::OptionVariantConstructorDynamic => Some(ExporterRoot::OptionVariantConstructorDynamic),
             TypeRoot::Pull => Some(ExporterRoot::Pull),
             TypeRoot::Root => Some(ExporterRoot::Root),
             TypeRoot::SourceDataTypeConst => Some(ExporterRoot::SourceDataTypeConst),

@@ -1836,6 +1836,11 @@ fn eval(
                     let impl_expr_value =
                         method_impl.impl_expr.borrow().clone().expect("Interface method impl missing impl_expr");
                     let impl_expr_ast = must_downcast_ref::<expr::Expr>(impl_expr_value.as_ref());
+                    if method_impl.impl_expr_artifact.borrow().is_none() {
+                        if let Ok(snapshot) = crate::eval::expr_artifact::expr_to_artifact(&xx, impl_expr_ast) {
+                            *method_impl.impl_expr_artifact.borrow_mut() = Some(snapshot);
+                        }
+                    }
                     let ret_type: Rc<dyn Type> = {
                         let iface_methods = impl_data.interface.methods.borrow();
                         let iface_method = &iface_methods[method_impl.interface_method_index];

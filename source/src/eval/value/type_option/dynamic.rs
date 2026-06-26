@@ -428,6 +428,67 @@ impl ExporterAny for TypeOptionVariantConstructorDynamic {
     }
 }
 
+impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        let body: super::artifact::ArtifactOptionVariantConstructor = match serde_json::from_value(data) {
+            Ok(v) => v,
+            Err(e) => return EResult::err(loc, e.to_string()),
+        };
+        let element_res = deserialize_type_artifact(xx, loc, body.element_type);
+        let mut errors = element_res.errors;
+        let Some(element_type) = element_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(TypeOptionVariantConstructorDynamic {
+                element_type,
+                is_some: body.is_some,
+            }) as Rc<dyn ExporterAny>),
+        };
+    }
+
+    fn self_to_serial(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = match self_.downcast::<TypeOptionVariantConstructorDynamic>() {
+            Ok(v) => v,
+            Err(_) => return EResult::err(
+                loc,
+                "TypeOptionVariantConstructorDynamic::self_to_serial: type mismatch".to_string(),
+            ),
+        };
+        let element_val: &dyn Value = self_.element_type.as_ref();
+        let element_art = serialize_artifact(xx, loc, element_val);
+        let mut errors = element_art.errors;
+        let Some(element_artifact) = element_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let body = super::artifact::ArtifactOptionVariantConstructor {
+            element_type: element_artifact,
+            is_some: self_.is_some,
+        };
+        return EResult {
+            errors,
+            v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
+        };
+    }
+}
+
 impl Type for TypeOptionVariantConstructorDynamic {
     fn as_value(&self) -> Rc<dyn Value> {
         Rc::new(self.clone())
