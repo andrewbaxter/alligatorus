@@ -141,6 +141,26 @@ impl AspectConsumeDynamic for TypeSourceDataTypeConst {
     }
 }
 
+impl AspectField for TypeSourceDataTypeConst {
+    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
+        if matches!(self_.code.code, crate::langhelp::Code_::None) {
+            return EvalRes::err(
+                loc,
+                format!(
+                    "Field access on a const-bound source data type ({}) requires a dynamic binding; \
+                     imported data type values do not yet carry one",
+                    super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }.desc(),
+                ),
+            );
+        }
+        super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }.field(xx, loc, self_, key)
+    }
+
+    fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
+        super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }.field_type_opt(xx, key)
+    }
+}
+
 impl AspectInitialBind for TypeSourceDataTypeConst {
     fn initial_bind(&self, dynamic_key: ScopeEntryId) -> Box<dyn ScopeEntry> {
         Box::new(ScopeEntryDynamicBinding {
@@ -592,10 +612,7 @@ impl Type for TypeSourceDataTypeConst {
         }
         if *key == aspect_field_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(super::dynamic::TypeSourceDataTypeDynamic { data: self.data.clone() }) as
-                        Box<dyn AspectField>,
-                ),
+                Box::new(Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectField>),
             );
         }
         {
