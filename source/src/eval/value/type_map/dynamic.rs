@@ -24,9 +24,9 @@ use {
                 bind_via_target,
                 dynamic_set,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             typecheck_convert,
             value::{
                 record::{
@@ -258,7 +258,7 @@ impl AspectIterable for TypeMapDynamic {
             let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
             let base_js = erb.must_er(base_consume.to_dynamic(xx, loc, base))?;
             let body_js = match body.code.cast::<CodeDynamic>().into_res() {
-                Ok(Some(js)) => js.clone(),
+                Ok(Some(dynamic_code)) => dynamic_code.clone(),
                 Ok(None) => CodeDynamic {
                     loc,
                     type_: CodeDynamicType::Literal(serde_json::Value::Null)
@@ -408,13 +408,13 @@ impl Push for TypeMapDynamic {
         Rc::new(TypeAnyConst)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeMapDynamic> = from_v8_ref::<Rc<TypeMapDynamic>>(&*value).clone();
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeMapDynamic> = from_dynamic_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, Rc::new(self)).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, Rc::new(self)).into()
     }
 }
 
@@ -528,7 +528,7 @@ impl Type for TypeMapDynamic {
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
-            let mut js_fields = Vec::new();
+            let mut dynamic_fields = Vec::new();
             for (key, field) in record.fields.into_iter() {
                 let display = key.to_str();
                 let key_cv = match &key {
@@ -563,20 +563,20 @@ impl Type for TypeMapDynamic {
                     },
                     RecordField::Dynamic(_) => {
                         return erb.err_new(
-                            format!("Record entry '{}' is dynamic-only, cannot consume directly to JS", display),
+                            format!("Record entry '{}' is dynamic-only, cannot consume directly to dynamic", display),
                         );
                     },
                 };
                 let converted = erb.must_er(typecheck_convert(xx, loc, self.value_type.as_ref(), entry_cv),)?;
                 let js_val = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, converted))?;
-                js_fields.push((key_code, js_val));
+                dynamic_fields.push((key_code, js_val));
             }
             return Ok(CodeValue {
                 code: Code {
                     loc,
                     code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc,
-                        type_: CodeDynamicType::NewMap(CodeDynamicNewMap { fields: js_fields }),
+                        type_: CodeDynamicType::NewMap(CodeDynamicNewMap { fields: dynamic_fields }),
                     })),
                 },
                 value: Rc::new(ValueDynamic {

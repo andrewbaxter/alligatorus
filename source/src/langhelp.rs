@@ -65,7 +65,7 @@ use {
 };
 
 pub(crate) trait Aspect: Any {
-    fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
+    fn dynamic_instance(&self) -> Option<v8::Global<v8::Object>> {
         None
     }
 }
@@ -161,7 +161,7 @@ pub(crate) struct CompileImportContext {
     pub(crate) installed_def_sets: RefCell<HashSet<DefSetId>>,
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
     pub(crate) source_id: SourceId,
-    pub(crate) v8_context: RefCell<Option<v8::Global<v8::Context>>>,
+    pub(crate) dynamic_context: RefCell<Option<v8::Global<v8::Context>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -326,7 +326,7 @@ pub(crate) struct EvalContext {
     pub(crate) externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub(crate) ix: Rc<CompileImportContext>,
     pub(crate) next_local_id: Counter,
-    pub(crate) v8_scope: std
+    pub(crate) dynamic_scope: std
     ::cell
     ::Cell<Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>>,
 }

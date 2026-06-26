@@ -114,8 +114,8 @@ impl AspectBindDynamic for TypeAnyConst {
 
 impl AspectConsumeDynamic for TypeAnyConst {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        if let Some(Some(js)) = cv.code.cast::<CodeDynamic>().v {
-            return EResult::ok(js.clone());
+        if let Some(Some(dynamic_code)) = cv.code.cast::<CodeDynamic>().v {
+            return EResult::ok(dynamic_code.clone());
         }
         let meta_type = match cv.value.type_(xx, loc).into_res() {
             Ok(v) => v,

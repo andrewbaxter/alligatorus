@@ -18,9 +18,9 @@ use {
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_code_source::TypeCodeStructDynamic,
@@ -97,14 +97,14 @@ impl Push for CodeValueExtern {
         Rc::new(TypeCodeValueExternDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let cell: Rc<RefCell<Option<CodeValue>>> =
-            from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone();
+            from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone();
         CodeValueExtern(cell)
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, self.0).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, self.0).into()
     }
 }
 
@@ -115,12 +115,12 @@ impl Push for ExprContextPush {
         Rc::new(TypeExprContextPushDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        ExprContextPush(from_v8_ref::<Rc<ExprContext>>(&*value).clone())
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        ExprContextPush(from_dynamic_ref::<Rc<ExprContext>>(&*value).clone())
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, self.0).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, self.0).into()
     }
 }
 pub(crate) struct TypeCodeValueExternDynamic;
@@ -487,12 +487,12 @@ impl Push for CodeValue {
         Rc::new(TypeCodeValueExternDynamic)
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cve = <CodeValueExtern as Push>::from_v8(scope, value);
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let cve = <CodeValueExtern as Push>::from_dynamic(scope, value);
         cve.into_inner()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        CodeValueExtern::wrap(self).into_v8(scope)
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        CodeValueExtern::wrap(self).into_dynamic(scope)
     }
 }

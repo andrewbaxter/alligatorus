@@ -20,9 +20,9 @@ use {
                 bind_via_target,
                 dynamic_set,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             typecheck_convert,
             value::{
                 type_any::r#const::{
@@ -284,13 +284,13 @@ impl Push for TypeOptionDynamic {
         Rc::new(TypeAnyConst)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeOptionDynamic> = from_v8_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeOptionDynamic> = from_dynamic_ref::<Rc<TypeOptionDynamic>>(&*value).clone();
         (*rc).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, Rc::new(self)).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, Rc::new(self)).into()
     }
 }
 

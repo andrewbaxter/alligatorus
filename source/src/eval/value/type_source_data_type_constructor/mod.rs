@@ -5,9 +5,9 @@ pub mod r#const;
 use {
     crate::{
         eval::{
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
         },
         langhelp::Type,
     },
@@ -24,11 +24,11 @@ impl Push for Rc<TypeSourceDataTypeConstructorConst> {
         Rc::new(dynamic::TypeSourceDataTypeConstructorDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&*value).clone()
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        from_dynamic_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&*value).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, self).into()
     }
 }

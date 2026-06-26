@@ -18,7 +18,7 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 record::{
                     Record,
@@ -72,7 +72,7 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             AspectType,
             DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
@@ -89,8 +89,8 @@ use {
             aspect_field_aspect_id,
             aspect_field_get_maybe,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_lift_dynamic_get_maybe,
+            aspect_lift_aspect_id,
+            aspect_lift_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
             aspect_type_aspect_id,
@@ -282,7 +282,7 @@ impl AspectInitialBind for TypeSourceDataTypeDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
+impl AspectLift for TypeSourceDataTypeDynamic {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -292,11 +292,11 @@ impl AspectLiftDynamic for TypeSourceDataTypeDynamic {
         {
             let data = &self.data;
             let underlying_type = data.underlying_type.get().clone();
-            let underlying_lift = aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
-                format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc())
+            let underlying_lift = aspect_lift_get_maybe(xx, underlying_type.as_ref()).ok_or_else(|| {
+                format!("Underlying type ({}) missing AspectLift", underlying_type.desc())
             })?;
             let obj =
-                v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lift")?;
+                v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected dynamic object for data type lift")?;
             let data_field = ConstKey::String(data.data_field.clone()).to_str();
             let key = v8::String::new(scope, &data_field).unwrap();
             let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
@@ -377,10 +377,10 @@ impl Type for TypeSourceDataTypeDynamic {
                 ),
             );
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
+        if *key == aspect_lift_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                    Box::new(TypeSourceDataTypeDynamic { data: self.data.clone() }) as Box<dyn AspectLift>,
                 ),
             );
         }
@@ -645,14 +645,14 @@ impl AspectInitialBind for TypeSourceDataTypeRefDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceDataTypeRefDynamic {
+impl AspectLift for TypeSourceDataTypeRefDynamic {
     fn lift(
         &self,
         xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let dt_ref: &Rc<super::SourceDataTypeRef> = from_v8_ref(&value);
+        let dt_ref: &Rc<super::SourceDataTypeRef> = from_dynamic_ref(&value);
         Ok(Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() }))
     }
 }
@@ -700,8 +700,8 @@ impl Type for TypeSourceDataTypeRefDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectInitialBind>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeRefDynamic) as Box<dyn AspectStackValueDynamic>));

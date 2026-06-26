@@ -69,8 +69,8 @@ fn test_00600define_func() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "hello");
-    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
-    assert_eq!(js_sources[0], r#"let e0;
+    let dynamic_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert_eq!(dynamic_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -130,7 +130,7 @@ e5 = e19;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0_0;
+    assert_eq!(dynamic_sources[1], r#"var d0_0_0_0;
 {
 d0_0_0_0 = function(a0) {
 let e0;
@@ -221,8 +221,8 @@ fn test_00700define_func_arg_ret() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO WORLD");
-    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
-    assert_eq!(js_sources[0], r#"let e0;
+    let dynamic_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert_eq!(dynamic_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -282,7 +282,7 @@ e5 = e19;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"var d0_0_0_0;
+    assert_eq!(dynamic_sources[1], r#"var d0_0_0_0;
 {
 d0_0_0_0 = function(a0) {
 let e0;

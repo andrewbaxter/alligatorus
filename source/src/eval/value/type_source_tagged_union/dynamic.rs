@@ -16,9 +16,9 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             value::{
                 type_any::r#const::{
                     TypeAnyConst,
@@ -52,7 +52,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             AspectTaggedUnion,
             ScopeEntry,
@@ -61,7 +61,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_tagged_union_aspect_id,
             tagged_union_ref_type_identity,
@@ -114,14 +114,14 @@ impl AspectInitialBind for TypeSourceTaggedUnionDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceTaggedUnionDynamic {
+impl AspectLift for TypeSourceTaggedUnionDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let type_: &Rc<dyn Type> = from_dynamic_ref(&value);
         let type_val = must_downcast_ref::<TypeSourceTaggedUnionDynamic>(type_.as_ref());
         let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: type_val.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: tu_type }))
@@ -190,10 +190,10 @@ impl Type for TypeSourceTaggedUnionDynamic {
                 ),
             );
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
+        if *key == aspect_lift_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                    Box::new(TypeSourceTaggedUnionDynamic { data: self.data.clone() }) as Box<dyn AspectLift>,
                 ),
             );
         }
@@ -336,14 +336,14 @@ impl AspectInitialBind for TypeSourceTaggedUnionRefDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceTaggedUnionRefDynamic {
+impl AspectLift for TypeSourceTaggedUnionRefDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let tu_ref: &Rc<super::SourceTaggedUnionRef> = from_v8_ref(&value);
+        let tu_ref: &Rc<super::SourceTaggedUnionRef> = from_dynamic_ref(&value);
         let tu_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: tu_type }))
     }
@@ -395,8 +395,8 @@ impl Type for TypeSourceTaggedUnionRefDynamic {
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn AspectInitialBind>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceTaggedUnionRefDynamic) as Box<dyn AspectStackValueDynamic>));
@@ -502,11 +502,11 @@ impl Push for Rc<SourceTaggedUnionRef> {
         Rc::new(TypeSourceTaggedUnionRefDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        from_v8_ref::<Rc<SourceTaggedUnionRef>>(&*value).clone()
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        from_dynamic_ref::<Rc<SourceTaggedUnionRef>>(&*value).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, self).into()
     }
 }

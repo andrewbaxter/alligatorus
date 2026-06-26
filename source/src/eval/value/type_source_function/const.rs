@@ -17,9 +17,9 @@ use {
         },
         eval::{
             definition_set::DefinitionSet,
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             value::{
                 tuple::scope_entry::ScopeEntryValue,
                 type_any::r#const::{
@@ -158,7 +158,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                         arg_type: std::cell::RefCell::new(None),
                         artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
                         captured_externals: std::cell::RefCell::new(Vec::new()),
-                        compiled_js: std::cell::RefCell::new(Some(body.compiled_js.clone())),
+                        compiled_source: std::cell::RefCell::new(Some(body.compiled_source.clone())),
                         description: std::cell::RefCell::new(None),
                         impl_expr: std::cell::RefCell::new(None),
                         name: body.name.clone(),
@@ -271,7 +271,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                 );
             let body = ArtifactDataDefSetFunction {
                 name: self_.data.name.clone(),
-                compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),
+                compiled_source: self_.data.compiled_source.borrow().clone().unwrap_or_default(),
                 arg_type: arg_art.v.unwrap_or_else(null_art),
                 ret_type: ret_art.v.unwrap_or_else(null_art),
                 entry_id: entry_id_index,
@@ -354,11 +354,11 @@ impl Push for Rc<TypeSourceFunctionConst> {
         Rc::new(super::dynamic::TypeSourceFunctionDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        from_dynamic_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, self).into()
     }
 }

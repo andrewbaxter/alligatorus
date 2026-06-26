@@ -2,8 +2,8 @@ use {
     crate::{
         artifact::ExporterAny,
         eval::{
-            from_v8_ref,
-            to_v8,
+            from_dynamic_ref,
+            to_dynamic_ext,
             value::type_aspect::dynamic::TypeAspectDynamic,
         },
         langhelp::{
@@ -100,15 +100,15 @@ fn dispatch_aspect_method(
     method_field: &str,
     cv_fields: Vec<(String, CodeValue)>,
 ) -> EvalRes {
-    let scope_ptr = match xx.vx.v8_scope.get() {
+    let scope_ptr = match xx.vx.dynamic_scope.get() {
         Some(p) => p,
-        None => return EvalRes::err(loc, "AspectPull dispatch: no active v8 scope".to_string()),
+        None => return EvalRes::err(loc, "AspectPull dispatch: no active dynamic scope".to_string()),
     };
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let xx_push = to_v8(scope, Rc::new(ExprContext {
+    let xx_push = to_dynamic_ext(scope, Rc::new(ExprContext {
         vx: xx.vx.clone(),
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
@@ -125,7 +125,7 @@ fn dispatch_aspect_method(
             None => return EvalRes::err(loc, format!("AspectPull dispatch: '{}' key alloc failed", name)),
         };
         let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(clone_cv(cv))));
-        let cve_ext = to_v8(scope, cve_cell);
+        let cve_ext = to_dynamic_ext(scope, cve_cell);
         arg_obj.set(scope, k.into(), cve_ext.into());
     }
     let instance = v8::Local::new(scope, bundle);
@@ -154,14 +154,14 @@ fn dispatch_aspect_method(
                         .exception()
                         .map(|e| e.to_rust_string_lossy(&mut tc))
                         .unwrap_or_else(|| "<no exception>".to_string());
-                return EvalRes::err(loc, format!("v8 method '{}' threw: {}", method_field, msg));
+                return EvalRes::err(loc, format!("dynamic method '{}' threw: {}", method_field, msg));
             },
         }
     };
-    let cell: Rc<RefCell<Option<CodeValue>>> = from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
+    let cell: Rc<RefCell<Option<CodeValue>>> = from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
     let out_cv = match cell.borrow_mut().take() {
         Some(cv) => cv,
-        None => return EvalRes::err(loc, format!("v8 method '{}' returned consumed CodeValueExtern", method_field)),
+        None => return EvalRes::err(loc, format!("dynamic method '{}' returned consumed CodeValueExtern", method_field)),
     };
     EvalRes::ok(out_cv)
 }

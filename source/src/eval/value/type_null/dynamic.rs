@@ -49,7 +49,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectNull,
             AspectStackValueDynamic,
             AspectType,
@@ -58,7 +58,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
@@ -110,7 +110,7 @@ impl AspectInitialBind for TypeNullDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeNullDynamic {
+impl AspectLift for TypeNullDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -183,8 +183,8 @@ impl Type for TypeNullDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_null_aspect_id() {
             return Some(Box::new(Box::new(TypeNullDynamic) as Box<dyn AspectNull>));

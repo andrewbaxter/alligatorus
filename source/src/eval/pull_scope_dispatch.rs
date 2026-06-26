@@ -32,7 +32,7 @@ pub(crate) struct PullScopeEntry {
 
 impl ScopeEntry for PullScopeEntry {
     fn use_(&self, xx: &ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
-        let scope_ptr = xx.vx.v8_scope.get().expect("PullScopeEntry::use_: no active v8 scope");
+        let scope_ptr = xx.vx.dynamic_scope.get().expect("PullScopeEntry::use_: no active dynamic scope");
         let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
             &mut *(scope_ptr.as_ptr() as *mut _)
         };
@@ -50,7 +50,7 @@ impl ScopeEntry for PullScopeEntry {
         let null_arg: v8::Local<v8::Value> = v8::null(scope).into();
         let result =
             method_fn.call(scope, recv, &[null_arg]).expect("PullScopeEntry::use_: _im_se0 returned no value");
-        <CodeValue as Push>::from_v8(scope, result)
+        <CodeValue as Push>::from_dynamic(scope, result)
     }
 }
 

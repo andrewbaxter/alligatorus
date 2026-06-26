@@ -4,9 +4,9 @@ use {
         eval::{
             const_eval,
             expr::Expr,
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             value::{
                 record::{
                     Record,
@@ -116,12 +116,12 @@ pub(crate) fn pull_aspect_v8(
     key: &Unique,
 ) -> Option<Rc<dyn Aspect>> {
     let field_name = type_method_field_name(data, "aspect")?;
-    let scope_ptr = xx.vx.v8_scope.get()?;
+    let scope_ptr = xx.vx.dynamic_scope.get()?;
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let key_push = to_v8(scope, key.clone());
+    let key_push = to_dynamic_ext(scope, key.clone());
     let key_str = v8::String::new(scope, &ConstKey::String("key".to_string()).to_str())?;
     arg_obj.set(scope, key_str.into(), key_push.into());
     let instance = v8::Local::new(scope, bundle);
@@ -137,7 +137,7 @@ pub(crate) fn pull_aspect_v8(
     if some_val.is_undefined() {
         return None;
     }
-    let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*some_val).clone();
+    let aspect: Rc<dyn Aspect> = from_dynamic_ref::<Rc<dyn Aspect>>(&*some_val).clone();
     Some(aspect)
 }
 
@@ -154,14 +154,14 @@ pub(crate) fn pull_can_cast_from_v8(
     let Some(source_type_rc) = source_type.clone_rc() else {
         return false;
     };
-    let Some(scope_ptr) = xx.vx.v8_scope.get() else {
+    let Some(scope_ptr) = xx.vx.dynamic_scope.get() else {
         return false;
     };
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let xx_push = to_v8(scope, Rc::new(ExprContext {
+    let xx_push = to_dynamic_ext(scope, Rc::new(ExprContext {
         vx: xx.vx.clone(),
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
@@ -174,7 +174,7 @@ pub(crate) fn pull_can_cast_from_v8(
     let Some(st_key) = v8::String::new(scope, &ConstKey::String("source_type".to_string()).to_str()) else {
         return false;
     };
-    let source_type_v8 = Push::into_v8(TypeRefPush { type_ref: source_type_rc }, scope);
+    let source_type_v8 = Push::into_dynamic(TypeRefPush { type_ref: source_type_rc }, scope);
     arg_obj.set(scope, st_key.into(), source_type_v8);
     let Some(cv_key) = v8::String::new(scope, &ConstKey::String("cv".to_string()).to_str()) else {
         return false;
@@ -210,10 +210,10 @@ pub(crate) fn pull_cast_from_v8(
         Some(n) => n,
         None => return EvalRes::err(loc, "cast_from field name not found".to_string()),
     };
-    let scope_ptr = match xx.vx.v8_scope.get() {
+    let scope_ptr = match xx.vx.dynamic_scope.get() {
         Some(p) => p,
         None => {
-            return EvalRes::err(loc, "v8 dispatch attempted with no active v8 scope — cast_from must be called from \
+            return EvalRes::err(loc, "dynamic dispatch attempted with no active dynamic scope — cast_from must be called from \
                  within const_eval".to_string());
         },
     };
@@ -221,7 +221,7 @@ pub(crate) fn pull_cast_from_v8(
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
     let arg_obj = v8::Object::new(scope);
-    let xx_push = to_v8(scope, Rc::new(ExprContext {
+    let xx_push = to_dynamic_ext(scope, Rc::new(ExprContext {
         vx: xx.vx.clone(),
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
@@ -244,13 +244,13 @@ pub(crate) fn pull_cast_from_v8(
         },
     };
     let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(cv)));
-    let cve_ext = to_v8(scope, cve_cell);
+    let cve_ext = to_dynamic_ext(scope, cve_cell);
     arg_obj.set(scope, cv_key.into(), cve_ext.into());
     let st_key = match v8::String::new(scope, &ConstKey::String("source_type".to_string()).to_str()) {
         Some(k) => k,
         None => return EvalRes::err(loc, "source_type key alloc".to_string()),
     };
-    let source_type_v8 = Push::into_v8(TypeRefPush { type_ref: source_type }, scope);
+    let source_type_v8 = Push::into_dynamic(TypeRefPush { type_ref: source_type }, scope);
     arg_obj.set(scope, st_key.into(), source_type_v8);
     let instance = v8::Local::new(scope, bundle);
     let method_key = match v8::String::new(scope, &ConstKey::String(field_name).to_str()) {
@@ -278,14 +278,14 @@ pub(crate) fn pull_cast_from_v8(
                         .exception()
                         .map(|e| e.to_rust_string_lossy(&mut tc))
                         .unwrap_or_else(|| "<no exception>".to_string());
-                return EvalRes::err(loc, format!("cast_from v8 call threw: {}", msg));
+                return EvalRes::err(loc, format!("cast_from dynamic call threw: {}", msg));
             },
         }
     };
-    let cell: Rc<RefCell<Option<CodeValue>>> = from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
+    let cell: Rc<RefCell<Option<CodeValue>>> = from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
     let out_cv = match cell.borrow_mut().take() {
         Some(c) => c,
-        None => return EvalRes::err(loc, "cast_from v8 returned consumed CodeValueExtern".to_string()),
+        None => return EvalRes::err(loc, "cast_from dynamic returned consumed CodeValueExtern".to_string()),
     };
     EvalRes::ok(out_cv)
 }

@@ -24,7 +24,7 @@ use {
                 StagedExprCell,
                 make_lit_value,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::{
@@ -55,14 +55,14 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectType,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_type_aspect_id,
             expr_type_identity,
         },
@@ -96,8 +96,8 @@ impl AspectBindDynamic for TypeExpr {
 
 impl AspectConsumeDynamic for TypeExpr {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        if let Some(js) = cv.code.cast::<CodeDynamic>().v.flatten() {
-            return EResult::ok(js.clone());
+        if let Some(dynamic_code) = cv.code.cast::<CodeDynamic>().v.flatten() {
+            return EResult::ok(dynamic_code.clone());
         }
         let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
         let id = ScopeEntryId::Local(xx.vx.next_local_id.next());
@@ -118,14 +118,14 @@ impl AspectInitialBind for TypeExpr {
     }
 }
 
-impl AspectLiftDynamic for TypeExpr {
+impl AspectLift for TypeExpr {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
+        let cell: Rc<StagedExprCell> = from_dynamic_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Expr value already consumed during lift"))
     }
 }
@@ -184,8 +184,8 @@ impl Type for TypeExpr {
         if *key == aspect_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectBind>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeExpr) as Box<dyn AspectInitialBind>));
@@ -271,14 +271,14 @@ impl AspectConsumeDynamic for TypeExprStagedPlaceholder {
     }
 }
 
-impl AspectLiftDynamic for TypeExprStagedPlaceholder {
+impl AspectLift for TypeExprStagedPlaceholder {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let cell: Rc<StagedExprCell> = from_v8_ref::<Rc<StagedExprCell>>(&value).clone();
+        let cell: Rc<StagedExprCell> = from_dynamic_ref::<Rc<StagedExprCell>>(&value).clone();
         Ok(cell.value.borrow_mut().take().expect("Stage result already consumed during lift"))
     }
 }
@@ -302,8 +302,8 @@ impl Type for TypeExprStagedPlaceholder {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectConsumeDynamic>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeExprStagedPlaceholder) as Box<dyn AspectLift>));
         }
         None
     }

@@ -51,7 +51,7 @@ use {
             AspectField,
             AspectFunction,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             AspectType,
             ScopeEntry,
@@ -62,7 +62,7 @@ use {
             aspect_field_aspect_id,
             aspect_function_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
             aspect_type_aspect_id,
@@ -199,7 +199,7 @@ impl AspectInitialBind for TypeAnyDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeAnyDynamic {
+impl AspectLift for TypeAnyDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -280,8 +280,8 @@ impl Type for TypeAnyDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAnyDynamic) as Box<dyn AspectInitialBind>));

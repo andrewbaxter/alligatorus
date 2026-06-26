@@ -97,8 +97,8 @@ fn test_0000_tagged_union_match() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "7");
-    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
-    assert_eq!(js_sources[0], r#"let e0;
+    let dynamic_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert_eq!(dynamic_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -171,7 +171,7 @@ e5 = e20;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"let e0;
+    assert_eq!(dynamic_sources[1], r#"let e0;
 let a0;
 {
 let e1;
@@ -287,8 +287,8 @@ fn test_0010_tagged_union_match_fallback() {
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "fallback");
-    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
-    assert_eq!(js_sources[0], r#"let e0;
+    let dynamic_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert_eq!(dynamic_sources[0], r#"let e0;
 let e1;
 e1 = BUILTIN;
 let e2;
@@ -361,7 +361,7 @@ e5 = e20;
 }
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#);
-    assert_eq!(js_sources[1], r#"let e0;
+    assert_eq!(dynamic_sources[1], r#"let e0;
 let a0;
 {
 let e1;

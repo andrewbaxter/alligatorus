@@ -413,7 +413,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             ],
         },
         AspectSpec {
-            name: "LiftDynamic",
+            name: "Lift",
             doc: doc(
                 "Called to turn a dynamic value back into a const after dynamic evaluation finishes. This is also used to increase the type specificity at the border: e.g. a definition set function result (generic) has its type replaced with `TypeSourceFunction` with specific signature and becomes callable.",
             ),
@@ -603,8 +603,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             {
                 let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
                 let unique = crate:: r#gen:: #aspect_id_fn();
-                if register_v8 {
-                    let unique_v8 = crate::eval::to_v8(dynamic_scope, unique.clone());
+                if register_dynamic {
+                    let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
                     dynamic_scope
                         .get_current_context()
                         .global(dynamic_scope)
@@ -613,7 +613,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                             v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
                                 .unwrap()
                                 .cast(),
-                            unique_v8.into(),
+                            unique_dynamic.into(),
                         );
                 }
                 builtin_scope_entries.push((#key.to_string(), dynamic_key, unique_type.clone()));
@@ -632,7 +632,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         pub(
             crate
         ) fn gen_register_builtin_aspect_ids <'s >(
-            register_v8: bool,
+            register_dynamic: bool,
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
             scope: & crate:: langhelp:: Scope,

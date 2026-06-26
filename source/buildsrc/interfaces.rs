@@ -119,8 +119,8 @@ pub fn build(
                 });
                 if #register_in_scope {
                     let dynamic_key = ScopeEntryId:: Builtin(#scope_id);
-                    if register_v8 {
-                        let v8_val = crate::eval::to_v8(dynamic_scope, iface_ref.clone());
+                    if register_dynamic {
+                        let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
                         dynamic_scope
                             .get_current_context()
                             .global(dynamic_scope)
@@ -129,7 +129,7 @@ pub fn build(
                                 v8::String::new(dynamic_scope, &crate::eval::scope_entry_id_dynamic_key(dynamic_key),)
                                     .unwrap()
                                     .cast(),
-                                v8_val.into(),
+                                dynamic_val.into(),
                             );
                     }
                     let iface_const_type: Rc<dyn crate::langhelp::Type> =
@@ -185,7 +185,7 @@ pub fn build(
         ) fn gen_register_builtin_interfaces <'s >(
             xx: & crate:: langhelp:: ExprContext,
             root_loc: crate:: langhelp:: QExprId,
-            register_v8: bool,
+            register_dynamic: bool,
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
             scope: & crate:: langhelp:: Scope,

@@ -21,9 +21,9 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             typecheck_convert,
             value::{
                 type_any::r#const::{
@@ -224,7 +224,7 @@ impl AspectIterable for TypeListDynamic {
             let base_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, &*Rc::new(self.clone())))?;
             let base_js = erb.must_er(base_consume.to_dynamic(xx, loc, base))?;
             let body_js = match body.code.cast::<CodeDynamic>().into_res() {
-                Ok(Some(js)) => js.clone(),
+                Ok(Some(dynamic_code)) => dynamic_code.clone(),
                 Ok(None) => CodeDynamic {
                     loc,
                     type_: CodeDynamicType::Literal(serde_json::Value::Null)
@@ -337,13 +337,13 @@ impl Push for TypeListDynamic {
         Rc::new(TypeAnyConst)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let rc: Rc<TypeListDynamic> = from_v8_ref::<Rc<TypeListDynamic>>(&*value).clone();
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let rc: Rc<TypeListDynamic> = from_dynamic_ref::<Rc<TypeListDynamic>>(&*value).clone();
         (*rc).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, Rc::new(self)).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, Rc::new(self)).into()
     }
 }
 
@@ -443,7 +443,7 @@ impl AspectFunction for TypeListNewDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let arg_type = erb.must_er(argument.value.type_(xx, loc))?;
-            let mut js_elements = vec![];
+            let mut dynamic_elements = vec![];
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
                 let elements = arg_tuple.take_elements(argument.value);
                 for elem_res in elements {
@@ -451,20 +451,20 @@ impl AspectFunction for TypeListNewDynamic {
                     let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
                     let elem_to_dynamic =
                         erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
-                    let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
-                    js_elements.push(js);
+                    let dynamic_code = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
+                    dynamic_elements.push(dynamic_code);
                 }
             } else {
                 let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), argument))?;
                 let elem_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.element_type.as_ref()))?;
-                let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
-                js_elements.push(js);
+                let dynamic_code = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
+                dynamic_elements.push(dynamic_code);
             }
             let instance_type = Rc::new(TypeListDynamic { element_type: self.element_type.clone() });
             let ret_stack = erb.must_er(aspect_stack_value_dynamic_get(xx, loc, instance_type.as_ref()))?;
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
-                type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
+                type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: dynamic_elements }),
             }));
         });
     }

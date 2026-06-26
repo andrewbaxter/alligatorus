@@ -11,7 +11,7 @@ use {
                 dynamic_consume_to_dynamic,
                 dynamic_stack_to_value,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 type_any::r#const::TypeAnyConst,
                 type_root::r#const::TypeRoot,
@@ -35,14 +35,14 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             ScopeEntry,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_aspect_identity,
         },
@@ -84,14 +84,14 @@ impl AspectInitialBind for TypeAspectDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeAspectDynamic {
+impl AspectLift for TypeAspectDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let aspect: Rc<dyn Aspect> = from_v8_ref::<Rc<dyn Aspect>>(&*value).clone();
+        let aspect: Rc<dyn Aspect> = from_dynamic_ref::<Rc<dyn Aspect>>(&*value).clone();
         let aspect_pull = (&*aspect as &dyn std::any::Any).downcast_ref::<AspectPull>().unwrap().clone();
         Ok(Rc::new(aspect_pull))
     }
@@ -134,8 +134,8 @@ impl Type for TypeAspectDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeAspectDynamic) as Box<dyn AspectInitialBind>));

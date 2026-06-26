@@ -60,7 +60,7 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectSet,
             AspectStackValueDynamic,
             AspectStringDynamic,
@@ -71,7 +71,7 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_set_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
@@ -168,7 +168,7 @@ impl AspectInitialBind for TypeStringDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeStringDynamic {
+impl AspectLift for TypeStringDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
@@ -257,8 +257,8 @@ impl Type for TypeStringDynamic {
         if *key == aspect_set_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectSet>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeStringDynamic) as Box<dyn AspectInitialBind>));

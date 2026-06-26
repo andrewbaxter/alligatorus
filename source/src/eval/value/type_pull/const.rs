@@ -13,9 +13,9 @@ use {
             export_artifact,
         },
         eval::{
-            JsSourceBuilder,
+            DynamicSourceBuilder,
             aspect::AspectPull,
-            import_install::install_def_set_to_v8,
+            import_install::install_def_set_to_dynamic,
             pull_type_dispatch::{
                 pull_aspect_v8,
                 pull_can_cast_from_v8,
@@ -61,7 +61,7 @@ use {
             aspect_consume_dynamic_get_maybe,
             aspect_field_aspect_id,
             aspect_function_aspect_id,
-            aspect_lift_dynamic_get_maybe,
+            aspect_lift_get_maybe,
         },
         syntax::ExprId,
     },
@@ -82,7 +82,7 @@ pub(crate) fn pull_mini_eval(
 ) -> Result<v8::Global<v8::Object>, String> {
     let set =
         data.set.borrow().as_ref().cloned().ok_or_else(|| "Pull mini-eval: data type has no def-set".to_string())?;
-    install_def_set_to_v8(xx, loc, &set)?;
+    install_def_set_to_dynamic(xx, loc, &set)?;
     let underlying_type = data.underlying_type.get().clone();
     let to_dyn =
         aspect_consume_dynamic_get_maybe(
@@ -100,13 +100,13 @@ pub(crate) fn pull_mini_eval(
     let scope_ptr =
         xx
             .vx
-            .v8_scope
+            .dynamic_scope
             .get()
-            .ok_or_else(|| "Pull mini-eval requires an active v8 scope (run from dynamic stage)".to_string())?;
+            .ok_or_else(|| "Pull mini-eval requires an active dynamic scope (run from dynamic stage)".to_string())?;
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
-    let mut code = JsSourceBuilder::default();
+    let mut code = DynamicSourceBuilder::default();
     code.push(loc, "(function() {".to_string());
     let underlying_var = render_code(&mut code, &inner_dyn);
     let mut field_decls: Vec<(String, String)> = Vec::new();
@@ -275,12 +275,12 @@ impl ExporterRootDelegate for TypePull {
                 }).unwrap());
             };
             let underlying_type = self_.data.underlying_type.get().clone();
-            let lift = match aspect_lift_dynamic_get_maybe(xx, underlying_type.as_ref()) {
+            let lift = match aspect_lift_get_maybe(xx, underlying_type.as_ref()) {
                 Some(v) => v,
                 None => {
                     push_err_one(
                         loc,
-                        format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc()),
+                        format!("Underlying type ({}) missing AspectLift", underlying_type.desc()),
                     );
                     return make_body(serde_json::to_value(&ArtifactDataPull {
                         data_type: dt_art,
@@ -288,10 +288,10 @@ impl ExporterRootDelegate for TypePull {
                     }).unwrap());
                 },
             };
-            let scope_ptr = match xx.vx.v8_scope.get() {
+            let scope_ptr = match xx.vx.dynamic_scope.get() {
                 Some(p) => p,
                 None => {
-                    push_err_one(loc, "Pull serialize requires active v8 scope to lift inner data".to_string());
+                    push_err_one(loc, "Pull serialize requires active dynamic scope to lift inner data".to_string());
                     return make_body(serde_json::to_value(&ArtifactDataPull {
                         data_type: dt_art,
                         inner: null_art_for_closure.clone(),

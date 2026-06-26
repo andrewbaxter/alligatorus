@@ -42,7 +42,7 @@ pub(crate) struct ArtifactDataDefSetFunction {
     pub arg_type: Artifact,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
-    pub compiled_js: String,
+    pub compiled_source: String,
     pub def_set: Artifact,
     pub def_set_id: DefSetId,
     pub entry_id: usize,
@@ -85,7 +85,7 @@ pub(crate) struct ArtifactDataDefSetInterfaceMethod {
 pub(crate) struct ArtifactDataDefSetInterfaceMethodImpl {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
-    pub compiled_js: String,
+    pub compiled_source: String,
     pub entry_id: usize,
     pub interface_method_index: usize,
 }
@@ -95,7 +95,7 @@ pub(crate) struct ArtifactDataDefSetMethod {
     pub arg_type: Artifact,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub captured_externals: Vec<ArtifactExternal>,
-    pub compiled_js: String,
+    pub compiled_source: String,
     pub entry_id: usize,
     pub field_name: String,
     pub name: String,

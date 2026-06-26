@@ -55,7 +55,7 @@ pub(crate) struct TypePullAspect {
 }
 
 impl Aspect for TypePullAspect {
-    fn v8_instance(&self) -> Option<v8::Global<v8::Object>> {
+    fn dynamic_instance(&self) -> Option<v8::Global<v8::Object>> {
         self.bundle.clone()
     }
 }

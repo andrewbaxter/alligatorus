@@ -30,7 +30,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             body: quote!{
                 let timestamp_ms =
                     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
-                scope.get_slot::<V8LogStore>().unwrap().logs.borrow_mut().push(LogEntry {
+                scope.get_slot::<DynamicLogStore>().unwrap().logs.borrow_mut().push(LogEntry {
                     timestamp_ms,
                     message,
                 });
@@ -42,7 +42,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             args: vec![],
             ret: "DefinitionSetBuilder",
             body: quote!{
-                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
                 let compile_id = crate::langhelp::CompileId(ex_slot.ex.ix.import_state, ex_slot.ex.ix.source_id);
                 let def_set_id = DefSetId(compile_id, ex_slot.ex.ix.def_set_counter.next());
                 let inner = Gc::new(DefinitionSet::new(def_set_id));
@@ -87,7 +87,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             args: vec![("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
             ret: "String",
             body: quote!{
-                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
                 let id = ex_slot.ex.next_local_id.next();
                 format!("a{}", id)
             },
@@ -122,7 +122,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             ],
             ret: "crate::eval::code_value_extern::ExprContextPush",
             body: quote!{
-                let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+                let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
                 let parent_ex = ex_slot.ex.clone();
                 let mut scope_values: HashMap<ConstKey, Box<dyn crate::r#gen::ScopeEntry>> = HashMap::new();
                 for (k, v) in scope_arg {
@@ -181,7 +181,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             let n = format_ident!("{}", n);
             let ty: TokenStream = ty.parse().unwrap();
             quote!{
-                let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_v8(scope, _jw_args.get(_jw_arg_i),);
+                let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_dynamic(scope, _jw_args.get(_jw_arg_i),);
                 _jw_arg_i += 1;
             }
         }).collect();
@@ -211,7 +211,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                     #(#arg_decls) * let _jw_result: #ret_ty = {
                         #body
                     };
-                    _jw_rv.set(<#ret_ty as crate:: eval:: push:: Push >:: into_v8(_jw_result, scope),);
+                    _jw_rv.set(<#ret_ty as crate:: eval:: push:: Push >:: into_dynamic(_jw_result, scope),);
                 }
                 (
                     #name_str,
@@ -235,7 +235,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
         ) fn gen_register_builtin_fns <'s >(
             xx: & crate:: langhelp:: ExprContext,
             root_loc: crate:: langhelp:: QExprId,
-            register_v8: bool,
+            register_dynamic: bool,
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
             scope: & crate:: langhelp:: Scope,
@@ -247,7 +247,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
         ) -> Result <(),
         Vec < crate:: langhelp:: ExprErr >> {
             for(key, dynamic_key, type_, dynamic_value) in[#(#dw_fn_call_exprs), *] {
-                if register_v8 {
+                if register_dynamic {
                     dynamic_scope
                         .get_current_context()
                         .global(dynamic_scope)

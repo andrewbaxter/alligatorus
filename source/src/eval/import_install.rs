@@ -2,16 +2,16 @@ use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
-            JsSourceBuilder,
+            DynamicSourceBuilder,
             build_builtin_scope,
             build_cast_arg_record_type,
             const_eval,
             definition_set::DefinitionSet,
             expr::Expr,
-            rc_type_to_v8,
+            rc_type_to_dynamic_ext,
             render_code,
             scope_entry_id_dynamic_key,
-            to_v8,
+            to_dynamic_ext,
             typecheck_convert,
             value::{
                 type_source_data_type::SourceDataTypeData,
@@ -39,14 +39,14 @@ use {
     },
 };
 
-pub(crate) fn install_def_set_to_v8(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Result<(), String> {
+pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Result<(), String> {
     if !xx.vx.ix.installed_def_sets.borrow_mut().insert(set.def_set_id) {
         return Ok(());
     }
     for dep in set.dependencies.borrow().values() {
-        install_def_set_to_v8(xx, loc, dep)?;
+        install_def_set_to_dynamic(xx, loc, dep)?;
     }
-    let Some(scope_ptr) = xx.vx.v8_scope.get() else {
+    let Some(scope_ptr) = xx.vx.dynamic_scope.get() else {
         return Ok(());
     };
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
@@ -86,36 +86,36 @@ pub(crate) fn install_def_set_to_v8(xx: &ExprContext, loc: QExprId, set: &Gc<Def
     }
     for (key_str, value) in &installed_externals {
         let key =
-            v8::String::new(scope, key_str).ok_or_else(|| "install_def_set_to_v8: key alloc".to_string())?.cast();
-        let v8_val: v8::Local<v8::Value> = match value {
-            External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::CodeValueExternCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::Type(t) => rc_type_to_v8(scope, t.clone()).into(),
-            External::Unique(u) => to_v8(scope, *u).into(),
+            v8::String::new(scope, key_str).ok_or_else(|| "install_def_set_to_dynamic: key alloc".to_string())?.cast();
+        let dynamic_val: v8::Local<v8::Value> = match value {
+            External::StagedExprCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
+            External::StageLiftCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
+            External::CodeValueExternCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
+            External::Type(t) => rc_type_to_dynamic_ext(scope, t.clone()).into(),
+            External::Unique(u) => to_dynamic_ext(scope, *u).into(),
         };
-        scope.get_current_context().global(scope).set(scope, key, v8_val);
+        scope.get_current_context().global(scope).set(scope, key, dynamic_val);
     }
-    let mut code = JsSourceBuilder::default();
+    let mut code = DynamicSourceBuilder::default();
     for func_data in set.functions.borrow().iter() {
-        if let Some(js) = func_data.compiled_js.borrow().clone() {
-            for line in js.lines() {
+        if let Some(dynamic_code) = func_data.compiled_source.borrow().clone() {
+            for line in dynamic_code.lines() {
                 code.push(loc, line.to_string());
             }
         }
     }
     for dt in set.data_types.borrow().iter() {
         for method in dt.methods.borrow().iter() {
-            if let Some(js) = method.compiled_js.borrow().clone() {
-                for line in js.lines() {
+            if let Some(dynamic_code) = method.compiled_source.borrow().clone() {
+                for line in dynamic_code.lines() {
                     code.push(loc, line.to_string());
                 }
             }
         }
         for impl_data in dt.interface_impls.borrow().iter() {
             for m in &impl_data.method_impls {
-                if let Some(js) = m.compiled_js.borrow().clone() {
-                    for line in js.lines() {
+                if let Some(dynamic_code) = m.compiled_source.borrow().clone() {
+                    for line in dynamic_code.lines() {
                         code.push(loc, line.to_string());
                     }
                 }
@@ -129,10 +129,10 @@ pub(crate) fn install_def_set_to_v8(xx: &ExprContext, loc: QExprId, set: &Gc<Def
     let script =
         v8::Script::compile(
             scope,
-            v8::String::new(scope, &source).ok_or_else(|| "install_def_set_to_v8: source alloc".to_string())?,
+            v8::String::new(scope, &source).ok_or_else(|| "install_def_set_to_dynamic: source alloc".to_string())?,
             None,
-        ).ok_or_else(|| "install_def_set_to_v8: compile failed".to_string())?;
-    script.run(scope).ok_or_else(|| "install_def_set_to_v8: run failed".to_string())?;
+        ).ok_or_else(|| "install_def_set_to_dynamic: compile failed".to_string())?;
+    script.run(scope).ok_or_else(|| "install_def_set_to_dynamic: run failed".to_string())?;
     Ok(())
 }
 
@@ -146,7 +146,7 @@ pub(crate) fn install_imported_type_iface(
         ix: xx.vx.ix.clone(),
         next_local_id: Counter::default(),
         externals: RefCell::new(Vec::new()),
-        v8_scope: std::cell::Cell::new(None),
+        dynamic_scope: std::cell::Cell::new(None),
         definition_sets: RefCell::new(std::collections::HashMap::new()),
     });
     let target = xx.target.clone();
@@ -237,14 +237,14 @@ pub(crate) fn install_imported_type_iface(
                     .code
                     .cast::<CodeDynamic>()
                     .into_res()
-                    .map_err(|e| format!("Interface method body must produce JS code: {:?}", e))?
+                    .map_err(|e| format!("Interface method body must produce dynamic code: {:?}", e))?
                     .ok_or_else(|| "Interface method body produced no code".to_string())?
                     .clone();
             method_codes.push((method_id, body_shape, impl_code));
         }
     }
     let scope_ptr =
-        xx.vx.v8_scope.get().ok_or_else(|| "install_imported_type_iface: no active v8 scope".to_string())?;
+        xx.vx.dynamic_scope.get().ok_or_else(|| "install_imported_type_iface: no active dynamic scope".to_string())?;
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
         &mut *(scope_ptr.as_ptr() as *mut _)
     };
@@ -254,16 +254,16 @@ pub(crate) fn install_imported_type_iface(
                 scope,
                 &scope_entry_id_dynamic_key(*id),
             ).ok_or_else(|| "external key alloc".to_string())?;
-        let v8_val: v8::Local<v8::Value> = match ext {
-            External::StagedExprCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::StageLiftCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::CodeValueExternCell(cell) => to_v8(scope, cell.clone()).into(),
-            External::Type(t) => rc_type_to_v8(scope, t.clone()).into(),
-            External::Unique(u) => to_v8(scope, *u).into(),
+        let dynamic_val: v8::Local<v8::Value> = match ext {
+            External::StagedExprCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
+            External::StageLiftCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
+            External::CodeValueExternCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
+            External::Type(t) => rc_type_to_dynamic_ext(scope, t.clone()).into(),
+            External::Unique(u) => to_dynamic_ext(scope, *u).into(),
         };
-        scope.get_current_context().global(scope).set(scope, key.cast(), v8_val);
+        scope.get_current_context().global(scope).set(scope, key.cast(), dynamic_val);
     }
-    let mut code = JsSourceBuilder::default();
+    let mut code = DynamicSourceBuilder::default();
     for (method_id, shape, impl_code) in &method_codes {
         let func_name = scope_entry_id_dynamic_key(*method_id);
         let start_line = code.lines.len();
@@ -290,7 +290,7 @@ pub(crate) fn install_imported_type_iface(
         if let Some(slot) = dt_data.interface_impls.borrow().iter().find_map(|i| {
             i.method_impls.iter().find(|m| m.scope_entry_id.get() == Some(*method_id))
         }) {
-            *slot.compiled_js.borrow_mut() = Some(compiled);
+            *slot.compiled_source.borrow_mut() = Some(compiled);
         }
     }
     code.push(loc, "(function() {".to_string());

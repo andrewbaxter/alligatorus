@@ -145,7 +145,7 @@ use {
             aspect_initial_bind_get,
             aspect_initial_bind_get_maybe,
             aspect_iterable_get,
-            aspect_lift_dynamic_get,
+            aspect_lift_get,
             aspect_operator_add_get,
             aspect_operator_eq_get,
             aspect_operator_lt_get,
@@ -356,7 +356,7 @@ pub(crate) fn compile_importid(
         import_state: import_state,
         installed_def_sets: RefCell::new(std::collections::HashSet::new()),
         def_set_counter: Counter::default(),
-        v8_context: RefCell::new(None),
+        dynamic_context: RefCell::new(None),
         builtins_registered: Cell::new(false),
         source_id: root_loc.0,
         builtin_scope_entries: RefCell::new(Vec::new()),
@@ -472,7 +472,7 @@ pub(crate) fn compile_importid(
                 ix: cix.clone(),
                 next_local_id: Default::default(),
                 externals: RefCell::new(Vec::new()),
-                v8_scope: std::cell::Cell::new(None),
+                dynamic_scope: std::cell::Cell::new(None),
                 definition_sets: RefCell::new(std::collections::HashMap::new()),
             });
             let xx = Rc::new(ExprContext {
@@ -873,8 +873,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 let Some(k_cv) = k_res.v else {
                     continue;
                 };
-                if let Some(js) = k_cv.code.cast::<CodeDynamic>().v.flatten() {
-                    key_codes.push(js.clone());
+                if let Some(dynamic_code) = k_cv.code.cast::<CodeDynamic>().v.flatten() {
+                    key_codes.push(dynamic_code.clone());
                 }
                 match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
                     Ok(key) => {
@@ -1178,12 +1178,12 @@ fn eval(
         ix: cix.clone(),
         next_local_id: Default::default(),
         externals: RefCell::new(Vec::new()),
-        v8_scope: std::cell::Cell::new(None),
+        dynamic_scope: std::cell::Cell::new(None),
         definition_sets: RefCell::new(std::collections::HashMap::new()),
     });
-    dynamic_scope_isolate.set_slot(V8RcStore { weaks: RefCell::new(Vec::new()) });
-    dynamic_scope_isolate.set_slot(V8LogStore { logs: RefCell::new(Vec::new()) });
-    dynamic_scope_isolate.set_slot(V8UniqueCounter {
+    dynamic_scope_isolate.set_slot(DynamicRcStore { weaks: RefCell::new(Vec::new()) });
+    dynamic_scope_isolate.set_slot(DynamicLogStore { logs: RefCell::new(Vec::new()) });
+    dynamic_scope_isolate.set_slot(DynamicUniqueCounter {
         compile_id: cix
             .compile_path
             .last()
@@ -1191,11 +1191,11 @@ fn eval(
             .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
         counter: Counter::default(),
     });
-    dynamic_scope_isolate.set_slot(V8EvalContextSlot { ex: ex.clone() });
+    dynamic_scope_isolate.set_slot(DynamicEvalContextSlot { ex: ex.clone() });
     let dynamic_scope_handle = std::pin::pin!(v8::HandleScope::new(dynamic_scope_isolate));
     let mut dynamic_scope_handle2 = dynamic_scope_handle.init();
     let dynamic_scope_context = {
-        let mut ctx_slot = cix.v8_context.borrow_mut();
+        let mut ctx_slot = cix.dynamic_context.borrow_mut();
         match ctx_slot.as_ref() {
             Some(global) => v8::Local::new(&mut dynamic_scope_handle2, global),
             None => {
@@ -1214,14 +1214,14 @@ fn eval(
             unsafe {
                 std::mem::transmute(scope_ptr)
             };
-        ex.v8_scope.set(Some(scope_ptr_static));
+        ex.dynamic_scope.set(Some(scope_ptr_static));
     }
 
     struct V8RefsGuard<'a>(&'a EvalContext);
 
     impl<'a> Drop for V8RefsGuard<'a> {
         fn drop(&mut self) {
-            self.0.v8_scope.set(None);
+            self.0.dynamic_scope.set(None);
         }
     }
 
@@ -1238,13 +1238,13 @@ fn eval(
         scope: scope.clone(),
         target: target.clone(),
     });
-    let register_v8 = !cix.builtins_registered.get();
+    let register_dynamic = !cix.builtins_registered.get();
     let mut builtin_scope_entries: Vec<(String, ScopeEntryId, Rc<dyn Type>)> = Vec::new();
-    gen_register_builtin_fns(&xx, root_loc, register_v8, dynamic_scope, &scope, &mut builtin_scope_entries)?;
+    gen_register_builtin_fns(&xx, root_loc, register_dynamic, dynamic_scope, &scope, &mut builtin_scope_entries)?;
     gen_register_builtin_interfaces(
         &xx,
         root_loc,
-        register_v8,
+        register_dynamic,
         dynamic_scope,
         &scope,
         &mut builtin_scope_entries,
@@ -1276,7 +1276,7 @@ fn eval(
         let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
         scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
     }
-    gen_register_builtin_aspect_ids(register_v8, dynamic_scope, &scope, &mut builtin_scope_entries);
+    gen_register_builtin_aspect_ids(register_dynamic, dynamic_scope, &scope, &mut builtin_scope_entries);
     for (
         key,
         constructor_type,
@@ -1298,7 +1298,7 @@ fn eval(
             gen_fn_option(dynamic_scope),
         ),
     ] {
-        if register_v8 {
+        if register_dynamic {
             dynamic_scope
                 .get_current_context()
                 .global(dynamic_scope)
@@ -1341,7 +1341,7 @@ fn eval(
             mut rv: v8::ReturnValue<'s>,
         ) {
             let tree_cell: Rc<expr::StagedExprCell> =
-                from_v8_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
+                from_dynamic_ref::<Rc<expr::StagedExprCell>>(&*args.get(0)).clone();
             let tree_value = tree_cell.value.borrow_mut().take().expect("stage tree already consumed");
             let tree = must_downcast_ref::<Expr>(tree_value.as_ref()).clone();
 
@@ -1360,7 +1360,7 @@ fn eval(
                 i += 2;
                 if lift_arg.is_null_or_undefined() {
                     let cell: Rc<expr::StagedExprCell> =
-                        from_v8_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
+                        from_dynamic_ref::<Rc<expr::StagedExprCell>>(&*val_arg).clone();
                     let value = cell.value.borrow_mut().take().expect("stage lower value already consumed");
                     if (value.as_ref() as &dyn Any).is::<Expr>() {
                         let expr =
@@ -1372,7 +1372,7 @@ fn eval(
                         values.push(StageLowerValue::Value(value));
                     }
                 } else {
-                    let lift_cell: Rc<StageLiftCell> = from_v8_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
+                    let lift_cell: Rc<StageLiftCell> = from_dynamic_ref::<Rc<StageLiftCell>>(&*lift_arg).clone();
                     let lift_xx = ExprContext {
                         vx: lift_cell.vx.clone(),
                         import_state: lift_cell.import_state.clone(),
@@ -1380,9 +1380,9 @@ fn eval(
                         target: lift_cell.target.clone(),
                     };
                     let lift =
-                        aspect_lift_dynamic_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
+                        aspect_lift_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
                             .into_res()
-                            .expect("__stage: source type missing AspectLiftDynamic");
+                            .expect("__stage: source type missing AspectLift");
                     let value = lift.lift(&lift_xx, &*scope, val_arg).expect("__stage: lift failed");
                     values.push(StageLowerValue::Value(value));
                 }
@@ -1392,7 +1392,7 @@ fn eval(
                 let graft_arg = args.get(i);
                 i += 1;
                 let cell: Rc<RefCell<Option<CodeValue>>> =
-                    from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*graft_arg).clone();
+                    from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*graft_arg).clone();
                 let cv = cell.borrow_mut().take().expect("__stage: graft CodeValueExtern already consumed");
                 graft_values.push(cv);
             }
@@ -1591,11 +1591,11 @@ fn eval(
                 clone_with_lower_substitutions(&tree, 0, 0, &mut values.into_iter(), &mut graft_values.into_iter());
             let result_cell =
                 Rc::new(expr::StagedExprCell { value: RefCell::new(Some(Rc::new(new_tree) as Rc<dyn Value>)) });
-            let ext = to_v8(scope, result_cell);
+            let ext = to_dynamic_ext(scope, result_cell);
             rv.set(ext.into());
         }
 
-        if register_v8 {
+        if register_dynamic {
             let stage_fn = v8::Function::builder(stage_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
@@ -1619,8 +1619,8 @@ fn eval(
         },
         _ => {
             let to_dynamic = aspect_consume_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
-            let js = to_dynamic.to_dynamic(&xx, root_loc, cv).into_res()?;
-            (Some(js), None)
+            let dynamic_code = to_dynamic.to_dynamic(&xx, root_loc, cv).into_res()?;
+            (Some(dynamic_code), None)
         },
     };
 
@@ -1638,8 +1638,8 @@ fn eval(
         for ds in sets.values() {
             for func_data in ds.functions.borrow().iter() {
                 if func_data.impl_expr.borrow().is_none() {
-                    if let Some(js) = func_data.compiled_js.borrow().clone() {
-                        precompiled_def_funcs.push(js);
+                    if let Some(dynamic_code) = func_data.compiled_source.borrow().clone() {
+                        precompiled_def_funcs.push(dynamic_code);
                     }
                     continue;
                 }
@@ -1667,7 +1667,7 @@ fn eval(
             ix: ex.ix.clone(),
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
-            v8_scope: std::cell::Cell::new(None),
+            dynamic_scope: std::cell::Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -1703,7 +1703,7 @@ fn eval(
                 .code
                 .cast::<CodeDynamic>()
                 .into_res()?
-                .expect("Definition set function body must produce JS code")
+                .expect("Definition set function body must produce dynamic code")
                 .clone();
         let captured = func_xx.vx.externals.borrow().clone();
         for ds in ex.definition_sets.borrow().values() {
@@ -1743,10 +1743,10 @@ fn eval(
             let data_field = dt_data.data_field.clone();
             for method in dt_data.methods.borrow().iter() {
                 let method_id = method.scope_entry_id.get().expect("Method scope entry ID not assigned");
-                if let Some(compiled_js) = method.compiled_js.borrow().clone() {
+                if let Some(compiled_source) = method.compiled_source.borrow().clone() {
                     def_data_methods.push(CompiledDataMethod {
                         scope_entry_id: method_id,
-                        body: CompiledDataMethodBody::Precompiled(compiled_js),
+                        body: CompiledDataMethodBody::Precompiled(compiled_source),
                         captured_externals: method.captured_externals.borrow().clone(),
                     });
                     continue;
@@ -1759,7 +1759,7 @@ fn eval(
                     ix: ex.ix.clone(),
                     next_local_id: Counter::default(),
                     externals: RefCell::new(Vec::new()),
-                    v8_scope: std::cell::Cell::new(None),
+                    dynamic_scope: std::cell::Cell::new(None),
                     definition_sets: RefCell::new(std::collections::HashMap::new()),
                 });
                 let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -1803,7 +1803,7 @@ fn eval(
                         .code
                         .cast::<CodeDynamic>()
                         .into_res()?
-                        .expect("Method body must produce JS code")
+                        .expect("Method body must produce dynamic code")
                         .clone();
                 let captured = method_xx.vx.externals.borrow().clone();
                 *method.captured_externals.borrow_mut() = captured.clone();
@@ -1825,10 +1825,10 @@ fn eval(
                 for method_impl in &impl_data.method_impls {
                     let method_id =
                         method_impl.scope_entry_id.get().expect("Interface method impl scope entry ID not assigned");
-                    if let Some(compiled_js) = method_impl.compiled_js.borrow().clone() {
+                    if let Some(compiled_source) = method_impl.compiled_source.borrow().clone() {
                         def_data_methods.push(CompiledDataMethod {
                             scope_entry_id: method_id,
-                            body: CompiledDataMethodBody::Precompiled(compiled_js),
+                            body: CompiledDataMethodBody::Precompiled(compiled_source),
                             captured_externals: method_impl.captured_externals.borrow().clone(),
                         });
                         continue;
@@ -1845,7 +1845,7 @@ fn eval(
                         ix: ex.ix.clone(),
                         next_local_id: Counter::default(),
                         externals: RefCell::new(Vec::new()),
-                        v8_scope: std::cell::Cell::new(None),
+                        dynamic_scope: std::cell::Cell::new(None),
                         definition_sets: RefCell::new(std::collections::HashMap::new()),
                     });
                     let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -2070,7 +2070,7 @@ fn eval(
                             .code
                             .cast::<CodeDynamic>()
                             .into_res()?
-                            .expect("Interface method body must produce JS code")
+                            .expect("Interface method body must produce dynamic code")
                             .clone();
                     let captured = method_xx.vx.externals.borrow().clone();
                     *method_impl.captured_externals.borrow_mut() = captured.clone();
@@ -2095,15 +2095,15 @@ fn eval(
     }
     let has_js = stage1_code.is_some() || !def_funcs.is_empty() || !def_data_methods.is_empty();
     if !has_js {
-        let logs = dynamic_scope.get_slot::<V8LogStore>().unwrap().logs.take();
+        let logs = dynamic_scope.get_slot::<DynamicLogStore>().unwrap().logs.take();
         return Ok(EvalResult {
-            value: fallback_value.expect("No JS and no fallback value"),
+            value: fallback_value.expect("No dynamic code and no fallback value"),
             logs,
         });
     }
-    let mut code1 = JsSourceBuilder::default();
-    for js in &precompiled_def_funcs {
-        for line in js.lines() {
+    let mut code1 = DynamicSourceBuilder::default();
+    for dynamic_code in &precompiled_def_funcs {
+        for line in dynamic_code.lines() {
             code1.push(root_loc, line.to_string());
         }
     }
@@ -2132,7 +2132,7 @@ fn eval(
                     if let Some(errs) = ds.check_mutable(root_loc).errors {
                         return Err(errs);
                     }
-                    *func_data.compiled_js.borrow_mut() = Some(compiled.clone());
+                    *func_data.compiled_source.borrow_mut() = Some(compiled.clone());
                 }
             }
         }
@@ -2189,7 +2189,7 @@ fn eval(
                                 if let Some(errs) = ds.check_mutable(root_loc).errors {
                                     return Err(errs);
                                 }
-                                *m.compiled_js.borrow_mut() = Some(compiled.clone());
+                                *m.compiled_source.borrow_mut() = Some(compiled.clone());
                             }
                         }
                         for impl_data in dt_data.interface_impls.borrow().iter() {
@@ -2198,15 +2198,15 @@ fn eval(
                                     if let Some(errs) = ds.check_mutable(root_loc).errors {
                                         return Err(errs);
                                     }
-                                    *m.compiled_js.borrow_mut() = Some(compiled.clone());
+                                    *m.compiled_source.borrow_mut() = Some(compiled.clone());
                                 }
                             }
                         }
                     }
                 }
             },
-            CompiledDataMethodBody::Precompiled(js) => {
-                for line in js.lines() {
+            CompiledDataMethodBody::Precompiled(dynamic_code) => {
+                for line in dynamic_code.lines() {
                     code1.push(root_loc, line.to_string());
                 }
             },
@@ -2221,12 +2221,12 @@ fn eval(
     }
     code1.push(root_loc, "}/*main*/".to_string());
     {
-        fn v8_value_to_type(
+        fn dynamic_value_to_type(
             _scope: &mut v8::PinnedRef<v8::HandleScope>,
             value: v8::Local<v8::Value>,
         ) -> Rc<dyn Type> {
             if value.is_external() {
-                let any = from_v8_any(&*value);
+                let any = from_dynamic_any(&*value);
                 if any.is::<Rc<dyn Type>>() {
                     return must_downcast_ref::<Rc<dyn Type>>(any).clone();
                 }
@@ -2239,9 +2239,9 @@ fn eval(
                 if let Some(dt_ref) = any.downcast_ref::<Rc<SourceDataTypeRef>>() {
                     return Rc::new(TypeSourceDataTypeDynamic { data: dt_ref.data.clone() });
                 }
-                return from_v8_ref::<Rc<dyn Type>>(&*value).clone();
+                return from_dynamic_ref::<Rc<dyn Type>>(&*value).clone();
             }
-            panic!("v8_value_to_type: expected `Rc<dyn Type>` external, got something else");
+            panic!("dynamic_value_to_type: expected `Rc<dyn Type>` external, got something else");
         }
 
         fn record_to_type_callback<
@@ -2252,7 +2252,7 @@ fn eval(
             mut rv: v8::ReturnValue<'s>,
         ) {
             let value = args.get(0);
-            let obj = v8::Local::<v8::Object>::try_from(value).expect("__record_to_type: expected JS object");
+            let obj = v8::Local::<v8::Object>::try_from(value).expect("__record_to_type: expected dynamic object");
             let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
             let mut fields = std::collections::BTreeMap::new();
             for i in 0 .. keys.length() {
@@ -2263,13 +2263,13 @@ fn eval(
                     ConstKey::from_str(
                         &key_str,
                     ).expect(&format!("Invalid ConstKey in v8 object property: {}", key_str));
-                fields.insert(const_key, RecordField::Dynamic(v8_value_to_type(scope, val)));
+                fields.insert(const_key, RecordField::Dynamic(dynamic_value_to_type(scope, val)));
             }
             let type_: Rc<dyn Type> = Rc::new(Record {
                 base: None,
                 fields,
             });
-            let ext = rc_type_to_v8(scope, type_);
+            let ext = rc_type_to_dynamic_ext(scope, type_);
             rv.set(ext.into());
         }
 
@@ -2281,15 +2281,15 @@ fn eval(
             mut rv: v8::ReturnValue<'s>,
         ) {
             let value = args.get(0);
-            let arr = v8::Local::<v8::Array>::try_from(value).expect("__tuple_to_type: expected JS array");
+            let arr = v8::Local::<v8::Array>::try_from(value).expect("__tuple_to_type: expected dynamic array");
             let len = arr.length();
             let mut elements = Vec::with_capacity(len as usize);
             for i in 0 .. len {
                 let elem = arr.get_index(scope, i).unwrap();
-                elements.push(TupleElement::Dynamic(v8_value_to_type(scope, elem)));
+                elements.push(TupleElement::Dynamic(dynamic_value_to_type(scope, elem)));
             }
             let type_: Rc<dyn Type> = Rc::new(Tuple { elements: elements });
-            let ext = rc_type_to_v8(scope, type_);
+            let ext = rc_type_to_dynamic_ext(scope, type_);
             rv.set(ext.into());
         }
 
@@ -2302,13 +2302,13 @@ fn eval(
         ) {
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
-                from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
+                from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
             let inner_value: Rc<dyn Value> = {
                 let guard = cve_cell.borrow();
                 let cv = guard.as_ref().expect("__cve_extract: inner CodeValue already consumed");
                 cv.value.clone()
             };
-            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
                 import_state: Rc::new(Cell::new(ex_slot.ex.ix.import_state)),
@@ -2338,7 +2338,7 @@ fn eval(
         ) {
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
-                from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
+                from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
             let inner_code: Code = {
                 let guard = cve_cell.borrow();
                 let cv = guard.as_ref().expect("__cve_get_code_enum: inner CodeValue already consumed");
@@ -2353,13 +2353,13 @@ fn eval(
                 },
                 Code_::Dyn(c) => {
                     let key = v8::String::new(scope, &ConstKey::String("dyn".to_string()).to_str()).unwrap();
-                    let v8_val: v8::Local<v8::Value> =
+                    let dynamic_val: v8::Local<v8::Value> =
                         if let Some(pull) = (c.as_ref() as &dyn std::any::Any).downcast_ref::<CodePull>() {
                             v8::Local::new(scope, &pull.instance).into()
                         } else {
-                            to_v8(scope, c).into()
+                            to_dynamic_ext(scope, c).into()
                         };
-                    obj.set(scope, key.into(), v8_val);
+                    obj.set(scope, key.into(), dynamic_val);
                 },
             }
             rv.set(obj.into());
@@ -2374,12 +2374,12 @@ fn eval(
         ) {
             let cve_v8 = args.get(0);
             let cve_cell: Rc<RefCell<Option<CodeValue>>> =
-                from_v8_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
+                from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
             let value: Rc<dyn Value> = {
                 let borrow = cve_cell.borrow();
                 borrow.as_ref().expect("__cve_get_value: inner CodeValue already consumed").value.clone()
             };
-            let ext = rc_value_to_v8(scope, value);
+            let ext = rc_value_to_dynamic_ext(scope, value);
             rv.set(ext.into());
         }
 
@@ -2391,7 +2391,7 @@ fn eval(
             mut rv: v8::ReturnValue<'s>,
         ) {
             let value: Rc<dyn Value> = rc_value_from_v8(&*args.get(0));
-            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
             let target: Rc<dyn Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
@@ -2405,7 +2405,7 @@ fn eval(
             let loc = (ex_slot.ex.ix.source_id, ExprId(0));
             let type_ref: Rc<dyn Type> =
                 value.type_(&xx, loc).into_res().expect("value_get_type: type_() returned errors");
-            let type_ref_push = Push::into_v8(TypeRefPush { type_ref }, scope);
+            let type_ref_push = Push::into_dynamic(TypeRefPush { type_ref }, scope);
             rv.set(type_ref_push);
         }
 
@@ -2421,12 +2421,12 @@ fn eval(
             let arg0_obj =
                 v8::Local::<v8::Object>::try_from(
                     arg0,
-                ).expect("__aspect_lookup: expected JS Object for TypeRefPush");
+                ).expect("__aspect_lookup: expected dynamic object for TypeRefPush");
             let d_key = v8::String::new(scope, "_d").expect("__aspect_lookup: alloc _d key");
             let d_val = arg0_obj.get(scope, d_key.into()).expect("__aspect_lookup: TypeRefPush missing _d field");
-            let type_ref: Rc<dyn Type> = from_v8_ref::<Rc<TypeRefPush>>(&*d_val).type_ref.clone();
-            let unique: Unique = *from_v8_ref::<Unique>(&*arg1);
-            let ex_slot = scope.get_slot::<V8EvalContextSlot>().unwrap();
+            let type_ref: Rc<dyn Type> = from_dynamic_ref::<Rc<TypeRefPush>>(&*d_val).type_ref.clone();
+            let unique: Unique = *from_dynamic_ref::<Unique>(&*arg1);
+            let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
             let target: Rc<dyn Target> = Rc::new(TargetDynamic);
             let xx = Rc::new(ExprContext {
                 vx: ex_slot.ex.clone(),
@@ -2443,12 +2443,12 @@ fn eval(
                     let aspect_field: Box<dyn AspectField> =
                         must_downcast_box::<Box<dyn AspectField>>(aspect_box);
                     let aspect_dyn: &dyn Aspect = &*aspect_field;
-                    let instance_v8: v8::Local<v8::Value> = match aspect_dyn.v8_instance() {
+                    let instance_dynamic: v8::Local<v8::Value> = match aspect_dyn.dynamic_instance() {
                         Some(g) => v8::Local::new(scope, &g).into(),
                         None => v8::null(scope).into(),
                     };
                     let some_key = v8::String::new(scope, &ConstKey::String("some".to_string()).to_str()).unwrap();
-                    result.set(scope, some_key.into(), instance_v8);
+                    result.set(scope, some_key.into(), instance_dynamic);
                 },
                 None => {
                     let none_key = v8::String::new(scope, &ConstKey::String("none".to_string()).to_str()).unwrap();
@@ -2459,7 +2459,7 @@ fn eval(
             rv.set(result.into());
         }
 
-        if register_v8 {
+        if register_dynamic {
             let record_to_type_fn = v8::Function::builder(record_to_type_callback).build(dynamic_scope).unwrap();
             dynamic_scope
                 .get_current_context()
@@ -2574,9 +2574,9 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let dt_ref: Rc<SourceDataTypeRef> = from_v8_ref::<Rc<SourceDataTypeRef>>(&*args.get(0)).clone();
+                let dt_ref: Rc<SourceDataTypeRef> = from_dynamic_ref::<Rc<SourceDataTypeRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConst { data: dt_ref.data.clone() });
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2601,9 +2601,9 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let tu_ref: Rc<SourceTaggedUnionRef> =
-                    from_v8_ref::<Rc<SourceTaggedUnionRef>>(&*args.get(0)).clone();
+                    from_dynamic_ref::<Rc<SourceTaggedUnionRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConst { data: tu_ref.data.clone() });
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2628,9 +2628,9 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let iface_ref: Rc<SourceInterfaceRef> =
-                    from_v8_ref::<Rc<SourceInterfaceRef>>(&*args.get(0)).clone();
+                    from_dynamic_ref::<Rc<SourceInterfaceRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> = Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2655,9 +2655,9 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let func_ref: Rc<TypeSourceFunctionConst> =
-                    from_v8_ref::<Rc<TypeSourceFunctionConst>>(&*args.get(0)).clone();
+                    from_dynamic_ref::<Rc<TypeSourceFunctionConst>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2682,10 +2682,10 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
-                    from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&*args.get(0)).clone();
+                    from_dynamic_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2713,7 +2713,7 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let ctor_ref: Rc<SourceTaggedUnionConstructorRef> =
-                    from_v8_ref::<Rc<SourceTaggedUnionConstructorRef>>(&*args.get(0)).clone();
+                    from_dynamic_ref::<Rc<SourceTaggedUnionConstructorRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> =
                     Rc::new(
                         crate
@@ -2726,7 +2726,7 @@ fn eval(
                             variant_index: ctor_ref.variant_index,
                         },
                     );
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2753,20 +2753,20 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let template_type: Rc<dyn Type> = from_v8_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
+                let template_type: Rc<dyn Type> = from_dynamic_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
                 let template =
                     crate::invariant::must_downcast_ref::<TypeSourceDataTypeConst>(template_type.as_ref());
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
-                    ).expect("__data_instance_to_type: expected JS object for instance");
+                    ).expect("__data_instance_to_type: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let type_: Rc<dyn Type> = Rc::new(TypePull {
                     data: template.data.clone(),
                     bundle: std::cell::RefCell::new(Some(instance_global)),
                     artifact_id: std::cell::RefCell::new(None),
                 });
-                let ext = rc_type_to_v8(scope, type_);
+                let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
 
@@ -2793,10 +2793,10 @@ fn eval(
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
-                    ).expect("__data_instance_to_target: expected JS object for instance");
+                    ).expect("__data_instance_to_target: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let target: Rc<dyn Target> = Rc::new(PullTarget { instance: instance_global });
-                let ext = rc_target_to_v8(scope, target);
+                let ext = rc_target_to_dynamic_ext(scope, target);
                 rv.set(ext.into());
             }
 
@@ -2823,10 +2823,10 @@ fn eval(
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
-                    ).expect("__data_instance_to_scope_entry: expected JS object for instance");
+                    ).expect("__data_instance_to_scope_entry: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let entry: Rc<dyn ScopeEntry> = Rc::new(PullScopeEntry { instance: instance_global });
-                let ext = rc_scope_entry_to_v8(scope, entry);
+                let ext = rc_scope_entry_to_dynamic_ext(scope, entry);
                 rv.set(ext.into());
             }
 
@@ -2856,10 +2856,10 @@ fn eval(
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
-                    ).expect("__data_instance_to_value: expected JS object for instance");
+                    ).expect("__data_instance_to_value: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let value: Rc<dyn Value> = Rc::new(ValuePull { bundle: instance_global });
-                let ext = rc_value_to_v8(scope, value);
+                let ext = rc_value_to_dynamic_ext(scope, value);
                 rv.set(ext.into());
             }
 
@@ -2886,10 +2886,10 @@ fn eval(
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(0),
-                    ).expect("__data_instance_to_aspect: expected JS object for instance");
+                    ).expect("__data_instance_to_aspect: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let aspect: Rc<dyn Aspect> = std::rc::Rc::new(AspectPull { bundle: instance_global });
-                let ext = to_v8(scope, aspect);
+                let ext = to_dynamic_ext(scope, aspect);
                 rv.set(ext.into());
             }
 
@@ -2916,10 +2916,10 @@ fn eval(
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
-                    ).expect("__data_instance_to_code: expected JS object for instance");
+                    ).expect("__data_instance_to_code: expected dynamic object for instance");
                 let instance_global: v8::Global<v8::Object> = v8::Global::new(scope, instance);
                 let code: Rc<dyn CodeDyn> = Rc::new(CodePull { instance: instance_global });
-                let ext = to_v8(scope, code);
+                let ext = to_dynamic_ext(scope, code);
                 rv.set(ext.into());
             }
 
@@ -2943,8 +2943,8 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let a = *from_v8_ref::<Unique>(&*args.get(0));
-                let b = *from_v8_ref::<Unique>(&*args.get(1));
+                let a = *from_dynamic_ref::<Unique>(&*args.get(0));
+                let b = *from_dynamic_ref::<Unique>(&*args.get(1));
                 rv.set_bool(a == b);
             }
 
@@ -2982,23 +2982,23 @@ fn eval(
         let key = v8::String::new(dynamic_scope, key_str).unwrap().cast();
         match value {
             External::StagedExprCell(cell) => {
-                let ext = to_v8(dynamic_scope, cell.clone());
+                let ext = to_dynamic_ext(dynamic_scope, cell.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
             External::StageLiftCell(cell) => {
-                let ext = to_v8(dynamic_scope, cell.clone());
+                let ext = to_dynamic_ext(dynamic_scope, cell.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
             External::CodeValueExternCell(cell) => {
-                let ext = to_v8(dynamic_scope, cell.clone());
+                let ext = to_dynamic_ext(dynamic_scope, cell.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
             External::Type(type_) => {
-                let ext = rc_type_to_v8(dynamic_scope, type_.clone());
+                let ext = rc_type_to_dynamic_ext(dynamic_scope, type_.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
             External::Unique(u) => {
-                let ext = to_v8(dynamic_scope, u.clone());
+                let ext = to_dynamic_ext(dynamic_scope, u.clone());
                 dynamic_scope.get_current_context().global(dynamic_scope).set(dynamic_scope, key, ext.into());
             },
         }
@@ -3013,14 +3013,14 @@ fn eval(
             let value: Rc<dyn Value> = match fallback_value {
                 Some(v) => v,
                 None => {
-                    let value_from_js = aspect_lift_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
+                    let value_from_js = aspect_lift_get(&xx, root_loc, value_type.as_ref()).into_res()?;
                     value_from_js.lift(&xx, &*dynamic_scope, stage2).map_err(|e| vec![ExprErr {
                         loc: root_loc,
                         errors: vec![ExprSubErr::Opaque(e)],
                     }])?
                 },
             };
-            let logs = dynamic_scope.get_slot::<V8LogStore>().unwrap().logs.take();
+            let logs = dynamic_scope.get_slot::<DynamicLogStore>().unwrap().logs.take();
             Ok(EvalResult {
                 value,
                 logs,
@@ -3054,7 +3054,7 @@ fn eval(
                     Err(vec![ExprErr {
                         loc: *code1.mapping.get(&(dynamic_line as usize)).unwrap_or(&root_loc),
                         errors: vec![
-                            ExprSubErr::Opaque(format!("{} (at JS line {}):{}", text, dynamic_line, context)),
+                            ExprSubErr::Opaque(format!("{} (at dynamic line {}):{}", text, dynamic_line, context)),
                         ],
                     }])
                 },
@@ -3082,8 +3082,8 @@ fn extract_const_key(xx: &ExprContext, loc: QExprId, v: &dyn Value) -> Result<Co
     return Err(format!("TODO value type [X] must expose const key aspect [LIST] but doesn't"));
 }
 
-fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
-    assert!(value.is_external(), "from_v8_any: expected v8::External");
+fn from_dynamic_any(value: &v8::Value) -> &dyn std::any::Any {
+    assert!(value.is_external(), "from_dynamic_any: expected v8::External");
     let ext = unsafe {
         &*(value as *const v8::Value as *const v8::External)
     };
@@ -3093,18 +3093,18 @@ fn from_v8_any(value: &v8::Value) -> &dyn std::any::Any {
     }
 }
 
-pub(crate) fn from_v8_ref<T: 'static>(value: &v8::Value) -> &T {
-    must_downcast_ref::<T>(from_v8_any(value))
+pub(crate) fn from_dynamic_ref<T: 'static>(value: &v8::Value) -> &T {
+    must_downcast_ref::<T>(from_dynamic_any(value))
 }
 
 #[derive(Default)]
-pub(crate) struct JsSourceBuilder {
+pub(crate) struct DynamicSourceBuilder {
     pub(crate) lines: Vec<String>,
     pub(crate) mapping: HashMap<usize, QExprId>,
     pub(crate) next_expr_id: usize,
 }
 
-impl JsSourceBuilder {
+impl DynamicSourceBuilder {
     pub(crate) fn next_expr_id(&mut self) -> usize {
         let id = self.next_expr_id;
         self.next_expr_id += 1;
@@ -3119,43 +3119,43 @@ impl JsSourceBuilder {
 }
 
 pub(crate) fn rc_scope_entry_from_v8(value: &v8::Value) -> Rc<dyn ScopeEntry> {
-    from_v8_ref::<Rc<dyn ScopeEntry>>(value).clone()
+    from_dynamic_ref::<Rc<dyn ScopeEntry>>(value).clone()
 }
 
-pub(crate) fn rc_scope_entry_to_v8<
+pub(crate) fn rc_scope_entry_to_dynamic_ext<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn ScopeEntry>) -> v8::Local<'s, v8::External> {
-    to_v8(scope, value)
+    to_dynamic_ext(scope, value)
 }
 
 pub(crate) fn rc_target_from_v8(value: &v8::Value) -> Rc<dyn Target> {
-    from_v8_ref::<Rc<dyn Target>>(value).clone()
+    from_dynamic_ref::<Rc<dyn Target>>(value).clone()
 }
 
-pub(crate) fn rc_target_to_v8<
+pub(crate) fn rc_target_to_dynamic_ext<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Target>) -> v8::Local<'s, v8::External> {
-    to_v8(scope, value)
+    to_dynamic_ext(scope, value)
 }
 
 pub(crate) fn rc_type_from_v8(value: &v8::Value) -> Rc<dyn Type> {
-    from_v8_ref::<Rc<dyn Type>>(value).clone()
+    from_dynamic_ref::<Rc<dyn Type>>(value).clone()
 }
 
-pub(crate) fn rc_type_to_v8<
+pub(crate) fn rc_type_to_dynamic_ext<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Type>) -> v8::Local<'s, v8::External> {
-    to_v8(scope, value)
+    to_dynamic_ext(scope, value)
 }
 
 pub(crate) fn rc_value_from_v8(value: &v8::Value) -> Rc<dyn Value> {
-    from_v8_ref::<Rc<dyn Value>>(value).clone()
+    from_dynamic_ref::<Rc<dyn Value>>(value).clone()
 }
 
-pub(crate) fn rc_value_to_v8<
+pub(crate) fn rc_value_to_dynamic_ext<
     's,
 >(scope: &mut v8::PinScope<'s, '_, ()>, value: Rc<dyn Value>) -> v8::Local<'s, v8::External> {
-    to_v8(scope, value)
+    to_dynamic_ext(scope, value)
 }
 
 pub(crate) struct RcScopeEntryWrap(pub Rc<dyn ScopeEntry>);
@@ -3166,7 +3166,7 @@ impl ScopeEntry for RcScopeEntryWrap {
     }
 }
 
-pub(crate) fn render_code(lines: &mut JsSourceBuilder, code: &CodeDynamic) -> String {
+pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) -> String {
     let out = format!("{}{}", EXPR_PREFIX, lines.next_expr_id());
     lines.push(code.loc, format!("let {};", out));
     match &code.type_ {
@@ -3387,7 +3387,7 @@ pub(crate) struct TargetDynamic;
 
 impl Target for TargetDynamic {
     fn bind(&self, xx: &ExprContext, loc: QExprId, sub: TargetBindSub) -> (Code, ScopeEntryId) {
-        let js =
+        let dynamic_code =
             sub
                 .data
                 .cast::<CodeDynamic>()
@@ -3403,7 +3403,7 @@ impl Target for TargetDynamic {
                 type_: CodeDynamicType::Block(
                     CodeDynamicBlock { entries: vec![CodeDynamicBlockEntry::Bind(CodeDynamicBind {
                         base: js_key,
-                        value: Box::new(js),
+                        value: Box::new(dynamic_code),
                     })] },
                 ),
             })),
@@ -3412,7 +3412,7 @@ impl Target for TargetDynamic {
     }
 
     fn bind_sub_record(&self, loc: QExprId, carry: Code, fields: Vec<(ConstKey, TargetBindSub)>) -> TargetBindSub {
-        let mut js_fields = Vec::new();
+        let mut dynamic_code_fields = Vec::new();
         let mut dynamic_fields = std::collections::BTreeMap::new();
         for (key, sub) in fields {
             let cd =
@@ -3423,28 +3423,28 @@ impl Target for TargetDynamic {
                     .expect("TargetDynamic bind_sub_record: expected CodeDynamic")
                     .unwrap()
                     .clone();
-            js_fields.push((key.to_str(), cd));
+            dynamic_code_fields.push((key.to_str(), cd));
             dynamic_fields.insert(key, value::record::RecordField::Dynamic(sub.type_));
         }
         let record_type = Rc::new(Record {
             base: None,
             fields: dynamic_fields,
         }) as Rc<dyn Type>;
-        let js = wrap_with_carry(loc, carry, CodeDynamic {
+        let dynamic_code = wrap_with_carry(loc, carry, CodeDynamic {
             loc: loc,
-            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: js_fields }),
+            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: dynamic_code_fields }),
         });
         TargetBindSub {
             data: Code {
                 loc: loc,
-                code: Code_::Dyn(Rc::new(js)),
+                code: Code_::Dyn(Rc::new(dynamic_code)),
             },
             type_: record_type,
         }
     }
 
     fn bind_sub_tuple(&self, loc: QExprId, carry: Code, elements: Vec<TargetBindSub>) -> TargetBindSub {
-        let mut js_elements = Vec::new();
+        let mut dynamic_code_elements = Vec::new();
         let mut dynamic_elements = Vec::new();
         for sub in elements {
             let cd =
@@ -3455,18 +3455,18 @@ impl Target for TargetDynamic {
                     .expect("TargetDynamic bind_sub_tuple: expected CodeDynamic")
                     .unwrap()
                     .clone();
-            js_elements.push(cd);
+            dynamic_code_elements.push(cd);
             dynamic_elements.push(TupleElement::Dynamic(sub.type_));
         }
         let tuple_type = Rc::new(Tuple { elements: dynamic_elements }) as Rc<dyn Type>;
-        let js = wrap_with_carry(loc, carry, CodeDynamic {
+        let dynamic_code = wrap_with_carry(loc, carry, CodeDynamic {
             loc: loc,
-            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: dynamic_code_elements }),
         });
         TargetBindSub {
             data: Code {
                 loc: loc,
-                code: Code_::Dyn(Rc::new(js)),
+                code: Code_::Dyn(Rc::new(dynamic_code)),
             },
             type_: tuple_type,
         }
@@ -3633,14 +3633,14 @@ impl Target for TargetDynamic {
         let mut errors = vec![];
         for entry in &entries {
             match entry.cast::<CodeDynamic>().into_res() {
-                Ok(Some(js)) => {
-                    match &js.type_ {
+                Ok(Some(dynamic_code)) => {
+                    match &dynamic_code.type_ {
                         CodeDynamicType::Block(block) if
                             !block.entries.is_empty() &&
                                 block.entries.iter().all(|e| matches!(e, CodeDynamicBlockEntry::Bind(_))) => {
                             dynamic_entries.extend(block.entries.clone());
                         },
-                        _ => dynamic_entries.push(CodeDynamicBlockEntry::Code(js.clone())),
+                        _ => dynamic_entries.push(CodeDynamicBlockEntry::Code(dynamic_code.clone())),
                     }
                 },
                 Ok(None) => { },
@@ -3776,14 +3776,14 @@ impl Target for TargetDynamic {
     }
 }
 
-pub(crate) fn to_v8<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
+pub(crate) fn to_dynamic_ext<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
     let any: Box<dyn std::any::Any> = Box::new(value);
     let ptr = Box::into_raw(Box::new(any)) as *mut std::ffi::c_void;
     let ext = v8::External::new(&*scope, ptr);
     let weak = v8::Weak::with_guaranteed_finalizer(&mut *scope, ext, Box::new(move || unsafe {
         drop(Box::from_raw(ptr as *mut Box<dyn std::any::Any>));
     }));
-    scope.get_slot::<V8RcStore>().unwrap().weaks.borrow_mut().push(weak);
+    scope.get_slot::<DynamicRcStore>().unwrap().weaks.borrow_mut().push(weak);
     ext
 }
 
@@ -3804,19 +3804,19 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
     });
 }
 
-pub(crate) struct V8EvalContextSlot {
+pub(crate) struct DynamicEvalContextSlot {
     pub(crate) ex: Rc<EvalContext>,
 }
 
-pub(crate) struct V8LogStore {
+pub(crate) struct DynamicLogStore {
     pub(crate) logs: RefCell<Vec<LogEntry>>,
 }
 
-pub(crate) struct V8RcStore {
+pub(crate) struct DynamicRcStore {
     weaks: RefCell<Vec<v8::Weak<v8::External>>>,
 }
 
-pub(crate) struct V8UniqueCounter {
+pub(crate) struct DynamicUniqueCounter {
     pub(crate) compile_id: CompileId,
     pub(crate) counter: Counter,
 }

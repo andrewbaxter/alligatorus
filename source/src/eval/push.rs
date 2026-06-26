@@ -3,7 +3,7 @@ use {
         eval::{
             TargetBindSub,
             dynamic_util::throw_error,
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 tuple::{
                     Tuple,
@@ -54,8 +54,8 @@ use {
 
 pub(crate) trait Push: Sized + 'static {
     fn dynamic_type() -> Rc<dyn Type>;
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self;
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self;
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value>;
 }
 
 impl Push for () {
@@ -63,11 +63,11 @@ impl Push for () {
         Rc::new(TypeNullDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
 
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         v8::null(scope).into()
     }
 }
@@ -87,17 +87,17 @@ where
         )
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let arr = v8::Local::<v8::Array>::try_from(value).expect("(A, B)::from_v8: expected JS array of length 2");
-        let a_val = arr.get_index(scope, 0).expect("(A, B)::from_v8: missing element 0");
-        let b_val = arr.get_index(scope, 1).expect("(A, B)::from_v8: missing element 1");
-        let a = <A as Push>::from_v8(scope, a_val);
-        let b = <B as Push>::from_v8(scope, b_val);
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let arr = v8::Local::<v8::Array>::try_from(value).expect("(A, B)::from_dynamic: expected dynamic array of length 2");
+        let a_val = arr.get_index(scope, 0).expect("(A, B)::from_dynamic: missing element 0");
+        let b_val = arr.get_index(scope, 1).expect("(A, B)::from_dynamic: missing element 1");
+        let a = <A as Push>::from_dynamic(scope, a_val);
+        let b = <B as Push>::from_dynamic(scope, b_val);
         (a, b)
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("(A, B) should not be sent back to v8 (yet)");
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("(A, B) should not be sent back to dynamic (yet)");
     }
 }
 
@@ -106,11 +106,11 @@ impl Push for bool {
         Rc::new(TypeBoolDynamic)
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         value.boolean_value(scope)
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         v8::Boolean::new(scope, self).into()
     }
 }
@@ -123,8 +123,8 @@ impl<K: PushKey + Push, V: Push> Push for BTreeMap<K, V> {
         })
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a JS object");
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("BTreeMap argument must be a dynamic object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
         let len = keys.length();
         let mut map = BTreeMap::new();
@@ -139,17 +139,17 @@ impl<K: PushKey + Push, V: Push> Push for BTreeMap<K, V> {
                 },
             };
             let dynamic_val = obj.get(scope, dynamic_key).unwrap();
-            let val = V::from_v8(scope, dynamic_val);
+            let val = V::from_dynamic(scope, dynamic_val);
             map.insert(key, val);
         }
         map
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let obj = v8::Object::new(scope);
         for (k, v) in self {
             let dynamic_key: v8::Local<v8::Value> = v8::String::new(scope, &k.to_dynamic_key()).unwrap().into();
-            let dynamic_val = V::into_v8(v, scope);
+            let dynamic_val = V::into_dynamic(v, scope);
             obj.set(scope, dynamic_key, dynamic_val);
         }
         obj.into()
@@ -161,17 +161,17 @@ impl Push for Code {
         Rc::new(TypeOptionDynamic { element_type: Rc::new(TypeCodeDynHandleDynamic) as Rc<dyn Type> })
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let dummy_loc: QExprId = (SourceId(0), ExprId(0));
-        let obj = v8::Local::<v8::Object>::try_from(value).expect("Code: expected option-shaped JS object");
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("Code: expected option-shaped dynamic object");
         let some_key =
             v8::String::new(
                 scope,
                 &ConstKey::String("some".to_string()).to_str(),
-            ).expect("Code from_v8: some key alloc");
-        let some_val = obj.get(scope, some_key.into()).expect("Code from_v8: get some");
+            ).expect("Code from_dynamic: some key alloc");
+        let some_val = obj.get(scope, some_key.into()).expect("Code from_dynamic: get some");
         if !some_val.is_undefined() {
-            let code: Rc<dyn CodeDyn> = super::from_v8_ref::<Rc<dyn CodeDyn>>(&*some_val).clone();
+            let code: Rc<dyn CodeDyn> = super::from_dynamic_ref::<Rc<dyn CodeDyn>>(&*some_val).clone();
             return Code {
                 loc: dummy_loc,
                 code: Code_::Dyn(code),
@@ -183,8 +183,8 @@ impl Push for Code {
         }
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("Code should not be sent back to v8 (yet)")
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("Code should not be sent back to dynamic (yet)")
     }
 }
 
@@ -193,7 +193,7 @@ impl Push for ConstKey {
         Rc::new(TypeConstkeyDynamic)
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let s = value.to_string(scope).unwrap().to_rust_string_lossy(scope);
         match ConstKey::from_str(&s) {
             Ok(k) => k,
@@ -204,7 +204,7 @@ impl Push for ConstKey {
         }
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let s = self.to_str();
         v8::String::new(scope, &s).unwrap().into()
     }
@@ -215,12 +215,12 @@ impl<T: Push> Push for EResult<T> {
         <T as Push>::dynamic_type()
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
-        unimplemented!("EResult<T>::from_v8: not yet wired");
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+        unimplemented!("EResult<T>::from_dynamic: not yet wired");
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("EResult<T>::into_v8: not yet wired");
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("EResult<T>::into_dynamic: not yet wired");
     }
 }
 
@@ -229,14 +229,14 @@ impl Push for expr::Expr {
         Rc::new(TypeExpr)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let cell: Rc<expr::StagedExprCell> = from_dynamic_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         let inner = cell.value.borrow_mut().take().expect("Expr staged value already consumed");
         Rc::try_unwrap(downcast_value::<expr::Expr>(inner)).ok().expect("Expr in StagedExprCell: Rc not unique")
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("Expr should not be sent back to v8")
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("Expr should not be sent back to dynamic")
     }
 }
 
@@ -251,8 +251,8 @@ where
         })
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let obj = v8::Local::<v8::Object>::try_from(value).expect("HashMap::from_v8: expected JS object");
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("HashMap::from_dynamic: expected dynamic object");
         let keys = obj.get_own_property_names(scope, v8::GetPropertyNamesArgs::default()).unwrap();
         let mut out = HashMap::new();
         for i in 0 .. keys.length() {
@@ -261,16 +261,16 @@ where
             let parsed_key =
                 K::from_dynamic_key(
                     &key_str,
-                ).unwrap_or_else(|e| panic!("HashMap::from_v8: bad key {:?}: {}", key_str, e));
+                ).unwrap_or_else(|e| panic!("HashMap::from_dynamic: bad key {:?}: {}", key_str, e));
             let val = obj.get(scope, key).unwrap();
-            let parsed_val = V::from_v8(scope, val);
+            let parsed_val = V::from_dynamic(scope, val);
             out.insert(parsed_key, parsed_val);
         }
         out
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("HashMap should not be sent back to v8")
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("HashMap should not be sent back to dynamic")
     }
 }
 
@@ -279,12 +279,12 @@ impl<T: Push> Push for Option<T> {
         Rc::new(TypeOptionDynamic { element_type: <T as Push>::dynamic_type() })
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
-        unimplemented!("Option<T>::from_v8: not yet wired");
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+        unimplemented!("Option<T>::from_dynamic: not yet wired");
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("Option<T>::into_v8: not yet wired");
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("Option<T>::into_dynamic: not yet wired");
     }
 }
 
@@ -293,12 +293,12 @@ impl Push for Rc<dyn ScopeEntry> {
         Rc::new(TypeAnyScopeEntryDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_scope_entry_from_v8(&*value)
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        super::rc_scope_entry_to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_scope_entry_to_dynamic_ext(scope, self).into()
     }
 }
 
@@ -307,12 +307,12 @@ impl Push for Rc<dyn Target> {
         Rc::new(TypeAnyTargetDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_target_from_v8(&*value)
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        super::rc_target_to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_target_to_dynamic_ext(scope, self).into()
     }
 }
 
@@ -321,12 +321,12 @@ impl Push for Rc<dyn Value> {
         Rc::new(TypeValueDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         super::rc_value_from_v8(&*value)
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        super::rc_value_to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        super::rc_value_to_dynamic_ext(scope, self).into()
     }
 }
 
@@ -335,12 +335,12 @@ impl Push for ScopeEntryId {
         Rc::new(TypeStringDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
-        unimplemented!("ScopeEntryId::from_v8: user-defined target dispatch not yet routed through v8",);
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+        unimplemented!("ScopeEntryId::from_dynamic: user-defined target dispatch not yet routed through v8",);
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("ScopeEntryId::into_v8: cross-dynamic `ScopeEntryId` transfer not yet wired",);
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("ScopeEntryId::into_dynamic: cross-dynamic `ScopeEntryId` transfer not yet wired",);
     }
 }
 
@@ -349,11 +349,11 @@ impl Push for String {
         Rc::new(TypeStringDynamic)
     }
 
-    fn from_v8<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         value.to_string(scope).unwrap().to_rust_string_lossy(scope)
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         v8::String::new(scope, &self).unwrap().into()
     }
 }
@@ -363,12 +363,12 @@ impl Push for TargetBindSub {
         Rc::new(TypeAnyDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
-        unimplemented!("TargetBindSub::from_v8: user-defined target dispatch not yet routed through v8");
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+        unimplemented!("TargetBindSub::from_dynamic: user-defined target dispatch not yet routed through v8");
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("TargetBindSub::into_v8: cross-dynamic `TargetBindSub` transfer not yet wired");
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("TargetBindSub::into_dynamic: cross-dynamic `TargetBindSub` transfer not yet wired");
     }
 }
 
@@ -394,12 +394,12 @@ impl Push for AnyType {
         Rc::new(TypeAnyDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         AnyType(super::rc_type_from_v8(&*value))
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("AnyType should not be sent back to v8")
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("AnyType should not be sent back to dynamic")
     }
 }
 
@@ -414,12 +414,12 @@ impl Push for StagedExpr {
         Rc::new(TypeExpr)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<expr::StagedExprCell> = from_v8_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let cell: Rc<expr::StagedExprCell> = from_dynamic_ref::<Rc<expr::StagedExprCell>>(&*value).clone();
         StagedExpr(cell.value.borrow_mut().take().expect("staged expr already consumed (double use)"))
     }
 
-    fn into_v8<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        unimplemented!("StagedExpr should not be sent back to v8")
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("StagedExpr should not be sent back to dynamic")
     }
 }

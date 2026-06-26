@@ -123,7 +123,7 @@ pub(crate) fn dynamic_call(
                     format!("Function expects {} arguments, got {}", param_types.len(), elements.len())
                 );
             }
-            let mut js_args = vec![];
+            let mut dynamic_args = vec![];
             for (elem, param_type) in elements.into_iter().zip(param_types.iter()) {
                 let cv = match elem.v {
                     Some(cv) => cv,
@@ -139,14 +139,14 @@ pub(crate) fn dynamic_call(
                 }
                 let converted = erb.must_er(typecheck_convert(xx, loc, param_type.as_ref(), cv))?;
                 let elem_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, param_type.as_ref()))?;
-                let js = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
-                js_args.push(js);
+                let dynamic_code = erb.must_er(elem_to_dynamic.to_dynamic(xx, loc, converted))?;
+                dynamic_args.push(dynamic_code);
             }
             return Ok(ret_stack.to_value(loc, CodeDynamic {
                 loc,
                 type_: CodeDynamicType::Call(CodeDynamicCall {
                     func: Box::new(func_code),
-                    args: js_args,
+                    args: dynamic_args,
                 }),
             }));
         }

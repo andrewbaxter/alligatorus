@@ -63,7 +63,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectTuple,
             AspectPostDeserialize,
             ScopeEntry,
@@ -73,7 +73,7 @@ use {
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_tuple_aspect_id,
             aspect_tuple_get_maybe,
             aspect_post_deserialize_aspect_id,
@@ -242,7 +242,7 @@ impl AspectConsumeDynamic for Tuple {
             }
         }).collect();
         let mut errors = vec![];
-        let mut js_elements = Vec::new();
+        let mut dynamic_elements = Vec::new();
         for (elem, elem_type) in tuple.elements.into_iter().zip(types.iter()) {
             let elem_res = match elem {
                 TupleElement::EvalRes(er) => er,
@@ -254,7 +254,7 @@ impl AspectConsumeDynamic for Tuple {
             if let Some(elem_cv) = elem_res.v {
                 match aspect_consume_dynamic_get(xx, loc, elem_type.as_ref()).into_res() {
                     Ok(to_dynamic) => match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
-                        Ok(js) => js_elements.push(js),
+                        Ok(dynamic_code) => dynamic_elements.push(dynamic_code),
                         Err(e) => errors.extend(e),
                     },
                     Err(e) => errors.extend(e),
@@ -269,7 +269,7 @@ impl AspectConsumeDynamic for Tuple {
         }
         EResult::ok(wrap_with_carry(loc, carry, CodeDynamic {
             loc,
-            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: js_elements }),
+            type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: dynamic_elements }),
         }))
     }
 }
@@ -497,19 +497,19 @@ impl Type for Tuple {
         if *key == crate::r#gen::aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn crate::r#gen::AspectArtifact>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            let element_lifts: Vec<Box<dyn AspectLiftDynamic>> = self.elements.iter().map(|e| {
+        if *key == aspect_lift_aspect_id() {
+            let element_lifts: Vec<Box<dyn AspectLift>> = self.elements.iter().map(|e| {
                 let t = match e {
                     TupleElement::Dynamic(t) => t.clone(),
                     TupleElement::EvalRes(_) => panic!("lift_js on non-type tuple"),
                 };
                 let a =
                     t
-                        .aspect(xx, &aspect_lift_dynamic_aspect_id())
-                        .expect(&format!("Tuple element type ({}) missing AspectLiftDynamic", t.desc()));
-                must_downcast_box::<Box<dyn AspectLiftDynamic>>(a)
+                        .aspect(xx, &aspect_lift_aspect_id())
+                        .expect(&format!("Tuple element type ({}) missing AspectLift", t.desc()));
+                must_downcast_box::<Box<dyn AspectLift>>(a)
             }).collect();
-            return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLiftDynamic>));
+            return Some(Box::new(Box::new(TupleLiftJs { element_lifts }) as Box<dyn AspectLift>));
         }
         if *key == aspect_post_deserialize_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectPostDeserialize>));
@@ -675,19 +675,19 @@ pub(crate) enum TupleElement {
 }
 
 struct TupleLiftJs {
-    element_lifts: Vec<Box<dyn AspectLiftDynamic>>,
+    element_lifts: Vec<Box<dyn AspectLift>>,
 }
 
 impl Aspect for TupleLiftJs { }
 
-impl AspectLiftDynamic for TupleLiftJs {
+impl AspectLift for TupleLiftJs {
     fn lift(
         &self,
         xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let array = v8::Local::<v8::Array>::try_from(value).expect("Expected JS array for tuple lift");
+        let array = v8::Local::<v8::Array>::try_from(value).expect("Expected dynamic array for tuple lift");
         let mut elements = Vec::new();
         for (i, elem_lift) in self.element_lifts.iter().enumerate() {
             let elem_v8 = array.get_index(scope, i as u32).expect("Array index out of bounds in tuple lift");

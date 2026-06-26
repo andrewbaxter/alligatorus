@@ -98,12 +98,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let _jw_dk = v8::String::new(scope, "_d").unwrap();
                     #[allow(unused_variables)]
                     let self_: std::rc::Rc<SourceObjectResult> =
-                        crate::eval::from_v8_ref::<std::rc::Rc<SourceObjectResult>>(
+                        crate::eval::from_dynamic_ref::<std::rc::Rc<SourceObjectResult>>(
                             &*_jw_this.get(scope, _jw_dk.into()).unwrap(),
                         ).clone();
                     #[allow(unused_mut, unused_variables)]
                     let mut _jw_arg_i = 0i32;
-                    let record: #record_arg_ty = <#record_arg_ty as crate:: eval:: push:: Push >:: from_v8(
+                    let record: #record_arg_ty = <#record_arg_ty as crate:: eval:: push:: Push >:: from_dynamic(
                         scope,
                         _jw_args.get(_jw_arg_i),
                     );
@@ -111,7 +111,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let _jw_result:() = {
                         #body
                     };
-                    _jw_rv.set(<() as crate::eval::push::Push>::into_v8(_jw_result, scope),);
+                    _jw_rv.set(<() as crate::eval::push::Push>::into_dynamic(_jw_result, scope),);
                 }
                 let _jw_method_fn = v8::Function::builder(_jw_cb).build(scope).unwrap();
                 let _jw_key = v8:: String:: new(scope, #method_idx_str).unwrap();
@@ -147,7 +147,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
                             ),
                             artifact_id: RefCell::new(None),
-                            compiled_js: RefCell::new(None),
+                            compiled_source: RefCell::new(None),
                             captured_externals: RefCell::new(Vec::new()),
                         });
                         ds.functions.borrow_mut().push(func_data.clone());
@@ -161,7 +161,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     ret: "SourceObjectResult",
                     body: quote!{
                         let ds = self_.inner.clone();
-                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let data_field = format!("_{}", ds.next_field_id.next());
                         let dt_data = Gc::new(SourceDataTypeData {
@@ -194,7 +194,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![],
                     ret: "SourceTaggedUnionBuilder",
                     body: quote!{
-                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let data = Rc::new(SourceTaggedUnionData {
                             variants: RefCell::new(Vec::new()),
@@ -211,7 +211,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     ret: "SourceInterfaceResult",
                     body: quote!{
                         let ds = self_.inner.clone();
-                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let iface_data = Gc::new(SourceInterfaceData {
                             artifact_id: RefCell::new(None),
@@ -232,7 +232,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![],
                     ret: "DefinitionSetBuilder",
                     body: quote!{
-                        let ex = scope.get_slot::<crate::eval::V8EvalContextSlot>().unwrap().ex.clone();
+                        let ex = scope.get_slot::<crate::eval::DynamicEvalContextSlot>().unwrap().ex.clone();
                         let xx = std::rc::Rc::new(crate::langhelp::ExprContext {
                             vx: ex.clone(),
                             import_state: std::rc::Rc::new(std::cell::Cell::new(ex.ix.import_state)),
@@ -288,8 +288,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 body: quote!{
                     let ex_slot =
                         scope
-                            .get_slot::<crate::eval::V8EvalContextSlot>()
-                            .expect("TypeRefPush.aspect: V8EvalContextSlot not set");
+                            .get_slot::<crate::eval::DynamicEvalContextSlot>()
+                            .expect("TypeRefPush.aspect: DynamicEvalContextSlot not set");
                     let import_state_id = ex_slot.ex.ix.import_state;
                     let xx = Rc::new(ExprContext {
                         vx: ex_slot.ex.clone(),
@@ -534,7 +534,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             ),
                             inner_scope_entry_id: Cell::new(None),
                             field_name,
-                            compiled_js: RefCell::new(None),
+                            compiled_source: RefCell::new(None),
                             captured_externals: RefCell::new(Vec::new()),
                         });
                         dt_data.methods.borrow_mut().push(method.clone());
@@ -567,7 +567,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                                        compiled_js: RefCell::new(None),
+                                        compiled_source: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
                                             Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id,),)
@@ -599,7 +599,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     body: quote!{
                         let record_entries = record;
                         let ds = self_.data_type_ref.data.set.borrow().as_ref().unwrap().clone();
-                        let uc = scope.get_slot::<crate::eval::V8UniqueCounter>().unwrap();
+                        let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
                         let iface_data = Gc::new(SourceInterfaceData {
                             artifact_id: RefCell::new(None),
@@ -665,7 +665,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     artifact_id: RefCell::new(None),
                                     interface_method_index: imethod_idx,
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
-                                    compiled_js: RefCell::new(None),
+                                    compiled_source: RefCell::new(None),
                                     captured_externals: RefCell::new(Vec::new()),
                                     scope_entry_id: Cell::new(
                                         Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, aspect_id_entry_id)),
@@ -682,7 +682,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                         artifact_id: RefCell::new(None),
                                         interface_method_index: imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                                        compiled_js: RefCell::new(None),
+                                        compiled_source: RefCell::new(None),
                                         captured_externals: RefCell::new(Vec::new()),
                                         scope_entry_id: Cell::new(
                                             Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),
@@ -913,9 +913,9 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let _jw_field_val: #f_ty = {
                         #body
                     };
-                    let _jw_v8_val = <#f_ty as crate:: eval:: push:: Push >:: into_v8(_jw_field_val, scope);
+                    let _jw_dynamic_val = <#f_ty as crate:: eval:: push:: Push >:: into_dynamic(_jw_field_val, scope);
                     let _jw_key = v8:: String:: new(scope, #key_str).unwrap();
-                    _jw_obj.set(scope, _jw_key.into(), _jw_v8_val);
+                    _jw_obj.set(scope, _jw_key.into(), _jw_dynamic_val);
                 }
             }
         }).collect();
@@ -926,7 +926,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 let n = format_ident!("{}", n);
                 let ty: TokenStream = ty.parse().unwrap();
                 quote!{
-                    let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_v8(scope, _jw_args.get(_jw_arg_i),);
+                    let #n: #ty = <#ty as crate:: eval:: push:: Push >:: from_dynamic(scope, _jw_args.get(_jw_arg_i),);
                     _jw_arg_i += 1;
                 }
             }).collect();
@@ -944,7 +944,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let _jw_dk = v8::String::new(scope, "_d").unwrap();
                         #[
                             allow(unused_variables)
-                        ] let self_: std:: rc:: Rc <#name > = crate:: eval:: from_v8_ref::< std:: rc:: Rc <#name >>(
+                        ] let self_: std:: rc:: Rc <#name > = crate:: eval:: from_dynamic_ref::< std:: rc:: Rc <#name >>(
                             &*_jw_this.get(scope, _jw_dk.into()).unwrap(),
                         ).clone();
                         #[allow(unused_mut, unused_variables)]
@@ -952,7 +952,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         #(#arg_decls) * let _jw_result: #m_ret = {
                             #body
                         };
-                        _jw_rv.set(<#m_ret as crate:: eval:: push:: Push >:: into_v8(_jw_result, scope),);
+                        _jw_rv.set(<#m_ret as crate:: eval:: push:: Push >:: into_dynamic(_jw_result, scope),);
                     }
                     let _jw_method_fn = v8::Function::builder(_jw_cb).build(scope).unwrap();
                     let _jw_key = v8:: String:: new(scope, #key_str).unwrap();
@@ -965,7 +965,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
         let extra_field_type_opt_arms = &s.extra_field_type_opt_arms;
         let no_fields_msg = format!("Cannot convert {}", s.name);
         let unknown_field_msg = format!("Unknown field '{{}}' on {}", s.name);
-        let from_v8_msg = format!("from_v8 not supported for {}", s.name);
+        let from_v8_msg = format!("from_dynamic not supported for {}", s.name);
         let cannot_convert_to_msg = format!("Cannot convert to {}", s.name);
         let extra_aspect_call: TokenStream = match s.extra_aspect_fn {
             Some(f) => {
@@ -1173,16 +1173,16 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 fn dynamic_type() -> std:: rc:: Rc < dyn crate:: langhelp:: Type > {
                     std:: rc:: Rc:: new(#type_name)
                 }
-                fn from_v8<
+                fn from_dynamic<
                     's
                 >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>,) -> Self {
                     unimplemented!(#from_v8_msg)
                 }
-                fn into_v8 <'s >(self, scope: & mut v8:: PinnedRef <'s, v8:: HandleScope <'_ >>,) -> v8:: Local <'s,
+                fn into_dynamic <'s >(self, scope: & mut v8:: PinnedRef <'s, v8:: HandleScope <'_ >>,) -> v8:: Local <'s,
                 v8:: Value > {
                     let _jw_obj = v8::Object::new(scope);
                     let _jw_self_rc = std::rc::Rc::new(self);
-                    let _jw_data_ext = crate::eval::to_v8(scope, _jw_self_rc.clone());
+                    let _jw_data_ext = crate::eval::to_dynamic_ext(scope, _jw_self_rc.clone());
                     _jw_obj.set(scope, v8::String::new(scope, "_d").unwrap().into(), _jw_data_ext.into(),);
                     #(#field_setters) * #(#method_setters) * #(#extra_method_setters) * _jw_obj.into()
                 }
@@ -1214,7 +1214,7 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                         artifact_id: RefCell::new(None),
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
-                        compiled_js: RefCell::new(None),
+                        compiled_source: RefCell::new(None),
                         captured_externals: RefCell::new(Vec::new()),
                         scope_entry_id: Cell::new(Some(crate::langhelp::ScopeEntryId::Def(ds.def_set_id, entry_id)),),
                         inner_scope_entry_id: Cell::new(None),

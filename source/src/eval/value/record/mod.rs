@@ -70,7 +70,7 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectRecord,
             AspectPostDeserialize,
             RECORD_TO_TYPE_FN_SCOPE_ID,
@@ -83,7 +83,7 @@ use {
             aspect_field_aspect_id,
             aspect_field_get_maybe,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_record_aspect_id,
             aspect_record_get_maybe,
             aspect_string_const_get,
@@ -337,7 +337,7 @@ impl AspectConsumeDynamic for Record {
             return base.to_dynamic(carry);
         }
         let mut errors = vec![];
-        let mut js_fields = Vec::new();
+        let mut dynamic_fields = Vec::new();
         for (key, field) in record.fields.into_iter() {
             match field {
                 RecordField::Dynamic(_) => {
@@ -345,7 +345,7 @@ impl AspectConsumeDynamic for Record {
                         loc,
                         errors: vec![
                             ExprSubErr::Opaque(
-                                format!("Record entry '{:?}' is dynamic-only, cannot consume directly to JS", key),
+                                format!("Record entry '{:?}' is dynamic-only, cannot consume directly to dynamic", key),
                             ),
                         ],
                     });
@@ -364,7 +364,7 @@ impl AspectConsumeDynamic for Record {
                         };
                         if let Some(to_dynamic) = aspect_consume_dynamic_get_maybe(xx, elem_value_type.as_ref()) {
                             match to_dynamic.to_dynamic(xx, loc, elem_cv).into_res() {
-                                Ok(js) => js_fields.push((key.to_str(), js)),
+                                Ok(dynamic_code) => dynamic_fields.push((key.to_str(), dynamic_code)),
                                 Err(e) => errors.extend(e),
                             }
                         } else {
@@ -393,7 +393,7 @@ impl AspectConsumeDynamic for Record {
         }
         EResult::ok(wrap_with_carry(loc, carry, CodeDynamic {
             loc,
-            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: js_fields }),
+            type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: dynamic_fields }),
         }))
     }
 }
@@ -664,19 +664,19 @@ impl Type for Record {
         if *key == aspect_record_aspect_id() {
             return Some(Box::new(Box::new(RecordAspectImpl) as Box<dyn AspectRecord>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            let entry_lifts: Vec<(ConstKey, Box<dyn AspectLiftDynamic>)> = self.fields.iter().map(|(k, f)| {
+        if *key == aspect_lift_aspect_id() {
+            let entry_lifts: Vec<(ConstKey, Box<dyn AspectLift>)> = self.fields.iter().map(|(k, f)| {
                 let t = match f {
                     RecordField::Dynamic(t) => t.clone(),
                     RecordField::EvalRes(_) => panic!("lift_js on non-type record"),
                 };
                 let a =
                     t
-                        .aspect(xx, &aspect_lift_dynamic_aspect_id())
-                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLiftDynamic", k, t.desc()));
-                (k.clone(), must_downcast_box::<Box<dyn AspectLiftDynamic>>(a))
+                        .aspect(xx, &aspect_lift_aspect_id())
+                        .expect(&format!("Record entry '{:?}' type ({}) missing AspectLift", k, t.desc()));
+                (k.clone(), must_downcast_box::<Box<dyn AspectLift>>(a))
             }).collect();
-            return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLiftDynamic>));
+            return Some(Box::new(Box::new(RecordLiftDynamic { entry_lifts }) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(self.clone_as_type()) as Box<dyn AspectInitialBind>));
@@ -922,24 +922,24 @@ pub(crate) enum RecordField {
 }
 
 struct RecordLiftDynamic {
-    entry_lifts: Vec<(ConstKey, Box<dyn AspectLiftDynamic>)>,
+    entry_lifts: Vec<(ConstKey, Box<dyn AspectLift>)>,
 }
 
 impl Aspect for RecordLiftDynamic { }
 
-impl AspectLiftDynamic for RecordLiftDynamic {
+impl AspectLift for RecordLiftDynamic {
     fn lift(
         &self,
         xx: &ExprContext,
         scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected JS object for record lift");
+        let obj = v8::Local::<v8::Object>::try_from(value).expect("Expected dynamic object for record lift");
         let mut fields = BTreeMap::new();
         for (key, entry_lift) in &self.entry_lifts {
-            let v8_key = v8::String::new(scope, &key.to_str()).unwrap();
-            let v8_val = obj.get(scope, v8_key.into()).expect("Record field missing in JS object");
-            let lifted = entry_lift.lift(xx, scope, v8_val)?;
+            let dynamic_key = v8::String::new(scope, &key.to_str()).unwrap();
+            let dynamic_val = obj.get(scope, dynamic_key.into()).expect("Record field missing in dynamic object");
+            let lifted = entry_lift.lift(xx, scope, dynamic_val)?;
             fields.insert(key.clone(), RecordField::EvalRes(EvalRes::ok(CodeValue {
                 code: Code {
                     loc: (SourceId(0), ExprId(0)),

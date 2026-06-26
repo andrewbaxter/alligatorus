@@ -13,9 +13,9 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
-            to_v8,
+            to_dynamic_ext,
             value::{
                 type_any::r#const::{
                     TypeAnyConst,
@@ -49,7 +49,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             ScopeEntry,
             TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
@@ -57,7 +57,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_type_identity,
         },
@@ -103,14 +103,14 @@ impl AspectInitialBind for TypeSourceTaggedUnionConstructorDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceTaggedUnionConstructorDynamic {
+impl AspectLift for TypeSourceTaggedUnionConstructorDynamic {
     fn lift(
         &self,
         _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let type_: &Rc<dyn Type> = from_v8_ref(&value);
+        let type_: &Rc<dyn Type> = from_dynamic_ref(&value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
             data: ctor.data.clone(),
@@ -169,9 +169,9 @@ impl Type for TypeSourceTaggedUnionConstructorDynamic {
                 Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectStackValueDynamic>),
             );
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
+        if *key == aspect_lift_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLiftDynamic>),
+                Box::new(Box::new(TypeSourceTaggedUnionConstructorDynamic) as Box<dyn AspectLift>),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
@@ -252,8 +252,8 @@ impl Push for Rc<SourceTaggedUnionConstructorRef> {
         Rc::new(TypeSourceTaggedUnionConstructorDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let type_: &Rc<dyn Type> = from_v8_ref(&*value);
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        let type_: &Rc<dyn Type> = from_dynamic_ref(&*value);
         let ctor = must_downcast_ref::<TypeSourceTaggedUnionConstructorConst>(type_.as_ref());
         Rc::new(SourceTaggedUnionConstructorRef {
             data: ctor.data.clone(),
@@ -261,11 +261,11 @@ impl Push for Rc<SourceTaggedUnionConstructorRef> {
         })
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
         let type_: Rc<dyn Type> = Rc::new(TypeSourceTaggedUnionConstructorConst {
             data: self.data.clone(),
             variant_index: self.variant_index,
         });
-        to_v8(scope, type_).into()
+        to_dynamic_ext(scope, type_).into()
     }
 }

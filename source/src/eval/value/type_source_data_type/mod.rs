@@ -6,7 +6,7 @@ use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
-            JsSourceBuilder,
+            DynamicSourceBuilder,
             Scope,
             build_aspect_arg_record_type,
             build_builtin_scope,
@@ -15,11 +15,11 @@ use {
             const_eval,
             definition_set::DefinitionSet,
             expr::Expr,
-            from_v8_ref,
+            from_dynamic_ref,
             push::Push,
             render_code,
             scope_entry_id_dynamic_key,
-            to_v8,
+            to_dynamic_ext,
             typecheck_convert,
             value,
         },
@@ -59,7 +59,7 @@ use {
 pub(crate) struct SourceDataMethodData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
-    pub compiled_js: RefCell<Option<String>>,
+    pub compiled_source: RefCell<Option<String>>,
     pub field_name: String,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
@@ -77,7 +77,7 @@ impl SourceDataMethodData {
         underlying_type: &Rc<dyn Type>,
         data_field: &str,
     ) -> Result<(), Vec<ExprErr>> {
-        if self.compiled_js.borrow().is_some() {
+        if self.compiled_source.borrow().is_some() {
             return Ok(());
         }
         let impl_expr_value = self.impl_expr.borrow().clone().ok_or_else(|| vec![ExprErr {
@@ -101,7 +101,7 @@ impl SourceDataMethodData {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
-            v8_scope: Cell::new(None),
+            dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -138,7 +138,7 @@ impl SourceDataMethodData {
         let impl_cv = r.v.unwrap();
         let impl_code = impl_cv.code.cast::<CodeDynamic>().into_res()?.unwrap().clone();
         let captured = method_xx.vx.externals.borrow().clone();
-        let mut code1 = JsSourceBuilder::default();
+        let mut code1 = DynamicSourceBuilder::default();
         let func_name = scope_entry_id_dynamic_key(method_id);
         let self_key = scope_entry_id_dynamic_key(self_id);
         code1.push(root_loc, format!("var {};", func_name));
@@ -166,7 +166,7 @@ impl SourceDataMethodData {
         code1.push(root_loc, "}".to_string());
         let compiled = code1.lines.join("\n");
         *self.captured_externals.borrow_mut() = captured;
-        *self.compiled_js.borrow_mut() = Some(compiled);
+        *self.compiled_source.borrow_mut() = Some(compiled);
         Ok(())
     }
 }
@@ -224,7 +224,7 @@ pub(crate) struct SourceDataTypeInterfaceImplData {
 pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
-    pub compiled_js: RefCell<Option<String>>,
+    pub compiled_source: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub interface_method_index: usize,
@@ -241,7 +241,7 @@ impl SourceDataTypeInterfaceMethodImplData {
         underlying_type: &Rc<dyn Type>,
         data_field: &str,
     ) -> Result<(), Vec<ExprErr>> {
-        if self.compiled_js.borrow().is_some() {
+        if self.compiled_source.borrow().is_some() {
             return Ok(());
         }
         let impl_expr_value = self.impl_expr.borrow().clone().ok_or_else(|| vec![ExprErr {
@@ -261,7 +261,7 @@ impl SourceDataTypeInterfaceMethodImplData {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
-            v8_scope: Cell::new(None),
+            dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let self_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -392,7 +392,7 @@ impl SourceDataTypeInterfaceMethodImplData {
         let impl_code = impl_cv.code.cast::<CodeDynamic>().into_res()?.unwrap().clone();
         let captured = method_xx.vx.externals.borrow().clone();
         let is_arg_method = matches!(builtin_kind, Some(super::type_source_interface::BuiltinInterfaceKind::Type));
-        let mut code1 = JsSourceBuilder::default();
+        let mut code1 = DynamicSourceBuilder::default();
         let func_name = scope_entry_id_dynamic_key(method_id);
         let self_key = scope_entry_id_dynamic_key(self_id);
         code1.push(root_loc, format!("var {};", func_name));
@@ -424,7 +424,7 @@ impl SourceDataTypeInterfaceMethodImplData {
         code1.push(root_loc, "}".to_string());
         let compiled = code1.lines.join("\n");
         *self.captured_externals.borrow_mut() = captured;
-        *self.compiled_js.borrow_mut() = Some(compiled);
+        *self.compiled_source.borrow_mut() = Some(compiled);
         Ok(())
     }
 }
@@ -438,11 +438,11 @@ impl Push for Rc<SourceDataTypeRef> {
         Rc::new(dynamic::TypeSourceDataTypeRefDynamic)
     }
 
-    fn from_v8<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        from_v8_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
+    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+        from_dynamic_ref::<Rc<SourceDataTypeRef>>(&*value).clone()
     }
 
-    fn into_v8<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        to_v8(scope, self).into()
+    fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        to_dynamic_ext(scope, self).into()
     }
 }

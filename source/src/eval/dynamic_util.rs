@@ -157,7 +157,7 @@ pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, valu
         match &v.source {
             ValueDynamicSource::Field(b) => {
                 let Some(self_code) = self_code else {
-                    return erb.err_new(format!("TODO assertion set left hand doesn't evaluate to js code (empty)"));
+                    return erb.err_new(format!("TODO assertion set left hand doesn't evaluate to dynamic code (empty)"));
                 };
                 let base_code = match &self_code.type_ {
                     CodeDynamicType::FieldUse(fu) => *fu.base.clone(),
@@ -221,17 +221,17 @@ pub(crate) fn throw_error(scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>, ms
     scope.throw_exception(exception);
 }
 
-pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, js: CodeDynamic) -> CodeDynamic {
+pub(crate) fn wrap_with_carry(loc: QExprId, carry: Code, dynamic_code: CodeDynamic) -> CodeDynamic {
     if let Some(Some(carry_js)) = carry.cast::<CodeDynamic>().v {
         let mut entries = match &carry_js.type_ {
             CodeDynamicType::Block(block) => block.entries.clone(),
             _ => vec![CodeDynamicBlockEntry::Code(carry_js.clone())],
         };
-        entries.push(CodeDynamicBlockEntry::Code(js));
+        entries.push(CodeDynamicBlockEntry::Code(dynamic_code));
         return CodeDynamic {
             loc,
             type_: CodeDynamicType::Block(CodeDynamicBlock { entries }),
         };
     }
-    js
+    dynamic_code
 }

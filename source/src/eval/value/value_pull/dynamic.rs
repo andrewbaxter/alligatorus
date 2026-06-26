@@ -39,7 +39,7 @@ impl Value for ValuePull {
     }
 
     fn type_(&self, xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        let scope_ptr = match xx.vx.v8_scope.get() {
+        let scope_ptr = match xx.vx.dynamic_scope.get() {
             Some(p) => p,
             None => return EResult::ok(Rc::new(TypeAnyDynamic)),
         };

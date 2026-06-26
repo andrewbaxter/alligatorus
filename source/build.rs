@@ -35,9 +35,9 @@ fn main() {
             Value,
         };
         use crate::eval::TargetDynamic;
-        use crate::eval::V8EvalContextSlot;
-        use crate::eval::V8LogStore;
-        use crate::eval::V8UniqueCounter;
+        use crate::eval::DynamicEvalContextSlot;
+        use crate::eval::DynamicLogStore;
+        use crate::eval::DynamicUniqueCounter;
         use crate::langhelp::LogEntry;
         use crate::eval::RcScopeEntryWrap;
         use crate::eval::const_eval;

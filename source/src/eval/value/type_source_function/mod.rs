@@ -6,7 +6,7 @@ use {
     crate::{
         code_dynamic::CodeDynamic,
         eval::{
-            JsSourceBuilder,
+            DynamicSourceBuilder,
             Scope,
             build_builtin_scope,
             const_eval,
@@ -45,7 +45,7 @@ pub(crate) struct SourceFunctionData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
-    pub compiled_js: RefCell<Option<String>>,
+    pub compiled_source: RefCell<Option<String>>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,
@@ -56,7 +56,7 @@ pub(crate) struct SourceFunctionData {
 
 impl SourceFunctionData {
     pub fn finish(&self, xx: &ExprContext, root_loc: QExprId) -> Result<(), Vec<ExprErr>> {
-        if self.compiled_js.borrow().is_some() {
+        if self.compiled_source.borrow().is_some() {
             return Ok(());
         }
         let name = self.name.as_deref().unwrap_or("(unnamed)").to_string();
@@ -91,7 +91,7 @@ impl SourceFunctionData {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
-            v8_scope: Cell::new(None),
+            dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let arg_id = ScopeEntryId::Local(body_ex.next_local_id.next());
@@ -120,7 +120,7 @@ impl SourceFunctionData {
         let impl_cv = r.v.unwrap();
         let impl_code = impl_cv.code.cast::<CodeDynamic>().into_res()?.unwrap().clone();
         let captured = func_xx.vx.externals.borrow().clone();
-        let mut code1 = JsSourceBuilder::default();
+        let mut code1 = DynamicSourceBuilder::default();
         let func_name = scope_entry_id_dynamic_key(scope_id);
         code1.push(root_loc, format!("var {};", func_name));
         code1.push(root_loc, "{".to_string());
@@ -135,7 +135,7 @@ impl SourceFunctionData {
         code1.push(root_loc, "}".to_string());
         let compiled = code1.lines.join("\n");
         *self.captured_externals.borrow_mut() = captured;
-        *self.compiled_js.borrow_mut() = Some(compiled);
+        *self.compiled_source.borrow_mut() = Some(compiled);
         Ok(())
     }
 }

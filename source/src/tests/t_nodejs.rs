@@ -1073,10 +1073,10 @@ e4 = "Hello world (node)";
 e0 = (e1)(e4);
 }
 e0"#);
-    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
-    assert_eq!(js_sources.len(), 2);
+    let dynamic_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert_eq!(dynamic_sources.len(), 2);
     assert_eq!(
-        js_sources[0],
+        dynamic_sources[0],
         r#"let e0;
 let e1;
 e1 = BUILTIN;
@@ -1693,7 +1693,7 @@ e5 = e228;
 e0 = (e1)(e2,e3,e4,e5);
 e0;"#
     );
-    assert_eq!(js_sources[1], r#"var d0_0_0_1;
+    assert_eq!(dynamic_sources[1], r#"var d0_0_0_1;
 {
 d0_0_0_1 = function(a0) {
 let e0;
@@ -2285,10 +2285,10 @@ e4 = "Hello world (node)";
 e0 = (e1)(e4);
 }
 e0"#);
-    let js_sources = sanitize_builtins(&res.generated_dynamic_scripts);
-    assert!(js_sources.len() >= 2, "main first-pass and dynamic substage scripts emitted");
+    let dynamic_sources = sanitize_builtins(&res.generated_dynamic_scripts);
+    assert!(dynamic_sources.len() >= 2, "main first-pass and dynamic substage scripts emitted");
     assert!(
-        js_sources.iter().any(|s| s.contains("e4[\"\\\"_7\\\"\"](e5)") && s.contains("e9[\"\\\"_8\\\"\"]()")),
+        dynamic_sources.iter().any(|s| s.contains("e4[\"\\\"_7\\\"\"](e5)") && s.contains("e9[\"\\\"_8\\\"\"]()")),
         "main dynamic substage calls napp.root and napp.build",
     );
 }

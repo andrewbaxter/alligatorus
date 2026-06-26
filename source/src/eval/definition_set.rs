@@ -23,7 +23,7 @@ use {
                 expr_from_artifact,
                 expr_to_artifact,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 type_any::r#const::ValueAnyConst,
                 type_source_data_type::{
@@ -52,9 +52,9 @@ use {
             Value,
         },
         r#gen::{
-            AspectLiftDynamic,
+            AspectLift,
             DefinitionSetBuilder,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
         },
     },
     dumpster::unsync::Gc,
@@ -69,8 +69,8 @@ use {
 };
 
 pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-    if *key == aspect_lift_dynamic_aspect_id() {
-        return Some(Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLiftDynamic>));
+    if *key == aspect_lift_aspect_id() {
+        return Some(Box::new(Box::new(TypeDefinitionSetLiftDynamic) as Box<dyn AspectLift>));
     }
     None
 }
@@ -229,7 +229,7 @@ impl DefinitionSet {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
             externals: RefCell::new(Vec::new()),
-            v8_scope: Cell::new(None),
+            dynamic_scope: Cell::new(None),
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let inner_xx = Rc::new(ExprContext {
@@ -467,7 +467,7 @@ struct TypeDefinitionSetLiftDynamic;
 
 impl Aspect for TypeDefinitionSetLiftDynamic { }
 
-impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
+impl AspectLift for TypeDefinitionSetLiftDynamic {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -475,10 +475,10 @@ impl AspectLiftDynamic for TypeDefinitionSetLiftDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let obj =
-            v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for definition set lift")?;
+            v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected dynamic object for definition set lift")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
-        let ds: Gc<DefinitionSet> = from_v8_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
+        let ds: Gc<DefinitionSet> = from_dynamic_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();
         xx.vx.definition_sets.borrow_mut().entry(ds.def_set_id).or_insert_with(|| ds.clone());
         let exports_type: Rc<dyn Type> = Rc::new(TypeSourceExportsLiftedConst { set: ds });
         Ok(Rc::new(ValueAnyConst { inner: exports_type }))

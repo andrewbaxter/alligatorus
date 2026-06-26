@@ -69,7 +69,7 @@ use {
             AspectConsumeDynamic,
             AspectField,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             AspectType,
             AspectPostDeserialize,
@@ -82,8 +82,8 @@ use {
             aspect_consume_dynamic_get,
             aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
-            aspect_lift_dynamic_get_maybe,
+            aspect_lift_aspect_id,
+            aspect_lift_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get_maybe,
             aspect_type_aspect_id,
@@ -264,7 +264,7 @@ impl AspectInitialBind for TypeSourceDataTypeConst {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceDataTypeConst {
+impl AspectLift for TypeSourceDataTypeConst {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -273,11 +273,11 @@ impl AspectLiftDynamic for TypeSourceDataTypeConst {
     ) -> Result<Rc<dyn Value>, String> {
         let underlying_type = self.data.underlying_type.get().clone();
         let underlying_lift =
-            aspect_lift_dynamic_get_maybe(
+            aspect_lift_get_maybe(
                 xx,
                 underlying_type.as_ref(),
-            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLiftDynamic", underlying_type.desc()))?;
-        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected JS object for data type lift")?;
+            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLift", underlying_type.desc()))?;
+        let obj = v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected dynamic object for data type lift")?;
         let data_field = ConstKey::String(self.data.data_field.clone()).to_str();
         let key = v8::String::new(scope, &data_field).unwrap();
         let underlying_v8 = obj.get(scope, key.into()).ok_or("Missing data field on data type object")?;
@@ -422,7 +422,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                     arg_type: RefCell::new(arg_type),
                                     ret_type: RefCell::new(ret_type),
                                     impl_expr: RefCell::new(None),
-                                    compiled_js: RefCell::new(Some(m.compiled_js)),
+                                    compiled_source: RefCell::new(Some(m.compiled_source)),
                                     captured_externals: RefCell::new(
                                         crate::eval::definition_set::deexport_captured_externals(
                                             xx,
@@ -488,7 +488,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                             artifact_id: RefCell::new(None),
                                             interface_method_index: m.interface_method_index,
                                             impl_expr: RefCell::new(None),
-                                            compiled_js: RefCell::new(Some(m.compiled_js)),
+                                            compiled_source: RefCell::new(Some(m.compiled_source)),
                                             captured_externals: RefCell::new(
                                                 crate::eval::definition_set::deexport_captured_externals(
                                                     xx,
@@ -509,7 +509,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                                 }).collect();
                             *dt_for_finalizer.interface_impls.borrow_mut() = iface_impls;
                             if let Some(set) = dt_for_finalizer.set.borrow().as_ref() {
-                                let _ = crate::eval::import_install::install_def_set_to_v8(xx, loc, set);
+                                let _ = crate::eval::import_install::install_def_set_to_dynamic(xx, loc, set);
                             }
                         });
                     Ok((out, deps, finalizer))
@@ -590,9 +590,9 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                         loc,
                         &m.captured_externals.borrow(),
                     );
-                let compiled_js = m.compiled_js.borrow().clone().unwrap_or_else(|| {
+                let compiled_source = m.compiled_source.borrow().clone().unwrap_or_else(|| {
                     eprintln!(
-                        "DBG serialize data-type method '{}' (scope_id={:?}) WITHOUT compiled_js",
+                        "DBG serialize data-type method '{}' (scope_id={:?}) WITHOUT compiled_source",
                         m.name.as_str(),
                         m.scope_entry_id.get(),
                     );
@@ -609,7 +609,7 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                         data: serde_json::Value::Null,
                         exporter: crate::artifact::ArtifactBodyExporter::Root,
                     })),
-                    compiled_js,
+                    compiled_source,
                     entry_id: scope_idx,
                     captured_externals,
                 });
@@ -639,16 +639,16 @@ impl ExporterRootDelegate for TypeSourceDataTypeConst {
                             loc,
                             &m.captured_externals.borrow(),
                         );
-                    let compiled_js = m.compiled_js.borrow().clone().unwrap_or_else(|| {
+                    let compiled_source = m.compiled_source.borrow().clone().unwrap_or_else(|| {
                         panic!(
-                            "serialize interface method_impl (interface_method_index={}, scope_id={:?}) without compiled_js",
+                            "serialize interface method_impl (interface_method_index={}, scope_id={:?}) without compiled_source",
                             m.interface_method_index,
                             m.scope_entry_id.get(),
                         )
                     });
                     ArtifactDataDefSetInterfaceMethodImpl {
                         interface_method_index: m.interface_method_index,
-                        compiled_js,
+                        compiled_source,
                         entry_id: scope_idx,
                         captured_externals,
                     }
@@ -715,10 +715,10 @@ impl Type for TypeSourceDataTypeConst {
                 ),
             );
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
+        if *key == aspect_lift_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLiftDynamic>,
+                    Box::new(TypeSourceDataTypeConst { data: self.data.clone() }) as Box<dyn AspectLift>,
                 ),
             );
         }

@@ -17,7 +17,7 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 type_any::r#const::{
                     TypeAnyConst,
@@ -56,7 +56,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
@@ -64,7 +64,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_type_identity,
         },
@@ -108,7 +108,7 @@ impl AspectInitialBind for TypeSourceDataTypeConstructorDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
+impl AspectLift for TypeSourceDataTypeConstructorDynamic {
     fn lift(
         &self,
         xx: &ExprContext,
@@ -116,7 +116,7 @@ impl AspectLiftDynamic for TypeSourceDataTypeConstructorDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let ctor_ref: Rc<TypeSourceDataTypeConstructorConst> =
-            from_v8_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
+            from_dynamic_ref::<Rc<TypeSourceDataTypeConstructorConst>>(&value).clone();
         let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceDataTypeConstructorConst { data: ctor_ref.data.clone() });
         Ok(Rc::new(ValueAnyConst { inner: ctor_type }))
     }
@@ -169,8 +169,8 @@ impl Type for TypeSourceDataTypeConstructorDynamic {
                 Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectStackValueDynamic>),
             );
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceDataTypeConstructorDynamic) as Box<dyn AspectInitialBind>));

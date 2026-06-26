@@ -20,7 +20,7 @@ use {
                 bind_dynamic_default,
                 bind_via_target,
             },
-            from_v8_ref,
+            from_dynamic_ref,
             value::{
                 type_any::r#const::{
                     TypeAnyConst,
@@ -55,7 +55,7 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectLiftDynamic,
+            AspectLift,
             AspectStackValueDynamic,
             FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
             ScopeEntry,
@@ -63,7 +63,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_lift_dynamic_aspect_id,
+            aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             type_type_identity,
         },
@@ -106,14 +106,14 @@ impl AspectInitialBind for TypeSourceFunctionDynamic {
     }
 }
 
-impl AspectLiftDynamic for TypeSourceFunctionDynamic {
+impl AspectLift for TypeSourceFunctionDynamic {
     fn lift(
         &self,
         xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let func_ref: Rc<TypeSourceFunctionConst> = from_v8_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
+        let func_ref: Rc<TypeSourceFunctionConst> = from_dynamic_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
         let set = func_ref.data.set.borrow().as_ref().unwrap().clone();
         xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
@@ -164,8 +164,8 @@ impl Type for TypeSourceFunctionDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectStackValueDynamic>));
         }
-        if *key == aspect_lift_dynamic_aspect_id() {
-            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLiftDynamic>));
+        if *key == aspect_lift_aspect_id() {
+            return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectLift>));
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceFunctionDynamic) as Box<dyn AspectInitialBind>));
