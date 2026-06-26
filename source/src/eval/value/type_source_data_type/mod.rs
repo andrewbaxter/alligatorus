@@ -226,6 +226,7 @@ pub(crate) struct SourceDataTypeInterfaceMethodImplData {
     pub captured_externals: RefCell<Vec<(ScopeEntryId, External)>>,
     pub compiled_js: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
+    pub impl_expr_artifact: RefCell<Option<crate::eval::expr_artifact::ArtifactExpr>>,
     pub inner_scope_entry_id: Cell<Option<ScopeEntryId>>,
     pub interface_method_index: usize,
     pub scope_entry_id: Cell<Option<ScopeEntryId>>,
@@ -249,6 +250,14 @@ impl SourceDataTypeInterfaceMethodImplData {
             errors: vec![ExprSubErr::Opaque(format!("Interface method impl missing impl_expr"))],
         }])?;
         let impl_expr_ast = must_downcast_ref::<Expr>(impl_expr_value.as_ref());
+        if self.impl_expr_artifact.borrow().is_none() {
+            let snapshot =
+                crate::eval::expr_artifact::expr_to_artifact(xx, impl_expr_ast).map_err(|e| vec![ExprErr {
+                    loc: root_loc,
+                    errors: vec![ExprSubErr::Opaque(format!("expr_to_artifact failed: {}", e))],
+                }])?;
+            *self.impl_expr_artifact.borrow_mut() = Some(snapshot);
+        }
         let ret_type: Rc<dyn Type> = {
             let iface_methods = interface.methods.borrow();
             let iface_method = &iface_methods[self.interface_method_index];

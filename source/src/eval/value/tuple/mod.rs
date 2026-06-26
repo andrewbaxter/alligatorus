@@ -405,32 +405,61 @@ impl ExporterRootDelegate for Tuple {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<Tuple>().expect("expected Tuple");
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let mut elements: Vec<Artifact> = Vec::new();
-        for e in self_.elements.iter() {
-            let t = match e {
-                TupleElement::Dynamic(t) => t.clone(),
-                TupleElement::EvalRes(er) => match &er.v {
-                    Some(cv) => cv.value.type_(xx, loc).v.expect("Tuple element type unavailable"),
-                    None => return EResult::err(loc, "Tuple element has no value to serialize".to_string()),
-                },
-            };
-            let art = serialize_artifact(xx, loc, t.as_value().as_ref());
-            if let Some(errors1) = art.errors {
-                errors.get_or_insert_default().extend(errors1);
-            }
-            let Some(art) = art.v else {
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            elements.push(art);
-        }
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
         let cell = std::cell::RefCell::new(None);
         let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &cell, || {
+            let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
+                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+            };
+            let null_art = || Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            });
+            let mut elements: Vec<Artifact> = Vec::new();
+            for e in self_.elements.iter() {
+                let t = match e {
+                    TupleElement::Dynamic(t) => t.clone(),
+                    TupleElement::EvalRes(er) => match &er.v {
+                        Some(cv) => match cv.value.type_(xx, loc).v {
+                            Some(t) => t,
+                            None => {
+                                push_err(vec![crate::langhelp::ExprErr {
+                                    loc,
+                                    errors: vec![
+                                        crate::langhelp::ExprSubErr::Opaque(
+                                            "Tuple element type unavailable".to_string(),
+                                        ),
+                                    ],
+                                }]);
+                                elements.push(null_art());
+                                continue;
+                            },
+                        },
+                        None => {
+                            push_err(vec![crate::langhelp::ExprErr {
+                                loc,
+                                errors: vec![
+                                    crate::langhelp::ExprSubErr::Opaque(
+                                        "Tuple element has no value to serialize".to_string(),
+                                    ),
+                                ],
+                            }]);
+                            elements.push(null_art());
+                            continue;
+                        },
+                    },
+                };
+                let mut art = serialize_artifact(xx, loc, t.as_value().as_ref());
+                if let Some(errs) = art.errors.take() {
+                    push_err(errs);
+                }
+                elements.push(art.v.unwrap_or_else(null_art));
+            }
             make_body(serde_json::to_value(&ArtifactTupleType { elements }).unwrap())
         });
+        let errors = errors.borrow_mut().take();
         return EResult {
             errors,
             v: Some(art),

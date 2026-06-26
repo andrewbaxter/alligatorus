@@ -232,32 +232,38 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConst {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceTaggedUnionConst>().expect("expected TypeSourceTaggedUnionConst");
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let mut variants_serial: Vec<ArtifactDataSourceTaggedUnionVariant> = Vec::new();
-        for v in self_.data.variants.borrow().iter() {
-            let type_art = crate::artifact::serialize_artifact(xx, loc, v.type_.as_value().as_ref());
-            if let Some(errors1) = type_art.errors {
-                errors.get_or_insert_default().extend(errors1);
-            }
-            let Some(type_art) = type_art.v else {
-                return EResult {
-                    errors,
-                    v: None,
-                };
-            };
-            variants_serial.push(ArtifactDataSourceTaggedUnionVariant {
-                tag: v.tag.clone(),
-                js_tag: v.js_tag.clone(),
-                type_: type_art,
-            });
-        }
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
+        let null_art = || {
+            Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            })
+        };
         let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
+                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+            };
+            let mut variants_serial: Vec<ArtifactDataSourceTaggedUnionVariant> = Vec::new();
+            for v in self_.data.variants.borrow().iter() {
+                let mut type_art = crate::artifact::serialize_artifact(xx, loc, v.type_.as_value().as_ref());
+                if let Some(errs) = type_art.errors.take() {
+                    push_err(errs);
+                }
+                variants_serial.push(ArtifactDataSourceTaggedUnionVariant {
+                    tag: v.tag.clone(),
+                    js_tag: v.js_tag.clone(),
+                    type_: type_art.v.unwrap_or_else(null_art),
+                });
+            }
             let body = ArtifactDataSourceTaggedUnion {
                 identity: self_.data.identity.clone(),
                 variants: variants_serial,
             };
             make_body(serde_json::to_value(&body).unwrap())
         });
+        let errors = errors.borrow_mut().take();
         return EResult {
             errors,
             v: Some(art),

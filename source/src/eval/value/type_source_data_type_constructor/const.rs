@@ -221,28 +221,31 @@ impl ExporterRootDelegate for TypeSourceDataTypeConstructorConst {
             self_
                 .downcast::<TypeSourceDataTypeConstructorConst>()
                 .expect("expected TypeSourceDataTypeConstructorConst");
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let dt_const =
-            super::super::type_source_data_type::r#const::TypeSourceDataTypeConst { data: self_.data.clone() };
-        let data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
-        if let Some(errors1) = data_type_art.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(data_type_art) = data_type_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
         let art =
             impl_serialize_independent_artifact(
                 xx.vx.ix.gx.artifacts.as_ref(),
                 &self_.data.constructor_artifact_id,
                 || {
+                    let dt_const =
+                        super::super::type_source_data_type::r#const::TypeSourceDataTypeConst {
+                            data: self_.data.clone(),
+                        };
+                    let mut data_type_art = serialize_artifact(xx, loc, &dt_const as &dyn Value);
+                    if let Some(errs) = data_type_art.errors.take() {
+                        errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+                    }
+                    let data_type_art = data_type_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                        data: serde_json::Value::Null,
+                        exporter: crate::artifact::ArtifactBodyExporter::Root,
+                    }));
                     let body = ArtifactDataSourceDataTypeConstructor { data_type: data_type_art };
                     make_body(serde_json::to_value(&body).unwrap())
                 },
             );
+        let errors = errors.borrow_mut().take();
         return EResult {
             errors,
             v: Some(art),

@@ -179,18 +179,9 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
             self_
                 .downcast::<TypeSourceTaggedUnionConstructorConst>()
                 .expect("expected TypeSourceTaggedUnionConstructorConst");
-        let mut errors: Option<Vec<crate::langhelp::ExprErr>> = None;
-        let tu_const = TypeSourceTaggedUnionConst { data: self_.data.clone() };
-        let tu_art = serialize_artifact(xx, loc, &tu_const as &dyn Value);
-        if let Some(errors1) = tu_art.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(tu_art) = tu_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
         let variant_index = self_.variant_index;
         let variants = self_.data.variants.borrow();
         let Some(variant) = variants.get(variant_index) else {
@@ -198,12 +189,22 @@ impl ExporterRootDelegate for TypeSourceTaggedUnionConstructorConst {
         };
         let art =
             impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &variant.constructor_artifact_id, || {
+                let tu_const = TypeSourceTaggedUnionConst { data: self_.data.clone() };
+                let mut tu_art = serialize_artifact(xx, loc, &tu_const as &dyn Value);
+                if let Some(errs) = tu_art.errors.take() {
+                    errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+                }
+                let tu_art = tu_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                    data: serde_json::Value::Null,
+                    exporter: crate::artifact::ArtifactBodyExporter::Root,
+                }));
                 let body = ArtifactDataSourceTaggedUnionConstructor {
                     tagged_union: tu_art,
                     variant_index,
                 };
                 make_body(serde_json::to_value(&body).unwrap())
             });
+        let errors = errors.borrow_mut().take();
         return EResult {
             errors,
             v: Some(art),

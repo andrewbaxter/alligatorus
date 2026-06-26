@@ -452,7 +452,9 @@ pub(crate) fn compile_importid(
         };
     }
     let mut all_logs = Vec::new();
+    let mut iter = 0;
     loop {
+        iter += 1;
         let is_stage = matches!(&root_expr.r#type, Expr_::Stage(_));
         let eval_result = match eval(&cix, import_state, &root_expr) {
             Ok(v) => v,
@@ -1025,10 +1027,11 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 } else {
                     let gx = xx.vx.ix.gx.clone();
                     let import_state = xx.import_state.get();
-                    let res = std::thread::spawn(move || {
+                    let res = std::thread::Builder::new().stack_size(512 * 1024 * 1024).spawn(move || {
                         let module = source_module_to_module(source_id, &source_module);
-                        compile_importid(&gx, import_state, module, vec![])
-                    }).join().expect("compile_importid thread panicked");
+                        let r = compile_importid(&gx, import_state, module, vec![]);
+                        r
+                    }).expect("compile_importid thread spawn").join().expect("compile_importid thread panicked");
                     let entry = Arc::new(RwLock::new(Some(res)));
                     results.insert(compile_id, entry.clone());
                     entry
@@ -1611,7 +1614,9 @@ fn eval(
     let cv = result.v.unwrap();
     let value_type = cv.value.type_(&xx, root_loc).into_res()?;
     let (stage1_code, fallback_value) = match &cv.code.code {
-        Code_::None => (None, Some(cv.value)),
+        Code_::None => {
+            (None, Some(cv.value))
+        },
         _ => {
             let to_dynamic = aspect_consume_dynamic_get(&xx, root_loc, value_type.as_ref()).into_res()?;
             let js = to_dynamic.to_dynamic(&xx, root_loc, cv).into_res()?;

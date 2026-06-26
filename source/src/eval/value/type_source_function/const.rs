@@ -224,67 +224,64 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         let self_ = self_.downcast::<TypeSourceFunctionConst>().expect("expected TypeSourceFunctionConst");
-        let arg_type = self_.data.arg_type.borrow().clone().unwrap_or_else(|| {
-            Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
-        });
-        let ret_type = self_.data.ret_type.borrow().clone().unwrap_or_else(|| {
-            Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
-        });
-        let arg_art = serialize_artifact(xx, loc, arg_type.as_value().as_ref());
-        let mut errors = arg_art.errors;
-        let Some(arg_art) = arg_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
+        let null_art = || {
+            Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            })
         };
-        let ret_art = serialize_artifact(xx, loc, ret_type.as_value().as_ref());
-        if let Some(errors1) = ret_art.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(ret_art) = ret_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let set_const =
-            super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
-                set: self_.data.set.borrow().as_ref().unwrap().clone(),
-            };
-        let def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
-        if let Some(errors1) = def_set_art.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(def_set_art) = def_set_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let entry_id_index = match self_.data.scope_entry_id.get() {
-            Some(ScopeEntryId::Def(_, idx)) => idx,
-            _ => 0,
-        };
-        let captured_externals =
-            crate::eval::definition_set::serialize_captured_externals(
-                xx,
-                loc,
-                &self_.data.captured_externals.borrow(),
-            );
         let art = impl_serialize_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
+            let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
+                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+            };
+            let arg_type = self_.data.arg_type.borrow().clone().unwrap_or_else(|| {
+                Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+            });
+            let ret_type = self_.data.ret_type.borrow().clone().unwrap_or_else(|| {
+                Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+            });
+            let mut arg_art = serialize_artifact(xx, loc, arg_type.as_value().as_ref());
+            if let Some(errs) = arg_art.errors.take() {
+                push_err(errs);
+            }
+            let mut ret_art = serialize_artifact(xx, loc, ret_type.as_value().as_ref());
+            if let Some(errs) = ret_art.errors.take() {
+                push_err(errs);
+            }
+            let set_const =
+                super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                    set: self_.data.set.borrow().as_ref().unwrap().clone(),
+                };
+            let mut def_set_art = serialize_artifact(xx, loc, &set_const as &dyn Value);
+            if let Some(errs) = def_set_art.errors.take() {
+                push_err(errs);
+            }
+            let entry_id_index = match self_.data.scope_entry_id.get() {
+                Some(ScopeEntryId::Def(_, idx)) => idx,
+                _ => 0,
+            };
+            let captured_externals =
+                crate::eval::definition_set::serialize_captured_externals(
+                    xx,
+                    loc,
+                    &self_.data.captured_externals.borrow(),
+                );
             let body = ArtifactDataDefSetFunction {
                 name: self_.data.name.clone(),
                 compiled_js: self_.data.compiled_js.borrow().clone().unwrap_or_default(),
-                arg_type: arg_art,
-                ret_type: ret_art,
+                arg_type: arg_art.v.unwrap_or_else(null_art),
+                ret_type: ret_art.v.unwrap_or_else(null_art),
                 entry_id: entry_id_index,
                 def_set_id: self_.data.set.borrow().as_ref().unwrap().def_set_id,
-                def_set: def_set_art,
+                def_set: def_set_art.v.unwrap_or_else(null_art),
                 captured_externals,
             };
             make_body(serde_json::to_value(&body).unwrap())
         });
+        let errors = errors.borrow_mut().take();
         return EResult {
             errors,
             v: Some(art),
