@@ -19,7 +19,44 @@ use {
 const ASPECT_COMPILE_SCOPE_ID: usize = 7023;
 const CAST_VALUE_COMPILE_SCOPE_ID: usize = 7024;
 
+fn submodule_prelude() -> TokenStream {
+    quote!{
+        #[allow(unused_imports)] use super::*;
+        #[allow(unused_imports)] use std::rc::Rc;
+        #[allow(unused_imports)] use std::cell::{
+            Cell,
+            RefCell,
+        };
+        #[allow(unused_imports)] use std::collections::HashMap;
+        #[allow(unused_imports)] use dumpster::unsync::Gc;
+        #[allow(unused_imports)] use crate::langhelp::{
+            ConstKey,
+            DefSetId,
+            ExprContext,
+            Scope,
+            BindingId,
+            Unique,
+        };
+        #[allow(unused_imports)] use crate::eval::DynamicEvalContextSlot;
+        #[allow(unused_imports)] use crate::eval::DynamicLogStore;
+        #[allow(unused_imports)] use crate::langhelp::LogEntry;
+        #[allow(unused_imports)] use crate::eval::RcBindingWrap;
+        #[allow(unused_imports)] use crate::eval::const_eval;
+        #[allow(unused_imports)] use crate::eval::definition_set::DefinitionSet;
+        #[allow(unused_imports)] use crate::eval::expr::Expr;
+        #[allow(unused_imports)] use crate::eval::value::type_source_interface::{
+            SourceInterfaceRef,
+            r#const::TypeSourceInterfaceConst,
+        };
+        #[allow(unused_imports)] use crate::eval::push::{
+            AnyType,
+            StagedExpr,
+        };
+    }
+}
+
 fn push_fn(
+    out: &mut TokenStream,
     scope_ids: &mut HashSet<usize>,
     builtin_scope_id: usize,
     args: &[(&'static str, &'static str)],
@@ -37,8 +74,12 @@ fn push_fn(
         }
     }).collect();
     let ret_ty: TokenStream = ret.parse().unwrap();
-    quote!{
-        {
+    let mod_name = format_ident!("builtin_b{}", builtin_scope_id);
+    let fn_name = format_ident!("b{}_leaf", builtin_scope_id);
+    let prelude = submodule_prelude();
+    out.extend(quote!{
+        pub(crate) mod #mod_name {
+            #prelude
             fn _jw_cb<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 _jw_args: v8::FunctionCallbackArguments<'s>,
@@ -52,19 +93,26 @@ fn push_fn(
                 };
                 _jw_rv.set(<#ret_ty as crate::eval::push::Push>::into_dynamic(_jw_result, scope));
             }
-            crate::eval::builtin_tree::BuiltinLeaf::Function {
-                dynamic_key: crate::langhelp::BindingId::Builtin(#builtin_scope_id),
-                type_: std::rc::Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
-                    arg: #arg_dynamic_type,
-                    ret: <#ret_ty as crate::eval::push::Push>::dynamic_type(),
-                }) as std::rc::Rc<dyn crate::langhelp::Type>,
-                dynamic_value: v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
+            pub(crate) fn #fn_name<'s>(
+                dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            ) -> crate::eval::builtin_tree::BuiltinLeaf<'s> {
+                crate::eval::builtin_tree::BuiltinLeaf::Function {
+                    dynamic_key: crate::langhelp::BindingId::Builtin(#builtin_scope_id),
+                    type_: std::rc::Rc::new(crate::eval::value::type_function::dynamic::TypeFunctionDynamic {
+                        arg: #arg_dynamic_type,
+                        ret: <#ret_ty as crate::eval::push::Push>::dynamic_type(),
+                    }) as std::rc::Rc<dyn crate::langhelp::Type>,
+                    dynamic_value: v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
+                }
             }
         }
-    }
+        pub(crate) use #mod_name::*;
+    });
+    quote!{ #fn_name(dynamic_scope) }
 }
 
 fn constructor(
+    out: &mut TokenStream,
     scope_ids: &mut HashSet<usize>,
     builtin_scope_id: usize,
     args: &[(&'static str, &'static str)],
@@ -83,8 +131,12 @@ fn constructor(
         }
     }).collect();
     let ret_ty: TokenStream = ret.parse().unwrap();
-    quote!{
-        {
+    let mod_name = format_ident!("builtin_b{}", builtin_scope_id);
+    let fn_name = format_ident!("b{}_leaf", builtin_scope_id);
+    let prelude = submodule_prelude();
+    out.extend(quote!{
+        pub(crate) mod #mod_name {
+            #prelude
             fn _jw_cb<'s>(
                 scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
                 _jw_args: v8::FunctionCallbackArguments<'s>,
@@ -98,56 +150,88 @@ fn constructor(
                 };
                 _jw_rv.set(<#ret_ty as crate::eval::push::Push>::into_dynamic(_jw_result, scope));
             }
-            let _ = #arg_dynamic_type;
-            crate::eval::builtin_tree::BuiltinLeaf::Constructor {
-                dynamic_key: crate::langhelp::BindingId::Builtin(#builtin_scope_id),
-                type_: std::rc::Rc::new(#type_tokens) as std::rc::Rc<dyn crate::langhelp::Type>,
-                dynamic_value: v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
+            pub(crate) fn #fn_name<'s>(
+                dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            ) -> crate::eval::builtin_tree::BuiltinLeaf<'s> {
+                let _ = #arg_dynamic_type;
+                crate::eval::builtin_tree::BuiltinLeaf::Constructor {
+                    dynamic_key: crate::langhelp::BindingId::Builtin(#builtin_scope_id),
+                    type_: std::rc::Rc::new(#type_tokens) as std::rc::Rc<dyn crate::langhelp::Type>,
+                    dynamic_value: v8::Function::builder(_jw_cb).build(dynamic_scope).unwrap().cast::<v8::Value>(),
+                }
             }
         }
-    }
+        pub(crate) use #mod_name::*;
+    });
+    quote!{ #fn_name(dynamic_scope) }
 }
 
-fn interface(spec: InterfaceSpec, extra_iface_specs: &mut Vec<InterfaceSpec>) -> TokenStream {
+fn interface(
+    out: &mut TokenStream,
+    spec: InterfaceSpec,
+    extra_iface_specs: &mut Vec<InterfaceSpec>,
+) -> TokenStream {
     let scope_id = spec.scope_id;
     let field = format_ident!("{}", if spec.name == "type" {
         "type_"
     } else {
         spec.name
     });
+    let mod_name = format_ident!("builtin_b{}", scope_id);
+    let fn_name = format_ident!("b{}_leaf", scope_id);
+    let prelude = submodule_prelude();
     extra_iface_specs.push(spec);
-    quote!{
-        {
-            let iface_ref = Rc::new(SourceInterfaceRef { data: builtin_ifaces.#field.clone() });
-            let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
-            let iface_const_type: Rc<dyn crate::langhelp::Type> =
-                Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-            crate::eval::builtin_tree::BuiltinLeaf::Interface {
-                dynamic_key: BindingId::Builtin(#scope_id),
-                type_: iface_const_type,
-                dynamic_value: dynamic_val.into(),
+    out.extend(quote!{
+        pub(crate) mod #mod_name {
+            #prelude
+            pub(crate) fn #fn_name<'s>(
+                dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                builtin_ifaces: &GenBuiltinInterfaces,
+            ) -> crate::eval::builtin_tree::BuiltinLeaf<'s> {
+                let iface_ref = Rc::new(SourceInterfaceRef { data: builtin_ifaces.#field.clone() });
+                let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
+                let iface_const_type: Rc<dyn crate::langhelp::Type> =
+                    Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
+                crate::eval::builtin_tree::BuiltinLeaf::Interface {
+                    dynamic_key: BindingId::Builtin(#scope_id),
+                    type_: iface_const_type,
+                    dynamic_value: dynamic_val.into(),
+                }
             }
         }
-    }
+        pub(crate) use #mod_name::*;
+    });
+    quote!{ #fn_name(dynamic_scope, &builtin_ifaces) }
 }
 
 fn aspect_id(
+    out: &mut TokenStream,
     scope_ids: &mut HashSet<usize>,
     builtin_scope_id: usize,
     aspect_id_fn: TokenStream,
 ) -> TokenStream {
     assert!(scope_ids.insert(builtin_scope_id));
-    quote!{
-        {
-            let unique = crate::r#gen::#aspect_id_fn();
-            let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
-            crate::eval::builtin_tree::BuiltinLeaf::AspectId {
-                dynamic_key: BindingId::Builtin(#builtin_scope_id),
-                unique: unique,
-                dynamic_value: unique_dynamic.into(),
+    let mod_name = format_ident!("builtin_b{}", builtin_scope_id);
+    let fn_name = format_ident!("b{}_leaf", builtin_scope_id);
+    let prelude = submodule_prelude();
+    out.extend(quote!{
+        pub(crate) mod #mod_name {
+            #prelude
+            pub(crate) fn #fn_name<'s>(
+                dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            ) -> crate::eval::builtin_tree::BuiltinLeaf<'s> {
+                let unique = crate::r#gen::#aspect_id_fn();
+                let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
+                crate::eval::builtin_tree::BuiltinLeaf::AspectId {
+                    dynamic_key: BindingId::Builtin(#builtin_scope_id),
+                    unique: unique,
+                    dynamic_value: unique_dynamic.into(),
+                }
             }
         }
-    }
+        pub(crate) use #mod_name::*;
+    });
+    quote!{ #fn_name(dynamic_scope) }
 }
 
 fn any_const(type_tokens: TokenStream) -> TokenStream {
@@ -402,7 +486,7 @@ pub fn emit_gen_builtin_tree(
         methods: vec![],
     };
     let tree = branch(vec![
-        ("log", leaf(push_fn(scope_ids, 5001, &[("message", "String")], "()", quote!{
+        ("log", leaf(push_fn(out, scope_ids, 5001, &[("message", "String")], "()", quote!{
             let timestamp_ms =
                 std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
             scope.get_slot::<DynamicLogStore>().unwrap().logs.borrow_mut().push(LogEntry {
@@ -410,7 +494,7 @@ pub fn emit_gen_builtin_tree(
                 message,
             });
         }))),
-        ("define", leaf(push_fn(scope_ids, 5002, &[], "DefinitionSetBuilder", quote!{
+        ("define", leaf(push_fn(out, scope_ids, 5002, &[], "DefinitionSetBuilder", quote!{
             let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
             let compile_id = crate::langhelp::CompileId(ex_slot.ex.ix.import_state, ex_slot.ex.ix.source_id);
             let def_set_id = DefSetId(compile_id, ex_slot.ex.ix.def_set_counter.next());
@@ -419,16 +503,16 @@ pub fn emit_gen_builtin_tree(
             DefinitionSetBuilder { inner }
         }))),
         ("types", branch(vec![
-            ("list", leaf(constructor(scope_ids, 5010, &[("element_type", "crate::eval::push::AnyType")], "crate::eval::value::type_list::dynamic::TypeListDynamic", quote!{
+            ("list", leaf(constructor(out, scope_ids, 5010, &[("element_type", "crate::eval::push::AnyType")], "crate::eval::value::type_list::dynamic::TypeListDynamic", quote!{
                 crate::eval::value::type_list::dynamic::TypeListDynamic { element_type: element_type.0 }
             }, quote!(crate::eval::value::type_list_constructor::r#const::TypeListConstructorConst)))),
-            ("map", leaf(constructor(scope_ids, 5011, &[("key_type", "crate::eval::push::AnyType"), ("value_type", "crate::eval::push::AnyType")], "crate::eval::value::type_map::dynamic::TypeMapDynamic", quote!{
+            ("map", leaf(constructor(out, scope_ids, 5011, &[("key_type", "crate::eval::push::AnyType"), ("value_type", "crate::eval::push::AnyType")], "crate::eval::value::type_map::dynamic::TypeMapDynamic", quote!{
                 crate::eval::value::type_map::dynamic::TypeMapDynamic {
                     key_type: key_type.0,
                     value_type: value_type.0,
                 }
             }, quote!(crate::eval::value::type_map_constructor::r#const::TypeMapConstructorConst)))),
-            ("option", leaf(constructor(scope_ids, 5012, &[("element_type", "crate::eval::push::AnyType")], "crate::eval::value::type_option::dynamic::TypeOptionDynamic", quote!{
+            ("option", leaf(constructor(out, scope_ids, 5012, &[("element_type", "crate::eval::push::AnyType")], "crate::eval::value::type_option::dynamic::TypeOptionDynamic", quote!{
                 crate::eval::value::type_option::dynamic::TypeOptionDynamic { element_type: element_type.0 }
             }, quote!(crate::eval::value::type_option_constructor::r#const::TypeOptionConstructorConst)))),
             ("string", leaf(any_const(quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic)))),
@@ -446,7 +530,7 @@ pub fn emit_gen_builtin_tree(
         ("eval", branch(vec![
             ("aspect_lookup", leaf(initial_bind(ASPECT_COMPILE_SCOPE_ID, quote!(crate::eval::value::type_function_aspect::dynamic::TypeFunctionAspectDynamic)))),
             ("cast_value", leaf(initial_bind(CAST_VALUE_COMPILE_SCOPE_ID, quote!(crate::eval::value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic)))),
-            ("const_eval", leaf(push_fn(scope_ids, 5008, &[
+            ("const_eval", leaf(push_fn(out, scope_ids, 5008, &[
                 ("xx", "crate::eval::code_value_extern::ExprContextPush"),
                 ("staged", "crate::eval::push::StagedExpr"),
             ], "crate::eval::code_value_extern::CodeValueExtern", quote!{
@@ -461,25 +545,25 @@ pub fn emit_gen_builtin_tree(
                 });
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             }))),
-            ("codevalue", leaf(push_fn(scope_ids, 5005, &[("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")], "crate::eval::code_value_extern::CodeValueExtern", quote!{
+            ("codevalue", leaf(push_fn(out, scope_ids, 5005, &[("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")], "crate::eval::code_value_extern::CodeValueExtern", quote!{
                 let cv = crate::langhelp::CodeValue {
                     code,
                     value
                 };
                 crate::eval::code_value_extern::CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
             }))),
-            ("str_to_json", leaf(push_fn(scope_ids, 5003, &[("s", "String")], "String", quote!{
+            ("str_to_json", leaf(push_fn(out, scope_ids, 5003, &[("s", "String")], "String", quote!{
                 serde_json::to_string(&s).unwrap()
             }))),
-            ("constkey_to_str", leaf(push_fn(scope_ids, 5004, &[("key", "crate::langhelp::ConstKey")], "String", quote!{
+            ("constkey_to_str", leaf(push_fn(out, scope_ids, 5004, &[("key", "crate::langhelp::ConstKey")], "String", quote!{
                 key.to_str()
             }))),
-            ("gen_binding_name", leaf(push_fn(scope_ids, 5006, &[("_xx", "crate::eval::code_value_extern::CodeValueExtern")], "String", quote!{
+            ("gen_binding_name", leaf(push_fn(out, scope_ids, 5006, &[("_xx", "crate::eval::code_value_extern::CodeValueExtern")], "String", quote!{
                 let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
                 let id = ex_slot.ex.next_local_id.next();
                 format!("a{}", id)
             }))),
-            ("new_expr_context", leaf(push_fn(scope_ids, 5009, &[
+            ("new_expr_context", leaf(push_fn(out, scope_ids, 5009, &[
                 ("target_arg", "Rc<dyn crate::r#gen::Target>"),
                 ("scope_arg", "std::collections::HashMap<ConstKey, Rc<dyn crate::r#gen::Binding>>"),
             ], "crate::eval::code_value_extern::ExprContextPush", quote!{
@@ -501,14 +585,14 @@ pub fn emit_gen_builtin_tree(
                 });
                 crate::eval::code_value_extern::ExprContextPush(xx)
             }))),
-            ("aspect_function", leaf(interface(iface_aspect_function, extra_iface_specs))),
-            ("aspect_field", leaf(interface(iface_aspect_field, extra_iface_specs))),
-            ("aspect_string_dynamic", leaf(aspect_id(scope_ids, 4001, quote!(aspect_string_dynamic_aspect_id)))),
-            ("aspect_function_id", leaf(aspect_id(scope_ids, 4002, quote!(aspect_function_aspect_id)))),
-            ("aspect_field_id", leaf(aspect_id(scope_ids, 4003, quote!(aspect_field_aspect_id)))),
-            ("binding", leaf(interface(iface_binding, extra_iface_specs))),
-            ("target", leaf(interface(iface_target, extra_iface_specs))),
-            ("code_dyn", leaf(interface(iface_code_dyn, extra_iface_specs))),
+            ("aspect_function", leaf(interface(out, iface_aspect_function, extra_iface_specs))),
+            ("aspect_field", leaf(interface(out, iface_aspect_field, extra_iface_specs))),
+            ("aspect_string_dynamic", leaf(aspect_id(out, scope_ids, 4001, quote!(aspect_string_dynamic_aspect_id)))),
+            ("aspect_function_id", leaf(aspect_id(out, scope_ids, 4002, quote!(aspect_function_aspect_id)))),
+            ("aspect_field_id", leaf(aspect_id(out, scope_ids, 4003, quote!(aspect_field_aspect_id)))),
+            ("binding", leaf(interface(out, iface_binding, extra_iface_specs))),
+            ("target", leaf(interface(out, iface_target, extra_iface_specs))),
+            ("code_dyn", leaf(interface(out, iface_code_dyn, extra_iface_specs))),
         ])),
     ]);
     out.extend(quote!{

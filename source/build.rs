@@ -23,20 +23,11 @@ fn main() {
         use std::collections::HashMap;
         use dumpster::unsync::Gc;
         use crate::langhelp::{
-            ConstKey,
-            DefSetId,
             ExprContext,
             Scope,
-            BindingId,
             Unique,
         };
-        use crate::eval::DynamicEvalContextSlot;
-        use crate::eval::DynamicLogStore;
-        use crate::langhelp::LogEntry;
-        use crate::eval::RcBindingWrap;
-        use crate::eval::const_eval;
         use crate::eval::definition_set::DefinitionSet;
-        use crate::eval::expr::Expr;
         use crate::eval::value::type_source_function::{
             SourceFunctionData,
             r#const::TypeSourceFunctionConst
@@ -59,7 +50,6 @@ fn main() {
             SourceInterfaceData,
             SourceInterfaceMethodData,
             SourceInterfaceRef,
-            r#const::TypeSourceInterfaceConst,
         };
         use crate::eval::push::{
             AnyType,
