@@ -1,9 +1,6 @@
 use {
     crate::buildsrc::util::{
         InterfaceSpec,
-        Method,
-        MethodArgs,
-        TypeRef,
         snake_case,
     },
     proc_macro2::TokenStream,
@@ -14,13 +11,7 @@ use {
     std::collections::HashSet,
 };
 
-pub const IFACE_ASPECT_FUNCTION_NAME: &str = "aspect_function";
-pub const IFACE_ASPECT_FIELD_NAME: &str = "aspect_field";
-pub const ASPECT_ID_STRING_DYNAMIC_NAME: &str = "aspect_string_dynamic";
-pub const ASPECT_ID_FUNCTION_ID_NAME: &str = "aspect_function_id";
-pub const ASPECT_ID_FIELD_ID_NAME: &str = "aspect_field_id";
-
-pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, scope_ids: &mut HashSet<usize>) {
+pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _scope_ids: &mut HashSet<usize>) {
     let mut aspect_names = HashSet::new();
     let mut aspect_token_items: Vec<TokenStream> = Vec::new();
 
@@ -570,99 +561,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
     out.extend(quote!{
         #(#aspect_token_items) *
     });
-
-    struct AspectBinding {
-        aspect_fn: &'static str,
-        key: &'static str,
-        scope_id: usize,
-    }
-
-    let mut aspect_id_accessor_fns: Vec<TokenStream> = Vec::new();
-    for e in &[
-        //. .
-        AspectBinding {
-            key: ASPECT_ID_STRING_DYNAMIC_NAME,
-            scope_id: 4001,
-            aspect_fn: "aspect_string_dynamic",
-        },
-        AspectBinding {
-            key: ASPECT_ID_FUNCTION_ID_NAME,
-            scope_id: 4002,
-            aspect_fn: "aspect_function",
-        },
-        AspectBinding {
-            key: ASPECT_ID_FIELD_ID_NAME,
-            scope_id: 4003,
-            aspect_fn: "aspect_field",
-        },
-    ] {
-        assert!(scope_ids.insert(e.scope_id));
-        let key = e.key;
-        let scope_id = e.scope_id;
-        let aspect_id_fn = format_ident!("{}_aspect_id", e.aspect_fn);
-        let accessor_name = format_ident!("gen_aspect_id_{}", key);
-        aspect_id_accessor_fns.push(quote!{
-            pub(crate) fn #accessor_name<'s>(
-                dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-            ) -> (
-                crate::langhelp::BindingId,
-                crate::langhelp::Unique,
-                v8::Local<'s, v8::Value>,
-            ) {
-                let dynamic_key = BindingId::Builtin(#scope_id);
-                let unique = crate::r#gen::#aspect_id_fn();
-                let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
-                (dynamic_key, unique, unique_dynamic.into())
-            }
-        });
-    }
-    out.extend(quote!{
-        #(#aspect_id_accessor_fns) *
-    });
 }
 
 pub fn interface_specs() -> Vec<InterfaceSpec> {
-    let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
-    let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
-    vec![
-        //. .
-        InterfaceSpec {
-            name: IFACE_ASPECT_FUNCTION_NAME,
-            builtin_unique_id: 1016,
-            scope_id: 3003,
-            field_prefix: "af",
-            kind: "AspectFunction",
-            description: None,
-            register_in_scope: true,
-            rust_trait_name: None,
-            methods: vec![Method {
-                name: "call",
-                ret_type: cve(),
-                args: MethodArgs::Source(vec![("inner", cve()), ("argument", cve())]),
-            }],
-        },
-        InterfaceSpec {
-            name: IFACE_ASPECT_FIELD_NAME,
-            builtin_unique_id: 1030,
-            scope_id: 3004,
-            field_prefix: "afd",
-            kind: "AspectField",
-            description: None,
-            register_in_scope: true,
-            rust_trait_name: None,
-            methods: vec![
-                //. .
-                Method {
-                    name: "field",
-                    ret_type: cve(),
-                    args: MethodArgs::Source(vec![("inner", cve()), ("key", cve())]),
-                },
-                Method {
-                    name: "field_type_opt",
-                    ret_type: any(),
-                    args: MethodArgs::Source(vec![("key", cve())]),
-                },
-            ],
-        },
-    ]
+    vec![]
 }

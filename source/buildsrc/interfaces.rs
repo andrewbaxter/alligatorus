@@ -24,7 +24,6 @@ pub fn build(
     let mut iface_build_entries: Vec<TokenStream> = Vec::new();
     let mut iface_result_fields: Vec<TokenStream> = Vec::new();
     let mut iface_trait_defs: Vec<TokenStream> = Vec::new();
-    let mut iface_accessor_fns: Vec<TokenStream> = Vec::new();
     let mut iface_identity_fns: Vec<TokenStream> = Vec::new();
     let mut iface_field_consts: Vec<TokenStream> = Vec::new();
     for iface in extra_specs {
@@ -114,7 +113,6 @@ pub fn build(
         assert!(builtin_unique_ids.insert(iface.builtin_unique_id));
         assert!(scope_ids.insert(iface.scope_id));
         let builtin_unique_id = iface.builtin_unique_id;
-        let scope_id = iface.scope_id;
         {
             let fn_name = format_ident!("builtin_{}_iface_identity", if iface.name == "type" {
                 "type"
@@ -142,26 +140,6 @@ pub fn build(
         iface_result_fields.push(quote!{
             #f: #f
         });
-        let name = iface.name;
-        if iface.register_in_scope {
-            let fn_name = format_ident!("gen_iface_{}", name);
-            iface_accessor_fns.push(quote!{
-                pub(crate) fn #fn_name<'s>(
-                    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-                    builtin_ifaces: &GenBuiltinInterfaces,
-                ) -> (
-                    crate::langhelp::BindingId,
-                    std::rc::Rc<dyn crate::langhelp::Type>,
-                    v8::Local<'s, v8::Value>,
-                ) {
-                    let iface_ref = Rc::new(SourceInterfaceRef { data: builtin_ifaces.#f.clone() });
-                    let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
-                    let iface_const_type: Rc<dyn crate::langhelp::Type> =
-                        Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-                    (BindingId::Builtin(#scope_id), iface_const_type, dynamic_val.into())
-                }
-            });
-        }
         if let Some(trait_name_str) = iface.rust_trait_name {
             let trait_name = format_ident!("{}", trait_name_str);
             let methods: Vec<TokenStream> = iface.methods.iter().filter_map(|m| {
@@ -221,6 +199,6 @@ pub fn build(
                 *
             }
         }
-        #(#iface_identity_fns) * #(#iface_field_consts) * #(#iface_accessor_fns) *
+        #(#iface_identity_fns) * #(#iface_field_consts) *
     });
 }

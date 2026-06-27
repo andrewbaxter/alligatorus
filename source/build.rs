@@ -68,12 +68,15 @@ fn main() {
         use crate::eval::dynamic_util::throw_error;
     };
     buildsrc::aspects::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
+    let mut extra_iface_specs: Vec<buildsrc::util::InterfaceSpec> = Vec::new();
+    let mut tree_out = quote!{};
+    buildsrc::builtin_tree::emit_gen_builtin_tree(&mut tree_out, &mut scope_ids, &mut extra_iface_specs);
     let mut interface_specs = buildsrc::aspects::interface_specs();
     interface_specs.extend(buildsrc::traits::specs());
+    interface_specs.extend(extra_iface_specs);
     buildsrc::interfaces::build(&mut out, &mut builtin_unique_ids, &mut scope_ids, interface_specs);
     buildsrc::identities::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
     buildsrc::push_structs::build(&mut out, &mut builtin_unique_ids, buildsrc::traits::specs());
-    buildsrc::push_fns::build(&mut out, &mut scope_ids);
-    buildsrc::builtin_tree::emit_gen_builtin_tree(&mut out);
+    out.extend(tree_out);
     fs::write(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("gen.rs"), out.to_string()).unwrap();
 }
