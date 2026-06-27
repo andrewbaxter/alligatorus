@@ -253,8 +253,7 @@ impl ExporterRootDelegate for TypeOptionDynamic {
             Ok(v) => v,
             Err(_) => return EResult::err(loc, "TypeOptionDynamic::self_export: type mismatch".to_string()),
         };
-        let element_val: &dyn Value = self_.element_type.as_ref();
-        let element_art = export_artifact(xx, loc, element_val);
+        let element_art = export_artifact(xx, loc, self_.element_type.as_ref());
         let errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
             return EResult {
@@ -262,10 +261,9 @@ impl ExporterRootDelegate for TypeOptionDynamic {
                 v: None,
             };
         };
-        let body = ArtifactOptionType { element_type: element_artifact };
         return EResult {
             errors,
-            v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
+            v: Some(Artifact::Body(make_body(serde_json::to_value(&ArtifactOptionType { element_type: element_artifact }).unwrap()))),
         };
     }
 }
@@ -460,8 +458,7 @@ impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
                 "TypeOptionVariantConstructorDynamic::self_export: type mismatch".to_string(),
             ),
         };
-        let element_val: &dyn Value = self_.element_type.as_ref();
-        let element_art = export_artifact(xx, loc, element_val);
+        let element_art = export_artifact(xx, loc, self_.element_type.as_ref());
         let errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
             return EResult {
@@ -469,13 +466,12 @@ impl ExporterRootDelegate for TypeOptionVariantConstructorDynamic {
                 v: None,
             };
         };
-        let body = super::artifact::ArtifactOptionVariantConstructor {
-            element_type: element_artifact,
-            is_some: self_.is_some,
-        };
         return EResult {
             errors,
-            v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
+            v: Some(Artifact::Body(make_body(serde_json::to_value(&super::artifact::ArtifactOptionVariantConstructor {
+                element_type: element_artifact,
+                is_some: self_.is_some,
+            }).unwrap()))),
         };
     }
 }

@@ -154,12 +154,10 @@ fn dispatch_aspect_method(
             },
         }
     };
-    let cell: Rc<RefCell<Option<CodeValue>>> = from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
-    let out_cv = match cell.borrow_mut().take() {
-        Some(cv) => cv,
-        None => return EvalRes::err(loc, format!("dynamic method '{}' returned consumed CodeValueExtern", method_field)),
-    };
-    EvalRes::ok(out_cv)
+    match from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone().borrow_mut().take() {
+        Some(cv) => EvalRes::ok(cv),
+        None => EvalRes::err(loc, format!("dynamic method '{}' returned consumed CodeValueExtern", method_field)),
+    }
 }
 pub(crate) struct PostDeserializeIdentity;
 

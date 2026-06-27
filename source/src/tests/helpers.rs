@@ -300,8 +300,7 @@ pub(super) fn new_gx_with_artifacts(
 pub(super) fn redact_builtins(sources: &[String]) -> Vec<String> {
     let re = regex::Regex::new(r"\bb\d+\b").unwrap();
     sources.iter().map(|s| {
-        let stripped = re.replace_all(s, "BUILTIN").into_owned();
-        stripped.split('\n').filter(|l| *l != "{/*main*/" && *l != "}/*main*/").collect::<Vec<_>>().join("\n")
+        re.replace_all(s, "BUILTIN").into_owned().split('\n').filter(|l| *l != "{/*main*/" && *l != "}/*main*/").collect::<Vec<_>>().join("\n")
     }).collect()
 }
 

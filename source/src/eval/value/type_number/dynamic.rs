@@ -121,10 +121,8 @@ impl AspectField for TypeNumberDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let key_type = erb.must_er(key.value.type_(xx, loc))?;
-            let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
-            let const_key = ConstKey::String(key_name.clone());
-            let field_type = match self.field_type_opt(xx, &const_key) {
+            let key_name = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?.get(key.value.as_ref());
+            let field_type = match self.field_type_opt(xx, &ConstKey::String(key_name.clone())) {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on dynamic number", key_name)),
             };
@@ -132,14 +130,13 @@ impl AspectField for TypeNumberDynamic {
                 "to_string" => "toString".to_string(),
                 _ => key_name.clone(),
             };
-            let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {
                     loc: loc,
                     code: Code_::Dyn(Rc::new(CodeDynamic {
                         loc: loc,
                         type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                            base: Box::new(self_code),
+                            base: Box::new(erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone()),
                             field: js_name.clone(),
                         }),
                     })),

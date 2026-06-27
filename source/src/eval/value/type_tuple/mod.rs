@@ -375,20 +375,16 @@ impl ExporterRootDelegate for Tuple {
             move |body: ArtifactTupleType| {
                 let element_arts = body.elements;
                 let deps: Vec<Artifact> = element_arts.clone();
-                let out: Rc<dyn crate::artifact::ExporterAny> =
-                    Rc::new(crate::artifact::ExporterDataAny(holder.clone()));
                 let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
                     let mut elements = Vec::with_capacity(element_arts.len());
                     for elem_art in element_arts {
-                        let t =
-                            crate::artifact::independent_finalize_import_type_artifact(xx, loc, elem_art)
-                                .v
-                                .expect("Failed to deserialize tuple element type");
-                        elements.push(TupleElement::Dynamic(t));
+                        elements.push(TupleElement::Dynamic(crate::artifact::independent_finalize_import_type_artifact(xx, loc, elem_art)
+                            .v
+                            .expect("Failed to deserialize tuple element type")));
                     }
                     *holder_for_finalizer.borrow_mut() = Some(Tuple { elements });
                 });
-                Ok((out, deps, finalizer))
+                Ok((Rc::new(crate::artifact::ExporterDataAny(holder.clone())) as Rc<dyn crate::artifact::ExporterAny>, deps, finalizer))
             },
         );
     }
@@ -593,26 +589,23 @@ impl Type for Tuple {
                 converted_type.elements[i] = TupleElement::Dynamic(any_type.clone());
                 converted_elements.push(TupleElement::EvalRes(EvalRes::ok(converted_cv)));
             }
-            let converted_tuple = Tuple { elements: converted_elements };
-            let converted_cv = CodeValue {
+            let tuple_js = erb.must_er(converted_type.to_dynamic(xx, loc, CodeValue {
                 code: cv.code,
-                value: Rc::new(converted_tuple),
-            };
-            let tuple_js = erb.must_er(converted_type.to_dynamic(xx, loc, converted_cv))?;
-            let call_code = CodeDynamic {
-                loc,
-                type_: CodeDynamicType::Call(CodeDynamicCall {
-                    func: Box::new(CodeDynamic {
-                        loc,
-                        type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID }),
-                    }),
-                    args: vec![tuple_js],
-                }),
-            };
+                value: Rc::new(Tuple { elements: converted_elements }),
+            }))?;
             return Ok(CodeValue {
                 code: Code {
                     loc,
-                    code: Code_::Dyn(Rc::new(call_code)),
+                    code: Code_::Dyn(Rc::new(CodeDynamic {
+                        loc,
+                        type_: CodeDynamicType::Call(CodeDynamicCall {
+                            func: Box::new(CodeDynamic {
+                                loc,
+                                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID }),
+                            }),
+                            args: vec![tuple_js],
+                        }),
+                    })),
                 },
                 value: any_type.as_value(),
             });
@@ -691,14 +684,10 @@ impl AspectLift for TupleLiftJs {
 
 impl ExporterAny for crate::artifact::ExporterDataAny<Rc<std::cell::RefCell<Option<Tuple>>>> {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        let borrowed = self.0.borrow();
-        let tuple = borrowed.as_ref().expect("Tuple holder not populated").clone();
-        EResult::ok(Rc::new(tuple))
+        EResult::ok(Rc::new(self.0.borrow().as_ref().expect("Tuple holder not populated").clone()))
     }
 
     fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        let borrowed = self.0.borrow();
-        let tuple = borrowed.as_ref().expect("Tuple holder not populated").clone();
-        EResult::ok(Rc::new(tuple))
+        EResult::ok(Rc::new(self.0.borrow().as_ref().expect("Tuple holder not populated").clone()))
     }
 }

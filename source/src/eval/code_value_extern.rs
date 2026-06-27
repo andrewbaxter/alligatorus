@@ -87,9 +87,7 @@ impl Push for CodeValueExtern {
     }
 
     fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cell: Rc<RefCell<Option<CodeValue>>> =
-            from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone();
-        CodeValueExtern(cell)
+        CodeValueExtern(from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone())
     }
 
     fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
@@ -142,22 +140,21 @@ impl AspectField for TypeCodeValueExternDynamic {
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
             let key_str = aspect_string.get(key.value.as_ref());
             if key_str == "code" {
-                let call_code = CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::Call(CodeDynamicCall {
-                        func: Box::new(CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::BindingUse(
-                                CodeDynamicBindingUse { id: CVE_GET_CODE_ENUM_FN_SCOPE_ID, }
-                            ),
-                        }),
-                        args: vec![self_code],
-                    }),
-                };
                 return Ok(CodeValue {
                     code: Code {
                         loc,
-                        code: Code_::Dyn(Rc::new(call_code))
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::Call(CodeDynamicCall {
+                                func: Box::new(CodeDynamic {
+                                    loc,
+                                    type_: CodeDynamicType::BindingUse(
+                                        CodeDynamicBindingUse { id: CVE_GET_CODE_ENUM_FN_SCOPE_ID, }
+                                    ),
+                                }),
+                                args: vec![self_code],
+                            }),
+                        }))
                     },
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
@@ -166,22 +163,21 @@ impl AspectField for TypeCodeValueExternDynamic {
                 });
             }
             if key_str == "value" {
-                let call_code = CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::Call(CodeDynamicCall {
-                        func: Box::new(CodeDynamic {
-                            loc,
-                            type_: CodeDynamicType::BindingUse(
-                                CodeDynamicBindingUse { id: CVE_GET_VALUE_FN_SCOPE_ID, }
-                            ),
-                        }),
-                        args: vec![self_code],
-                    }),
-                };
                 return Ok(CodeValue {
                     code: Code {
                         loc,
-                        code: Code_::Dyn(Rc::new(call_code))
+                        code: Code_::Dyn(Rc::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::Call(CodeDynamicCall {
+                                func: Box::new(CodeDynamic {
+                                    loc,
+                                    type_: CodeDynamicType::BindingUse(
+                                        CodeDynamicBindingUse { id: CVE_GET_VALUE_FN_SCOPE_ID, }
+                                    ),
+                                }),
+                                args: vec![self_code],
+                            }),
+                        }))
                     },
                     value: Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
@@ -325,20 +321,19 @@ impl Type for TypeCodeValueExternDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "CodeValueExtern.cast_to: receiver has no dynamic code".to_string()),
         };
-        let extract_call = CodeDynamic {
-            loc,
-            type_: CodeDynamicType::Call(CodeDynamicCall {
-                func: Box::new(CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID }),
-                }),
-                args: vec![self_code],
-            }),
-        };
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
-                code: Code_::Dyn(Rc::new(extract_call)),
+                code: Code_::Dyn(Rc::new(CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Call(CodeDynamicCall {
+                        func: Box::new(CodeDynamic {
+                            loc,
+                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID }),
+                        }),
+                        args: vec![self_code],
+                    }),
+                })),
             },
             value: Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
@@ -477,8 +472,7 @@ impl Push for CodeValue {
     }
 
     fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
-        let cve = <CodeValueExtern as Push>::from_dynamic(scope, value);
-        cve.into_inner()
+        <CodeValueExtern as Push>::from_dynamic(scope, value).into_inner()
     }
 
     fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {

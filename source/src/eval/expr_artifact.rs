@@ -186,14 +186,12 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
         ArtifactExpr_::Import { spec } => Expr_::Import(
             ExprImport { spec: Rc::new(expr_from_artifact(xx, spec)?) },
         ),
-        ArtifactExpr_::Literal { value } => {
-            let cv =
-                import_artifact(xx, loc, value.clone())
-                    .into_res()
-                    .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?;
-            let v = cv.as_value().into_res().map_err(|e| format!("Failed to extract Literal value: {:?}", e))?;
-            Expr_::Literal(make_lit_value(v))
-        },
+        ArtifactExpr_::Literal { value } => Expr_::Literal(make_lit_value(import_artifact(xx, loc, value.clone())
+            .into_res()
+            .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?
+            .as_value()
+            .into_res()
+            .map_err(|e| format!("Failed to extract Literal value: {:?}", e))?)),
         ArtifactExpr_::Lower { expr } => Expr_::Lower(ExprLower { expr: Rc::new(expr_from_artifact(xx, expr)?) }),
         ArtifactExpr_::Match { base, cases, element_key, fallback } => Expr_::Match(ExprMatch {
             base: Rc::new(expr_from_artifact(xx, base)?),
@@ -264,15 +262,12 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             body: expr_to_artifact(xx, &e.body)?,
             element_key: expr_to_artifact(xx, &e.element_key)?,
         },
-        Expr_::Graft(e) => {
-            let inner = match e {
-                ExprGraft::Pending(inner) => inner,
-                ExprGraft::Evaluated(_) => {
-                    return Err("Cannot serialize Graft after it has been evaluated by stage processing".to_string());
-                },
-            };
-            ArtifactExpr_::Graft { expr: expr_to_artifact(xx, inner)? }
-        },
+        Expr_::Graft(e) => ArtifactExpr_::Graft { expr: expr_to_artifact(xx, match e {
+            ExprGraft::Pending(inner) => inner,
+            ExprGraft::Evaluated(_) => {
+                return Err("Cannot serialize Graft after it has been evaluated by stage processing".to_string());
+            },
+        })? },
         Expr_::If(e) => ArtifactExpr_::If {
             conditions: e.conditions.iter().map(|b| Ok::<_, String>(ArtifactCondBranch {
                 condition: expr_to_artifact(xx, &b.condition)?,
@@ -283,22 +278,17 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
         Expr_::Import(e) => ArtifactExpr_::Import { spec: expr_to_artifact(xx, &e.spec)? },
         Expr_::Literal(p) => {
             let value = p.peek().ok_or_else(|| "Cannot serialize consumed Literal".to_string())?;
-            let value_type =
-                value
-                    .type_(xx, expr.loc)
-                    .into_res()
-                    .map_err(|e| format!("Literal value type unavailable: {:?}", e))?;
-            let aspect_artifact =
-                aspect_artifact_get(xx, expr.loc, value_type.as_ref())
-                    .into_res()
-                    .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?;
-            let artifact =
-                aspect_artifact
-                    .exporter()
-                    .export(xx, expr.loc, value.as_exporter_any())
-                    .into_res()
-                    .map_err(|e| format!("Failed to serialize Literal value: {:?}", e))?;
-            ArtifactExpr_::Literal { value: artifact }
+            ArtifactExpr_::Literal { value: aspect_artifact_get(xx, expr.loc, value
+                .type_(xx, expr.loc)
+                .into_res()
+                .map_err(|e| format!("Literal value type unavailable: {:?}", e))?
+                .as_ref())
+                .into_res()
+                .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?
+                .exporter()
+                .export(xx, expr.loc, value.as_exporter_any())
+                .into_res()
+                .map_err(|e| format!("Failed to serialize Literal value: {:?}", e))? }
         },
         Expr_::Lower(e) => ArtifactExpr_::Lower { expr: expr_to_artifact(xx, &e.expr)? },
         Expr_::Match(e) => ArtifactExpr_::Match {

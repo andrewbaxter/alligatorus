@@ -60,8 +60,7 @@ pub(crate) fn pull_aspect_v8(
     if some_val.is_undefined() {
         return None;
     }
-    let aspect: Rc<dyn Aspect> = from_dynamic_ref::<Rc<dyn Aspect>>(&*some_val).clone();
-    Some(aspect)
+    Some(from_dynamic_ref::<Rc<dyn Aspect>>(&*some_val).clone())
 }
 
 pub(crate) fn pull_can_cast_from_v8(
@@ -205,12 +204,10 @@ pub(crate) fn pull_cast_from_v8(
             },
         }
     };
-    let cell: Rc<RefCell<Option<CodeValue>>> = from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone();
-    let out_cv = match cell.borrow_mut().take() {
-        Some(c) => c,
-        None => return EvalRes::err(loc, "cast_from dynamic returned consumed CodeValueExtern".to_string()),
-    };
-    EvalRes::ok(out_cv)
+    match from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*result).clone().borrow_mut().take() {
+        Some(c) => EvalRes::ok(c),
+        None => EvalRes::err(loc, "cast_from dynamic returned consumed CodeValueExtern".to_string()),
+    }
 }
 
 pub(crate) fn pull_desc(data: &Gc<SourceObjectData>) -> String {
