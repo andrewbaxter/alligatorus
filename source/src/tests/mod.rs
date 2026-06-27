@@ -12,4 +12,5 @@ mod t0090_maps;
 mod t0100_serial;
 mod t0110_const_folding;
 mod t0120_impl_type;
+mod t0130_import_transitive;
 mod t_nodejs;

@@ -120,6 +120,13 @@ impl SourceFunctionData {
         let impl_cv = r.v.unwrap();
         let impl_code = impl_cv.code.cast::<CodeDynamic>().into_res()?.unwrap().clone();
         let captured = func_xx.vx.externals.borrow().clone();
+        {
+            let discovered = func_xx.vx.definition_sets.borrow();
+            let mut outer = xx.vx.definition_sets.borrow_mut();
+            for (id, ds) in discovered.iter() {
+                outer.entry(*id).or_insert_with(|| ds.clone());
+            }
+        }
         let mut code1 = DynamicSourceBuilder::default();
         let func_name = binding_id_dynamic_key(scope_id);
         code1.push(root_loc, format!("var {};", func_name));

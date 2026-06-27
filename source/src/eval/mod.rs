@@ -1018,15 +1018,18 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 if let Some(entry) = results.get(&compile_id) {
                     entry.clone()
                 } else {
+                    let entry: Arc<RwLock<Option<CompileRes>>> = Arc::new(RwLock::new(None));
+                    results.insert(compile_id, entry.clone());
+                    let mut write_guard = entry.write().unwrap();
+                    drop(results);
                     let gx = xx.vx.ix.gx.clone();
                     let import_state = xx.import_state.get();
                     let res = std::thread::Builder::new().stack_size(512 * 1024 * 1024).spawn(move || {
                         let module = source_module_to_module(source_id, &source_module);
-                        let r = compile_importid(&gx, import_state, module, vec![]);
-                        r
+                        compile_importid(&gx, import_state, module, vec![])
                     }).expect("compile_importid thread spawn").join().expect("compile_importid thread panicked");
-                    let entry = Arc::new(RwLock::new(Some(res)));
-                    results.insert(compile_id, entry.clone());
+                    *write_guard = Some(res);
+                    drop(write_guard);
                     entry
                 }
             };
@@ -1624,6 +1627,18 @@ fn eval(
         binding_id: BindingId,
     }
 
+    {
+        let mut to_visit: Vec<dumpster::unsync::Gc<crate::eval::definition_set::DefinitionSet>> =
+            ex.definition_sets.borrow().values().cloned().collect();
+        while let Some(ds) = to_visit.pop() {
+            for (dep_id, dep) in ds.dependencies.borrow().iter() {
+                let inserted = ex.definition_sets.borrow_mut().insert(*dep_id, dep.clone()).is_none();
+                if inserted {
+                    to_visit.push(dep.clone());
+                }
+            }
+        }
+    }
     let mut precompiled_def_funcs: Vec<String> = vec![];
     let def_func_infos: Vec<DefFuncInfo> = {
         let sets = ex.definition_sets.borrow();
@@ -2997,7 +3012,6 @@ fn eval(
         }
     }
     let dynamic_source = code1.lines.join("\n");
-    eprintln!("source: [[{}]]", dynamic_source);
     cix.gx.generated_dynamic_scripts.lock().unwrap().push(dynamic_source.clone());
     let script =
         v8::Script::compile(dynamic_scope, v8::String::new(dynamic_scope, &dynamic_source).unwrap(), None).unwrap();
