@@ -129,7 +129,7 @@ pub(crate) fn pull_cast_from_v8(
     loc: QExprId,
     cv: CodeValue,
 ) -> EvalRes {
-    let field_name = match cast_from_field_name(data) {
+    let field_name = match type_method_field_name(data, "cast_from") {
         Some(n) => n,
         None => return EvalRes::err(loc, "cast_from field name not found".to_string()),
     };
@@ -215,10 +215,6 @@ pub(crate) fn pull_cast_from_v8(
 
 pub(crate) fn pull_desc(data: &Gc<SourceObjectData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
-}
-
-fn cast_from_field_name(data: &Gc<SourceObjectData>) -> Option<String> {
-    type_method_field_name(data, "cast_from")
 }
 
 fn type_method_field_name(data: &Gc<SourceObjectData>, method_name: &str) -> Option<String> {

@@ -32,7 +32,6 @@ use {
         },
         langhelp::{
             ExprContext,
-            QExprId,
             SourceId,
         },
         r#gen::aspect_artifact_get,
@@ -150,7 +149,7 @@ pub(crate) struct ArtifactMatchBranch {
 pub(crate) struct ArtifactQExprId(pub usize, pub usize);
 
 pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result<Expr, String> {
-    let loc = loc_from(art.loc);
+    let loc = (SourceId(art.loc.0), ExprId(art.loc.1));
     let type_ = match art.r#type.as_ref() {
         ArtifactExpr_::As { base, target } => Expr_::As(ExprAs {
             base: Rc::new(expr_from_artifact(xx, base)?),
@@ -239,7 +238,7 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
 }
 
 pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<ArtifactExpr, String> {
-    let loc = loc_to(expr.loc);
+    let loc = ArtifactQExprId(expr.loc.0.0, expr.loc.1.0);
     let type_ = match &expr.r#type {
         Expr_::As(e) => ArtifactExpr_::As {
             base: expr_to_artifact(xx, &e.base)?,
@@ -342,10 +341,3 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
     })
 }
 
-fn loc_from(loc: ArtifactQExprId) -> QExprId {
-    (SourceId(loc.0), ExprId(loc.1))
-}
-
-fn loc_to(loc: QExprId) -> ArtifactQExprId {
-    ArtifactQExprId(loc.0.0, loc.1.0)
-}

@@ -517,18 +517,6 @@ pub enum ExporterRoot {
     Unique,
 }
 
-impl ExporterRoot {
-    fn self_export_exporter(self) -> ArtifactBodyExporter {
-        match self {
-            ExporterRoot::Root => ArtifactBodyExporter::Root,
-            _ => ArtifactBodyExporter::Body(Box::new(ArtifactBody {
-                data: serde_json::to_value(self).unwrap(),
-                exporter: ArtifactBodyExporter::Root,
-            })),
-        }
-    }
-}
-
 impl ArtifactExporter for ExporterRoot {
     fn import(
         &self,
@@ -678,7 +666,13 @@ impl ArtifactExporter for ExporterRoot {
         let me = *self;
         let make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody> = Box::new(move |data| ArtifactBody {
             data,
-            exporter: me.self_export_exporter(),
+            exporter: match me {
+                ExporterRoot::Root => ArtifactBodyExporter::Root,
+                _ => ArtifactBodyExporter::Body(Box::new(ArtifactBody {
+                    data: serde_json::to_value(me).unwrap(),
+                    exporter: ArtifactBodyExporter::Root,
+                })),
+            },
         });
         let mut errors: Option<Vec<ExprErr>> = None;
         let res = match self {

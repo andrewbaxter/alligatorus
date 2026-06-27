@@ -94,15 +94,6 @@ pub(crate) struct TypeOptionDynamic {
     pub(crate) element_type: Rc<dyn Type>,
 }
 
-impl TypeOptionDynamic {
-    fn variants_internal(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
-        vec![
-            (ConstKey::String("some".to_string()), "some".to_string(), self.element_type.clone()),
-            (ConstKey::String("none".to_string()), "none".to_string(), Rc::new(TypeNullDynamic) as Rc<dyn Type>),
-        ]
-    }
-}
-
 impl Aspect for TypeOptionDynamic { }
 
 impl AspectBind for TypeOptionDynamic {
@@ -210,7 +201,10 @@ impl AspectStackValueDynamic for TypeOptionDynamic {
 
 impl AspectUnion for TypeOptionDynamic {
     fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
-        self.variants_internal()
+        vec![
+            (ConstKey::String("some".to_string()), "some".to_string(), self.element_type.clone()),
+            (ConstKey::String("none".to_string()), "none".to_string(), Rc::new(TypeNullDynamic) as Rc<dyn Type>),
+        ]
     }
 }
 

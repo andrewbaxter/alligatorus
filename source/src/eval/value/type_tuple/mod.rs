@@ -636,19 +636,15 @@ impl Value for Tuple {
 
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
         let elements = self.elements.iter().map(|e| {
-            TupleElement::Dynamic(tuple_element_type(xx, loc, e))
+            TupleElement::Dynamic(match e {
+                TupleElement::Dynamic(t) => t.clone(),
+                TupleElement::EvalRes(er) => match &er.v {
+                    Some(cv) => cv.value.type_(xx, loc).v.expect("Tuple element type unavailable"),
+                    None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
+                },
+            })
         }).collect();
         EResult::ok(Rc::new(Tuple { elements: elements }))
-    }
-}
-
-fn tuple_element_type(xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dyn Type> {
-    match e {
-        TupleElement::Dynamic(t) => t.clone(),
-        TupleElement::EvalRes(er) => match &er.v {
-            Some(cv) => cv.value.type_(xx, loc).v.expect("Tuple element type unavailable"),
-            None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
-        },
     }
 }
 

@@ -361,86 +361,82 @@ pub(crate) fn compile_importid(
         builtin_scope_entries: RefCell::new(Vec::new()),
     });
 
-    fn max_lower_excess(expr: &Expr, stage_depth: usize, lower_depth: usize) -> usize {
-        fn recurse_children(expr: &Expr, sd: usize, ld: usize) -> usize {
-            match &expr.r#type {
-                Expr_::Lower(e) => {
-                    let new_ld = ld + 1;
-                    let excess = new_ld.saturating_sub(sd);
-                    excess.max(max_lower_excess(&e.expr, sd, new_ld))
-                },
-                Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
-                Expr_::Graft(e) => match e {
-                    expr::ExprGraft::Pending(inner) => max_lower_excess(inner, sd, ld),
-                    expr::ExprGraft::Evaluated(_) => 0,
-                },
-                Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
-                Expr_::As(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
-                },
-                Expr_::Call(c) => {
-                    max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
-                },
-                Expr_::Bind(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
-                },
-                Expr_::Set(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
-                },
-                Expr_::Field(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.key, sd, ld))
-                },
-                Expr_::Seq(e) => {
-                    e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
-                },
-                Expr_::Tuple(t) => {
-                    t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
-                },
-                Expr_::Record(r) => {
-                    r.entries.iter().map(|(k, v)| {
-                        max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
-                    }).max().unwrap_or(0)
-                },
-                Expr_::If(e) => {
-                    let mut m = 0;
-                    for b in &e.conditions {
-                        m = m.max(max_lower_excess(&b.condition, sd, ld));
-                        m = m.max(max_lower_excess(&b.body, sd, ld));
-                    }
-                    if let Some(el) = &e.else_ {
-                        m = m.max(max_lower_excess(el, sd, ld));
-                    }
-                    m
-                },
-                Expr_::OperatorLt(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
-                },
-                Expr_::OperatorEq(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
-                },
-                Expr_::OperatorAdd(e) => {
-                    max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
-                },
-                Expr_::Foreach(e) => {
-                    max_lower_excess(&e.base, sd, ld)
-                        .max(max_lower_excess(&e.element_key, sd, ld))
-                        .max(max_lower_excess(&e.body, sd, ld))
-                },
-                Expr_::Match(e) => {
-                    let mut m = max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.element_key, sd, ld));
-                    for c in &e.cases {
-                        m = m.max(max_lower_excess(&c.condition, sd, ld));
-                        m = m.max(max_lower_excess(&c.body, sd, ld));
-                    }
-                    if let Some(f) = &e.fallback {
-                        m = m.max(max_lower_excess(f, sd, ld));
-                    }
-                    m
-                },
-            }
+    fn max_lower_excess(expr: &Expr, sd: usize, ld: usize) -> usize {
+        match &expr.r#type {
+            Expr_::Lower(e) => {
+                let new_ld = ld + 1;
+                let excess = new_ld.saturating_sub(sd);
+                excess.max(max_lower_excess(&e.expr, sd, new_ld))
+            },
+            Expr_::Stage(e) => max_lower_excess(&e.expr, sd + 1, ld),
+            Expr_::Graft(e) => match e {
+                expr::ExprGraft::Pending(inner) => max_lower_excess(inner, sd, ld),
+                expr::ExprGraft::Evaluated(_) => 0,
+            },
+            Expr_::Literal(_) | Expr_::ScopeUse(_) | Expr_::Import(_) => 0,
+            Expr_::As(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.target, sd, ld))
+            },
+            Expr_::Call(c) => {
+                max_lower_excess(&c.func, sd, ld).max(max_lower_excess(&c.arg, sd, ld))
+            },
+            Expr_::Bind(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
+            },
+            Expr_::Set(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.value, sd, ld))
+            },
+            Expr_::Field(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.key, sd, ld))
+            },
+            Expr_::Seq(e) => {
+                e.exprs.iter().map(|sub| max_lower_excess(sub, sd, ld)).max().unwrap_or(0)
+            },
+            Expr_::Tuple(t) => {
+                t.elements.iter().map(|e| max_lower_excess(e, sd, ld)).max().unwrap_or(0)
+            },
+            Expr_::Record(r) => {
+                r.entries.iter().map(|(k, v)| {
+                    max_lower_excess(k, sd, ld).max(max_lower_excess(v, sd, ld))
+                }).max().unwrap_or(0)
+            },
+            Expr_::If(e) => {
+                let mut m = 0;
+                for b in &e.conditions {
+                    m = m.max(max_lower_excess(&b.condition, sd, ld));
+                    m = m.max(max_lower_excess(&b.body, sd, ld));
+                }
+                if let Some(el) = &e.else_ {
+                    m = m.max(max_lower_excess(el, sd, ld));
+                }
+                m
+            },
+            Expr_::OperatorLt(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+            },
+            Expr_::OperatorEq(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+            },
+            Expr_::OperatorAdd(e) => {
+                max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.reference, sd, ld))
+            },
+            Expr_::Foreach(e) => {
+                max_lower_excess(&e.base, sd, ld)
+                    .max(max_lower_excess(&e.element_key, sd, ld))
+                    .max(max_lower_excess(&e.body, sd, ld))
+            },
+            Expr_::Match(e) => {
+                let mut m = max_lower_excess(&e.base, sd, ld).max(max_lower_excess(&e.element_key, sd, ld));
+                for c in &e.cases {
+                    m = m.max(max_lower_excess(&c.condition, sd, ld));
+                    m = m.max(max_lower_excess(&c.body, sd, ld));
+                }
+                if let Some(f) = &e.fallback {
+                    m = m.max(max_lower_excess(f, sd, ld));
+                }
+                m
+            },
         }
-
-        recurse_children(expr, stage_depth, lower_depth)
     }
 
     let excess = max_lower_excess(&root_expr, 0, 0);

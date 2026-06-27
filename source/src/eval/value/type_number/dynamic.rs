@@ -95,12 +95,6 @@ use {
     },
 };
 
-fn js_field_name(key: &str) -> &str {
-    match key {
-        "to_string" => "toString",
-        other => other,
-    }
-}
 pub(crate) struct TypeNumberDynamic;
 
 impl Aspect for TypeNumberDynamic { }
@@ -134,7 +128,10 @@ impl AspectField for TypeNumberDynamic {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on dynamic number", key_name)),
             };
-            let js_name = js_field_name(&key_name).to_string();
+            let js_name = match key_name.as_str() {
+                "to_string" => "toString".to_string(),
+                _ => key_name.clone(),
+            };
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
             return Ok(CodeValue {
                 code: Code {

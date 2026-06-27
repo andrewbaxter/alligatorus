@@ -79,9 +79,6 @@ impl CodeValueExtern {
         self.0.borrow_mut().take().expect("CodeValueExtern: already taken")
     }
 
-    pub fn wrap(cv: CodeValue) -> Self {
-        CodeValueExtern(Rc::new(RefCell::new(Some(cv))))
-    }
 }
 
 impl Push for CodeValueExtern {
@@ -485,6 +482,6 @@ impl Push for CodeValue {
     }
 
     fn into_dynamic<'s>(self, scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
-        CodeValueExtern::wrap(self).into_dynamic(scope)
+        CodeValueExtern(Rc::new(RefCell::new(Some(self)))).into_dynamic(scope)
     }
 }

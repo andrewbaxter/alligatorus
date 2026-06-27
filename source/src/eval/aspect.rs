@@ -86,13 +86,6 @@ impl Value for AspectPull {
     }
 }
 
-fn clone_cv(cv: &CodeValue) -> CodeValue {
-    CodeValue {
-        code: cv.code.clone(),
-        value: cv.value.clone(),
-    }
-}
-
 fn dispatch_aspect_method(
     bundle: &v8::Global<v8::Object>,
     xx: &ExprContext,
@@ -124,7 +117,10 @@ fn dispatch_aspect_method(
             Some(s) => s,
             None => return EvalRes::err(loc, format!("AspectPull dispatch: '{}' key alloc failed", name)),
         };
-        let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(clone_cv(cv))));
+        let cve_cell: Rc<RefCell<Option<CodeValue>>> = Rc::new(RefCell::new(Some(CodeValue {
+            code: cv.code.clone(),
+            value: cv.value.clone(),
+        })));
         let cve_ext = to_dynamic_ext(scope, cve_cell);
         arg_obj.set(scope, k.into(), cve_ext.into());
     }
