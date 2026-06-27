@@ -366,6 +366,20 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         }
                     },
                 },
+                PushMethod {
+                    name: "set_exception_type",
+                    args: vec![("exception_type", "AnyType")],
+                    ret: "()",
+                    body: quote!{
+                        let mut exc = self_.func_ref.data.exception_type.borrow_mut();
+                        if exc.is_some() {
+                            drop(exc);
+                            throw_error(scope, "Function already has an exception type");
+                            return;
+                        }
+                        *exc = Some(exception_type.0);
+                    },
+                },
             ],
             extra_dispatch_arms: vec![],
             extra_method_setters: vec![],

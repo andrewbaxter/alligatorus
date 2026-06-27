@@ -1860,6 +1860,7 @@ fn eval(
         binding_id: BindingId,
         impl_expr_ast: Rc<dyn Value>,
         ret_type: Rc<dyn Type>,
+        exception_type: Rc<dyn Type>,
     }
 
     {
@@ -1892,11 +1893,17 @@ fn eval(
                 let ret_type =
                     func_data.ret_type.borrow().clone().expect("Definition set function missing return type");
                 let scope_id = func_data.binding_id.get().expect("Definition set function not registered");
+                let exception_type = func_data
+                    .exception_type
+                    .borrow()
+                    .clone()
+                    .unwrap_or_else(|| Rc::new(crate::eval::value::type_never::r#const::TypeNever));
                 infos.push(DefFuncInfo {
                     impl_expr_ast,
                     arg_type,
                     ret_type,
                     binding_id: scope_id,
+                    exception_type,
                 });
             }
         }
@@ -1926,7 +1933,7 @@ fn eval(
                     parent: None,
                 }),
                 target: target.clone(),
-                current_exception_type: Rc::new(crate::eval::value::type_never::r#const::TypeNever),
+                current_exception_type: info.exception_type.clone(),
             })
         };
         let impl_result = const_eval(&func_xx, impl_expr_ast);
@@ -4100,6 +4107,9 @@ fn maybe_wrap_call_exception(
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
+        if source.value.is_none() {
+            return Ok(source);
+        }
         let source_type = erb.must_er(source.value.as_ref().unwrap().type_(xx, loc))?;
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {
