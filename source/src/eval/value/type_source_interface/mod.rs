@@ -30,8 +30,8 @@ use {
 pub(crate) enum BuiltinInterfaceKind {
     AspectField,
     AspectFunction,
-    CodeDyn,
     Binding,
+    CodeDyn,
     Target,
     Type,
     Value,
@@ -68,8 +68,8 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceInterfaceData
 }
 
 pub(crate) struct SourceInterfaceMethodData {
-    pub arg_type: RefCell<Option<Rc<dyn Type>>>,
     pub arg_record_type: RefCell<Option<Rc<dyn Type>>>,
+    pub arg_type: RefCell<Option<Rc<dyn Type>>>,
     pub field_name: String,
     pub name: String,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
@@ -96,7 +96,9 @@ impl Push for Rc<SourceInterfaceRef> {
         Rc::new(dynamic::TypeSourceInterfaceDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         from_dynamic_ref::<Rc<SourceInterfaceRef>>(&*value).clone()
     }
 

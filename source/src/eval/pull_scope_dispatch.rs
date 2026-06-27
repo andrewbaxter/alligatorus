@@ -7,6 +7,7 @@ use {
             push::Push,
         },
         langhelp::{
+            BindingId,
             Code,
             CodeValue,
             ConstKey,
@@ -14,12 +15,11 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
         },
         r#gen::{
-            IM_BINDING_USE_FIELD,
             Binding,
+            IM_BINDING_USE_FIELD,
             Target,
         },
     },

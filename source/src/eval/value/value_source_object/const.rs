@@ -6,8 +6,8 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            import_artifact,
             export_artifact,
+            import_artifact,
         },
         eval::value::{
             type_root::r#const::ExporterRootDelegate,
@@ -62,6 +62,48 @@ impl ExporterAny for ValueSourceObjectConst {
 }
 
 impl ExporterRootDelegate for ValueSourceObjectConst {
+    fn self_export(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = match self_.downcast::<ValueSourceObjectConst>() {
+            Ok(v) => v,
+            Err(_) => return EResult::err(loc, "ValueSourceObjectConst::self_export: type mismatch".to_string()),
+        };
+        let mut errors: Option<Vec<ExprErr>> = None;
+        let type_value = TypeSourceObjectConst { data: self_.data.clone() };
+        let type_art = export_artifact(xx, loc, &type_value as &dyn Value);
+        if let Some(errors1) = type_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(type_art) = type_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let underlying_art = export_artifact(xx, loc, self_.underlying.as_ref());
+        if let Some(errors1) = underlying_art.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(underlying_art) = underlying_art.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let body = ArtifactValueSourceObject {
+            type_artifact: type_art,
+            underlying: underlying_art,
+        };
+        return EResult {
+            errors,
+            v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
+        };
+    }
+
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
@@ -131,51 +173,6 @@ impl ExporterRootDelegate for ValueSourceObjectConst {
         return EResult {
             errors,
             v: Some(out),
-        };
-    }
-
-    fn self_export(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ = match self_.downcast::<ValueSourceObjectConst>() {
-            Ok(v) => v,
-            Err(_) => return EResult::err(
-                loc,
-                "ValueSourceObjectConst::self_export: type mismatch".to_string(),
-            ),
-        };
-        let mut errors: Option<Vec<ExprErr>> = None;
-        let type_value = TypeSourceObjectConst { data: self_.data.clone() };
-        let type_art = export_artifact(xx, loc, &type_value as &dyn Value);
-        if let Some(errors1) = type_art.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(type_art) = type_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let underlying_art = export_artifact(xx, loc, self_.underlying.as_ref());
-        if let Some(errors1) = underlying_art.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(underlying_art) = underlying_art.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let body = ArtifactValueSourceObject {
-            type_artifact: type_art,
-            underlying: underlying_art,
-        };
-        return EResult {
-            errors,
-            v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
         };
     }
 }

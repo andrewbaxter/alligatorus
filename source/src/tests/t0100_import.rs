@@ -1,0 +1,428 @@
+use {
+    crate::{
+        compile,
+        eval::setup_v8,
+        syntax::{
+            SourceModule,
+            SourceSpecAbsolute,
+        },
+    },
+    super::helpers::{
+        ModuleBuilder,
+        new_gx,
+        new_gx_with_artifacts,
+        redact_builtins,
+    },
+};
+
+#[test]
+fn test_00100_import_literal() {
+    setup_v8();
+    let (gx, test_artifacts) = new_gx_with_artifacts([("other", {
+        let mb = ModuleBuilder::default();
+        SourceModule::V1(mb.str("Hello world (mortar)"))
+    }), ("main", {
+        let mb = ModuleBuilder::default();
+        SourceModule::V1(mb.call(mb.log(), mb.import(mb.str("other"))))
+    })].into_iter().collect());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "Hello world (mortar)");
+    assert_eq!(redact_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
+let e1;
+e1 = BUILTIN;
+let e2;
+{
+let e3;
+e3 = "Hello world (mortar)";
+e2 = e3;
+}
+e0 = (e1)(e2);
+e0;"#]);
+    assert_eq!(test_artifacts.data.lock().unwrap().len(), 0);
+}
+
+#[test]
+fn test_00200_import_definitionset() {
+    setup_v8();
+    let (gx, test_artifacts) = new_gx_with_artifacts([("other", {
+        let mb = ModuleBuilder::default();
+        SourceModule::V1(
+            mb.seq(
+                vec![
+                    mb.bind(
+                        "ctor",
+                        mb.lower(
+                            mb.seq(
+                                vec![
+                                    mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
+                                    mb.bind(
+                                        "ndr",
+                                        mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper")),
+                                    ),
+                                    mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.types_string()),
+                                    mb.bind(
+                                        "mnfr",
+                                        mb.call(
+                                            mb.field(mb.scope_use("ndr"), mb.str("func")),
+                                            mb.str("to_string"),
+                                        ),
+                                    ),
+                                    mb.call(
+                                        mb.field(mb.scope_use("mnfr"), mb.str("impl")),
+                                        mb.tuple(
+                                            vec![
+                                                mb.types_null(),
+                                                mb.types_string(),
+                                                mb.stage(
+                                                    mb.call(
+                                                        mb.field(mb.scope_use("inner"), mb.str("toUpperCase")),
+                                                        mb.null(),
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    mb.field(mb.scope_use("ndr"), mb.str("new")),
+                                ],
+                            ),
+                        ),
+                    ),
+                    mb.call(mb.scope_use("ctor"), mb.str("hello")),
+                ],
+            ),
+        )
+    }), ("main", {
+        let mb = ModuleBuilder::default();
+        SourceModule::V1(
+            mb.seq(
+                vec![
+                    mb.bind("val", mb.import(mb.str("other"))),
+                    mb.call(mb.log(), mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null())),
+                ],
+            ),
+        )
+    })].into_iter().collect());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "HELLO");
+    assert_eq!(redact_builtins(&res.generated_dynamic_scripts), vec![r#"let e0;
+let e1;
+e1 = BUILTIN;
+let e2;
+e2 = a7;
+let e3;
+e3 = 1;
+let e4;
+e4 = a8;
+let e5;
+let a0;
+{
+let e6;
+let e7;
+e7 = BUILTIN;
+e6 = (e7)();
+a0 = e6;
+}
+let a1;
+{
+let e8;
+let e9;
+e9 = a0;
+let e10;
+{
+let e11;
+e11 = "upper";
+e10 = e11;
+}
+e8 = e9["_1"](e10);
+a1 = e8;
+}
+{
+let e12;
+let e13;
+e13 = a1;
+let e14;
+e14 = a2;
+e12 = e13["_3"](e14);
+e5 = e12;
+}
+let a3;
+{
+let e15;
+let e16;
+e16 = a1;
+let e17;
+{
+let e18;
+e18 = "to_string";
+e17 = e18;
+}
+e15 = e16["_4"](e17);
+a3 = e15;
+}
+{
+let e19;
+let e20;
+e20 = a3;
+let e21;
+e21 = a4;
+let e22;
+e22 = a5;
+let e23;
+e23 = a6;
+e19 = e20["_0"](e21,e22,e23);
+e5 = e19;
+}
+{
+let e24;
+let e25;
+e25 = a1;
+e24 = e25["_1"];
+e5 = e24;
+}
+e0 = (e1)(e2,e3,e4,e5);
+e0;"#, r#"var d0_1_0_0;
+{
+d0_1_0_0 = function(a1) {
+let a0 = this["\"_0\""];
+let e0;
+let e1;
+e1 = a0;
+let e2;
+e2 = null;
+e0 = e1["toUpperCase"](e2);
+return e0;
+};
+}
+let e3;
+{
+let e4;
+let e5;
+{
+let e6;
+e6 = "hello";
+e5 = e6;
+}
+let e7;
+e7 = d0_1_0_0;
+e4 = { "\"_0\"": e5, "\"_1\"": e7 };
+e3 = e4;
+}
+e3;"#, r#"let e0;
+{
+let e1;
+let e2;
+e2 = BUILTIN;
+let e3;
+let e4;
+let e5;
+{
+let e6;
+e6 = "hello";
+e5 = e6;
+}
+let e7;
+e7 = d0_1_0_0;
+e4 = { "\"_0\"": e5, "\"_1\"": e7 };
+let e8;
+e8 = null;
+e3 = e4["\"_1\""](e8);
+e1 = (e2)(e3);
+e0 = e1;
+}
+e0;"#]);
+    let arts = test_artifacts.data.lock().unwrap();
+    assert_eq!(arts.len(), 2);
+    let mut art_jsons: Vec<String> = arts.values().map(|a| serde_json::to_string_pretty(a).unwrap()).collect();
+    art_jsons.sort();
+    assert_eq!(
+        art_jsons,
+        vec![
+            r#"{
+  "data": {
+    "data_field": "_0",
+    "def_set": {
+      "ref": [
+        [
+          0,
+          0
+        ],
+        1
+      ]
+    },
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
+    ],
+    "identity": {
+      "source": [
+        [
+          0,
+          1
+        ],
+        0
+      ]
+    },
+    "methods": [
+      {
+        "arg_type": {
+          "body": {
+            "data": null,
+            "exporter": {
+              "body": {
+                "data": "null_dynamic",
+                "exporter": "root"
+              }
+            }
+          }
+        },
+        "compiled_source": "var d0_1_0_0;\n{\nd0_1_0_0 = function(a1) {\nlet a0 = this[\"\\\"_0\\\"\"];\nlet e0;\nlet e1;\ne1 = a0;\nlet e2;\ne2 = null;\ne0 = e1[\"toUpperCase\"](e2);\nreturn e0;\n};\n}",
+        "entry_id": 0,
+        "field_name": "_1",
+        "name": "to_string",
+        "ret_type": {
+          "body": {
+            "data": null,
+            "exporter": {
+              "body": {
+                "data": "string_dynamic",
+                "exporter": "root"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "name": "upper",
+    "underlying_type": {
+      "body": {
+        "data": null,
+        "exporter": {
+          "body": {
+            "data": "string_dynamic",
+            "exporter": "root"
+          }
+        }
+      }
+    }
+  },
+  "exporter": {
+    "body": {
+      "data": "source_object_const",
+      "exporter": "root"
+    }
+  }
+}"#,
+            r#"{
+  "data": {
+    "def_set_id": [
+      [
+        0,
+        1
+      ],
+      0
+    ],
+    "objects": [
+      {
+        "ref": [
+          [
+            0,
+            0
+          ],
+          0
+        ]
+      }
+    ]
+  },
+  "exporter": {
+    "body": {
+      "data": "definition_set",
+      "exporter": "root"
+    }
+  }
+}"#
+        ]
+    );
+}
+
+#[test]
+fn test_00300_import_transitive_definitionset() {
+    setup_v8();
+    let gx = new_gx([
+        //. .
+        ("module_b", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.seq(vec![
+                //. .
+                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
+                mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("func_b"))),
+                mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
+                mb.call(
+                    mb.field(mb.scope_use("nfr"), mb.str("impl")),
+                    mb.tuple(vec![mb.types_null(), mb.types_string(), mb.stage(mb.str("hello"))]),
+                ),
+                mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
+                mb.scope_use("f"),
+            ])
+        })),
+        ("module_a", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.seq(vec![
+                //. .
+                mb.bind("func_b", mb.import(mb.str("module_b"))),
+                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
+                mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("func_a"))),
+                mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
+                mb.call(
+                    mb.field(mb.scope_use("nfr"), mb.str("impl")),
+                    mb.tuple(
+                        vec![
+                            mb.types_null(),
+                            mb.types_string(),
+                            mb.stage(mb.call(mb.lower(mb.scope_use("func_b")), mb.null())),
+                        ],
+                    ),
+                ),
+                mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
+                mb.scope_use("f"),
+            ])
+        })),
+        ("main", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.seq(vec![
+                //. .
+                mb.bind("func_a", mb.import(mb.str("module_a"))),
+                mb.call(mb.log(), mb.call(mb.scope_use("func_a"), mb.null())),
+            ])
+        })),
+    ].into_iter().collect());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    assert_eq!(res.logs.len(), 1);
+    assert_eq!(res.logs[0].message, "hello");
+}
+
+#[test]
+fn test_00400_import_cycle() {
+    setup_v8();
+    let gx = new_gx([
+        //. .
+        ("module_a", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.import(mb.str("module_b"))
+        })),
+        ("module_b", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.import(mb.str("module_a"))
+        })),
+        ("main", SourceModule::V1({
+            let mb = ModuleBuilder::default();
+            mb.import(mb.str("module_a"))
+        })),
+    ].into_iter().collect());
+    let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string()));
+    assert!(res.is_err(), "expected import cycle error, got Ok");
+}

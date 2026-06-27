@@ -12,9 +12,9 @@ use {
             TargetBindSub,
             typecheck_convert,
             value::{
-                type_tuple::binding::BindingValue,
-                type_null::dynamic::TypeNullDynamic,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_null::dynamic::TypeNullDynamic,
+                type_tuple::binding::BindingValue,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -64,11 +64,7 @@ pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue
     }))
 }
 
-pub(crate) fn bind_via_target(
-    xx: &ExprContext,
-    loc: QExprId,
-    cv: CodeValue,
-) -> EResult<(Code, Box<dyn Binding>)> {
+pub(crate) fn bind_via_target(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
     let vtype = match cv.value.type_(xx, loc).into_res() {
         Ok(v) => v,
         Err(e) => return EResult {
@@ -157,7 +153,9 @@ pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, valu
         match &v.source {
             ValueDynamicSource::Field(b) => {
                 let Some(self_code) = self_code else {
-                    return erb.err_new(format!("TODO assertion set left hand doesn't evaluate to dynamic code (empty)"));
+                    return erb.err_new(
+                        format!("TODO assertion set left hand doesn't evaluate to dynamic code (empty)")
+                    );
                 };
                 let base_code = match &self_code.type_ {
                     CodeDynamicType::FieldUse(fu) => *fu.base.clone(),

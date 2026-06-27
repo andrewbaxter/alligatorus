@@ -71,6 +71,43 @@ use {
     },
 };
 
+struct CliArtifacts(
+    std::sync::Mutex<std::collections::HashMap<crate::artifact::ArtifactIdSource, crate::artifact::ArtifactBody>>,
+    std::sync::Mutex<usize>,
+);
+
+impl crate::artifact::Artifacts for CliArtifacts {
+    fn get(&self, id: crate::artifact::ArtifactIdSource) -> Result<crate::artifact::ArtifactBody, String> {
+        self.0.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Unknown artifact: {:?}", id))
+    }
+
+    fn reserve_id(&self) -> crate::artifact::ArtifactIdSource {
+        let mut next = self.1.lock().unwrap();
+        let id = *next;
+        *next += 1;
+        crate::artifact::ArtifactIdSource(
+            crate::langhelp::CompileId(crate::langhelp::ImportStateId(0), crate::langhelp::SourceId(0)),
+            id,
+        )
+    }
+
+    fn set(&self, id: crate::artifact::ArtifactIdSource, data: crate::artifact::ArtifactBody) {
+        self.0.lock().unwrap().insert(id, data);
+    }
+}
+
+struct CliSources(std::collections::HashMap<String, (crate::langhelp::SourceId, crate::syntax::SourceModule)>);
+
+impl crate::langhelp::Sources for CliSources {
+    fn get(
+        &self,
+        spec: SourceSpecAbsolute,
+    ) -> Result<(crate::langhelp::SourceId, crate::syntax::SourceModule), String> {
+        let SourceSpecAbsolute::Virtual(name) = spec;
+        self.0.get(&name).cloned().ok_or_else(|| format!("Unknown source: {}", name))
+    }
+}
+
 pub(crate) fn compile(gx: Arc<GlobalContext>, source: SourceSpecAbsolute) -> Result<CompileOutput, Vec<ExprErr>> {
     let (source_id, source_module) = gx.sources.get(source).map_err(|e| vec![ExprErr {
         loc: (SourceId(0), ExprId(0)),
@@ -112,53 +149,14 @@ pub(crate) struct CompileOutput {
     pub(crate) logs: Vec<LogEntry>,
 }
 
-struct CliSources(std::collections::HashMap<String, (crate::langhelp::SourceId, crate::syntax::SourceModule)>);
-
-impl crate::langhelp::Sources for CliSources {
-    fn get(
-        &self,
-        spec: SourceSpecAbsolute,
-    ) -> Result<(crate::langhelp::SourceId, crate::syntax::SourceModule), String> {
-        let SourceSpecAbsolute::Virtual(name) = spec;
-        self.0.get(&name).cloned().ok_or_else(|| format!("Unknown source: {}", name))
-    }
-}
-
-struct CliArtifacts(
-    std::sync::Mutex<std::collections::HashMap<crate::artifact::ArtifactIdSource, crate::artifact::ArtifactBody>>,
-    std::sync::Mutex<usize>,
-);
-
-impl crate::artifact::Artifacts for CliArtifacts {
-    fn get(
-        &self,
-        id: crate::artifact::ArtifactIdSource,
-    ) -> Result<crate::artifact::ArtifactBody, String> {
-        self.0.lock().unwrap().get(&id).cloned().ok_or_else(|| format!("Unknown artifact: {:?}", id))
-    }
-
-    fn reserve_id(&self) -> crate::artifact::ArtifactIdSource {
-        let mut next = self.1.lock().unwrap();
-        let id = *next;
-        *next += 1;
-        crate::artifact::ArtifactIdSource(
-            crate::langhelp::CompileId(crate::langhelp::ImportStateId(0), crate::langhelp::SourceId(0)),
-            id,
-        )
-    }
-
-    fn set(&self, id: crate::artifact::ArtifactIdSource, data: crate::artifact::ArtifactBody) {
-        self.0.lock().unwrap().insert(id, data);
-    }
-}
-
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let Some(path) = args.get(1).cloned() else {
         eprintln!("usage: source <name>");
         std::process::exit(1);
     };
-    let module: crate::syntax::SourceModule = serde_json::from_reader(std::io::stdin()).expect("failed to parse stdin as SourceModule json");
+    let module: crate::syntax::SourceModule =
+        serde_json::from_reader(std::io::stdin()).expect("failed to parse stdin as SourceModule json");
     let mut sources = std::collections::HashMap::new();
     sources.insert(path.clone(), (crate::langhelp::SourceId(0), module));
     let gx =

@@ -59,7 +59,8 @@ fn main() {
     };
     buildsrc::aspects::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
     let mut extra_iface_specs: Vec<buildsrc::util::InterfaceSpec> = Vec::new();
-    let mut tree_out = quote!{};
+    let mut tree_out = quote!{
+    };
     buildsrc::builtin_tree::emit_gen_builtin_tree(&mut tree_out, &mut scope_ids, &mut extra_iface_specs);
     let mut interface_specs = buildsrc::aspects::interface_specs();
     interface_specs.extend(buildsrc::traits::specs());

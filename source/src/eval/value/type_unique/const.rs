@@ -16,17 +16,18 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
+                type_binding::dynamic::BindingDynamicBinding,
                 type_bool::dynamic::TypeBoolDynamic,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_binding::dynamic::BindingDynamicBinding,
                 value_bool::r#const::ValueBoolConst,
             },
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -34,7 +35,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -194,6 +194,15 @@ impl ExporterAny for TypeUnique {
 }
 
 impl ExporterRootDelegate for TypeUnique {
+    fn self_export(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactUnique).unwrap())));
+    }
+
     fn self_from_artifact_data(
         _xx: &ExprContext,
         loc: QExprId,
@@ -206,15 +215,6 @@ impl ExporterRootDelegate for TypeUnique {
                 data,
             ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
         );
-    }
-
-    fn self_export(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactUnique).unwrap())));
     }
 }
 
@@ -241,7 +241,10 @@ impl Type for TypeUnique {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None
@@ -289,7 +292,9 @@ impl Push for Unique {
         Rc::new(TypeUnique)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         *from_dynamic_ref::<Unique>(&*value)
     }
 

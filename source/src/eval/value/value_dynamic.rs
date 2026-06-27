@@ -2,10 +2,10 @@ use {
     crate::{
         artifact::ExporterAny,
         langhelp::{
+            BindingId,
             EResult,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Value,
         },

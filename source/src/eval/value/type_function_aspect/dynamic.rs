@@ -9,18 +9,19 @@ use {
         },
         eval::value::{
             type_any::r#const::ValueAnyConst,
-            type_option::dynamic::TypeOptionDynamic,
-            type_root::r#const::TypeRoot,
             type_binding::dynamic::BindingDynamicBinding,
+            type_option::dynamic::TypeOptionDynamic,
+            type_pull::aspect::TypePullAspect,
+            type_root::r#const::TypeRoot,
             type_source_interface::SourceInterfaceRef,
             value_dynamic::{
                 ValueDynamic,
                 ValueDynamicSource,
             },
-            type_pull::aspect::TypePullAspect,
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -29,7 +30,6 @@ use {
             ExprContext,
             External,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -190,7 +190,10 @@ impl Type for TypeFunctionAspectDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

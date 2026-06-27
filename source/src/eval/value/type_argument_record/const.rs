@@ -37,9 +37,7 @@ pub(crate) struct ArgumentRecord {
 
 impl ArgumentRecord {
     fn clone_shallow(&self) -> ArgumentRecord {
-        ArgumentRecord {
-            fields: self.fields.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
-        }
+        ArgumentRecord { fields: self.fields.iter().map(|(k, v)| (k.clone(), v.clone())).collect() }
     }
 }
 
@@ -68,9 +66,7 @@ impl AspectField for ArgumentRecord {
                 v: None,
                 errors: Some(vec![ExprErr {
                     loc,
-                    errors: vec![
-                        ExprSubErr::Opaque(format!("Field '{}' not found on argument record", key_name)),
-                    ],
+                    errors: vec![ExprSubErr::Opaque(format!("Field '{}' not found on argument record", key_name))],
                 }]),
             };
         };

@@ -19,9 +19,9 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
+                type_binding::dynamic::BindingDynamicBinding,
                 type_code_struct::dynamic::TypeCodeStructDynamic,
                 type_root::r#const::TypeRoot,
-                type_binding::dynamic::BindingDynamicBinding,
                 type_value::dynamic::TypeValueDynamic,
                 value_dynamic::{
                     ValueDynamic,
@@ -50,10 +50,10 @@ use {
             AspectField,
             AspectInitialBind,
             AspectStackValueDynamic,
+            Binding,
             CVE_EXTRACT_FN_SCOPE_ID,
             CVE_GET_CODE_ENUM_FN_SCOPE_ID,
             CVE_GET_VALUE_FN_SCOPE_ID,
-            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -78,7 +78,6 @@ impl CodeValueExtern {
     pub fn into_inner(self) -> CodeValue {
         self.0.borrow_mut().take().expect("CodeValueExtern: already taken")
     }
-
 }
 
 impl Push for CodeValueExtern {
@@ -86,7 +85,9 @@ impl Push for CodeValueExtern {
         Rc::new(TypeCodeValueExternDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         CodeValueExtern(from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*value).clone())
     }
 
@@ -102,7 +103,9 @@ impl Push for ExprContextPush {
         Rc::new(TypeExprContextPushDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         ExprContextPush(from_dynamic_ref::<Rc<ExprContext>>(&*value).clone())
     }
 
@@ -217,15 +220,6 @@ impl AspectStackValueDynamic for TypeCodeValueExternDynamic {
 }
 
 impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeCodeValueExternDynamic {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        _data: serde_json::Value,
-    ) -> EResult<Rc<dyn ExporterAny>> {
-        return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
-    }
-
     fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
@@ -233,6 +227,15 @@ impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeCodeVa
         make_body: Box<dyn FnOnce(serde_json::Value) -> crate::artifact::ArtifactBody>,
     ) -> EResult<crate::artifact::Artifact> {
         return EResult::ok(crate::artifact::Artifact::Body(make_body(serde_json::Value::Null)));
+    }
+
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        return EResult::ok(Rc::new(TypeCodeValueExternDynamic));
     }
 }
 
@@ -275,7 +278,10 @@ impl Type for TypeCodeValueExternDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None
@@ -329,7 +335,9 @@ impl Type for TypeCodeValueExternDynamic {
                     type_: CodeDynamicType::Call(CodeDynamicCall {
                         func: Box::new(CodeDynamic {
                             loc,
-                            type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID }),
+                            type_: CodeDynamicType::BindingUse(
+                                CodeDynamicBindingUse { id: CVE_EXTRACT_FN_SCOPE_ID },
+                            ),
                         }),
                         args: vec![self_code],
                     }),
@@ -417,7 +425,10 @@ impl Type for TypeExprContextPushDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None
@@ -471,7 +482,9 @@ impl Push for CodeValue {
         Rc::new(TypeCodeValueExternDynamic)
     }
 
-    fn from_dynamic<'s>(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         <CodeValueExtern as Push>::from_dynamic(scope, value).into_inner()
     }
 

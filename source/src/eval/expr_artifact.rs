@@ -186,12 +186,16 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
         ArtifactExpr_::Import { spec } => Expr_::Import(
             ExprImport { spec: Rc::new(expr_from_artifact(xx, spec)?) },
         ),
-        ArtifactExpr_::Literal { value } => Expr_::Literal(make_lit_value(import_artifact(xx, loc, value.clone())
-            .into_res()
-            .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?
-            .as_value()
-            .into_res()
-            .map_err(|e| format!("Failed to extract Literal value: {:?}", e))?)),
+        ArtifactExpr_::Literal { value } => Expr_::Literal(
+            make_lit_value(
+                import_artifact(xx, loc, value.clone())
+                    .into_res()
+                    .map_err(|e| format!("Failed to deserialize Literal value: {:?}", e))?
+                    .as_value()
+                    .into_res()
+                    .map_err(|e| format!("Failed to extract Literal value: {:?}", e))?,
+            ),
+        ),
         ArtifactExpr_::Lower { expr } => Expr_::Lower(ExprLower { expr: Rc::new(expr_from_artifact(xx, expr)?) }),
         ArtifactExpr_::Match { base, cases, element_key, fallback } => Expr_::Match(ExprMatch {
             base: Rc::new(expr_from_artifact(xx, base)?),
@@ -278,17 +282,23 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
         Expr_::Import(e) => ArtifactExpr_::Import { spec: expr_to_artifact(xx, &e.spec)? },
         Expr_::Literal(p) => {
             let value = p.peek().ok_or_else(|| "Cannot serialize consumed Literal".to_string())?;
-            ArtifactExpr_::Literal { value: aspect_artifact_get(xx, expr.loc, value
-                .type_(xx, expr.loc)
-                .into_res()
-                .map_err(|e| format!("Literal value type unavailable: {:?}", e))?
-                .as_ref())
-                .into_res()
-                .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?
-                .exporter()
-                .export(xx, expr.loc, value.as_exporter_any())
-                .into_res()
-                .map_err(|e| format!("Failed to serialize Literal value: {:?}", e))? }
+            ArtifactExpr_::Literal {
+                value: aspect_artifact_get(
+                    xx,
+                    expr.loc,
+                    value
+                        .type_(xx, expr.loc)
+                        .into_res()
+                        .map_err(|e| format!("Literal value type unavailable: {:?}", e))?
+                        .as_ref(),
+                )
+                    .into_res()
+                    .map_err(|e| format!("Literal value type has no AspectArtifact: {:?}", e))?
+                    .exporter()
+                    .export(xx, expr.loc, value.as_exporter_any())
+                    .into_res()
+                    .map_err(|e| format!("Failed to serialize Literal value: {:?}", e))?,
+            }
         },
         Expr_::Lower(e) => ArtifactExpr_::Lower { expr: expr_to_artifact(xx, &e.expr)? },
         Expr_::Match(e) => ArtifactExpr_::Match {
@@ -330,4 +340,3 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
         r#type: Box::new(type_),
     })
 }
-

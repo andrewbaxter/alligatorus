@@ -44,6 +44,13 @@ use {
 pub(crate) struct TypeNullConst;
 
 impl ArtifactExporter for TypeNullConst {
+    fn export(&self, _xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(ArtifactBody {
+            data: serde_json::Value::Null,
+            exporter: crate::artifact::ArtifactBodyExporter::Root,
+        }));
+    }
+
     fn import(
         &self,
         _xx: &ExprContext,
@@ -55,13 +62,6 @@ impl ArtifactExporter for TypeNullConst {
             errors: None,
             v: Some(Rc::new(ValueNullConst)),
         };
-    }
-
-    fn export(&self, _xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(ArtifactBody {
-            data: serde_json::Value::Null,
-            exporter: crate::artifact::ArtifactBodyExporter::Root,
-        }));
     }
 }
 
@@ -86,6 +86,15 @@ impl ExporterAny for TypeNullConst {
 }
 
 impl ExporterRootDelegate for TypeNullConst {
+    fn self_export(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNull).unwrap())));
+    }
+
     fn self_from_artifact_data(
         _xx: &ExprContext,
         loc: QExprId,
@@ -98,15 +107,6 @@ impl ExporterRootDelegate for TypeNullConst {
                 data,
             ).map(|_| Rc::new(Self) as Rc<dyn crate::artifact::ExporterAny>),
         );
-    }
-
-    fn self_export(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        return EResult::ok(Artifact::Body(make_body(serde_json::to_value(ArtifactNull).unwrap())));
     }
 }
 
@@ -124,7 +124,10 @@ impl Type for TypeNullConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

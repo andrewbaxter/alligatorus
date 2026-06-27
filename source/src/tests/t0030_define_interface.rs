@@ -71,10 +71,7 @@ fn test_00900define_interface() {
                                                                     mb.call(
                                                                         mb.types_map(),
                                                                         mb.tuple(
-                                                                            vec![
-                                                                                mb.types_constkey(),
-                                                                                mb.types_expr(),
-                                                                            ],
+                                                                            vec![mb.types_constkey(), mb.types_expr()],
                                                                         ),
                                                                     ),
                                                                     mb.str("new"),
@@ -322,10 +319,7 @@ fn test_00910interface_cast() {
                                                                     mb.call(
                                                                         mb.types_map(),
                                                                         mb.tuple(
-                                                                            vec![
-                                                                                mb.types_constkey(),
-                                                                                mb.types_expr(),
-                                                                            ],
+                                                                            vec![mb.types_constkey(), mb.types_expr()],
                                                                         ),
                                                                     ),
                                                                     mb.str("new"),
@@ -644,10 +638,7 @@ fn test_00920interface_wrong_map_value_type() {
                                                                     mb.call(
                                                                         mb.types_map(),
                                                                         mb.tuple(
-                                                                            vec![
-                                                                                mb.types_string(),
-                                                                                mb.types_null(),
-                                                                            ],
+                                                                            vec![mb.types_string(), mb.types_null()],
                                                                         ),
                                                                     ),
                                                                     mb.str("new"),

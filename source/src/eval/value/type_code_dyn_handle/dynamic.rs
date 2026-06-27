@@ -12,9 +12,9 @@ use {
             },
             value::{
                 type_any::r#const::ValueAnyConst,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_code_dyn_cast_fn::r#const::TypeCodeDynCastFn,
                 type_root::r#const::TypeRoot,
-                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -23,6 +23,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -31,7 +32,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -188,7 +188,10 @@ impl Type for TypeCodeDynHandleDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

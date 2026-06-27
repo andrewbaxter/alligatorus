@@ -1,17 +1,16 @@
 use crate::langhelp::{
-            CodeValue,
-            EResult,
-            EvalRes,
-            QExprId,
-        };
+    CodeValue,
+    EResult,
+    EvalRes,
+    QExprId,
+};
 
 #[macro_export]
 macro_rules! er_all{
     ($v: ident, {
         $($i: ident = $e: expr,) *
     }) => {
-        $(let $i = $v.must_er($e);) * 
-        $(let $i = $i ?;) *
+        $(let $i = $v.must_er($e);) * $(let $i = $i ?;) *
     };
 }
 

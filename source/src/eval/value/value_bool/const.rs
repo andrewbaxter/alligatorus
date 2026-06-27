@@ -32,6 +32,19 @@ impl ExporterAny for ValueBoolConst {
 }
 
 impl ExporterRootDelegate for ValueBoolConst {
+    fn self_export(
+        _xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let v = match self_.downcast::<ValueBoolConst>() {
+            Ok(v) => v,
+            Err(_) => return EResult::err(loc, "ValueBoolConst::self_export: expected ValueBoolConst".to_string()),
+        };
+        return EResult::ok(Artifact::Body(make_body(serde_json::Value::Bool(v.0))));
+    }
+
     fn self_from_artifact_data(
         _xx: &ExprContext,
         loc: QExprId,
@@ -42,22 +55,6 @@ impl ExporterRootDelegate for ValueBoolConst {
             loc,
             serde_json::from_value::<bool>(data).map(|b| Rc::new(ValueBoolConst(b)) as Rc<dyn ExporterAny>),
         );
-    }
-
-    fn self_export(
-        _xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let v = match self_.downcast::<ValueBoolConst>() {
-            Ok(v) => v,
-            Err(_) => return EResult::err(
-                loc,
-                "ValueBoolConst::self_export: expected ValueBoolConst".to_string(),
-            ),
-        };
-        return EResult::ok(Artifact::Body(make_body(serde_json::Value::Bool(v.0))));
     }
 }
 

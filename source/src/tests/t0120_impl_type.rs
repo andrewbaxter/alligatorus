@@ -23,59 +23,66 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                     mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                     mb.bind("u", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
                     mb.call(mb.field(mb.scope_use("u"), mb.str("set_inner")), mb.types_null()),
-                    mb.call(mb.field(mb.scope_use("u"), mb.str("value")), iface_methods(mb, vec![
-                        ("type", mb.scope_use("inner")),
-                    ])),
-                    mb.call(mb.field(mb.scope_use("u"), mb.str("type")), iface_methods(mb, vec![
-                        (
-                            "can_cast_from",
-                            mb.seq(
-                                vec![
-                                    mb.call(
-                                        mb.field(
+                    mb.call(
+                        mb.field(mb.scope_use("u"), mb.str("value")),
+                        iface_methods(mb, vec![("type", mb.scope_use("inner"))]),
+                    ),
+                    mb.call(
+                        mb.field(mb.scope_use("u"), mb.str("type")),
+                        iface_methods(
+                            mb,
+                            vec![
+                                (
+                                    "can_cast_from",
+                                    mb.seq(
+                                        vec![
                                             mb.call(
                                                 mb.field(
-                                                    mb.field(mb.scope_use("arg"), mb.str("source_type")),
-                                                    mb.str("aspect"),
-                                                ),
-                                                mb.eval_aspect_string_dynamic(),
-                                            ),
-                                            mb.str("is_some"),
-                                        ),
-                                        mb.tuple(vec![]),
-                                    ),
-                                ],
-                            ),
-                        ),
-                        (
-                            "cast_from",
-                            mb.call(
-                                mb.eval_const_eval(),
-                                mb.tuple(
-                                    vec![
-                                        mb.field(mb.scope_use("arg"), mb.str("xx")),
-                                        mb.stage(
-                                            mb.call(
-                                                mb.field(
-                                                    mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv"))),
-                                                    mb.str("toUpperCase"),
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.field(mb.scope_use("arg"), mb.str("source_type")),
+                                                            mb.str("aspect"),
+                                                        ),
+                                                        mb.eval_aspect_string_dynamic(),
+                                                    ),
+                                                    mb.str("is_some"),
                                                 ),
                                                 mb.tuple(vec![]),
                                             ),
-                                        ),
-                                    ],
+                                        ],
+                                    ),
                                 ),
-                            ),
+                                (
+                                    "cast_from",
+                                    mb.call(
+                                        mb.eval_const_eval(),
+                                        mb.tuple(
+                                            vec![
+                                                mb.field(mb.scope_use("arg"), mb.str("xx")),
+                                                mb.stage(
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv"))),
+                                                            mb.str("toUpperCase"),
+                                                        ),
+                                                        mb.tuple(vec![]),
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                ),
+                                ("desc", mb.seq(vec![mb.str("upper")])),
+                                (
+                                    "aspect",
+                                    mb.call(
+                                        mb.field(mb.call(mb.types_option(), mb.types_aspect()), mb.str("none")),
+                                        mb.null(),
+                                    ),
+                                ),
+                            ],
                         ),
-                        ("desc", mb.seq(vec![mb.str("upper")])),
-                        (
-                            "aspect",
-                            mb.call(
-                                mb.field(mb.call(mb.types_option(), mb.types_aspect()), mb.str("none")),
-                                mb.null(),
-                            ),
-                        ),
-                    ])),
+                    ),
                     mb.field(mb.scope_use("u"), mb.str("new")),
                 ],
             ),
@@ -87,10 +94,7 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
 fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> SourceExpr {
     let entries: Vec<(&str, SourceExpr)> = methods.into_iter().map(|(k, v)| (k, mb.stage(v))).collect();
     return mb.call(
-        mb.field(
-            mb.call(mb.types_map(), mb.tuple(vec![mb.types_constkey(), mb.types_expr()])),
-            mb.str("new"),
-        ),
+        mb.field(mb.call(mb.types_map(), mb.tuple(vec![mb.types_constkey(), mb.types_expr()])), mb.str("new")),
         mb.record(entries),
     );
 }
@@ -103,10 +107,7 @@ fn test_00100_impl_type() {
         mb.seq(
             vec![
                 mb.bind("upper", mb.lower(build_upper_type(&mb))),
-                mb.call(
-                    mb.log(),
-                    mb.as_(mb.as_(mb.str("hello"), mb.types_string()), mb.scope_use("upper")),
-                ),
+                mb.call(mb.log(), mb.as_(mb.as_(mb.str("hello"), mb.types_string()), mb.scope_use("upper"))),
             ],
         )
     }))].into_iter().collect());
@@ -129,24 +130,18 @@ fn test_00100_impl_type() {
 #[test]
 fn test_00200_impl_type_import() {
     setup_v8();
-    let gx = new_gx([
-        ("other", SourceModule::V1({
-            let mb = ModuleBuilder::default();
-            build_upper_type(&mb)
-        })),
-        ("main", SourceModule::V1({
-            let mb = ModuleBuilder::default();
-            mb.seq(
-                vec![
-                    mb.bind("upper", mb.import(mb.str("other"))),
-                    mb.call(
-                        mb.log(),
-                        mb.as_(mb.as_(mb.str("hello"), mb.types_string()), mb.scope_use("upper")),
-                    ),
-                ],
-            )
-        })),
-    ].into_iter().collect());
+    let gx = new_gx([("other", SourceModule::V1({
+        let mb = ModuleBuilder::default();
+        build_upper_type(&mb)
+    })), ("main", SourceModule::V1({
+        let mb = ModuleBuilder::default();
+        mb.seq(
+            vec![
+                mb.bind("upper", mb.import(mb.str("other"))),
+                mb.call(mb.log(), mb.as_(mb.as_(mb.str("hello"), mb.types_string()), mb.scope_use("upper"))),
+            ],
+        )
+    }))].into_iter().collect());
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
     assert_eq!(res.logs[0].message, "HELLO");

@@ -16,8 +16,8 @@ use {
             from_dynamic_ref,
             value::{
                 type_any::r#const::ValueAnyConst,
-                type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::TypeRoot,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -27,6 +27,7 @@ use {
         invariant::must_downcast_ref,
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -34,7 +35,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -47,8 +47,8 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectStackValueDynamic,
-            INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
             Binding,
+            INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
             aspect_aspect_aspect_id,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
@@ -184,7 +184,10 @@ impl Type for TypeSourceInterfaceDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

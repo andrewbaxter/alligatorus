@@ -8,9 +8,9 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            import_type_artifact,
-            impl_import_independent_artifact,
             impl_export_independent_artifact,
+            impl_import_independent_artifact,
+            import_type_artifact,
         },
         eval::{
             StageLiftCell,
@@ -25,6 +25,9 @@ use {
             from_dynamic_ref,
             value::{
                 type_any::r#const::ValueAnyConst,
+                type_source_exports::r#const::TypeSourceExportsLiftedConst,
+                type_source_function::SourceFunctionData,
+                type_source_interface::SourceInterfaceData,
                 type_source_object::{
                     SourceObjectData,
                     artifact::{
@@ -32,20 +35,17 @@ use {
                         ArtifactExternal,
                     },
                 },
-                type_source_exports::r#const::TypeSourceExportsLiftedConst,
-                type_source_function::SourceFunctionData,
-                type_source_interface::SourceInterfaceData,
             },
         },
         invariant::must_downcast_ref,
         langhelp::{
             Aspect,
+            BindingId,
             Counter,
             DefSetId,
             ExprContext,
             External,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -66,6 +66,62 @@ use {
         rc::Rc,
     },
 };
+
+pub(crate) fn deexport_captured_externals(
+    xx: &ExprContext,
+    loc: QExprId,
+    serial: &[ArtifactExternal],
+) -> Vec<(BindingId, External)> {
+    serial.iter().map(|ext| {
+        match ext {
+            ArtifactExternal::StagedExpr { local_id, expr } => {
+                let expr =
+                    expr_from_artifact(xx, expr).expect("Failed to deserialize captured StagedExprCell expr");
+                let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value>)) });
+                (BindingId::Local(*local_id), External::StagedExprCell(cell))
+            },
+            ArtifactExternal::StageLift { local_id, source_type } => {
+                let source_type =
+                    import_type_artifact(xx, loc, source_type.clone())
+                        .into_res()
+                        .expect("Failed to deserialize captured StageLiftCell source type");
+                let cell = Rc::new(StageLiftCell {
+                    source_type,
+                    loc,
+                    vx: xx.vx.clone(),
+                    import_state: xx.import_state.clone(),
+                    scope: xx.scope.clone(),
+                    target: xx.target.clone(),
+                });
+                (BindingId::Local(*local_id), External::StageLiftCell(cell))
+            },
+            ArtifactExternal::Type { local_id, type_artifact } => {
+                let type_ =
+                    import_type_artifact(xx, loc, type_artifact.clone())
+                        .into_res()
+                        .expect("Failed to deserialize captured External::Type");
+                (BindingId::Local(*local_id), External::Type(type_))
+            },
+            ArtifactExternal::Unique { local_id, unique } => (
+                BindingId::Local(*local_id),
+                External::Unique(*unique),
+            ),
+        }
+    }).collect()
+}
+
+pub(crate) fn definition_set_export(
+    xx: &ExprContext,
+    loc: QExprId,
+    self_: Rc<dyn crate::artifact::ExporterAny>,
+    _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+) -> crate::langhelp::EResult<Artifact> {
+    let wrapped =
+        self_
+            .downcast::<ExporterDataAny<Gc<DefinitionSet>>>()
+            .expect("DefinitionSet self_export: expected DefinitionSet");
+    crate::langhelp::EResult::ok(export_definition_set(xx, loc, &wrapped.0))
+}
 
 pub(crate) fn definition_set_extra_aspect(_xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
     if *key == aspect_lift_aspect_id() {
@@ -181,22 +237,8 @@ pub(crate) fn definition_set_from_artifact_data(
     }
 }
 
-pub(crate) fn definition_set_export(
-    xx: &ExprContext,
-    loc: QExprId,
-    self_: Rc<dyn crate::artifact::ExporterAny>,
-    _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-) -> crate::langhelp::EResult<Artifact> {
-    let wrapped =
-        self_
-            .downcast::<ExporterDataAny<Gc<DefinitionSet>>>()
-            .expect("DefinitionSet self_export: expected DefinitionSet");
-    crate::langhelp::EResult::ok(export_definition_set(xx, loc, &wrapped.0))
-}
-
 pub(crate) struct DefinitionSet {
     pub artifact_id: RefCell<Option<ArtifactIdSource>>,
-    pub objects: RefCell<Vec<Gc<SourceObjectData>>>,
     pub def_set_id: DefSetId,
     pub dependencies: RefCell<std::collections::HashMap<DefSetId, Gc<DefinitionSet>>>,
     pub finished: Cell<bool>,
@@ -205,6 +247,7 @@ pub(crate) struct DefinitionSet {
     pub next_entry_id: Counter,
     pub next_field_id: Counter,
     pub next_interface_method_id: Counter,
+    pub objects: RefCell<Vec<Gc<SourceObjectData>>>,
 }
 
 impl DefinitionSet {
@@ -304,53 +347,6 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for DefinitionSet {
     }
 }
 
-pub(crate) fn deexport_captured_externals(
-    xx: &ExprContext,
-    loc: QExprId,
-    serial: &[ArtifactExternal],
-) -> Vec<(BindingId, External)> {
-    serial.iter().map(|ext| {
-        match ext {
-            ArtifactExternal::StagedExpr { local_id, expr } => {
-                let expr =
-                    expr_from_artifact(xx, expr).expect("Failed to deserialize captured StagedExprCell expr");
-                let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(Rc::new(expr) as Rc<dyn Value>)) });
-                (BindingId::Local(*local_id), External::StagedExprCell(cell))
-            },
-            ArtifactExternal::StageLift { local_id, source_type } => {
-                let source_type =
-                    import_type_artifact(xx, loc, source_type.clone())
-                        .into_res()
-                        .expect("Failed to deserialize captured StageLiftCell source type");
-                let cell = Rc::new(StageLiftCell {
-                    source_type,
-                    loc,
-                    vx: xx.vx.clone(),
-                    import_state: xx.import_state.clone(),
-                    scope: xx.scope.clone(),
-                    target: xx.target.clone(),
-                });
-                (BindingId::Local(*local_id), External::StageLiftCell(cell))
-            },
-            ArtifactExternal::Type { local_id, type_artifact } => {
-                let type_ =
-                    import_type_artifact(xx, loc, type_artifact.clone())
-                        .into_res()
-                        .expect("Failed to deserialize captured External::Type");
-                (BindingId::Local(*local_id), External::Type(type_))
-            },
-            ArtifactExternal::Unique { local_id, unique } => (
-                BindingId::Local(*local_id),
-                External::Unique(*unique),
-            ),
-        }
-    }).collect()
-}
-
-pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
-    set.next_interface_method_id.next()
-}
-
 pub(crate) fn export_captured_externals(
     xx: &ExprContext,
     loc: QExprId,
@@ -438,13 +434,15 @@ pub(crate) fn export_definition_set(xx: &ExprContext, loc: QExprId, set: &Gc<Def
         ArtifactBody {
             data: serde_json::to_value(&body).expect("Failed to serialize definition set"),
             exporter: ArtifactBodyExporter::Body(Box::new(ArtifactBody {
-                data: serde_json::to_value(
-                    crate::artifact::ExporterRoot::DefinitionSet,
-                ).unwrap(),
+                data: serde_json::to_value(crate::artifact::ExporterRoot::DefinitionSet).unwrap(),
                 exporter: ArtifactBodyExporter::Root,
             })),
         }
     })
+}
+
+pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {
+    set.next_interface_method_id.next()
 }
 struct TypeDefinitionSetLiftDynamic;
 
@@ -458,7 +456,9 @@ impl AspectLift for TypeDefinitionSetLiftDynamic {
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
         let obj =
-            v8::Local::<v8::Object>::try_from(value).map_err(|_| "Expected dynamic object for definition set lift")?;
+            v8::Local::<v8::Object>::try_from(
+                value,
+            ).map_err(|_| "Expected dynamic object for definition set lift")?;
         let dk = v8::String::new(scope, "_d").unwrap();
         let ext = obj.get(scope, dk.into()).ok_or("Missing _d on definition set object")?;
         let ds: Gc<DefinitionSet> = from_dynamic_ref::<Rc<DefinitionSetBuilder>>(&*ext).inner.clone();

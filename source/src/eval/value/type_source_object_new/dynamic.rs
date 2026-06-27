@@ -16,8 +16,8 @@ use {
             from_dynamic_ref,
             value::{
                 type_any::r#const::ValueAnyConst,
-                type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::TypeRoot,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -26,6 +26,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -33,7 +34,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -45,8 +45,8 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectStackValueDynamic,
-            DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             Binding,
+            DATA_TYPE_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -140,9 +140,7 @@ impl Type for TypeSourceObjectNewDynamic {
 
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_consume_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectConsumeDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectConsumeDynamic>));
         }
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectBindDynamic>));
@@ -151,9 +149,7 @@ impl Type for TypeSourceObjectNewDynamic {
             return Some(Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectBind>));
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
-            return Some(
-                Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectStackValueDynamic>),
-            );
+            return Some(Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectStackValueDynamic>));
         }
         if *key == aspect_lift_aspect_id() {
             return Some(Box::new(Box::new(TypeSourceObjectNewDynamic) as Box<dyn AspectLift>));
@@ -163,7 +159,10 @@ impl Type for TypeSourceObjectNewDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;
@@ -200,8 +199,7 @@ impl Type for TypeSourceObjectNewDynamic {
                 args: vec![source_code],
             }),
         };
-        let dest_rc =
-            type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceObjectNewDynamic) as Rc<dyn Type>);
+        let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceObjectNewDynamic) as Rc<dyn Type>);
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,

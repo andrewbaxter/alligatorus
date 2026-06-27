@@ -18,8 +18,8 @@ use {
             to_dynamic_ext,
             value::{
                 type_any::r#const::ValueAnyConst,
-                type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::TypeRoot,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -29,6 +29,7 @@ use {
         invariant::must_downcast_ref,
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -36,7 +37,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -58,8 +58,8 @@ use {
             aspect_lift_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_union_aspect_id,
-            union_ref_type_identity,
             type_type_identity,
+            union_ref_type_identity,
         },
     },
     std::{
@@ -159,8 +159,7 @@ impl Type for TypeSourceUnionDynamic {
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceUnionDynamic { data: self.data.clone() }) as
-                        Box<dyn AspectConsumeDynamic>,
+                    Box::new(TypeSourceUnionDynamic { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
                 ),
             );
         }
@@ -179,16 +178,13 @@ impl Type for TypeSourceUnionDynamic {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceUnionDynamic { data: self.data.clone() }) as
-                        Box<dyn AspectStackValueDynamic>,
+                    Box::new(TypeSourceUnionDynamic { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>,
                 ),
             );
         }
         if *key == aspect_lift_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceUnionDynamic { data: self.data.clone() }) as Box<dyn AspectLift>,
-                ),
+                Box::new(Box::new(TypeSourceUnionDynamic { data: self.data.clone() }) as Box<dyn AspectLift>),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
@@ -205,15 +201,16 @@ impl Type for TypeSourceUnionDynamic {
             }
             if *key == aspect_union_aspect_id() {
                 return Some(
-                    Box::new(
-                        Box::new(TypeSourceUnionConst { data: data.clone() }) as Box<dyn AspectUnion>,
-                    ),
+                    Box::new(Box::new(TypeSourceUnionConst { data: data.clone() }) as Box<dyn AspectUnion>),
                 );
             }
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;
@@ -496,7 +493,9 @@ impl Push for Rc<SourceUnionRef> {
         Rc::new(TypeSourceUnionRefDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         from_dynamic_ref::<Rc<SourceUnionRef>>(&*value).clone()
     }
 

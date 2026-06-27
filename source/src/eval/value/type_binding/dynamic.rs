@@ -11,12 +11,12 @@ use {
             ValueDynamicSource,
         },
         langhelp::{
+            BindingId,
             Code,
             CodeValue,
             Code_,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
         },
         r#gen::Binding,

@@ -45,10 +45,7 @@ fn test_0000_map_string_keys() {
                                     mb.str("entry"),
                                     mb.seq(
                                         vec![
-                                            mb.call(
-                                                mb.log(),
-                                                mb.field(mb.scope_use("entry"), mb.str("key")),
-                                            ),
+                                            mb.call(mb.log(), mb.field(mb.scope_use("entry"), mb.str("key"))),
                                             mb.call(
                                                 mb.log(),
                                                 mb.call(
@@ -110,14 +107,8 @@ fn test_0010_map_string_string() {
                                     mb.str("entry"),
                                     mb.seq(
                                         vec![
-                                            mb.call(
-                                                mb.log(),
-                                                mb.field(mb.scope_use("entry"), mb.str("key")),
-                                            ),
-                                            mb.call(
-                                                mb.log(),
-                                                mb.field(mb.scope_use("entry"), mb.str("value")),
-                                            ),
+                                            mb.call(mb.log(), mb.field(mb.scope_use("entry"), mb.str("key"))),
+                                            mb.call(mb.log(), mb.field(mb.scope_use("entry"), mb.str("value"))),
                                         ],
                                     ),
                                 ),

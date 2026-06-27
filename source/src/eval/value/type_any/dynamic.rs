@@ -27,6 +27,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -36,7 +37,6 @@ use {
             ExprContext,
             External,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -221,15 +221,6 @@ impl AspectType for TypeAnyDynamic {
 }
 
 impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeAnyDynamic {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        _data: serde_json::Value,
-    ) -> EResult<Rc<dyn ExporterAny>> {
-        EResult::ok(Rc::new(TypeAnyDynamic) as Rc<dyn ExporterAny>)
-    }
-
     fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
@@ -237,6 +228,15 @@ impl crate::eval::value::type_root::r#const::ExporterRootDelegate for TypeAnyDyn
         make_body: Box<dyn FnOnce(serde_json::Value) -> crate::artifact::ArtifactBody>,
     ) -> EResult<crate::artifact::Artifact> {
         EResult::ok(crate::artifact::Artifact::Body(make_body(serde_json::Value::Null)))
+    }
+
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        EResult::ok(Rc::new(TypeAnyDynamic) as Rc<dyn ExporterAny>)
     }
 }
 
@@ -297,7 +297,10 @@ impl Type for TypeAnyDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

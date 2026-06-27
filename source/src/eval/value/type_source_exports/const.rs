@@ -11,14 +11,14 @@ use {
                 export_definition_set,
             },
             value::{
-                type_tuple::binding::BindingValue,
                 type_any::r#const::ValueAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_source_object_new::TypeSourceObjectNewConst,
                 type_source_function::r#const::TypeSourceFunctionConst,
+                type_source_object_new::TypeSourceObjectNewConst,
+                type_tuple::binding::BindingValue,
             },
         },
         langhelp::{
@@ -118,8 +118,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                 let objects = self.set.objects.borrow();
                 for dt_data in objects.iter() {
                     if dt_data.name.as_deref() == Some(&key_name) {
-                        let ctor_type: Rc<dyn Type> =
-                            Rc::new(TypeSourceObjectNewConst { data: dt_data.clone() });
+                        let ctor_type: Rc<dyn Type> = Rc::new(TypeSourceObjectNewConst { data: dt_data.clone() });
                         return Ok(CodeValue {
                             code: Code {
                                 loc,
@@ -169,6 +168,17 @@ impl ExporterAny for TypeSourceExportsLiftedConst {
 }
 
 impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
+    fn self_export(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ =
+            self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
+        EResult::ok(export_definition_set(xx, loc, &self_.set))
+    }
+
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
@@ -200,17 +210,6 @@ impl ExporterRootDelegate for TypeSourceExportsLiftedConst {
             v: Some(out),
         };
     }
-
-    fn self_export(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        _make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ =
-            self_.downcast::<TypeSourceExportsLiftedConst>().expect("expected TypeSourceExportsLiftedConst");
-        EResult::ok(export_definition_set(xx, loc, &self_.set))
-    }
 }
 
 impl Type for TypeSourceExportsLiftedConst {
@@ -238,7 +237,10 @@ impl Type for TypeSourceExportsLiftedConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

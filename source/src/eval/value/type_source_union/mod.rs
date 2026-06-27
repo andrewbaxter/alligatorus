@@ -30,8 +30,8 @@ pub(crate) struct SourceUnionRef {
 }
 
 pub(crate) struct SourceUnionVariant {
-    pub new_artifact_id: RefCell<Option<ArtifactIdSource>>,
     pub js_tag: String,
+    pub new_artifact_id: RefCell<Option<ArtifactIdSource>>,
     pub tag: ConstKey,
     pub type_: Rc<dyn Type>,
 }

@@ -51,20 +51,16 @@ pub fn specs() -> Vec<InterfaceSpec> {
                 Method {
                     name: "can_cast_from",
                     ret_type: bool_(),
-                    args: MethodArgs::Source(vec![
-                        ("xx", xx_ref()),
-                        ("source_type", type_ref_push()),
-                        ("cv", cve()),
-                    ]),
+                    args: MethodArgs::Source(
+                        vec![("xx", xx_ref()), ("source_type", type_ref_push()), ("cv", cve())],
+                    ),
                 },
                 Method {
                     name: "cast_from",
                     ret_type: cve(),
-                    args: MethodArgs::Source(vec![
-                        ("xx", xx_ref()),
-                        ("source_type", type_ref_push()),
-                        ("cv", cve()),
-                    ]),
+                    args: MethodArgs::Source(
+                        vec![("xx", xx_ref()), ("source_type", type_ref_push()), ("cv", cve())],
+                    ),
                 },
                 Method {
                     name: "desc",

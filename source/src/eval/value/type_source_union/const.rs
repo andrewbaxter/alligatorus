@@ -15,11 +15,11 @@ use {
             },
             value::{
                 type_any::r#const::ValueAnyConst,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -28,6 +28,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -36,7 +37,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -46,19 +46,19 @@ use {
             AspectBindDynamic,
             AspectConsumeDynamic,
             AspectInitialBind,
-            AspectStackValueDynamic,
-            AspectUnion,
-            AspectType,
             AspectPostDeserialize,
+            AspectStackValueDynamic,
+            AspectType,
+            AspectUnion,
             Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_initial_bind_aspect_id,
-            aspect_stack_value_dynamic_aspect_id,
-            aspect_union_aspect_id,
-            aspect_type_aspect_id,
             aspect_post_deserialize_aspect_id,
+            aspect_stack_value_dynamic_aspect_id,
+            aspect_type_aspect_id,
+            aspect_union_aspect_id,
         },
     },
     std::{
@@ -108,6 +108,18 @@ impl AspectInitialBind for TypeSourceUnionConst {
     }
 }
 
+impl AspectPostDeserialize for TypeSourceUnionConst {
+    fn post_deserialize(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
+        EResult::ok(CodeValue {
+            code: cv.code,
+            value: Rc::new(ValueDynamic {
+                source: ValueDynamicSource::Expr,
+                type_: Rc::new(super::dynamic::TypeSourceUnionDynamic { data: self.data.clone() }),
+            }),
+        })
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceUnionConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -123,27 +135,15 @@ impl AspectStackValueDynamic for TypeSourceUnionConst {
     }
 }
 
-impl AspectUnion for TypeSourceUnionConst {
-    fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
-        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
-    }
-}
-
 impl AspectType for TypeSourceUnionConst {
     fn type_(&self, _value: &dyn Value) -> Rc<dyn Type> {
         Rc::new(TypeSourceUnionConst { data: self.data.clone() })
     }
 }
 
-impl AspectPostDeserialize for TypeSourceUnionConst {
-    fn post_deserialize(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
-        EResult::ok(CodeValue {
-            code: cv.code,
-            value: Rc::new(ValueDynamic {
-                source: ValueDynamicSource::Expr,
-                type_: Rc::new(super::dynamic::TypeSourceUnionDynamic { data: self.data.clone() }),
-            }),
-        })
+impl AspectUnion for TypeSourceUnionConst {
+    fn variants(&self) -> Vec<(ConstKey, String, Rc<dyn Type>)> {
+        self.data.variants.borrow().iter().map(|v| (v.tag.clone(), v.js_tag.clone(), v.type_.clone())).collect()
     }
 }
 
@@ -158,6 +158,51 @@ impl ExporterAny for TypeSourceUnionConst {
 }
 
 impl ExporterRootDelegate for TypeSourceUnionConst {
+    fn self_export(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceUnionConst>().expect("expected TypeSourceUnionConst");
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
+        let null_art = || {
+            Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            })
+        };
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
+                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+            };
+            let mut variants_serial: Vec<ArtifactDataSourceUnionVariant> = Vec::new();
+            for v in self_.data.variants.borrow().iter() {
+                let mut type_art = crate::artifact::export_artifact(xx, loc, v.type_.as_value().as_ref());
+                if let Some(errs) = type_art.errors.take() {
+                    push_err(errs);
+                }
+                variants_serial.push(ArtifactDataSourceUnionVariant {
+                    tag: v.tag.clone(),
+                    js_tag: v.js_tag.clone(),
+                    type_: type_art.v.unwrap_or_else(null_art),
+                });
+            }
+            let body = ArtifactDataSourceUnion {
+                identity: self_.data.identity.clone(),
+                variants: variants_serial,
+            };
+            make_body(serde_json::to_value(&body).unwrap())
+        });
+        let errors = errors.borrow_mut().take();
+        return EResult {
+            errors,
+            v: Some(art),
+        };
+    }
+
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
@@ -165,10 +210,7 @@ impl ExporterRootDelegate for TypeSourceUnionConst {
         data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let Some(id) = id else {
-            return EResult::err(
-                loc,
-                "TypeSourceUnionConst requires an artifact id to deserialize".to_string(),
-            );
+            return EResult::err(loc, "TypeSourceUnionConst requires an artifact id to deserialize".to_string());
         };
         let id_owned = id.clone();
         let res =
@@ -221,51 +263,6 @@ impl ExporterRootDelegate for TypeSourceUnionConst {
             v: Some(any),
         };
     }
-
-    fn self_export(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ = self_.downcast::<TypeSourceUnionConst>().expect("expected TypeSourceUnionConst");
-        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
-            std::rc::Rc::new(std::cell::RefCell::new(None));
-        let errors_for_closure = errors.clone();
-        let null_art = || {
-            Artifact::Body(ArtifactBody {
-                data: serde_json::Value::Null,
-                exporter: crate::artifact::ArtifactBodyExporter::Root,
-            })
-        };
-        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
-            let push_err = |errs: Vec<crate::langhelp::ExprErr>| {
-                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
-            };
-            let mut variants_serial: Vec<ArtifactDataSourceUnionVariant> = Vec::new();
-            for v in self_.data.variants.borrow().iter() {
-                let mut type_art = crate::artifact::export_artifact(xx, loc, v.type_.as_value().as_ref());
-                if let Some(errs) = type_art.errors.take() {
-                    push_err(errs);
-                }
-                variants_serial.push(ArtifactDataSourceUnionVariant {
-                    tag: v.tag.clone(),
-                    js_tag: v.js_tag.clone(),
-                    type_: type_art.v.unwrap_or_else(null_art),
-                });
-            }
-            let body = ArtifactDataSourceUnion {
-                identity: self_.data.identity.clone(),
-                variants: variants_serial,
-            };
-            make_body(serde_json::to_value(&body).unwrap())
-        });
-        let errors = errors.borrow_mut().take();
-        return EResult {
-            errors,
-            v: Some(art),
-        };
-    }
 }
 
 impl Type for TypeSourceUnionConst {
@@ -279,24 +276,19 @@ impl Type for TypeSourceUnionConst {
         }
         if *key == aspect_union_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectUnion>,
-                ),
+                Box::new(Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectUnion>),
             );
         }
         if *key == aspect_consume_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as
-                        Box<dyn AspectConsumeDynamic>,
+                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectConsumeDynamic>,
                 ),
             );
         }
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
-                ),
+                Box::new(Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
             );
         }
         if *key == aspect_bind_aspect_id() {
@@ -307,16 +299,13 @@ impl Type for TypeSourceUnionConst {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as
-                        Box<dyn AspectStackValueDynamic>,
+                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>,
                 ),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>,
-                ),
+                Box::new(Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>),
             );
         }
         if *key == aspect_type_aspect_id() {
@@ -326,7 +315,9 @@ impl Type for TypeSourceUnionConst {
         }
         if *key == aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectPostDeserialize>),
+                Box::new(
+                    Box::new(TypeSourceUnionConst { data: self.data.clone() }) as Box<dyn AspectPostDeserialize>,
+                ),
             );
         }
         return None;

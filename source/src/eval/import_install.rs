@@ -2,22 +2,26 @@ use {
     crate::{
         eval::{
             DynamicSourceBuilder,
+            binding_id_dynamic_key,
             definition_set::DefinitionSet,
             rc_type_to_dynamic_ext,
-            binding_id_dynamic_key,
             to_dynamic_ext,
         },
         langhelp::{
+            BindingId,
             ExprContext,
             External,
             QExprId,
-            BindingId,
         },
     },
     dumpster::unsync::Gc,
 };
 
-pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &Gc<DefinitionSet>) -> Result<(), String> {
+pub(crate) fn install_def_set_to_dynamic(
+    xx: &ExprContext,
+    loc: QExprId,
+    set: &Gc<DefinitionSet>,
+) -> Result<(), String> {
     if !xx.vx.ix.installed_def_sets.borrow_mut().insert(set.def_set_id) {
         return Ok(());
     }
@@ -64,7 +68,9 @@ pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &G
     }
     for (key_str, value) in &installed_externals {
         let key =
-            v8::String::new(scope, key_str).ok_or_else(|| "install_def_set_to_dynamic: key alloc".to_string())?.cast();
+            v8::String::new(scope, key_str)
+                .ok_or_else(|| "install_def_set_to_dynamic: key alloc".to_string())?
+                .cast();
         let dynamic_val: v8::Local<v8::Value> = match value {
             External::StagedExprCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
             External::StageLiftCell(cell) => to_dynamic_ext(scope, cell.clone()).into(),
@@ -113,4 +119,3 @@ pub(crate) fn install_def_set_to_dynamic(xx: &ExprContext, loc: QExprId, set: &G
     script.run(scope).ok_or_else(|| "install_def_set_to_dynamic: run failed".to_string())?;
     Ok(())
 }
-

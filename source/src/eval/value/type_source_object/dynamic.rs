@@ -16,20 +16,20 @@ use {
             },
             from_dynamic_ref,
             value::{
+                type_any::dynamic::TypeAnyDynamic,
+                type_any_binding::dynamic::TypeAnyBindingDynamic,
+                type_any_target::dynamic::TypeAnyTargetDynamic,
+                type_aspect::dynamic::TypeAspectDynamic,
+                type_binding::dynamic::BindingDynamicBinding,
+                type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
+                type_function::dynamic::TypeFunctionDynamic,
+                type_null::dynamic::TypeNullDynamic,
                 type_record::{
                     Record,
                     RecordBaseDynamic,
                     RecordField,
                 },
-                type_any::dynamic::TypeAnyDynamic,
-                type_any_binding::dynamic::TypeAnyBindingDynamic,
-                type_any_target::dynamic::TypeAnyTargetDynamic,
-                type_aspect::dynamic::TypeAspectDynamic,
-                type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
-                type_function::dynamic::TypeFunctionDynamic,
-                type_null::dynamic::TypeNullDynamic,
                 type_root::r#const::TypeRoot,
-                type_binding::dynamic::BindingDynamicBinding,
                 type_source_interface::{
                     BuiltinInterfaceKind,
                     r#const::TypeSourceInterfaceConst,
@@ -44,6 +44,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -53,7 +54,6 @@ use {
             ExprContext,
             External,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -66,14 +66,14 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectStackValueDynamic,
+            Binding,
             DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
-            DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
             DATA_TYPE_REF_TO_TYPE_FN_SCOPE_ID,
-            Binding,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -168,9 +168,7 @@ impl AspectField for TypeSourceObjectDynamic {
                                 let t = match f {
                                     RecordField::Dynamic(t) => t.clone(),
                                     RecordField::EvalRes(_) => {
-                                        return erb.err_new(
-                                            "object underlying record field is non-type".to_string(),
-                                        );
+                                        return erb.err_new("object underlying record field is non-type".to_string(),);
                                     },
                                 };
                                 fields.insert(k.clone(), RecordField::Dynamic(t),);
@@ -369,9 +367,7 @@ impl Type for TypeSourceObjectDynamic {
         }
         if *key == aspect_lift_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceObjectDynamic { data: self.data.clone() }) as Box<dyn AspectLift>,
-                ),
+                Box::new(Box::new(TypeSourceObjectDynamic { data: self.data.clone() }) as Box<dyn AspectLift>),
             );
         }
         if *key == aspect_initial_bind_aspect_id() {
@@ -388,9 +384,7 @@ impl Type for TypeSourceObjectDynamic {
             }
             if *key == aspect_field_aspect_id() {
                 return Some(
-                    Box::new(
-                        Box::new(TypeSourceObjectDynamic { data: self.data.clone() }) as Box<dyn AspectField>,
-                    ),
+                    Box::new(Box::new(TypeSourceObjectDynamic { data: self.data.clone() }) as Box<dyn AspectField>),
                 );
             }
             let interface_impls = data.interface_impls.borrow();
@@ -402,7 +396,10 @@ impl Type for TypeSourceObjectDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

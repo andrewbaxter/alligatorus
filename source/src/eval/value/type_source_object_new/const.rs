@@ -6,10 +6,10 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            impl_import_independent_artifact,
-            impl_export_independent_artifact,
-            independent_finalize_import_artifact,
             export_artifact,
+            impl_export_independent_artifact,
+            impl_import_independent_artifact,
+            independent_finalize_import_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -20,12 +20,12 @@ use {
         eval::{
             typecheck_convert,
             value::{
-                type_tuple::binding::BindingValue,
                 type_any::r#const::ValueAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
+                type_tuple::binding::BindingValue,
             },
         },
         langhelp::{
@@ -161,6 +161,37 @@ impl ExporterAny for TypeSourceObjectNewConst {
 }
 
 impl ExporterRootDelegate for TypeSourceObjectNewConst {
+    fn self_export(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceObjectNewConst>().expect("expected TypeSourceObjectNewConst");
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.new_artifact_id, || {
+            let dt_const =
+                super::super::type_source_object::r#const::TypeSourceObjectConst { data: self_.data.clone() };
+            let mut object_art = export_artifact(xx, loc, &dt_const as &dyn Value);
+            if let Some(errs) = object_art.errors.take() {
+                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+            }
+            let object_art = object_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            }));
+            let body = ArtifactDataSourceObjectNew { object: object_art };
+            make_body(serde_json::to_value(&body).unwrap())
+        });
+        let errors = errors.borrow_mut().take();
+        return EResult {
+            errors,
+            v: Some(art),
+        };
+    }
+
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
@@ -168,17 +199,12 @@ impl ExporterRootDelegate for TypeSourceObjectNewConst {
         data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let Some(id) = id else {
-            return EResult::err(
-                loc,
-                "TypeSourceObjectNewConst requires an artifact id to deserialize".to_string(),
-            );
+            return EResult::err(loc, "TypeSourceObjectNewConst requires an artifact id to deserialize".to_string());
         };
         let id_owned = id.clone();
         let holder:
             Rc<
-                std
-                ::cell
-                ::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_object::SourceObjectData>>>,
+                std::cell::RefCell<Option<dumpster::unsync::Gc<super::super::type_source_object::SourceObjectData>>>,
             > =
             Rc::new(std::cell::RefCell::new(None));
         let holder_for_finalizer = holder.clone();
@@ -194,15 +220,12 @@ impl ExporterRootDelegate for TypeSourceObjectNewConst {
                     let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(holder.clone()));
                     let finalizer: crate::artifact::ArtifactFinalizer =
                         Box::new(move |xx: &ExprContext, loc: QExprId| {
-                            if let Some(parent_any) =
-                                independent_finalize_import_artifact(xx, loc, object_art).v {
+                            if let Some(parent_any) = independent_finalize_import_artifact(xx, loc, object_art).v {
                                 let rc_any: Rc<dyn Any> = parent_any;
                                 if let Ok(wrapped) =
                                     rc_any.downcast::<
                                         ExporterDataAny<
-                                            dumpster
-                                            ::unsync
-                                            ::Gc<super::super::type_source_object::SourceObjectData>,
+                                            dumpster::unsync::Gc<super::super::type_source_object::SourceObjectData>,
                                         >,
                                     >() {
                                     let dt_data = wrapped.0.clone();
@@ -226,47 +249,6 @@ impl ExporterRootDelegate for TypeSourceObjectNewConst {
             v: Some(any),
         };
     }
-
-    fn self_export(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ =
-            self_
-                .downcast::<TypeSourceObjectNewConst>()
-                .expect("expected TypeSourceObjectNewConst");
-        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
-            std::rc::Rc::new(std::cell::RefCell::new(None));
-        let errors_for_closure = errors.clone();
-        let art =
-            impl_export_independent_artifact(
-                xx.vx.ix.gx.artifacts.as_ref(),
-                &self_.data.new_artifact_id,
-                || {
-                    let dt_const =
-                        super::super::type_source_object::r#const::TypeSourceObjectConst {
-                            data: self_.data.clone(),
-                        };
-                    let mut object_art = export_artifact(xx, loc, &dt_const as &dyn Value);
-                    if let Some(errs) = object_art.errors.take() {
-                        errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
-                    }
-                    let object_art = object_art.v.unwrap_or(Artifact::Body(ArtifactBody {
-                        data: serde_json::Value::Null,
-                        exporter: crate::artifact::ArtifactBodyExporter::Root,
-                    }));
-                    let body = ArtifactDataSourceObjectNew { object: object_art };
-                    make_body(serde_json::to_value(&body).unwrap())
-                },
-            );
-        let errors = errors.borrow_mut().take();
-        return EResult {
-            errors,
-            v: Some(art),
-        };
-    }
 }
 
 impl Type for TypeSourceObjectNewConst {
@@ -277,22 +259,20 @@ impl Type for TypeSourceObjectNewConst {
     fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
         if *key == aspect_function_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceObjectNewConst { data: self.data.clone() }) as
-                        Box<dyn AspectFunction>,
-                ),
+                Box::new(Box::new(TypeSourceObjectNewConst { data: self.data.clone() }) as Box<dyn AspectFunction>),
             );
         }
         if *key == aspect_bind_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceObjectNewConst { data: self.data.clone() }) as Box<dyn AspectBind>,
-                ),
+                Box::new(Box::new(TypeSourceObjectNewConst { data: self.data.clone() }) as Box<dyn AspectBind>),
             );
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

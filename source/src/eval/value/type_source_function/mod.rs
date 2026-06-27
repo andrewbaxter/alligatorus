@@ -8,16 +8,17 @@ use {
         eval::{
             DynamicSourceBuilder,
             Scope,
+            binding_id_dynamic_key,
             body_builtin_scope,
             const_eval,
             definition_set::DefinitionSet,
             expr::Expr,
             render_code,
-            binding_id_dynamic_key,
             typecheck_convert,
         },
         invariant::must_downcast_ref,
         langhelp::{
+            BindingId,
             ConstKey,
             Counter,
             EvalContext,
@@ -25,7 +26,6 @@ use {
             ExprErr,
             External,
             QExprId,
-            BindingId,
             Type,
             Value,
         },
@@ -44,13 +44,13 @@ use {
 pub(crate) struct SourceFunctionData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
+    pub binding_id: Cell<Option<BindingId>>,
     pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub description: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
-    pub binding_id: Cell<Option<BindingId>>,
     pub set: RefCell<Option<Gc<DefinitionSet>>>,
 }
 

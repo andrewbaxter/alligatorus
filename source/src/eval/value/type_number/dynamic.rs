@@ -26,6 +26,7 @@ use {
                 dynamic_stack_to_value,
             },
             value::{
+                type_binding::dynamic::BindingDynamicBinding,
                 type_bool::dynamic::TypeBoolDynamic,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
@@ -33,7 +34,6 @@ use {
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_binding::dynamic::BindingDynamicBinding,
                 type_string::dynamic::TypeStringDynamic,
                 value_dynamic::{
                     ValueDynamic,
@@ -44,6 +44,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -52,7 +53,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -281,15 +281,6 @@ impl ExporterAny for TypeNumberDynamic {
 }
 
 impl ExporterRootDelegate for TypeNumberDynamic {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _id: Option<&ArtifactIdSource>,
-        _data: serde_json::Value,
-    ) -> EResult<Rc<dyn ExporterAny>> {
-        EResult::ok(Rc::new(TypeNumberDynamic) as Rc<dyn ExporterAny>)
-    }
-
     fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
@@ -297,6 +288,15 @@ impl ExporterRootDelegate for TypeNumberDynamic {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         EResult::ok(Artifact::Body(make_body(serde_json::Value::Null)))
+    }
+
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        EResult::ok(Rc::new(TypeNumberDynamic) as Rc<dyn ExporterAny>)
     }
 }
 
@@ -344,7 +344,10 @@ impl Type for TypeNumberDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

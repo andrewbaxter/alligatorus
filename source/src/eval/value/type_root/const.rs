@@ -28,18 +28,18 @@ use {
 };
 
 pub(crate) trait ExporterRootDelegate {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>>;
     fn self_export(
         xx: &ExprContext,
         loc: QExprId,
         self_: Rc<dyn crate::artifact::ExporterAny>,
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact>;
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>>;
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -79,20 +79,20 @@ pub enum TypeRoot {
     Pull,
     PullAspect,
     Root,
-    SourceObjectConst,
-    SourceObjectNewConst,
-    SourceObjectNewDynamic,
-    SourceObjectDynamic,
-    SourceObjectRefDynamic,
     SourceExportsLiftedConst,
     SourceFunctionConst,
     SourceFunctionDynamic,
     SourceInterfaceConst,
     SourceInterfaceDynamic,
+    SourceObjectConst,
+    SourceObjectDynamic,
+    SourceObjectNewConst,
+    SourceObjectNewDynamic,
+    SourceObjectRefDynamic,
     SourceUnionConst,
+    SourceUnionDynamic,
     SourceUnionNewConst,
     SourceUnionNewDynamic,
-    SourceUnionDynamic,
     SourceUnionRefDynamic,
     StringConst,
     StringDynamic,
@@ -161,7 +161,10 @@ impl Type for TypeRoot {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

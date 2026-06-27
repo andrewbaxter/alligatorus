@@ -126,13 +126,13 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     doc: doc(""),
                     params: vec![],
                     ret: "std::rc::Rc<dyn crate::langhelp::Type>",
-                    },
+                },
                 AspectMethod {
                     name: "value_type",
                     doc: doc(""),
                     params: vec![],
                     ret: "std::rc::Rc<dyn crate::langhelp::Type>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -146,14 +146,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     doc: doc("Get the types of elements"),
                     params: vec![],
                     ret: "Vec<std::rc::Rc<dyn crate::langhelp::Type>>",
-                    },
+                },
                 AspectMethod {
                     // TODO what's this
                     name: "take_elements",
                     doc: doc(""),
                     params: vec![("value", "std::rc::Rc<dyn crate::langhelp::Value>")],
                     ret: "Vec<crate::langhelp::EvalRes>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -185,13 +185,13 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("key", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EvalRes",
-                    },
+                },
                 AspectMethod {
                     name: "field_type_opt",
                     doc: doc("Same as `field` but return a None if the field doesn't exist."),
                     params: vec![("xx", "&crate::langhelp::ExprContext"), ("key", "&crate::langhelp::ConstKey")],
                     ret: "Option<std::rc::Rc<dyn crate::langhelp::Type>>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -243,7 +243,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("reference", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EvalRes",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -263,7 +263,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("reference", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EvalRes",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -283,7 +283,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("reference", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EvalRes",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -302,7 +302,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("dynamic_key", "crate::langhelp::BindingId"),
                     ],
                     ret: "Box<dyn crate::r#gen::Binding>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -321,7 +321,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("cv", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::Binding>)>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -342,7 +342,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("cv", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -363,7 +363,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("cv", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EResult<crate::code_dynamic::CodeDynamic>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -381,7 +381,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("self_", "crate::code_dynamic::CodeDynamic"),
                     ],
                     ret: "crate::langhelp::CodeValue",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -421,7 +421,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("self_", "v8::Local<v8::Value>"),
                     ],
                     ret: "Result<std::rc::Rc<dyn crate::langhelp::Value>, String>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -435,7 +435,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     doc: doc(""),
                     params: vec![],
                     ret: "std::rc::Rc<dyn crate::langhelp::Type>",
-                    },
+                },
                 AspectMethod {
                     name: "foreach",
                     doc: doc(""),
@@ -447,7 +447,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("body", "crate::langhelp::CodeValue"),
                     ],
                     ret: "crate::langhelp::EvalRes",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -461,7 +461,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     doc: doc("Returns the exporter"),
                     params: vec![],
                     ret: "Rc<dyn crate::artifact::ArtifactExporter>",
-                    },
+                },
             ],
         },
         AspectSpec {
@@ -475,14 +475,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     doc: doc(""),
                     params: vec![("value", "&dyn crate::langhelp::Value")],
                     ret: "crate::langhelp::Unique",
-                    },
+                },
                 AspectMethod {
                     // TODO
                     name: "get_iface_data",
                     doc: doc(""),
                     params: vec![("value", "&dyn crate::langhelp::Value")],
                     ret: "dumpster::unsync::Gc<crate::eval::value::type_source_interface::SourceInterfaceData>",
-                    },
+                },
             ],
         },
     ] {

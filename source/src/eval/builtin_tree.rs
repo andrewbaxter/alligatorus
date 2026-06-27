@@ -7,21 +7,9 @@ use {
     std::rc::Rc,
 };
 
-pub(crate) enum BuiltinNode<'s> {
-    Branch(Vec<(&'static str, BuiltinNode<'s>)>),
-    Leaf(BuiltinLeaf<'s>),
-}
-
 pub(crate) enum BuiltinLeaf<'s> {
-    Function {
-        dynamic_key: BindingId,
+    AnyConst {
         type_: Rc<dyn Type>,
-        dynamic_value: v8::Local<'s, v8::Value>,
-    },
-    Interface {
-        dynamic_key: BindingId,
-        type_: Rc<dyn Type>,
-        dynamic_value: v8::Local<'s, v8::Value>,
     },
     AspectId {
         dynamic_key: BindingId,
@@ -33,11 +21,23 @@ pub(crate) enum BuiltinLeaf<'s> {
         type_: Rc<dyn Type>,
         dynamic_value: v8::Local<'s, v8::Value>,
     },
-    AnyConst {
+    Function {
+        dynamic_key: BindingId,
         type_: Rc<dyn Type>,
+        dynamic_value: v8::Local<'s, v8::Value>,
     },
     InitialBind {
         dynamic_key: BindingId,
         type_: Rc<dyn Type>,
     },
+    Interface {
+        dynamic_key: BindingId,
+        type_: Rc<dyn Type>,
+        dynamic_value: v8::Local<'s, v8::Value>,
+    },
+}
+
+pub(crate) enum BuiltinNode<'s> {
+    Branch(Vec<(&'static str, BuiltinNode<'s>)>),
+    Leaf(BuiltinLeaf<'s>),
 }

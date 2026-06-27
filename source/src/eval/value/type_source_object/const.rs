@@ -6,9 +6,9 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            impl_import_independent_artifact,
-            impl_export_independent_artifact,
             export_artifact,
+            impl_export_independent_artifact,
+            impl_import_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -23,9 +23,9 @@ use {
                 bind_via_target,
             },
             value::{
+                type_binding::dynamic::BindingDynamicBinding,
                 type_pull::r#const::TypePull,
                 type_root::r#const::ExporterRootDelegate,
-                type_binding::dynamic::BindingDynamicBinding,
                 type_source_interface::{
                     BuiltinInterfaceKind,
                     SourceInterfaceData,
@@ -40,6 +40,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -48,7 +49,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -61,9 +61,9 @@ use {
             AspectField,
             AspectInitialBind,
             AspectLift,
+            AspectPostDeserialize,
             AspectStackValueDynamic,
             AspectType,
-            AspectPostDeserialize,
             Binding,
             aspect_artifact_aspect_id,
             aspect_bind_aspect_id,
@@ -74,9 +74,9 @@ use {
             aspect_initial_bind_aspect_id,
             aspect_lift_aspect_id,
             aspect_lift_get_maybe,
+            aspect_post_deserialize_aspect_id,
             aspect_stack_value_dynamic_aspect_id,
             aspect_type_aspect_id,
-            aspect_post_deserialize_aspect_id,
             type_type_identity,
         },
     },
@@ -87,10 +87,10 @@ use {
         rc::Rc,
     },
     super::artifact::{
-        ArtifactDataDefSetObject,
         ArtifactDataDefSetInterfaceImpl,
         ArtifactDataDefSetInterfaceMethodImpl,
         ArtifactDataDefSetMethod,
+        ArtifactDataDefSetObject,
     },
 };
 
@@ -177,8 +177,7 @@ impl AspectConsumeDynamic for TypeSourceObjectConst {
             let iface_methods = impl_data.interface.methods.borrow();
             for method_impl in &impl_data.method_impls {
                 let iface_method = &iface_methods[method_impl.interface_method_index];
-                let method_id =
-                    method_impl.binding_id.get().expect("Interface method impl binding ID not allocated");
+                let method_id = method_impl.binding_id.get().expect("Interface method impl binding ID not allocated");
                 object_fields.push((ConstKey::String(iface_method.field_name.clone()).to_str(), CodeDynamic {
                     loc,
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: method_id }),
@@ -277,6 +276,13 @@ impl AspectLift for TypeSourceObjectConst {
     }
 }
 
+impl AspectPostDeserialize for TypeSourceObjectConst {
+    fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
+        let _ = (xx, loc);
+        EResult::ok(cv)
+    }
+}
+
 impl AspectStackValueDynamic for TypeSourceObjectConst {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         CodeValue {
@@ -292,13 +298,6 @@ impl AspectStackValueDynamic for TypeSourceObjectConst {
     }
 }
 
-impl AspectPostDeserialize for TypeSourceObjectConst {
-    fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
-        let _ = (xx, loc);
-        EResult::ok(cv)
-    }
-}
-
 impl ExporterAny for TypeSourceObjectConst {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
         return EResult::ok(Rc::new(self.clone()));
@@ -310,6 +309,152 @@ impl ExporterAny for TypeSourceObjectConst {
 }
 
 impl ExporterRootDelegate for TypeSourceObjectConst {
+    fn self_export(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceObjectConst>().expect("expected TypeSourceObjectConst");
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
+            let push_err =
+                |errors: &mut Option<Vec<crate::langhelp::ExprErr>>, errs: Vec<crate::langhelp::ExprErr>| {
+                    errors.get_or_insert_default().extend(errs);
+                };
+            let underlying_type = self_.data.underlying_type.get().clone();
+            let mut underlying_art = export_artifact(xx, loc, underlying_type.as_value().as_ref());
+            if let Some(errs) = underlying_art.errors.take() {
+                push_err(&mut *errors_for_closure.borrow_mut(), errs);
+            }
+            let underlying_art = underlying_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            }));
+            let set_const =
+                super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
+                    set: self_.data.set.borrow().as_ref().unwrap().clone(),
+                };
+            let mut def_set_art = export_artifact(xx, loc, &set_const as &dyn Value);
+            if let Some(errs) = def_set_art.errors.take() {
+                push_err(&mut *errors_for_closure.borrow_mut(), errs);
+            }
+            let def_set_art = def_set_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            }));
+            let mut methods: Vec<ArtifactDataDefSetMethod> = Vec::new();
+            for m in self_.data.methods.borrow().iter() {
+                let arg_type = m.arg_type.borrow().clone().unwrap_or_else(|| {
+                    Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+                });
+                let ret_type = m.ret_type.borrow().clone().unwrap_or_else(|| {
+                    Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
+                });
+                let mut arg_art = export_artifact(xx, loc, arg_type.as_value().as_ref());
+                if let Some(errs) = arg_art.errors.take() {
+                    push_err(&mut *errors_for_closure.borrow_mut(), errs);
+                }
+                let mut ret_art = export_artifact(xx, loc, ret_type.as_value().as_ref());
+                if let Some(errs) = ret_art.errors.take() {
+                    push_err(&mut *errors_for_closure.borrow_mut(), errs);
+                }
+                let scope_idx = match m.binding_id.get() {
+                    Some(BindingId::Def(_, idx)) => idx,
+                    _ => 0,
+                };
+                let captured_externals =
+                    crate::eval::definition_set::export_captured_externals(xx, loc, &m.captured_externals.borrow());
+                let compiled_source = m.compiled_source.borrow().clone().unwrap_or_else(|| {
+                    eprintln!(
+                        "DBG serialize data-type method '{}' (scope_id={:?}) WITHOUT compiled_source",
+                        m.name.as_str(),
+                        m.binding_id.get(),
+                    );
+                    String::new()
+                });
+                methods.push(ArtifactDataDefSetMethod {
+                    name: m.name.clone(),
+                    field_name: m.field_name.clone(),
+                    arg_type: arg_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                        data: serde_json::Value::Null,
+                        exporter: crate::artifact::ArtifactBodyExporter::Root,
+                    })),
+                    ret_type: ret_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                        data: serde_json::Value::Null,
+                        exporter: crate::artifact::ArtifactBodyExporter::Root,
+                    })),
+                    compiled_source,
+                    entry_id: scope_idx,
+                    captured_externals,
+                });
+            }
+            let mut interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> = Vec::new();
+            for impl_data in self_.data.interface_impls.borrow().iter() {
+                let builtin_kind = impl_data.interface.builtin_kind;
+                let user_iface = match builtin_kind {
+                    Some(_) => None,
+                    None => {
+                        let iface_const = TypeSourceInterfaceConst { data: impl_data.interface.clone() };
+                        let mut iface_art = export_artifact(xx, loc, &iface_const as &dyn Value);
+                        if let Some(errs) = iface_art.errors.take() {
+                            push_err(&mut *errors_for_closure.borrow_mut(), errs);
+                        }
+                        iface_art.v
+                    },
+                };
+                let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> = impl_data.method_impls.iter().map(|m| {
+                    let scope_idx = match m.binding_id.get() {
+                        Some(BindingId::Def(_, idx)) => idx,
+                        _ => 0,
+                    };
+                    let captured_externals =
+                        crate::eval::definition_set::export_captured_externals(
+                            xx,
+                            loc,
+                            &m.captured_externals.borrow(),
+                        );
+                    let compiled_source = m.compiled_source.borrow().clone().unwrap_or_else(|| {
+                        panic!(
+                            "serialize interface method_impl (interface_method_index={}, scope_id={:?}) without compiled_source",
+                            m.interface_method_index,
+                            m.binding_id.get(),
+                        )
+                    });
+                    ArtifactDataDefSetInterfaceMethodImpl {
+                        interface_method_index: m.interface_method_index,
+                        compiled_source,
+                        entry_id: scope_idx,
+                        captured_externals,
+                    }
+                }).collect();
+                interface_impls.push(ArtifactDataDefSetInterfaceImpl {
+                    builtin_kind,
+                    user_iface,
+                    method_impls,
+                });
+            }
+            let body = ArtifactDataDefSetObject {
+                name: self_.data.name.clone(),
+                identity: self_.data.identity.clone(),
+                data_field: self_.data.data_field.clone(),
+                def_set_id: self_.data.set.borrow().as_ref().unwrap().def_set_id,
+                def_set: def_set_art,
+                underlying_type: underlying_art,
+                methods,
+                interface_impls,
+            };
+            make_body(serde_json::to_value(&body).unwrap())
+        });
+        let errors = errors.borrow_mut().take();
+        return EResult {
+            errors,
+            v: Some(art),
+        };
+    }
+
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
@@ -408,9 +553,7 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                                             &m.captured_externals,
                                         ),
                                     ),
-                                    binding_id: std::cell::Cell::new(
-                                        Some(BindingId::Def(def_set_id, m.entry_id)),
-                                    ),
+                                    binding_id: std::cell::Cell::new(Some(BindingId::Def(def_set_id, m.entry_id))),
                                     inner_binding_id: std::cell::Cell::new(None),
                                 })
                             }).collect();
@@ -504,156 +647,6 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
             v: Some(any),
         };
     }
-
-    fn self_export(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ = self_.downcast::<TypeSourceObjectConst>().expect("expected TypeSourceObjectConst");
-        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
-            std::rc::Rc::new(std::cell::RefCell::new(None));
-        let errors_for_closure = errors.clone();
-        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &self_.data.artifact_id, || {
-            let push_err =
-                |errors: &mut Option<Vec<crate::langhelp::ExprErr>>, errs: Vec<crate::langhelp::ExprErr>| {
-                    errors.get_or_insert_default().extend(errs);
-                };
-            let underlying_type = self_.data.underlying_type.get().clone();
-            let mut underlying_art = export_artifact(xx, loc, underlying_type.as_value().as_ref());
-            if let Some(errs) = underlying_art.errors.take() {
-                push_err(&mut *errors_for_closure.borrow_mut(), errs);
-            }
-            let underlying_art = underlying_art.v.unwrap_or(Artifact::Body(ArtifactBody {
-                data: serde_json::Value::Null,
-                exporter: crate::artifact::ArtifactBodyExporter::Root,
-            }));
-            let set_const =
-                super::super::type_source_exports::r#const::TypeSourceExportsLiftedConst {
-                    set: self_.data.set.borrow().as_ref().unwrap().clone(),
-                };
-            let mut def_set_art = export_artifact(xx, loc, &set_const as &dyn Value);
-            if let Some(errs) = def_set_art.errors.take() {
-                push_err(&mut *errors_for_closure.borrow_mut(), errs);
-            }
-            let def_set_art = def_set_art.v.unwrap_or(Artifact::Body(ArtifactBody {
-                data: serde_json::Value::Null,
-                exporter: crate::artifact::ArtifactBodyExporter::Root,
-            }));
-            let mut methods: Vec<ArtifactDataDefSetMethod> = Vec::new();
-            for m in self_.data.methods.borrow().iter() {
-                let arg_type = m.arg_type.borrow().clone().unwrap_or_else(|| {
-                    Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
-                });
-                let ret_type = m.ret_type.borrow().clone().unwrap_or_else(|| {
-                    Rc::new(super::super::type_null::dynamic::TypeNullDynamic) as Rc<dyn Type>
-                });
-                let mut arg_art = export_artifact(xx, loc, arg_type.as_value().as_ref());
-                if let Some(errs) = arg_art.errors.take() {
-                    push_err(&mut *errors_for_closure.borrow_mut(), errs);
-                }
-                let mut ret_art = export_artifact(xx, loc, ret_type.as_value().as_ref());
-                if let Some(errs) = ret_art.errors.take() {
-                    push_err(&mut *errors_for_closure.borrow_mut(), errs);
-                }
-                let scope_idx = match m.binding_id.get() {
-                    Some(BindingId::Def(_, idx)) => idx,
-                    _ => 0,
-                };
-                let captured_externals =
-                    crate::eval::definition_set::export_captured_externals(
-                        xx,
-                        loc,
-                        &m.captured_externals.borrow(),
-                    );
-                let compiled_source = m.compiled_source.borrow().clone().unwrap_or_else(|| {
-                    eprintln!(
-                        "DBG serialize data-type method '{}' (scope_id={:?}) WITHOUT compiled_source",
-                        m.name.as_str(),
-                        m.binding_id.get(),
-                    );
-                    String::new()
-                });
-                methods.push(ArtifactDataDefSetMethod {
-                    name: m.name.clone(),
-                    field_name: m.field_name.clone(),
-                    arg_type: arg_art.v.unwrap_or(Artifact::Body(ArtifactBody {
-                        data: serde_json::Value::Null,
-                        exporter: crate::artifact::ArtifactBodyExporter::Root,
-                    })),
-                    ret_type: ret_art.v.unwrap_or(Artifact::Body(ArtifactBody {
-                        data: serde_json::Value::Null,
-                        exporter: crate::artifact::ArtifactBodyExporter::Root,
-                    })),
-                    compiled_source,
-                    entry_id: scope_idx,
-                    captured_externals,
-                });
-            }
-            let mut interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> = Vec::new();
-            for impl_data in self_.data.interface_impls.borrow().iter() {
-                let builtin_kind = impl_data.interface.builtin_kind;
-                let user_iface = match builtin_kind {
-                    Some(_) => None,
-                    None => {
-                        let iface_const = TypeSourceInterfaceConst { data: impl_data.interface.clone() };
-                        let mut iface_art = export_artifact(xx, loc, &iface_const as &dyn Value);
-                        if let Some(errs) = iface_art.errors.take() {
-                            push_err(&mut *errors_for_closure.borrow_mut(), errs);
-                        }
-                        iface_art.v
-                    },
-                };
-                let method_impls: Vec<ArtifactDataDefSetInterfaceMethodImpl> = impl_data.method_impls.iter().map(|m| {
-                    let scope_idx = match m.binding_id.get() {
-                        Some(BindingId::Def(_, idx)) => idx,
-                        _ => 0,
-                    };
-                    let captured_externals =
-                        crate::eval::definition_set::export_captured_externals(
-                            xx,
-                            loc,
-                            &m.captured_externals.borrow(),
-                        );
-                    let compiled_source = m.compiled_source.borrow().clone().unwrap_or_else(|| {
-                        panic!(
-                            "serialize interface method_impl (interface_method_index={}, scope_id={:?}) without compiled_source",
-                            m.interface_method_index,
-                            m.binding_id.get(),
-                        )
-                    });
-                    ArtifactDataDefSetInterfaceMethodImpl {
-                        interface_method_index: m.interface_method_index,
-                        compiled_source,
-                        entry_id: scope_idx,
-                        captured_externals,
-                    }
-                }).collect();
-                interface_impls.push(ArtifactDataDefSetInterfaceImpl {
-                    builtin_kind,
-                    user_iface,
-                    method_impls,
-                });
-            }
-            let body = ArtifactDataDefSetObject {
-                name: self_.data.name.clone(),
-                identity: self_.data.identity.clone(),
-                data_field: self_.data.data_field.clone(),
-                def_set_id: self_.data.set.borrow().as_ref().unwrap().def_set_id,
-                def_set: def_set_art,
-                underlying_type: underlying_art,
-                methods,
-                interface_impls,
-            };
-            make_body(serde_json::to_value(&body).unwrap())
-        });
-        let errors = errors.borrow_mut().take();
-        return EResult {
-            errors,
-            v: Some(art),
-        };
-    }
 }
 
 impl Type for TypeSourceObjectConst {
@@ -674,9 +667,7 @@ impl Type for TypeSourceObjectConst {
         }
         if *key == aspect_bind_dynamic_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>,
-                ),
+                Box::new(Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectBindDynamic>),
             );
         }
         if *key == aspect_bind_aspect_id() {
@@ -687,16 +678,13 @@ impl Type for TypeSourceObjectConst {
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(
                 Box::new(
-                    Box::new(TypeSourceObjectConst { data: self.data.clone() }) as
-                        Box<dyn AspectStackValueDynamic>,
+                    Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectStackValueDynamic>,
                 ),
             );
         }
         if *key == aspect_lift_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectLift>,
-                ),
+                Box::new(Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectLift>),
             );
         }
         if *key == aspect_artifact_aspect_id() {
@@ -706,9 +694,7 @@ impl Type for TypeSourceObjectConst {
         }
         if *key == aspect_initial_bind_aspect_id() {
             return Some(
-                Box::new(
-                    Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>,
-                ),
+                Box::new(Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectInitialBind>),
             );
         }
         if *key == aspect_field_aspect_id() {
@@ -718,7 +704,9 @@ impl Type for TypeSourceObjectConst {
         }
         if *key == aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectPostDeserialize>),
+                Box::new(
+                    Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectPostDeserialize>,
+                ),
             );
         }
         {

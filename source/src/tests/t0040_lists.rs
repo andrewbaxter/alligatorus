@@ -28,10 +28,7 @@ fn test_0000_list() {
                                 mb.bind(
                                     "my_list",
                                     mb.call(
-                                        mb.field(
-                                            mb.call(mb.types_list(), mb.types_string()),
-                                            mb.str("new"),
-                                        ),
+                                        mb.field(mb.call(mb.types_list(), mb.types_string()), mb.str("new")),
                                         mb.tuple(vec![mb.str("c"), mb.str("d")]),
                                     ),
                                 ),

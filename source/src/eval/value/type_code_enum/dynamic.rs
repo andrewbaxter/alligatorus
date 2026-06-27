@@ -12,14 +12,15 @@ use {
             },
             value::{
                 type_any::r#const::ValueAnyConst,
+                type_binding::dynamic::BindingDynamicBinding,
                 type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_root::r#const::TypeRoot,
-                type_binding::dynamic::BindingDynamicBinding,
             },
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             ConstKey,
@@ -27,7 +28,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -145,7 +145,10 @@ impl Type for TypeCodeEnumDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

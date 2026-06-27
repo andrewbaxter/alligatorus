@@ -90,6 +90,13 @@ pub(crate) trait Value: Any {
     fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>>;
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+pub(crate) enum BindingId {
+    Builtin(usize),
+    Def(DefSetId, usize),
+    Local(usize),
+}
+
 #[derive(Clone)]
 pub(crate) struct Code {
     pub(crate) code: Code_,
@@ -133,15 +140,15 @@ pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 pub(crate) struct CompileImportContext {
     pub(crate) builtin_scope_root_binding: RefCell<Option<Rc<dyn Binding>>>,
     pub(crate) builtins_registered: Cell<bool>,
-    pub(crate) compile_path: Vec<(CompileId, ExprId)>,
+    pub(crate) compile_path: Vec<CompileId>,
     pub(crate) def_set_counter: Counter,
     pub(crate) deserialized_artifacts: RefCell<HashMap<ArtifactIdSource, Rc<dyn ExporterAny>>>,
+    pub(crate) dynamic_context: RefCell<Option<v8::Global<v8::Context>>>,
     pub(crate) gx: Arc<GlobalContext>,
     pub(crate) import_state: ImportStateId,
     pub(crate) installed_def_sets: RefCell<HashSet<DefSetId>>,
     pub(crate) isolate: Rc<RefCell<v8::OwnedIsolate>>,
     pub(crate) source_id: SourceId,
-    pub(crate) dynamic_context: RefCell<Option<v8::Global<v8::Context>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -303,12 +310,12 @@ impl<T: Clone> Clone for EResult<T> {
 
 pub(crate) struct EvalContext {
     pub(crate) definition_sets: RefCell<HashMap<DefSetId, dumpster::unsync::Gc<DefinitionSet>>>,
-    pub(crate) externals: RefCell<Vec<(BindingId, External)>>,
-    pub(crate) ix: Rc<CompileImportContext>,
-    pub(crate) next_local_id: Counter,
     pub(crate) dynamic_scope: std
     ::cell
     ::Cell<Option<std::ptr::NonNull<v8::PinnedRef<'static, v8::HandleScope<'static, v8::Context>>>>>,
+    pub(crate) externals: RefCell<Vec<(BindingId, External)>>,
+    pub(crate) ix: Rc<CompileImportContext>,
+    pub(crate) next_local_id: Counter,
 }
 
 pub(crate) type EvalRes = EResult<CodeValue>;
@@ -376,13 +383,6 @@ pub(crate) type QExprId = (SourceId, ExprId);
 pub(crate) struct Scope {
     pub(crate) parent: Option<Rc<Scope>>,
     pub(crate) values: RefCell<HashMap<ConstKey, Box<dyn Binding>>>,
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
-pub(crate) enum BindingId {
-    Builtin(usize),
-    Def(DefSetId, usize),
-    Local(usize),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]

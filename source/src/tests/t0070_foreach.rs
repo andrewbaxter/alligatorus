@@ -28,10 +28,7 @@ fn test_0000_foreach_list() {
                                 mb.bind(
                                     "my_list",
                                     mb.call(
-                                        mb.field(
-                                            mb.call(mb.types_list(), mb.types_number()),
-                                            mb.str("new"),
-                                        ),
+                                        mb.field(mb.call(mb.types_list(), mb.types_number()), mb.str("new")),
                                         mb.tuple(vec![mb.num(1.), mb.num(2.), mb.num(7.)]),
                                     ),
                                 ),

@@ -48,17 +48,17 @@ use {
             },
             value::{
                 type_pull::r#const::TypePull,
+                type_source_function::r#const::TypeSourceFunctionConst,
+                type_source_interface::{
+                    SourceInterfaceRef,
+                    r#const::TypeSourceInterfaceConst,
+                },
                 type_source_object::{
                     SourceObjectRef,
                     dynamic::TypeSourceObjectDynamic,
                     r#const::TypeSourceObjectConst,
                 },
                 type_source_object_new::TypeSourceObjectNewConst,
-                type_source_function::r#const::TypeSourceFunctionConst,
-                type_source_interface::{
-                    SourceInterfaceRef,
-                    r#const::TypeSourceInterfaceConst,
-                },
                 type_source_union::{
                     SourceUnionRef,
                     r#const::TypeSourceUnionConst,
@@ -73,6 +73,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeDyn,
             CodeValue,
@@ -95,8 +96,6 @@ use {
             LogEntry,
             QExprId,
             Scope,
-            BindingId,
-            SourceId,
             Type,
             Unique,
             Value,
@@ -105,13 +104,14 @@ use {
         r#gen::{
             ASPECT_LOOKUP_FN_SCOPE_ID,
             AspectField,
+            Binding,
             CAST_VALUE_FN_SCOPE_ID,
             CVE_EXTRACT_FN_SCOPE_ID,
             CVE_GET_CODE_ENUM_FN_SCOPE_ID,
             CVE_GET_VALUE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
-            DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID,
+            DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID,
             DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_VALUE_FN_SCOPE_ID,
@@ -121,7 +121,6 @@ use {
             INTERFACE_REF_TO_TYPE_FN_SCOPE_ID,
             RECORD_TO_TYPE_FN_SCOPE_ID,
             STAGE_FN_SCOPE_ID,
-            Binding,
             TAGGED_UNION_CONSTRUCTOR_TO_TYPE_FN_SCOPE_ID,
             TAGGED_UNION_REF_TO_TYPE_FN_SCOPE_ID,
             TUPLE_TO_TYPE_FN_SCOPE_ID,
@@ -129,7 +128,6 @@ use {
             TypeRefPush,
             UNIQUE_EQ_FN_SCOPE_ID,
             VALUE_GET_TYPE_FN_SCOPE_ID,
-            gen_builtin_tree,
             aspect_artifact_get,
             aspect_bind_dynamic_get_maybe,
             aspect_bind_get,
@@ -144,12 +142,13 @@ use {
             aspect_operator_add_get,
             aspect_operator_eq_get,
             aspect_operator_lt_get,
+            aspect_post_deserialize_get,
             aspect_set_get,
             aspect_stack_value_dynamic_get,
             aspect_string_const_get_maybe,
-            aspect_union_get,
             aspect_type_get,
-            aspect_post_deserialize_get,
+            aspect_union_get,
+            gen_builtin_tree,
         },
         source_module_to_module,
         syntax::{
@@ -192,6 +191,7 @@ use {
     },
     v8::tc_scope,
     value::{
+        type_null::dynamic::TypeNullDynamic,
         type_record::{
             Record,
             RecordField,
@@ -200,120 +200,20 @@ use {
             Tuple,
             TupleElement,
         },
-        type_null::dynamic::TypeNullDynamic,
         value_null::r#const::ValueNullConst,
     },
 };
 
 const KEY_BUILTINS: &str = "builtins";
 
-fn walk_register_dynamic<'s>(
-    node: &builtin_tree::BuiltinNode<'s>,
-    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-) {
-    use builtin_tree::{
-        BuiltinLeaf,
-        BuiltinNode,
-    };
-    match node {
-        BuiltinNode::Branch(children) => {
-            for (_, child) in children {
-                walk_register_dynamic(child, dynamic_scope);
-            }
-        },
-        BuiltinNode::Leaf(leaf) => {
-            let (dynamic_key, dynamic_value) = match leaf {
-                BuiltinLeaf::Function { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
-                BuiltinLeaf::Interface { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
-                BuiltinLeaf::AspectId { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
-                BuiltinLeaf::Constructor { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
-                BuiltinLeaf::AnyConst { .. } | BuiltinLeaf::InitialBind { .. } => {
-                    return;
-                },
-            };
-            dynamic_scope
-                .get_current_context()
-                .global(dynamic_scope)
-                .set(
-                    dynamic_scope,
-                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                    dynamic_value,
-                );
+pub(crate) fn binding_id_dynamic_key(e: BindingId) -> String {
+    match e {
+        BindingId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
+        BindingId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
+        BindingId::Def(def_set_id, entry_id) => {
+            format!("{}{}_{}_{}_{}", DEF_PREFIX, (def_set_id.0).0.0, (def_set_id.0).1.0, def_set_id.1, entry_id,)
         },
     }
-}
-
-fn walk_build_binding(
-    node: &builtin_tree::BuiltinNode,
-    xx: &ExprContext,
-    loc: QExprId,
-) -> Result<Rc<dyn Binding>, Vec<ExprErr>> {
-    use builtin_tree::{
-        BuiltinLeaf,
-        BuiltinNode,
-    };
-    use crate::eval::value::type_argument_record::r#const::{
-        ArgumentRecord,
-        ArgumentRecordBinding,
-    };
-    match node {
-        BuiltinNode::Branch(children) => {
-            let mut fields = std::collections::BTreeMap::new();
-            for (key, child) in children {
-                fields.insert(ConstKey::String((*key).to_string()), walk_build_binding(child, xx, loc)?);
-            }
-            Ok(Rc::new(ArgumentRecordBinding { record: Rc::new(ArgumentRecord { fields }) }))
-        },
-        BuiltinNode::Leaf(BuiltinLeaf::Function { dynamic_key, type_, .. }) |
-        BuiltinNode::Leaf(BuiltinLeaf::Interface { dynamic_key, type_, .. }) |
-        BuiltinNode::Leaf(BuiltinLeaf::Constructor { dynamic_key, type_, .. }) |
-        BuiltinNode::Leaf(BuiltinLeaf::InitialBind { dynamic_key, type_ }) => {
-            let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
-            Ok(Rc::from(ib.initial_bind(*dynamic_key)))
-        },
-        BuiltinNode::Leaf(BuiltinLeaf::AspectId { dynamic_key, unique, .. }) => {
-            Ok(
-                Rc::new(value::type_unique::r#const::BindingUniqueDualMode {
-                    dynamic_key: *dynamic_key,
-                    unique: *unique,
-                }) as Rc<dyn Binding>,
-            )
-        },
-        BuiltinNode::Leaf(BuiltinLeaf::AnyConst { type_ }) => {
-            let cv = CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::None,
-                },
-                value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_.clone() }),
-            };
-            let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
-            let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;
-            let (_, binding) = bind.bind(xx, loc, cv).into_res()?;
-            Ok(Rc::from(binding))
-        },
-    }
-}
-
-pub(crate) fn init_builtin_scope<'s>(
-    xx: &ExprContext,
-    loc: QExprId,
-    import_state: ImportStateId,
-    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
-    register_dynamic: bool,
-) -> Result<HashMap<ConstKey, Box<dyn Binding>>, Vec<ExprErr>> {
-    let tree = gen_builtin_tree(dynamic_scope, import_state);
-    if register_dynamic {
-        walk_register_dynamic(&tree, dynamic_scope);
-    }
-    let root_binding = walk_build_binding(&tree, xx, loc)?;
-    *xx.vx.ix.builtin_scope_root_binding.borrow_mut() = Some(root_binding.clone());
-    let mut scope_entries = HashMap::<ConstKey, Box<dyn Binding>>::new();
-    scope_entries.insert(
-        ConstKey::String(KEY_BUILTINS.to_string()),
-        Box::new(crate::eval::RcBindingWrap(root_binding)) as Box<dyn Binding>,
-    );
-    Ok(scope_entries)
 }
 
 pub(crate) fn body_builtin_scope(xx: &ExprContext) -> HashMap<ConstKey, Box<dyn Binding>> {
@@ -386,12 +286,15 @@ pub(crate) fn compile_importid(
     fx: &Arc<GlobalContext>,
     import_state: ImportStateId,
     source: Module,
-    compile_path: Vec<(CompileId, ExprId)>,
+    compile_path: Vec<CompileId>,
 ) -> CompileRes {
     let mut root_expr = match source {
         Module::V1(e) => e,
     };
     let root_loc = root_expr.loc;
+    let source_id = root_loc.0;
+    let mut compile_path = compile_path;
+    compile_path.push(CompileId(import_state, source_id));
     let cix = Rc::new(CompileImportContext {
         gx: fx.clone(),
         compile_path: compile_path,
@@ -402,7 +305,7 @@ pub(crate) fn compile_importid(
         def_set_counter: Counter::default(),
         dynamic_context: RefCell::new(None),
         builtins_registered: Cell::new(false),
-        source_id: root_loc.0,
+        source_id: source_id,
         builtin_scope_root_binding: RefCell::new(None),
     });
 
@@ -538,15 +441,14 @@ pub(crate) fn compile_importid(
                     result: CompileResResult::Err(e),
                 },
             };
-            let value =
-                match value_serial.exporter().export(&xx, root_loc, eval_value.as_exporter_any()).into_res() {
-                    Ok(v) => v,
-                    Err(e) => return CompileRes {
-                        logs,
-                        generated_dynamic_scripts: vec![],
-                        result: CompileResResult::Err(e),
-                    },
-                };
+            let value = match value_serial.exporter().export(&xx, root_loc, eval_value.as_exporter_any()).into_res() {
+                Ok(v) => v,
+                Err(e) => return CompileRes {
+                    logs,
+                    generated_dynamic_scripts: vec![],
+                    result: CompileResResult::Err(e),
+                },
+            };
             return CompileRes {
                 logs,
                 generated_dynamic_scripts: mem::take(&mut *fx.generated_dynamic_scripts.lock().unwrap()),
@@ -1058,6 +960,10 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let source_spec = SourceSpecAbsolute::Virtual(spec_name);
             let (source_id, source_module) = erb.must_res(xx.vx.ix.gx.sources.get(source_spec.clone()))?;
             let compile_id = CompileId(xx.import_state.get(), source_id);
+            if xx.vx.ix.compile_path.contains(&compile_id) {
+                return erb.err_new("Import cycle detected");
+            }
+            let new_compile_path = xx.vx.ix.compile_path.clone();
             let entry = {
                 let mut results = xx.vx.ix.gx.compile_results.lock().unwrap();
                 if let Some(entry) = results.get(&compile_id) {
@@ -1071,7 +977,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     let import_state = xx.import_state.get();
                     let res = std::thread::Builder::new().stack_size(512 * 1024 * 1024).spawn(move || {
                         let module = source_module_to_module(source_id, &source_module);
-                        compile_importid(&gx, import_state, module, vec![])
+                        compile_importid(&gx, import_state, module, new_compile_path)
                     }).expect("compile_importid thread spawn").join().expect("compile_importid thread panicked");
                     *write_guard = Some(res);
                     drop(write_guard);
@@ -1157,6 +1063,44 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
     }
 }
 
+pub(crate) struct DynamicEvalContextSlot {
+    pub(crate) ex: Rc<EvalContext>,
+}
+
+pub(crate) struct DynamicLogStore {
+    pub(crate) logs: RefCell<Vec<LogEntry>>,
+}
+
+pub(crate) struct DynamicRcStore {
+    weaks: RefCell<Vec<v8::Weak<v8::External>>>,
+}
+
+#[derive(Default)]
+pub(crate) struct DynamicSourceBuilder {
+    pub(crate) lines: Vec<String>,
+    pub(crate) mapping: HashMap<usize, QExprId>,
+    pub(crate) next_expr_id: usize,
+}
+
+impl DynamicSourceBuilder {
+    pub(crate) fn next_expr_id(&mut self) -> usize {
+        let id = self.next_expr_id;
+        self.next_expr_id += 1;
+        id
+    }
+
+    pub(crate) fn push(&mut self, id: QExprId, line: String) {
+        let dynamic_num = self.lines.len() + 1;
+        self.mapping.insert(dynamic_num, id);
+        self.lines.push(line);
+    }
+}
+
+pub(crate) struct DynamicUniqueCounter {
+    pub(crate) compile_id: CompileId,
+    pub(crate) counter: Counter,
+}
+
 pub(crate) struct Erb {
     pub(crate) errors: Vec<ExprErr>,
     pub(crate) loc: QExprId,
@@ -1225,11 +1169,7 @@ fn eval(
     dynamic_scope_isolate.set_slot(DynamicRcStore { weaks: RefCell::new(Vec::new()) });
     dynamic_scope_isolate.set_slot(DynamicLogStore { logs: RefCell::new(Vec::new()) });
     dynamic_scope_isolate.set_slot(DynamicUniqueCounter {
-        compile_id: cix
-            .compile_path
-            .last()
-            .map(|(c, _)| c.clone())
-            .unwrap_or(CompileId(ImportStateId(0), SourceId(0))),
+        compile_id: CompileId(cix.import_state, cix.source_id),
         counter: Counter::default(),
     });
     dynamic_scope_isolate.set_slot(DynamicEvalContextSlot { ex: ex.clone() });
@@ -1578,9 +1518,9 @@ fn eval(
 
     struct DefFuncInfo {
         arg_type: Rc<dyn Type>,
+        binding_id: BindingId,
         impl_expr_ast: Rc<dyn Value>,
         ret_type: Rc<dyn Type>,
-        binding_id: BindingId,
     }
 
     {
@@ -1623,8 +1563,7 @@ fn eval(
         }
         infos
     };
-    let mut def_funcs: Vec<(BindingId, Option<BindingId>, CodeDynamic, Vec<(BindingId, External)>)> =
-        vec![];
+    let mut def_funcs: Vec<(BindingId, Option<BindingId>, CodeDynamic, Vec<(BindingId, External)>)> = vec![];
     for info in &def_func_infos {
         let impl_expr_ast = must_downcast_ref::<Expr>(info.impl_expr_ast.as_ref());
         let body_ex = Rc::new(EvalContext {
@@ -1693,9 +1632,9 @@ fn eval(
     }
 
     struct CompiledDataMethod {
+        binding_id: BindingId,
         body: CompiledDataMethodBody,
         captured_externals: Vec<(BindingId, External)>,
-        binding_id: BindingId,
     }
 
     let mut def_data_methods: Vec<CompiledDataMethod> = vec![];
@@ -1820,9 +1759,7 @@ fn eval(
                         let mut body_scope = body_builtin_scope(&xx);
                         let outer_type: Rc<dyn Type> =
                             Rc::new(
-                                value::type_source_object::dynamic::TypeSourceObjectDynamic {
-                                    data: dt_data.clone(),
-                                },
+                                value::type_source_object::dynamic::TypeSourceObjectDynamic { data: dt_data.clone() },
                             );
                         if let Some(outer_self_ib) = aspect_initial_bind_get_maybe(&xx, outer_type.as_ref()) {
                             body_scope.insert(
@@ -1841,9 +1778,10 @@ fn eval(
                         };
                         match builtin_kind {
                             Some(value::type_source_interface::BuiltinInterfaceKind::Type) => {
-                                let arg_type = iface_method_arg_record_type
-                                    .clone()
-                                    .expect("Type iface method missing arg_record_type");
+                                let arg_type =
+                                    iface_method_arg_record_type
+                                        .clone()
+                                        .expect("Type iface method missing arg_record_type");
                                 let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_type.as_ref()).into_res()?;
                                 body_scope.insert(
                                     ConstKey::String("arg".to_string()),
@@ -1863,11 +1801,17 @@ fn eval(
                                     iface_methods[method_impl.interface_method_index].name.clone()
                                 };
                                 let arg_field_names: Vec<&str> = match (builtin_kind, method_name.as_str()) {
-                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Binding), "use") => vec![
+                                    (
+                                        Some(value::type_source_interface::BuiltinInterfaceKind::Binding),
+                                        "use",
+                                    ) => vec![
                                         "loc",
                                         "code",
                                     ],
-                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "bind") => vec![
+                                    (
+                                        Some(value::type_source_interface::BuiltinInterfaceKind::Target),
+                                        "bind",
+                                    ) => vec![
                                         "xx",
                                         "loc",
                                         "sub",
@@ -1875,11 +1819,19 @@ fn eval(
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "bind_sub_record",
-                                    ) => vec!["loc", "carry", "fields"],
+                                    ) => vec![
+                                        "loc",
+                                        "carry",
+                                        "fields",
+                                    ],
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "bind_sub_tuple",
-                                    ) => vec!["loc", "carry", "elements"],
+                                    ) => vec![
+                                        "loc",
+                                        "carry",
+                                        "elements",
+                                    ],
                                     (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "seq") => vec![
                                         "loc",
                                         "entries",
@@ -1887,7 +1839,11 @@ fn eval(
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "code_to_bind_sub",
-                                    ) => vec!["loc", "code", "type"],
+                                    ) => vec![
+                                        "loc",
+                                        "code",
+                                        "type",
+                                    ],
                                     (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "if") => vec![
                                         "xx",
                                         "loc",
@@ -1900,7 +1856,11 @@ fn eval(
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "maybe_bind_sub",
-                                    ) => vec!["xx", "loc", "cv"],
+                                    ) => vec![
+                                        "xx",
+                                        "loc",
+                                        "cv",
+                                    ],
                                     (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "stage") => {
                                         vec!["xx", "loc", "tree", "lower_values"]
                                     },
@@ -2399,9 +2359,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CVE_EXTRACT_FN_SCOPE_ID))
-                        .unwrap()
-                        .cast(),
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CVE_EXTRACT_FN_SCOPE_ID)).unwrap().cast(),
                     cve_extract_fn.into(),
                 );
             let cve_get_code_enum_fn =
@@ -2461,9 +2419,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CAST_VALUE_FN_SCOPE_ID))
-                        .unwrap()
-                        .cast(),
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(CAST_VALUE_FN_SCOPE_ID)).unwrap().cast(),
                     cast_value_fn.into(),
                 );
 
@@ -2500,8 +2456,7 @@ fn eval(
                 args: v8::FunctionCallbackArguments<'s>,
                 mut rv: v8::ReturnValue<'s>,
             ) {
-                let tu_ref: Rc<SourceUnionRef> =
-                    from_dynamic_ref::<Rc<SourceUnionRef>>(&*args.get(0)).clone();
+                let tu_ref: Rc<SourceUnionRef> = from_dynamic_ref::<Rc<SourceUnionRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> = Rc::new(TypeSourceUnionConst { data: tu_ref.data.clone() });
                 let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
@@ -2583,8 +2538,7 @@ fn eval(
             ) {
                 let ctor_ref: Rc<TypeSourceObjectNewConst> =
                     from_dynamic_ref::<Rc<TypeSourceObjectNewConst>>(&*args.get(0)).clone();
-                let type_: Rc<dyn Type> =
-                    Rc::new(TypeSourceObjectNewConst { data: ctor_ref.data.clone() });
+                let type_: Rc<dyn Type> = Rc::new(TypeSourceObjectNewConst { data: ctor_ref.data.clone() });
                 let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
@@ -2615,17 +2569,10 @@ fn eval(
                 let ctor_ref: Rc<SourceUnionNewRef> =
                     from_dynamic_ref::<Rc<SourceUnionNewRef>>(&*args.get(0)).clone();
                 let type_: Rc<dyn Type> =
-                    Rc::new(
-                        crate
-                        ::eval
-                        ::value
-                        ::type_source_union_new
-                        ::r#const
-                        ::TypeSourceUnionNewConst {
-                            data: ctor_ref.data.clone(),
-                            variant_index: ctor_ref.variant_index,
-                        },
-                    );
+                    Rc::new(crate::eval::value::type_source_union_new::r#const::TypeSourceUnionNewConst {
+                        data: ctor_ref.data.clone(),
+                        variant_index: ctor_ref.variant_index,
+                    });
                 let ext = rc_type_to_dynamic_ext(scope, type_);
                 rv.set(ext.into());
             }
@@ -2654,8 +2601,7 @@ fn eval(
                 mut rv: v8::ReturnValue<'s>,
             ) {
                 let template_type: Rc<dyn Type> = from_dynamic_ref::<Rc<dyn Type>>(&*args.get(0)).clone();
-                let template =
-                    crate::invariant::must_downcast_ref::<TypeSourceObjectConst>(template_type.as_ref());
+                let template = crate::invariant::must_downcast_ref::<TypeSourceObjectConst>(template_type.as_ref());
                 let instance =
                     v8::Local::<v8::Object>::try_from(
                         args.get(1),
@@ -2737,10 +2683,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(
-                        dynamic_scope,
-                        &binding_id_dynamic_key(DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID),
-                    )
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID))
                         .unwrap()
                         .cast(),
                     data_instance_to_binding_fn.into(),
@@ -2854,9 +2797,7 @@ fn eval(
                 .global(dynamic_scope)
                 .set(
                     dynamic_scope,
-                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(UNIQUE_EQ_FN_SCOPE_ID))
-                        .unwrap()
-                        .cast(),
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(UNIQUE_EQ_FN_SCOPE_ID)).unwrap().cast(),
                     unique_eq_fn.into(),
                 );
             cix.builtins_registered.set(true);
@@ -2996,25 +2937,27 @@ pub(crate) fn from_dynamic_ref<T: 'static>(value: &v8::Value) -> &T {
     must_downcast_ref::<T>(from_dynamic_any(value))
 }
 
-#[derive(Default)]
-pub(crate) struct DynamicSourceBuilder {
-    pub(crate) lines: Vec<String>,
-    pub(crate) mapping: HashMap<usize, QExprId>,
-    pub(crate) next_expr_id: usize,
-}
-
-impl DynamicSourceBuilder {
-    pub(crate) fn next_expr_id(&mut self) -> usize {
-        let id = self.next_expr_id;
-        self.next_expr_id += 1;
-        id
+pub(crate) fn init_builtin_scope<
+    's,
+>(
+    xx: &ExprContext,
+    loc: QExprId,
+    import_state: ImportStateId,
+    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+    register_dynamic: bool,
+) -> Result<HashMap<ConstKey, Box<dyn Binding>>, Vec<ExprErr>> {
+    let tree = gen_builtin_tree(dynamic_scope, import_state);
+    if register_dynamic {
+        walk_register_dynamic(&tree, dynamic_scope);
     }
-
-    pub(crate) fn push(&mut self, id: QExprId, line: String) {
-        let dynamic_num = self.lines.len() + 1;
-        self.mapping.insert(dynamic_num, id);
-        self.lines.push(line);
-    }
+    let root_binding = walk_build_binding(&tree, xx, loc)?;
+    *xx.vx.ix.builtin_scope_root_binding.borrow_mut() = Some(root_binding.clone());
+    let mut scope_entries = HashMap::<ConstKey, Box<dyn Binding>>::new();
+    scope_entries.insert(
+        ConstKey::String(KEY_BUILTINS.to_string()),
+        Box::new(crate::eval::RcBindingWrap(root_binding)) as Box<dyn Binding>,
+    );
+    Ok(scope_entries)
 }
 
 pub(crate) fn rc_binding_from_v8(value: &v8::Value) -> Rc<dyn Binding> {
@@ -3247,16 +3190,6 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
         },
     }
     return out;
-}
-
-pub(crate) fn binding_id_dynamic_key(e: BindingId) -> String {
-    match e {
-        BindingId::Local(id) => format!("{}{}", BINDING_PREFIX, id),
-        BindingId::Builtin(id) => format!("{}{}", BUILTIN_PREFIX, id),
-        BindingId::Def(def_set_id, entry_id) => {
-            format!("{}{}_{}_{}_{}", DEF_PREFIX, (def_set_id.0).0.0, (def_set_id.0).1.0, def_set_id.1, entry_id,)
-        },
-    }
 }
 
 pub fn setup_v8() {
@@ -3675,7 +3608,10 @@ impl Target for TargetDynamic {
     }
 }
 
-pub(crate) fn to_dynamic_ext<'s, T: 'static>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
+pub(crate) fn to_dynamic_ext<
+    's,
+    T: 'static,
+>(scope: &mut v8::PinScope<'s, '_, ()>, value: T) -> v8::Local<'s, v8::External> {
     let any: Box<dyn std::any::Any> = Box::new(value);
     let ptr = Box::into_raw(Box::new(any)) as *mut std::ffi::c_void;
     let ext = v8::External::new(&*scope, ptr);
@@ -3703,19 +3639,91 @@ pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn 
     });
 }
 
-pub(crate) struct DynamicEvalContextSlot {
-    pub(crate) ex: Rc<EvalContext>,
+fn walk_build_binding(
+    node: &builtin_tree::BuiltinNode,
+    xx: &ExprContext,
+    loc: QExprId,
+) -> Result<Rc<dyn Binding>, Vec<ExprErr>> {
+    use {
+        builtin_tree::{
+            BuiltinLeaf,
+            BuiltinNode,
+        },
+        crate::eval::value::type_argument_record::r#const::{
+            ArgumentRecord,
+            ArgumentRecordBinding,
+        },
+    };
+
+    match node {
+        BuiltinNode::Branch(children) => {
+            let mut fields = std::collections::BTreeMap::new();
+            for (key, child) in children {
+                fields.insert(ConstKey::String((*key).to_string()), walk_build_binding(child, xx, loc)?);
+            }
+            Ok(Rc::new(ArgumentRecordBinding { record: Rc::new(ArgumentRecord { fields }) }))
+        },
+        BuiltinNode::Leaf(BuiltinLeaf::Function { dynamic_key, type_, .. }) |
+        BuiltinNode::Leaf(BuiltinLeaf::Interface { dynamic_key, type_, .. }) |
+        BuiltinNode::Leaf(BuiltinLeaf::Constructor { dynamic_key, type_, .. }) |
+        BuiltinNode::Leaf(BuiltinLeaf::InitialBind { dynamic_key, type_ }) => {
+            let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
+            Ok(Rc::from(ib.initial_bind(*dynamic_key)))
+        },
+        BuiltinNode::Leaf(BuiltinLeaf::AspectId { dynamic_key, unique, .. }) => {
+            Ok(Rc::new(value::type_unique::r#const::BindingUniqueDualMode {
+                dynamic_key: *dynamic_key,
+                unique: *unique,
+            }) as Rc<dyn Binding>)
+        },
+        BuiltinNode::Leaf(BuiltinLeaf::AnyConst { type_ }) => {
+            let cv = CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::None,
+                },
+                value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_.clone() }),
+            };
+            let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
+            let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;
+            let (_, binding) = bind.bind(xx, loc, cv).into_res()?;
+            Ok(Rc::from(binding))
+        },
+    }
 }
 
-pub(crate) struct DynamicLogStore {
-    pub(crate) logs: RefCell<Vec<LogEntry>>,
-}
+fn walk_register_dynamic<
+    's,
+>(node: &builtin_tree::BuiltinNode<'s>, dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) {
+    use builtin_tree::{
+        BuiltinLeaf,
+        BuiltinNode,
+    };
 
-pub(crate) struct DynamicRcStore {
-    weaks: RefCell<Vec<v8::Weak<v8::External>>>,
-}
-
-pub(crate) struct DynamicUniqueCounter {
-    pub(crate) compile_id: CompileId,
-    pub(crate) counter: Counter,
+    match node {
+        BuiltinNode::Branch(children) => {
+            for (_, child) in children {
+                walk_register_dynamic(child, dynamic_scope);
+            }
+        },
+        BuiltinNode::Leaf(leaf) => {
+            let (dynamic_key, dynamic_value) = match leaf {
+                BuiltinLeaf::Function { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::Interface { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::AspectId { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::Constructor { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::AnyConst { .. } | BuiltinLeaf::InitialBind { .. } => {
+                    return;
+                },
+            };
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(dynamic_key)).unwrap().cast(),
+                    dynamic_value,
+                );
+        },
+    }
 }

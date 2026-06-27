@@ -28,10 +28,7 @@ fn test_0000_scope_ok() {
                             vec![
                                 mb.bind("x", mb.str("zebra")),
                                 mb.seq(
-                                    vec![
-                                        mb.bind("x", mb.str("apple")),
-                                        mb.call(mb.log(), mb.scope_use("x")),
-                                    ],
+                                    vec![mb.bind("x", mb.str("apple")), mb.call(mb.log(), mb.scope_use("x"))],
                                 ),
                                 mb.call(mb.log(), mb.scope_use("x")),
                             ],

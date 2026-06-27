@@ -8,8 +8,8 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            impl_export_independent_artifact,
             export_artifact,
+            impl_export_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -24,19 +24,20 @@ use {
             typecheck_convert,
             util::er_seq_cv_inline,
             value::{
-                type_tuple::artifact::ArtifactTupleType,
                 type_any::dynamic::TypeAnyDynamic,
-                type_root::r#const::ExporterRootDelegate,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::ExporterRootDelegate,
+                type_tuple::artifact::ArtifactTupleType,
                 value_empty::{
-                    r#const::ValueEmptyConst,
                     binding::BindingEmpty,
+                    r#const::ValueEmptyConst,
                 },
             },
         },
         invariant::must_downcast_box,
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -47,7 +48,6 @@ use {
             ExprSubErr,
             External,
             QExprId,
-            BindingId,
             SourceId,
             Type,
             Unique,
@@ -60,8 +60,8 @@ use {
             AspectConsumeDynamic,
             AspectInitialBind,
             AspectLift,
-            AspectTuple,
             AspectPostDeserialize,
+            AspectTuple,
             Binding,
             TUPLE_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
@@ -70,10 +70,10 @@ use {
             aspect_consume_dynamic_get,
             aspect_initial_bind_aspect_id,
             aspect_lift_aspect_id,
-            aspect_tuple_aspect_id,
-            aspect_tuple_get_maybe,
             aspect_post_deserialize_aspect_id,
             aspect_post_deserialize_get,
+            aspect_tuple_aspect_id,
+            aspect_tuple_get_maybe,
             type_type_identity,
         },
         syntax::ExprId,
@@ -269,31 +269,12 @@ impl AspectInitialBind for Tuple {
     }
 }
 
-impl AspectTuple for Tuple {
-    fn element_types(&self) -> Vec<Rc<dyn Type>> {
-        self.elements.iter().map(|e| {
-            match e {
-                TupleElement::Dynamic(t) => t.clone(),
-                TupleElement::EvalRes(_) => panic!("element_types on non-type tuple"),
-            }
-        }).collect()
-    }
-
-    fn take_elements(&self, value: Rc<dyn Value>) -> Vec<EvalRes> {
-        let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(value)).ok().expect("take_elements: Rc not unique");
-        tuple.elements.into_iter().map(|e| {
-            match e {
-                TupleElement::EvalRes(er) => er,
-                TupleElement::Dynamic(_) => panic!("take_elements encountered Mortar element"),
-            }
-        }).collect()
-    }
-}
-
 impl AspectPostDeserialize for Tuple {
     fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
-        let tuple = Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple post_deserialize: Rc not unique");
+        let tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value))
+                .ok()
+                .expect("Tuple post_deserialize: Rc not unique");
         let mut new_elements = Vec::with_capacity(tuple.elements.len());
         let mut errors = None;
         for elem in tuple.elements.into_iter() {
@@ -339,6 +320,28 @@ impl AspectPostDeserialize for Tuple {
     }
 }
 
+impl AspectTuple for Tuple {
+    fn element_types(&self) -> Vec<Rc<dyn Type>> {
+        self.elements.iter().map(|e| {
+            match e {
+                TupleElement::Dynamic(t) => t.clone(),
+                TupleElement::EvalRes(_) => panic!("element_types on non-type tuple"),
+            }
+        }).collect()
+    }
+
+    fn take_elements(&self, value: Rc<dyn Value>) -> Vec<EvalRes> {
+        let tuple: Tuple =
+            Rc::try_unwrap(downcast_value::<Tuple>(value)).ok().expect("take_elements: Rc not unique");
+        tuple.elements.into_iter().map(|e| {
+            match e {
+                TupleElement::EvalRes(er) => er,
+                TupleElement::Dynamic(_) => panic!("take_elements encountered Mortar element"),
+            }
+        }).collect()
+    }
+}
+
 impl crate::r#gen::AspectArtifact for Tuple {
     fn exporter(&self) -> Rc<dyn crate::artifact::ArtifactExporter> {
         Rc::new(crate::artifact::ExporterRoot::Tuple)
@@ -356,39 +359,6 @@ impl ExporterAny for Tuple {
 }
 
 impl ExporterRootDelegate for Tuple {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        let Some(id) = id else {
-            return EResult::err(loc, "Tuple requires an artifact id to deserialize".to_string());
-        };
-        let holder: Rc<std::cell::RefCell<Option<Tuple>>> = Rc::new(std::cell::RefCell::new(None));
-        let holder_for_finalizer = holder.clone();
-        return crate::artifact::impl_import_independent_artifact::<ArtifactTupleType>(
-            xx,
-            loc,
-            id,
-            data,
-            move |body: ArtifactTupleType| {
-                let element_arts = body.elements;
-                let deps: Vec<Artifact> = element_arts.clone();
-                let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
-                    let mut elements = Vec::with_capacity(element_arts.len());
-                    for elem_art in element_arts {
-                        elements.push(TupleElement::Dynamic(crate::artifact::independent_finalize_import_type_artifact(xx, loc, elem_art)
-                            .v
-                            .expect("Failed to deserialize tuple element type")));
-                    }
-                    *holder_for_finalizer.borrow_mut() = Some(Tuple { elements });
-                });
-                Ok((Rc::new(crate::artifact::ExporterDataAny(holder.clone())) as Rc<dyn crate::artifact::ExporterAny>, deps, finalizer))
-            },
-        );
-    }
-
     fn self_export(
         xx: &ExprContext,
         loc: QExprId,
@@ -455,6 +425,50 @@ impl ExporterRootDelegate for Tuple {
             errors,
             v: Some(art),
         };
+    }
+
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        let Some(id) = id else {
+            return EResult::err(loc, "Tuple requires an artifact id to deserialize".to_string());
+        };
+        let holder: Rc<std::cell::RefCell<Option<Tuple>>> = Rc::new(std::cell::RefCell::new(None));
+        let holder_for_finalizer = holder.clone();
+        return crate::artifact::impl_import_independent_artifact::<ArtifactTupleType>(
+            xx,
+            loc,
+            id,
+            data,
+            move |body: ArtifactTupleType| {
+                let element_arts = body.elements;
+                let deps: Vec<Artifact> = element_arts.clone();
+                let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+                    let mut elements = Vec::with_capacity(element_arts.len());
+                    for elem_art in element_arts {
+                        elements.push(
+                            TupleElement::Dynamic(
+                                crate::artifact::independent_finalize_import_type_artifact(xx, loc, elem_art)
+                                    .v
+                                    .expect("Failed to deserialize tuple element type"),
+                            ),
+                        );
+                    }
+                    *holder_for_finalizer.borrow_mut() = Some(Tuple { elements });
+                });
+                Ok(
+                    (
+                        Rc::new(crate::artifact::ExporterDataAny(holder.clone())) as
+                            Rc<dyn crate::artifact::ExporterAny>,
+                        deps,
+                        finalizer,
+                    ),
+                )
+            },
+        );
     }
 }
 
@@ -601,7 +615,9 @@ impl Type for Tuple {
                         type_: CodeDynamicType::Call(CodeDynamicCall {
                             func: Box::new(CodeDynamic {
                                 loc,
-                                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID }),
+                                type_: CodeDynamicType::BindingUse(
+                                    CodeDynamicBindingUse { id: TUPLE_TO_TYPE_FN_SCOPE_ID },
+                                ),
                             }),
                             args: vec![tuple_js],
                         }),

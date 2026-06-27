@@ -23,6 +23,7 @@ use {
         invariant::must_downcast_ref,
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -32,7 +33,6 @@ use {
             ExprContext,
             External,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -70,6 +70,15 @@ use {
 pub(crate) struct ExporterAnyDelegate;
 
 impl ArtifactExporter for ExporterAnyDelegate {
+    fn export(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
+        let inner = match self_.downcast::<ValueAnyConst>() {
+            Ok(v) => v.inner.clone(),
+            Err(_) => return EResult::err(loc, "ExporterAnyDelegate: expected ValueAnyConst".to_string()),
+        };
+        let inner_val: &dyn Value = inner.as_ref();
+        return export_artifact(xx, loc, inner_val);
+    }
+
     fn import(
         &self,
         _xx: &ExprContext,
@@ -78,15 +87,6 @@ impl ArtifactExporter for ExporterAnyDelegate {
         _data: serde_json::Value,
     ) -> EResult<Rc<dyn ExporterAny>> {
         return EResult::err(loc, "ExporterAnyDelegate::import should not be invoked".to_string());
-    }
-
-    fn export(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
-        let inner = match self_.downcast::<ValueAnyConst>() {
-            Ok(v) => v.inner.clone(),
-            Err(_) => return EResult::err(loc, "ExporterAnyDelegate: expected ValueAnyConst".to_string()),
-        };
-        let inner_val: &dyn Value = inner.as_ref();
-        return export_artifact(xx, loc, inner_val);
     }
 }
 pub(crate) struct TypeAnyConst;
@@ -239,7 +239,10 @@ impl Type for TypeAnyConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

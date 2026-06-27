@@ -6,9 +6,9 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            impl_import_independent_artifact,
-            impl_export_independent_artifact,
             export_artifact,
+            impl_export_independent_artifact,
+            impl_import_independent_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -21,18 +21,19 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                type_tuple::binding::BindingValue,
                 type_any::r#const::ValueAnyConst,
                 type_function::dynamic::dynamic_call,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
+                type_tuple::binding::BindingValue,
             },
         },
         invariant::must_downcast_ref,
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -40,7 +41,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -133,86 +133,6 @@ impl ExporterAny for TypeSourceFunctionConst {
 }
 
 impl ExporterRootDelegate for TypeSourceFunctionConst {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        let Some(id) = id else {
-            return EResult::err(loc, "TypeSourceFunctionConst requires an artifact id to deserialize".to_string());
-        };
-        let id_owned = id.clone();
-        let res =
-            impl_import_independent_artifact::<ArtifactDataDefSetFunction>(
-                xx,
-                loc,
-                id,
-                data,
-                move |body: ArtifactDataDefSetFunction| {
-                    let func_data = dumpster::unsync::Gc::new(super::SourceFunctionData {
-                        arg_type: std::cell::RefCell::new(None),
-                        artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
-                        captured_externals: std::cell::RefCell::new(Vec::new()),
-                        compiled_source: std::cell::RefCell::new(Some(body.compiled_source.clone())),
-                        description: std::cell::RefCell::new(None),
-                        impl_expr: std::cell::RefCell::new(None),
-                        name: body.name.clone(),
-                        ret_type: std::cell::RefCell::new(None),
-                        binding_id: std::cell::Cell::new(
-                            Some(BindingId::Def(body.def_set_id, body.entry_id)),
-                        ),
-                        set: std::cell::RefCell::new(None),
-                    });
-                    let func_for_finalizer = func_data.clone();
-                    let arg_type_art = body.arg_type;
-                    let ret_type_art = body.ret_type;
-                    let def_set_art = body.def_set.clone();
-                    let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(func_data.clone()));
-                    let deps = vec![body.def_set, arg_type_art.clone(), ret_type_art.clone()];
-                    let finalizer: crate::artifact::ArtifactFinalizer =
-                        Box::new(move |xx: &ExprContext, loc: QExprId| {
-                            if let Some(ds_any) =
-                                crate::artifact::independent_finalize_import_artifact(xx, loc, def_set_art).v {
-                                let rc_any: Rc<dyn Any> = ds_any;
-                                if let Ok(wrapped) =
-                                    rc_any.downcast::<ExporterDataAny<dumpster::unsync::Gc<DefinitionSet>>>() {
-                                    *func_for_finalizer.set.borrow_mut() = Some(wrapped.0.clone());
-                                }
-                            }
-                            if let Some(v) =
-                                crate::artifact::independent_finalize_import_type_artifact(
-                                    xx,
-                                    loc,
-                                    arg_type_art.clone(),
-                                ).v {
-                                *func_for_finalizer.arg_type.borrow_mut() = Some(v);
-                            }
-                            if let Some(v) =
-                                crate::artifact::independent_finalize_import_type_artifact(
-                                    xx,
-                                    loc,
-                                    ret_type_art.clone(),
-                                ).v {
-                                *func_for_finalizer.ret_type.borrow_mut() = Some(v);
-                            }
-                        });
-                    Ok((out, deps, finalizer))
-                },
-            );
-        let errors = res.errors;
-        let Some(any) = res.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors,
-            v: Some(any),
-        };
-    }
-
     fn self_export(
         xx: &ExprContext,
         loc: QExprId,
@@ -283,6 +203,84 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
             v: Some(art),
         };
     }
+
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        let Some(id) = id else {
+            return EResult::err(loc, "TypeSourceFunctionConst requires an artifact id to deserialize".to_string());
+        };
+        let id_owned = id.clone();
+        let res =
+            impl_import_independent_artifact::<ArtifactDataDefSetFunction>(
+                xx,
+                loc,
+                id,
+                data,
+                move |body: ArtifactDataDefSetFunction| {
+                    let func_data = dumpster::unsync::Gc::new(super::SourceFunctionData {
+                        arg_type: std::cell::RefCell::new(None),
+                        artifact_id: std::cell::RefCell::new(Some(id_owned.clone())),
+                        captured_externals: std::cell::RefCell::new(Vec::new()),
+                        compiled_source: std::cell::RefCell::new(Some(body.compiled_source.clone())),
+                        description: std::cell::RefCell::new(None),
+                        impl_expr: std::cell::RefCell::new(None),
+                        name: body.name.clone(),
+                        ret_type: std::cell::RefCell::new(None),
+                        binding_id: std::cell::Cell::new(Some(BindingId::Def(body.def_set_id, body.entry_id))),
+                        set: std::cell::RefCell::new(None),
+                    });
+                    let func_for_finalizer = func_data.clone();
+                    let arg_type_art = body.arg_type;
+                    let ret_type_art = body.ret_type;
+                    let def_set_art = body.def_set.clone();
+                    let out: Rc<dyn ExporterAny> = Rc::new(ExporterDataAny(func_data.clone()));
+                    let deps = vec![body.def_set, arg_type_art.clone(), ret_type_art.clone()];
+                    let finalizer: crate::artifact::ArtifactFinalizer =
+                        Box::new(move |xx: &ExprContext, loc: QExprId| {
+                            if let Some(ds_any) =
+                                crate::artifact::independent_finalize_import_artifact(xx, loc, def_set_art).v {
+                                let rc_any: Rc<dyn Any> = ds_any;
+                                if let Ok(wrapped) =
+                                    rc_any.downcast::<ExporterDataAny<dumpster::unsync::Gc<DefinitionSet>>>() {
+                                    *func_for_finalizer.set.borrow_mut() = Some(wrapped.0.clone());
+                                }
+                            }
+                            if let Some(v) =
+                                crate::artifact::independent_finalize_import_type_artifact(
+                                    xx,
+                                    loc,
+                                    arg_type_art.clone(),
+                                ).v {
+                                *func_for_finalizer.arg_type.borrow_mut() = Some(v);
+                            }
+                            if let Some(v) =
+                                crate::artifact::independent_finalize_import_type_artifact(
+                                    xx,
+                                    loc,
+                                    ret_type_art.clone(),
+                                ).v {
+                                *func_for_finalizer.ret_type.borrow_mut() = Some(v);
+                            }
+                        });
+                    Ok((out, deps, finalizer))
+                },
+            );
+        let errors = res.errors;
+        let Some(any) = res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(any),
+        };
+    }
 }
 
 impl Type for TypeSourceFunctionConst {
@@ -313,7 +311,10 @@ impl Type for TypeSourceFunctionConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;
@@ -350,7 +351,9 @@ impl Push for Rc<TypeSourceFunctionConst> {
         Rc::new(super::dynamic::TypeSourceFunctionDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         from_dynamic_ref::<Rc<TypeSourceFunctionConst>>(&*value).clone()
     }
 

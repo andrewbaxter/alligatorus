@@ -20,9 +20,7 @@ fn test_00100_call_lit() {
     let mb = ModuleBuilder::default();
     let gx =
         new_gx(
-            [("main", SourceModule::V1(mb.call(mb.log(), mb.str("Hello world (mortar)"))))]
-                .into_iter()
-                .collect(),
+            [("main", SourceModule::V1(mb.call(mb.log(), mb.str("Hello world (mortar)"))))].into_iter().collect(),
         );
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);

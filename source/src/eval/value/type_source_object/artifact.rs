@@ -13,8 +13,6 @@ use crate::{
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct ArtifactDataDefSet {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub objects: Vec<Artifact>,
     pub def_set_id: DefSetId,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<Artifact>,
@@ -22,21 +20,8 @@ pub(crate) struct ArtifactDataDefSet {
     pub functions: Vec<Artifact>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub interfaces: Vec<Artifact>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct ArtifactDataDefSetObject {
-    pub data_field: String,
-    pub def_set: Artifact,
-    pub def_set_id: DefSetId,
-    pub identity: Unique,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub interface_impls: Vec<ArtifactDataDefSetInterfaceImpl>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub methods: Vec<ArtifactDataDefSetMethod>,
-    pub name: Option<String>,
-    pub underlying_type: Artifact,
+    pub objects: Vec<Artifact>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -108,6 +93,21 @@ pub(crate) struct ArtifactDataDefSetMethod {
     pub field_name: String,
     pub name: String,
     pub ret_type: Artifact,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct ArtifactDataDefSetObject {
+    pub data_field: String,
+    pub def_set: Artifact,
+    pub def_set_id: DefSetId,
+    pub identity: Unique,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub interface_impls: Vec<ArtifactDataDefSetInterfaceImpl>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub methods: Vec<ArtifactDataDefSetMethod>,
+    pub name: Option<String>,
+    pub underlying_type: Artifact,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]

@@ -59,15 +59,6 @@ impl ExporterAny for TypeBoolConst {
 }
 
 impl ExporterRootDelegate for TypeBoolConst {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        _loc: QExprId,
-        _id: Option<&crate::artifact::ArtifactIdSource>,
-        _data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        return EResult::ok(Rc::new(ValueTypeBoolConst) as Rc<dyn crate::artifact::ExporterAny>);
-    }
-
     fn self_export(
         _xx: &ExprContext,
         _loc: QExprId,
@@ -75,6 +66,15 @@ impl ExporterRootDelegate for TypeBoolConst {
         make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
     ) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(make_body(serde_json::Value::Null)));
+    }
+
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<&crate::artifact::ArtifactIdSource>,
+        _data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        return EResult::ok(Rc::new(ValueTypeBoolConst) as Rc<dyn crate::artifact::ExporterAny>);
     }
 }
 
@@ -89,7 +89,10 @@ impl Type for TypeBoolConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

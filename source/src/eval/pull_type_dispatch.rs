@@ -5,8 +5,8 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                type_source_object::SourceObjectData,
                 type_source_interface::BuiltinInterfaceKind,
+                type_source_object::SourceObjectData,
             },
         },
         langhelp::{
@@ -19,9 +19,7 @@ use {
             Type,
             Unique,
         },
-        r#gen::{
-            TypeRefPush,
-        },
+        r#gen::TypeRefPush,
     },
     dumpster::unsync::Gc,
     std::{
@@ -29,7 +27,6 @@ use {
         rc::Rc,
     },
 };
-
 
 pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceObjectData>,
@@ -135,8 +132,11 @@ pub(crate) fn pull_cast_from_v8(
     let scope_ptr = match xx.vx.dynamic_scope.get() {
         Some(p) => p,
         None => {
-            return EvalRes::err(loc, "dynamic dispatch attempted with no active dynamic scope — cast_from must be called from \
-                 within const_eval".to_string());
+            return EvalRes::err(
+                loc,
+                "dynamic dispatch attempted with no active dynamic scope — cast_from must be called from \
+                 within const_eval".to_string(),
+            );
         },
     };
     let scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_, v8::Context>> = unsafe {
@@ -229,4 +229,3 @@ fn type_method_field_name(data: &Gc<SourceObjectData>, method_name: &str) -> Opt
     }
     None
 }
-

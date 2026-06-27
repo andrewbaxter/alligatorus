@@ -143,9 +143,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             impl_expr: RefCell::new(None),
                             arg_type: RefCell::new(None),
                             ret_type: RefCell::new(None),
-                            binding_id: Cell::new(
-                                Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)
-                            ),
+                            binding_id: Cell::new(Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)),
                             artifact_id: RefCell::new(None),
                             compiled_source: RefCell::new(None),
                             captured_externals: RefCell::new(Vec::new()),
@@ -530,9 +528,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             arg_type: RefCell::new(None),
                             impl_expr: RefCell::new(None),
                             ret_type: RefCell::new(None),
-                            binding_id: Cell::new(
-                                Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)
-                            ),
+                            binding_id: Cell::new(Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)),
                             inner_binding_id: Cell::new(None),
                             field_name,
                             compiled_source: RefCell::new(None),
@@ -1178,7 +1174,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>,) -> Self {
                     unimplemented!(#from_v8_msg)
                 }
-                fn into_dynamic <'s >(self, scope: & mut v8:: PinnedRef <'s, v8:: HandleScope <'_ >>,) -> v8:: Local <'s,
+                fn into_dynamic <'s >(
+                    self,
+                    scope: & mut v8:: PinnedRef <'s,
+                    v8:: HandleScope <'_ >>,
+                ) -> v8:: Local <'s,
                 v8:: Value > {
                     let _jw_obj = v8::Object::new(scope);
                     let _jw_self_rc = std::rc::Rc::new(self);

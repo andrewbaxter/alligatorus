@@ -6,10 +6,10 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            impl_import_independent_artifact,
-            impl_export_independent_artifact,
-            independent_finalize_import_artifact,
             export_artifact,
+            impl_export_independent_artifact,
+            impl_import_independent_artifact,
+            independent_finalize_import_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -109,6 +109,44 @@ impl ExporterAny for TypeSourceUnionNewConst {
 }
 
 impl ExporterRootDelegate for TypeSourceUnionNewConst {
+    fn self_export(
+        xx: &ExprContext,
+        loc: QExprId,
+        self_: Rc<dyn crate::artifact::ExporterAny>,
+        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
+    ) -> EResult<Artifact> {
+        let self_ = self_.downcast::<TypeSourceUnionNewConst>().expect("expected TypeSourceUnionNewConst");
+        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(None));
+        let errors_for_closure = errors.clone();
+        let variant_index = self_.variant_index;
+        let variants = self_.data.variants.borrow();
+        let Some(variant) = variants.get(variant_index) else {
+            return EResult::err(loc, format!("union variant index {} out of range", variant_index));
+        };
+        let art = impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &variant.new_artifact_id, || {
+            let tu_const = TypeSourceUnionConst { data: self_.data.clone() };
+            let mut tu_art = export_artifact(xx, loc, &tu_const as &dyn Value);
+            if let Some(errs) = tu_art.errors.take() {
+                errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
+            }
+            let tu_art = tu_art.v.unwrap_or(Artifact::Body(ArtifactBody {
+                data: serde_json::Value::Null,
+                exporter: crate::artifact::ArtifactBodyExporter::Root,
+            }));
+            let body = ArtifactDataSourceUnionNew {
+                union: tu_art,
+                variant_index,
+            };
+            make_body(serde_json::to_value(&body).unwrap())
+        });
+        let errors = errors.borrow_mut().take();
+        return EResult {
+            errors,
+            v: Some(art),
+        };
+    }
+
     fn self_from_artifact_data(
         xx: &ExprContext,
         loc: QExprId,
@@ -116,10 +154,7 @@ impl ExporterRootDelegate for TypeSourceUnionNewConst {
         data: serde_json::Value,
     ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
         let Some(id) = id else {
-            return EResult::err(
-                loc,
-                "TypeSourceUnionNewConst requires an artifact id to deserialize".to_string(),
-            );
+            return EResult::err(loc, "TypeSourceUnionNewConst requires an artifact id to deserialize".to_string());
         };
         let id_owned = id.clone();
         let holder: Rc<std::cell::RefCell<Option<(Rc<SourceUnionData>, usize)>>> =
@@ -140,8 +175,7 @@ impl ExporterRootDelegate for TypeSourceUnionNewConst {
                         Box::new(move |xx: &ExprContext, loc: QExprId| {
                             if let Some(parent_any) = independent_finalize_import_artifact(xx, loc, tu_art).v {
                                 let rc_any: Rc<dyn Any> = parent_any;
-                                if let Ok(wrapped) =
-                                    rc_any.downcast::<ExporterDataAny<Rc<SourceUnionData>>>() {
+                                if let Ok(wrapped) = rc_any.downcast::<ExporterDataAny<Rc<SourceUnionData>>>() {
                                     let tu_data = wrapped.0.clone();
                                     if let Some(variant) = tu_data.variants.borrow().get(variant_index) {
                                         *variant.new_artifact_id.borrow_mut() = Some(id_owned.clone());
@@ -163,48 +197,6 @@ impl ExporterRootDelegate for TypeSourceUnionNewConst {
         return EResult {
             errors,
             v: Some(any),
-        };
-    }
-
-    fn self_export(
-        xx: &ExprContext,
-        loc: QExprId,
-        self_: Rc<dyn crate::artifact::ExporterAny>,
-        make_body: Box<dyn FnOnce(serde_json::Value) -> ArtifactBody>,
-    ) -> EResult<Artifact> {
-        let self_ =
-            self_
-                .downcast::<TypeSourceUnionNewConst>()
-                .expect("expected TypeSourceUnionNewConst");
-        let errors: std::rc::Rc<std::cell::RefCell<Option<Vec<crate::langhelp::ExprErr>>>> =
-            std::rc::Rc::new(std::cell::RefCell::new(None));
-        let errors_for_closure = errors.clone();
-        let variant_index = self_.variant_index;
-        let variants = self_.data.variants.borrow();
-        let Some(variant) = variants.get(variant_index) else {
-            return EResult::err(loc, format!("union variant index {} out of range", variant_index));
-        };
-        let art =
-            impl_export_independent_artifact(xx.vx.ix.gx.artifacts.as_ref(), &variant.new_artifact_id, || {
-                let tu_const = TypeSourceUnionConst { data: self_.data.clone() };
-                let mut tu_art = export_artifact(xx, loc, &tu_const as &dyn Value);
-                if let Some(errs) = tu_art.errors.take() {
-                    errors_for_closure.borrow_mut().get_or_insert_default().extend(errs);
-                }
-                let tu_art = tu_art.v.unwrap_or(Artifact::Body(ArtifactBody {
-                    data: serde_json::Value::Null,
-                    exporter: crate::artifact::ArtifactBodyExporter::Root,
-                }));
-                let body = ArtifactDataSourceUnionNew {
-                    union: tu_art,
-                    variant_index,
-                };
-                make_body(serde_json::to_value(&body).unwrap())
-            });
-        let errors = errors.borrow_mut().take();
-        return EResult {
-            errors,
-            v: Some(art),
         };
     }
 }
@@ -232,7 +224,10 @@ impl Type for TypeSourceUnionNewConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;
@@ -265,9 +260,7 @@ impl Value for TypeSourceUnionNewConst {
 
 impl crate
 ::artifact
-::ExporterAny for crate
-::artifact
-::ExporterDataAny<Rc<std::cell::RefCell<Option<(Rc<SourceUnionData>, usize)>>>> {
+::ExporterAny for crate::artifact::ExporterDataAny<Rc<std::cell::RefCell<Option<(Rc<SourceUnionData>, usize)>>>> {
     fn as_type(&self) -> EResult<Rc<dyn Type>> {
         let borrowed = self.0.borrow();
         let (data, variant_index) = borrowed.as_ref().expect("constructor holder not populated").clone();

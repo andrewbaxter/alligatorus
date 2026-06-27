@@ -11,18 +11,18 @@ use {
                 dynamic_stack_to_value,
             },
             value::{
-                type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::TypeRoot,
             },
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             EResult,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -121,7 +121,10 @@ impl Type for TypeAnyTargetDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

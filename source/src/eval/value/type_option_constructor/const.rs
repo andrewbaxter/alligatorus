@@ -3,11 +3,12 @@ use {
         artifact::ExporterAny,
         eval::value::{
             type_any::r#const::ValueAnyConst,
-            type_root::r#const::TypeRoot,
             type_binding::dynamic::BindingDynamicBinding,
+            type_root::r#const::TypeRoot,
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -15,7 +16,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -102,7 +102,10 @@ impl Type for TypeOptionConstructorConst {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

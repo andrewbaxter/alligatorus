@@ -6,15 +6,16 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterRoot,
-            import_artifact,
-            impl_import_independent_artifact,
-            impl_export_independent_artifact,
-            independent_finalize_import_artifact,
             export_artifact,
+            impl_export_independent_artifact,
+            impl_import_independent_artifact,
+            import_artifact,
+            independent_finalize_import_artifact,
         },
         eval::{
             DynamicSourceBuilder,
             aspect::AspectPull,
+            binding_id_dynamic_key,
             import_install::install_def_set_to_dynamic,
             pull_type_dispatch::{
                 pull_aspect_v8,
@@ -23,18 +24,17 @@ use {
                 pull_desc,
             },
             render_code,
-            binding_id_dynamic_key,
             value::{
+                type_pull::aspect::TypePullAspect,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
+                type_source_interface::SourceInterfaceRef,
                 type_source_object::{
                     SourceObjectData,
                     r#const::TypeSourceObjectConst,
                 },
-                type_source_interface::SourceInterfaceRef,
-                type_pull::aspect::TypePullAspect,
             },
         },
         langhelp::{
@@ -118,11 +118,7 @@ pub(crate) fn pull_mini_eval(
     for impl_data in data.interface_impls.borrow().iter() {
         let methods = impl_data.interface.methods.borrow();
         for m in &impl_data.method_impls {
-            let id =
-                m
-                    .binding_id
-                    .get()
-                    .ok_or_else(|| "Interface method impl binding_id not allocated".to_string())?;
+            let id = m.binding_id.get().ok_or_else(|| "Interface method impl binding_id not allocated".to_string())?;
             let field_name = methods[m.interface_method_index].field_name.clone();
             field_decls.push((ConstKey::String(field_name).to_str(), binding_id_dynamic_key(id)));
         }
@@ -176,58 +172,6 @@ impl ExporterAny for TypePull {
 }
 
 impl ExporterRootDelegate for TypePull {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
-        let Some(id) = id else {
-            return EResult::err(loc, "TypePull requires an artifact id to deserialize".to_string());
-        };
-        let id_owned = id.clone();
-        impl_import_independent_artifact::<ArtifactDataPull>(xx, loc, id, data, move |body: ArtifactDataPull| {
-            let dt_any =
-                import_artifact(xx, loc, body.object.clone())
-                    .v
-                    .ok_or_else(|| "TypePull deserialize: failed to deserialize object".to_string())?;
-            let dt_rc_any: Rc<dyn Any> = dt_any;
-            let dt_wrapped =
-                dt_rc_any
-                    .downcast::<crate::artifact::ExporterDataAny<Gc<SourceObjectData>>>()
-                    .map_err(
-                        |_| "TypePull deserialize: object artifact did not yield SourceObjectData".to_string(),
-                    )?;
-            let data = dt_wrapped.0.clone();
-            let pull = Rc::new(TypePull {
-                data: data,
-                bundle: RefCell::new(None),
-                artifact_id: RefCell::new(Some(id_owned.clone())),
-            });
-            let pull_for_finalizer = pull.clone();
-            let inner_art = body.inner;
-            let deps: Vec<Artifact> = vec![inner_art.clone()];
-            let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
-                let inner_any =
-                    independent_finalize_import_artifact(xx, loc, inner_art)
-                        .v
-                        .expect("TypePull finalizer: failed to deserialize inner artifact");
-                let inner_value =
-                    inner_any.as_value().v.expect("TypePull finalizer: inner artifact did not yield a Value");
-                let bundle =
-                    pull_mini_eval(
-                        xx,
-                        loc,
-                        &pull_for_finalizer.data,
-                        inner_value,
-                    ).expect("TypePull finalizer: pull_mini_eval failed");
-                *pull_for_finalizer.bundle.borrow_mut() = Some(bundle);
-            });
-            let out: Rc<dyn ExporterAny> = pull;
-            Ok((out, deps, finalizer))
-        })
-    }
-
     fn self_export(
         xx: &ExprContext,
         loc: QExprId,
@@ -275,10 +219,7 @@ impl ExporterRootDelegate for TypePull {
             let lift = match aspect_lift_get_maybe(xx, underlying_type.as_ref()) {
                 Some(v) => v,
                 None => {
-                    push_err_one(
-                        loc,
-                        format!("Underlying type ({}) missing AspectLift", underlying_type.desc()),
-                    );
+                    push_err_one(loc, format!("Underlying type ({}) missing AspectLift", underlying_type.desc()));
                     return make_body(serde_json::to_value(&ArtifactDataPull {
                         object: dt_art,
                         inner: null_art_for_closure.clone(),
@@ -354,6 +295,58 @@ impl ExporterRootDelegate for TypePull {
             v: Some(art),
         }
     }
+
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn crate::artifact::ExporterAny>> {
+        let Some(id) = id else {
+            return EResult::err(loc, "TypePull requires an artifact id to deserialize".to_string());
+        };
+        let id_owned = id.clone();
+        impl_import_independent_artifact::<ArtifactDataPull>(xx, loc, id, data, move |body: ArtifactDataPull| {
+            let dt_any =
+                import_artifact(xx, loc, body.object.clone())
+                    .v
+                    .ok_or_else(|| "TypePull deserialize: failed to deserialize object".to_string())?;
+            let dt_rc_any: Rc<dyn Any> = dt_any;
+            let dt_wrapped =
+                dt_rc_any
+                    .downcast::<crate::artifact::ExporterDataAny<Gc<SourceObjectData>>>()
+                    .map_err(
+                        |_| "TypePull deserialize: object artifact did not yield SourceObjectData".to_string(),
+                    )?;
+            let data = dt_wrapped.0.clone();
+            let pull = Rc::new(TypePull {
+                data: data,
+                bundle: RefCell::new(None),
+                artifact_id: RefCell::new(Some(id_owned.clone())),
+            });
+            let pull_for_finalizer = pull.clone();
+            let inner_art = body.inner;
+            let deps: Vec<Artifact> = vec![inner_art.clone()];
+            let finalizer: crate::artifact::ArtifactFinalizer = Box::new(move |xx: &ExprContext, loc: QExprId| {
+                let inner_any =
+                    independent_finalize_import_artifact(xx, loc, inner_art)
+                        .v
+                        .expect("TypePull finalizer: failed to deserialize inner artifact");
+                let inner_value =
+                    inner_any.as_value().v.expect("TypePull finalizer: inner artifact did not yield a Value");
+                let bundle =
+                    pull_mini_eval(
+                        xx,
+                        loc,
+                        &pull_for_finalizer.data,
+                        inner_value,
+                    ).expect("TypePull finalizer: pull_mini_eval failed");
+                *pull_for_finalizer.bundle.borrow_mut() = Some(bundle);
+            });
+            let out: Rc<dyn ExporterAny> = pull;
+            Ok((out, deps, finalizer))
+        })
+    }
 }
 
 impl Type for TypePull {
@@ -398,7 +391,10 @@ impl Type for TypePull {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

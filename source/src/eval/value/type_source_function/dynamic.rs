@@ -16,8 +16,8 @@ use {
             from_dynamic_ref,
             value::{
                 type_any::r#const::ValueAnyConst,
-                type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::TypeRoot,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
@@ -26,6 +26,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -33,7 +34,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -45,8 +45,8 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectStackValueDynamic,
-            FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
             Binding,
+            FUNCTION_CONST_TO_TYPE_FN_SCOPE_ID,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -101,7 +101,8 @@ impl AspectLift for TypeSourceFunctionDynamic {
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {
-        let func_ref: Rc<TypeSourceFunctionConst> = from_dynamic_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
+        let func_ref: Rc<TypeSourceFunctionConst> =
+            from_dynamic_ref::<Rc<TypeSourceFunctionConst>>(&value).clone();
         let set = func_ref.data.set.borrow().as_ref().unwrap().clone();
         xx.vx.definition_sets.borrow_mut().entry(set.def_set_id).or_insert_with(|| set.clone());
         let func_type: Rc<dyn Type> = Rc::new(TypeSourceFunctionConst { data: func_ref.data.clone() });
@@ -160,7 +161,10 @@ impl Type for TypeSourceFunctionDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         return None;

@@ -6,6 +6,7 @@ use {
             CodeDynamicType,
         },
         langhelp::{
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -14,7 +15,6 @@ use {
             ExprContext,
             ExprErr,
             QExprId,
-            BindingId,
             Type,
         },
         r#gen::Binding,
@@ -29,12 +29,6 @@ use {
         RecordField,
     },
 };
-
-pub(crate) enum RecordScopeField {
-    Dynamic(Rc<dyn Type>),
-    Error(Vec<ExprErr>),
-    Scope(Box<dyn Binding>),
-}
 
 pub(crate) struct BindingRecordBound {
     pub fields: BTreeMap<ConstKey, RecordScopeField>,
@@ -113,4 +107,10 @@ impl Binding for BindingRecordDynamic {
             }),
         }
     }
+}
+
+pub(crate) enum RecordScopeField {
+    Dynamic(Rc<dyn Type>),
+    Error(Vec<ExprErr>),
+    Scope(Box<dyn Binding>),
 }

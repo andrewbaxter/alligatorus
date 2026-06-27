@@ -7,9 +7,9 @@ use {
             CodeDynamicType,
         },
         eval::value::{
+            type_binding::dynamic::BindingDynamicBinding,
             type_function::dynamic::TypeFunctionDynamic,
             type_root::r#const::TypeRoot,
-            type_binding::dynamic::BindingDynamicBinding,
             type_source_interface::SourceInterfaceRef,
             value_dynamic::{
                 ValueDynamic,
@@ -18,6 +18,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -26,7 +27,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -184,7 +184,10 @@ impl Type for TypePullAspect {
         if *key == aspect_function_aspect_id() {
             if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
                 return Some(
-                    Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                    Box::new(
+                        Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                            Box<dyn crate::r#gen::AspectPostDeserialize>,
+                    ),
                 );
             }
             return None;

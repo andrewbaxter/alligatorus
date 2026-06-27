@@ -8,6 +8,7 @@ use {
         eval::{
             DynamicSourceBuilder,
             Scope,
+            binding_id_dynamic_key,
             body_builtin_scope,
             code_uses_binding,
             const_eval,
@@ -16,7 +17,6 @@ use {
             from_dynamic_ref,
             push::Push,
             render_code,
-            binding_id_dynamic_key,
             to_dynamic_ext,
             typecheck_convert,
         },
@@ -25,6 +25,7 @@ use {
             must_downcast_ref,
         },
         langhelp::{
+            BindingId,
             ConstKey,
             Counter,
             EvalContext,
@@ -33,7 +34,6 @@ use {
             ExprSubErr,
             External,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -52,6 +52,7 @@ use {
 
 pub(crate) struct SourceDataMethodData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
+    pub binding_id: Cell<Option<BindingId>>,
     pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub field_name: String,
@@ -59,7 +60,6 @@ pub(crate) struct SourceDataMethodData {
     pub inner_binding_id: Cell<Option<BindingId>>,
     pub name: String,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
-    pub binding_id: Cell<Option<BindingId>>,
 }
 
 impl SourceDataMethodData {
@@ -90,7 +90,6 @@ impl SourceDataMethodData {
             ],
         }])?;
         let method_id = self.binding_id.get().unwrap();
-        
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
@@ -167,13 +166,13 @@ impl SourceDataMethodData {
 
 pub(crate) struct SourceObjectData {
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
-    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub data_field: String,
     pub description: RefCell<Option<String>>,
     pub identity: Unique,
     pub interface_impls: RefCell<Vec<SourceObjectInterfaceImplData>>,
     pub methods: RefCell<Vec<Rc<SourceDataMethodData>>>,
     pub name: Option<String>,
+    pub new_artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub set: RefCell<Option<Gc<DefinitionSet>>>,
     pub underlying_type: DeserialLazy<Rc<dyn Type>>,
 }
@@ -216,12 +215,12 @@ pub(crate) struct SourceObjectInterfaceImplData {
 }
 
 pub(crate) struct SourceObjectInterfaceMethodImplData {
+    pub binding_id: Cell<Option<BindingId>>,
     pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub inner_binding_id: Cell<Option<BindingId>>,
     pub interface_method_index: usize,
-    pub binding_id: Cell<Option<BindingId>>,
 }
 
 impl SourceObjectInterfaceMethodImplData {
@@ -249,7 +248,6 @@ impl SourceObjectInterfaceMethodImplData {
         };
         let method_id = self.binding_id.get().unwrap();
         let builtin_kind = interface.builtin_kind;
-        
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
@@ -282,11 +280,9 @@ impl SourceObjectInterfaceMethodImplData {
         };
         match builtin_kind {
             Some(super::type_source_interface::BuiltinInterfaceKind::Type) => {
-                let arg_type = iface_method_arg_record_type
-                    .clone()
-                    .expect("Type iface method missing arg_record_type");
-                let arg_ib =
-                    crate::r#gen::aspect_initial_bind_get(xx, root_loc, arg_type.as_ref()).into_res()?;
+                let arg_type =
+                    iface_method_arg_record_type.clone().expect("Type iface method missing arg_record_type");
+                let arg_ib = crate::r#gen::aspect_initial_bind_get(xx, root_loc, arg_type.as_ref()).into_res()?;
                 body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_binding_id));
             },
             Some(super::type_source_interface::BuiltinInterfaceKind::Binding) |
@@ -329,8 +325,7 @@ impl SourceObjectInterfaceMethodImplData {
                     _ => vec![],
                 };
                 let mut fields = std::collections::BTreeMap::new();
-                let cve_type: Rc<dyn Type> =
-                    Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic);
+                let cve_type: Rc<dyn Type> = Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic);
                 for name in &arg_field_names {
                     fields.insert(
                         crate::langhelp::ConstKey::String(name.to_string()),
@@ -352,7 +347,10 @@ impl SourceObjectInterfaceMethodImplData {
                 let arg_type = iface_method_arg_record_type.clone().or(iface_method_arg_type.clone());
                 if let Some(arg_type) = arg_type {
                     if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
-                        body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_binding_id));
+                        body_scope.insert(
+                            ConstKey::String("arg".to_string()),
+                            arg_ib.initial_bind(arg_binding_id),
+                        );
                     }
                 }
             },
@@ -425,7 +423,9 @@ impl Push for Rc<SourceObjectRef> {
         Rc::new(dynamic::TypeSourceObjectRefDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         from_dynamic_ref::<Rc<SourceObjectRef>>(&*value).clone()
     }
 

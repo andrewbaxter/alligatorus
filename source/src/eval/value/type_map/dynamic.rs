@@ -5,8 +5,8 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            import_type_artifact,
             export_artifact,
+            import_type_artifact,
         },
         code_dynamic::{
             CodeDynamic,
@@ -29,22 +29,22 @@ use {
             to_dynamic_ext,
             typecheck_convert,
             value::{
-                type_record::{
-                    Record,
-                    RecordField,
-                },
                 type_any::r#const::{
                     TypeAnyConst,
                     ValueAnyConst,
                 },
+                type_binding::dynamic::BindingDynamicBinding,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_map::artifact::ArtifactMapType,
                 type_null::dynamic::TypeNullDynamic,
+                type_record::{
+                    Record,
+                    RecordField,
+                },
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
                 },
-                type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,
@@ -57,6 +57,7 @@ use {
         },
         langhelp::{
             Aspect,
+            BindingId,
             Code,
             CodeValue,
             Code_,
@@ -65,7 +66,6 @@ use {
             EvalRes,
             ExprContext,
             QExprId,
-            BindingId,
             Type,
             Unique,
             Value,
@@ -322,43 +322,6 @@ impl ExporterAny for TypeMapDynamic {
 }
 
 impl ExporterRootDelegate for TypeMapDynamic {
-    fn self_from_artifact_data(
-        xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn ExporterAny>> {
-        let body: ArtifactMapType = match serde_json::from_value(data) {
-            Ok(v) => v,
-            Err(e) => return EResult::err(loc, e.to_string()),
-        };
-        let key_res = import_type_artifact(xx, loc, body.key_type);
-        let mut errors = key_res.errors;
-        let Some(key_type) = key_res.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        let value_res = import_type_artifact(xx, loc, body.value_type);
-        if let Some(errors1) = value_res.errors {
-            errors.get_or_insert_default().extend(errors1);
-        }
-        let Some(value_type) = value_res.v else {
-            return EResult {
-                errors,
-                v: None,
-            };
-        };
-        return EResult {
-            errors,
-            v: Some(Rc::new(TypeMapDynamic {
-                key_type,
-                value_type,
-            }) as Rc<dyn ExporterAny>),
-        };
-    }
-
     fn self_export(
         xx: &ExprContext,
         loc: QExprId,
@@ -398,6 +361,43 @@ impl ExporterRootDelegate for TypeMapDynamic {
             v: Some(Artifact::Body(make_body(serde_json::to_value(&body).unwrap()))),
         };
     }
+
+    fn self_from_artifact_data(
+        xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        let body: ArtifactMapType = match serde_json::from_value(data) {
+            Ok(v) => v,
+            Err(e) => return EResult::err(loc, e.to_string()),
+        };
+        let key_res = import_type_artifact(xx, loc, body.key_type);
+        let mut errors = key_res.errors;
+        let Some(key_type) = key_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        let value_res = import_type_artifact(xx, loc, body.value_type);
+        if let Some(errors1) = value_res.errors {
+            errors.get_or_insert_default().extend(errors1);
+        }
+        let Some(value_type) = value_res.v else {
+            return EResult {
+                errors,
+                v: None,
+            };
+        };
+        return EResult {
+            errors,
+            v: Some(Rc::new(TypeMapDynamic {
+                key_type,
+                value_type,
+            }) as Rc<dyn ExporterAny>),
+        };
+    }
 }
 
 impl Push for TypeMapDynamic {
@@ -405,7 +405,9 @@ impl Push for TypeMapDynamic {
         Rc::new(TypeAnyConst)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         let rc: Rc<TypeMapDynamic> = from_dynamic_ref::<Rc<TypeMapDynamic>>(&*value).clone();
         (*rc).clone()
     }
@@ -453,7 +455,10 @@ impl Type for TypeMapDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None
@@ -651,7 +656,10 @@ impl Type for TypeMapGetFnDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None
@@ -740,7 +748,10 @@ impl Type for TypeMapNewDynamic {
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
+                Box::new(
+                    Box::new(crate::eval::aspect::PostDeserializeIdentity) as
+                        Box<dyn crate::r#gen::AspectPostDeserialize>,
+                ),
             );
         }
         None

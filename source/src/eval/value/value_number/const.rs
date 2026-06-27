@@ -32,18 +32,6 @@ impl ExporterAny for ValueNumberConst {
 }
 
 impl ExporterRootDelegate for ValueNumberConst {
-    fn self_from_artifact_data(
-        _xx: &ExprContext,
-        loc: QExprId,
-        _id: Option<&ArtifactIdSource>,
-        data: serde_json::Value,
-    ) -> EResult<Rc<dyn ExporterAny>> {
-        return EResult::from(
-            loc,
-            serde_json::from_value::<f64>(data).map(|n| Rc::new(ValueNumberConst(n)) as Rc<dyn ExporterAny>),
-        );
-    }
-
     fn self_export(
         _xx: &ExprContext,
         loc: QExprId,
@@ -58,6 +46,18 @@ impl ExporterRootDelegate for ValueNumberConst {
             ),
         };
         return EResult::ok(Artifact::Body(make_body(serde_json::to_value(v.0).unwrap())));
+    }
+
+    fn self_from_artifact_data(
+        _xx: &ExprContext,
+        loc: QExprId,
+        _id: Option<&ArtifactIdSource>,
+        data: serde_json::Value,
+    ) -> EResult<Rc<dyn ExporterAny>> {
+        return EResult::from(
+            loc,
+            serde_json::from_value::<f64>(data).map(|n| Rc::new(ValueNumberConst(n)) as Rc<dyn ExporterAny>),
+        );
     }
 }
 

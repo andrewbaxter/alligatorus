@@ -64,7 +64,9 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         assert!(scope_ids.insert(scope_id));
         let name_ident = format_ident!("{}", name);
         local_consts.push(quote!{
-            #[allow(dead_code)] pub(
+            #[
+                allow(dead_code)
+            ] pub(
                 crate
             ) const #name_ident: crate:: langhelp:: BindingId = crate:: langhelp:: BindingId:: Builtin(#scope_id);
         });

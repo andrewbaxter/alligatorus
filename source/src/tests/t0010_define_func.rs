@@ -46,9 +46,7 @@ fn test_00600define_func() {
                                                         vec![
                                                             mb.types_null(),
                                                             mb.types_null(),
-                                                            mb.stage(
-                                                                mb.call(mb.log(), mb.str("hello")),
-                                                            ),
+                                                            mb.stage(mb.call(mb.log(), mb.str("hello"))),
                                                         ],
                                                     ),
                                                 ),

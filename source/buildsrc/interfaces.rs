@@ -66,25 +66,24 @@ pub fn build(
                         let dt = &t.dynamic_type;
                         quote!{
                             _m.insert(
-                                crate::langhelp::ConstKey::String(#name.to_string()),
-                                crate::eval::value::type_record::RecordField::Dynamic(#dt),
+                                crate:: langhelp:: ConstKey:: String(#name.to_string()),
+                                crate:: eval:: value:: type_record:: RecordField:: Dynamic(#dt),
                             );
                         }
                     }).collect();
                     quote!{
-                        Some(
-                            std::rc::Rc::new(crate::eval::value::type_record::Record {
-                                base: Some(Box::new(crate::eval::value::type_record::RecordBaseDynamic)),
-                                fields: {
-                                    let mut _m = std::collections::BTreeMap::new();
-                                    #(#inserts)*
-                                    _m
-                                },
-                            }) as std::rc::Rc<dyn crate::langhelp::Type>
-                        )
+                        Some(std:: rc:: Rc:: new(crate:: eval:: value:: type_record:: Record {
+                            base: Some(Box::new(crate::eval::value::type_record::RecordBaseDynamic)),
+                            fields: {
+                                let mut _m = std::collections::BTreeMap::new();
+                                #(#inserts) * _m
+                            },
+                        }) as std:: rc:: Rc < dyn crate:: langhelp:: Type >)
                     }
                 },
-                MethodArgs::Rust(_) => quote!{ None },
+                MethodArgs::Rust(_) => quote!{
+                    None
+                },
             };
             let ret = &m.ret_type.dynamic_type;
             quote!{

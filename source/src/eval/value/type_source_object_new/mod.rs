@@ -24,7 +24,9 @@ impl Push for Rc<TypeSourceObjectNewConst> {
         Rc::new(dynamic::TypeSourceObjectNewDynamic)
     }
 
-    fn from_dynamic<'s>(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, value: v8::Local<'s, v8::Value>) -> Self {
         from_dynamic_ref::<Rc<TypeSourceObjectNewConst>>(&*value).clone()
     }
 
