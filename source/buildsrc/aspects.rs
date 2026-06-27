@@ -611,15 +611,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
                             unique_dynamic.into(),
                         );
                 }
-                builtin_scope_entries.push((#key.to_string(), dynamic_key, unique_type.clone()));
-                scope.values.borrow_mut(
-                ).insert(
-                    ConstKey:: String(#key.to_string()),
-                    Box::new(crate::eval::value::type_unique::r#const::BindingUniqueDualMode {
-                        dynamic_key,
-                        unique,
-                    }) as Box<dyn crate::r#gen::Binding>,
-                );
+                let _ = unique_type;
+                builtin_scope_entries.push(crate::langhelp::BuiltinEntry {
+                    name: #key.to_string(),
+                    kind: crate::langhelp::BuiltinEntryKind::Unique(dynamic_key, unique),
+                });
             }
         });
     }
@@ -630,8 +626,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             register_dynamic: bool,
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
-            scope: & crate:: langhelp:: Scope,
-            builtin_scope_entries: & mut Vec <(String, BindingId, Rc < dyn crate:: langhelp:: Type >,) >,
+            builtin_scope_entries: & mut Vec < crate::langhelp::BuiltinEntry >,
         ) {
             let unique_type: Rc<dyn crate::langhelp::Type> = Rc::new(crate::eval::value::type_unique::r#const::TypeUnique);
             #(#reg_entries) *
@@ -656,7 +651,7 @@ pub fn interface_specs() -> Vec<InterfaceSpec> {
             methods: vec![Method {
                 name: "call",
                 ret_type: cve(),
-                args: MethodArgs::Source(any()),
+                args: MethodArgs::Source(vec![("inner", cve()), ("argument", cve())]),
             }],
         },
         InterfaceSpec {
@@ -673,12 +668,12 @@ pub fn interface_specs() -> Vec<InterfaceSpec> {
                 Method {
                     name: "field",
                     ret_type: cve(),
-                    args: MethodArgs::Source(any()),
+                    args: MethodArgs::Source(vec![("inner", cve()), ("key", cve())]),
                 },
                 Method {
                     name: "field_type_opt",
                     ret_type: any(),
-                    args: MethodArgs::Source(any()),
+                    args: MethodArgs::Source(vec![("key", cve())]),
                 },
             ],
         },

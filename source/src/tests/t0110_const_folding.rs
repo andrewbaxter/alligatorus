@@ -31,10 +31,10 @@ fn test_0000_const_fold_bind() {
                                     vec![
                                         (
                                             mb.operator_lt(mb.scope_use("x"), mb.num(10.)),
-                                            mb.call(mb.scope_use("log"), mb.str("less")),
+                                            mb.call(mb.log(), mb.str("less")),
                                         ),
                                     ],
-                                    Some(mb.call(mb.scope_use("log"), mb.str("not less"))),
+                                    Some(mb.call(mb.log(), mb.str("not less"))),
                                 ),
                             ],
                         ),
@@ -76,15 +76,15 @@ fn test_0010_no_const_fold_with_as() {
                     SourceModule::V1(
                         mb.seq(
                             vec![
-                                mb.bind("x", mb.as_(mb.num(7.), mb.scope_use("number"))),
+                                mb.bind("x", mb.as_(mb.num(7.), mb.types_number())),
                                 mb.if_(
                                     vec![
                                         (
                                             mb.operator_lt(mb.scope_use("x"), mb.num(10.)),
-                                            mb.call(mb.scope_use("log"), mb.str("less")),
+                                            mb.call(mb.log(), mb.str("less")),
                                         ),
                                     ],
-                                    Some(mb.call(mb.scope_use("log"), mb.str("not less"))),
+                                    Some(mb.call(mb.log(), mb.str("not less"))),
                                 ),
                             ],
                         ),

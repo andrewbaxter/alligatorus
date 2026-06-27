@@ -31,7 +31,7 @@ fn test_00800define_data() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "ndr",
                                                     mb.call(
@@ -41,7 +41,7 @@ fn test_00800define_data() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
-                                                    mb.scope_use("string"),
+                                                    mb.types_string(),
                                                 ),
                                                 mb.bind(
                                                     "mnfr",
@@ -54,8 +54,8 @@ fn test_00800define_data() {
                                                     mb.field(mb.scope_use("mnfr"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
-                                                            mb.scope_use("null"),
-                                                            mb.scope_use("string"),
+                                                            mb.types_null(),
+                                                            mb.types_string(),
                                                             mb.stage(
                                                                 mb.call(
                                                                     mb.field(
@@ -75,7 +75,7 @@ fn test_00800define_data() {
                                 ),
                                 mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null()),
                                 ),
                             ],

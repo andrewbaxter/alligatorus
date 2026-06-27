@@ -279,6 +279,175 @@ impl ModuleBuilder {
             r#type: SourceExpr_::Tuple(values),
         }
     }
+
+    #[allow(dead_code)]
+    pub fn builtin(&self, path: &[&str]) -> SourceExpr {
+        let mut expr = self.scope_use("builtins");
+        for segment in path {
+            expr = self.field(expr, self.str(segment));
+        }
+        return expr;
+    }
+
+    #[allow(dead_code)]
+    pub fn log(&self) -> SourceExpr {
+        return self.builtin(&["log"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn define(&self) -> SourceExpr {
+        return self.builtin(&["define"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_list(&self) -> SourceExpr {
+        return self.builtin(&["types", "list"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_map(&self) -> SourceExpr {
+        return self.builtin(&["types", "map"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_option(&self) -> SourceExpr {
+        return self.builtin(&["types", "option"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_string(&self) -> SourceExpr {
+        return self.builtin(&["types", "string"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_any(&self) -> SourceExpr {
+        return self.builtin(&["types", "any"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_number(&self) -> SourceExpr {
+        return self.builtin(&["types", "number"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_null(&self) -> SourceExpr {
+        return self.builtin(&["types", "null"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_bool(&self) -> SourceExpr {
+        return self.builtin(&["types", "bool"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_constkey(&self) -> SourceExpr {
+        return self.builtin(&["types", "constkey"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_expr(&self) -> SourceExpr {
+        return self.builtin(&["types", "expr"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_type(&self) -> SourceExpr {
+        return self.builtin(&["types", "type"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_aspect(&self) -> SourceExpr {
+        return self.builtin(&["types", "aspect"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_codedyn(&self) -> SourceExpr {
+        return self.builtin(&["types", "codedyn"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn types_cve(&self) -> SourceExpr {
+        return self.builtin(&["types", "cve"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_const_eval(&self) -> SourceExpr {
+        return self.builtin(&["eval", "const_eval"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_codevalue(&self) -> SourceExpr {
+        return self.builtin(&["eval", "codevalue"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_cast_value(&self) -> SourceExpr {
+        return self.builtin(&["eval", "cast_value"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_aspect_lookup(&self) -> SourceExpr {
+        return self.builtin(&["eval", "aspect_lookup"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_aspect_string_dynamic(&self) -> SourceExpr {
+        return self.builtin(&["eval", "aspect_string_dynamic"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_aspect_function_id(&self) -> SourceExpr {
+        return self.builtin(&["eval", "aspect_function_id"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_aspect_field_id(&self) -> SourceExpr {
+        return self.builtin(&["eval", "aspect_field_id"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_gen_binding_name(&self) -> SourceExpr {
+        return self.builtin(&["eval", "gen_binding_name"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_new_expr_context(&self) -> SourceExpr {
+        return self.builtin(&["eval", "new_expr_context"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_str_to_json(&self) -> SourceExpr {
+        return self.builtin(&["eval", "str_to_json"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_constkey_to_str(&self) -> SourceExpr {
+        return self.builtin(&["eval", "constkey_to_str"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_code_dyn(&self) -> SourceExpr {
+        return self.builtin(&["eval", "code_dyn"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_binding(&self) -> SourceExpr {
+        return self.builtin(&["eval", "binding"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_target(&self) -> SourceExpr {
+        return self.builtin(&["eval", "target"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_aspect_function(&self) -> SourceExpr {
+        return self.builtin(&["eval", "aspect_function"]);
+    }
+
+    #[allow(dead_code)]
+    pub fn eval_aspect_field(&self) -> SourceExpr {
+        return self.builtin(&["eval", "aspect_field"]);
+    }
 }
 
 pub(super) fn new_gx(modules: BTreeMap<&str, SourceModule>) -> Arc<GlobalContext> {

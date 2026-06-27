@@ -20,7 +20,7 @@ fn test_00100_call_lit() {
     let mb = ModuleBuilder::default();
     let gx =
         new_gx(
-            [("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.str("Hello world (mortar)"))))]
+            [("main", SourceModule::V1(mb.call(mb.log(), mb.str("Hello world (mortar)"))))]
                 .into_iter()
                 .collect(),
         );
@@ -44,7 +44,7 @@ e0;"#]);
 fn test_00101_type_error() {
     setup_v8();
     let mb = ModuleBuilder::default();
-    let gx = new_gx([("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.null())))].into_iter().collect());
+    let gx = new_gx([("main", SourceModule::V1(mb.call(mb.log(), mb.null())))].into_iter().collect());
     compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).unwrap_err();
 }
 
@@ -61,7 +61,7 @@ fn test_00200_bind_use() {
                         mb.seq(
                             vec![
                                 mb.bind("hello", mb.str("Hello world (mortar)")),
-                                mb.call(mb.scope_use("log"), mb.scope_use("hello")),
+                                mb.call(mb.log(), mb.scope_use("hello")),
                             ],
                         ),
                     ),
@@ -96,7 +96,7 @@ fn test_00300_stage_lower() {
     let mb = ModuleBuilder::default();
     let gx =
         new_gx(
-            [("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))))]
+            [("main", SourceModule::V1(mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)")))))]
                 .into_iter()
                 .collect(),
         );
@@ -134,7 +134,7 @@ fn test_00400_lower_nostage() {
     let mb = ModuleBuilder::default();
     let gx =
         new_gx(
-            [("main", SourceModule::V1(mb.call(mb.scope_use("log"), mb.lower(mb.str("Hello world (mortar)")))))]
+            [("main", SourceModule::V1(mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)")))))]
                 .into_iter()
                 .collect(),
         );
@@ -177,7 +177,7 @@ fn test_00500_method_call() {
                     "main",
                     SourceModule::V1(
                         mb.call(
-                            mb.scope_use("log"),
+                            mb.log(),
                             mb.call(mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")), mb.null()),
                         ),
                     ),

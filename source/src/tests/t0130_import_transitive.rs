@@ -22,12 +22,12 @@ fn test_01300_import_transitive_definitionset() {
             let mb = ModuleBuilder::default();
             mb.seq(vec![
                 //. .
-                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                 mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("func_b"))),
                 mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
                 mb.call(
                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
-                    mb.tuple(vec![mb.scope_use("null"), mb.scope_use("string"), mb.stage(mb.str("hello"))]),
+                    mb.tuple(vec![mb.types_null(), mb.types_string(), mb.stage(mb.str("hello"))]),
                 ),
                 mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
                 mb.scope_use("f"),
@@ -38,15 +38,15 @@ fn test_01300_import_transitive_definitionset() {
             mb.seq(vec![
                 //. .
                 mb.bind("func_b", mb.import(mb.str("module_b"))),
-                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                 mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("func_a"))),
                 mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
                 mb.call(
                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
                     mb.tuple(
                         vec![
-                            mb.scope_use("null"),
-                            mb.scope_use("string"),
+                            mb.types_null(),
+                            mb.types_string(),
                             mb.stage(mb.call(mb.lower(mb.scope_use("func_b")), mb.null())),
                         ],
                     ),
@@ -60,7 +60,7 @@ fn test_01300_import_transitive_definitionset() {
             mb.seq(vec![
                 //. .
                 mb.bind("func_a", mb.import(mb.str("module_a"))),
-                mb.call(mb.scope_use("log"), mb.call(mb.scope_use("func_a"), mb.null())),
+                mb.call(mb.log(), mb.call(mb.scope_use("func_a"), mb.null())),
             ])
         })),
     ].into_iter().collect());

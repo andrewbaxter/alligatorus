@@ -455,6 +455,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let method = Rc::new(SourceInterfaceMethodData {
                             name,
                             arg_type: RefCell::new(None),
+                            arg_record_type: RefCell::new(None),
                             ret_type: RefCell::new(None),
                             field_name,
                         });
@@ -627,6 +628,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             methods.push(Rc::new(SourceInterfaceMethodData {
                                 name: imethod_name.clone(),
                                 arg_type: RefCell::new(Some(any_type.clone())),
+                                arg_record_type: RefCell::new(None),
                                 ret_type: RefCell::new(Some(any_type.clone())),
                                 field_name,
                             }));
@@ -636,6 +638,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         methods.push(Rc::new(SourceInterfaceMethodData {
                             name: "aspect_id".to_string(),
                             arg_type: RefCell::new(Some(empty_tuple_type.clone())),
+                            arg_record_type: RefCell::new(None),
                             ret_type: RefCell::new(
                                 Some(
                                     std::rc::Rc::new(crate::eval::value::type_unique::r#const::TypeUnique) as

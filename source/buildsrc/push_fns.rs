@@ -69,7 +69,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "new_code_value",
+            name: "codevalue",
             builtin_scope_id: 5005,
             args: vec![("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
@@ -233,17 +233,12 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
         pub(
             crate
         ) fn gen_register_builtin_fns <'s >(
-            xx: & crate:: langhelp:: ExprContext,
-            root_loc: crate:: langhelp:: QExprId,
+            _xx: & crate:: langhelp:: ExprContext,
+            _root_loc: crate:: langhelp:: QExprId,
             register_dynamic: bool,
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
-            scope: & crate:: langhelp:: Scope,
-            builtin_scope_entries: & mut Vec <(
-                String,
-                crate::langhelp::BindingId,
-                std:: rc:: Rc < dyn crate:: langhelp:: Type >,
-            ) >,
+            builtin_scope_entries: & mut Vec < crate::langhelp::BuiltinEntry >,
         ) -> Result <(),
         Vec < crate:: langhelp:: ExprErr >> {
             for(key, dynamic_key, type_, dynamic_value) in[#(#dw_fn_call_exprs), *] {
@@ -259,12 +254,10 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                             dynamic_value,
                         );
                 }
-                let ib = crate::r#gen::aspect_initial_bind_get(xx, root_loc, type_.as_ref()).into_res()?;
-                builtin_scope_entries.push((key.to_string(), dynamic_key, type_));
-                scope
-                    .values
-                    .borrow_mut()
-                    .insert(crate::langhelp::ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key),);
+                builtin_scope_entries.push(crate::langhelp::BuiltinEntry {
+                    name: key.to_string(),
+                    kind: crate::langhelp::BuiltinEntryKind::InitialBind(dynamic_key, type_),
+                });
             }
             Ok(())
         }

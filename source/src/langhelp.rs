@@ -130,8 +130,22 @@ pub(crate) struct CodeValue {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) struct CompileId(pub ImportStateId, pub SourceId);
 
+#[derive(Clone)]
+pub(crate) enum BuiltinEntryKind {
+    InitialBind(BindingId, Rc<dyn Type>),
+    Unique(BindingId, Unique),
+    #[allow(dead_code)]
+    Const(CodeValue),
+}
+
+#[derive(Clone)]
+pub(crate) struct BuiltinEntry {
+    pub(crate) name: String,
+    pub(crate) kind: BuiltinEntryKind,
+}
+
 pub(crate) struct CompileImportContext {
-    pub(crate) builtin_scope_entries: RefCell<Vec<(String, BindingId, Rc<dyn Type>)>>,
+    pub(crate) builtin_scope_entries: RefCell<Vec<BuiltinEntry>>,
     pub(crate) builtins_registered: Cell<bool>,
     pub(crate) compile_path: Vec<(CompileId, ExprId)>,
     pub(crate) def_set_counter: Counter,

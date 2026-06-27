@@ -49,18 +49,50 @@ pub fn build(
             let name = m.name.trim_end_matches('_');
             let field_name = format!("_im_{}{}", prefix, idx);
             let arg_dynamic_type = match &m.args {
-                MethodArgs::Source(t) => t.dynamic_type.clone(),
+                MethodArgs::Source(_) => {
+                    quote!{
+                        std::rc::Rc::new(crate::eval::value::type_any::dynamic::TypeAnyDynamic) as
+                            std::rc::Rc<dyn crate::langhelp::Type>
+                    }
+                },
                 MethodArgs::Rust(rs) => {
                     let dynamic_types: Vec<TokenStream> =
                         rs.data.iter().map(|(_, t)| t.dynamic_type.clone()).collect();
                     crate::buildsrc::util::arg_dynamic_type_expr(&dynamic_types)
                 },
             };
+            let arg_record_dynamic_type = match &m.args {
+                MethodArgs::Source(fields) => {
+                    let inserts: Vec<TokenStream> = fields.iter().map(|(name, t)| {
+                        let dt = &t.dynamic_type;
+                        quote!{
+                            _m.insert(
+                                crate::langhelp::ConstKey::String(#name.to_string()),
+                                crate::eval::value::type_record::RecordField::Dynamic(#dt),
+                            );
+                        }
+                    }).collect();
+                    quote!{
+                        Some(
+                            std::rc::Rc::new(crate::eval::value::type_record::Record {
+                                base: Some(Box::new(crate::eval::value::type_record::RecordBaseDynamic)),
+                                fields: {
+                                    let mut _m = std::collections::BTreeMap::new();
+                                    #(#inserts)*
+                                    _m
+                                },
+                            }) as std::rc::Rc<dyn crate::langhelp::Type>
+                        )
+                    }
+                },
+                MethodArgs::Rust(_) => quote!{ None },
+            };
             let ret = &m.ret_type.dynamic_type;
             quote!{
                 std:: rc:: Rc:: new(crate:: eval:: value:: type_source_interface:: SourceInterfaceMethodData {
                     name: #name.to_string(),
                     arg_type: std:: cell:: RefCell:: new(Some(#arg_dynamic_type)),
+                    arg_record_type: std:: cell:: RefCell:: new(#arg_record_dynamic_type),
                     ret_type: std:: cell:: RefCell:: new(Some(#ret)),
                     field_name: #field_name.to_string(),
                 })
@@ -134,11 +166,10 @@ pub fn build(
                     }
                     let iface_const_type: Rc<dyn crate::langhelp::Type> =
                         Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-                    let ib =
-                        crate::r#gen::aspect_initial_bind_get(xx, root_loc, iface_const_type.as_ref()).into_res()?;
-                    builtin_scope_entries.push((#name.to_string(), dynamic_key, iface_const_type.clone()));
-                    scope.values.borrow_mut(
-                    ).insert(ConstKey:: String(#name.to_string()), ib.initial_bind(dynamic_key));
+                    builtin_scope_entries.push(crate::langhelp::BuiltinEntry {
+                        name: #name.to_string(),
+                        kind: crate::langhelp::BuiltinEntryKind::InitialBind(dynamic_key, iface_const_type),
+                    });
                 }
             }
         });
@@ -183,13 +214,12 @@ pub fn build(
         pub(
             crate
         ) fn gen_register_builtin_interfaces <'s >(
-            xx: & crate:: langhelp:: ExprContext,
-            root_loc: crate:: langhelp:: QExprId,
+            _xx: & crate:: langhelp:: ExprContext,
+            _root_loc: crate:: langhelp:: QExprId,
             register_dynamic: bool,
             dynamic_scope: & mut v8:: PinnedRef <'s,
             v8:: HandleScope <'_ >>,
-            scope: & crate:: langhelp:: Scope,
-            builtin_scope_entries: & mut Vec <(String, BindingId, Rc < dyn crate:: langhelp:: Type >,) >,
+            builtin_scope_entries: & mut Vec < crate::langhelp::BuiltinEntry >,
             import_state: crate:: langhelp:: ImportStateId,
         ) -> Result <(),
         Vec < crate:: langhelp:: ExprErr >> {

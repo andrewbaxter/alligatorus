@@ -31,7 +31,7 @@ fn test_00900define_interface() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "iface",
                                                     mb.call(
@@ -48,7 +48,7 @@ fn test_00900define_interface() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("iface_meth"), mb.str("impl")),
-                                                    mb.tuple(vec![mb.scope_use("null"), mb.scope_use("string")]),
+                                                    mb.tuple(vec![mb.types_null(), mb.types_string()]),
                                                 ),
                                                 mb.bind(
                                                     "ndr",
@@ -59,7 +59,7 @@ fn test_00900define_interface() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
-                                                    mb.scope_use("string"),
+                                                    mb.types_string(),
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
@@ -69,11 +69,11 @@ fn test_00900define_interface() {
                                                             mb.call(
                                                                 mb.field(
                                                                     mb.call(
-                                                                        mb.scope_use("map"),
+                                                                        mb.types_map(),
                                                                         mb.tuple(
                                                                             vec![
-                                                                                mb.scope_use("constkey"),
-                                                                                mb.scope_use("expr"),
+                                                                                mb.types_constkey(),
+                                                                                mb.types_expr(),
                                                                             ],
                                                                         ),
                                                                     ),
@@ -106,7 +106,7 @@ fn test_00900define_interface() {
                                 ),
                                 mb.bind("val", mb.call(mb.scope_use("make_upper"), mb.str("hello"))),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null()),
                                 ),
                             ],
@@ -282,7 +282,7 @@ fn test_00910interface_cast() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "iface",
                                                     mb.call(
@@ -299,7 +299,7 @@ fn test_00910interface_cast() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("iface_meth"), mb.str("impl")),
-                                                    mb.tuple(vec![mb.scope_use("null"), mb.scope_use("string")]),
+                                                    mb.tuple(vec![mb.types_null(), mb.types_string()]),
                                                 ),
                                                 mb.bind(
                                                     "ndr",
@@ -310,7 +310,7 @@ fn test_00910interface_cast() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
-                                                    mb.scope_use("string"),
+                                                    mb.types_string(),
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
@@ -320,11 +320,11 @@ fn test_00910interface_cast() {
                                                             mb.call(
                                                                 mb.field(
                                                                     mb.call(
-                                                                        mb.scope_use("map"),
+                                                                        mb.types_map(),
                                                                         mb.tuple(
                                                                             vec![
-                                                                                mb.scope_use("constkey"),
-                                                                                mb.scope_use("expr"),
+                                                                                mb.types_constkey(),
+                                                                                mb.types_expr(),
                                                                             ],
                                                                         ),
                                                                     ),
@@ -362,10 +362,10 @@ fn test_00910interface_cast() {
                                                     mb.tuple(
                                                         vec![
                                                             mb.field(mb.scope_use("iface"), mb.str("type")),
-                                                            mb.scope_use("null"),
+                                                            mb.types_null(),
                                                             mb.stage(
                                                                 mb.call(
-                                                                    mb.scope_use("log"),
+                                                                    mb.log(),
                                                                     mb.call(
                                                                         mb.field(
                                                                             mb.scope_use("arg"),
@@ -604,7 +604,7 @@ fn test_00920interface_wrong_map_value_type() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "iface",
                                                     mb.call(
@@ -621,7 +621,7 @@ fn test_00920interface_wrong_map_value_type() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("iface_meth"), mb.str("impl")),
-                                                    mb.tuple(vec![mb.scope_use("null"), mb.scope_use("string")]),
+                                                    mb.tuple(vec![mb.types_null(), mb.types_string()]),
                                                 ),
                                                 mb.bind(
                                                     "ndr",
@@ -632,7 +632,7 @@ fn test_00920interface_wrong_map_value_type() {
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
-                                                    mb.scope_use("string"),
+                                                    mb.types_string(),
                                                 ),
                                                 mb.call(
                                                     mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
@@ -642,11 +642,11 @@ fn test_00920interface_wrong_map_value_type() {
                                                             mb.call(
                                                                 mb.field(
                                                                     mb.call(
-                                                                        mb.scope_use("map"),
+                                                                        mb.types_map(),
                                                                         mb.tuple(
                                                                             vec![
-                                                                                mb.scope_use("string"),
-                                                                                mb.scope_use("null"),
+                                                                                mb.types_string(),
+                                                                                mb.types_null(),
                                                                             ],
                                                                         ),
                                                                     ),

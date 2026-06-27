@@ -29,7 +29,7 @@ fn test_0000_list() {
                                     "my_list",
                                     mb.call(
                                         mb.field(
-                                            mb.call(mb.scope_use("list"), mb.scope_use("string")),
+                                            mb.call(mb.types_list(), mb.types_string()),
                                             mb.str("new"),
                                         ),
                                         mb.tuple(vec![mb.str("c"), mb.str("d")]),
@@ -38,7 +38,7 @@ fn test_0000_list() {
                                 mb.call(mb.field(mb.scope_use("my_list"), mb.str("push")), mb.str("a")),
                                 mb.call(mb.field(mb.scope_use("my_list"), mb.str("push")), mb.str("b")),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(mb.field(mb.scope_use("my_list"), mb.str("join")), mb.str("_")),
                                 ),
                             ],

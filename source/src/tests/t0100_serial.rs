@@ -22,7 +22,7 @@ fn test_00100_import_literal() {
         SourceModule::V1(mb.str("Hello world (mortar)"))
     }), ("main", {
         let mb = ModuleBuilder::default();
-        SourceModule::V1(mb.call(mb.scope_use("log"), mb.import(mb.str("other"))))
+        SourceModule::V1(mb.call(mb.log(), mb.import(mb.str("other"))))
     })].into_iter().collect());
     let res = compile(gx.clone(), SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
     assert_eq!(res.logs.len(), 1);
@@ -55,7 +55,7 @@ fn test_00200_import_definitionset() {
                             mb.lower(
                                 mb.seq(
                                     vec![
-                                        mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                        mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                         mb.bind(
                                             "ndr",
                                             mb.call(
@@ -65,7 +65,7 @@ fn test_00200_import_definitionset() {
                                         ),
                                         mb.call(
                                             mb.field(mb.scope_use("ndr"), mb.str("set_inner")),
-                                            mb.scope_use("string"),
+                                            mb.types_string(),
                                         ),
                                         mb.bind(
                                             "mnfr",
@@ -78,8 +78,8 @@ fn test_00200_import_definitionset() {
                                             mb.field(mb.scope_use("mnfr"), mb.str("impl")),
                                             mb.tuple(
                                                 vec![
-                                                    mb.scope_use("null"),
-                                                    mb.scope_use("string"),
+                                                    mb.types_null(),
+                                                    mb.types_string(),
                                                     mb.stage(
                                                         mb.call(
                                                             mb.field(mb.scope_use("inner"), mb.str("toUpperCase")),
@@ -106,7 +106,7 @@ fn test_00200_import_definitionset() {
                     vec![
                         mb.bind("val", mb.import(mb.str("other"))),
                         mb.call(
-                            mb.scope_use("log"),
+                            mb.log(),
                             mb.call(mb.field(mb.scope_use("val"), mb.str("to_string")), mb.null()),
                         ),
                     ],

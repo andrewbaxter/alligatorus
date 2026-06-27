@@ -30,8 +30,8 @@ fn test_0000_map_string_keys() {
                                     mb.call(
                                         mb.field(
                                             mb.call(
-                                                mb.scope_use("map"),
-                                                mb.tuple(vec![mb.scope_use("string"), mb.scope_use("number")]),
+                                                mb.types_map(),
+                                                mb.tuple(vec![mb.types_string(), mb.types_number()]),
                                             ),
                                             mb.str("new"),
                                         ),
@@ -46,11 +46,11 @@ fn test_0000_map_string_keys() {
                                     mb.seq(
                                         vec![
                                             mb.call(
-                                                mb.scope_use("log"),
+                                                mb.log(),
                                                 mb.field(mb.scope_use("entry"), mb.str("key")),
                                             ),
                                             mb.call(
-                                                mb.scope_use("log"),
+                                                mb.log(),
                                                 mb.call(
                                                     mb.field(
                                                         mb.field(mb.scope_use("entry"), mb.str("value")),
@@ -95,8 +95,8 @@ fn test_0010_map_string_string() {
                                     mb.call(
                                         mb.field(
                                             mb.call(
-                                                mb.scope_use("map"),
-                                                mb.tuple(vec![mb.scope_use("string"), mb.scope_use("string")]),
+                                                mb.types_map(),
+                                                mb.tuple(vec![mb.types_string(), mb.types_string()]),
                                             ),
                                             mb.str("new"),
                                         ),
@@ -111,11 +111,11 @@ fn test_0010_map_string_string() {
                                     mb.seq(
                                         vec![
                                             mb.call(
-                                                mb.scope_use("log"),
+                                                mb.log(),
                                                 mb.field(mb.scope_use("entry"), mb.str("key")),
                                             ),
                                             mb.call(
-                                                mb.scope_use("log"),
+                                                mb.log(),
                                                 mb.field(mb.scope_use("entry"), mb.str("value")),
                                             ),
                                         ],

@@ -46,7 +46,7 @@ pub struct Method {
 
 pub enum MethodArgs {
     Rust(MethodSig),
-    Source(TypeRef),
+    Source(Vec<(&'static str, TypeRef)>),
 }
 
 pub struct MethodSig {

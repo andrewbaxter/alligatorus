@@ -31,7 +31,7 @@ fn test_00600define_func() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "nfr",
                                                     mb.call(
@@ -44,10 +44,10 @@ fn test_00600define_func() {
                                                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
-                                                            mb.scope_use("null"),
-                                                            mb.scope_use("null"),
+                                                            mb.types_null(),
+                                                            mb.types_null(),
                                                             mb.stage(
-                                                                mb.call(mb.scope_use("log"), mb.str("hello")),
+                                                                mb.call(mb.log(), mb.str("hello")),
                                                             ),
                                                         ],
                                                     ),
@@ -174,7 +174,7 @@ fn test_00700define_func_arg_ret() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "nfr",
                                                     mb.call(
@@ -187,8 +187,8 @@ fn test_00700define_func_arg_ret() {
                                                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
-                                                            mb.scope_use("string"),
-                                                            mb.scope_use("string"),
+                                                            mb.types_string(),
+                                                            mb.types_string(),
                                                             mb.stage(
                                                                 mb.call(
                                                                     mb.field(
@@ -207,7 +207,7 @@ fn test_00700define_func_arg_ret() {
                                     ),
                                 ),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(mb.scope_use("my_func"), mb.tuple(vec![mb.str("hello world")])),
                                 ),
                             ],
@@ -332,7 +332,7 @@ fn test_00710define_func_unified_impl() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "nfr",
                                                     mb.call(
@@ -345,8 +345,8 @@ fn test_00710define_func_unified_impl() {
                                                     mb.field(mb.scope_use("nfr"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
-                                                            mb.scope_use("string"),
-                                                            mb.scope_use("string"),
+                                                            mb.types_string(),
+                                                            mb.types_string(),
                                                             mb.stage(
                                                                 mb.call(
                                                                     mb.field(
@@ -365,7 +365,7 @@ fn test_00710define_func_unified_impl() {
                                     ),
                                 ),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(mb.scope_use("my_func"), mb.tuple(vec![mb.str("hello world")])),
                                 ),
                             ],

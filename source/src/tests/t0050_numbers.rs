@@ -26,7 +26,7 @@ fn test_0000_number_lit() {
                     SourceModule::V1(
                         mb.seq(
                             vec![
-                                mb.bind("x", mb.as_(mb.num(4.), mb.scope_use("number"))),
+                                mb.bind("x", mb.as_(mb.num(4.), mb.types_number())),
                                 mb.if_(
                                     vec![
                                         (
@@ -40,7 +40,7 @@ fn test_0000_number_lit() {
                                     None,
                                 ),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(mb.field(mb.scope_use("x"), mb.str("to_string")), mb.tuple(vec![])),
                                 ),
                             ],
@@ -135,7 +135,7 @@ fn test_00100_number_dynamic() {
                                     mb.lower(
                                         mb.seq(
                                             vec![
-                                                mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                                                 mb.bind(
                                                     "builder",
                                                     mb.call(
@@ -147,8 +147,8 @@ fn test_00100_number_dynamic() {
                                                     mb.field(mb.scope_use("builder"), mb.str("impl")),
                                                     mb.tuple(
                                                         vec![
-                                                            mb.scope_use("number"),
-                                                            mb.scope_use("number"),
+                                                            mb.types_number(),
+                                                            mb.types_number(),
                                                             mb.stage(
                                                                 mb.seq(
                                                                     vec![
@@ -183,7 +183,7 @@ fn test_00100_number_dynamic() {
                                     ),
                                 ),
                                 mb.call(
-                                    mb.scope_use("log"),
+                                    mb.log(),
                                     mb.call(
                                         mb.field(
                                             mb.call(mb.scope_use("maybe_add"), mb.tuple(vec![mb.num(4.)])),

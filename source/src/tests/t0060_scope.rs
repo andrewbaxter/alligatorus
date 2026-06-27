@@ -30,10 +30,10 @@ fn test_0000_scope_ok() {
                                 mb.seq(
                                     vec![
                                         mb.bind("x", mb.str("apple")),
-                                        mb.call(mb.scope_use("log"), mb.scope_use("x")),
+                                        mb.call(mb.log(), mb.scope_use("x")),
                                     ],
                                 ),
-                                mb.call(mb.scope_use("log"), mb.scope_use("x")),
+                                mb.call(mb.log(), mb.scope_use("x")),
                             ],
                         ),
                     ),
@@ -93,7 +93,7 @@ fn test_0010_scope_bad() {
                         mb.seq(
                             vec![
                                 mb.seq(vec![mb.bind("x", mb.str("apple"))]),
-                                mb.call(mb.scope_use("log"), mb.scope_use("x")),
+                                mb.call(mb.log(), mb.scope_use("x")),
                             ],
                         ),
                     ),

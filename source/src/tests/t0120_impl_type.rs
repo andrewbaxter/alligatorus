@@ -20,9 +20,9 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
         mb.lower(
             mb.seq(
                 vec![
-                    mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
+                    mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
                     mb.bind("u", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str("upper"))),
-                    mb.call(mb.field(mb.scope_use("u"), mb.str("set_inner")), mb.scope_use("null")),
+                    mb.call(mb.field(mb.scope_use("u"), mb.str("set_inner")), mb.types_null()),
                     mb.call(mb.field(mb.scope_use("u"), mb.str("value")), iface_methods(mb, vec![
                         ("type", mb.scope_use("inner")),
                     ])),
@@ -38,7 +38,7 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                                                     mb.field(mb.scope_use("arg"), mb.str("source_type")),
                                                     mb.str("aspect"),
                                                 ),
-                                                mb.scope_use("aspect_string_dynamic"),
+                                                mb.eval_aspect_string_dynamic(),
                                             ),
                                             mb.str("is_some"),
                                         ),
@@ -50,7 +50,7 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                         (
                             "cast_from",
                             mb.call(
-                                mb.scope_use("const_eval"),
+                                mb.eval_const_eval(),
                                 mb.tuple(
                                     vec![
                                         mb.field(mb.scope_use("arg"), mb.str("xx")),
@@ -71,7 +71,7 @@ fn build_upper_type(mb: &ModuleBuilder) -> SourceExpr {
                         (
                             "aspect",
                             mb.call(
-                                mb.field(mb.call(mb.scope_use("option"), mb.scope_use("aspect")), mb.str("none")),
+                                mb.field(mb.call(mb.types_option(), mb.types_aspect()), mb.str("none")),
                                 mb.null(),
                             ),
                         ),
@@ -88,7 +88,7 @@ fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> Source
     let entries: Vec<(&str, SourceExpr)> = methods.into_iter().map(|(k, v)| (k, mb.stage(v))).collect();
     return mb.call(
         mb.field(
-            mb.call(mb.scope_use("map"), mb.tuple(vec![mb.scope_use("constkey"), mb.scope_use("expr")])),
+            mb.call(mb.types_map(), mb.tuple(vec![mb.types_constkey(), mb.types_expr()])),
             mb.str("new"),
         ),
         mb.record(entries),
@@ -104,8 +104,8 @@ fn test_00100_impl_type() {
             vec![
                 mb.bind("upper", mb.lower(build_upper_type(&mb))),
                 mb.call(
-                    mb.scope_use("log"),
-                    mb.as_(mb.as_(mb.str("hello"), mb.scope_use("string")), mb.scope_use("upper")),
+                    mb.log(),
+                    mb.as_(mb.as_(mb.str("hello"), mb.types_string()), mb.scope_use("upper")),
                 ),
             ],
         )
@@ -140,8 +140,8 @@ fn test_00200_impl_type_import() {
                 vec![
                     mb.bind("upper", mb.import(mb.str("other"))),
                     mb.call(
-                        mb.scope_use("log"),
-                        mb.as_(mb.as_(mb.str("hello"), mb.scope_use("string")), mb.scope_use("upper")),
+                        mb.log(),
+                        mb.as_(mb.as_(mb.str("hello"), mb.types_string()), mb.scope_use("upper")),
                     ),
                 ],
             )
