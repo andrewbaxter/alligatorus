@@ -192,6 +192,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     params: vec![("xx", "&crate::langhelp::ExprContext"), ("key", "&crate::langhelp::ConstKey")],
                     ret: "Option<std::rc::Rc<dyn crate::langhelp::Type>>",
                 },
+                AspectMethod {
+                    name: "field_keys",
+                    doc: doc(
+                        "Enumerate the known field keys on this type. Used to identify sibling fields whose values need to be dropped when one field is extracted. Return empty if the type does not own its fields (e.g. records that borrow).",
+                    ),
+                    params: vec![("xx", "&crate::langhelp::ExprContext")],
+                    ret: "Vec<crate::langhelp::ConstKey>",
+                },
             ],
         },
         AspectSpec {

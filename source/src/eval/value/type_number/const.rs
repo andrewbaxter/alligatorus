@@ -100,6 +100,10 @@ impl AspectField for TypeNumberConst {
     fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         TypeNumberDynamic.field_type_opt(xx, key)
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectNumberConst for TypeNumberConst {

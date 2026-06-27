@@ -136,6 +136,10 @@ impl AspectField for TypePullAspect {
             ret: ret_type,
         }))
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectInitialBind for TypePullAspect {

@@ -544,8 +544,55 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
             let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
+            let extracted_key = match field.value.as_ref().and_then(|v| {
+                extract_const_key(xx, expr.loc, v.as_ref()).ok()
+            }) {
+                Some(k) => Some(k),
+                None => None,
+            };
+            let mut sibling_drops: Vec<Code> = Vec::new();
+            let field_keys = aspect_field.field_keys(xx);
+            for key in field_keys {
+                if Some(&key) == extracted_key.as_ref() {
+                    continue;
+                }
+                let key_value: Rc<dyn Value> = match &key {
+                    ConstKey::String(s) => Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.clone())),
+                    ConstKey::Usize(_) => continue,
+                };
+                let key_cv = CodeValue {
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::None,
+                    },
+                    value: Some(key_value),
+                };
+                let base_clone = base.clone();
+                let field_cv = match aspect_field.field(xx, expr.loc, base_clone, key_cv).into_res() {
+                    Ok(cv) => cv,
+                    Err(_) => continue,
+                };
+                let field_type = match field_cv.value.as_ref().and_then(|v| v.type_(xx, expr.loc).v) {
+                    Some(t) => t,
+                    None => continue,
+                };
+                if let Some(drop_aspect) =
+                    crate::r#gen::aspect_drop_dynamic_get_maybe(xx, field_type.as_ref()) {
+                    if let Ok(dc) = crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), xx, expr.loc, field_cv).into_res() {
+                        sibling_drops.push(dc);
+                    }
+                }
+            }
             let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
-            return Ok(v);
+            if sibling_drops.is_empty() {
+                return Ok(v);
+            }
+            sibling_drops.push(v.code.clone());
+            let combined = erb.must_er(xx.target.seq(expr.loc, sibling_drops))?;
+            return Ok(CodeValue {
+                code: combined,
+                value: v.value,
+            });
         }),
         Expr_::Bind(_) => {
             return EvalRes::err(expr.loc, format!("Bind expression must be directly inside a block"));

@@ -437,6 +437,10 @@ impl AspectField for Record {
         let loc = (SourceId(0), ExprId(0));
         self.fields.get(key).map(|f| record_field_type(xx, loc, f))
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectInitialBind for Record {

@@ -109,6 +109,10 @@ impl AspectField for TypeStringConst {
     fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         TypeStringDynamic.field_type_opt(xx, key)
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectStringConst for TypeStringConst {

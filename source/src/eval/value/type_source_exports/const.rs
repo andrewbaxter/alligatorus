@@ -155,6 +155,10 @@ impl AspectField for TypeSourceExportsLiftedConst {
         }
         None
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl ExporterAny for TypeSourceExportsLiftedConst {

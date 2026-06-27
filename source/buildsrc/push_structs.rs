@@ -1167,6 +1167,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     };
                     #(#field_type_opt_arms) * #(#extra_field_type_opt_arms) * None
                 }
+                fn field_keys(
+                    &self,
+                    _xx: & crate:: langhelp:: ExprContext,
+                ) -> Vec<crate::langhelp::ConstKey> {
+                    Vec::new()
+                }
             }
             impl crate:: eval:: push:: Push for #name {
                 fn dynamic_type() -> std:: rc:: Rc < dyn crate:: langhelp:: Type > {

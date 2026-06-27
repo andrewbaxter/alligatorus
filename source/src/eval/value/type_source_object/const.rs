@@ -230,6 +230,10 @@ impl AspectField for TypeSourceObjectConst {
     fn field_type_opt(&self, xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
         super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }.field_type_opt(xx, key)
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectInitialBind for TypeSourceObjectConst {

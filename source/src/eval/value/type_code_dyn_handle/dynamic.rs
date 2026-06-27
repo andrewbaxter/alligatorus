@@ -129,6 +129,10 @@ impl AspectField for TypeCodeDynHandleDynamic {
             None
         }
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectInitialBind for TypeCodeDynHandleDynamic {

@@ -138,6 +138,10 @@ impl AspectField for TypeAnyDynamic {
     fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
         Some(Rc::new(TypeAnyDynamic))
     }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
+    }
 }
 
 impl AspectFunction for TypeAnyDynamic {
