@@ -8,9 +8,7 @@ use {
         eval::{
             DynamicSourceBuilder,
             Scope,
-            build_aspect_arg_record_type,
             build_builtin_scope,
-            build_cast_arg_record_type,
             code_uses_binding,
             const_eval,
             definition_set::DefinitionSet,
@@ -21,7 +19,6 @@ use {
             binding_id_dynamic_key,
             to_dynamic_ext,
             typecheck_convert,
-            value,
         },
         invariant::{
             DeserialLazy,
@@ -41,10 +38,7 @@ use {
             Unique,
             Value,
         },
-        r#gen::{
-            aspect_initial_bind_get,
-            aspect_initial_bind_get_maybe,
-        },
+        r#gen::aspect_initial_bind_get_maybe,
     },
     dumpster::unsync::Gc,
     std::{
@@ -273,49 +267,34 @@ impl SourceObjectInterfaceMethodImplData {
         if let Some(outer_self_ib) = aspect_initial_bind_get_maybe(xx, outer_type.as_ref()) {
             body_scope.insert(ConstKey::String("outer".to_string()), outer_self_ib.initial_bind(outer_id));
         }
+        let (iface_method_arg_record_type, iface_method_arg_type) = {
+            let iface_methods = interface.methods.borrow();
+            let m = &iface_methods[self.interface_method_index];
+            (m.arg_record_type.borrow().clone(), m.arg_type.borrow().clone())
+        };
+        let arg_binding_id = match builtin_kind {
+            Some(super::type_source_interface::BuiltinInterfaceKind::Type) => self_id,
+            _ => arg_id,
+        };
         let method_name = {
             let iface_methods = interface.methods.borrow();
             iface_methods[self.interface_method_index].name.clone()
         };
         match builtin_kind {
             Some(super::type_source_interface::BuiltinInterfaceKind::Type) => {
-                if method_name == "aspect" {
-                    let mut fields = std::collections::BTreeMap::new();
-                    fields.insert(
-                        ConstKey::String("key".to_string()),
-                        value::type_record::RecordField::Dynamic(
-                            Rc::new(value::type_unique::r#const::TypeUnique) as Rc<dyn Type>,
-                        ),
-                    );
-                    let arg_record_type: Rc<dyn Type> = Rc::new(value::type_record::Record {
-                        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
-                        fields,
-                    });
-                    let arg_ib = aspect_initial_bind_get(xx, root_loc, arg_record_type.as_ref()).into_res()?;
-                    body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(self_id));
-                } else {
-                    let arg_record_type = build_cast_arg_record_type();
-                    let arg_ib = aspect_initial_bind_get(xx, root_loc, arg_record_type.as_ref()).into_res()?;
-                    body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(self_id));
-                }
+                let arg_type = iface_method_arg_record_type
+                    .clone()
+                    .expect("Type iface method missing arg_record_type");
+                let arg_ib =
+                    crate::r#gen::aspect_initial_bind_get(xx, root_loc, arg_type.as_ref()).into_res()?;
+                body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_binding_id));
             },
-            Some(super::type_source_interface::BuiltinInterfaceKind::AspectFunction) |
-            Some(super::type_source_interface::BuiltinInterfaceKind::AspectField) |
             Some(super::type_source_interface::BuiltinInterfaceKind::Binding) |
             Some(super::type_source_interface::BuiltinInterfaceKind::Target) => {
                 if let Some(self_ib) = aspect_initial_bind_get_maybe(xx, underlying_type.as_ref()) {
                     body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
                 }
                 let arg_field_names: Vec<&str> = match (builtin_kind, method_name.as_str()) {
-                    (Some(super::type_source_interface::BuiltinInterfaceKind::AspectFunction), "call") => {
-                        vec!["inner", "argument"]
-                    },
-                    (Some(super::type_source_interface::BuiltinInterfaceKind::AspectField), "field") => {
-                        vec!["inner", "key"]
-                    },
-                    (Some(super::type_source_interface::BuiltinInterfaceKind::AspectField), "field_type_opt") => {
-                        vec!["key"]
-                    },
                     (Some(super::type_source_interface::BuiltinInterfaceKind::Binding), "use") => {
                         vec!["loc", "code"]
                     },
@@ -349,22 +328,31 @@ impl SourceObjectInterfaceMethodImplData {
                     },
                     _ => vec![],
                 };
-                let arg_type: Rc<dyn Type> = build_aspect_arg_record_type(&arg_field_names);
+                let mut fields = std::collections::BTreeMap::new();
+                let cve_type: Rc<dyn Type> =
+                    Rc::new(crate::eval::code_value_extern::TypeCodeValueExternDynamic);
+                for name in &arg_field_names {
+                    fields.insert(
+                        crate::langhelp::ConstKey::String(name.to_string()),
+                        crate::eval::value::type_record::RecordField::Dynamic(cve_type.clone()),
+                    );
+                }
+                let arg_type: Rc<dyn Type> = Rc::new(crate::eval::value::type_record::Record {
+                    base: Some(Box::new(crate::eval::value::type_record::RecordBaseDynamic)),
+                    fields,
+                });
                 if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
-                    body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+                    body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_binding_id));
                 }
             },
             _ => {
                 if let Some(self_ib) = aspect_initial_bind_get_maybe(xx, underlying_type.as_ref()) {
                     body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
                 }
-                let iface_method_arg_type = {
-                    let iface_methods = interface.methods.borrow();
-                    iface_methods[self.interface_method_index].arg_type.borrow().clone()
-                };
-                if let Some(arg_type) = iface_method_arg_type {
+                let arg_type = iface_method_arg_record_type.clone().or(iface_method_arg_type.clone());
+                if let Some(arg_type) = arg_type {
                     if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
-                        body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
+                        body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_binding_id));
                     }
                 }
             },

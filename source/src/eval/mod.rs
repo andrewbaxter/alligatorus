@@ -38,10 +38,7 @@ use {
         },
         eval::{
             aspect::AspectPull,
-            code_value_extern::{
-                TypeCodeValueExternDynamic,
-                TypeExprContextPushDynamic,
-            },
+            code_value_extern::TypeCodeValueExternDynamic,
             dynamic_util::wrap_with_carry,
             expr::make_lit_value_once,
             pull_scope_dispatch::{
@@ -131,7 +128,6 @@ use {
             TUPLE_TO_TYPE_FN_SCOPE_ID,
             Target,
             TypeRefPush,
-            TypeTypeRefPushDynamic,
             UNIQUE_EQ_FN_SCOPE_ID,
             VALUE_GET_TYPE_FN_SCOPE_ID,
             aspect_artifact_get,
@@ -154,9 +150,6 @@ use {
             aspect_union_get,
             aspect_type_get,
             aspect_post_deserialize_get,
-            gen_fn_list,
-            gen_fn_map,
-            gen_fn_option,
             gen_register_builtin_aspect_ids,
             gen_register_builtin_fns,
             gen_register_builtin_interfaces,
@@ -217,75 +210,212 @@ use {
     },
 };
 
-pub(crate) fn build_aspect_arg_record_type(field_names: &[&str]) -> Rc<dyn Type> {
-    let mut fields = std::collections::BTreeMap::new();
-    let cve_type: Rc<dyn Type> = Rc::new(TypeCodeValueExternDynamic);
-    for name in field_names {
-        fields.insert(ConstKey::String(name.to_string()), value::type_record::RecordField::Dynamic(cve_type.clone()));
+enum BuiltinLeaf {
+    InitialBind {
+        dynamic_key: BindingId,
+        type_: Rc<dyn Type>,
+    },
+    Unique {
+        dynamic_key: BindingId,
+        unique: Unique,
+    },
+    AnyConst(Rc<dyn Type>),
+}
+
+enum BuiltinNode {
+    Branch(Vec<(&'static str, BuiltinNode)>),
+    Leaf(BuiltinLeaf),
+}
+
+const KEY_BUILTINS: &str = "builtins";
+const KEY_LOG: &str = "log";
+const KEY_DEFINE: &str = "define";
+const KEY_TYPES: &str = "types";
+const KEY_LIST: &str = "list";
+const KEY_MAP: &str = "map";
+const KEY_OPTION: &str = "option";
+const KEY_STRING: &str = "string";
+const KEY_NUMBER: &str = "number";
+const KEY_NULL: &str = "null";
+const KEY_BOOL: &str = "bool";
+const KEY_ANY: &str = "any";
+const KEY_CONSTKEY: &str = "constkey";
+const KEY_EXPR: &str = "expr";
+const KEY_TYPE: &str = "type";
+const KEY_ASPECT: &str = "aspect";
+const KEY_CODEDYN: &str = "codedyn";
+const KEY_CVE: &str = "cve";
+const KEY_EVAL: &str = "eval";
+const KEY_ASPECT_LOOKUP: &str = "aspect_lookup";
+const KEY_CAST_VALUE: &str = "cast_value";
+const KEY_CONST_EVAL: &str = "const_eval";
+const KEY_CODEVALUE: &str = "codevalue";
+const KEY_STR_TO_JSON: &str = "str_to_json";
+const KEY_CONSTKEY_TO_STR: &str = "constkey_to_str";
+const KEY_GEN_BINDING_NAME: &str = "gen_binding_name";
+const KEY_NEW_EXPR_CONTEXT: &str = "new_expr_context";
+const KEY_ASPECT_FUNCTION: &str = "aspect_function";
+const KEY_ASPECT_FIELD: &str = "aspect_field";
+const KEY_ASPECT_STRING_DYNAMIC: &str = "aspect_string_dynamic";
+const KEY_ASPECT_FUNCTION_ID: &str = "aspect_function_id";
+const KEY_ASPECT_FIELD_ID: &str = "aspect_field_id";
+const KEY_BINDING: &str = "binding";
+const KEY_TARGET: &str = "target";
+const KEY_CODE_DYN: &str = "code_dyn";
+
+fn entry_to_leaf(entry: &crate::langhelp::BuiltinEntry) -> BuiltinLeaf {
+    match &entry.kind {
+        crate::langhelp::BuiltinEntryKind::InitialBind(id, type_) => BuiltinLeaf::InitialBind {
+            dynamic_key: *id,
+            type_: type_.clone(),
+        },
+        crate::langhelp::BuiltinEntryKind::Unique(id, unique) => BuiltinLeaf::Unique {
+            dynamic_key: *id,
+            unique: *unique,
+        },
+        crate::langhelp::BuiltinEntryKind::Const(_) => {
+            panic!("BuiltinEntryKind::Const not used by any generated entry")
+        },
     }
-    Rc::new(value::type_record::Record {
-        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
-        fields,
-    })
+}
+
+fn build_builtin_tree(gen_entries: &[crate::langhelp::BuiltinEntry]) -> BuiltinNode {
+    use BuiltinLeaf::{
+        AnyConst,
+        InitialBind,
+    };
+    use BuiltinNode::{
+        Branch,
+        Leaf,
+    };
+    let by_name: HashMap<&str, &crate::langhelp::BuiltinEntry> =
+        gen_entries.iter().map(|e| (e.name.as_str(), e)).collect();
+    let take = |k: &str| {
+        Leaf(entry_to_leaf(by_name.get(k).unwrap_or_else(|| panic!("missing generated builtin entry {:?}", k))))
+    };
+    let constructor = |gen_key: &str, type_: Rc<dyn Type>| {
+        let dynamic_key = match &by_name.get(gen_key).expect("missing constructor entry").kind {
+            crate::langhelp::BuiltinEntryKind::InitialBind(id, _) => *id,
+            _ => panic!("constructor entry {:?} not an InitialBind", gen_key),
+        };
+        Leaf(InitialBind {
+            dynamic_key,
+            type_,
+        })
+    };
+    Branch(vec![
+        (KEY_LOG, take(KEY_LOG)),
+        (KEY_DEFINE, take(KEY_DEFINE)),
+        (KEY_TYPES, Branch(vec![
+            (KEY_LIST, constructor(
+                KEY_LIST,
+                Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst),
+            )),
+            (KEY_MAP, constructor(
+                KEY_MAP,
+                Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst),
+            )),
+            (KEY_OPTION, constructor(
+                KEY_OPTION,
+                Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst),
+            )),
+            (KEY_STRING, Leaf(AnyConst(Rc::new(TypeStringDynamic)))),
+            (KEY_NUMBER, Leaf(AnyConst(Rc::new(TypeNumberDynamic)))),
+            (KEY_NULL, Leaf(AnyConst(Rc::new(TypeNullDynamic)))),
+            (KEY_BOOL, Leaf(AnyConst(Rc::new(value::type_bool::dynamic::TypeBoolDynamic)))),
+            (KEY_ANY, Leaf(AnyConst(Rc::new(value::type_any::dynamic::TypeAnyDynamic)))),
+            (KEY_CONSTKEY, Leaf(AnyConst(Rc::new(value::type_constkey::dynamic::TypeConstkeyDynamic)))),
+            (KEY_EXPR, Leaf(AnyConst(Rc::new(value::type_expr::TypeExpr)))),
+            (KEY_TYPE, Leaf(AnyConst(Rc::new(value::type_any::dynamic::TypeAnyDynamic)))),
+            (KEY_ASPECT, Leaf(AnyConst(Rc::new(value::type_aspect::dynamic::TypeAspectDynamic)))),
+            (KEY_CODEDYN, Leaf(AnyConst(Rc::new(value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic)))),
+            (KEY_CVE, Leaf(AnyConst(Rc::new(TypeCodeValueExternDynamic)))),
+        ])),
+        (KEY_EVAL, Branch(vec![
+            (KEY_ASPECT_LOOKUP, Leaf(InitialBind {
+                dynamic_key: ASPECT_COMPILE_SCOPE_ID,
+                type_: Rc::new(value::type_function_aspect::dynamic::TypeFunctionAspectDynamic),
+            })),
+            (KEY_CAST_VALUE, Leaf(InitialBind {
+                dynamic_key: CAST_VALUE_COMPILE_SCOPE_ID,
+                type_: Rc::new(value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic),
+            })),
+            (KEY_CONST_EVAL, take(KEY_CONST_EVAL)),
+            (KEY_CODEVALUE, take(KEY_CODEVALUE)),
+            (KEY_STR_TO_JSON, take(KEY_STR_TO_JSON)),
+            (KEY_CONSTKEY_TO_STR, take(KEY_CONSTKEY_TO_STR)),
+            (KEY_GEN_BINDING_NAME, take(KEY_GEN_BINDING_NAME)),
+            (KEY_NEW_EXPR_CONTEXT, take(KEY_NEW_EXPR_CONTEXT)),
+            (KEY_ASPECT_FUNCTION, take(KEY_ASPECT_FUNCTION)),
+            (KEY_ASPECT_FIELD, take(KEY_ASPECT_FIELD)),
+            (KEY_ASPECT_STRING_DYNAMIC, take(KEY_ASPECT_STRING_DYNAMIC)),
+            (KEY_ASPECT_FUNCTION_ID, take(KEY_ASPECT_FUNCTION_ID)),
+            (KEY_ASPECT_FIELD_ID, take(KEY_ASPECT_FIELD_ID)),
+            (KEY_BINDING, take(KEY_BINDING)),
+            (KEY_TARGET, take(KEY_TARGET)),
+            (KEY_CODE_DYN, take(KEY_CODE_DYN)),
+        ])),
+    ])
+}
+
+fn walk_build_binding(
+    node: &BuiltinNode,
+    xx: &ExprContext,
+    loc: QExprId,
+) -> Result<Rc<dyn Binding>, Vec<ExprErr>> {
+    use crate::eval::value::type_argument_record::r#const::{
+        ArgumentRecord,
+        ArgumentRecordBinding,
+    };
+    match node {
+        BuiltinNode::Branch(children) => {
+            let mut fields = std::collections::BTreeMap::new();
+            for (key, child) in children {
+                fields.insert(ConstKey::String((*key).to_string()), walk_build_binding(child, xx, loc)?);
+            }
+            Ok(Rc::new(ArgumentRecordBinding { record: Rc::new(ArgumentRecord { fields }) }))
+        },
+        BuiltinNode::Leaf(BuiltinLeaf::InitialBind { dynamic_key, type_ }) => {
+            let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
+            Ok(Rc::from(ib.initial_bind(*dynamic_key)))
+        },
+        BuiltinNode::Leaf(BuiltinLeaf::Unique { dynamic_key, unique }) => {
+            Ok(
+                Rc::new(value::type_unique::r#const::BindingUniqueDualMode {
+                    dynamic_key: *dynamic_key,
+                    unique: *unique,
+                }) as Rc<dyn Binding>,
+            )
+        },
+        BuiltinNode::Leaf(BuiltinLeaf::AnyConst(type_)) => {
+            let cv = CodeValue {
+                code: Code {
+                    loc,
+                    code: Code_::None,
+                },
+                value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_.clone() }),
+            };
+            let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
+            let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;
+            let (_, binding) = bind.bind(xx, loc, cv).into_res()?;
+            Ok(Rc::from(binding))
+        },
+    }
 }
 
 pub(crate) fn build_builtin_scope(
     xx: &ExprContext,
     loc: QExprId,
-    builtin_scope_entries: &[(String, BindingId, Rc<dyn Type>)],
+    builtin_scope_entries: &[crate::langhelp::BuiltinEntry],
 ) -> Result<HashMap<ConstKey, Box<dyn Binding>>, Vec<ExprErr>> {
+    let tree = build_builtin_tree(builtin_scope_entries);
+    let root_binding = walk_build_binding(&tree, xx, loc)?;
     let mut scope_entries = HashMap::<ConstKey, Box<dyn Binding>>::new();
-    for (name, dynamic_key, type_) in builtin_scope_entries {
-        let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
-        scope_entries.insert(ConstKey::String(name.clone()), ib.initial_bind(*dynamic_key));
-    }
-    for (
-        key,
-        type_ref,
-    ) in [
-        ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
-        ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
-        ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
-        ("constkey", Rc::new(value::type_constkey::dynamic::TypeConstkeyDynamic) as Rc<dyn Type>),
-        ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
-        ("type", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
-        ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
-        ("codedyn", Rc::new(value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
-        ("cve", Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
-    ] {
-        let cv = CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }),
-        };
-        let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
-        let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;
-        let (_, entry) = bind.bind(xx, loc, cv).into_res()?;
-        scope_entries.insert(ConstKey::String(key.to_string()), entry);
-    }
+    scope_entries.insert(
+        ConstKey::String(KEY_BUILTINS.to_string()),
+        Box::new(crate::eval::RcBindingWrap(root_binding)) as Box<dyn Binding>,
+    );
     Ok(scope_entries)
-}
-
-pub(crate) fn build_cast_arg_record_type() -> Rc<dyn Type> {
-    let mut fields = std::collections::BTreeMap::new();
-    fields.insert(
-        ConstKey::String("xx".to_string()),
-        value::type_record::RecordField::Dynamic(Rc::new(TypeExprContextPushDynamic) as Rc<dyn Type>),
-    );
-    fields.insert(
-        ConstKey::String("source_type".to_string()),
-        value::type_record::RecordField::Dynamic(Rc::new(TypeTypeRefPushDynamic) as Rc<dyn Type>),
-    );
-    fields.insert(
-        ConstKey::String("cv".to_string()),
-        value::type_record::RecordField::Dynamic(Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
-    );
-    Rc::new(value::type_record::Record {
-        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
-        fields,
-    })
 }
 
 pub(crate) fn code_uses_binding(code: &CodeDynamic, target_id: BindingId) -> bool {
@@ -1235,99 +1365,22 @@ fn eval(
         target: target.clone(),
     });
     let register_dynamic = !cix.builtins_registered.get();
-    let mut builtin_scope_entries: Vec<(String, BindingId, Rc<dyn Type>)> = Vec::new();
-    gen_register_builtin_fns(&xx, root_loc, register_dynamic, dynamic_scope, &scope, &mut builtin_scope_entries)?;
+    let mut builtin_scope_entries: Vec<crate::langhelp::BuiltinEntry> = Vec::new();
+    gen_register_builtin_fns(&xx, root_loc, register_dynamic, dynamic_scope, &mut builtin_scope_entries)?;
     gen_register_builtin_interfaces(
         &xx,
         root_loc,
         register_dynamic,
         dynamic_scope,
-        &scope,
         &mut builtin_scope_entries,
         import_state,
     )?;
-    for (
-        key,
-        type_ref,
-    ) in [
-        ("null", Rc::new(TypeNullDynamic) as Rc<dyn Type>),
-        ("string", Rc::new(TypeStringDynamic) as Rc<dyn Type>),
-        ("number", Rc::new(TypeNumberDynamic) as Rc<dyn Type>),
-        ("constkey", Rc::new(value::type_constkey::dynamic::TypeConstkeyDynamic) as Rc<dyn Type>),
-        ("expr", Rc::new(value::type_expr::TypeExpr) as Rc<dyn Type>),
-        ("type", Rc::new(value::type_any::dynamic::TypeAnyDynamic) as Rc<dyn Type>),
-        ("aspect", Rc::new(value::type_aspect::dynamic::TypeAspectDynamic) as Rc<dyn Type>),
-        ("codedyn", Rc::new(value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic) as Rc<dyn Type>),
-        ("cve", Rc::new(TypeCodeValueExternDynamic) as Rc<dyn Type>),
-    ] {
-        let cv = CodeValue {
-            code: Code {
-                loc: root_loc,
-                code: Code_::None,
-            },
-            value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_ref.clone() }),
-        };
-        let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
-        let bind = aspect_bind_get(&xx, root_loc, any_const_type.as_ref()).into_res()?;
-        let (_, entry) = bind.bind(&xx, root_loc, cv).into_res()?;
-        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), entry);
-    }
-    gen_register_builtin_aspect_ids(register_dynamic, dynamic_scope, &scope, &mut builtin_scope_entries);
-    for (
-        key,
-        constructor_type,
-        (_, dynamic_key, _, dynamic_value),
-    ) in [
-        (
-            "list",
-            Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst) as Rc<dyn Type>,
-            gen_fn_list(dynamic_scope),
-        ),
-        (
-            "map",
-            Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst) as Rc<dyn Type>,
-            gen_fn_map(dynamic_scope),
-        ),
-        (
-            "option",
-            Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst) as Rc<dyn Type>,
-            gen_fn_option(dynamic_scope),
-        ),
-    ] {
-        if register_dynamic {
-            dynamic_scope
-                .get_current_context()
-                .global(dynamic_scope)
-                .set(
-                    dynamic_scope,
-                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(dynamic_key)).unwrap().cast(),
-                    dynamic_value,
-                );
-        }
-        let ib = aspect_initial_bind_get(&xx, root_loc, constructor_type.as_ref()).into_res()?;
-        builtin_scope_entries.push((key.to_string(), dynamic_key, constructor_type));
-        scope.values.borrow_mut().insert(ConstKey::String(key.to_string()), ib.initial_bind(dynamic_key));
-    }
-    {
-        let aspect_type: Rc<dyn Type> = Rc::new(value::type_function_aspect::dynamic::TypeFunctionAspectDynamic);
-        let ib = aspect_initial_bind_get(&xx, root_loc, aspect_type.as_ref()).into_res()?;
-        builtin_scope_entries.push(("aspect_lookup".to_string(), ASPECT_COMPILE_SCOPE_ID, aspect_type));
-        scope
-            .values
-            .borrow_mut()
-            .insert(ConstKey::String("aspect_lookup".to_string()), ib.initial_bind(ASPECT_COMPILE_SCOPE_ID));
-    }
-    {
-        let cast_value_type: Rc<dyn Type> =
-            Rc::new(value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic);
-        let ib = aspect_initial_bind_get(&xx, root_loc, cast_value_type.as_ref()).into_res()?;
-        builtin_scope_entries.push(("cast_value".to_string(), CAST_VALUE_COMPILE_SCOPE_ID, cast_value_type));
-        scope
-            .values
-            .borrow_mut()
-            .insert(ConstKey::String("cast_value".to_string()), ib.initial_bind(CAST_VALUE_COMPILE_SCOPE_ID));
-    }
+    gen_register_builtin_aspect_ids(register_dynamic, dynamic_scope, &mut builtin_scope_entries);
     *cix.builtin_scope_entries.borrow_mut() = builtin_scope_entries.clone();
+    {
+        let scope_entries = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
+        scope.values.borrow_mut().extend(scope_entries);
+    }
     {
         fn stage_callback<
             's,
@@ -1874,42 +1927,26 @@ fn eval(
                                 outer_self_ib.initial_bind(outer_id),
                             );
                         }
+                        let (iface_method_arg_record_type, iface_method_arg_type) = {
+                            let iface_methods = impl_data.interface.methods.borrow();
+                            let m = &iface_methods[method_impl.interface_method_index];
+                            (m.arg_record_type.borrow().clone(), m.arg_type.borrow().clone())
+                        };
+                        let arg_binding_id = match builtin_kind {
+                            Some(value::type_source_interface::BuiltinInterfaceKind::Type) => self_id,
+                            _ => arg_id,
+                        };
                         match builtin_kind {
                             Some(value::type_source_interface::BuiltinInterfaceKind::Type) => {
-                                let method_name = {
-                                    let iface_methods = impl_data.interface.methods.borrow();
-                                    iface_methods[method_impl.interface_method_index].name.clone()
-                                };
-                                if method_name == "aspect" {
-                                    let mut fields = std::collections::BTreeMap::new();
-                                    fields.insert(
-                                        ConstKey::String("key".to_string()),
-                                        value::type_record::RecordField::Dynamic(
-                                            Rc::new(value::type_unique::r#const::TypeUnique) as Rc<dyn Type>,
-                                        ),
-                                    );
-                                    let arg_record_type: Rc<dyn Type> = Rc::new(value::type_record::Record {
-                                        base: Some(Box::new(value::type_record::RecordBaseDynamic)),
-                                        fields,
-                                    });
-                                    let arg_ib =
-                                        aspect_initial_bind_get(&xx, root_loc, arg_record_type.as_ref()).into_res()?;
-                                    body_scope.insert(
-                                        ConstKey::String("arg".to_string()),
-                                        arg_ib.initial_bind(self_id),
-                                    );
-                                } else {
-                                    let arg_record_type = build_cast_arg_record_type();
-                                    let arg_ib =
-                                        aspect_initial_bind_get(&xx, root_loc, arg_record_type.as_ref()).into_res()?;
-                                    body_scope.insert(
-                                        ConstKey::String("arg".to_string()),
-                                        arg_ib.initial_bind(self_id),
-                                    );
-                                }
+                                let arg_type = iface_method_arg_record_type
+                                    .clone()
+                                    .expect("Type iface method missing arg_record_type");
+                                let arg_ib = aspect_initial_bind_get(&xx, root_loc, arg_type.as_ref()).into_res()?;
+                                body_scope.insert(
+                                    ConstKey::String("arg".to_string()),
+                                    arg_ib.initial_bind(arg_binding_id),
+                                );
                             },
-                            Some(value::type_source_interface::BuiltinInterfaceKind::AspectFunction) |
-                            Some(value::type_source_interface::BuiltinInterfaceKind::AspectField) |
                             Some(value::type_source_interface::BuiltinInterfaceKind::Binding) |
                             Some(value::type_source_interface::BuiltinInterfaceKind::Target) => {
                                 if let Some(self_ib) = aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
@@ -1923,37 +1960,11 @@ fn eval(
                                     iface_methods[method_impl.interface_method_index].name.clone()
                                 };
                                 let arg_field_names: Vec<&str> = match (builtin_kind, method_name.as_str()) {
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::AspectFunction),
-                                        "call",
-                                    ) => vec![
-                                        "inner",
-                                        "argument",
-                                    ],
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::AspectField),
-                                        "field",
-                                    ) => vec![
-                                        "inner",
-                                        "key",
-                                    ],
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::AspectField),
-                                        "field_type_opt",
-                                    ) => vec![
-                                        "key",
-                                    ],
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::Binding),
-                                        "use",
-                                    ) => vec![
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Binding), "use") => vec![
                                         "loc",
                                         "code",
                                     ],
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::Target),
-                                        "bind",
-                                    ) => vec![
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "bind") => vec![
                                         "xx",
                                         "loc",
                                         "sub",
@@ -1961,19 +1972,11 @@ fn eval(
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "bind_sub_record",
-                                    ) => vec![
-                                        "loc",
-                                        "carry",
-                                        "fields",
-                                    ],
+                                    ) => vec!["loc", "carry", "fields"],
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "bind_sub_tuple",
-                                    ) => vec![
-                                        "loc",
-                                        "carry",
-                                        "elements",
-                                    ],
+                                    ) => vec!["loc", "carry", "elements"],
                                     (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "seq") => vec![
                                         "loc",
                                         "entries",
@@ -1981,52 +1984,41 @@ fn eval(
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "code_to_bind_sub",
-                                    ) => vec![
-                                        "loc",
-                                        "code",
-                                        "type",
-                                    ],
+                                    ) => vec!["loc", "code", "type"],
                                     (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "if") => vec![
                                         "xx",
                                         "loc",
                                         "conditions",
                                         "else",
                                     ],
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::Target),
-                                        "match",
-                                    ) => vec![
-                                        "xx",
-                                        "loc",
-                                        "base",
-                                        "element_key",
-                                        "cases",
-                                        "fallback",
-                                    ],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "match") => {
+                                        vec!["xx", "loc", "base", "element_key", "cases", "fallback"]
+                                    },
                                     (
                                         Some(value::type_source_interface::BuiltinInterfaceKind::Target),
                                         "maybe_bind_sub",
-                                    ) => vec![
-                                        "xx",
-                                        "loc",
-                                        "cv",
-                                    ],
-                                    (
-                                        Some(value::type_source_interface::BuiltinInterfaceKind::Target),
-                                        "stage",
-                                    ) => vec![
-                                        "xx",
-                                        "loc",
-                                        "tree",
-                                        "lower_values",
-                                    ],
+                                    ) => vec!["xx", "loc", "cv"],
+                                    (Some(value::type_source_interface::BuiltinInterfaceKind::Target), "stage") => {
+                                        vec!["xx", "loc", "tree", "lower_values"]
+                                    },
                                     _ => vec![],
                                 };
-                                let arg_type: Rc<dyn Type> = build_aspect_arg_record_type(&arg_field_names);
+                                let mut fields = std::collections::BTreeMap::new();
+                                let cve_type: Rc<dyn Type> = Rc::new(TypeCodeValueExternDynamic);
+                                for name in &arg_field_names {
+                                    fields.insert(
+                                        ConstKey::String(name.to_string()),
+                                        value::type_record::RecordField::Dynamic(cve_type.clone()),
+                                    );
+                                }
+                                let arg_type: Rc<dyn Type> = Rc::new(value::type_record::Record {
+                                    base: Some(Box::new(value::type_record::RecordBaseDynamic)),
+                                    fields,
+                                });
                                 if let Some(arg_ib) = aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                                     body_scope.insert(
                                         ConstKey::String("arg".to_string()),
-                                        arg_ib.initial_bind(arg_id),
+                                        arg_ib.initial_bind(arg_binding_id),
                                     );
                                 }
                             },
@@ -2037,15 +2029,12 @@ fn eval(
                                         self_ib.initial_bind(self_id),
                                     );
                                 }
-                                let iface_method_arg_type = {
-                                    let iface_methods = impl_data.interface.methods.borrow();
-                                    iface_methods[method_impl.interface_method_index].arg_type.borrow().clone()
-                                };
-                                if let Some(arg_type) = iface_method_arg_type {
+                                let arg_type = iface_method_arg_record_type.clone().or(iface_method_arg_type.clone());
+                                if let Some(arg_type) = arg_type {
                                     if let Some(arg_ib) = aspect_initial_bind_get_maybe(&xx, arg_type.as_ref()) {
                                         body_scope.insert(
                                             ConstKey::String("arg".to_string()),
-                                            arg_ib.initial_bind(arg_id),
+                                            arg_ib.initial_bind(arg_binding_id),
                                         );
                                     }
                                 }

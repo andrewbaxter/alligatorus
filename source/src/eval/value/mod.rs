@@ -23,6 +23,7 @@ pub mod type_number;
 pub mod type_option;
 pub mod type_option_constructor;
 pub mod type_pull;
+pub mod type_argument_record;
 pub mod type_root;
 pub mod type_binding;
 pub mod type_source_object;

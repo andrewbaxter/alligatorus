@@ -69,6 +69,7 @@ unsafe impl<V: dumpster::Visitor> dumpster::TraceWith<V> for SourceInterfaceData
 
 pub(crate) struct SourceInterfaceMethodData {
     pub arg_type: RefCell<Option<Rc<dyn Type>>>,
+    pub arg_record_type: RefCell<Option<Rc<dyn Type>>>,
     pub field_name: String,
     pub name: String,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,

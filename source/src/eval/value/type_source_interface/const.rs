@@ -237,6 +237,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                     let methods: Vec<Rc<super::SourceInterfaceMethodData>> = body.methods.iter().map(|m| {
                         Rc::new(super::SourceInterfaceMethodData {
                             arg_type: std::cell::RefCell::new(None),
+                            arg_record_type: std::cell::RefCell::new(None),
                             field_name: m.field_name.clone(),
                             name: m.name.clone(),
                             ret_type: std::cell::RefCell::new(None),
