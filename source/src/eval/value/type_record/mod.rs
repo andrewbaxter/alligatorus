@@ -8,7 +8,6 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            import_type_artifact,
             impl_export_independent_artifact,
             export_artifact,
         },
@@ -29,10 +28,7 @@ use {
                 type_record::artifact::ArtifactRecordType,
                 type_tuple::Tuple,
                 type_any::dynamic::TypeAnyDynamic,
-                type_root::r#const::{
-                    ExporterRootDelegate,
-                    TypeRoot,
-                },
+                type_root::r#const::ExporterRootDelegate,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicDataAccess,

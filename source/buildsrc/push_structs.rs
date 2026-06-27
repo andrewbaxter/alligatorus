@@ -564,7 +564,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(expr) => {
                                     let entry_id = ds.next_entry_id.next();
                                     method_impls.push(SourceObjectInterfaceMethodImplData {
-                                        artifact_id: RefCell::new(None),
                                         interface_method_index: *imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                                         compiled_source: RefCell::new(None),
@@ -662,7 +661,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                     ),
                                 };
                                 method_impls.push(SourceObjectInterfaceMethodImplData {
-                                    artifact_id: RefCell::new(None),
                                     interface_method_index: imethod_idx,
                                     impl_expr: RefCell::new(Some(Rc::new(unique_literal))),
                                     compiled_source: RefCell::new(None),
@@ -679,7 +677,6 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 Some(expr) => {
                                     let entry_id = ds.next_entry_id.next();
                                     method_impls.push(SourceObjectInterfaceMethodImplData {
-                                        artifact_id: RefCell::new(None),
                                         interface_method_index: imethod_idx,
                                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                                         compiled_source: RefCell::new(None),
@@ -1211,7 +1208,6 @@ fn gen_builtin_impl_body(iface_field: &str) -> TokenStream {
                 Some(expr) => {
                     let entry_id = ds.next_entry_id.next();
                     method_impls.push(SourceObjectInterfaceMethodImplData {
-                        artifact_id: RefCell::new(None),
                         interface_method_index: *imethod_idx,
                         impl_expr: RefCell::new(Some(Rc::new(expr.clone()))),
                         compiled_source: RefCell::new(None),

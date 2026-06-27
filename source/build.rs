@@ -23,21 +23,15 @@ fn main() {
         use std::collections::HashMap;
         use dumpster::unsync::Gc;
         use crate::langhelp::{
-            Code,
-            CodeValue,
             ConstKey,
             DefSetId,
             ExprContext,
-            QExprId,
             Scope,
             BindingId,
             Unique,
-            Value,
         };
-        use crate::eval::TargetDynamic;
         use crate::eval::DynamicEvalContextSlot;
         use crate::eval::DynamicLogStore;
-        use crate::eval::DynamicUniqueCounter;
         use crate::langhelp::LogEntry;
         use crate::eval::RcBindingWrap;
         use crate::eval::const_eval;

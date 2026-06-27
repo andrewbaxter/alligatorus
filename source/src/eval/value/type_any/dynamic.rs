@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ExporterAny,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,

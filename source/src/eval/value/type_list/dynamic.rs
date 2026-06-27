@@ -249,11 +249,7 @@ impl AspectIterable for TypeListDynamic {
     }
 }
 
-impl AspectListDynamic for TypeListDynamic {
-    fn element_type(&self) -> Rc<dyn Type> {
-        self.element_type.clone()
-    }
-}
+impl AspectListDynamic for TypeListDynamic { }
 
 impl AspectStackValueDynamic for TypeListDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
@@ -292,7 +288,7 @@ impl ExporterRootDelegate for TypeListDynamic {
             Err(e) => return EResult::err(loc, e.to_string()),
         };
         let element_res = import_type_artifact(xx, loc, body.element_type);
-        let mut errors = element_res.errors;
+        let errors = element_res.errors;
         let Some(element_type) = element_res.v else {
             return EResult {
                 errors,
@@ -317,7 +313,7 @@ impl ExporterRootDelegate for TypeListDynamic {
         };
         let element_val: &dyn Value = self_.element_type.as_ref();
         let element_art = export_artifact(xx, loc, element_val);
-        let mut errors = element_art.errors;
+        let errors = element_art.errors;
         let Some(element_artifact) = element_art.v else {
             return EResult {
                 errors,

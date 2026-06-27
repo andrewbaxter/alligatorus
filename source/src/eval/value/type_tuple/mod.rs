@@ -8,7 +8,6 @@ use {
             ArtifactBody,
             ArtifactIdSource,
             ExporterAny,
-            import_type_artifact,
             impl_export_independent_artifact,
             export_artifact,
         },
@@ -27,10 +26,7 @@ use {
             value::{
                 type_tuple::artifact::ArtifactTupleType,
                 type_any::dynamic::TypeAnyDynamic,
-                type_root::r#const::{
-                    ExporterRootDelegate,
-                    TypeRoot,
-                },
+                type_root::r#const::ExporterRootDelegate,
                 type_binding::dynamic::BindingDynamicBinding,
                 value_empty::{
                     r#const::ValueEmptyConst,
@@ -116,7 +112,6 @@ impl Tuple {
                         errors.extend(errs);
                     }
                     if let Some(elem_cv) = elem_res.v {
-                        let saved_value = elem_cv.value.clone();
                         let saved_code = elem_cv.code.clone();
                         match xx.target.maybe_bind_sub(xx, loc, elem_cv).into_res() {
                             Ok(Some(sub)) => {
@@ -125,13 +120,7 @@ impl Tuple {
                             },
                             Ok(None) => {
                                 extra_codes.push(saved_code);
-                                bind_results.push(TupleBindSubResult::Const(CodeValue {
-                                    code: Code {
-                                        loc: loc,
-                                        code: Code_::None,
-                                    },
-                                    value: saved_value,
-                                }));
+                                bind_results.push(TupleBindSubResult::Const);
                             },
                             Err(e) => errors.extend(e),
                         }
@@ -165,7 +154,7 @@ impl Tuple {
                 TupleBindSubResult::Target(sub) => {
                     target_elements.push(sub);
                 },
-                TupleBindSubResult::Const(_) => {
+                TupleBindSubResult::Const => {
                     errors.push(ExprErr {
                         loc: loc,
                         errors: vec![
@@ -664,7 +653,7 @@ fn tuple_element_type(xx: &ExprContext, loc: QExprId, e: &TupleElement) -> Rc<dy
 }
 
 enum TupleBindSubResult {
-    Const(CodeValue),
+    Const,
     Target(TargetBindSub),
 }
 

@@ -12,4 +12,3 @@ pub(crate) struct ArtifactOptionVariantConstructor {
     pub element_type: Artifact,
     pub is_some: bool,
 }
-pub(crate) struct TypeOptionArtifact;

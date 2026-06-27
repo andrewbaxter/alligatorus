@@ -116,12 +116,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
             name: "ListDynamic",
             doc: doc("Identity aspect for dynamic list"),
             builtin_unique_id: 1011,
-            methods: vec![AspectMethod {
-                name: "element_type",
-                doc: doc(""),
-                params: vec![],
-                ret: "std::rc::Rc<dyn crate::langhelp::Type>",
-            }],
+            methods: vec![],
         },
         AspectSpec {
             name: "MapDynamic",

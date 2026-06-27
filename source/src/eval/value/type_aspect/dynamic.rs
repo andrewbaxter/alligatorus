@@ -13,7 +13,6 @@ use {
             },
             from_dynamic_ref,
             value::{
-                type_any::r#const::TypeAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
             },

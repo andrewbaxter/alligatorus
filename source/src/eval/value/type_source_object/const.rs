@@ -6,7 +6,6 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            import_artifact,
             impl_import_independent_artifact,
             impl_export_independent_artifact,
             export_artifact,
@@ -19,14 +18,9 @@ use {
         },
         eval::{
             TargetBindSub,
-            definition_set::export_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
-            },
-            expr_artifact::{
-                expr_from_artifact,
-                expr_to_artifact,
             },
             value::{
                 type_pull::r#const::TypePull,
@@ -37,16 +31,13 @@ use {
                     SourceInterfaceData,
                     r#const::TypeSourceInterfaceConst,
                 },
-                type_type_source_object::dynamic::TypeTypeSourceObjectDynamic,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
                 },
-                value_null::r#const::ValueNullConst,
                 value_source_object::r#const::ValueSourceObjectConst,
             },
         },
-        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -75,7 +66,6 @@ use {
             AspectPostDeserialize,
             Binding,
             aspect_artifact_aspect_id,
-            aspect_artifact_get_maybe,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
@@ -85,7 +75,6 @@ use {
             aspect_lift_aspect_id,
             aspect_lift_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
-            aspect_string_const_get_maybe,
             aspect_type_aspect_id,
             aspect_post_deserialize_aspect_id,
             type_type_identity,
@@ -104,15 +93,6 @@ use {
         ArtifactDataDefSetMethod,
     },
 };
-
-fn read_artifact_has_type_iface(
-    _xx: &ExprContext,
-    dt_data: &dumpster::unsync::Gc<super::SourceObjectData>,
-) -> bool {
-    dt_data.interface_impls.borrow().iter().any(|impl_data| {
-        impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::Type)
-    })
-}
 
 #[derive(Clone)]
 pub(crate) struct TypeSourceObjectConst {
@@ -483,7 +463,6 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                                     };
                                     let method_impls = impl_data.method_impls.into_iter().map(|m| {
                                         super::SourceObjectInterfaceMethodImplData {
-                                            artifact_id: RefCell::new(None),
                                             interface_method_index: m.interface_method_index,
                                             impl_expr: RefCell::new(None),
                                             compiled_source: RefCell::new(Some(m.compiled_source)),

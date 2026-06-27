@@ -21,10 +21,7 @@ use {
             dynamic_util::bind_via_target,
             typecheck_convert,
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,

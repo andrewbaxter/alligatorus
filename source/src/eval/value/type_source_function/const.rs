@@ -22,10 +22,7 @@ use {
             to_dynamic_ext,
             value::{
                 type_tuple::binding::BindingValue,
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_function::dynamic::dynamic_call,
                 type_root::r#const::{
                     ExporterRootDelegate,
@@ -39,7 +36,6 @@ use {
             Code,
             CodeValue,
             Code_,
-            DefSetId,
             EResult,
             EvalRes,
             ExprContext,
@@ -82,7 +78,7 @@ impl AspectArtifact for TypeSourceFunctionConst {
 }
 
 impl AspectBind for TypeSourceFunctionConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
+    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);
@@ -204,7 +200,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                     Ok((out, deps, finalizer))
                 },
             );
-        let mut errors = res.errors;
+        let errors = res.errors;
         let Some(any) = res.v else {
             return EResult {
                 errors,

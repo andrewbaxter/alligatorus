@@ -26,7 +26,6 @@ use {
                 dynamic_stack_to_value,
             },
             value::{
-                type_any::r#const::TypeAnyConst,
                 type_bool::dynamic::TypeBoolDynamic,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,

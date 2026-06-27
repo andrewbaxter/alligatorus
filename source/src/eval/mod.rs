@@ -83,7 +83,6 @@ use {
             CompileImportContext,
             CompileRes,
             CompileResResult,
-            CompileResultEntry,
             ConstKey,
             Counter,
             EResult,
@@ -452,9 +451,7 @@ pub(crate) fn compile_importid(
         };
     }
     let mut all_logs = Vec::new();
-    let mut iter = 0;
     loop {
-        iter += 1;
         let is_stage = matches!(&root_expr.r#type, Expr_::Stage(_));
         let eval_result = match eval(&cix, import_state, &root_expr) {
             Ok(v) => v,

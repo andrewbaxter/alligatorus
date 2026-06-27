@@ -8,7 +8,6 @@ use {
             ArtifactIdSource,
             ExporterAny,
             ExporterDataAny,
-            import_artifact,
             import_type_artifact,
             impl_import_independent_artifact,
             impl_export_independent_artifact,
@@ -346,21 +345,6 @@ pub(crate) fn deexport_captured_externals(
             ),
         }
     }).collect()
-}
-
-pub(crate) fn load_def_set(xx: &ExprContext, def_set_artifact: Artifact) -> Result<Gc<DefinitionSet>, String> {
-    let any =
-        import_artifact(xx, (crate::langhelp::SourceId(0), crate::syntax::ExprId(0)), def_set_artifact);
-    if let Some(errors) = any.errors {
-        return Err(format!("Failed to deserialize def set: {:?}", errors));
-    }
-    let any = any.v.ok_or_else(|| "Definition set deserialization yielded no value".to_string())?;
-    let rc: Rc<dyn Any> = any;
-    let wrapped =
-        rc
-            .downcast::<ExporterDataAny<Gc<DefinitionSet>>>()
-            .map_err(|_| "Expected DefinitionSet artifact".to_string())?;
-    Ok(wrapped.0.clone())
 }
 
 pub(crate) fn next_interface_method_id(set: &DefinitionSet) -> usize {

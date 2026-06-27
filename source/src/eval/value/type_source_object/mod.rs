@@ -222,7 +222,6 @@ pub(crate) struct SourceObjectInterfaceImplData {
 }
 
 pub(crate) struct SourceObjectInterfaceMethodImplData {
-    pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,

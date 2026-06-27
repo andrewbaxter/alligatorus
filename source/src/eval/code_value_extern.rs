@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ExporterAny,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -22,7 +19,6 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                type_any::r#const::TypeAnyConst,
                 type_code_struct::dynamic::TypeCodeStructDynamic,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
@@ -72,13 +68,9 @@ use {
     std::{
         any::Any,
         cell::RefCell,
-        collections::HashMap,
         rc::Rc,
     },
 };
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactExprContextPushDynamic;
 
 pub(crate) struct CodeValueExtern(pub Rc<RefCell<Option<CodeValue>>>);
 

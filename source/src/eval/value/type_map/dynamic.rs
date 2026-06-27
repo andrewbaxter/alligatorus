@@ -38,10 +38,7 @@ use {
                     ValueAnyConst,
                 },
                 type_function::dynamic::TypeFunctionDynamic,
-                type_map::artifact::{
-                    ArtifactMapType,
-                    TypeMapArtifact,
-                },
+                type_map::artifact::ArtifactMapType,
                 type_null::dynamic::TypeNullDynamic,
                 type_root::r#const::{
                     ExporterRootDelegate,

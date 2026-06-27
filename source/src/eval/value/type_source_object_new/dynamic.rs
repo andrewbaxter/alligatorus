@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ExporterAny,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -12,36 +9,26 @@ use {
         },
         eval::{
             TargetBindSub,
-            definition_set::DefinitionSet,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
             from_dynamic_ref,
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
-                type_source_object::{
-                    SourceDataMethodData,
-                    SourceObjectData,
-                },
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
                 },
             },
         },
-        invariant::DeserialLazy,
         langhelp::{
             Aspect,
             Code,
             CodeValue,
             Code_,
-            Counter,
             EResult,
             EvalRes,
             ExprContext,
@@ -71,7 +58,6 @@ use {
     },
     std::{
         any::Any,
-        cell::Cell,
         rc::Rc,
     },
     super::TypeSourceObjectNewConst,
@@ -111,7 +97,7 @@ impl AspectInitialBind for TypeSourceObjectNewDynamic {
 impl AspectLift for TypeSourceObjectNewDynamic {
     fn lift(
         &self,
-        xx: &ExprContext,
+        _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {

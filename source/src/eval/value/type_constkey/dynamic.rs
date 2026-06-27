@@ -14,7 +14,6 @@ use {
                 dynamic_stack_to_value,
             },
             value::{
-                type_any::r#const::TypeAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
@@ -59,8 +58,6 @@ use {
     },
 };
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactConstkeyDynamic;
 #[derive(Clone)]
 pub(crate) struct TypeConstkeyDynamic;
 

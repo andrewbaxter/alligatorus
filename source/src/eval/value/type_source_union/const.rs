@@ -14,10 +14,7 @@ use {
                 bind_via_target,
             },
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,

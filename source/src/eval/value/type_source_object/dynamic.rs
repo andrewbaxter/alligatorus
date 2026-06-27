@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ExporterAny,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -13,7 +10,6 @@ use {
         },
         eval::{
             TargetBindSub,
-            definition_set::export_definition_set,
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
@@ -25,17 +21,13 @@ use {
                     RecordBaseDynamic,
                     RecordField,
                 },
-                type_any::{
-                    dynamic::TypeAnyDynamic,
-                    r#const::TypeAnyConst,
-                },
+                type_any::dynamic::TypeAnyDynamic,
                 type_any_binding::dynamic::TypeAnyBindingDynamic,
                 type_any_target::dynamic::TypeAnyTargetDynamic,
                 type_aspect::dynamic::TypeAspectDynamic,
                 type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
-                type_pull::r#const::TypePull,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
                 type_source_interface::{
@@ -74,7 +66,6 @@ use {
             AspectInitialBind,
             AspectLift,
             AspectStackValueDynamic,
-            AspectType,
             DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID,
             DATA_INSTANCE_TO_CODE_FN_SCOPE_ID,
             DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID,
@@ -93,7 +84,6 @@ use {
             aspect_lift_get_maybe,
             aspect_stack_value_dynamic_aspect_id,
             aspect_string_const_get,
-            aspect_type_aspect_id,
             type_aspect_identity,
             type_type_identity,
         },
@@ -648,7 +638,7 @@ impl AspectInitialBind for TypeSourceObjectRefDynamic {
 impl AspectLift for TypeSourceObjectRefDynamic {
     fn lift(
         &self,
-        xx: &ExprContext,
+        _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {

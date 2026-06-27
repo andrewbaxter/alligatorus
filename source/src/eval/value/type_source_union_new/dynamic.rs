@@ -17,10 +17,7 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{

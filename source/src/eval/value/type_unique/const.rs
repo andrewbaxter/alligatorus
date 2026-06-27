@@ -16,7 +16,6 @@ use {
             push::Push,
             to_dynamic_ext,
             value::{
-                type_any::r#const::TypeAnyConst,
                 type_bool::dynamic::TypeBoolDynamic,
                 type_root::r#const::{
                     ExporterRootDelegate,
@@ -89,7 +88,7 @@ pub(crate) struct TypeUnique;
 impl Aspect for TypeUnique { }
 
 impl AspectBind for TypeUnique {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
+    fn bind(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);

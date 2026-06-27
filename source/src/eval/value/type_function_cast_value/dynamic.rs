@@ -8,10 +8,7 @@ use {
             CodeDynamicType,
         },
         eval::value::{
-            type_any::r#const::{
-                TypeAnyConst,
-                ValueAnyConst,
-            },
+            type_any::r#const::ValueAnyConst,
             type_root::r#const::TypeRoot,
             type_binding::dynamic::BindingDynamicBinding,
             type_source_object::{

@@ -18,10 +18,7 @@ use {
                 bind_via_target,
             },
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_function::dynamic::TypeFunctionDynamic,
                 type_null::dynamic::TypeNullDynamic,
                 type_root::r#const::{

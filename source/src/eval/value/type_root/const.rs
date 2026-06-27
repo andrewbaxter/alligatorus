@@ -11,7 +11,6 @@ use {
         langhelp::{
             EResult,
             ExprContext,
-            ExprErr,
             QExprId,
             Type,
             Value,
@@ -49,7 +48,6 @@ pub enum TypeRoot {
     AnyBindingDynamic,
     AnyTargetDynamic,
     AspectDynamic,
-    AspectLookupFnType,
     BoolConst,
     BoolDynamic,
     CodeDynCastFn,
@@ -98,10 +96,6 @@ pub enum TypeRoot {
     SourceUnionRefDynamic,
     StringConst,
     StringDynamic,
-    TypeRef,
-    TypeSourceObjectNewDynamic,
-    TypeSourceObjectDynamic,
-    TypeSourceFunctionDynamic,
     Unique,
     ValueDynamic,
 }
@@ -161,7 +155,7 @@ impl Type for TypeRoot {
         return Rc::new(*self);
     }
 
-    fn aspect(&self, xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
+    fn aspect(&self, _xx: &ExprContext, key: &crate::langhelp::Unique) -> Option<Box<dyn std::any::Any>> {
         if *key == aspect_artifact_aspect_id() && self.exporter_for().is_some() {
             return Some(Box::new(Box::new(*self) as Box<dyn AspectArtifact>));
         }
@@ -178,7 +172,6 @@ impl Type for TypeRoot {
             TypeRoot::AnyBindingDynamic => "Any binding type (dynamic)",
             TypeRoot::AnyTargetDynamic => "Any target type (dynamic)",
             TypeRoot::AspectDynamic => "Aspect type (dynamic)",
-            TypeRoot::AspectLookupFnType => "Aspect lookup fn type",
             TypeRoot::BoolConst => "Bool type (const)",
             TypeRoot::BoolDynamic => "Bool type (dynamic)",
             TypeRoot::CodeDynCastFn => "Code dyn cast fn type",
@@ -226,10 +219,6 @@ impl Type for TypeRoot {
             TypeRoot::SourceUnionRefDynamic => "Source union ref (dynamic)",
             TypeRoot::StringConst => "String type (const)",
             TypeRoot::StringDynamic => "String type (dynamic)",
-            TypeRoot::TypeRef => "Type ref",
-            TypeRoot::TypeSourceObjectNewDynamic => "Type source object new (dynamic)",
-            TypeRoot::TypeSourceObjectDynamic => "Type source object (dynamic)",
-            TypeRoot::TypeSourceFunctionDynamic => "Type source function (dynamic)",
             TypeRoot::Unique => "Unique type",
             TypeRoot::ValueDynamic => "Value type (dynamic)",
             TypeRoot::Root => "Root type",
@@ -242,7 +231,7 @@ impl Value for TypeRoot {
         return Rc::new(*self);
     }
 
-    fn type_(&self, xx: &ExprContext, loc: QExprId) -> EResult<Rc<dyn Type>> {
+    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
         return EResult::ok(Rc::new(TypeRoot::Root));
     }
 }

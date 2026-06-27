@@ -7,7 +7,6 @@ use {
             CodeDynamicType,
         },
         eval::value::{
-            type_any::r#const::TypeAnyConst,
             type_function::dynamic::TypeFunctionDynamic,
             type_root::r#const::TypeRoot,
             type_binding::dynamic::BindingDynamicBinding,

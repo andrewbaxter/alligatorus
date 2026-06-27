@@ -3,13 +3,11 @@ use {
         artifact::{
             Artifact,
             ArtifactBody,
-            ArtifactBodyExporter,
             ArtifactExporter,
             ArtifactIdSource,
             ExporterAny,
         },
         eval::value::{
-            type_any::r#const::TypeAnyConst,
             type_null::artifact::ArtifactNull,
             type_root::r#const::{
                 ExporterRootDelegate,
@@ -19,9 +17,7 @@ use {
         },
         langhelp::{
             Aspect,
-            Code,
             CodeValue,
-            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -34,7 +30,6 @@ use {
             AspectArtifact,
             AspectNull,
             aspect_artifact_aspect_id,
-            aspect_artifact_get,
             aspect_null_aspect_id,
             aspect_null_get,
             aspect_null_get_maybe,
@@ -51,10 +46,10 @@ pub(crate) struct TypeNullConst;
 impl ArtifactExporter for TypeNullConst {
     fn import(
         &self,
-        xx: &ExprContext,
-        loc: QExprId,
-        id: Option<ArtifactIdSource>,
-        data: serde_json::Value,
+        _xx: &ExprContext,
+        _loc: QExprId,
+        _id: Option<ArtifactIdSource>,
+        _data: serde_json::Value,
     ) -> EResult<Rc<dyn ExporterAny>> {
         return EResult {
             errors: None,
@@ -62,7 +57,7 @@ impl ArtifactExporter for TypeNullConst {
         };
     }
 
-    fn export(&self, xx: &ExprContext, loc: QExprId, self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
+    fn export(&self, _xx: &ExprContext, _loc: QExprId, _self_: Rc<dyn ExporterAny>) -> EResult<Artifact> {
         return EResult::ok(Artifact::Body(ArtifactBody {
             data: serde_json::Value::Null,
             exporter: crate::artifact::ArtifactBodyExporter::Root,

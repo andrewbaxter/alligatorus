@@ -1,112 +1,35 @@
 use {
     crate::{
-        artifact::ExporterAny,
         eval::{
-            const_eval,
-            expr::Expr,
             from_dynamic_ref,
             push::Push,
             to_dynamic_ext,
             value::{
-                type_record::{
-                    Record,
-                    RecordField,
-                },
-                type_any::r#const::TypeAnyConst,
-                type_function::dynamic::TypeFunctionDynamic,
-                type_null::dynamic::TypeNullDynamic,
-                type_option::r#const::{
-                    TypeOption,
-                    ValueOption,
-                },
-                type_root::r#const::TypeRoot,
                 type_source_object::SourceObjectData,
                 type_source_interface::BuiltinInterfaceKind,
-                value_null::r#const::ValueNullConst,
             },
         },
-        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
-            Code,
             CodeValue,
-            Code_,
             ConstKey,
-            EResult,
             EvalRes,
             ExprContext,
             QExprId,
-            Scope,
             Type,
             Unique,
-            Value,
         },
         r#gen::{
-            AspectField,
-            AspectFunction,
-            Binding,
             TypeRefPush,
-            aspect_bool_const_get_maybe,
-            aspect_field_aspect_id,
-            aspect_function_aspect_id,
-            aspect_string_const_get,
         },
     },
     dumpster::unsync::Gc,
     std::{
         cell::RefCell,
-        collections::HashMap,
         rc::Rc,
     },
 };
 
-pub(crate) struct ArgRecordFactory {
-    pub(crate) cv: CodeValue,
-    pub(crate) loc: QExprId,
-    pub(crate) source_type: Rc<dyn Type>,
-}
-
-impl Binding for ArgRecordFactory {
-    fn use_(&self, _xx: &ExprContext, loc: QExprId, _code: Code) -> CodeValue {
-        let mut fields = std::collections::BTreeMap::new();
-        fields.insert(ConstKey::String("source_type".to_string()), RecordField::EvalRes(EvalRes::ok(CodeValue {
-            code: Code {
-                loc: self.loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueTypeRef { type_: self.source_type.clone() }),
-        })));
-        fields.insert(ConstKey::String("cv".to_string()), RecordField::EvalRes(EvalRes::ok(clone_cv(&self.cv))));
-        fields.insert(ConstKey::String("xx".to_string()), RecordField::EvalRes(EvalRes::ok(CodeValue {
-            code: Code {
-                loc: self.loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueNullConst),
-        })));
-        CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(Record {
-                base: None,
-                fields,
-            }),
-        }
-    }
-}
-
-fn cast_from_field_name(data: &Gc<SourceObjectData>) -> Option<String> {
-    type_method_field_name(data, "cast_from")
-}
-
-fn clone_cv(cv: &CodeValue) -> CodeValue {
-    CodeValue {
-        code: cv.code.clone(),
-        value: cv.value.clone(),
-    }
-}
 
 pub(crate) fn pull_aspect_v8(
     data: &Gc<SourceObjectData>,
@@ -294,6 +217,10 @@ pub(crate) fn pull_desc(data: &Gc<SourceObjectData>) -> String {
     data.name.clone().unwrap_or_else(|| "user-defined type".to_string())
 }
 
+fn cast_from_field_name(data: &Gc<SourceObjectData>) -> Option<String> {
+    type_method_field_name(data, "cast_from")
+}
+
 fn type_method_field_name(data: &Gc<SourceObjectData>, method_name: &str) -> Option<String> {
     let impls = data.interface_impls.borrow();
     for impl_data in impls.iter() {
@@ -310,225 +237,3 @@ fn type_method_field_name(data: &Gc<SourceObjectData>, method_name: &str) -> Opt
     None
 }
 
-#[derive(Clone)]
-struct TypeAspectLookupFn {
-    receiver: Rc<dyn Value>,
-}
-
-impl ExporterAny for TypeAspectLookupFn {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(self.clone()));
-    }
-}
-
-impl Value for TypeAspectLookupFn {
-    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(self.clone());
-    }
-
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeAspectLookupFnType))
-    }
-}
-pub(crate) struct TypeAspectLookupFnType;
-
-impl Aspect for TypeAspectLookupFnType { }
-
-impl AspectFunction for TypeAspectLookupFnType {
-    fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
-        let lookup = must_downcast_ref::<TypeAspectLookupFn>(self_.value.as_ref());
-        let type_ref = must_downcast_ref::<ValueTypeRef>(lookup.receiver.as_ref());
-        let unique = must_downcast_ref::<Unique>(argument.value.as_ref());
-        let is_some = type_ref.type_.aspect(xx, unique).is_some();
-        EvalRes::ok(CodeValue {
-            code: Code {
-                loc,
-                code: Code_::None,
-            },
-            value: Rc::new(ValueOption { is_some }),
-        })
-    }
-}
-
-impl ExporterAny for TypeAspectLookupFnType {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(TypeAspectLookupFnType));
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeAspectLookupFnType));
-    }
-}
-
-impl Type for TypeAspectLookupFnType {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeAspectLookupFnType)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
-        if *key == aspect_function_aspect_id() {
-            return Some(Box::new(Box::new(TypeAspectLookupFnType) as Box<dyn AspectFunction>));
-        }
-        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
-            return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
-            );
-        }
-        None
-    }
-
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
-        false
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to aspect lookup fn".to_string())
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert from aspect lookup fn".to_string())
-    }
-
-    fn desc(&self) -> String {
-        "type.aspect".to_string()
-    }
-}
-
-impl Value for TypeAspectLookupFnType {
-    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeAspectLookupFnType);
-    }
-
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeRoot::AspectLookupFnType))
-    }
-}
-pub(crate) struct TypeTypeRef;
-
-impl Aspect for TypeTypeRef { }
-
-impl AspectField for TypeTypeRef {
-    fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
-            Ok(v) => v,
-            Err(e) => return EvalRes {
-                v: None,
-                errors: Some(e),
-            },
-        };
-        let key_string = match aspect_string_const_get(xx, loc, key_type.as_ref()).into_res() {
-            Ok(s) => s,
-            Err(e) => return EvalRes {
-                v: None,
-                errors: Some(e),
-            },
-        };
-        let key_name = key_string.get(key.value.as_ref());
-        if key_name == "aspect" {
-            return EvalRes::ok(CodeValue {
-                code: Code {
-                    loc,
-                    code: Code_::None,
-                },
-                value: Rc::new(TypeAspectLookupFn { receiver: self_.value }),
-            });
-        }
-        EvalRes::err(loc, format!("Field '{}' not found on type reference", key_name))
-    }
-
-    fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
-        let ConstKey::String(k) = key else {
-            return None;
-        };
-        if k == "aspect" {
-            return Some(Rc::new(TypeFunctionDynamic {
-                arg: Rc::new(TypeNullDynamic),
-                ret: Rc::new(TypeOption),
-            }));
-        }
-        None
-    }
-}
-
-impl ExporterAny for TypeTypeRef {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(TypeTypeRef));
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeTypeRef));
-    }
-}
-
-impl Type for TypeTypeRef {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeTypeRef)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn std::any::Any>> {
-        if *key == aspect_field_aspect_id() {
-            return Some(Box::new(Box::new(TypeTypeRef) as Box<dyn AspectField>));
-        }
-        if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
-            return Some(
-                Box::new(Box::new(crate::eval::aspect::PostDeserializeIdentity) as Box<dyn crate::r#gen::AspectPostDeserialize>),
-            );
-        }
-        None
-    }
-
-    fn can_cast_from(&self, _xx: &ExprContext, _loc: QExprId, _source_type: &dyn Type) -> bool {
-        false
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to type reference".to_string())
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert from type reference".to_string())
-    }
-
-    fn desc(&self) -> String {
-        "type_ref".to_string()
-    }
-}
-
-impl Value for TypeTypeRef {
-    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeTypeRef);
-    }
-
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeRoot::TypeRef))
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct ValueTypeRef {
-    pub type_: Rc<dyn Type>,
-}
-
-impl ExporterAny for ValueTypeRef {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        unimplemented!()
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(self.clone()));
-    }
-}
-
-impl Value for ValueTypeRef {
-    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(self.clone());
-    }
-
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeTypeRef))
-    }
-}

@@ -6,7 +6,6 @@ use {
             ExporterAny,
         },
         eval::value::{
-            type_any::r#const::TypeAnyConst,
             type_root::r#const::{
                 ExporterRootDelegate,
                 TypeRoot,

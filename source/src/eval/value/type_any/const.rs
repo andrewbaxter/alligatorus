@@ -48,7 +48,6 @@ use {
             AspectType,
             Binding,
             aspect_artifact_aspect_id,
-            aspect_artifact_get,
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,

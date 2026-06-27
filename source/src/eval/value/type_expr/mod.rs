@@ -26,7 +26,6 @@ use {
             },
             from_dynamic_ref,
             value::{
-                type_any::r#const::TypeAnyConst,
                 type_root::r#const::{
                     ExporterRootDelegate,
                     TypeRoot,
@@ -39,7 +38,6 @@ use {
             Aspect,
             Code,
             CodeValue,
-            Code_,
             EResult,
             EvalRes,
             ExprContext,
@@ -74,10 +72,6 @@ use {
     },
 };
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactExpr;
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ArtifactExprStagedPlaceholder;
 pub(crate) struct TypeExpr;
 
 impl Aspect for TypeExpr { }

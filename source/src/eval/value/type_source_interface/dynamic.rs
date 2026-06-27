@@ -15,10 +15,7 @@ use {
             },
             from_dynamic_ref,
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
@@ -120,7 +117,7 @@ impl AspectInitialBind for TypeSourceInterfaceDynamic {
 impl AspectLift for TypeSourceInterfaceDynamic {
     fn lift(
         &self,
-        xx: &ExprContext,
+        _xx: &ExprContext,
         _scope: &v8::PinScope,
         value: v8::Local<v8::Value>,
     ) -> Result<Rc<dyn Value>, String> {

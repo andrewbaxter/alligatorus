@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ExporterAny,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicCall,
@@ -18,7 +15,6 @@ use {
             typecheck_convert,
             value::{
                 type_tuple::Tuple,
-                type_any::r#const::TypeAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
                 value_dynamic::{
@@ -66,13 +62,6 @@ use {
         rc::Rc,
     },
 };
-
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub(crate) struct ArtifactFunctionDynamic {
-    pub arg: Artifact,
-    pub ret: Artifact,
-}
 
 pub(crate) fn dynamic_call(
     xx: &ExprContext,

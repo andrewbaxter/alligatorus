@@ -7,7 +7,6 @@ use {
         },
         eval::value::{
             type_tuple::binding::BindingValue,
-            type_any::r#const::TypeAnyConst,
             type_number::dynamic::TypeNumberDynamic,
             type_root::r#const::{
                 ExporterRootDelegate,
@@ -69,7 +68,7 @@ impl AspectArtifact for TypeNumberConst {
 }
 
 impl AspectBind for TypeNumberConst {
-    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
+    fn bind(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
         let mut value_res = crate::langhelp::EResult::ok(cv.value.clone());
         let mut errors = None;
         value_res.push_errors(&mut errors);

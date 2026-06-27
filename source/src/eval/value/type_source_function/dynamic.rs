@@ -1,9 +1,6 @@
 use {
     crate::{
-        artifact::{
-            Artifact,
-            ExporterAny,
-        },
+        artifact::ExporterAny,
         code_dynamic::{
             CodeDynamic,
             CodeDynamicBindingUse,
@@ -12,30 +9,21 @@ use {
         },
         eval::{
             TargetBindSub,
-            definition_set::{
-                load_def_set,
-                export_definition_set,
-            },
             dynamic_util::{
                 bind_dynamic_default,
                 bind_via_target,
             },
             from_dynamic_ref,
             value::{
-                type_any::r#const::{
-                    TypeAnyConst,
-                    ValueAnyConst,
-                },
+                type_any::r#const::ValueAnyConst,
                 type_root::r#const::TypeRoot,
                 type_binding::dynamic::BindingDynamicBinding,
-                type_source_object::artifact::ArtifactDataDefSetFunction,
                 value_dynamic::{
                     ValueDynamic,
                     ValueDynamicSource,
                 },
             },
         },
-        invariant::must_downcast_ref,
         langhelp::{
             Aspect,
             Code,
@@ -234,50 +222,5 @@ impl Value for TypeSourceFunctionDynamic {
 
     fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
         EResult::ok(Rc::new(TypeRoot::SourceFunctionDynamic))
-    }
-}
-pub(crate) struct TypeTypeSourceFunctionDynamic;
-
-impl Aspect for TypeTypeSourceFunctionDynamic { }
-
-impl ExporterAny for TypeTypeSourceFunctionDynamic {
-    fn as_type(&self) -> EResult<Rc<dyn Type>> {
-        return EResult::ok(Rc::new(TypeTypeSourceFunctionDynamic));
-    }
-
-    fn as_value(&self) -> EResult<Rc<dyn Value>> {
-        return EResult::ok(Rc::new(TypeTypeSourceFunctionDynamic));
-    }
-}
-
-impl Type for TypeTypeSourceFunctionDynamic {
-    fn as_value(&self) -> Rc<dyn Value> {
-        Rc::new(TypeTypeSourceFunctionDynamic)
-    }
-
-    fn aspect(&self, _xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
-        None
-    }
-
-    fn cast_from(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert to definition_set_function_type".to_string())
-    }
-
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, "Cannot convert from definition_set_function_type".to_string())
-    }
-
-    fn desc(&self) -> String {
-        "definition_set_function_type".to_string()
-    }
-}
-
-impl Value for TypeTypeSourceFunctionDynamic {
-    fn as_exporter_any(&self) -> Rc<dyn ExporterAny> {
-        return Rc::new(TypeTypeSourceFunctionDynamic);
-    }
-
-    fn type_(&self, _xx: &ExprContext, _loc: QExprId) -> EResult<Rc<dyn Type>> {
-        EResult::ok(Rc::new(TypeRoot::TypeSourceFunctionDynamic))
     }
 }
