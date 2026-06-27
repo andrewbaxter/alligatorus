@@ -522,7 +522,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
             let func_type = erb.must_er(func.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_func = erb.must_er(aspect_function_get(xx, expr.loc, func_type.as_ref()))?;
+            let callee_exc = aspect_func.exception_type();
             let v = erb.must_er(aspect_func.call(xx, expr.loc, func, arg))?;
+            let v = erb.must_er(maybe_wrap_call_exception(xx, expr.loc, callee_exc.as_ref(), v))?;
             return Ok(v);
         }),
         Expr_::Set(e) => return er_seq_cv!(expr.loc, erb, {
@@ -3829,6 +3831,112 @@ pub(crate) fn to_dynamic_ext<
     }));
     scope.get_slot::<DynamicRcStore>().unwrap().weaks.borrow_mut().push(weak);
     ext
+}
+
+fn is_type_never(t: &dyn Type) -> bool {
+    (t as &dyn Any).is::<crate::eval::value::type_never::r#const::TypeNever>()
+}
+
+fn types_equal_desc(a: &dyn Type, b: &dyn Type) -> bool {
+    a.desc() == b.desc()
+}
+
+fn maybe_wrap_call_exception(
+    xx: &ExprContext,
+    loc: QExprId,
+    callee_exc: &dyn Type,
+    v: CodeValue,
+) -> EResult<CodeValue> {
+    if is_type_never(callee_exc) {
+        return EResult::ok(v);
+    }
+    if types_equal_desc(callee_exc, xx.current_exception_type.as_ref()) {
+        return EResult::ok(v);
+    }
+    if !callee_exc.can_cast_to(xx, loc, xx.current_exception_type.as_ref()) {
+        return EResult::ok(v);
+    }
+    let probe_binding_id = BindingId::Local(xx.vx.next_local_id.next());
+    let probe_value: Rc<dyn Value> = Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+        source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+        type_: callee_exc.as_value().type_(xx, loc).v.unwrap_or_else(|| Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)),
+    });
+    let probe_cv = CodeValue {
+        code: Code {
+            loc,
+            code: Code_::Dyn(Rc::new(CodeDynamic {
+                loc,
+                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: probe_binding_id }),
+            })),
+        },
+        value: Some(probe_value),
+    };
+    let probe_res = callee_exc.cast_to(xx, loc, probe_cv, xx.current_exception_type.as_ref());
+    let probe = match probe_res.into_res() {
+        Ok(p) => p,
+        Err(_) => return EResult::ok(v),
+    };
+    if matches!(probe.code.code, Code_::None) {
+        return EResult::ok(v);
+    }
+    let body_dyn = match &v.code.code {
+        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+            Some(d) => d.clone(),
+            None => return EResult::ok(v),
+        },
+        Code_::None => return EResult::ok(v),
+    };
+    let catch_binding = BindingId::Local(xx.vx.next_local_id.next());
+    let bound_value: Rc<dyn Value> = Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+        source: crate::eval::value::value_dynamic::ValueDynamicSource::Binding(
+            crate::eval::value::value_dynamic::ValueDynamicDataScope { key: catch_binding },
+        ),
+        type_: callee_exc.clone_rc().unwrap_or_else(|| Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)),
+    });
+    let bound_cv = CodeValue {
+        code: Code {
+            loc,
+            code: Code_::Dyn(Rc::new(CodeDynamic {
+                loc,
+                type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: catch_binding }),
+            })),
+        },
+        value: Some(bound_value),
+    };
+    let cast_res = match callee_exc.cast_to(xx, loc, bound_cv, xx.current_exception_type.as_ref()).into_res() {
+        Ok(c) => c,
+        Err(errs) => return EResult { errors: Some(errs), v: None },
+    };
+    let to_dynamic = match crate::r#gen::aspect_consume_dynamic_get(xx, loc, xx.current_exception_type.as_ref()).into_res() {
+        Ok(c) => c,
+        Err(errs) => return EResult { errors: Some(errs), v: None },
+    };
+    let cast_code = match to_dynamic.to_dynamic(xx, loc, cast_res).into_res() {
+        Ok(c) => c,
+        Err(errs) => return EResult { errors: Some(errs), v: None },
+    };
+    let throw_code = CodeDynamic {
+        loc,
+        type_: CodeDynamicType::Throw(crate::code_dynamic::CodeDynamicThrow { value: Box::new(cast_code) }),
+    };
+    let try_code = CodeDynamic {
+        loc,
+        type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
+            body: Box::new(body_dyn),
+            catch: Some(crate::code_dynamic::CodeDynamicCatch {
+                binding: catch_binding,
+                body: Box::new(throw_code),
+            }),
+            finally: None,
+        }),
+    };
+    EResult::ok(CodeValue {
+        code: Code {
+            loc,
+            code: Code_::Dyn(Rc::new(try_code)),
+        },
+        value: v.value,
+    })
 }
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
