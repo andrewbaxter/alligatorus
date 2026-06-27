@@ -279,38 +279,83 @@ impl AspectField for TypeSourceObjectDynamic {
 impl AspectDropDynamic for TypeSourceObjectDynamic {
     fn drop(
         &self,
-        _xx: &ExprContext,
+        xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<Code> {
-        let self_code = match cv.code.cast::<CodeDynamic>() {
-            EResult { v: Some(Some(c)), .. } => c.clone(),
-            _ => return EResult::err(loc, format!("AspectDropDynamic::drop: value has no runtime code")),
+        let data = &self.data;
+        let impl_expr_value = {
+            let interface_impls = data.interface_impls.borrow();
+            let impl_data = interface_impls
+                .iter()
+                .find(|i| i.interface.builtin_kind == Some(BuiltinInterfaceKind::AspectDropDynamic))
+                .expect("AspectDropDynamic::drop invoked but no AspectDropDynamic impl registered");
+            let method_impl = impl_data.method_impls.iter().find(|m| {
+                let methods = impl_data.interface.methods.borrow();
+                methods[m.interface_method_index].name == "drop"
+            }).expect("AspectDropDynamic impl missing 'drop' method");
+            method_impl
+                .impl_expr
+                .borrow()
+                .clone()
+                .expect("AspectDropDynamic 'drop' method impl_expr not available")
         };
-        let call = CodeDynamic {
-            loc,
-            type_: CodeDynamicType::Call(CodeDynamicCall {
-                func: Box::new(CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
-                        base: Box::new(self_code.clone()),
-                        field: ConstKey::String(
-                            crate::r#gen::IM_ASPECT_DROP_DYNAMIC_DROP_FIELD.to_string(),
-                        ).to_str(),
-                    }),
-                }),
-                args: vec![CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::NewObject(crate::code_dynamic::CodeDynamicNewObject {
-                        fields: vec![("inner".to_string(), self_code)],
-                    }),
-                }],
-            }),
+        let impl_expr_ast =
+            crate::invariant::must_downcast_ref::<crate::eval::expr::Expr>(impl_expr_value.as_ref());
+        let mut body_scope_values: std::collections::HashMap<ConstKey, Box<dyn Binding>> =
+            crate::eval::body_builtin_scope(xx);
+        body_scope_values.insert(
+            ConstKey::String("inner".to_string()),
+            Box::new(BindingFixedCv { cv: cv.clone() }) as Box<dyn Binding>,
+        );
+        let body_scope = Rc::new(crate::eval::Scope {
+            values: std::cell::RefCell::new(body_scope_values),
+            parent: None,
+        });
+        let body_xx = ExprContext {
+            vx: xx.vx.clone(),
+            import_state: xx.import_state.clone(),
+            scope: body_scope,
+            target: xx.target.clone(),
+            current_exception_type: xx.current_exception_type.clone(),
         };
-        EResult::ok(Code {
-            loc,
-            code: Code_::Dyn(Rc::new(call)),
-        })
+        let body_res = crate::eval::const_eval(&body_xx, impl_expr_ast);
+        if let Some(errs) = body_res.errors {
+            return EResult {
+                errors: Some(errs),
+                v: None,
+            };
+        }
+        let body_cv = body_res.v.expect("AspectDropDynamic 'drop' body produced no value");
+        let result_value = body_cv.value.as_ref().expect("AspectDropDynamic 'drop' body CV has no value");
+        let result_type_res = result_value.type_(xx, loc);
+        if let Some(errs) = result_type_res.errors {
+            return EResult {
+                errors: Some(errs),
+                v: None,
+            };
+        }
+        let result_type = result_type_res.v.expect("AspectDropDynamic 'drop' result type missing");
+        if crate::r#gen::aspect_null_get_maybe(xx, result_type.as_ref()).is_none() {
+            return EResult::err(
+                loc,
+                format!(
+                    "AspectDropDynamic 'drop' body must return a value of null type, got {}",
+                    result_type.desc(),
+                ),
+            );
+        }
+        EResult::ok(body_cv.code)
+    }
+}
+
+struct BindingFixedCv {
+    cv: CodeValue,
+}
+
+impl crate::r#gen::Binding for BindingFixedCv {
+    fn use_(&self, _xx: &ExprContext, _loc: QExprId, _code: Code) -> CodeValue {
+        self.cv.clone()
     }
 }
 

@@ -2080,6 +2080,9 @@ fn eval(
             }
             for impl_data in dt_data.interface_impls.borrow().iter() {
                 let builtin_kind = impl_data.interface.builtin_kind;
+                if builtin_kind == Some(value::type_source_interface::BuiltinInterfaceKind::AspectDropDynamic) {
+                    continue;
+                }
                 for method_impl in &impl_data.method_impls {
                     let method_id =
                         method_impl.binding_id.get().expect("Interface method impl binding ID not assigned");

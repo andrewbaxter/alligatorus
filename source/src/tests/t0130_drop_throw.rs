@@ -16,8 +16,10 @@ use {
 };
 
 /// Build a source-level definition of an object type with a drop implementation.
-/// The drop impl body is `stage(log(<drop_message>))`. Returns the SourceExpr that,
-/// when evaluated in a lower context, produces the constructor `(underlying) -> Counter`.
+/// The drop impl body is the source expression `call(log, str(drop_message))` —
+/// at drop dispatch the glue const-evals this body with `inner` in scope, getting
+/// the log call code with null result type. Returns the SourceExpr that, when
+/// evaluated in a lower context, produces the constructor `(underlying) -> Counter`.
 fn make_counter_ctor(mb: &ModuleBuilder, name: &str, drop_message: &str) -> SourceExpr {
     return mb.lower(
         mb.seq(

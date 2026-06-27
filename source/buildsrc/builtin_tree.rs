@@ -180,8 +180,8 @@ pub fn emit_gen_builtin_tree(
         rust_trait_name: None,
         methods: vec![Method {
             name: "drop",
-            ret_type: any(),
-            args: MethodArgs::Source(vec![("inner", any())]),
+            ret_type: cve(),
+            args: MethodArgs::Source(vec![("inner", cve())]),
         }],
     };
     let iface_binding = {

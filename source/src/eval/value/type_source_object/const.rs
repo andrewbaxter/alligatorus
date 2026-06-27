@@ -176,6 +176,9 @@ impl AspectConsumeDynamic for TypeSourceObjectConst {
             }));
         }
         for impl_data in self.data.interface_impls.borrow().iter() {
+            if impl_data.interface.builtin_kind == Some(BuiltinInterfaceKind::AspectDropDynamic) {
+                continue;
+            }
             let iface_methods = impl_data.interface.methods.borrow();
             for method_impl in &impl_data.method_impls {
                 let iface_method = &iface_methods[method_impl.interface_method_index];
@@ -411,6 +414,9 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
             let mut interface_impls: Vec<ArtifactDataDefSetInterfaceImpl> = Vec::new();
             for impl_data in self_.data.interface_impls.borrow().iter() {
                 let builtin_kind = impl_data.interface.builtin_kind;
+                if builtin_kind == Some(BuiltinInterfaceKind::AspectDropDynamic) {
+                    continue;
+                }
                 let user_iface = match builtin_kind {
                     Some(_) => None,
                     None => {
