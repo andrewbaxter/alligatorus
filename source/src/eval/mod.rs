@@ -273,6 +273,10 @@ pub(crate) fn code_uses_binding(code: &CodeDynamic, target_id: BindingId) -> boo
             code_uses_binding(&o.reference, target_id),
         CodeDynamicType::SubscriptUse(s) => code_uses_binding(&s.base, target_id) ||
             code_uses_binding(&s.key, target_id),
+        CodeDynamicType::Throw(t) => code_uses_binding(&t.value, target_id),
+        CodeDynamicType::Try(t) => code_uses_binding(&t.body, target_id) ||
+            t.catch.as_ref().map(|c| code_uses_binding(&c.body, target_id)).unwrap_or(false) ||
+            t.finally.as_ref().map(|f| code_uses_binding(f, target_id)).unwrap_or(false),
     }
 }
 
@@ -3187,6 +3191,28 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
                 lines.push(code.loc, "}".to_string());
             }
             lines.push(code.loc, "} }".to_string());
+        },
+        CodeDynamicType::Throw(c) => {
+            let val_var = render_code(lines, &c.value);
+            lines.push(code.loc, format!("throw {};", val_var));
+            lines.push(code.loc, format!("{} = null;", out));
+        },
+        CodeDynamicType::Try(c) => {
+            lines.push(code.loc, "try {".to_string());
+            let body_var = render_code(lines, &c.body);
+            lines.push(code.loc, format!("{} = {};", out, body_var));
+            if let Some(catch) = &c.catch {
+                let bind_key = binding_id_dynamic_key(catch.binding);
+                lines.push(code.loc, format!("}} catch ({}) {{", bind_key));
+                let catch_var = render_code(lines, &catch.body);
+                lines.push(code.loc, format!("{} = {};", out, catch_var));
+            }
+            if let Some(finally) = &c.finally {
+                lines.push(code.loc, "} finally {".to_string());
+                let fin_var = render_code(lines, finally);
+                lines.push(code.loc, format!("{};", fin_var));
+            }
+            lines.push(code.loc, "}".to_string());
         },
     }
     return out;

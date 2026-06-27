@@ -465,6 +465,23 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
             ],
         },
         AspectSpec {
+            name: "DropDynamic",
+            doc: doc(
+                "Allows a value to emit cleanup (drop) code when its scope ends, when it is discarded as a Seq entry, or when a sibling field is not extracted.",
+            ),
+            builtin_unique_id: 1032,
+            methods: vec![AspectMethod {
+                name: "drop",
+                doc: doc(""),
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("cv", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EResult<crate::langhelp::Code>",
+            }],
+        },
+        AspectSpec {
             name: "Aspect",
             doc: doc("Identity aspect for aspects (types representing values holding aspect implementations)."),
             builtin_unique_id: 1029,
