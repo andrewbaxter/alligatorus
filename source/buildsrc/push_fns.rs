@@ -8,6 +8,18 @@ use {
     std::collections::HashSet,
 };
 
+pub const PUSHFN_LOG_NAME: &str = "log";
+pub const PUSHFN_DEFINE_NAME: &str = "define";
+pub const PUSHFN_STR_TO_JSON_NAME: &str = "str_to_json";
+pub const PUSHFN_CONSTKEY_TO_STR_NAME: &str = "constkey_to_str";
+pub const PUSHFN_CODEVALUE_NAME: &str = "codevalue";
+pub const PUSHFN_GEN_BINDING_NAME_NAME: &str = "gen_binding_name";
+pub const PUSHFN_CONST_EVAL_NAME: &str = "const_eval";
+pub const PUSHFN_NEW_EXPR_CONTEXT_NAME: &str = "new_expr_context";
+pub const PUSHFN_LIST_NAME: &str = "list";
+pub const PUSHFN_MAP_NAME: &str = "map";
+pub const PUSHFN_OPTION_NAME: &str = "option";
+
 pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
     let builtin_scope_ids = scope_ids;
 
@@ -22,7 +34,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
     for s in &vec![
         //. .
         PushFnSpec {
-            name: "log",
+            name: PUSHFN_LOG_NAME,
             builtin_scope_id: 5001,
             args: vec![("message", "String")],
             ret: "()",
@@ -36,7 +48,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "define",
+            name: PUSHFN_DEFINE_NAME,
             builtin_scope_id: 5002,
             args: vec![],
             ret: "DefinitionSetBuilder",
@@ -50,7 +62,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "str_to_json",
+            name: PUSHFN_STR_TO_JSON_NAME,
             builtin_scope_id: 5003,
             args: vec![("s", "String")],
             ret: "String",
@@ -59,7 +71,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "constkey_to_str",
+            name: PUSHFN_CONSTKEY_TO_STR_NAME,
             builtin_scope_id: 5004,
             args: vec![("key", "crate::langhelp::ConstKey")],
             ret: "String",
@@ -68,7 +80,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "codevalue",
+            name: PUSHFN_CODEVALUE_NAME,
             builtin_scope_id: 5005,
             args: vec![("code", "crate::langhelp::Code"), ("value", "Rc<dyn crate::langhelp::Value>")],
             ret: "crate::eval::code_value_extern::CodeValueExtern",
@@ -81,7 +93,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "gen_binding_name",
+            name: PUSHFN_GEN_BINDING_NAME_NAME,
             builtin_scope_id: 5006,
             args: vec![("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
             ret: "String",
@@ -92,7 +104,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "const_eval",
+            name: PUSHFN_CONST_EVAL_NAME,
             builtin_scope_id: 5008,
             args: vec![
                 ("xx", "crate::eval::code_value_extern::ExprContextPush"),
@@ -113,7 +125,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "new_expr_context",
+            name: PUSHFN_NEW_EXPR_CONTEXT_NAME,
             builtin_scope_id: 5009,
             args: vec![
                 ("target_arg", "Rc<dyn crate::r#gen::Target>"),
@@ -141,7 +153,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "list",
+            name: PUSHFN_LIST_NAME,
             builtin_scope_id: 5010,
             args: vec![("element_type", "crate::eval::push::AnyType")],
             ret: "crate::eval::value::type_list::dynamic::TypeListDynamic",
@@ -150,7 +162,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "map",
+            name: PUSHFN_MAP_NAME,
             builtin_scope_id: 5011,
             args: vec![("key_type", "crate::eval::push::AnyType"), ("value_type", "crate::eval::push::AnyType")],
             ret: "crate::eval::value::type_map::dynamic::TypeMapDynamic",
@@ -162,7 +174,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
             },
         },
         PushFnSpec {
-            name: "option",
+            name: PUSHFN_OPTION_NAME,
             builtin_scope_id: 5012,
             args: vec![("element_type", "crate::eval::push::AnyType")],
             ret: "crate::eval::value::type_option::dynamic::TypeOptionDynamic",

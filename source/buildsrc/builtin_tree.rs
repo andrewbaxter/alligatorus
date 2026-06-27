@@ -1,4 +1,31 @@
 use {
+    crate::buildsrc::{
+        aspects::{
+            ASPECT_ID_FIELD_ID_NAME,
+            ASPECT_ID_FUNCTION_ID_NAME,
+            ASPECT_ID_STRING_DYNAMIC_NAME,
+            IFACE_ASPECT_FIELD_NAME,
+            IFACE_ASPECT_FUNCTION_NAME,
+        },
+        push_fns::{
+            PUSHFN_CODEVALUE_NAME,
+            PUSHFN_CONSTKEY_TO_STR_NAME,
+            PUSHFN_CONST_EVAL_NAME,
+            PUSHFN_DEFINE_NAME,
+            PUSHFN_GEN_BINDING_NAME_NAME,
+            PUSHFN_LIST_NAME,
+            PUSHFN_LOG_NAME,
+            PUSHFN_MAP_NAME,
+            PUSHFN_NEW_EXPR_CONTEXT_NAME,
+            PUSHFN_OPTION_NAME,
+            PUSHFN_STR_TO_JSON_NAME,
+        },
+        traits::{
+            IFACE_BINDING_NAME,
+            IFACE_CODE_DYN_NAME,
+            IFACE_TARGET_NAME,
+        },
+    },
     proc_macro2::TokenStream,
     quote::{
         format_ident,
@@ -28,41 +55,6 @@ pub enum BuiltinTreeNode {
     Leaf(BuiltinLeafSpec),
 }
 
-const KEY_LOG: &str = "log";
-const KEY_DEFINE: &str = "define";
-const KEY_TYPES: &str = "types";
-const KEY_LIST: &str = "list";
-const KEY_MAP: &str = "map";
-const KEY_OPTION: &str = "option";
-const KEY_STRING: &str = "string";
-const KEY_NUMBER: &str = "number";
-const KEY_NULL: &str = "null";
-const KEY_BOOL: &str = "bool";
-const KEY_ANY: &str = "any";
-const KEY_CONSTKEY: &str = "constkey";
-const KEY_EXPR: &str = "expr";
-const KEY_TYPE: &str = "type";
-const KEY_ASPECT: &str = "aspect";
-const KEY_CODEDYN: &str = "codedyn";
-const KEY_CVE: &str = "cve";
-const KEY_EVAL: &str = "eval";
-const KEY_ASPECT_LOOKUP: &str = "aspect_lookup";
-const KEY_CAST_VALUE: &str = "cast_value";
-const KEY_CONST_EVAL: &str = "const_eval";
-const KEY_CODEVALUE: &str = "codevalue";
-const KEY_STR_TO_JSON: &str = "str_to_json";
-const KEY_CONSTKEY_TO_STR: &str = "constkey_to_str";
-const KEY_GEN_BINDING_NAME: &str = "gen_binding_name";
-const KEY_NEW_EXPR_CONTEXT: &str = "new_expr_context";
-const KEY_ASPECT_FUNCTION: &str = "aspect_function";
-const KEY_ASPECT_FIELD: &str = "aspect_field";
-const KEY_ASPECT_STRING_DYNAMIC: &str = "aspect_string_dynamic";
-const KEY_ASPECT_FUNCTION_ID: &str = "aspect_function_id";
-const KEY_ASPECT_FIELD_ID: &str = "aspect_field_id";
-const KEY_BINDING: &str = "binding";
-const KEY_TARGET: &str = "target";
-const KEY_CODE_DYN: &str = "code_dyn";
-
 const ASPECT_COMPILE_SCOPE_ID: usize = 7023;
 const CAST_VALUE_COMPILE_SCOPE_ID: usize = 7024;
 
@@ -73,80 +65,80 @@ pub fn builtin_tree() -> BuiltinTreeNode {
         Leaf,
     };
     Branch(vec![
-        (KEY_LOG, Leaf(PushFn(KEY_LOG))),
-        (KEY_DEFINE, Leaf(PushFn(KEY_DEFINE))),
-        (KEY_TYPES, Branch(vec![
-            (KEY_LIST, Leaf(Constructor {
-                push_fn_name: KEY_LIST,
+        ("log", Leaf(PushFn(PUSHFN_LOG_NAME))),
+        ("define", Leaf(PushFn(PUSHFN_DEFINE_NAME))),
+        ("types", Branch(vec![
+            ("list", Leaf(Constructor {
+                push_fn_name: PUSHFN_LIST_NAME,
                 type_tokens: quote!(crate::eval::value::type_list_constructor::r#const::TypeListConstructorConst),
             })),
-            (KEY_MAP, Leaf(Constructor {
-                push_fn_name: KEY_MAP,
+            ("map", Leaf(Constructor {
+                push_fn_name: PUSHFN_MAP_NAME,
                 type_tokens: quote!(crate::eval::value::type_map_constructor::r#const::TypeMapConstructorConst),
             })),
-            (KEY_OPTION, Leaf(Constructor {
-                push_fn_name: KEY_OPTION,
+            ("option", Leaf(Constructor {
+                push_fn_name: PUSHFN_OPTION_NAME,
                 type_tokens: quote!(crate::eval::value::type_option_constructor::r#const::TypeOptionConstructorConst),
             })),
-            (KEY_STRING, Leaf(AnyConst {
+            ("string", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic),
             })),
-            (KEY_NUMBER, Leaf(AnyConst {
+            ("number", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_number::dynamic::TypeNumberDynamic),
             })),
-            (KEY_NULL, Leaf(AnyConst {
+            ("null", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_null::dynamic::TypeNullDynamic),
             })),
-            (KEY_BOOL, Leaf(AnyConst {
+            ("bool", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_bool::dynamic::TypeBoolDynamic),
             })),
-            (KEY_ANY, Leaf(AnyConst {
+            ("any", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic),
             })),
-            (KEY_CONSTKEY, Leaf(AnyConst {
+            ("constkey", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_constkey::dynamic::TypeConstkeyDynamic),
             })),
-            (KEY_EXPR, Leaf(AnyConst {
+            ("expr", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_expr::TypeExpr),
             })),
-            (KEY_TYPE, Leaf(AnyConst {
+            ("type", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic),
             })),
-            (KEY_ASPECT, Leaf(AnyConst {
+            ("aspect", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_aspect::dynamic::TypeAspectDynamic),
             })),
-            (KEY_CODEDYN, Leaf(AnyConst {
+            ("codedyn", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic),
             })),
-            (KEY_CVE, Leaf(AnyConst {
+            ("cve", Leaf(AnyConst {
                 type_tokens: quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic),
             })),
         ])),
-        (KEY_EVAL, Branch(vec![
-            (KEY_ASPECT_LOOKUP, Leaf(InitialBind {
+        ("eval", Branch(vec![
+            ("aspect_lookup", Leaf(InitialBind {
                 dynamic_key_scope_id: ASPECT_COMPILE_SCOPE_ID,
                 type_tokens: quote!(crate::eval::value::type_function_aspect::dynamic::TypeFunctionAspectDynamic),
             })),
-            (KEY_CAST_VALUE, Leaf(InitialBind {
+            ("cast_value", Leaf(InitialBind {
                 dynamic_key_scope_id: CAST_VALUE_COMPILE_SCOPE_ID,
                 type_tokens: quote!(
                     crate::eval::value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic
                 ),
             })),
-            (KEY_CONST_EVAL, Leaf(PushFn(KEY_CONST_EVAL))),
-            (KEY_CODEVALUE, Leaf(PushFn(KEY_CODEVALUE))),
-            (KEY_STR_TO_JSON, Leaf(PushFn(KEY_STR_TO_JSON))),
-            (KEY_CONSTKEY_TO_STR, Leaf(PushFn(KEY_CONSTKEY_TO_STR))),
-            (KEY_GEN_BINDING_NAME, Leaf(PushFn(KEY_GEN_BINDING_NAME))),
-            (KEY_NEW_EXPR_CONTEXT, Leaf(PushFn(KEY_NEW_EXPR_CONTEXT))),
-            (KEY_ASPECT_FUNCTION, Leaf(Interface(KEY_ASPECT_FUNCTION))),
-            (KEY_ASPECT_FIELD, Leaf(Interface(KEY_ASPECT_FIELD))),
-            (KEY_ASPECT_STRING_DYNAMIC, Leaf(AspectId(KEY_ASPECT_STRING_DYNAMIC))),
-            (KEY_ASPECT_FUNCTION_ID, Leaf(AspectId(KEY_ASPECT_FUNCTION_ID))),
-            (KEY_ASPECT_FIELD_ID, Leaf(AspectId(KEY_ASPECT_FIELD_ID))),
-            (KEY_BINDING, Leaf(Interface(KEY_BINDING))),
-            (KEY_TARGET, Leaf(Interface(KEY_TARGET))),
-            (KEY_CODE_DYN, Leaf(Interface(KEY_CODE_DYN))),
+            ("const_eval", Leaf(PushFn(PUSHFN_CONST_EVAL_NAME))),
+            ("codevalue", Leaf(PushFn(PUSHFN_CODEVALUE_NAME))),
+            ("str_to_json", Leaf(PushFn(PUSHFN_STR_TO_JSON_NAME))),
+            ("constkey_to_str", Leaf(PushFn(PUSHFN_CONSTKEY_TO_STR_NAME))),
+            ("gen_binding_name", Leaf(PushFn(PUSHFN_GEN_BINDING_NAME_NAME))),
+            ("new_expr_context", Leaf(PushFn(PUSHFN_NEW_EXPR_CONTEXT_NAME))),
+            ("aspect_function", Leaf(Interface(IFACE_ASPECT_FUNCTION_NAME))),
+            ("aspect_field", Leaf(Interface(IFACE_ASPECT_FIELD_NAME))),
+            ("aspect_string_dynamic", Leaf(AspectId(ASPECT_ID_STRING_DYNAMIC_NAME))),
+            ("aspect_function_id", Leaf(AspectId(ASPECT_ID_FUNCTION_ID_NAME))),
+            ("aspect_field_id", Leaf(AspectId(ASPECT_ID_FIELD_ID_NAME))),
+            ("binding", Leaf(Interface(IFACE_BINDING_NAME))),
+            ("target", Leaf(Interface(IFACE_TARGET_NAME))),
+            ("code_dyn", Leaf(Interface(IFACE_CODE_DYN_NAME))),
         ])),
     ])
 }

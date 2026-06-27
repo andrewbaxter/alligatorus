@@ -14,6 +14,12 @@ use {
     std::collections::HashSet,
 };
 
+pub const IFACE_ASPECT_FUNCTION_NAME: &str = "aspect_function";
+pub const IFACE_ASPECT_FIELD_NAME: &str = "aspect_field";
+pub const ASPECT_ID_STRING_DYNAMIC_NAME: &str = "aspect_string_dynamic";
+pub const ASPECT_ID_FUNCTION_ID_NAME: &str = "aspect_function_id";
+pub const ASPECT_ID_FIELD_ID_NAME: &str = "aspect_field_id";
+
 pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, scope_ids: &mut HashSet<usize>) {
     let mut aspect_names = HashSet::new();
     let mut aspect_token_items: Vec<TokenStream> = Vec::new();
@@ -575,17 +581,17 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
     for e in &[
         //. .
         AspectBinding {
-            key: "aspect_string_dynamic",
+            key: ASPECT_ID_STRING_DYNAMIC_NAME,
             scope_id: 4001,
             aspect_fn: "aspect_string_dynamic",
         },
         AspectBinding {
-            key: "aspect_function_id",
+            key: ASPECT_ID_FUNCTION_ID_NAME,
             scope_id: 4002,
             aspect_fn: "aspect_function",
         },
         AspectBinding {
-            key: "aspect_field_id",
+            key: ASPECT_ID_FIELD_ID_NAME,
             scope_id: 4003,
             aspect_fn: "aspect_field",
         },
@@ -621,7 +627,7 @@ pub fn interface_specs() -> Vec<InterfaceSpec> {
     vec![
         //. .
         InterfaceSpec {
-            name: "aspect_function",
+            name: IFACE_ASPECT_FUNCTION_NAME,
             builtin_unique_id: 1016,
             scope_id: 3003,
             field_prefix: "af",
@@ -636,7 +642,7 @@ pub fn interface_specs() -> Vec<InterfaceSpec> {
             }],
         },
         InterfaceSpec {
-            name: "aspect_field",
+            name: IFACE_ASPECT_FIELD_NAME,
             builtin_unique_id: 1030,
             scope_id: 3004,
             field_prefix: "afd",

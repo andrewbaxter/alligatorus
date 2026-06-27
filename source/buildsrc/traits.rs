@@ -9,6 +9,10 @@ use {
     quote::quote,
 };
 
+pub const IFACE_BINDING_NAME: &str = "binding";
+pub const IFACE_TARGET_NAME: &str = "target";
+pub const IFACE_CODE_DYN_NAME: &str = "code_dyn";
+
 pub fn specs() -> Vec<InterfaceSpec> {
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
     let string = || TypeRef::unit(quote!(crate::eval::value::type_string::dynamic::TypeStringDynamic));
@@ -90,7 +94,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
             ],
         },
         InterfaceSpec {
-            name: "binding",
+            name: IFACE_BINDING_NAME,
             builtin_unique_id: 2005,
             scope_id: 3005,
             field_prefix: "se",
@@ -111,7 +115,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
             }],
         },
         InterfaceSpec {
-            name: "target",
+            name: IFACE_TARGET_NAME,
             builtin_unique_id: 2006,
             scope_id: 3006,
             field_prefix: "tg",
@@ -255,7 +259,7 @@ pub fn specs() -> Vec<InterfaceSpec> {
             ],
         },
         InterfaceSpec {
-            name: "code_dyn",
+            name: IFACE_CODE_DYN_NAME,
             builtin_unique_id: 2007,
             scope_id: 3007,
             field_prefix: "cd",
