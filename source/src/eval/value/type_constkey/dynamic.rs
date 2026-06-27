@@ -148,9 +148,9 @@ impl Type for TypeConstkeyDynamic {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let source_type = erb.must_er(cv.value.type_(xx, loc))?;
+            let source_type = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
             if let Some(aspect_string) = aspect_string_const_get_maybe(xx, source_type.as_ref()) {
-                let s = aspect_string.get(cv.value.as_ref());
+                let s = aspect_string.get(cv.value.as_deref().unwrap());
                 let canonical = ConstKey::String(s).to_str();
                 return Ok(CodeValue {
                     code: Code {
@@ -160,10 +160,10 @@ impl Type for TypeConstkeyDynamic {
                             type_: CodeDynamicType::Literal(serde_json::Value::String(canonical)),
                         })),
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeConstkeyDynamic),
-                    }),
+                    })),
                 });
             }
             return erb.err_new(format!("Cannot convert {} to constkey", source_type.desc()));

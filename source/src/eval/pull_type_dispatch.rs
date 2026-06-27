@@ -85,6 +85,7 @@ pub(crate) fn pull_can_cast_from_v8(
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
         target: xx.target.clone(),
+        current_exception_type: xx.current_exception_type.clone(),
     }));
     let Some(xx_key) = v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) else {
         return false;
@@ -148,6 +149,7 @@ pub(crate) fn pull_cast_from_v8(
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
         target: xx.target.clone(),
+        current_exception_type: xx.current_exception_type.clone(),
     }));
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
         Some(k) => k,
@@ -158,7 +160,7 @@ pub(crate) fn pull_cast_from_v8(
         Some(k) => k,
         None => return EvalRes::err(loc, "cv key alloc".to_string()),
     };
-    let source_type = match cv.value.type_(xx, loc).into_res() {
+    let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
         Ok(v) => v,
         Err(e) => return EvalRes {
             v: None,

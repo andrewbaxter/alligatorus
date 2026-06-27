@@ -116,7 +116,7 @@ impl AspectConsumeDynamic for TypeOptionDynamic {
 
 impl AspectField for TypeOptionDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -130,7 +130,7 @@ impl AspectField for TypeOptionDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         let make = |is_some: bool| -> EvalRes {
             let var_type: Rc<dyn Type> = Rc::new(TypeOptionVariantConstructorDynamic {
                 element_type: self.element_type.clone(),
@@ -141,7 +141,7 @@ impl AspectField for TypeOptionDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: var_type }),
+                value: Some(Rc::new(ValueAnyConst { inner: var_type })),
             })
         };
         match key_name.as_str() {
@@ -191,10 +191,10 @@ impl AspectStackValueDynamic for TypeOptionDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }),
+            })),
         }
     }
 }
@@ -342,7 +342,7 @@ impl Type for TypeOptionDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -352,10 +352,10 @@ impl Type for TypeOptionDynamic {
         if source_type.aspect(xx, &type_option_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, "Cannot convert to option".to_string())
@@ -413,6 +413,10 @@ impl AspectFunction for TypeOptionVariantConstructorDynamic {
                 ),
             }));
         });
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 

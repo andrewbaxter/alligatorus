@@ -198,17 +198,25 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
             name: "Function",
             doc: doc("Allows the value of this type to be called (as a function)"),
             builtin_unique_id: 1116,
-            methods: vec![AspectMethod {
-                name: "call",
-                doc: doc("Make a call using the function referred to by the value."),
-                params: vec![
-                    ("xx", "&crate::langhelp::ExprContext"),
-                    ("loc", "crate::langhelp::QExprId"),
-                    ("self_", "crate::langhelp::CodeValue"),
-                    ("argument", "crate::langhelp::CodeValue"),
-                ],
-                ret: "crate::langhelp::EvalRes",
-            }],
+            methods: vec![
+                AspectMethod {
+                    name: "call",
+                    doc: doc("Make a call using the function referred to by the value."),
+                    params: vec![
+                        ("xx", "&crate::langhelp::ExprContext"),
+                        ("loc", "crate::langhelp::QExprId"),
+                        ("self_", "crate::langhelp::CodeValue"),
+                        ("argument", "crate::langhelp::CodeValue"),
+                    ],
+                    ret: "crate::langhelp::EvalRes",
+                },
+                AspectMethod {
+                    name: "exception_type",
+                    doc: doc("Returns the declared exception type of this function, or TypeNever if none."),
+                    params: vec![],
+                    ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+                },
+            ],
         },
         AspectSpec {
             name: "Set",

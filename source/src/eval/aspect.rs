@@ -64,6 +64,10 @@ impl AspectFunction for AspectPull {
             vec![("inner".to_string(), self_), ("argument".to_string(), argument)],
         )
     }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
+    }
 }
 
 impl ExporterAny for AspectPull {
@@ -106,6 +110,7 @@ fn dispatch_aspect_method(
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
         target: xx.target.clone(),
+        current_exception_type: xx.current_exception_type.clone(),
     }));
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
         Some(k) => k,

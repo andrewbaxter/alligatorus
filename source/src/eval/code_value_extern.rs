@@ -139,9 +139,9 @@ impl AspectField for TypeCodeValueExternDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let self_code = erb.must_er(self_.code.cast::<CodeDynamic>())?.unwrap().clone();
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_str = aspect_string.get(key.value.as_ref());
+            let key_str = aspect_string.get(key.value.as_deref().unwrap());
             if key_str == "code" {
                 return Ok(CodeValue {
                     code: Code {
@@ -159,10 +159,10 @@ impl AspectField for TypeCodeValueExternDynamic {
                             }),
                         }))
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeCodeStructDynamic),
-                    }),
+                    })),
                 });
             }
             if key_str == "value" {
@@ -182,10 +182,10 @@ impl AspectField for TypeCodeValueExternDynamic {
                             }),
                         }))
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeValueDynamic),
-                    }),
+                    })),
                 });
             }
             return erb.err_new(format!("CodeValueExtern has no field '{}' (only 'code' and 'value')", key_str));
@@ -296,7 +296,7 @@ impl Type for TypeCodeValueExternDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -306,10 +306,10 @@ impl Type for TypeCodeValueExternDynamic {
         if source_type.aspect(xx, &code_value_extern_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeCodeValueExternDynamic),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, "Cannot convert to CodeValueExtern".to_string())
@@ -343,10 +343,10 @@ impl Type for TypeCodeValueExternDynamic {
                     }),
                 })),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_type_rc,
-            }),
+            })),
         })
     }
 
@@ -439,7 +439,7 @@ impl Type for TypeExprContextPushDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -449,10 +449,10 @@ impl Type for TypeExprContextPushDynamic {
         if source_type.aspect(xx, &expr_context_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeExprContextPushDynamic),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, "Cannot convert to ExprContextPush".to_string())

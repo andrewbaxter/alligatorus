@@ -45,7 +45,7 @@ impl Aspect for ArgumentRecord { }
 
 impl AspectField for ArgumentRecord {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -59,7 +59,7 @@ impl AspectField for ArgumentRecord {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         let const_key = ConstKey::String(key_name.clone());
         let Some(binding) = self.fields.get(&const_key) else {
             return EvalRes {
@@ -130,7 +130,7 @@ impl Binding for ArgumentRecordBinding {
                 loc,
                 code: Code_::None,
             },
-            value: self.record.clone(),
+            value: Some(self.record.clone()),
         }
     }
 }

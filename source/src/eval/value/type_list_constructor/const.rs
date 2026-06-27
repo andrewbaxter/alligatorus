@@ -42,7 +42,7 @@ impl Aspect for TypeListConstructorConst { }
 
 impl AspectFunction for TypeListConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_meta = match argument.value.type_(xx, loc).into_res() {
+        let arg_meta = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -56,15 +56,19 @@ impl AspectFunction for TypeListConstructorConst {
                 errors: Some(e),
             },
         };
-        let element_type = aspect_type.type_(argument.value.as_ref());
+        let element_type = aspect_type.type_(argument.value.as_deref().unwrap());
         let list_type: Rc<dyn Type> = Rc::new(super::super::type_list::dynamic::TypeListDynamic { element_type });
         EvalRes::ok(CodeValue {
             code: Code {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: list_type }),
+            value: Some(Rc::new(ValueAnyConst { inner: list_type })),
         })
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 

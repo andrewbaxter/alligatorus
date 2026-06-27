@@ -101,7 +101,7 @@ impl AspectBind for TypeSourceObjectNewConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
+            }, Box::new(BindingValue { value: value.unwrap() }) as Box<dyn Binding>)),
         };
     }
 }
@@ -147,6 +147,10 @@ impl AspectFunction for TypeSourceObjectNewConst {
                 type_: CodeDynamicType::NewObject(CodeDynamicNewObject { fields: object_fields }),
             }));
         });
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 

@@ -82,14 +82,14 @@ impl AspectBind for TypeStringConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
+            }, Box::new(BindingValue { value: value.unwrap() }) as Box<dyn Binding>)),
         };
     }
 }
 
 impl AspectConsumeDynamic for TypeStringConst {
     fn to_dynamic(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
-        let s = must_downcast_ref::<ValueStringConst>(cv.value.as_ref()).0.clone();
+        let s = must_downcast_ref::<ValueStringConst>(cv.value.as_deref().unwrap()).0.clone();
         EResult::ok(CodeDynamic {
             loc,
             type_: CodeDynamicType::Literal(serde_json::Value::String(s)),
@@ -190,23 +190,23 @@ impl Type for TypeStringConst {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
+            let value = value.unwrap();
             let type_ = erb.must_er(value.type_(xx, loc))?;
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
-            });
+                value: Some(Rc::new(ValueStringConst(aspect_string.get(value.as_ref()))))});
         });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
+            let value = value.unwrap();
             let aspect_string = erb.must_er(aspect_string_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueStringConst(aspect_string.get(value.as_ref())))
-            });
+                value: Some(Rc::new(ValueStringConst(aspect_string.get(value.as_ref()))))});
         });
     }
 

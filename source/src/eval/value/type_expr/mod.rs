@@ -93,7 +93,7 @@ impl AspectConsumeDynamic for TypeExpr {
         if let Some(dynamic_code) = cv.code.cast::<CodeDynamic>().v.flatten() {
             return EResult::ok(dynamic_code.clone());
         }
-        let cell = Rc::new(StagedExprCell { value: RefCell::new(Some(cv.value)) });
+        let cell = Rc::new(StagedExprCell { value: RefCell::new(cv.value) });
         let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
         EResult::ok(CodeDynamic {
@@ -207,7 +207,7 @@ impl Type for TypeExpr {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -215,15 +215,15 @@ impl Type for TypeExpr {
             },
         };
         if source_type.aspect(xx, &expr_type_identity()).is_some() {
-            if let Some(expr) = (cv.value.as_ref() as &dyn std::any::Any).downcast_ref::<Expr>() {
+            if let Some(expr) = (cv.value.as_deref().unwrap() as &dyn std::any::Any).downcast_ref::<Expr>() {
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(expr.clone()),
+                    value: Some(Rc::new(expr.clone())),
                 });
             }
             return EvalRes::ok(cv);
         }
-        let type_rc = match cv.value.type_(xx, loc).into_res() {
+        let type_rc = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -236,7 +236,7 @@ impl Type for TypeExpr {
         };
         return EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(expr),
+            value: Some(Rc::new(expr)),
         });
     }
 

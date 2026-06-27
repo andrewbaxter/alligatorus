@@ -126,9 +126,9 @@ impl AspectConsumeDynamic for TypeSourceInterfaceConst {
 impl AspectField for TypeSourceInterfaceConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
+            let key_name = key_string.get(key.value.as_deref().unwrap());
             let (field_name, arg_type, ret_type) = {
                 let methods = self.data.methods.borrow();
                 let method = methods.iter().find(|m| m.name == key_name);
@@ -157,10 +157,10 @@ impl AspectField for TypeSourceInterfaceConst {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: field_type,
-                }),
+                })),
             });
         });
     }
@@ -198,10 +198,10 @@ impl AspectStackValueDynamic for TypeSourceInterfaceConst {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
-            }),
+            })),
         }
     }
 }
@@ -471,7 +471,7 @@ impl Type for TypeSourceInterfaceConst {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let identity = self.data.identity.clone();
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -481,10 +481,10 @@ impl Type for TypeSourceInterfaceConst {
         if source_type.aspect(xx, &identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceInterfaceConst { data: self.data.clone() }),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("Cannot convert to {}", self.desc()))
@@ -494,10 +494,10 @@ impl Type for TypeSourceInterfaceConst {
         if type_.aspect(xx, &type_type_identity()).is_some() {
             let dyn_cv = CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(super::dynamic::TypeSourceInterfaceDynamic),
-                }),
+                })),
             };
             return super::dynamic::TypeSourceInterfaceDynamic.cast_to(xx, loc, dyn_cv, type_);
         }

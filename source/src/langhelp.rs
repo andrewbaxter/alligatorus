@@ -130,7 +130,7 @@ pub(crate) enum Code_ {
 #[derive(Clone)]
 pub(crate) struct CodeValue {
     pub(crate) code: Code,
-    pub(crate) value: Rc<dyn Value>,
+    pub(crate) value: Option<Rc<dyn Value>>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Copy, Debug)]
@@ -321,6 +321,7 @@ pub(crate) struct EvalContext {
 pub(crate) type EvalRes = EResult<CodeValue>;
 
 pub(crate) struct ExprContext {
+    pub(crate) current_exception_type: Rc<dyn Type>,
     pub(crate) import_state: Rc<Cell<ImportStateId>>,
     pub(crate) scope: Rc<Scope>,
     pub(crate) target: Rc<dyn Target>,

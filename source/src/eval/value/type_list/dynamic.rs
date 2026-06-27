@@ -122,7 +122,7 @@ impl AspectConsumeDynamic for TypeListDynamic {
 
 impl AspectField for TypeListDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -136,7 +136,7 @@ impl AspectField for TypeListDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         if key_name == "new" {
             let new_type: Rc<dyn Type> = Rc::new(TypeListNewDynamic { element_type: self.element_type.clone() });
             return EvalRes::ok(CodeValue {
@@ -144,7 +144,7 @@ impl AspectField for TypeListDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: new_type }),
+                value: Some(Rc::new(ValueAnyConst { inner: new_type })),
             });
         }
         return er_seq_cv!(loc, erb, {
@@ -165,10 +165,10 @@ impl AspectField for TypeListDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }),
+                })),
             });
         });
     }
@@ -258,10 +258,10 @@ impl AspectStackValueDynamic for TypeListDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }),
+            })),
         }
     }
 }
@@ -395,7 +395,7 @@ impl Type for TypeListDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -405,10 +405,10 @@ impl Type for TypeListDynamic {
         if aspect_list_dynamic_get_maybe(xx, source_type.as_ref()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, "Cannot convert to list type".to_string())
@@ -443,10 +443,10 @@ impl Aspect for TypeListNewDynamic { }
 impl AspectFunction for TypeListNewDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let arg_type = erb.must_er(argument.value.type_(xx, loc))?;
+            let arg_type = erb.must_er(argument.value.as_ref().unwrap().type_(xx, loc))?;
             let mut dynamic_elements = vec![];
             if let Some(arg_tuple) = aspect_tuple_get_maybe(xx, arg_type.as_ref()) {
-                let elements = arg_tuple.take_elements(argument.value);
+                let elements = arg_tuple.take_elements(argument.value.unwrap());
                 for elem_res in elements {
                     let elem_cv = erb.must_er(elem_res)?;
                     let converted = erb.must_er(typecheck_convert(xx, loc, self.element_type.as_ref(), elem_cv))?;
@@ -468,6 +468,10 @@ impl AspectFunction for TypeListNewDynamic {
                 type_: CodeDynamicType::NewArray(CodeDynamicNewArray { elements: dynamic_elements }),
             }));
         });
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 

@@ -79,7 +79,7 @@ impl Binding for BindingUniqueDualMode {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
-            value: Rc::new(self.unique),
+            value: Some(Rc::new(self.unique)),
         }
     }
 }
@@ -101,7 +101,7 @@ impl AspectBind for TypeUnique {
         return EResult {
             errors,
             v: Some(
-                (cv.code, Box::new(super::super::type_tuple::binding::BindingValue { value }) as Box<dyn Binding>),
+                (cv.code, Box::new(super::super::type_tuple::binding::BindingValue { value: value.unwrap() }) as Box<dyn Binding>),
             ),
         };
     }
@@ -124,15 +124,15 @@ impl AspectInitialBind for TypeUnique {
 
 impl AspectOperatorEq for TypeUnique {
     fn eq(&self, xx: &ExprContext, loc: QExprId, base: CodeValue, reference: CodeValue) -> EvalRes {
-        let base_const = (base.value.as_ref() as &dyn std::any::Any).downcast_ref::<Unique>().cloned();
-        let ref_const = (reference.value.as_ref() as &dyn std::any::Any).downcast_ref::<Unique>().cloned();
+        let base_const = (base.value.as_deref().unwrap() as &dyn std::any::Any).downcast_ref::<Unique>().cloned();
+        let ref_const = (reference.value.as_deref().unwrap() as &dyn std::any::Any).downcast_ref::<Unique>().cloned();
         if let (Some(b), Some(r)) = (&base_const, &ref_const) {
             return EvalRes::ok(CodeValue {
                 code: Code {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueBoolConst(b == r)),
+                value: Some(Rc::new(ValueBoolConst(b == r))),
             });
         }
         let base_dyn = match aspect_consume_dynamic_get(xx, loc, self).into_res() {

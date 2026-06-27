@@ -139,7 +139,7 @@ impl Record {
         cv: CodeValue,
     ) -> EResult<(BTreeMap<ConstKey, RecordScopeField>, Option<TargetBindSub>)> {
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record bind_sub: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.unwrap())).ok().expect("Record bind_sub: Rc not unique");
         let carry = cv.code;
         if let Some(base) = &record.base {
             let record_type = Rc::new(self.clone_as_type()) as Rc<dyn Type>;
@@ -204,7 +204,7 @@ impl Record {
             for (key, result) in bind_results {
                 match result {
                     BindSubResult::Const(cv) => {
-                        let field_type = match cv.value.type_(xx, loc).into_res() {
+                        let field_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
                             Ok(v) => v,
                             Err(errs) => {
                                 scope_fields.insert(key, RecordScopeField::Error(errs));
@@ -241,7 +241,7 @@ impl Record {
                     target_fields.push((key.clone(), sub));
                 },
                 BindSubResult::Const(cv) => {
-                    let field_type = match cv.value.type_(xx, loc).into_res() {
+                    let field_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
                         Ok(v) => v,
                         Err(errs) => {
                             scope_fields.insert(key, RecordScopeField::Error(errs));
@@ -328,7 +328,7 @@ impl AspectConsumeDynamic for Record {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record Rc not unique in to_dynamic");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.unwrap())).ok().expect("Record Rc not unique in to_dynamic");
         if let Some(base) = &record.base {
             return base.to_dynamic(carry);
         }
@@ -351,7 +351,7 @@ impl AspectConsumeDynamic for Record {
                         errors.extend(errs);
                     }
                     if let Some(elem_cv) = elem_res.v {
-                        let elem_value_type = match elem_cv.value.type_(xx, loc).into_res() {
+                        let elem_value_type = match elem_cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
                             Ok(v) => v,
                             Err(e) => {
                                 errors.extend(e);
@@ -397,9 +397,9 @@ impl AspectConsumeDynamic for Record {
 impl AspectField for Record {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv_inline(loc, |erb| {
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
+            let key_name = key_string.get(key.value.as_deref().unwrap());
             let const_key = ConstKey::String(key_name.clone());
             let entry_type = record_field_type(xx, loc, self.fields.get(&const_key).ok_or_else(|| {
                 erb.errors.push(ExprErr {
@@ -407,7 +407,8 @@ impl AspectField for Record {
                     errors: vec![ExprSubErr::Opaque(format!("Field '{}' not found on record", key_name))],
                 });
             })?);
-            let CodeValue { code: self_code_raw, value: self_value } = self_;
+            let self_code_raw = self_.code;
+            let self_value = self_.value.unwrap();
             if let Some(base) = &self.base {
                 return Ok(base.field_access(xx, loc, self_code_raw, const_key.to_str(), entry_type));
             }
@@ -455,7 +456,7 @@ impl AspectInitialBind for Record {
 impl AspectPostDeserialize for Record {
     fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
         let record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value))
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.unwrap()))
                 .ok()
                 .expect("Record post_deserialize: Rc not unique");
         let mut new_fields = BTreeMap::new();
@@ -473,7 +474,7 @@ impl AspectPostDeserialize for Record {
                         }));
                         continue;
                     };
-                    let mut field_type_res = field_cv.value.type_(xx, loc);
+                    let mut field_type_res = field_cv.value.as_ref().unwrap().type_(xx, loc);
                     field_type_res.push_errors(&mut errors);
                     let Some(field_type) = field_type_res.v else {
                         continue;
@@ -497,10 +498,10 @@ impl AspectPostDeserialize for Record {
             errors,
             v: Some(CodeValue {
                 code: cv.code,
-                value: Rc::new(Record {
+                value: Some(Rc::new(Record {
                     base: record.base,
                     fields: new_fields,
-                }),
+                })),
             }),
         }
     }
@@ -556,7 +557,7 @@ impl ExporterRootDelegate for Record {
                 let t = match field {
                     RecordField::Dynamic(t) => t.clone(),
                     RecordField::EvalRes(er) => match &er.v {
-                        Some(cv) => match cv.value.type_(xx, loc).v {
+                        Some(cv) => match cv.value.as_ref().unwrap().type_(xx, loc).v {
                             Some(t) => t,
                             None => {
                                 push_err(vec![crate::langhelp::ExprErr {
@@ -705,7 +706,7 @@ impl Type for Record {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let code = cv.code;
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record cast_from: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.unwrap())).ok().expect("Record cast_from: Rc not unique");
         return er_seq_cv!(loc, erb, {
             let mut converted_fields = BTreeMap::new();
             for (key, field) in record.fields {
@@ -731,17 +732,17 @@ impl Type for Record {
             }
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(Record {
+                value: Some(Rc::new(Record {
                     base: record.base,
                     fields: converted_fields
-                }),
+                })),
             });
         });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record cast_to: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.unwrap())).ok().expect("Record cast_to: Rc not unique");
         return er_seq_cv!(loc, erb, {
             let any_type: Rc<dyn Type> = Rc::new(TypeAnyDynamic);
             let mut converted_fields = BTreeMap::new();
@@ -759,7 +760,7 @@ impl Type for Record {
                                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id },),
                                 })),
                             },
-                            value: any_type.clone().as_value(),
+                            value: Some(any_type.clone().as_value()),
                         }
                     },
                     RecordField::EvalRes(er) => {
@@ -776,7 +777,7 @@ impl Type for Record {
             };
             let converted_cv = CodeValue {
                 code: cv.code,
-                value: Rc::new(converted_record),
+                value: Some(Rc::new(converted_record)),
             };
             let record_js = erb.must_er(converted_type.to_dynamic(xx, loc, converted_cv))?;
             let call_code = CodeDynamic {
@@ -796,7 +797,7 @@ impl Type for Record {
                     loc,
                     code: Code_::Dyn(Rc::new(call_code)),
                 },
-                value: any_type.as_value(),
+                value: Some(any_type.as_value()),
             });
         });
     }
@@ -833,7 +834,7 @@ fn record_field_type(xx: &ExprContext, loc: QExprId, f: &RecordField) -> Rc<dyn 
     match f {
         RecordField::Dynamic(t) => t.clone(),
         RecordField::EvalRes(er) => match &er.v {
-            Some(cv) => cv.value.type_(xx, loc).v.expect("Record field type unavailable"),
+            Some(cv) => cv.value.as_ref().unwrap().type_(xx, loc).v.expect("Record field type unavailable"),
             None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
         },
     }
@@ -893,18 +894,18 @@ impl RecordBase for RecordBaseDynamic {
             }).collect();
             return CodeValue {
                 code: field_code,
-                value: Rc::new(Record {
+                value: Some(Rc::new(Record {
                     base: Some(Box::new(RecordBaseDynamic)),
                     fields: fields,
-                }),
+                })),
             };
         }
         CodeValue {
             code: field_code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: field_source,
                 type_: entry_type,
-            }),
+            })),
         }
     }
 
@@ -943,7 +944,7 @@ impl AspectLift for RecordLiftDynamic {
                     loc: (SourceId(0), ExprId(0)),
                     code: Code_::None,
                 },
-                value: lifted,
+                value: Some(lifted),
             })));
         }
         Ok(Rc::new(Record {

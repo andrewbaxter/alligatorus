@@ -112,9 +112,9 @@ impl AspectConsumeDynamic for TypeStringDynamic {
 impl AspectField for TypeStringDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
+            let key_name = key_string.get(key.value.as_deref().unwrap());
             let const_key = ConstKey::String(key_name.clone());
             let field_type = match self.field_type_opt(xx, &const_key) {
                 Some(t) => t,
@@ -132,10 +132,10 @@ impl AspectField for TypeStringDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }),
+                })),
             });
         });
     }
@@ -287,9 +287,10 @@ impl Type for TypeStringDynamic {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = erb.must_er(cv.value.type_(xx, loc))?;
+            let type_ = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
             if let Some(aspect_string) = aspect_string_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
+            let value = value.unwrap();
                 let mut seq = vec![];
                 if let Some(c) = erb.must_er(code.cast::<CodeDynamic>())? {
                     seq.push(c.clone());
@@ -308,19 +309,18 @@ impl Type for TypeStringDynamic {
                             )
                         }))
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeStringDynamic),
-                    }),
+                    })),
                 });
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeStringDynamic),
-                    })
-                });
+                    }))});
             }
         });
     }
@@ -328,10 +328,10 @@ impl Type for TypeStringDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeStringDynamic),
-            }),
+            })),
         })
     }
 

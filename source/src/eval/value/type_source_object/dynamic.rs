@@ -128,9 +128,9 @@ impl AspectField for TypeSourceObjectDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let data = &self.data;
         return er_seq_cv!(loc, erb, {
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
+            let key_name = key_string.get(key.value.as_deref().unwrap());
             type MethodLookup = (String, Rc<dyn Type>, Rc<dyn Type>);
             let lookup_result: Option<MethodLookup> = 'lookup: {
                 {
@@ -195,10 +195,10 @@ impl AspectField for TypeSourceObjectDynamic {
                                 loc,
                                 code: Code_::Dyn(Rc::new(underlying_access))
                             },
-                            value: Rc::new(ValueDynamic {
+                            value: Some(Rc::new(ValueDynamic {
                                 source: ValueDynamicSource::Expr,
                                 type_: dispatch_type.clone(),
-                            }),
+                            })),
                         };
                         let v = erb.must_er(underlying_field.field(xx, loc, underlying_cv, key))?;
                         return Ok(v);
@@ -222,10 +222,10 @@ impl AspectField for TypeSourceObjectDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: field_type,
-                }),
+                })),
             });
         });
     }
@@ -314,10 +314,10 @@ impl AspectStackValueDynamic for TypeSourceObjectDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceObjectDynamic { data: self.data.clone() }),
-            }),
+            })),
         }
     }
 }
@@ -440,10 +440,10 @@ impl Type for TypeSourceObjectDynamic {
         if type_.aspect(xx, &data.identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceObjectDynamic { data: self.data.clone() }),
-                }),
+                })),
             });
         }
         if type_.aspect(xx, &type_type_identity()).is_some() {
@@ -479,10 +479,10 @@ impl Type for TypeSourceObjectDynamic {
                         loc,
                         code: Code_::Dyn(Rc::new(call)),
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeAnyDynamic),
-                    }),
+                    })),
                 });
             }
         }
@@ -537,18 +537,18 @@ impl Type for TypeSourceObjectDynamic {
                             loc,
                             code: Code_::Dyn(Rc::new(call)),
                         },
-                        value: Rc::new(ValueDynamic {
+                        value: Some(Rc::new(ValueDynamic {
                             source: ValueDynamicSource::Expr,
                             type_: result_type,
-                        }),
+                        })),
                     });
                 }
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeSourceInterfaceConst { data: impl_data.interface.clone() }),
-                    }),
+                    })),
                 });
             }
         }
@@ -574,10 +574,10 @@ impl Type for TypeSourceObjectDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(call)),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeAspectDynamic),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
@@ -651,10 +651,10 @@ impl AspectStackValueDynamic for TypeSourceObjectRefDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceObjectRefDynamic),
-            }),
+            })),
         }
     }
 }
@@ -737,10 +737,10 @@ impl Type for TypeSourceObjectRefDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(call)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            })),
         })
     }
 

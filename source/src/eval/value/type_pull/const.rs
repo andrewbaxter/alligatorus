@@ -94,7 +94,7 @@ pub(crate) fn pull_mini_eval(
             loc,
             code: Code_::None,
         },
-        value: inner,
+        value: Some(inner),
     };
     let inner_dyn = to_dyn.to_dynamic(xx, loc, inner_cv).into_res().map_err(|e| format!("to_dynamic: {:?}", e))?;
     let scope_ptr =

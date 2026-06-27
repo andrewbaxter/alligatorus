@@ -96,6 +96,10 @@ impl AspectFunction for TypeSourceUnionNewConst {
             }));
         });
     }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
+    }
 }
 
 impl ExporterAny for TypeSourceUnionNewConst {

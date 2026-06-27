@@ -118,6 +118,7 @@ impl SourceDataMethodData {
                 parent: None,
             }),
             target: xx.target.clone(),
+            current_exception_type: Rc::new(crate::eval::value::type_never::r#const::TypeNever),
         });
         let impl_result = const_eval(&method_xx, impl_expr_ast);
         if let Some(errs) = impl_result.errors {
@@ -363,6 +364,7 @@ impl SourceObjectInterfaceMethodImplData {
                 parent: None,
             }),
             target: xx.target.clone(),
+            current_exception_type: Rc::new(crate::eval::value::type_never::r#const::TypeNever),
         });
         let impl_result = const_eval(&method_xx, impl_expr_ast);
         if let Some(errs) = impl_result.errors {

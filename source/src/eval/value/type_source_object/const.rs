@@ -124,7 +124,7 @@ impl AspectConsumeDynamic for TypeSourceObjectConst {
         if !matches!(cv.code.code, Code_::None) {
             return cv.code.cast::<CodeDynamic>().map(|x| x.unwrap().clone());
         }
-        let instance = match (cv.value.as_ref() as &dyn Any).downcast_ref::<ValueSourceObjectConst>() {
+        let instance = match (cv.value.as_deref().unwrap() as &dyn Any).downcast_ref::<ValueSourceObjectConst>() {
             Some(i) => i,
             None => return EResult::err(
                 loc,
@@ -138,7 +138,7 @@ impl AspectConsumeDynamic for TypeSourceObjectConst {
                 loc,
                 code: Code_::None,
             },
-            value: instance.underlying.clone(),
+            value: Some(instance.underlying.clone()),
         };
         let mut converted_res = crate::eval::typecheck_convert(xx, loc, underlying_type.as_ref(), raw_underlying_cv);
         converted_res.push_errors(&mut errors);
@@ -214,10 +214,10 @@ impl AspectField for TypeSourceObjectConst {
                 loc,
                 code: Code_::Dyn(Rc::new(self_code)),
             },
-            value: Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+            value: Some(Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
                 source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                 type_: Rc::new(super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }),
-            }),
+            })),
         };
         let mut res = dyn_type.field(xx, loc, self_dynamic, key);
         res.push_errors(&mut errors);
@@ -290,10 +290,10 @@ impl AspectStackValueDynamic for TypeSourceObjectConst {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }),
-            }),
+            })),
         }
     }
 }
@@ -772,10 +772,10 @@ impl Type for TypeSourceObjectConst {
         if type_.aspect(xx, &own_identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceObjectConst { data: self.data.clone() }),
-                }),
+                })),
             });
         }
         for (iface_data, identity) in iface_data {
@@ -783,30 +783,30 @@ impl Type for TypeSourceObjectConst {
                 if iface_data.builtin_kind.is_some() {
                     let dyn_cv = CodeValue {
                         code: cv.code,
-                        value: Rc::new(ValueDynamic {
+                        value: Some(Rc::new(ValueDynamic {
                             source: ValueDynamicSource::Expr,
                             type_: Rc::new(super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }),
-                        }),
+                        })),
                     };
                     let dyn_type = super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() };
                     return dyn_type.cast_to(xx, loc, dyn_cv, type_);
                 }
                 return EvalRes::ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeSourceInterfaceConst { data: iface_data }),
-                    }),
+                    })),
                 });
             }
         }
         if type_.aspect(xx, &type_type_identity()).is_some() {
             let dyn_cv = CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }),
-                }),
+                })),
             };
             let dyn_type = super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() };
             return dyn_type.cast_to(xx, loc, dyn_cv, type_);

@@ -116,7 +116,7 @@ impl AspectConsumeDynamic for TypeAnyConst {
         if let Some(Some(dynamic_code)) = cv.code.cast::<CodeDynamic>().v {
             return EResult::ok(dynamic_code.clone());
         }
-        let meta_type = match cv.value.type_(xx, loc).into_res() {
+        let meta_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EResult {
                 v: None,
@@ -130,7 +130,7 @@ impl AspectConsumeDynamic for TypeAnyConst {
                 errors: Some(e),
             },
         };
-        let type_ = aspect_type.type_(cv.value.as_ref());
+        let type_ = aspect_type.type_(cv.value.as_deref().unwrap());
         let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EResult::ok(CodeDynamic {
@@ -143,7 +143,7 @@ impl AspectConsumeDynamic for TypeAnyConst {
 impl AspectField for TypeAnyConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         let inner = {
-            let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
+            let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_deref().unwrap());
             wrapper.inner.clone()
         };
         let field = match aspect_field_get(xx, loc, inner.as_ref()).into_res() {
@@ -164,7 +164,7 @@ impl AspectField for TypeAnyConst {
 impl AspectFunction for TypeAnyConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, argument: CodeValue) -> EvalRes {
         let inner = {
-            let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_ref());
+            let wrapper = must_downcast_ref::<ValueAnyConst>(self_.value.as_deref().unwrap());
             wrapper.inner.clone()
         };
         let func = match aspect_function_get(xx, loc, inner.as_ref()).into_res() {
@@ -175,6 +175,10 @@ impl AspectFunction for TypeAnyConst {
             },
         };
         func.call(xx, loc, self_, argument)
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 
@@ -261,7 +265,7 @@ impl Type for TypeAnyConst {
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        let meta_type = match cv.value.type_(xx, loc).into_res() {
+        let meta_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -275,7 +279,7 @@ impl Type for TypeAnyConst {
                 errors: Some(e),
             },
         };
-        let type_ = aspect_type.type_(cv.value.as_ref());
+        let type_ = aspect_type.type_(cv.value.as_deref().unwrap());
         let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EvalRes::ok(CodeValue {
@@ -286,7 +290,7 @@ impl Type for TypeAnyConst {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
-            value: Rc::new(super::dynamic::TypeAnyDynamic),
+            value: Some(Rc::new(super::dynamic::TypeAnyDynamic)),
         })
     }
 

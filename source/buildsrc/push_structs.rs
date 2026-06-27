@@ -71,10 +71,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             ),
                         },)),
                     },
-                    value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
+                    value: Some(std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
                         source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                         type_: field_type,
-                    }),
+                    })),
                 });
             }
         });
@@ -140,6 +140,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             set: RefCell::new(Some(ds.clone())),
                             name: Some(name),
                             description: RefCell::new(None),
+                            exception_type: RefCell::new(None),
                             impl_expr: RefCell::new(None),
                             arg_type: RefCell::new(None),
                             ret_type: RefCell::new(None),
@@ -239,6 +240,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 parent: None,
                             }),
                             target: std::rc::Rc::new(crate::eval::TargetDynamic),
+                            current_exception_type: std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic),
                         });
                         if let Err(errors) = self_.inner.finish(&xx) {
                             crate::eval::dynamic_util::throw_error(
@@ -297,6 +299,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             parent: None,
                         }),
                         target: Rc::new(crate::eval::TargetDynamic),
+                        current_exception_type: Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic),
                     });
                     let is_some = self_.type_ref.aspect(&xx, &unique).is_some();
                     OptionPush { is_some_inner: is_some }
@@ -828,10 +831,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 },)
                             ),
                         },
-                        value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
+                        value: Some(std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
                             source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                             type_: field_type,
-                        }),
+                        })),
                     });
                 }
             }
@@ -867,10 +870,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 },)
                             ),
                         },
-                        value: std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
+                        value: Some(std:: rc:: Rc:: new(crate::eval::value::value_dynamic::ValueDynamic {
                             source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
                             type_: field_type,
-                        }),
+                        })),
                     });
                 }
             }
@@ -1067,7 +1070,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     loc: crate:: langhelp:: QExprId,
                     cv: crate:: langhelp:: CodeValue,
                 ) -> crate:: langhelp:: EvalRes {
-                    let source_type = match cv.value.type_(xx, loc).into_res() {
+                    let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
                         Ok(v) => v,
                         Err(errors) => return crate::langhelp::EvalRes {
                             errors: Some(errors),
@@ -1077,10 +1080,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     if source_type.aspect(xx, &#identity_fn()).is_some() {
                         return crate:: langhelp:: EvalRes:: ok(crate:: langhelp:: CodeValue {
                             code: cv.code,
-                            value: std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
+                            value: Some(std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
                                 source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                                 type_: std:: rc:: Rc:: new(#type_name),
-                            }),
+                            })),
                         });
                     }
                     crate:: langhelp:: EvalRes:: err(loc, #cannot_convert_to_msg.to_string())
@@ -1127,10 +1130,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             loc,
                             code: crate:: langhelp:: Code_:: Dyn(std::rc::Rc::new(value)),
                         },
-                        value: std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
+                        value: Some(std:: rc:: Rc:: new(crate:: eval:: value:: value_dynamic:: ValueDynamic {
                             source: crate:: eval:: value:: value_dynamic:: ValueDynamicSource:: Expr,
                             type_: std:: rc:: Rc:: new(#type_name),
-                        }),
+                        })),
                     }
                 }
             }
@@ -1143,10 +1146,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     key: crate::langhelp::CodeValue,
                 ) -> crate::langhelp::EvalRes {
                     crate::er_seq_cv!(loc, erb, {
-                        let key_type = erb.must_er(key.value.type_(xx, loc))?;
+                        let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
                         let key_string =
                             erb.must_er(crate::r#gen::aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-                        let key_name = key_string.get(key.value.as_ref());
+                        let key_name = key_string.get(key.value.as_deref().unwrap());
                         #(
                             #field_dispatch_arms
                         ) * #(

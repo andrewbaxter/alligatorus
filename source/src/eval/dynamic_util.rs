@@ -48,7 +48,7 @@ pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue
     if matches!(cv.code.code, Code_::None) {
         return EResult::ok(None);
     }
-    let vtype = match cv.value.type_(xx, loc).into_res() {
+    let vtype = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
         Ok(v) => v,
         Err(e) => return EResult {
             v: None,
@@ -65,7 +65,7 @@ pub(crate) fn bind_dynamic_default(xx: &ExprContext, loc: QExprId, cv: CodeValue
 }
 
 pub(crate) fn bind_via_target(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(Code, Box<dyn Binding>)> {
-    let vtype = match cv.value.type_(xx, loc).into_res() {
+    let vtype = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
         Ok(v) => v,
         Err(e) => return EResult {
             v: None,
@@ -84,7 +84,7 @@ pub(crate) fn bind_via_target(xx: &ExprContext, loc: QExprId, cv: CodeValue) -> 
         };
         return EResult {
             errors,
-            v: Some((cv.code, Box::new(BindingValue { value }) as Box<dyn Binding>)),
+            v: Some((cv.code, Box::new(BindingValue { value: value.unwrap() }) as Box<dyn Binding>)),
         };
     }
     let Some(bind_dyn) = aspect_bind_dynamic_get_maybe(xx, vtype.as_ref()) else {
@@ -139,17 +139,17 @@ pub(crate) fn dynamic_consume_to_dynamic(_xx: &ExprContext, loc: QExprId, cv: Co
 pub(crate) fn dynamic_set(xx: &ExprContext, loc: QExprId, self_: CodeValue, value: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
         let target_type = {
-            let v = must_downcast_ref::<ValueDynamic>(self_.value.as_ref());
+            let v = must_downcast_ref::<ValueDynamic>(self_.value.as_deref().unwrap());
             v.type_.clone()
         };
         let value = erb.must_er(typecheck_convert(xx, loc, target_type.as_ref(), value))?;
-        let value_type = erb.must_er(value.value.type_(xx, loc))?;
+        let value_type = erb.must_er(value.value.as_ref().unwrap().type_(xx, loc))?;
         er_all!(erb, {
             value_to_dynamic = aspect_consume_dynamic_get(xx, loc, value_type.as_ref()),
             self_code = self_.code.cast::<CodeDynamic>(),
         });
         let value_code = erb.must_er(value_to_dynamic.to_dynamic(xx, loc, value))?;
-        let v = must_downcast_ref::<ValueDynamic>(self_.value.as_ref());
+        let v = must_downcast_ref::<ValueDynamic>(self_.value.as_deref().unwrap());
         match &v.source {
             ValueDynamicSource::Field(b) => {
                 let Some(self_code) = self_code else {
@@ -206,10 +206,10 @@ pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc
             loc,
             code: Code_::Dyn(Rc::new(value)),
         },
-        value: Rc::new(ValueDynamic {
+        value: Some(Rc::new(ValueDynamic {
             source: ValueDynamicSource::Expr,
             type_,
-        }),
+        })),
     }
 }
 

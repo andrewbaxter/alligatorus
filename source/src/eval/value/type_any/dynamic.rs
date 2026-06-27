@@ -101,7 +101,7 @@ impl AspectField for TypeAnyDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "any.field: receiver has no runtime code".to_string()),
         };
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -115,7 +115,7 @@ impl AspectField for TypeAnyDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         let access = CodeDynamic {
             loc,
             type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
@@ -128,10 +128,10 @@ impl AspectField for TypeAnyDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(access)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeAnyDynamic),
-            }),
+            })),
         })
     }
 
@@ -146,7 +146,7 @@ impl AspectFunction for TypeAnyDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "any.call: function has no runtime code".to_string()),
         };
-        let arg_type = match argument.value.type_(xx, loc).into_res() {
+        let arg_type = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -179,11 +179,15 @@ impl AspectFunction for TypeAnyDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(call)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeAnyDynamic),
-            }),
+            })),
         })
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 
@@ -314,7 +318,7 @@ impl Type for TypeAnyDynamic {
         if matches!(cv.code.code, Code_::Dyn(_)) {
             return EvalRes::ok(cv);
         }
-        let meta_type = match cv.value.type_(xx, loc).into_res() {
+        let meta_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -328,7 +332,7 @@ impl Type for TypeAnyDynamic {
                 errors: Some(e),
             },
         };
-        let type_ = aspect_type.type_(cv.value.as_ref());
+        let type_ = aspect_type.type_(cv.value.as_deref().unwrap());
         let id = BindingId::Local(xx.vx.next_local_id.next());
         xx.vx.externals.borrow_mut().push((id, External::Type(type_)));
         EvalRes::ok(CodeValue {
@@ -339,10 +343,10 @@ impl Type for TypeAnyDynamic {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                 })),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeAnyDynamic),
-            }),
+            })),
         })
     }
 

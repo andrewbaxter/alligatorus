@@ -39,7 +39,7 @@ impl Aspect for TypeCodeDynCastFn { }
 
 impl AspectFunction for TypeCodeDynCastFn {
     fn call(&self, _xx: &ExprContext, _loc: QExprId, function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_any: &dyn Any = argument.value.as_ref();
+        let arg_any: &dyn Any = argument.value.as_deref().unwrap();
         let target_type: Rc<dyn Type> = if let Some(v) = arg_any.downcast_ref::<ValueAnyConst>() {
             v.inner.clone()
         } else if let Some(dt) =
@@ -52,11 +52,15 @@ impl AspectFunction for TypeCodeDynCastFn {
         };
         EvalRes::ok(CodeValue {
             code: function.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: target_type,
-            }),
+            })),
         })
+    }
+
+    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
+        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
     }
 }
 

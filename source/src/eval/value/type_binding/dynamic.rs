@@ -40,10 +40,10 @@ impl Binding for BindingDynamicBinding {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Binding(ValueDynamicDataScope { key: self.dynamic_key }),
                 type_: self.type_.clone(),
-            }),
+            })),
         };
     }
 }

@@ -185,9 +185,10 @@ impl Type for TypeBoolDynamic {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = erb.must_er(cv.value.type_(xx, loc))?;
+            let type_ = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
             if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
+            let value = value.unwrap();
                 let mut seq = vec![];
                 if let Some(c) = erb.must_er(code.cast::<CodeDynamic>())? {
                     seq.push(c.clone());
@@ -207,19 +208,18 @@ impl Type for TypeBoolDynamic {
                             )
                         }))
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeBoolDynamic),
-                    }),
+                    })),
                 });
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeBoolDynamic),
-                    })
-                });
+                    }))});
             }
         });
     }
@@ -227,10 +227,10 @@ impl Type for TypeBoolDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeBoolDynamic),
-            }),
+            })),
         })
     }
 

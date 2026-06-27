@@ -557,7 +557,7 @@ pub fn emit_gen_builtin_tree(
                                         quote!{
                                             let cv = crate::langhelp::CodeValue {
                                                 code,
-                                                value
+                                                value: Some(value),
                                             };
                                             crate::eval::code_value_extern::CodeValueExtern(
                                                 Rc::new(RefCell::new(Some(cv)))
@@ -633,6 +633,7 @@ pub fn emit_gen_builtin_tree(
                                                 import_state: Rc::new(Cell::new(parent_ex.ix.import_state)),
                                                 scope: new_scope,
                                                 target: target_arg,
+                                                current_exception_type: Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic),
                                             });
                                             crate::eval::code_value_extern::ExprContextPush(xx)
                                         },

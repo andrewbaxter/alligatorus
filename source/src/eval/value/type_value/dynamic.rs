@@ -93,7 +93,7 @@ impl AspectField for TypeValueDynamic {
             Ok(Some(c)) => c.clone(),
             _ => return EvalRes::err(loc, "value.field: receiver has no runtime code".to_string()),
         };
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -107,7 +107,7 @@ impl AspectField for TypeValueDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         if key_name == "type" {
             let call = CodeDynamic {
                 loc,
@@ -126,10 +126,10 @@ impl AspectField for TypeValueDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(call)),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeTypeRefPushDynamic),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("value has no field '{}' (only 'type')", key_name))
@@ -234,10 +234,10 @@ impl Type for TypeValueDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(self_code)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_type_rc,
-            }),
+            })),
         })
     }
 

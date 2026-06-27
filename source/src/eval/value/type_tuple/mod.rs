@@ -92,7 +92,7 @@ pub(crate) struct Tuple {
 impl Tuple {
     fn bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple bind_sub: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value.unwrap())).ok().expect("Tuple bind_sub: Rc not unique");
         let mut errors = vec![];
         let mut bind_results: Vec<TupleBindSubResult> = Vec::new();
         let mut has_target = false;
@@ -223,7 +223,7 @@ impl AspectConsumeDynamic for Tuple {
     fn to_dynamic(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeDynamic> {
         let carry = cv.code;
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple to_dynamic: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value.unwrap())).ok().expect("Tuple to_dynamic: Rc not unique");
         let types: Vec<Rc<dyn Type>> = self.elements.iter().map(|e| {
             match e {
                 TupleElement::Dynamic(t) => t.clone(),
@@ -272,7 +272,7 @@ impl AspectInitialBind for Tuple {
 impl AspectPostDeserialize for Tuple {
     fn post_deserialize(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
         let tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value))
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value.unwrap()))
                 .ok()
                 .expect("Tuple post_deserialize: Rc not unique");
         let mut new_elements = Vec::with_capacity(tuple.elements.len());
@@ -290,7 +290,7 @@ impl AspectPostDeserialize for Tuple {
                         }));
                         continue;
                     };
-                    let mut elem_type_res = elem_cv.value.type_(xx, loc);
+                    let mut elem_type_res = elem_cv.value.as_ref().unwrap().type_(xx, loc);
                     elem_type_res.push_errors(&mut errors);
                     let Some(elem_type) = elem_type_res.v else {
                         continue;
@@ -314,7 +314,7 @@ impl AspectPostDeserialize for Tuple {
             errors,
             v: Some(CodeValue {
                 code: cv.code,
-                value: Rc::new(Tuple { elements: new_elements }),
+                value: Some(Rc::new(Tuple { elements: new_elements })),
             }),
         }
     }
@@ -383,7 +383,7 @@ impl ExporterRootDelegate for Tuple {
                 let t = match e {
                     TupleElement::Dynamic(t) => t.clone(),
                     TupleElement::EvalRes(er) => match &er.v {
-                        Some(cv) => match cv.value.type_(xx, loc).v {
+                        Some(cv) => match cv.value.as_ref().unwrap().type_(xx, loc).v {
                             Some(t) => t,
                             None => {
                                 push_err(vec![crate::langhelp::ExprErr {
@@ -530,7 +530,7 @@ impl Type for Tuple {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let code = cv.code;
         let tuple: Tuple =
-            Rc::try_unwrap(downcast_value::<Tuple>(cv.value)).ok().expect("Tuple cast_from: Rc not unique");
+            Rc::try_unwrap(downcast_value::<Tuple>(cv.value.unwrap())).ok().expect("Tuple cast_from: Rc not unique");
         return er_seq_cv!(loc, erb, {
             let mut converted_elements: Vec<TupleElement> = Vec::new();
             for (i, elem) in tuple.elements.into_iter().enumerate() {
@@ -538,7 +538,7 @@ impl Type for Tuple {
                     Some(TupleElement::Dynamic(t)) => t.clone(),
                     Some(TupleElement::EvalRes(er)) => {
                         match &er.v {
-                            Some(cv) => erb.must_er(cv.value.type_(xx, loc))?,
+                            Some(cv) => erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?,
                             None => return erb.err_new(format!("Tuple cast_from: dest element {} missing", i)),
                         }
                     },
@@ -562,16 +562,16 @@ impl Type for Tuple {
             }
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(Tuple { elements: converted_elements, }),
+                value: Some(Rc::new(Tuple { elements: converted_elements, })),
             });
         });
     }
 
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        let cv_value: Rc<dyn Value> = if (cv.value.as_ref() as &dyn std::any::Any).is::<ValueEmptyConst>() {
+        let cv_value: Rc<dyn Value> = if (cv.value.as_deref().unwrap() as &dyn std::any::Any).is::<ValueEmptyConst>() {
             Rc::new(self.clone_as_type())
         } else {
-            cv.value
+            cv.value.unwrap()
         };
         let tuple: Tuple =
             Rc::try_unwrap(downcast_value::<Tuple>(cv_value)).ok().expect("Tuple cast_to: Rc not unique");
@@ -592,7 +592,7 @@ impl Type for Tuple {
                                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id }),
                                 })),
                             },
-                            value: any_type.clone().as_value(),
+                            value: Some(any_type.clone().as_value()),
                         }
                     },
                     TupleElement::EvalRes(er) => {
@@ -605,7 +605,7 @@ impl Type for Tuple {
             }
             let tuple_js = erb.must_er(converted_type.to_dynamic(xx, loc, CodeValue {
                 code: cv.code,
-                value: Rc::new(Tuple { elements: converted_elements }),
+                value: Some(Rc::new(Tuple { elements: converted_elements })),
             }))?;
             return Ok(CodeValue {
                 code: Code {
@@ -623,7 +623,7 @@ impl Type for Tuple {
                         }),
                     })),
                 },
-                value: any_type.as_value(),
+                value: Some(any_type.as_value()),
             });
         });
     }
@@ -648,7 +648,7 @@ impl Value for Tuple {
             TupleElement::Dynamic(match e {
                 TupleElement::Dynamic(t) => t.clone(),
                 TupleElement::EvalRes(er) => match &er.v {
-                    Some(cv) => cv.value.type_(xx, loc).v.expect("Tuple element type unavailable"),
+                    Some(cv) => cv.value.as_ref().unwrap().type_(xx, loc).v.expect("Tuple element type unavailable"),
                     None => Rc::new(Tuple { elements: vec![] }) as Rc<dyn Type>,
                 },
             })
@@ -691,7 +691,7 @@ impl AspectLift for TupleLiftJs {
                     loc: (SourceId(0), ExprId(0)),
                     code: Code_::None,
                 },
-                value: lifted,
+                value: Some(lifted),
             })));
         }
         Ok(Rc::new(Tuple { elements: elements }))
