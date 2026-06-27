@@ -652,11 +652,11 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         push_code(&mut segments, base.code);
                         let value_type = erb.must_er(value.value.as_ref().unwrap().type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
-                        let value_clone = value.clone();
                         let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
                         let drop_code = if let Some(drop_aspect) =
                             crate::r#gen::aspect_drop_dynamic_get_maybe(&child_xx, value_type.as_ref()) {
-                            Some(erb.must_er(crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), &child_xx, sub.loc, value_clone))?)
+                            let binding_use_cv = binding.1.use_(&child_xx, sub.loc, Code { loc: sub.loc, code: Code_::None });
+                            Some(erb.must_er(crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), &child_xx, sub.loc, binding_use_cv))?)
                         } else {
                             None
                         };
@@ -1311,7 +1311,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     },
                     Code_::None => return erb.err_new("Try body must produce CodeDynamic (got Code::None)".to_string()),
                 };
-                let result_value: Option<Rc<dyn Value>> = body_cv.value.clone();
+                let mut result_value: Option<Rc<dyn Value>> = body_cv.value.clone();
                 let catch_dyn = if let Some(catch) = &e.catch {
                     let binding_key_cv = erb.must_er(const_eval(xx, catch.binding_name.as_ref()))?;
                     let binding_constkey = erb.must_res(extract_const_key(xx, catch.binding_name.loc, binding_key_cv.value.as_deref().unwrap()))?;
@@ -1331,6 +1331,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         current_exception_type: xx.current_exception_type.clone(),
                     };
                     let catch_cv = erb.must_er(const_eval(&catch_xx, catch.body.as_ref()))?;
+                    if result_value.is_none() {
+                        result_value = catch_cv.value.clone();
+                    }
                     let catch_code_dyn = match &catch_cv.code.code {
                         Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
                             Some(d) => d.clone(),

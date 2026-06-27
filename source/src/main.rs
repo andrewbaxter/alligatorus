@@ -280,6 +280,15 @@ pub(crate) fn source_module_to_module(source_id: SourceId, m: &SourceModule) -> 
                 SourceExpr_::Import(expr) => Expr_::Import(
                     ExprImport { spec: Rc::new(source_expr_to_expr(source_id, &expr.spec)) },
                 ),
+                SourceExpr_::Try(expr) => Expr_::Try(crate::eval::expr::ExprTry {
+                    body: Rc::new(source_expr_to_expr(source_id, &expr.body)),
+                    catch: expr.catch.as_ref().map(|c| crate::eval::expr::ExprTryCatch {
+                        binding_name: Rc::new(source_expr_to_expr(source_id, &c.binding_name)),
+                        exception_type: Rc::new(source_expr_to_expr(source_id, &c.exception_type)),
+                        body: Rc::new(source_expr_to_expr(source_id, &c.body)),
+                    }),
+                    finally: expr.finally.as_ref().map(|f| Rc::new(source_expr_to_expr(source_id, f))),
+                }),
             },
         };
     }
