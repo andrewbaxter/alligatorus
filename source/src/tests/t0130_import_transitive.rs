@@ -20,7 +20,7 @@ fn test_01300_import_transitive_definitionset() {
         //. .
         ("module_b", SourceModule::V1({
             let mb = ModuleBuilder::default();
-            mb.lower(mb.seq(vec![
+            mb.seq(vec![
                 //. .
                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
                 mb.bind("nfr", mb.call(mb.field(mb.scope_use("d"), mb.str("func")), mb.str("func_b"))),
@@ -31,11 +31,11 @@ fn test_01300_import_transitive_definitionset() {
                 ),
                 mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
                 mb.scope_use("f"),
-            ]))
+            ])
         })),
         ("module_a", SourceModule::V1({
             let mb = ModuleBuilder::default();
-            mb.lower(mb.seq(vec![
+            mb.seq(vec![
                 //. .
                 mb.bind("func_b", mb.import(mb.str("module_b"))),
                 mb.bind("d", mb.call(mb.scope_use("define"), mb.tuple(vec![]))),
@@ -53,7 +53,7 @@ fn test_01300_import_transitive_definitionset() {
                 ),
                 mb.call(mb.field(mb.scope_use("d"), mb.str("finish")), mb.tuple(vec![])),
                 mb.scope_use("f"),
-            ]))
+            ])
         })),
         ("main", SourceModule::V1({
             let mb = ModuleBuilder::default();
