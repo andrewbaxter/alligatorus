@@ -58,6 +58,7 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectDropDynamic,
             AspectField,
             AspectInitialBind,
             AspectLift,
@@ -70,6 +71,7 @@ use {
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
             aspect_consume_dynamic_get,
+            aspect_drop_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_initial_bind_aspect_id,
             aspect_lift_aspect_id,
@@ -231,8 +233,19 @@ impl AspectField for TypeSourceObjectConst {
         super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }.field_type_opt(xx, key)
     }
 
-    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
-        Vec::new()
+    fn field_keys(&self, xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }.field_keys(xx)
+    }
+}
+
+impl AspectDropDynamic for TypeSourceObjectConst {
+    fn drop(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<Code> {
+        super::dynamic::TypeSourceObjectDynamic { data: self.data.clone() }.drop(xx, loc, cv)
     }
 }
 
@@ -574,6 +587,9 @@ impl ExporterRootDelegate for TypeSourceObjectConst {
                                         Some(BuiltinInterfaceKind::AspectField) => builtin_ifaces
                                             .aspect_field
                                             .clone(),
+                                        Some(BuiltinInterfaceKind::AspectDropDynamic) => builtin_ifaces
+                                            .aspect_drop_dynamic
+                                            .clone(),
                                         Some(BuiltinInterfaceKind::Binding) => builtin_ifaces.binding.clone(),
                                         Some(BuiltinInterfaceKind::Target) => builtin_ifaces.target.clone(),
                                         Some(BuiltinInterfaceKind::CodeDyn) => builtin_ifaces.code_dyn.clone(),
@@ -705,6 +721,18 @@ impl Type for TypeSourceObjectConst {
             return Some(
                 Box::new(Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectField>),
             );
+        }
+        if *key == aspect_drop_dynamic_aspect_id() {
+            let has_drop = self.data.interface_impls.borrow().iter().any(|i| {
+                i.interface.builtin_kind == Some(BuiltinInterfaceKind::AspectDropDynamic)
+            });
+            if has_drop {
+                return Some(
+                    Box::new(
+                        Box::new(TypeSourceObjectConst { data: self.data.clone() }) as Box<dyn AspectDropDynamic>,
+                    ),
+                );
+            }
         }
         if *key == aspect_post_deserialize_aspect_id() {
             return Some(

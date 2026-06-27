@@ -62,6 +62,7 @@ use {
             AspectBind,
             AspectBindDynamic,
             AspectConsumeDynamic,
+            AspectDropDynamic,
             AspectField,
             AspectInitialBind,
             AspectLift,
@@ -77,6 +78,7 @@ use {
             aspect_bind_aspect_id,
             aspect_bind_dynamic_aspect_id,
             aspect_consume_dynamic_aspect_id,
+            aspect_drop_dynamic_aspect_id,
             aspect_field_aspect_id,
             aspect_field_get_maybe,
             aspect_initial_bind_aspect_id,
@@ -260,8 +262,55 @@ impl AspectField for TypeSourceObjectDynamic {
         None
     }
 
-    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+    fn field_keys(&self, xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        let data = &self.data;
+        let underlying_type = data.underlying_type.get().clone();
+        if let Some(record) = (underlying_type.as_ref() as &dyn std::any::Any).downcast_ref::<Record>() {
+            return record.fields.keys().cloned().collect();
+        }
+        let underlying_field = aspect_field_get_maybe(xx, underlying_type.as_ref());
+        if let Some(af) = underlying_field {
+            return af.field_keys(xx);
+        }
         Vec::new()
+    }
+}
+
+impl AspectDropDynamic for TypeSourceObjectDynamic {
+    fn drop(
+        &self,
+        _xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<Code> {
+        let self_code = match cv.code.cast::<CodeDynamic>() {
+            EResult { v: Some(Some(c)), .. } => c.clone(),
+            _ => return EResult::err(loc, format!("AspectDropDynamic::drop: value has no runtime code")),
+        };
+        let call = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Call(CodeDynamicCall {
+                func: Box::new(CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::FieldUse(CodeDynamicFieldUse {
+                        base: Box::new(self_code.clone()),
+                        field: ConstKey::String(
+                            crate::r#gen::IM_ASPECT_DROP_DYNAMIC_DROP_FIELD.to_string(),
+                        ).to_str(),
+                    }),
+                }),
+                args: vec![CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::NewObject(crate::code_dynamic::CodeDynamicNewObject {
+                        fields: vec![("inner".to_string(), self_code)],
+                    }),
+                }],
+            }),
+        };
+        EResult::ok(Code {
+            loc,
+            code: Code_::Dyn(Rc::new(call)),
+        })
     }
 }
 
@@ -390,6 +439,19 @@ impl Type for TypeSourceObjectDynamic {
                 return Some(
                     Box::new(Box::new(TypeSourceObjectDynamic { data: self.data.clone() }) as Box<dyn AspectField>),
                 );
+            }
+            if *key == aspect_drop_dynamic_aspect_id() {
+                let has_drop = data.interface_impls.borrow().iter().any(|i| {
+                    i.interface.builtin_kind == Some(BuiltinInterfaceKind::AspectDropDynamic)
+                });
+                if has_drop {
+                    return Some(
+                        Box::new(
+                            Box::new(TypeSourceObjectDynamic { data: self.data.clone() }) as
+                                Box<dyn AspectDropDynamic>,
+                        ),
+                    );
+                }
             }
             let interface_impls = data.interface_impls.borrow();
             for impl_data in interface_impls.iter() {

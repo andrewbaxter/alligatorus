@@ -725,13 +725,6 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                                         return EResult { errors: body_eres.errors, v: None };
                                     }
                                     let body_code = body_eres.v.unwrap();
-                                    let body_dyn = match &body_code.code {
-                                        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
-                                            Some(d) => d.clone(),
-                                            None => return EResult::err(loc, "Seq body must produce CodeDynamic for drop wrap".to_string()),
-                                        },
-                                        Code_::None => return EResult::err(loc, "Seq body must produce CodeDynamic for drop wrap (got None)".to_string()),
-                                    };
                                     let finally_dyn = match &drop_code.code {
                                         Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
                                             Some(d) => d.clone(),
@@ -739,18 +732,32 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                                         },
                                         Code_::None => return EResult::err(loc, "Drop code must produce CodeDynamic".to_string()),
                                     };
-                                    let try_code = CodeDynamic {
-                                        loc,
-                                        type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
-                                            body: Box::new(body_dyn),
-                                            catch: None,
-                                            finally: Some(Box::new(finally_dyn)),
-                                        }),
+                                    let body_dyn_opt = match &body_code.code {
+                                        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+                                            Some(d) => Some(d.clone()),
+                                            None => return EResult::err(loc, "Seq body must produce CodeDynamic for drop wrap".to_string()),
+                                        },
+                                        Code_::None => None,
                                     };
-                                    out.push(Code {
-                                        loc,
-                                        code: Code_::Dyn(Rc::new(try_code)),
-                                    });
+                                    if let Some(body_dyn) = body_dyn_opt {
+                                        let try_code = CodeDynamic {
+                                            loc,
+                                            type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
+                                                body: Box::new(body_dyn),
+                                                catch: None,
+                                                finally: Some(Box::new(finally_dyn)),
+                                            }),
+                                        };
+                                        out.push(Code {
+                                            loc,
+                                            code: Code_::Dyn(Rc::new(try_code)),
+                                        });
+                                    } else {
+                                        out.push(Code {
+                                            loc,
+                                            code: Code_::Dyn(Rc::new(finally_dyn)),
+                                        });
+                                    }
                                 } else {
                                     for c in rest_codes {
                                         out.push(c);

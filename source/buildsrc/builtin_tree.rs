@@ -169,6 +169,21 @@ pub fn emit_gen_builtin_tree(
             args: MethodArgs::Source(vec![("key", cve())]),
         }],
     };
+    let iface_aspect_drop_dynamic = InterfaceSpec {
+        name: "aspect_drop_dynamic",
+        builtin_unique_id: 2008,
+        scope_id: 3008,
+        field_prefix: "dd",
+        kind: "AspectDropDynamic",
+        description: None,
+        register_in_scope: true,
+        rust_trait_name: None,
+        methods: vec![Method {
+            name: "drop",
+            ret_type: any(),
+            args: MethodArgs::Source(vec![("inner", any())]),
+        }],
+    };
     let iface_binding = {
         use crate::buildsrc::util::MethodSig;
 
@@ -652,6 +667,10 @@ pub fn emit_gen_builtin_tree(
                             ),
                             ("aspect_function", leaf(interface(out, iface_aspect_function, extra_iface_specs))),
                             ("aspect_field", leaf(interface(out, iface_aspect_field, extra_iface_specs))),
+                            (
+                                "aspect_drop_dynamic",
+                                leaf(interface(out, iface_aspect_drop_dynamic, extra_iface_specs)),
+                            ),
                             (
                                 "aspect_string_dynamic",
                                 leaf(aspect_id(out, scope_ids, 4001, quote!(aspect_string_dynamic_aspect_id))),

@@ -439,7 +439,10 @@ impl AspectField for Record {
     }
 
     fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
-        Vec::new()
+        if self.base.is_none() {
+            return Vec::new();
+        }
+        self.fields.keys().cloned().collect()
     }
 }
 
