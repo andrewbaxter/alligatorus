@@ -96,6 +96,7 @@ pub enum TypeRoot {
     SourceUnionRefDynamic,
     StringConst,
     StringDynamic,
+    ThrowDynamic,
     Unique,
     ValueDynamic,
 }
@@ -222,6 +223,7 @@ impl Type for TypeRoot {
             TypeRoot::SourceUnionRefDynamic => "Source union ref (dynamic)",
             TypeRoot::StringConst => "String type (const)",
             TypeRoot::StringDynamic => "String type (dynamic)",
+            TypeRoot::ThrowDynamic => "Throw type (dynamic)",
             TypeRoot::Unique => "Unique type",
             TypeRoot::ValueDynamic => "Value type (dynamic)",
             TypeRoot::Root => "Root type",

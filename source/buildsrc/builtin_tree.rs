@@ -16,6 +16,7 @@ use {
 
 const ASPECT_COMPILE_SCOPE_ID: usize = 7023;
 const CAST_VALUE_COMPILE_SCOPE_ID: usize = 7024;
+const THROW_COMPILE_SCOPE_ID: usize = 7025;
 
 fn any_const(type_tokens: TokenStream) -> TokenStream {
     quote!{
@@ -340,6 +341,15 @@ pub fn emit_gen_builtin_tree(
     let tree =
         branch(
             vec![
+                (
+                    "throw",
+                    leaf(
+                        initial_bind(
+                            THROW_COMPILE_SCOPE_ID,
+                            quote!(crate::eval::value::type_throw::dynamic::TypeThrowDynamic),
+                        ),
+                    ),
+                ),
                 ("log", leaf(push_fn(out, scope_ids, 5001, &[("message", "String")], "()", quote!{
                     let timestamp_ms =
                         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as
