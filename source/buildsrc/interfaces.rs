@@ -24,7 +24,7 @@ pub fn build(
     let mut iface_build_entries: Vec<TokenStream> = Vec::new();
     let mut iface_result_fields: Vec<TokenStream> = Vec::new();
     let mut iface_trait_defs: Vec<TokenStream> = Vec::new();
-    let mut iface_reg_entries: Vec<TokenStream> = Vec::new();
+    let mut iface_accessor_fns: Vec<TokenStream> = Vec::new();
     let mut iface_identity_fns: Vec<TokenStream> = Vec::new();
     let mut iface_field_consts: Vec<TokenStream> = Vec::new();
     for iface in extra_specs {
@@ -143,36 +143,25 @@ pub fn build(
             #f: #f
         });
         let name = iface.name;
-        let register_in_scope = iface.register_in_scope;
-        iface_reg_entries.push(quote!{
-            {
-                let iface_ref = Rc:: new(SourceInterfaceRef {
-                    data: builtin_ifaces.#f
-                });
-                if #register_in_scope {
-                    let dynamic_key = BindingId:: Builtin(#scope_id);
-                    if register_dynamic {
-                        let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
-                        dynamic_scope
-                            .get_current_context()
-                            .global(dynamic_scope)
-                            .set(
-                                dynamic_scope,
-                                v8::String::new(dynamic_scope, &crate::eval::binding_id_dynamic_key(dynamic_key),)
-                                    .unwrap()
-                                    .cast(),
-                                dynamic_val.into(),
-                            );
-                    }
+        if iface.register_in_scope {
+            let fn_name = format_ident!("gen_iface_{}", name);
+            iface_accessor_fns.push(quote!{
+                pub(crate) fn #fn_name<'s>(
+                    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+                    builtin_ifaces: &GenBuiltinInterfaces,
+                ) -> (
+                    crate::langhelp::BindingId,
+                    std::rc::Rc<dyn crate::langhelp::Type>,
+                    v8::Local<'s, v8::Value>,
+                ) {
+                    let iface_ref = Rc::new(SourceInterfaceRef { data: builtin_ifaces.#f.clone() });
+                    let dynamic_val = crate::eval::to_dynamic_ext(dynamic_scope, iface_ref.clone());
                     let iface_const_type: Rc<dyn crate::langhelp::Type> =
                         Rc::new(TypeSourceInterfaceConst { data: iface_ref.data.clone() });
-                    builtin_scope_entries.push(crate::langhelp::BuiltinEntry {
-                        name: #name.to_string(),
-                        kind: crate::langhelp::BuiltinEntryKind::InitialBind(dynamic_key, iface_const_type),
-                    });
+                    (BindingId::Builtin(#scope_id), iface_const_type, dynamic_val.into())
                 }
-            }
-        });
+            });
+        }
         if let Some(trait_name_str) = iface.rust_trait_name {
             let trait_name = format_ident!("{}", trait_name_str);
             let methods: Vec<TokenStream> = iface.methods.iter().filter_map(|m| {
@@ -211,23 +200,6 @@ pub fn build(
         }
     }
     out.extend(quote!{
-        pub(
-            crate
-        ) fn gen_register_builtin_interfaces <'s >(
-            _xx: & crate:: langhelp:: ExprContext,
-            _root_loc: crate:: langhelp:: QExprId,
-            register_dynamic: bool,
-            dynamic_scope: & mut v8:: PinnedRef <'s,
-            v8:: HandleScope <'_ >>,
-            builtin_scope_entries: & mut Vec < crate::langhelp::BuiltinEntry >,
-            import_state: crate:: langhelp:: ImportStateId,
-        ) -> Result <(),
-        Vec < crate:: langhelp:: ExprErr >> {
-            let builtin_ifaces = crate::r#gen::gen_build_builtin_interfaces(import_state);
-            #(#iface_reg_entries) * Ok(())
-        }
-    });
-    out.extend(quote!{
         #(#iface_trait_defs) * pub(crate) struct GenBuiltinInterfaces {
             #(#iface_struct_fields),
             *
@@ -249,6 +221,6 @@ pub fn build(
                 *
             }
         }
-        #(#iface_identity_fns) * #(#iface_field_consts) *
+        #(#iface_identity_fns) * #(#iface_field_consts) * #(#iface_accessor_fns) *
     });
 }

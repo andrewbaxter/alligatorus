@@ -571,7 +571,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         scope_id: usize,
     }
 
-    let mut reg_entries: Vec<TokenStream> = Vec::new();
+    let mut aspect_id_accessor_fns: Vec<TokenStream> = Vec::new();
     for e in &[
         //. .
         AspectBinding {
@@ -594,43 +594,24 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, sco
         let key = e.key;
         let scope_id = e.scope_id;
         let aspect_id_fn = format_ident!("{}_aspect_id", e.aspect_fn);
-        reg_entries.push(quote!{
-            {
-                let dynamic_key = BindingId:: Builtin(#scope_id);
-                let unique = crate:: r#gen:: #aspect_id_fn();
-                if register_dynamic {
-                    let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
-                    dynamic_scope
-                        .get_current_context()
-                        .global(dynamic_scope)
-                        .set(
-                            dynamic_scope,
-                            v8::String::new(dynamic_scope, &crate::eval::binding_id_dynamic_key(dynamic_key),)
-                                .unwrap()
-                                .cast(),
-                            unique_dynamic.into(),
-                        );
-                }
-                let _ = unique_type;
-                builtin_scope_entries.push(crate::langhelp::BuiltinEntry {
-                    name: #key.to_string(),
-                    kind: crate::langhelp::BuiltinEntryKind::Unique(dynamic_key, unique),
-                });
+        let accessor_name = format_ident!("gen_aspect_id_{}", key);
+        aspect_id_accessor_fns.push(quote!{
+            pub(crate) fn #accessor_name<'s>(
+                dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+            ) -> (
+                crate::langhelp::BindingId,
+                crate::langhelp::Unique,
+                v8::Local<'s, v8::Value>,
+            ) {
+                let dynamic_key = BindingId::Builtin(#scope_id);
+                let unique = crate::r#gen::#aspect_id_fn();
+                let unique_dynamic = crate::eval::to_dynamic_ext(dynamic_scope, unique.clone());
+                (dynamic_key, unique, unique_dynamic.into())
             }
         });
     }
     out.extend(quote!{
-        pub(
-            crate
-        ) fn gen_register_builtin_aspect_ids <'s >(
-            register_dynamic: bool,
-            dynamic_scope: & mut v8:: PinnedRef <'s,
-            v8:: HandleScope <'_ >>,
-            builtin_scope_entries: & mut Vec < crate::langhelp::BuiltinEntry >,
-        ) {
-            let unique_type: Rc<dyn crate::langhelp::Type> = Rc::new(crate::eval::value::type_unique::r#const::TypeUnique);
-            #(#reg_entries) *
-        }
+        #(#aspect_id_accessor_fns) *
     });
 }
 

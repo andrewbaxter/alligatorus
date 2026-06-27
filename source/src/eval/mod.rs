@@ -3,6 +3,7 @@ pub mod push;
 #[macro_use]
 pub mod util;
 pub mod aspect;
+pub mod builtin_tree;
 pub mod code_value_extern;
 pub mod definition_set;
 pub mod dynamic_util;
@@ -102,10 +103,8 @@ use {
             downcast_value,
         },
         r#gen::{
-            ASPECT_COMPILE_SCOPE_ID,
             ASPECT_LOOKUP_FN_SCOPE_ID,
             AspectField,
-            CAST_VALUE_COMPILE_SCOPE_ID,
             CAST_VALUE_FN_SCOPE_ID,
             CVE_EXTRACT_FN_SCOPE_ID,
             CVE_GET_CODE_ENUM_FN_SCOPE_ID,
@@ -130,6 +129,7 @@ use {
             TypeRefPush,
             UNIQUE_EQ_FN_SCOPE_ID,
             VALUE_GET_TYPE_FN_SCOPE_ID,
+            gen_builtin_tree,
             aspect_artifact_get,
             aspect_bind_dynamic_get_maybe,
             aspect_bind_get,
@@ -150,9 +150,6 @@ use {
             aspect_union_get,
             aspect_type_get,
             aspect_post_deserialize_get,
-            gen_register_builtin_aspect_ids,
-            gen_register_builtin_fns,
-            gen_register_builtin_interfaces,
         },
         source_module_to_module,
         syntax::{
@@ -204,165 +201,57 @@ use {
             TupleElement,
         },
         type_null::dynamic::TypeNullDynamic,
-        type_number::dynamic::TypeNumberDynamic,
-        type_string::dynamic::TypeStringDynamic,
         value_null::r#const::ValueNullConst,
     },
 };
 
-enum BuiltinLeaf {
-    InitialBind {
-        dynamic_key: BindingId,
-        type_: Rc<dyn Type>,
-    },
-    Unique {
-        dynamic_key: BindingId,
-        unique: Unique,
-    },
-    AnyConst(Rc<dyn Type>),
-}
-
-enum BuiltinNode {
-    Branch(Vec<(&'static str, BuiltinNode)>),
-    Leaf(BuiltinLeaf),
-}
-
 const KEY_BUILTINS: &str = "builtins";
-const KEY_LOG: &str = "log";
-const KEY_DEFINE: &str = "define";
-const KEY_TYPES: &str = "types";
-const KEY_LIST: &str = "list";
-const KEY_MAP: &str = "map";
-const KEY_OPTION: &str = "option";
-const KEY_STRING: &str = "string";
-const KEY_NUMBER: &str = "number";
-const KEY_NULL: &str = "null";
-const KEY_BOOL: &str = "bool";
-const KEY_ANY: &str = "any";
-const KEY_CONSTKEY: &str = "constkey";
-const KEY_EXPR: &str = "expr";
-const KEY_TYPE: &str = "type";
-const KEY_ASPECT: &str = "aspect";
-const KEY_CODEDYN: &str = "codedyn";
-const KEY_CVE: &str = "cve";
-const KEY_EVAL: &str = "eval";
-const KEY_ASPECT_LOOKUP: &str = "aspect_lookup";
-const KEY_CAST_VALUE: &str = "cast_value";
-const KEY_CONST_EVAL: &str = "const_eval";
-const KEY_CODEVALUE: &str = "codevalue";
-const KEY_STR_TO_JSON: &str = "str_to_json";
-const KEY_CONSTKEY_TO_STR: &str = "constkey_to_str";
-const KEY_GEN_BINDING_NAME: &str = "gen_binding_name";
-const KEY_NEW_EXPR_CONTEXT: &str = "new_expr_context";
-const KEY_ASPECT_FUNCTION: &str = "aspect_function";
-const KEY_ASPECT_FIELD: &str = "aspect_field";
-const KEY_ASPECT_STRING_DYNAMIC: &str = "aspect_string_dynamic";
-const KEY_ASPECT_FUNCTION_ID: &str = "aspect_function_id";
-const KEY_ASPECT_FIELD_ID: &str = "aspect_field_id";
-const KEY_BINDING: &str = "binding";
-const KEY_TARGET: &str = "target";
-const KEY_CODE_DYN: &str = "code_dyn";
 
-fn entry_to_leaf(entry: &crate::langhelp::BuiltinEntry) -> BuiltinLeaf {
-    match &entry.kind {
-        crate::langhelp::BuiltinEntryKind::InitialBind(id, type_) => BuiltinLeaf::InitialBind {
-            dynamic_key: *id,
-            type_: type_.clone(),
+fn walk_register_dynamic<'s>(
+    node: &builtin_tree::BuiltinNode<'s>,
+    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+) {
+    use builtin_tree::{
+        BuiltinLeaf,
+        BuiltinNode,
+    };
+    match node {
+        BuiltinNode::Branch(children) => {
+            for (_, child) in children {
+                walk_register_dynamic(child, dynamic_scope);
+            }
         },
-        crate::langhelp::BuiltinEntryKind::Unique(id, unique) => BuiltinLeaf::Unique {
-            dynamic_key: *id,
-            unique: *unique,
-        },
-        crate::langhelp::BuiltinEntryKind::Const(_) => {
-            panic!("BuiltinEntryKind::Const not used by any generated entry")
+        BuiltinNode::Leaf(leaf) => {
+            let (dynamic_key, dynamic_value) = match leaf {
+                BuiltinLeaf::Function { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::Interface { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::AspectId { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::Constructor { dynamic_key, dynamic_value, .. } => (*dynamic_key, *dynamic_value),
+                BuiltinLeaf::AnyConst { .. } | BuiltinLeaf::InitialBind { .. } => {
+                    return;
+                },
+            };
+            dynamic_scope
+                .get_current_context()
+                .global(dynamic_scope)
+                .set(
+                    dynamic_scope,
+                    v8::String::new(dynamic_scope, &binding_id_dynamic_key(dynamic_key)).unwrap().cast(),
+                    dynamic_value,
+                );
         },
     }
 }
 
-fn build_builtin_tree(gen_entries: &[crate::langhelp::BuiltinEntry]) -> BuiltinNode {
-    use BuiltinLeaf::{
-        AnyConst,
-        InitialBind,
-    };
-    use BuiltinNode::{
-        Branch,
-        Leaf,
-    };
-    let by_name: HashMap<&str, &crate::langhelp::BuiltinEntry> =
-        gen_entries.iter().map(|e| (e.name.as_str(), e)).collect();
-    let take = |k: &str| {
-        Leaf(entry_to_leaf(by_name.get(k).unwrap_or_else(|| panic!("missing generated builtin entry {:?}", k))))
-    };
-    let constructor = |gen_key: &str, type_: Rc<dyn Type>| {
-        let dynamic_key = match &by_name.get(gen_key).expect("missing constructor entry").kind {
-            crate::langhelp::BuiltinEntryKind::InitialBind(id, _) => *id,
-            _ => panic!("constructor entry {:?} not an InitialBind", gen_key),
-        };
-        Leaf(InitialBind {
-            dynamic_key,
-            type_,
-        })
-    };
-    Branch(vec![
-        (KEY_LOG, take(KEY_LOG)),
-        (KEY_DEFINE, take(KEY_DEFINE)),
-        (KEY_TYPES, Branch(vec![
-            (KEY_LIST, constructor(
-                KEY_LIST,
-                Rc::new(value::type_list_constructor::r#const::TypeListConstructorConst),
-            )),
-            (KEY_MAP, constructor(
-                KEY_MAP,
-                Rc::new(value::type_map_constructor::r#const::TypeMapConstructorConst),
-            )),
-            (KEY_OPTION, constructor(
-                KEY_OPTION,
-                Rc::new(value::type_option_constructor::r#const::TypeOptionConstructorConst),
-            )),
-            (KEY_STRING, Leaf(AnyConst(Rc::new(TypeStringDynamic)))),
-            (KEY_NUMBER, Leaf(AnyConst(Rc::new(TypeNumberDynamic)))),
-            (KEY_NULL, Leaf(AnyConst(Rc::new(TypeNullDynamic)))),
-            (KEY_BOOL, Leaf(AnyConst(Rc::new(value::type_bool::dynamic::TypeBoolDynamic)))),
-            (KEY_ANY, Leaf(AnyConst(Rc::new(value::type_any::dynamic::TypeAnyDynamic)))),
-            (KEY_CONSTKEY, Leaf(AnyConst(Rc::new(value::type_constkey::dynamic::TypeConstkeyDynamic)))),
-            (KEY_EXPR, Leaf(AnyConst(Rc::new(value::type_expr::TypeExpr)))),
-            (KEY_TYPE, Leaf(AnyConst(Rc::new(value::type_any::dynamic::TypeAnyDynamic)))),
-            (KEY_ASPECT, Leaf(AnyConst(Rc::new(value::type_aspect::dynamic::TypeAspectDynamic)))),
-            (KEY_CODEDYN, Leaf(AnyConst(Rc::new(value::type_code_dyn_handle::dynamic::TypeCodeDynHandleDynamic)))),
-            (KEY_CVE, Leaf(AnyConst(Rc::new(TypeCodeValueExternDynamic)))),
-        ])),
-        (KEY_EVAL, Branch(vec![
-            (KEY_ASPECT_LOOKUP, Leaf(InitialBind {
-                dynamic_key: ASPECT_COMPILE_SCOPE_ID,
-                type_: Rc::new(value::type_function_aspect::dynamic::TypeFunctionAspectDynamic),
-            })),
-            (KEY_CAST_VALUE, Leaf(InitialBind {
-                dynamic_key: CAST_VALUE_COMPILE_SCOPE_ID,
-                type_: Rc::new(value::type_function_cast_value::dynamic::TypeFunctionCastValueDynamic),
-            })),
-            (KEY_CONST_EVAL, take(KEY_CONST_EVAL)),
-            (KEY_CODEVALUE, take(KEY_CODEVALUE)),
-            (KEY_STR_TO_JSON, take(KEY_STR_TO_JSON)),
-            (KEY_CONSTKEY_TO_STR, take(KEY_CONSTKEY_TO_STR)),
-            (KEY_GEN_BINDING_NAME, take(KEY_GEN_BINDING_NAME)),
-            (KEY_NEW_EXPR_CONTEXT, take(KEY_NEW_EXPR_CONTEXT)),
-            (KEY_ASPECT_FUNCTION, take(KEY_ASPECT_FUNCTION)),
-            (KEY_ASPECT_FIELD, take(KEY_ASPECT_FIELD)),
-            (KEY_ASPECT_STRING_DYNAMIC, take(KEY_ASPECT_STRING_DYNAMIC)),
-            (KEY_ASPECT_FUNCTION_ID, take(KEY_ASPECT_FUNCTION_ID)),
-            (KEY_ASPECT_FIELD_ID, take(KEY_ASPECT_FIELD_ID)),
-            (KEY_BINDING, take(KEY_BINDING)),
-            (KEY_TARGET, take(KEY_TARGET)),
-            (KEY_CODE_DYN, take(KEY_CODE_DYN)),
-        ])),
-    ])
-}
-
 fn walk_build_binding(
-    node: &BuiltinNode,
+    node: &builtin_tree::BuiltinNode,
     xx: &ExprContext,
     loc: QExprId,
 ) -> Result<Rc<dyn Binding>, Vec<ExprErr>> {
+    use builtin_tree::{
+        BuiltinLeaf,
+        BuiltinNode,
+    };
     use crate::eval::value::type_argument_record::r#const::{
         ArgumentRecord,
         ArgumentRecordBinding,
@@ -375,11 +264,14 @@ fn walk_build_binding(
             }
             Ok(Rc::new(ArgumentRecordBinding { record: Rc::new(ArgumentRecord { fields }) }))
         },
+        BuiltinNode::Leaf(BuiltinLeaf::Function { dynamic_key, type_, .. }) |
+        BuiltinNode::Leaf(BuiltinLeaf::Interface { dynamic_key, type_, .. }) |
+        BuiltinNode::Leaf(BuiltinLeaf::Constructor { dynamic_key, type_, .. }) |
         BuiltinNode::Leaf(BuiltinLeaf::InitialBind { dynamic_key, type_ }) => {
             let ib = aspect_initial_bind_get(xx, loc, type_.as_ref()).into_res()?;
             Ok(Rc::from(ib.initial_bind(*dynamic_key)))
         },
-        BuiltinNode::Leaf(BuiltinLeaf::Unique { dynamic_key, unique }) => {
+        BuiltinNode::Leaf(BuiltinLeaf::AspectId { dynamic_key, unique, .. }) => {
             Ok(
                 Rc::new(value::type_unique::r#const::BindingUniqueDualMode {
                     dynamic_key: *dynamic_key,
@@ -387,7 +279,7 @@ fn walk_build_binding(
                 }) as Rc<dyn Binding>,
             )
         },
-        BuiltinNode::Leaf(BuiltinLeaf::AnyConst(type_)) => {
+        BuiltinNode::Leaf(BuiltinLeaf::AnyConst { type_ }) => {
             let cv = CodeValue {
                 code: Code {
                     loc,
@@ -403,19 +295,42 @@ fn walk_build_binding(
     }
 }
 
-pub(crate) fn build_builtin_scope(
+pub(crate) fn init_builtin_scope<'s>(
     xx: &ExprContext,
     loc: QExprId,
-    builtin_scope_entries: &[crate::langhelp::BuiltinEntry],
+    import_state: ImportStateId,
+    dynamic_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>,
+    register_dynamic: bool,
 ) -> Result<HashMap<ConstKey, Box<dyn Binding>>, Vec<ExprErr>> {
-    let tree = build_builtin_tree(builtin_scope_entries);
+    let tree = gen_builtin_tree(dynamic_scope, import_state);
+    if register_dynamic {
+        walk_register_dynamic(&tree, dynamic_scope);
+    }
     let root_binding = walk_build_binding(&tree, xx, loc)?;
+    *xx.vx.ix.builtin_scope_root_binding.borrow_mut() = Some(root_binding.clone());
     let mut scope_entries = HashMap::<ConstKey, Box<dyn Binding>>::new();
     scope_entries.insert(
         ConstKey::String(KEY_BUILTINS.to_string()),
         Box::new(crate::eval::RcBindingWrap(root_binding)) as Box<dyn Binding>,
     );
     Ok(scope_entries)
+}
+
+pub(crate) fn body_builtin_scope(xx: &ExprContext) -> HashMap<ConstKey, Box<dyn Binding>> {
+    let root_binding =
+        xx
+            .vx
+            .ix
+            .builtin_scope_root_binding
+            .borrow()
+            .clone()
+            .expect("body_builtin_scope called before init_builtin_scope");
+    let mut scope_entries = HashMap::<ConstKey, Box<dyn Binding>>::new();
+    scope_entries.insert(
+        ConstKey::String(KEY_BUILTINS.to_string()),
+        Box::new(crate::eval::RcBindingWrap(root_binding)) as Box<dyn Binding>,
+    );
+    scope_entries
 }
 
 pub(crate) fn code_uses_binding(code: &CodeDynamic, target_id: BindingId) -> bool {
@@ -488,7 +403,7 @@ pub(crate) fn compile_importid(
         dynamic_context: RefCell::new(None),
         builtins_registered: Cell::new(false),
         source_id: root_loc.0,
-        builtin_scope_entries: RefCell::new(Vec::new()),
+        builtin_scope_root_binding: RefCell::new(None),
     });
 
     fn max_lower_excess(expr: &Expr, sd: usize, ld: usize) -> usize {
@@ -1365,20 +1280,8 @@ fn eval(
         target: target.clone(),
     });
     let register_dynamic = !cix.builtins_registered.get();
-    let mut builtin_scope_entries: Vec<crate::langhelp::BuiltinEntry> = Vec::new();
-    gen_register_builtin_fns(&xx, root_loc, register_dynamic, dynamic_scope, &mut builtin_scope_entries)?;
-    gen_register_builtin_interfaces(
-        &xx,
-        root_loc,
-        register_dynamic,
-        dynamic_scope,
-        &mut builtin_scope_entries,
-        import_state,
-    )?;
-    gen_register_builtin_aspect_ids(register_dynamic, dynamic_scope, &mut builtin_scope_entries);
-    *cix.builtin_scope_entries.borrow_mut() = builtin_scope_entries.clone();
     {
-        let scope_entries = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
+        let scope_entries = init_builtin_scope(&xx, root_loc, import_state, dynamic_scope, register_dynamic)?;
         scope.values.borrow_mut().extend(scope_entries);
     }
     {
@@ -1733,7 +1636,7 @@ fn eval(
         });
         let arg_id = BindingId::Local(body_ex.next_local_id.next());
         let func_xx = {
-            let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
+            let mut body_scope = body_builtin_scope(&xx);
             if let Some(arg_ib) = aspect_initial_bind_get_maybe(&xx, info.arg_type.as_ref()) {
                 body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
             }
@@ -1828,7 +1731,7 @@ fn eval(
                 let arg_id = BindingId::Local(body_ex.next_local_id.next());
                 let outer_id = BindingId::Builtin(usize::MAX);
                 let method_xx = {
-                    let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
+                    let mut body_scope = body_builtin_scope(&xx);
                     if let Some(self_ib) = aspect_initial_bind_get_maybe(&xx, underlying_type.as_ref()) {
                         body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
                     }
@@ -1914,7 +1817,7 @@ fn eval(
                     let outer_id = BindingId::Local(body_ex.next_local_id.next());
                     let arg_id = BindingId::Local(body_ex.next_local_id.next());
                     let method_xx = {
-                        let mut body_scope = build_builtin_scope(&xx, root_loc, &builtin_scope_entries)?;
+                        let mut body_scope = body_builtin_scope(&xx);
                         let outer_type: Rc<dyn Type> =
                             Rc::new(
                                 value::type_source_object::dynamic::TypeSourceObjectDynamic {

@@ -8,7 +8,7 @@ use {
         eval::{
             DynamicSourceBuilder,
             Scope,
-            build_builtin_scope,
+            body_builtin_scope,
             code_uses_binding,
             const_eval,
             definition_set::DefinitionSet,
@@ -90,7 +90,7 @@ impl SourceDataMethodData {
             ],
         }])?;
         let method_id = self.binding_id.get().unwrap();
-        let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
+        
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
@@ -102,7 +102,7 @@ impl SourceDataMethodData {
         self.inner_binding_id.set(Some(self_id));
         let arg_id = BindingId::Local(body_ex.next_local_id.next());
         let outer_id = BindingId::Builtin(usize::MAX);
-        let mut body_scope = build_builtin_scope(xx, root_loc, &builtin_scope_entries)?;
+        let mut body_scope = body_builtin_scope(xx);
         if let Some(self_ib) = aspect_initial_bind_get_maybe(xx, underlying_type.as_ref()) {
             body_scope.insert(ConstKey::String("inner".to_string()), self_ib.initial_bind(self_id));
         }
@@ -249,7 +249,7 @@ impl SourceObjectInterfaceMethodImplData {
         };
         let method_id = self.binding_id.get().unwrap();
         let builtin_kind = interface.builtin_kind;
-        let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
+        
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
@@ -261,7 +261,7 @@ impl SourceObjectInterfaceMethodImplData {
         self.inner_binding_id.set(Some(self_id));
         let outer_id = BindingId::Local(body_ex.next_local_id.next());
         let arg_id = BindingId::Local(body_ex.next_local_id.next());
-        let mut body_scope = build_builtin_scope(xx, root_loc, &builtin_scope_entries)?;
+        let mut body_scope = body_builtin_scope(xx);
         let outer_type: Rc<dyn Type> =
             Rc::new(super::type_source_object::dynamic::TypeSourceObjectDynamic { data: dt_data.clone() });
         if let Some(outer_self_ib) = aspect_initial_bind_get_maybe(xx, outer_type.as_ref()) {

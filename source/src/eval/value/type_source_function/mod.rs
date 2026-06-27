@@ -8,7 +8,7 @@ use {
         eval::{
             DynamicSourceBuilder,
             Scope,
-            build_builtin_scope,
+            body_builtin_scope,
             const_eval,
             definition_set::DefinitionSet,
             expr::Expr,
@@ -86,7 +86,6 @@ impl SourceFunctionData {
             ],
         }])?;
         let scope_id = self.binding_id.get().unwrap();
-        let builtin_scope_entries = xx.vx.ix.builtin_scope_entries.borrow().clone();
         let body_ex = Rc::new(EvalContext {
             ix: xx.vx.ix.clone(),
             next_local_id: Counter::default(),
@@ -95,7 +94,7 @@ impl SourceFunctionData {
             definition_sets: RefCell::new(std::collections::HashMap::new()),
         });
         let arg_id = BindingId::Local(body_ex.next_local_id.next());
-        let mut body_scope = build_builtin_scope(xx, root_loc, &builtin_scope_entries)?;
+        let mut body_scope = body_builtin_scope(xx);
         if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
         }

@@ -9,7 +9,6 @@ use {
 };
 
 pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
-    let mut dw_fn_call_exprs: Vec<TokenStream> = Vec::new();
     let builtin_scope_ids = scope_ids;
 
     struct PushFnSpec {
@@ -224,42 +223,5 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 )
             }
         });
-        let fn_name = format_ident!("gen_fn_{}", s.name);
-        dw_fn_call_exprs.push(quote!{
-            #fn_name(dynamic_scope)
-        });
     }
-    out.extend(quote!{
-        pub(
-            crate
-        ) fn gen_register_builtin_fns <'s >(
-            _xx: & crate:: langhelp:: ExprContext,
-            _root_loc: crate:: langhelp:: QExprId,
-            register_dynamic: bool,
-            dynamic_scope: & mut v8:: PinnedRef <'s,
-            v8:: HandleScope <'_ >>,
-            builtin_scope_entries: & mut Vec < crate::langhelp::BuiltinEntry >,
-        ) -> Result <(),
-        Vec < crate:: langhelp:: ExprErr >> {
-            for(key, dynamic_key, type_, dynamic_value) in[#(#dw_fn_call_exprs), *] {
-                if register_dynamic {
-                    dynamic_scope
-                        .get_current_context()
-                        .global(dynamic_scope)
-                        .set(
-                            dynamic_scope,
-                            v8::String::new(dynamic_scope, &crate::eval::binding_id_dynamic_key(dynamic_key),)
-                                .unwrap()
-                                .cast(),
-                            dynamic_value,
-                        );
-                }
-                builtin_scope_entries.push(crate::langhelp::BuiltinEntry {
-                    name: key.to_string(),
-                    kind: crate::langhelp::BuiltinEntryKind::InitialBind(dynamic_key, type_),
-                });
-            }
-            Ok(())
-        }
-    });
 }

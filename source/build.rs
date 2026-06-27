@@ -74,5 +74,6 @@ fn main() {
     buildsrc::identities::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
     buildsrc::push_structs::build(&mut out, &mut builtin_unique_ids, buildsrc::traits::specs());
     buildsrc::push_fns::build(&mut out, &mut scope_ids);
+    buildsrc::builtin_tree::emit_gen_builtin_tree(&mut out);
     fs::write(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("gen.rs"), out.to_string()).unwrap();
 }
