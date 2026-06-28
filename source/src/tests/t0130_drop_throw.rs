@@ -353,6 +353,35 @@ fn test_01330_try_requires_catch_or_finally() {
 }
 
 #[test]
+fn test_01370_try_catch_finally_combined() {
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.try_(
+                            mb.throw(mb.str("boom")),
+                            Some(("e", mb.builtin(&["types", "string"]), mb.call(mb.log(), mb.str("caught")))),
+                            Some(mb.call(mb.log(), mb.str("always"))),
+                        ),
+                    ),
+                ),
+            ].into_iter().collect(),
+        );
+    let res = compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    let messages: Vec<&str> = res.logs.iter().map(|l| l.message.as_str()).collect();
+    assert_eq!(messages, vec!["caught", "always"]);
+    let scripts = sanitize_builtins(&res.generated_dynamic_scripts);
+    let combined = scripts.join("\n");
+    assert!(combined.contains("try"), "generated dynamic must contain try");
+    assert!(combined.contains("catch"), "generated dynamic must contain catch");
+    assert!(combined.contains("finally"), "generated dynamic must contain finally");
+}
+
+#[test]
 fn test_01340_throw_caught_logs_message() {
     setup_v8();
     let mb = ModuleBuilder::default();
