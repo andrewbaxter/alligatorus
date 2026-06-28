@@ -351,7 +351,7 @@ pub fn emit_gen_builtin_tree(
                     data: vec![
                         ("call_code", TypeRef::via_push(quote!(crate::langhelp::Code))),
                         ("catch_binding", TypeRef::opaque(quote!(crate::langhelp::BindingId))),
-                        ("cast_code", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                        ("cast_cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue))),
                     ],
                 }),
             }],

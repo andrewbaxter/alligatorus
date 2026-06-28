@@ -123,8 +123,8 @@ impl Target for PullTarget {
         loc: QExprId,
         call_code: Code,
         catch_binding: BindingId,
-        cast_code: Code,
+        cast_cv: CodeValue,
     ) -> EResult<Code> {
-        TargetDynamic.cast_exception(xx, loc, call_code, catch_binding, cast_code)
+        TargetDynamic.cast_exception(xx, loc, call_code, catch_binding, cast_cv)
     }
 }

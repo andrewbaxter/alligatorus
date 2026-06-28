@@ -4042,11 +4042,11 @@ impl Target for TargetDynamic {
 
     fn cast_exception(
         &self,
-        _xx: &ExprContext,
+        xx: &ExprContext,
         loc: QExprId,
         call_code: Code,
         catch_binding: BindingId,
-        cast_code: Code,
+        cast_cv: CodeValue,
     ) -> EResult<Code> {
         let mut errs = vec![];
         let body_dyn = match call_code.cast::<CodeDynamic>().into_res() {
@@ -4059,11 +4059,27 @@ impl Target for TargetDynamic {
                 return EResult { v: None, errors: Some(errs) };
             },
         };
-        let cast_dyn = match cast_code.cast::<CodeDynamic>().into_res() {
-            Ok(Some(d)) => d.clone(),
-            Ok(None) => {
-                return EResult::err(loc, "Exception cast code must be CodeDynamic to wrap with exception cast".to_string());
+        let cast_value_type = match cast_cv.value.as_ref() {
+            Some(v) => match v.type_(xx, loc).into_res() {
+                Ok(t) => t,
+                Err(e) => {
+                    errs.extend(e);
+                    return EResult { v: None, errors: Some(errs) };
+                },
             },
+            None => {
+                return EResult::err(loc, "Exception cast value missing type for to_dynamic".to_string());
+            },
+        };
+        let to_dynamic = match crate::r#gen::aspect_consume_dynamic_get(xx, loc, cast_value_type.as_ref()).into_res() {
+            Ok(v) => v,
+            Err(e) => {
+                errs.extend(e);
+                return EResult { v: None, errors: Some(errs) };
+            },
+        };
+        let cast_dyn = match to_dynamic.to_dynamic(xx, loc, cast_cv).into_res() {
+            Ok(v) => v,
             Err(e) => {
                 errs.extend(e);
                 return EResult { v: None, errors: Some(errs) };
@@ -4126,34 +4142,15 @@ fn maybe_wrap_call_exception(
             ),
         };
         let catch_binding = BindingId::Local(xx.vx.next_local_id.next());
-        let bound_value: Rc<dyn Value> = Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
-            source: crate::eval::value::value_dynamic::ValueDynamicSource::Binding(
-                crate::eval::value::value_dynamic::ValueDynamicDataScope { key: catch_binding },
-            ),
-            type_: callee_exc.clone(),
-        });
-        let bound_cv = CodeValue {
-            code: Code {
-                loc,
-                code: Code_::Dyn(Rc::new(CodeDynamic {
-                    loc,
-                    type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: catch_binding }),
-                })),
-            },
-            value: Some(bound_value),
-        };
+        let initial_bind = erb.must_er(aspect_initial_bind_get(xx, loc, callee_exc.as_ref()))?;
+        let binding = initial_bind.initial_bind(catch_binding);
+        let bound_cv = binding.use_(xx, loc, Code { loc, code: Code_::None });
         let cast_cv = erb.must_er(callee_exc.cast_to(xx, loc, bound_cv, caller_exc.as_ref()))?;
         if matches!(cast_cv.code.code, Code_::None) {
             return Ok(call_cv);
         }
-        let to_dynamic = erb.must_er(crate::r#gen::aspect_consume_dynamic_get(xx, loc, caller_exc.as_ref()))?;
-        let cast_dyn = erb.must_er(to_dynamic.to_dynamic(xx, loc, cast_cv))?;
-        let cast_code = Code {
-            loc,
-            code: Code_::Dyn(Rc::new(cast_dyn)),
-        };
         let wrapped_code =
-            erb.must_er(xx.target.cast_exception(xx, loc, call_cv.code, catch_binding, cast_code))?;
+            erb.must_er(xx.target.cast_exception(xx, loc, call_cv.code, catch_binding, cast_cv))?;
         return Ok(CodeValue {
             code: wrapped_code,
             value: call_cv.value,
