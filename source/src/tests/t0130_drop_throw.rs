@@ -23,7 +23,7 @@ fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> Source
     );
 }
 
-fn make_counter_instance(mb: &ModuleBuilder, name: &str, drop_message: &str) -> SourceExpr {
+fn make_canary_instance(mb: &ModuleBuilder, name: &str, drop_message: &str) -> SourceExpr {
     return mb.call(
         mb.lower(
             mb.seq(
@@ -126,8 +126,8 @@ fn test_01400_end_of_scope_drop_runtime() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
-                    mb.bind("ctr", mb.as_(mb.as_(mb.str("X"), mb.types_string()), mb.scope_use("counter"))),
+                    mb.bind("canary", mb.lower(make_canary_instance(&mb, "Canary", "dropped"))),
+                    mb.bind("cnry", mb.as_(mb.as_(mb.str("X"), mb.types_string()), mb.scope_use("canary"))),
                     mb.call(mb.log(), mb.str("after")),
                 ],
             ),
@@ -156,8 +156,8 @@ fn test_01410_discarded_seq_entry_runtime() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
-                    mb.as_(mb.as_(mb.str("Y"), mb.types_string()), mb.scope_use("counter")),
+                    mb.bind("canary", mb.lower(make_canary_instance(&mb, "Canary", "dropped"))),
+                    mb.as_(mb.as_(mb.str("Y"), mb.types_string()), mb.scope_use("canary")),
                     mb.call(mb.log(), mb.str("after")),
                 ],
             ),
@@ -182,14 +182,14 @@ fn test_01420_field_sibling_drop_runtime() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("counter_a", mb.lower(make_counter_instance(&mb, "CounterA", "dropped_a"))),
-                    mb.bind("counter_b", mb.lower(make_counter_instance(&mb, "CounterB", "dropped_b"))),
+                    mb.bind("canary_a", mb.lower(make_canary_instance(&mb, "CanaryA", "dropped_a"))),
+                    mb.bind("canary_b", mb.lower(make_canary_instance(&mb, "CanaryB", "dropped_b"))),
                     mb.bind(
                         "rec",
                         mb.record(
                             vec![
-                                ("a", mb.as_(mb.as_(mb.str("A"), mb.types_string()), mb.scope_use("counter_a"))),
-                                ("b", mb.as_(mb.as_(mb.str("B"), mb.types_string()), mb.scope_use("counter_b"))),
+                                ("a", mb.as_(mb.as_(mb.str("A"), mb.types_string()), mb.scope_use("canary_a"))),
+                                ("b", mb.as_(mb.as_(mb.str("B"), mb.types_string()), mb.scope_use("canary_b"))),
                             ],
                         ),
                     ),
@@ -222,8 +222,8 @@ fn test_01430_drop_on_throw_runtime() {
             mb.try_(
                 mb.seq(
                     vec![
-                        mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
-                        mb.bind("ctr", mb.as_(mb.as_(mb.str("Z"), mb.types_string()), mb.scope_use("counter"))),
+                        mb.bind("canary", mb.lower(make_canary_instance(&mb, "Canary", "dropped"))),
+                        mb.bind("cnry", mb.as_(mb.as_(mb.str("Z"), mb.types_string()), mb.scope_use("canary"))),
                         mb.throw(mb.str("boom")),
                     ],
                 ),
@@ -595,12 +595,12 @@ fn test_01460_finally_drops_result() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
+                    mb.bind("canary", mb.lower(make_canary_instance(&mb, "Canary", "dropped"))),
                     mb.try_(
                         mb.call(mb.log(), mb.str("body")),
                         None,
                         Some(
-                            mb.as_(mb.as_(mb.str("V"), mb.types_string()), mb.scope_use("counter")),
+                            mb.as_(mb.as_(mb.str("V"), mb.types_string()), mb.scope_use("canary")),
                         ),
                     ),
                     mb.call(mb.log(), mb.str("after")),
