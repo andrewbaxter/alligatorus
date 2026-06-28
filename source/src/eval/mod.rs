@@ -544,12 +544,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
             let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
-            let extracted_key = match field.value.as_ref().and_then(|v| {
+            let extracted_key = field.value.as_ref().and_then(|v| {
                 extract_const_key(xx, expr.loc, v.as_ref()).ok()
-            }) {
-                Some(k) => Some(k),
-                None => None,
-            };
+            });
             let mut sibling_drops: Vec<Code> = Vec::new();
             let field_keys = aspect_field.field_keys(xx);
             for key in field_keys {
@@ -557,8 +554,12 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     continue;
                 }
                 let key_value: Rc<dyn Value> = match &key {
-                    ConstKey::String(s) => Rc::new(crate::eval::value::value_string::r#const::ValueStringConst(s.clone())),
-                    ConstKey::Usize(_) => continue,
+                    ConstKey::String(s) => Rc::new(
+                        crate::eval::value::value_string::r#const::ValueStringConst(s.clone()),
+                    ),
+                    ConstKey::Usize(n) => Rc::new(
+                        crate::eval::value::value_number::r#const::ValueNumberConst(*n as f64),
+                    ),
                 };
                 let key_cv = CodeValue {
                     code: Code {
@@ -568,19 +569,33 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     value: Some(key_value),
                 };
                 let base_clone = base.clone();
-                let field_cv = match aspect_field.field(xx, expr.loc, base_clone, key_cv).into_res() {
-                    Ok(cv) => cv,
-                    Err(_) => continue,
-                };
-                let field_type = match field_cv.value.as_ref().and_then(|v| v.type_(xx, expr.loc).v) {
-                    Some(t) => t,
-                    None => continue,
-                };
+                let field_cv = erb.must_er(aspect_field.field(xx, expr.loc, base_clone, key_cv))?;
+                let field_v = field_cv.value.as_ref().ok_or_else(|| {
+                    erb.errors.push(ExprErr {
+                        loc: expr.loc,
+                        errors: vec![
+                            ExprSubErr::Opaque(
+                                format!(
+                                    "Sibling field '{:?}' listed in field_keys() but field() returned no value",
+                                    key,
+                                ),
+                            ),
+                        ],
+                    });
+                })?;
+                let field_type = erb.must_er(field_v.type_(xx, expr.loc))?;
                 if let Some(drop_aspect) =
                     crate::r#gen::aspect_drop_dynamic_get_maybe(xx, field_type.as_ref()) {
-                    if let Ok(dc) = crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), xx, expr.loc, field_cv).into_res() {
-                        sibling_drops.push(dc);
-                    }
+                    let dc =
+                        erb.must_er(
+                            crate::r#gen::AspectDropDynamic::drop(
+                                drop_aspect.as_ref(),
+                                xx,
+                                expr.loc,
+                                field_cv,
+                            ),
+                        )?;
+                    sibling_drops.push(dc);
                 }
             }
             let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
@@ -4030,9 +4045,13 @@ fn maybe_wrap_call_exception(
         return EResult::ok(v);
     }
     let probe_binding_id = BindingId::Local(xx.vx.next_local_id.next());
+    let probe_meta_type = match callee_exc.as_value().type_(xx, loc).into_res() {
+        Ok(t) => t,
+        Err(errs) => return EResult { errors: Some(errs), v: None },
+    };
     let probe_value: Rc<dyn Value> = Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
         source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
-        type_: callee_exc.as_value().type_(xx, loc).v.unwrap_or_else(|| Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)),
+        type_: probe_meta_type,
     });
     let probe_cv = CodeValue {
         code: Code {
@@ -4044,10 +4063,11 @@ fn maybe_wrap_call_exception(
         },
         value: Some(probe_value),
     };
-    let probe_res = callee_exc.cast_to(xx, loc, probe_cv, xx.current_exception_type.as_ref());
-    let probe = match probe_res.into_res() {
+    let probe = match callee_exc
+        .cast_to(xx, loc, probe_cv, xx.current_exception_type.as_ref())
+        .into_res() {
         Ok(p) => p,
-        Err(_) => return EResult::ok(v),
+        Err(errs) => return EResult { errors: Some(errs), v: None },
     };
     if matches!(probe.code.code, Code_::None) {
         return EResult::ok(v);
@@ -4055,16 +4075,26 @@ fn maybe_wrap_call_exception(
     let body_dyn = match &v.code.code {
         Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
             Some(d) => d.clone(),
-            None => return EResult::ok(v),
+            None => return EResult::err(
+                loc,
+                "Call result code must be CodeDynamic to wrap with exception cast".to_string(),
+            ),
         },
         Code_::None => return EResult::ok(v),
     };
     let catch_binding = BindingId::Local(xx.vx.next_local_id.next());
+    let bound_value_type = match callee_exc.clone_rc() {
+        Some(t) => t,
+        None => return EResult::err(
+            loc,
+            format!("Cannot clone callee exception type {}", callee_exc.desc()),
+        ),
+    };
     let bound_value: Rc<dyn Value> = Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
         source: crate::eval::value::value_dynamic::ValueDynamicSource::Binding(
             crate::eval::value::value_dynamic::ValueDynamicDataScope { key: catch_binding },
         ),
-        type_: callee_exc.clone_rc().unwrap_or_else(|| Rc::new(crate::eval::value::type_null::dynamic::TypeNullDynamic)),
+        type_: bound_value_type,
     });
     let bound_cv = CodeValue {
         code: Code {
