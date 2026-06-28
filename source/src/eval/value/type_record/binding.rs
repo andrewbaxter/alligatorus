@@ -76,10 +76,10 @@ impl Binding for BindingRecordBound {
         }
         CodeValue {
             code: use_code,
-            value: Rc::new(Record {
+            value: Some(Rc::new(Record {
                 base: base,
                 fields: result_fields,
-            }),
+            })),
         }
     }
 }
@@ -99,12 +99,12 @@ impl Binding for BindingRecordDynamic {
                     type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: self.dynamic_key }),
                 })),
             },
-            value: Rc::new(Record {
+            value: Some(Rc::new(Record {
                 base: Some(Box::new(RecordBaseDynamic)),
                 fields: self.fields.iter().map(|(k, t)| {
                     (k.clone(), RecordField::Dynamic(t.clone()))
                 }).collect(),
-            }),
+            })),
         }
     }
 }

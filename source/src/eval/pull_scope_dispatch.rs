@@ -72,8 +72,23 @@ impl Target for PullTarget {
         TargetDynamic.bind_sub_tuple(loc, carry, elements)
     }
 
+    fn cast_exception(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        call_code: Code,
+        catch_binding: BindingId,
+        cast_cv: CodeValue,
+    ) -> EResult<Code> {
+        TargetDynamic.cast_exception(xx, loc, call_code, catch_binding, cast_cv)
+    }
+
     fn code_to_bind_sub(&self, loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub> {
         TargetDynamic.code_to_bind_sub(loc, code, type_)
+    }
+
+    fn drop(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Code> {
+        TargetDynamic.drop(xx, loc, cv)
     }
 
     fn if_(
@@ -115,5 +130,9 @@ impl Target for PullTarget {
         graft_values: Vec<CodeValue>,
     ) -> EvalRes {
         TargetDynamic.stage(xx, loc, tree, lower_values, graft_values)
+    }
+
+    fn try_finally(&self, loc: QExprId, body: Code, finally: Code) -> EResult<Code> {
+        TargetDynamic.try_finally(loc, body, finally)
     }
 }

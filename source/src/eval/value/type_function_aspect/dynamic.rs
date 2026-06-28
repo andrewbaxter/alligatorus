@@ -59,7 +59,7 @@ impl Aspect for TypeFunctionAspectDynamic { }
 
 impl AspectFunction for TypeFunctionAspectDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_type = match argument.value.type_(xx, loc).into_res() {
+        let arg_type = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -73,7 +73,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 format!("aspect(): argument type ({}) is not a tuple — expected `(base, key)`", arg_type.desc(),),
             ),
         };
-        let CodeValue { value: argument_value, .. } = argument;
+        let argument_value = argument.value.unwrap();
         let elements = arg_tuple.take_elements(argument_value);
         if elements.len() != 2 {
             return EvalRes::err(
@@ -96,7 +96,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 errors: Some(e),
             },
         };
-        let key_meta = match key.value.type_(xx, loc).into_res() {
+        let key_meta = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -104,7 +104,7 @@ impl AspectFunction for TypeFunctionAspectDynamic {
             },
         };
         let key_type = match aspect_type_get_maybe(xx, key_meta.as_ref()) {
-            Some(at) => at.type_(key.value.as_ref()),
+            Some(at) => at.type_(key.value.as_deref().unwrap()),
             None => key_meta.clone(),
         };
         let aspect_aspect = match aspect_aspect_get_maybe(xx, key_type.as_ref()) {
@@ -149,11 +149,15 @@ impl AspectFunction for TypeFunctionAspectDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(call_code)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: option_type,
-            }),
+            })),
         })
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 

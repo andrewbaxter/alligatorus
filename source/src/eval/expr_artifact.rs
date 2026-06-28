@@ -132,6 +132,11 @@ pub(crate) enum ArtifactExpr_ {
     Stage {
         expr: ArtifactExpr,
     },
+    Try {
+        body: ArtifactExpr,
+        catch: Option<ArtifactTryCatch>,
+        finally: Option<ArtifactExpr>,
+    },
     Tuple {
         elements: Vec<ArtifactExpr>,
     },
@@ -147,6 +152,14 @@ pub(crate) struct ArtifactMatchBranch {
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ArtifactQExprId(pub usize, pub usize);
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub(crate) struct ArtifactTryCatch {
+    pub binding_name: ArtifactExpr,
+    pub body: ArtifactExpr,
+    pub exception_type: ArtifactExpr,
+}
 
 pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result<Expr, String> {
     let loc = (SourceId(art.loc.0), ExprId(art.loc.1));
@@ -229,6 +242,15 @@ pub(crate) fn expr_from_artifact(xx: &ExprContext, art: &ArtifactExpr) -> Result
             value: Rc::new(expr_from_artifact(xx, value)?),
         }),
         ArtifactExpr_::Stage { expr } => Expr_::Stage(ExprStage { expr: Rc::new(expr_from_artifact(xx, expr)?) }),
+        ArtifactExpr_::Try { body, catch, finally } => Expr_::Try(crate::eval::expr::ExprTry {
+            body: Rc::new(expr_from_artifact(xx, body)?),
+            catch: catch.as_ref().map(|c| Ok::<_, String>(crate::eval::expr::ExprTryCatch {
+                binding_name: Rc::new(expr_from_artifact(xx, &c.binding_name)?),
+                exception_type: Rc::new(expr_from_artifact(xx, &c.exception_type)?),
+                body: Rc::new(expr_from_artifact(xx, &c.body)?),
+            })).transpose()?,
+            finally: finally.as_ref().map(|f| expr_from_artifact(xx, f).map(Rc::new)).transpose()?,
+        }),
         ArtifactExpr_::Tuple { elements } => Expr_::Tuple(
             ExprTuple { elements: elements.iter().map(|e| expr_from_artifact(xx, e)).collect::<Result<_, _>>()? },
         ),
@@ -331,6 +353,15 @@ pub(crate) fn expr_to_artifact(xx: &ExprContext, expr: &Expr) -> Result<Artifact
             value: expr_to_artifact(xx, &e.value)?,
         },
         Expr_::Stage(e) => ArtifactExpr_::Stage { expr: expr_to_artifact(xx, &e.expr)? },
+        Expr_::Try(e) => ArtifactExpr_::Try {
+            body: expr_to_artifact(xx, &e.body)?,
+            catch: e.catch.as_ref().map(|c| Ok::<_, String>(ArtifactTryCatch {
+                binding_name: expr_to_artifact(xx, &c.binding_name)?,
+                exception_type: expr_to_artifact(xx, &c.exception_type)?,
+                body: expr_to_artifact(xx, &c.body)?,
+            })).transpose()?,
+            finally: e.finally.as_ref().map(|f| expr_to_artifact(xx, f)).transpose()?,
+        },
         Expr_::Tuple(e) => ArtifactExpr_::Tuple {
             elements: e.elements.iter().map(|x| expr_to_artifact(xx, x)).collect::<Result<_, _>>()?,
         },

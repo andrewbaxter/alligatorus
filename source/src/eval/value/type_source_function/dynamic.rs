@@ -117,10 +117,10 @@ impl AspectStackValueDynamic for TypeSourceFunctionDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceFunctionDynamic),
-            }),
+            })),
         }
     }
 }
@@ -207,10 +207,10 @@ impl Type for TypeSourceFunctionDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(call)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            })),
         })
     }
 

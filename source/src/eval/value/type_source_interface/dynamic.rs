@@ -134,10 +134,10 @@ impl AspectStackValueDynamic for TypeSourceInterfaceDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceInterfaceDynamic),
-            }),
+            })),
         }
     }
 }
@@ -205,7 +205,7 @@ impl Type for TypeSourceInterfaceDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -216,10 +216,10 @@ impl Type for TypeSourceInterfaceDynamic {
             source_type.aspect(xx, &interface_const_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceInterfaceDynamic),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("Cannot convert to interface_ref"))
@@ -231,10 +231,10 @@ impl Type for TypeSourceInterfaceDynamic {
             let dest_rc = type_.clone_rc().unwrap_or_else(|| Rc::new(TypeSourceInterfaceDynamic) as Rc<dyn Type>);
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: dest_rc,
-                }),
+                })),
             });
         }
         if type_.aspect(xx, &type_type_identity()).is_some() {
@@ -263,10 +263,10 @@ impl Type for TypeSourceInterfaceDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(call)),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: dest_rc,
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("Cannot convert interface_ref"))

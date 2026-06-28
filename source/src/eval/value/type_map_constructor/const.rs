@@ -43,7 +43,7 @@ impl Aspect for TypeMapConstructorConst { }
 
 impl AspectFunction for TypeMapConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_type = match argument.value.type_(xx, loc).into_res() {
+        let arg_type = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -54,7 +54,7 @@ impl AspectFunction for TypeMapConstructorConst {
             Some(t) => t,
             None => return EvalRes::err(loc, "map() requires a tuple of (key_type, value_type)".to_string()),
         };
-        let elements = arg_tuple.take_elements(argument.value);
+        let elements = arg_tuple.take_elements(argument.value.unwrap());
         if elements.len() != 2 {
             return EvalRes::err(
                 loc,
@@ -76,7 +76,7 @@ impl AspectFunction for TypeMapConstructorConst {
                 errors: Some(e),
             },
         };
-        let key_meta = match key_cv.value.type_(xx, loc).into_res() {
+        let key_meta = match key_cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -90,8 +90,8 @@ impl AspectFunction for TypeMapConstructorConst {
                 errors: Some(e),
             },
         };
-        let key_type = key_at.type_(key_cv.value.as_ref());
-        let value_meta = match value_cv.value.type_(xx, loc).into_res() {
+        let key_type = key_at.type_(key_cv.value.as_deref().unwrap());
+        let value_meta = match value_cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -105,7 +105,7 @@ impl AspectFunction for TypeMapConstructorConst {
                 errors: Some(e),
             },
         };
-        let value_type = value_at.type_(value_cv.value.as_ref());
+        let value_type = value_at.type_(value_cv.value.as_deref().unwrap());
         let map_type: Rc<dyn Type> = Rc::new(super::super::type_map::dynamic::TypeMapDynamic {
             key_type,
             value_type,
@@ -115,8 +115,12 @@ impl AspectFunction for TypeMapConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: map_type }),
+            value: Some(Rc::new(ValueAnyConst { inner: map_type })),
         })
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 

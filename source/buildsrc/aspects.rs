@@ -192,6 +192,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     params: vec![("xx", "&crate::langhelp::ExprContext"), ("key", "&crate::langhelp::ConstKey")],
                     ret: "Option<std::rc::Rc<dyn crate::langhelp::Type>>",
                 },
+                AspectMethod {
+                    name: "field_keys",
+                    doc: doc(
+                        "Enumerate the known field keys on this type. Used to identify sibling fields whose values need to be dropped when one field is extracted. Return empty if the type does not own its fields (e.g. records that borrow).",
+                    ),
+                    params: vec![("xx", "&crate::langhelp::ExprContext")],
+                    ret: "Vec<crate::langhelp::ConstKey>",
+                },
             ],
         },
         AspectSpec {
@@ -208,6 +216,11 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     ("argument", "crate::langhelp::CodeValue"),
                 ],
                 ret: "crate::langhelp::EvalRes",
+            }, AspectMethod {
+                name: "exception_type",
+                doc: doc("Returns the declared exception type of this function, or None if not declared."),
+                params: vec![],
+                ret: "Option<std::rc::Rc<dyn crate::langhelp::Type>>",
             }],
         },
         AspectSpec {
@@ -463,6 +476,23 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     ret: "Rc<dyn crate::artifact::ArtifactExporter>",
                 },
             ],
+        },
+        AspectSpec {
+            name: "DropDynamic",
+            doc: doc(
+                "Allows a value to emit cleanup (drop) code when its scope ends, when it is discarded as a Seq entry, or when a sibling field is not extracted.",
+            ),
+            builtin_unique_id: 1032,
+            methods: vec![AspectMethod {
+                name: "drop",
+                doc: doc(""),
+                params: vec![
+                    ("xx", "&crate::langhelp::ExprContext"),
+                    ("loc", "crate::langhelp::QExprId"),
+                    ("cv", "crate::langhelp::CodeValue"),
+                ],
+                ret: "crate::langhelp::EResult<crate::langhelp::Code>",
+            }],
         },
         AspectSpec {
             name: "Aspect",

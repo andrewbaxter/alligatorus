@@ -53,6 +53,7 @@ pub enum SourceExpr_ {
     Seq(SourceExprSeq),
     Set(SourceExprSet),
     Stage(SourceExprStage),
+    Try(SourceExprTry),
     Tuple(Vec<SourceExpr>),
 }
 
@@ -170,6 +171,22 @@ pub struct SourceExprSet {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct SourceExprStage {
     pub expr: Box<SourceExpr>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprTry {
+    pub body: Box<SourceExpr>,
+    pub catch: Option<SourceExprTryCatch>,
+    pub finally: Option<Box<SourceExpr>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct SourceExprTryCatch {
+    pub binding_name: Box<SourceExpr>,
+    pub body: Box<SourceExpr>,
+    pub exception_type: Box<SourceExpr>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

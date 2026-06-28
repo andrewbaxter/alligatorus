@@ -92,6 +92,7 @@ pub(crate) fn deexport_captured_externals(
                     import_state: xx.import_state.clone(),
                     scope: xx.scope.clone(),
                     target: xx.target.clone(),
+                    current_exception_type: xx.current_exception_type.clone(),
                 });
                 (BindingId::Local(*local_id), External::StageLiftCell(cell))
             },
@@ -279,6 +280,7 @@ impl DefinitionSet {
             import_state: xx.import_state.clone(),
             scope: xx.scope.clone(),
             target: xx.target.clone(),
+            current_exception_type: xx.current_exception_type.clone(),
         });
         let root_loc = (crate::langhelp::SourceId(0), crate::syntax::ExprId(0));
         for func_data in self.functions.borrow().iter() {

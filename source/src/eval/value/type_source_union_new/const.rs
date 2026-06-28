@@ -96,6 +96,10 @@ impl AspectFunction for TypeSourceUnionNewConst {
             }));
         });
     }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
+    }
 }
 
 impl ExporterAny for TypeSourceUnionNewConst {

@@ -24,7 +24,7 @@ impl Binding for BindingValue {
                 loc,
                 code: Code_::None,
             },
-            value: self.value.clone(),
+            value: Some(self.value.clone()),
         }
     }
 }

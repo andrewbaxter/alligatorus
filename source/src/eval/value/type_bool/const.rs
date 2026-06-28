@@ -109,11 +109,12 @@ impl Type for TypeBoolConst {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
+            let value = value.unwrap();
             let type_ = erb.must_er(value.type_(xx, loc))?;
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
+                value: Some(Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref()))))
             });
         });
     }
@@ -121,10 +122,11 @@ impl Type for TypeBoolConst {
     fn cast_to(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
         return er_seq_cv!(loc, erb, {
             let CodeValue { code, value } = cv;
+            let value = value.unwrap();
             let aspect_bool = erb.must_er(aspect_bool_const_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: code,
-                value: Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref())))
+                value: Some(Rc::new(ValueBoolConst(aspect_bool.get(value.as_ref()))))
             });
         });
     }

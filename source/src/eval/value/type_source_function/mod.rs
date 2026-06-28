@@ -48,6 +48,7 @@ pub(crate) struct SourceFunctionData {
     pub captured_externals: RefCell<Vec<(BindingId, External)>>,
     pub compiled_source: RefCell<Option<String>>,
     pub description: RefCell<Option<String>>,
+    pub exception_type: RefCell<Option<Rc<dyn Type>>>,
     pub impl_expr: RefCell<Option<Rc<dyn Value>>>,
     pub name: Option<String>,
     pub ret_type: RefCell<Option<Rc<dyn Type>>>,
@@ -98,6 +99,7 @@ impl SourceFunctionData {
         if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
         }
+        let exc_type: Option<Rc<dyn Type>> = self.exception_type.borrow().clone();
         let func_xx = Rc::new(ExprContext {
             vx: body_ex,
             import_state: xx.import_state.clone(),
@@ -106,6 +108,7 @@ impl SourceFunctionData {
                 parent: None,
             }),
             target: xx.target.clone(),
+            current_exception_type: exc_type,
         });
         let impl_result = const_eval(&func_xx, impl_expr_ast);
         if let Some(errs) = impl_result.errors {

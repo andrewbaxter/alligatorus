@@ -39,6 +39,7 @@ pub mod type_source_union;
 pub mod type_source_union_builder;
 pub mod type_source_union_new;
 pub mod type_string;
+pub mod type_throw;
 pub mod type_tuple;
 pub mod type_type_source_object;
 pub mod type_type_source_object_new;

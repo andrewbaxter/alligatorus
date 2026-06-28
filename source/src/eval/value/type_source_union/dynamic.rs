@@ -129,10 +129,10 @@ impl AspectStackValueDynamic for TypeSourceUnionDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceUnionDynamic { data: self.data.clone() }),
-            }),
+            })),
         }
     }
 }
@@ -231,7 +231,7 @@ impl Type for TypeSourceUnionDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -241,28 +241,28 @@ impl Type for TypeSourceUnionDynamic {
         if source_type.aspect(xx, &self.data.identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceUnionDynamic { data: self.data.clone() }),
-                }),
+                })),
             });
         }
         if source_type.aspect(xx, &union_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceUnionDynamic { data: self.data.clone() }),
-                }),
+                })),
             });
         }
         if source_type.aspect(xx, &aspect_union_aspect_id()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: source_type,
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("Cannot convert {} to union_ref", source_type.desc()))
@@ -271,10 +271,10 @@ impl Type for TypeSourceUnionDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceUnionDynamic { data: self.data.clone() }),
-            }),
+            })),
         })
     }
 
@@ -347,10 +347,10 @@ impl AspectStackValueDynamic for TypeSourceUnionRefDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceUnionRefDynamic),
-            }),
+            })),
         }
     }
 }
@@ -405,7 +405,7 @@ impl Type for TypeSourceUnionRefDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -415,19 +415,19 @@ impl Type for TypeSourceUnionRefDynamic {
         if source_type.aspect(xx, &union_ref_type_identity()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceUnionRefDynamic),
-                }),
+                })),
             });
         }
         if source_type.aspect(xx, &aspect_union_aspect_id()).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceUnionRefDynamic),
-                }),
+                })),
             });
         }
         EvalRes::err(loc, format!("Cannot convert {} to union_ref", source_type.desc()))
@@ -462,10 +462,10 @@ impl Type for TypeSourceUnionRefDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(call)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            })),
         })
     }
 

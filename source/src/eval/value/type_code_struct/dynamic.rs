@@ -84,7 +84,7 @@ impl AspectConsumeDynamic for TypeCodeStructDynamic {
 
 impl AspectField for TypeCodeStructDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -98,19 +98,23 @@ impl AspectField for TypeCodeStructDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         match key_name.as_str() {
             "code" => {
                 EvalRes::ok(CodeValue {
                     code: self_.code,
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeCodeEnumDynamic),
-                    }),
+                    })),
                 })
             },
             _ => EvalRes::err(loc, format!("Field '{}' not found on Code struct", key_name)),
         }
+    }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {

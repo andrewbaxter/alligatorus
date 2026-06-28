@@ -86,7 +86,7 @@ impl AspectConsumeDynamic for TypeCodeDynHandleDynamic {
 
 impl AspectField for TypeCodeDynHandleDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -100,7 +100,7 @@ impl AspectField for TypeCodeDynHandleDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         match key_name.as_str() {
             "cast" => {
                 let self_code = match self_.code.cast::<CodeDynamic>().into_res() {
@@ -112,11 +112,15 @@ impl AspectField for TypeCodeDynHandleDynamic {
                         loc,
                         code: Code_::Dyn(Rc::new(self_code)),
                     },
-                    value: Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) }),
+                    value: Some(Rc::new(ValueAnyConst { inner: Rc::new(TypeCodeDynCastFn) })),
                 })
             },
             _ => EvalRes::err(loc, format!("Field '{}' not found on code_dyn handle", key_name)),
         }
+    }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
@@ -215,10 +219,10 @@ impl Type for TypeCodeDynHandleDynamic {
         };
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: dest_rc,
-            }),
+            })),
         })
     }
 

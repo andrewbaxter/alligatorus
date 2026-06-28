@@ -34,6 +34,8 @@ use {
             SourceExprSeq,
             SourceExprSet,
             SourceExprStage,
+            SourceExprTry,
+            SourceExprTryCatch,
             SourceExpr_,
             SourceLiteral,
             SourceModule,
@@ -370,6 +372,32 @@ impl ModuleBuilder {
             id: self.id(),
             r#type: SourceExpr_::Literal(SourceLiteral::String(s.to_string())),
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn throw(&self, value: SourceExpr) -> SourceExpr {
+        return self.call(self.builtin(&["throw"]), value);
+    }
+
+    #[allow(dead_code)]
+    pub fn try_(
+        &self,
+        body: SourceExpr,
+        catch: Option<(&str, SourceExpr, SourceExpr)>,
+        finally: Option<SourceExpr>,
+    ) -> SourceExpr {
+        return SourceExpr {
+            id: self.id(),
+            r#type: SourceExpr_::Try(SourceExprTry {
+                body: Box::new(body),
+                catch: catch.map(|(name, exc_type, body)| SourceExprTryCatch {
+                    binding_name: Box::new(self.str(name)),
+                    exception_type: Box::new(exc_type),
+                    body: Box::new(body),
+                }),
+                finally: finally.map(Box::new),
+            }),
+        };
     }
 
     pub fn tuple(&self, values: Vec<SourceExpr>) -> SourceExpr {

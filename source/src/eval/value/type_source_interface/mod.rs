@@ -28,6 +28,7 @@ use {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum BuiltinInterfaceKind {
+    AspectDropDynamic,
     AspectField,
     AspectFunction,
     Binding,

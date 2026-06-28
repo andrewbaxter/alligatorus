@@ -16,6 +16,7 @@ use {
 
 const ASPECT_COMPILE_SCOPE_ID: usize = 7023;
 const CAST_VALUE_COMPILE_SCOPE_ID: usize = 7024;
+const THROW_COMPILE_SCOPE_ID: usize = 7025;
 
 fn any_const(type_tokens: TokenStream) -> TokenStream {
     quote!{
@@ -166,6 +167,22 @@ pub fn emit_gen_builtin_tree(
             name: "field_type_opt",
             ret_type: any(),
             args: MethodArgs::Source(vec![("key", cve())]),
+        }],
+    };
+    let xx_ref = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeExprContextPushDynamic));
+    let iface_aspect_drop_dynamic = InterfaceSpec {
+        name: "aspect_drop_dynamic",
+        builtin_unique_id: 2008,
+        scope_id: 3008,
+        field_prefix: "dd",
+        kind: "AspectDropDynamic",
+        description: None,
+        register_in_scope: true,
+        rust_trait_name: None,
+        methods: vec![Method {
+            name: "drop",
+            ret_type: cve(),
+            args: MethodArgs::Source(vec![("xx", xx_ref()), ("inner", cve())]),
         }],
     };
     let iface_binding = {
@@ -323,6 +340,40 @@ pub fn emit_gen_builtin_tree(
                         ("graft_values", TypeRef::opaque(quote!(Vec < crate:: langhelp:: CodeValue >))),
                     ],
                 }),
+            }, Method {
+                name: "cast_exception",
+                ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![
+                        ("xx", quote!(&crate::langhelp::ExprContext)),
+                        ("loc", quote!(crate::langhelp::QExprId)),
+                    ],
+                    data: vec![
+                        ("call_code", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                        ("catch_binding", TypeRef::opaque(quote!(crate::langhelp::BindingId))),
+                        ("cast_cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue))),
+                    ],
+                }),
+            }, Method {
+                name: "drop",
+                ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![
+                        ("xx", quote!(&crate::langhelp::ExprContext)),
+                        ("loc", quote!(crate::langhelp::QExprId)),
+                    ],
+                    data: vec![("cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue)))],
+                }),
+            }, Method {
+                name: "try_finally",
+                ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    data: vec![
+                        ("body", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                        ("finally", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                    ],
+                }),
             }],
         }
     };
@@ -340,6 +391,15 @@ pub fn emit_gen_builtin_tree(
     let tree =
         branch(
             vec![
+                (
+                    "throw",
+                    leaf(
+                        initial_bind(
+                            THROW_COMPILE_SCOPE_ID,
+                            quote!(crate::eval::value::type_throw::dynamic::TypeThrowDynamic),
+                        ),
+                    ),
+                ),
                 ("log", leaf(push_fn(out, scope_ids, 5001, &[("message", "String")], "()", quote!{
                     let timestamp_ms =
                         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as
@@ -557,7 +617,7 @@ pub fn emit_gen_builtin_tree(
                                         quote!{
                                             let cv = crate::langhelp::CodeValue {
                                                 code,
-                                                value
+                                                value: Some(value),
                                             };
                                             crate::eval::code_value_extern::CodeValueExtern(
                                                 Rc::new(RefCell::new(Some(cv)))
@@ -633,6 +693,9 @@ pub fn emit_gen_builtin_tree(
                                                 import_state: Rc::new(Cell::new(parent_ex.ix.import_state)),
                                                 scope: new_scope,
                                                 target: target_arg,
+                                                current_exception_type: Some(
+                                                    Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
+                                                ),
                                             });
                                             crate::eval::code_value_extern::ExprContextPush(xx)
                                         },
@@ -641,6 +704,10 @@ pub fn emit_gen_builtin_tree(
                             ),
                             ("aspect_function", leaf(interface(out, iface_aspect_function, extra_iface_specs))),
                             ("aspect_field", leaf(interface(out, iface_aspect_field, extra_iface_specs))),
+                            (
+                                "aspect_drop_dynamic",
+                                leaf(interface(out, iface_aspect_drop_dynamic, extra_iface_specs)),
+                            ),
                             (
                                 "aspect_string_dynamic",
                                 leaf(aspect_id(out, scope_ids, 4001, quote!(aspect_string_dynamic_aspect_id))),

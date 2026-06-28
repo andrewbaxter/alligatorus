@@ -273,6 +273,10 @@ pub(crate) fn code_uses_binding(code: &CodeDynamic, target_id: BindingId) -> boo
             code_uses_binding(&o.reference, target_id),
         CodeDynamicType::SubscriptUse(s) => code_uses_binding(&s.base, target_id) ||
             code_uses_binding(&s.key, target_id),
+        CodeDynamicType::Throw(t) => code_uses_binding(&t.value, target_id),
+        CodeDynamicType::Try(t) => code_uses_binding(&t.body, target_id) ||
+            t.catch.as_ref().map(|c| code_uses_binding(&c.body, target_id)).unwrap_or(false) ||
+            t.finally.as_ref().map(|f| code_uses_binding(f, target_id)).unwrap_or(false),
     }
 }
 
@@ -384,6 +388,20 @@ pub(crate) fn compile_importid(
                 }
                 m
             },
+            Expr_::Try(e) => {
+                let mut m = max_lower_excess(&e.body, sd, ld);
+                if let Some(c) = &e.catch {
+                    m =
+                        m
+                            .max(max_lower_excess(&c.binding_name, sd, ld))
+                            .max(max_lower_excess(&c.exception_type, sd, ld))
+                            .max(max_lower_excess(&c.body, sd, ld));
+                }
+                if let Some(f) = &e.finally {
+                    m = m.max(max_lower_excess(f, sd, ld));
+                }
+                m
+            },
         }
     }
 
@@ -424,6 +442,7 @@ pub(crate) fn compile_importid(
                     parent: None,
                 }),
                 target: Rc::new(TargetDynamic),
+                current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
             });
             let value_type = match eval_value.type_(&xx, root_loc).into_res() {
                 Ok(v) => v,
@@ -470,14 +489,14 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None,
                     },
-                    value: p.consume(),
+                    value: Some(p.consume()),
                 }),
                 errors: None,
             };
         },
         Expr_::ScopeUse(p) => return er_seq_cv!(expr.loc, erb, {
             let key = erb.must_er(const_eval(xx, p.key.as_ref()))?;
-            let constkey = erb.must_res(extract_const_key(xx, expr.loc, key.value.as_ref()))?;
+            let constkey = erb.must_res(extract_const_key(xx, expr.loc, key.value.as_deref().unwrap()))?;
             let scope = shed!{
                 'found _;
                 let mut at = &xx.scope;
@@ -502,9 +521,11 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 func = const_eval(xx, p.func.as_ref()),
                 arg = const_eval(xx, p.arg.as_ref()),
             });
-            let func_type = erb.must_er(func.value.type_(xx, expr.loc))?;
+            let func_type = erb.must_er(func.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_func = erb.must_er(aspect_function_get(xx, expr.loc, func_type.as_ref()))?;
+            let callee_exc = aspect_func.exception_type();
             let v = erb.must_er(aspect_func.call(xx, expr.loc, func, arg))?;
+            let v = erb.must_er(maybe_wrap_call_exception(xx, expr.loc, callee_exc, v))?;
             return Ok(v);
         }),
         Expr_::Set(e) => return er_seq_cv!(expr.loc, erb, {
@@ -512,7 +533,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 value = const_eval(xx, e.value.as_ref()),
             });
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let base_set = erb.must_er(aspect_set_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(base_set.set(xx, expr.loc, base, value))?;
             return Ok(v);
@@ -522,10 +543,64 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 field = const_eval(xx, e.key.as_ref()),
             });
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
+            let extracted_key = erb.must_res(extract_const_key(xx, expr.loc, field.value.as_deref().unwrap()))?;
+            let mut sibling_drops: Vec<Code> = Vec::new();
+            let field_keys = aspect_field.field_keys(xx);
+            for key in field_keys {
+                if key == extracted_key {
+                    continue;
+                }
+                let key_value: Rc<dyn Value> = match &key {
+                    ConstKey::String(s) => Rc::new(
+                        crate::eval::value::value_string::r#const::ValueStringConst(s.clone()),
+                    ),
+                    ConstKey::Usize(n) => Rc::new(
+                        crate::eval::value::value_number::r#const::ValueNumberConst(*n as f64),
+                    ),
+                };
+                let key_cv = CodeValue {
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::None,
+                    },
+                    value: Some(key_value),
+                };
+                let base_clone = base.clone();
+                let field_cv = erb.must_er(aspect_field.field(xx, expr.loc, base_clone, key_cv))?;
+                let field_v = field_cv.value.as_ref().ok_or_else(|| {
+                    erb.errors.push(ExprErr {
+                        loc: expr.loc,
+                        errors: vec![
+                            ExprSubErr::Opaque(
+                                format!(
+                                    "Sibling field '{:?}' listed in field_keys() but field() returned no value",
+                                    key,
+                                ),
+                            ),
+                        ],
+                    });
+                })?;
+                let field_type = erb.must_er(field_v.type_(xx, expr.loc))?;
+                if let Some(drop_aspect) = crate::r#gen::aspect_drop_dynamic_get_maybe(xx, field_type.as_ref()) {
+                    let dc =
+                        erb.must_er(
+                            crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), xx, expr.loc, field_cv,),
+                        )?;
+                    sibling_drops.push(dc);
+                }
+            }
             let v = erb.must_er(aspect_field.field(xx, expr.loc, base, field))?;
-            return Ok(v);
+            if sibling_drops.is_empty() {
+                return Ok(v);
+            }
+            sibling_drops.push(v.code.clone());
+            let combined = erb.must_er(xx.target.seq(expr.loc, sibling_drops))?;
+            return Ok(CodeValue {
+                code: combined,
+                value: v.value,
+            });
         }),
         Expr_::Bind(_) => {
             return EvalRes::err(expr.loc, format!("Bind expression must be directly inside a block"));
@@ -540,33 +615,111 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 import_state: xx.import_state.clone(),
                 scope: child_scope,
                 target: xx.target.clone(),
+                current_exception_type: xx.current_exception_type.clone(),
             };
             return er_seq_cv!(expr.loc, erb, {
-                let mut entries = vec![];
-                let mut last_val = None;
-                for sub in &e.exprs {
+                struct Frame {
+                    codes: Vec<Code>,
+                    drop_code: Code,
+                }
+
+                let mut frames: Vec<Frame> = vec![Frame {
+                    codes: vec![],
+                    drop_code: Code {
+                        loc: expr.loc,
+                        code: Code_::None
+                    }
+                }];
+                let mut last_val: Option<Rc<dyn Value>> = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
+                let mut pending_discard: Option<CodeValue> = None;
+                let mut control_ended = false;
+                let total = e.exprs.len();
+                for (idx, sub) in e.exprs.iter().enumerate() {
+                    if control_ended {
+                        erb.errors.push(ExprErr {
+                            loc: sub.loc,
+                            errors: vec![
+                                ExprSubErr::Opaque("Unreachable: control flow ended at prior expression".to_string())
+                            ],
+                        });
+                        continue;
+                    }
+                    if let Some(prev) = pending_discard.take() {
+                        let drop_code =
+                            erb.must_er(
+                                crate::r#gen::Target::drop(child_xx.target.as_ref(), &child_xx, sub.loc, prev)
+                            )?;
+                        frames.last_mut().unwrap().codes.push(drop_code);
+                    }
                     if let Expr_::Bind(bind) = &sub.r#type {
                         er_all!(erb, {
                             base = const_eval(&child_xx, bind.base.as_ref()),
                             value = const_eval(&child_xx, bind.value.as_ref()),
                         });
-                        let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_ref()))?;
-                        entries.push(base.code);
-                        let value_type = erb.must_er(value.value.type_(&child_xx, sub.loc))?;
+                        let base_constkey =
+                            erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_deref().unwrap()))?;
+                        frames.last_mut().unwrap().codes.push(base.code);
+                        if value.value.is_none() {
+                            erb.errors.push(ExprErr {
+                                loc: sub.loc,
+                                errors: vec![
+                                    ExprSubErr::Opaque(
+                                        "Cannot bind result of expression that ends control flow".to_string(),
+                                    ),
+                                ],
+                            });
+                            return Err(());
+                        }
+                        let value_type = erb.must_er(value.value.as_ref().unwrap().type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
                         let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
-                        entries.push(binding.0);
+                        let binding_use_cv = binding.1.use_(&child_xx, sub.loc, Code {
+                            loc: sub.loc,
+                            code: Code_::None
+                        });
+                        let drop_code =
+                            erb.must_er(
+                                crate::r#gen::Target::drop(child_xx.target.as_ref(), &child_xx, sub.loc, binding_use_cv)
+                            )?;
+                        frames.last_mut().unwrap().codes.push(binding.0);
+                        frames.push(Frame {
+                            codes: vec![],
+                            drop_code
+                        });
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
                         last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(const_eval(&child_xx, sub))?;
-                        entries.push(r.code);
-                        last_val = Some(r.value);
+                        frames.last_mut().unwrap().codes.push(r.code.clone());
+                        if r.value.is_none() {
+                            control_ended = true;
+                            last_val = None;
+                            continue;
+                        }
+                        if idx + 1 < total {
+                            pending_discard = Some(r);
+                        } else {
+                            last_val = r.value;
+                        }
                     }
                 }
+                while frames.len() > 1 {
+                    let inner = frames.pop().unwrap();
+                    match &inner.drop_code.code {
+                        Code_::None => {
+                            frames.last_mut().unwrap().codes.extend(inner.codes);
+                        },
+                        Code_::Dyn(_) => {
+                            let body = erb.must_er(child_xx.target.seq(expr.loc, inner.codes))?;
+                            let wrapped = erb.must_er(child_xx.target.try_finally(expr.loc, body, inner.drop_code))?;
+                            frames.last_mut().unwrap().codes.push(wrapped);
+                        },
+                    }
+                }
+                let outer = frames.pop().unwrap();
                 return Ok(CodeValue {
-                    code: erb.must_er(xx.target.seq(expr.loc, entries))?,
-                    value: last_val.unwrap_or_else(|| Rc::new(ValueNullConst) as Rc<dyn Value>)
+                    code: erb.must_er(child_xx.target.seq(expr.loc, outer.codes))?,
+                    value: last_val,
                 });
             });
         },
@@ -660,6 +813,17 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                             find_matched_lowers_inner(f, sd, ld, out);
                         }
                     },
+                    Expr_::Try(e) => {
+                        find_matched_lowers_inner(&e.body, sd, ld, out);
+                        if let Some(c) = &e.catch {
+                            find_matched_lowers_inner(&c.binding_name, sd, ld, out);
+                            find_matched_lowers_inner(&c.exception_type, sd, ld, out);
+                            find_matched_lowers_inner(&c.body, sd, ld, out);
+                        }
+                        if let Some(f) = &e.finally {
+                            find_matched_lowers_inner(f, sd, ld, out);
+                        }
+                    },
                 }
             }
 
@@ -746,6 +910,17 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                             find_matched_grafts_inner(f, sd, out);
                         }
                     },
+                    Expr_::Try(e) => {
+                        find_matched_grafts_inner(&e.body, sd, out);
+                        if let Some(c) = &e.catch {
+                            find_matched_grafts_inner(&c.binding_name, sd, out);
+                            find_matched_grafts_inner(&c.exception_type, sd, out);
+                            find_matched_grafts_inner(&c.body, sd, out);
+                        }
+                        if let Some(f) = &e.finally {
+                            find_matched_grafts_inner(f, sd, out);
+                        }
+                    },
                 }
             }
 
@@ -759,7 +934,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None,
                     },
-                    value: Rc::new(e.expr.as_ref().clone()),
+                    value: Some(Rc::new(e.expr.as_ref().clone())),
                 });
             }
             return er_seq_cv!(expr.loc, erb, {
@@ -798,7 +973,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value: Rc::new(Tuple { elements: elements }),
+                value: Some(Rc::new(Tuple { elements: elements })),
             });
         },
         Expr_::Record(r) => {
@@ -816,7 +991,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 if let Some(dynamic_code) = k_cv.code.cast::<CodeDynamic>().v.flatten() {
                     key_codes.push(dynamic_code.clone());
                 }
-                match extract_const_key(xx, expr.loc, k_cv.value.as_ref()) {
+                match extract_const_key(xx, expr.loc, k_cv.value.as_deref().unwrap()) {
                     Ok(key) => {
                         entries.insert(key, const_eval(xx, v_expr));
                     },
@@ -850,10 +1025,10 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let fields = entries.into_iter().map(|(k, v)| (k, RecordField::EvalRes(v))).collect();
             return EvalRes::ok(CodeValue {
                 code,
-                value: Rc::new(Record {
+                value: Some(Rc::new(Record {
                     base: None,
                     fields,
-                }),
+                })),
             });
         },
         Expr_::OperatorLt(e) => return er_seq_cv!(expr.loc, erb, {
@@ -861,7 +1036,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 reference = const_eval(xx, e.reference.as_ref()),
             });
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_lt = erb.must_er(aspect_operator_lt_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(aspect_lt.lt(xx, expr.loc, base, reference))?;
             return Ok(v);
@@ -871,7 +1046,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 reference = const_eval(xx, e.reference.as_ref()),
             });
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_eq = erb.must_er(aspect_operator_eq_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(aspect_eq.eq(xx, expr.loc, base, reference))?;
             return Ok(v);
@@ -881,7 +1056,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 reference = const_eval(xx, e.reference.as_ref()),
             });
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_add = erb.must_er(aspect_operator_add_get(xx, expr.loc, base_type.as_ref()))?;
             let v = erb.must_er(aspect_add.add(xx, expr.loc, base, reference))?;
             return Ok(v);
@@ -891,8 +1066,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 element_key_cv = const_eval(xx, e.element_key.as_ref()),
             });
-            let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_deref().unwrap()))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let iterable = erb.must_er(aspect_iterable_get(xx, expr.loc, base_type.as_ref()))?;
             let element_scope_id = BindingId::Local(xx.vx.next_local_id.next());
             let child_scope = Rc::new(Scope {
@@ -907,6 +1082,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 import_state: xx.import_state.clone(),
                 scope: child_scope,
                 target: xx.target.clone(),
+                current_exception_type: xx.current_exception_type.clone(),
             };
             let body = erb.must_er(const_eval(&child_xx, e.body.as_ref()))?;
             let v = erb.must_er(iterable.foreach(xx, expr.loc, base, element_scope_id, body))?;
@@ -917,14 +1093,14 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 element_key_cv = const_eval(xx, e.element_key.as_ref()),
             });
-            let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_ref()))?;
-            let base_type = erb.must_er(base.value.type_(xx, expr.loc))?;
+            let element_key = erb.must_res(extract_const_key(xx, expr.loc, element_key_cv.value.as_deref().unwrap()))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let union = erb.must_er(aspect_union_get(xx, expr.loc, base_type.as_ref()))?;
             let variants = union.variants();
             let mut case_tags: Vec<ConstKey> = Vec::new();
             for case in &e.cases {
                 let cond_cv = erb.must_er(const_eval(xx, &case.condition))?;
-                let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_ref()))?;
+                let tag = erb.must_res(extract_const_key(xx, expr.loc, cond_cv.value.as_deref().unwrap()))?;
                 if !variants.iter().any(|(t, _, _)| t == &tag) {
                     return erb.err_new(format!("Match case tag '{:?}' not found in union", tag));
                 }
@@ -952,7 +1128,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
         }),
         Expr_::Import(e) => return er_seq_cv!(expr.loc, erb, {
             let spec_cv = erb.must_er(const_eval(xx, &e.spec))?;
-            let spec_str = erb.must_res(extract_const_key(xx, expr.loc, spec_cv.value.as_ref()))?;
+            let spec_str = erb.must_res(extract_const_key(xx, expr.loc, spec_cv.value.as_deref().unwrap()))?;
             let spec_name = match spec_str {
                 ConstKey::String(s) => s,
                 _ => return erb.err_new("Import spec must be a string"),
@@ -1003,9 +1179,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     loc: expr.loc,
                     code: Code_::None,
                 },
-                value,
+                value: Some(value),
             };
-            let value_type = erb.must_er(cv.value.type_(xx, expr.loc))?;
+            let value_type = erb.must_er(cv.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let post_deserialize = erb.must_er(aspect_post_deserialize_get(xx, expr.loc, value_type.as_ref()))?;
             let cv = erb.must_er(post_deserialize.post_deserialize(xx, expr.loc, cv))?;
             return Ok(cv);
@@ -1015,9 +1191,9 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             let mut all_const = true;
             for branch in &e.conditions {
                 let cond = erb.must_er(const_eval(xx, &branch.condition))?;
-                let cond_type = erb.must_er(cond.value.type_(xx, expr.loc))?;
+                let cond_type = erb.must_er(cond.value.as_ref().unwrap().type_(xx, expr.loc))?;
                 if let Some(aspect_bool) = aspect_bool_const_get_maybe(xx, cond_type.as_ref()) {
-                    let val = aspect_bool.get(cond.value.as_ref());
+                    let val = aspect_bool.get(cond.value.as_deref().unwrap());
                     conditions_evaluated.push((val, cond, &branch.body));
                 } else {
                     all_const = false;
@@ -1040,7 +1216,7 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         loc: expr.loc,
                         code: Code_::None
                     },
-                    value: Rc::new(ValueNullConst),
+                    value: Some(Rc::new(ValueNullConst)),
                 });
             } else {
                 let conditions: Vec<(CodeValue, &Expr)> =
@@ -1054,12 +1230,167 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 base = const_eval(xx, e.base.as_ref()),
                 target = const_eval(xx, e.target.as_ref()),
             });
-            let target_meta_type = erb.must_er(target.value.type_(xx, expr.loc))?;
+            let target_meta_type = erb.must_er(target.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_type = erb.must_er(aspect_type_get(xx, expr.loc, target_meta_type.as_ref()))?;
-            let target_type = aspect_type.type_(target.value.as_ref());
+            let target_type = aspect_type.type_(target.value.as_deref().unwrap());
             let v = erb.must_er(typecheck_convert(xx, expr.loc, target_type.as_ref(), base))?;
             return Ok(v);
         }),
+        Expr_::Try(e) => {
+            if e.catch.is_none() && e.finally.is_none() {
+                return EvalRes::err(expr.loc, "Try requires at least one of catch/finally".to_string());
+            }
+            return er_seq_cv!(expr.loc, erb, {
+                let body_exc_type: Option<Rc<dyn Type>> = if let Some(catch) = &e.catch {
+                    let exc_type_cv = erb.must_er(const_eval(xx, catch.exception_type.as_ref()))?;
+                    let exc_meta = erb.must_er(exc_type_cv.value.as_ref().unwrap().type_(xx, expr.loc))?;
+                    let aspect_type = erb.must_er(aspect_type_get(xx, expr.loc, exc_meta.as_ref()))?;
+                    Some(aspect_type.type_(exc_type_cv.value.as_deref().unwrap()))
+                } else {
+                    xx.current_exception_type.clone()
+                };
+                let body_xx = ExprContext {
+                    vx: xx.vx.clone(),
+                    import_state: xx.import_state.clone(),
+                    scope: xx.scope.clone(),
+                    target: xx.target.clone(),
+                    current_exception_type: body_exc_type.clone(),
+                };
+                let body_cv = erb.must_er(const_eval(&body_xx, e.body.as_ref()))?;
+                let body_type: Option<Rc<dyn Type>> = if let Some(v) = body_cv.value.as_ref() {
+                    Some(erb.must_er(v.type_(xx, expr.loc))?)
+                } else {
+                    None
+                };
+                let body_dyn = match &body_cv.code.code {
+                    Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+                        Some(d) => d.clone(),
+                        None => return erb.err_new("Try body must produce CodeDynamic".to_string()),
+                    },
+                    Code_::None => return erb.err_new(
+                        "Try body must produce CodeDynamic (got Code::None)".to_string()
+                    ),
+                };
+                let mut result_value: Option<Rc<dyn Value>> = body_cv.value.clone();
+                let catch_dyn = if let Some(catch) = &e.catch {
+                    let binding_key_cv = erb.must_er(const_eval(xx, catch.binding_name.as_ref()))?;
+                    let binding_constkey =
+                        erb.must_res(
+                            extract_const_key(xx, catch.binding_name.loc, binding_key_cv.value.as_deref().unwrap())
+                        )?;
+                    let binding_id = BindingId::Local(xx.vx.next_local_id.next());
+                    let catch_scope = Rc::new(Scope {
+                        values: RefCell::new(HashMap::new()),
+                        parent: Some(xx.scope.clone()),
+                    });
+                    let catch_exc_type =
+                        body_exc_type.as_ref().expect("Try catch present but body_exc_type is None").clone();
+                    if let Some(ib) = crate::r#gen::aspect_initial_bind_get_maybe(xx, catch_exc_type.as_ref()) {
+                        catch_scope.values.borrow_mut().insert(binding_constkey, ib.initial_bind(binding_id));
+                    }
+                    let catch_xx = ExprContext {
+                        vx: xx.vx.clone(),
+                        import_state: xx.import_state.clone(),
+                        scope: catch_scope,
+                        target: xx.target.clone(),
+                        current_exception_type: xx.current_exception_type.clone(),
+                    };
+                    let catch_cv = erb.must_er(const_eval(&catch_xx, catch.body.as_ref()))?;
+                    let catch_cv = if let (Some(bt), Some(_)) = (body_type.as_ref(), catch_cv.value.as_ref()) {
+                        erb.must_er(typecheck_convert(&catch_xx, expr.loc, bt.as_ref(), catch_cv))?
+                    } else {
+                        catch_cv
+                    };
+                    if result_value.is_none() {
+                        result_value = catch_cv.value.clone();
+                    }
+                    let catch_code_dyn = match &catch_cv.code.code {
+                        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+                            Some(d) => d.clone(),
+                            None => return erb.err_new("Try catch body must produce CodeDynamic".to_string()),
+                        },
+                        Code_::None => return erb.err_new(
+                            "Try catch body must produce CodeDynamic (got Code::None)".to_string()
+                        ),
+                    };
+                    Some(crate::code_dynamic::CodeDynamicCatch {
+                        binding: binding_id,
+                        body: Box::new(catch_code_dyn),
+                    })
+                } else {
+                    None
+                };
+                let finally_dyn = if let Some(finally) = &e.finally {
+                    let finally_cv = erb.must_er(const_eval(xx, finally.as_ref()))?;
+                    let finally_code_dyn = match &finally_cv.code.code {
+                        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+                            Some(d) => d.clone(),
+                            None => return erb.err_new("Try finally body must produce CodeDynamic".to_string()),
+                        },
+                        Code_::None => return erb.err_new(
+                            "Try finally body must produce CodeDynamic (got Code::None)".to_string()
+                        ),
+                    };
+                    let finally_drop_code: Option<Code> = if let Some(fv) = finally_cv.value.as_ref() {
+                        let finally_type = erb.must_er(fv.type_(xx, expr.loc))?;
+                        if let Some(drop_aspect) =
+                            crate::r#gen::aspect_drop_dynamic_get_maybe(xx, finally_type.as_ref()) {
+                            Some(
+                                erb.must_er(
+                                    crate::r#gen::AspectDropDynamic::drop(
+                                        drop_aspect.as_ref(),
+                                        xx,
+                                        expr.loc,
+                                        finally_cv.clone()
+                                    )
+                                )?
+                            )
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    let combined_finally_dyn = if let Some(drop_code) = finally_drop_code {
+                        let combined = erb.must_er(xx.target.seq(expr.loc, vec![Code {
+                            loc: expr.loc,
+                            code: Code_::Dyn(Rc::new(finally_code_dyn))
+                        }, drop_code,]))?;
+                        match &combined.code {
+                            Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+                                Some(d) => d.clone(),
+                                None => return erb.err_new(
+                                    "Try finally combined must produce CodeDynamic".to_string()
+                                ),
+                            },
+                            Code_::None => return erb.err_new(
+                                "Try finally combined must produce CodeDynamic (got Code::None)".to_string()
+                            ),
+                        }
+                    } else {
+                        finally_code_dyn
+                    };
+                    Some(Box::new(combined_finally_dyn))
+                } else {
+                    None
+                };
+                let try_code = CodeDynamic {
+                    loc: expr.loc,
+                    type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
+                        body: Box::new(body_dyn),
+                        catch: catch_dyn,
+                        finally: finally_dyn,
+                    }),
+                };
+                return Ok(CodeValue {
+                    code: Code {
+                        loc: expr.loc,
+                        code: Code_::Dyn(Rc::new(try_code)),
+                    },
+                    value: result_value,
+                });
+            });
+        },
     }
 }
 
@@ -1218,6 +1549,7 @@ fn eval(
         import_state: Rc::new(Cell::new(import_state)),
         scope: scope.clone(),
         target: target.clone(),
+        current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
     });
     let register_dynamic = !cix.builtins_registered.get();
     {
@@ -1270,6 +1602,7 @@ fn eval(
                         import_state: lift_cell.import_state.clone(),
                         scope: lift_cell.scope.clone(),
                         target: lift_cell.target.clone(),
+                        current_exception_type: lift_cell.current_exception_type.clone(),
                     };
                     let lift =
                         aspect_lift_get(&lift_xx, lift_cell.loc, lift_cell.source_type.as_ref())
@@ -1476,6 +1809,25 @@ fn eval(
                                 .map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values, grafts))),
                         }),
                     },
+                    Expr_::Try(e) => Expr {
+                        loc: expr.loc,
+                        r#type: Expr_::Try(expr::ExprTry {
+                            body: Rc::new(clone_with_lower_substitutions(&e.body, sd, ld, values, grafts)),
+                            catch: e.catch.as_ref().map(|c| expr::ExprTryCatch {
+                                binding_name: Rc::new(
+                                    clone_with_lower_substitutions(&c.binding_name, sd, ld, values, grafts),
+                                ),
+                                exception_type: Rc::new(
+                                    clone_with_lower_substitutions(&c.exception_type, sd, ld, values, grafts),
+                                ),
+                                body: Rc::new(clone_with_lower_substitutions(&c.body, sd, ld, values, grafts)),
+                            }),
+                            finally: e
+                                .finally
+                                .as_ref()
+                                .map(|f| Rc::new(clone_with_lower_substitutions(f, sd, ld, values, grafts))),
+                        }),
+                    },
                 }
             }
 
@@ -1504,7 +1856,7 @@ fn eval(
         return Err(errs);
     }
     let cv = result.v.unwrap();
-    let value_type = cv.value.type_(&xx, root_loc).into_res()?;
+    let value_type = cv.value.as_ref().unwrap().type_(&xx, root_loc).into_res()?;
     let (stage1_code, fallback_value) = match &cv.code.code {
         Code_::None => {
             (None, Some(cv.value))
@@ -1519,6 +1871,7 @@ fn eval(
     struct DefFuncInfo {
         arg_type: Rc<dyn Type>,
         binding_id: BindingId,
+        exception_type: Option<Rc<dyn Type>>,
         impl_expr_ast: Rc<dyn Value>,
         ret_type: Rc<dyn Type>,
     }
@@ -1553,11 +1906,13 @@ fn eval(
                 let ret_type =
                     func_data.ret_type.borrow().clone().expect("Definition set function missing return type");
                 let scope_id = func_data.binding_id.get().expect("Definition set function not registered");
+                let exception_type = func_data.exception_type.borrow().clone();
                 infos.push(DefFuncInfo {
                     impl_expr_ast,
                     arg_type,
                     ret_type,
                     binding_id: scope_id,
+                    exception_type,
                 });
             }
         }
@@ -1587,6 +1942,7 @@ fn eval(
                     parent: None,
                 }),
                 target: target.clone(),
+                current_exception_type: info.exception_type.clone(),
             })
         };
         let impl_result = const_eval(&func_xx, impl_expr_ast);
@@ -1687,6 +2043,7 @@ fn eval(
                             parent: None,
                         }),
                         target: target.clone(),
+                        current_exception_type: None,
                     })
                 };
                 let impl_result = const_eval(&method_xx, impl_expr_ast);
@@ -1911,6 +2268,7 @@ fn eval(
                                 parent: None,
                             }),
                             target: target.clone(),
+                            current_exception_type: None,
                         })
                     };
                     let impl_result = const_eval(&method_xx, impl_expr_ast);
@@ -1957,7 +2315,7 @@ fn eval(
     if !has_js {
         let logs = dynamic_scope.get_slot::<DynamicLogStore>().unwrap().logs.take();
         return Ok(EvalResult {
-            value: fallback_value.expect("No dynamic code and no fallback value"),
+            value: fallback_value.expect("No dynamic code and no fallback value").expect("Fallback value is None"),
             logs,
         });
     }
@@ -2166,7 +2524,7 @@ fn eval(
             let inner_value: Rc<dyn Value> = {
                 let guard = cve_cell.borrow();
                 let cv = guard.as_ref().expect("__cve_extract: inner CodeValue already consumed");
-                cv.value.clone()
+                cv.value.clone().expect("__cve_extract: inner CodeValue has no value")
             };
             let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
             let xx = Rc::new(ExprContext {
@@ -2176,6 +2534,7 @@ fn eval(
                     values: RefCell::new(HashMap::new()),
                     parent: None,
                 }),
+                current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
                 target: Rc::new(TargetDynamic) as Rc<dyn Target>,
             });
             let loc = (ex_slot.ex.ix.source_id, ExprId(0));
@@ -2237,7 +2596,12 @@ fn eval(
                 from_dynamic_ref::<Rc<RefCell<Option<CodeValue>>>>(&*cve_v8).clone();
             let value: Rc<dyn Value> = {
                 let borrow = cve_cell.borrow();
-                borrow.as_ref().expect("__cve_get_value: inner CodeValue already consumed").value.clone()
+                borrow
+                    .as_ref()
+                    .expect("__cve_get_value: inner CodeValue already consumed")
+                    .value
+                    .clone()
+                    .expect("__cve_get_value: no value")
             };
             let ext = rc_value_to_dynamic_ext(scope, value);
             rv.set(ext.into());
@@ -2260,6 +2624,7 @@ fn eval(
                     values: RefCell::new(HashMap::new()),
                     parent: None,
                 }),
+                current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
                 target,
             });
             let loc = (ex_slot.ex.ix.source_id, ExprId(0));
@@ -2295,6 +2660,7 @@ fn eval(
                     values: RefCell::new(HashMap::new()),
                     parent: None,
                 }),
+                current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
                 target,
             });
             let result = v8::Object::new(scope);
@@ -2851,7 +3217,7 @@ fn eval(
     match script.run(dynamic_scope) {
         Some(stage2) => {
             let value: Rc<dyn Value> = match fallback_value {
-                Some(v) => v,
+                Some(v) => v.expect("Fallback value is None"),
                 None => {
                     let value_from_js = aspect_lift_get(&xx, root_loc, value_type.as_ref()).into_res()?;
                     value_from_js.lift(&xx, &*dynamic_scope, stage2).map_err(|e| vec![ExprErr {
@@ -2958,6 +3324,42 @@ pub(crate) fn init_builtin_scope<
         Box::new(crate::eval::RcBindingWrap(root_binding)) as Box<dyn Binding>,
     );
     Ok(scope_entries)
+}
+
+fn maybe_wrap_call_exception(
+    xx: &ExprContext,
+    loc: QExprId,
+    callee_exc: Option<Rc<dyn Type>>,
+    call_cv: CodeValue,
+) -> EResult<CodeValue> {
+    return er_seq_cv!(loc, erb, {
+        let callee_exc = match callee_exc {
+            Some(t) => t,
+            None => return Ok(call_cv),
+        };
+        let caller_exc = match xx.current_exception_type.as_ref() {
+            Some(t) => t.clone(),
+            None => return erb.err_new(
+                "Cannot call a function that may throw from a function that did not declare an exception type".to_string(),
+            ),
+        };
+        let catch_binding = BindingId::Local(xx.vx.next_local_id.next());
+        let initial_bind = erb.must_er(aspect_initial_bind_get(xx, loc, callee_exc.as_ref()))?;
+        let binding = initial_bind.initial_bind(catch_binding);
+        let bound_cv = binding.use_(xx, loc, Code {
+            loc,
+            code: Code_::None
+        });
+        let cast_cv = erb.must_er(callee_exc.cast_to(xx, loc, bound_cv, caller_exc.as_ref()))?;
+        if matches!(cast_cv.code.code, Code_::None) {
+            return Ok(call_cv);
+        }
+        let wrapped_code = erb.must_er(xx.target.cast_exception(xx, loc, call_cv.code, catch_binding, cast_cv))?;
+        return Ok(CodeValue {
+            code: wrapped_code,
+            value: call_cv.value,
+        });
+    });
 }
 
 pub(crate) fn rc_binding_from_v8(value: &v8::Value) -> Rc<dyn Binding> {
@@ -3188,6 +3590,28 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
             }
             lines.push(code.loc, "} }".to_string());
         },
+        CodeDynamicType::Throw(c) => {
+            let val_var = render_code(lines, &c.value);
+            lines.push(code.loc, format!("throw {};", val_var));
+            lines.push(code.loc, format!("{} = null;", out));
+        },
+        CodeDynamicType::Try(c) => {
+            lines.push(code.loc, "try {".to_string());
+            let body_var = render_code(lines, &c.body);
+            lines.push(code.loc, format!("{} = {};", out, body_var));
+            if let Some(catch) = &c.catch {
+                let bind_key = binding_id_dynamic_key(catch.binding);
+                lines.push(code.loc, format!("}} catch ({}) {{", bind_key));
+                let catch_var = render_code(lines, &catch.body);
+                lines.push(code.loc, format!("{} = {};", out, catch_var));
+            }
+            if let Some(finally) = &c.finally {
+                lines.push(code.loc, "} finally {".to_string());
+                let fin_var = render_code(lines, finally);
+                lines.push(code.loc, format!("{};", fin_var));
+            }
+            lines.push(code.loc, "}".to_string());
+        },
     }
     return out;
 }
@@ -3203,6 +3627,7 @@ pub fn setup_v8() {
 }
 
 pub(crate) struct StageLiftCell {
+    pub current_exception_type: Option<Rc<dyn Type>>,
     pub import_state: Rc<Cell<ImportStateId>>,
     pub loc: QExprId,
     pub scope: Rc<Scope>,
@@ -3304,11 +3729,116 @@ impl Target for TargetDynamic {
         }
     }
 
+    fn cast_exception(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        call_code: Code,
+        catch_binding: BindingId,
+        cast_cv: CodeValue,
+    ) -> EResult<Code> {
+        let mut errs = vec![];
+        let body_dyn = match call_code.cast::<CodeDynamic>().into_res() {
+            Ok(Some(d)) => d.clone(),
+            Ok(None) => {
+                return EResult::err(
+                    loc,
+                    "Call result code must be CodeDynamic to wrap with exception cast".to_string(),
+                );
+            },
+            Err(e) => {
+                errs.extend(e);
+                return EResult {
+                    v: None,
+                    errors: Some(errs),
+                };
+            },
+        };
+        let cast_value_type = match cast_cv.value.as_ref() {
+            Some(v) => match v.type_(xx, loc).into_res() {
+                Ok(t) => t,
+                Err(e) => {
+                    errs.extend(e);
+                    return EResult {
+                        v: None,
+                        errors: Some(errs),
+                    };
+                },
+            },
+            None => {
+                return EResult::err(loc, "Exception cast value missing type for to_dynamic".to_string());
+            },
+        };
+        let to_dynamic =
+            match crate::r#gen::aspect_consume_dynamic_get(xx, loc, cast_value_type.as_ref()).into_res() {
+                Ok(v) => v,
+                Err(e) => {
+                    errs.extend(e);
+                    return EResult {
+                        v: None,
+                        errors: Some(errs),
+                    };
+                },
+            };
+        let cast_dyn = match to_dynamic.to_dynamic(xx, loc, cast_cv).into_res() {
+            Ok(v) => v,
+            Err(e) => {
+                errs.extend(e);
+                return EResult {
+                    v: None,
+                    errors: Some(errs),
+                };
+            },
+        };
+        let throw_code = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Throw(crate::code_dynamic::CodeDynamicThrow { value: Box::new(cast_dyn) }),
+        };
+        let try_code = CodeDynamic {
+            loc,
+            type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
+                body: Box::new(body_dyn),
+                catch: Some(crate::code_dynamic::CodeDynamicCatch {
+                    binding: catch_binding,
+                    body: Box::new(throw_code),
+                }),
+                finally: None,
+            }),
+        };
+        EResult::ok(Code {
+            loc,
+            code: Code_::Dyn(Rc::new(try_code)),
+        })
+    }
+
     fn code_to_bind_sub(&self, _loc: QExprId, code: Code, type_: Rc<dyn Type>) -> EResult<TargetBindSub> {
         EResult::ok(TargetBindSub {
             data: code,
             type_: type_,
         })
+    }
+
+    fn drop(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Code> {
+        let Some(value) = cv.value.as_ref() else {
+            return EResult::ok(Code {
+                loc,
+                code: Code_::None,
+            });
+        };
+        let vtype = match value.type_(xx, loc).into_res() {
+            Ok(t) => t,
+            Err(e) => return EResult {
+                v: None,
+                errors: Some(e),
+            },
+        };
+        let Some(drop_aspect) = crate::r#gen::aspect_drop_dynamic_get_maybe(xx, vtype.as_ref()) else {
+            return EResult::ok(Code {
+                loc,
+                code: Code_::None,
+            });
+        };
+        crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), xx, loc, cv)
     }
 
     fn if_(
@@ -3319,7 +3849,7 @@ impl Target for TargetDynamic {
         else_: Option<&Expr>,
     ) -> EvalRes {
         fn cv_to_dynamic(erb: &mut Erb, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> Result<CodeDynamic, ()> {
-            let vtype = erb.must_er(cv.value.type_(xx, loc))?;
+            let vtype = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
             let consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
             erb.must_er(consume.to_dynamic(xx, loc, cv))
         }
@@ -3331,7 +3861,7 @@ impl Target for TargetDynamic {
                 let cond_js = cv_to_dynamic(&mut erb, xx, loc, cond)?;
                 let body_cv = erb.must_er(const_eval(xx, body))?;
                 if result_type.is_none() {
-                    result_type = Some(erb.must_er(body_cv.value.type_(xx, loc))?);
+                    result_type = Some(erb.must_er(body_cv.value.as_ref().unwrap().type_(xx, loc))?);
                 }
                 let body_cv = if let Some(rt) = &result_type {
                     erb.must_er(typecheck_convert(xx, loc, rt.as_ref(), body_cv))?
@@ -3346,7 +3876,7 @@ impl Target for TargetDynamic {
                 let else_cv = if let Some(rt) = &result_type {
                     erb.must_er(typecheck_convert(xx, loc, rt.as_ref(), else_cv))?
                 } else {
-                    result_type = Some(erb.must_er(else_cv.value.type_(xx, loc))?);
+                    result_type = Some(erb.must_er(else_cv.value.as_ref().unwrap().type_(xx, loc))?);
                     else_cv
                 };
                 let else_js = cv_to_dynamic(&mut erb, xx, loc, else_cv)?;
@@ -3377,7 +3907,7 @@ impl Target for TargetDynamic {
         fallback: Option<&Expr>,
     ) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let base_type = erb.must_er(base.value.type_(xx, loc))?;
+            let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, loc))?;
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, base_type.as_ref()))?;
             let base_js = erb.must_er(to_dynamic.to_dynamic(xx, loc, base))?;
             let element_scope_id = BindingId::Local(xx.vx.next_local_id.next());
@@ -3397,16 +3927,17 @@ impl Target for TargetDynamic {
                     import_state: xx.import_state.clone(),
                     scope: child_scope,
                     target: xx.target.clone(),
+                    current_exception_type: xx.current_exception_type.clone(),
                 };
                 let body_cv = erb.must_er(const_eval(&child_xx, body_expr))?;
                 let body_cv = match &result_type {
                     None => {
-                        result_type = Some(erb.must_er(body_cv.value.type_(&child_xx, loc))?);
+                        result_type = Some(erb.must_er(body_cv.value.as_ref().unwrap().type_(&child_xx, loc))?);
                         body_cv
                     },
                     Some(rt) => erb.must_er(typecheck_convert(&child_xx, loc, rt.as_ref(), body_cv))?,
                 };
-                let body_type = erb.must_er(body_cv.value.type_(&child_xx, loc))?;
+                let body_type = erb.must_er(body_cv.value.as_ref().unwrap().type_(&child_xx, loc))?;
                 let body_consume = erb.must_er(aspect_consume_dynamic_get(&child_xx, loc, body_type.as_ref()))?;
                 let body_js = erb.must_er(body_consume.to_dynamic(&child_xx, loc, body_cv))?;
                 dynamic_cases.push(CodeDynamicMatchBranch {
@@ -3418,12 +3949,12 @@ impl Target for TargetDynamic {
                 let fb_cv = erb.must_er(const_eval(xx, fallback_expr))?;
                 let fb_cv = match &result_type {
                     None => {
-                        result_type = Some(erb.must_er(fb_cv.value.type_(xx, loc))?);
+                        result_type = Some(erb.must_er(fb_cv.value.as_ref().unwrap().type_(xx, loc))?);
                         fb_cv
                     },
                     Some(rt) => erb.must_er(typecheck_convert(xx, loc, rt.as_ref(), fb_cv))?,
                 };
-                let fb_type = erb.must_er(fb_cv.value.type_(xx, loc))?;
+                let fb_type = erb.must_er(fb_cv.value.as_ref().unwrap().type_(xx, loc))?;
                 let fb_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, fb_type.as_ref()))?;
                 let fb_js = erb.must_er(fb_consume.to_dynamic(xx, loc, fb_cv))?;
                 Some(Box::new(fb_js))
@@ -3447,7 +3978,7 @@ impl Target for TargetDynamic {
     }
 
     fn maybe_bind_sub(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Option<TargetBindSub>> {
-        let vtype = match cv.value.type_(xx, loc).into_res() {
+        let vtype = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(errors) => return EResult {
                 errors: Some(errors),
@@ -3523,10 +4054,10 @@ impl Target for TargetDynamic {
         }];
         return er_seq_cv!(loc, erb, {
             for cv in lower_values {
-                let vtype = erb.must_er(cv.value.type_(xx, loc))?;
+                let vtype = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
                 match cv.code.code {
                     Code_::None => {
-                        let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(Some(cv.value)), });
+                        let cell = Rc::new(expr::StagedExprCell { value: RefCell::new(cv.value), });
                         let id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((id, External::StagedExprCell(cell)));
                         stage_args.push(CodeDynamic {
@@ -3546,6 +4077,7 @@ impl Target for TargetDynamic {
                             import_state: xx.import_state.clone(),
                             scope: xx.scope.clone(),
                             target: xx.target.clone(),
+                            current_exception_type: xx.current_exception_type.clone(),
                         });
                         let lift_id = BindingId::Local(xx.vx.next_local_id.next());
                         xx.vx.externals.borrow_mut().push((lift_id, External::StageLiftCell(lift_cell)));
@@ -3577,7 +4109,7 @@ impl Target for TargetDynamic {
                         });
                     },
                     Code_::Dyn(_) => {
-                        let vtype = erb.must_er(cv.value.type_(xx, loc))?;
+                        let vtype = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
                         let inner_consume = erb.must_er(aspect_consume_dynamic_get(xx, loc, vtype.as_ref()))?;
                         let inner_js = erb.must_er(inner_consume.to_dynamic(xx, loc, cv))?;
                         stage_args.push(inner_js);
@@ -3599,12 +4131,57 @@ impl Target for TargetDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(stage_js)),
                 },
-                value: Rc::new(value::value_dynamic::ValueDynamic {
+                value: Some(Rc::new(value::value_dynamic::ValueDynamic {
                     source: value::value_dynamic::ValueDynamicSource::Expr,
                     type_: Rc::new(value::type_expr::TypeExprStagedPlaceholder),
-                }),
+                })),
             });
         });
+    }
+
+    fn try_finally(&self, loc: QExprId, body: Code, finally: Code) -> EResult<Code> {
+        let body_dyn_opt = match body.cast::<CodeDynamic>().into_res() {
+            Ok(v) => v.cloned(),
+            Err(e) => return EResult {
+                v: None,
+                errors: Some(e),
+            },
+        };
+        let finally_dyn_opt = match finally.cast::<CodeDynamic>().into_res() {
+            Ok(v) => v.cloned(),
+            Err(e) => return EResult {
+                v: None,
+                errors: Some(e),
+            },
+        };
+        match (body_dyn_opt, finally_dyn_opt) {
+            (None, None) => EResult::ok(Code {
+                loc,
+                code: Code_::None,
+            }),
+            (Some(b), None) => EResult::ok(Code {
+                loc,
+                code: Code_::Dyn(Rc::new(b)),
+            }),
+            (None, Some(f)) => EResult::ok(Code {
+                loc,
+                code: Code_::Dyn(Rc::new(f)),
+            }),
+            (Some(b), Some(f)) => {
+                let try_code = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
+                        body: Box::new(b),
+                        catch: None,
+                        finally: Some(Box::new(f)),
+                    }),
+                };
+                EResult::ok(Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(try_code)),
+                })
+            },
+        }
     }
 }
 
@@ -3624,7 +4201,10 @@ pub(crate) fn to_dynamic_ext<
 
 pub(crate) fn typecheck_convert(xx: &ExprContext, loc: QExprId, dest_type: &dyn Type, source: CodeValue) -> EvalRes {
     return er_seq_cv!(loc, erb, {
-        let source_type = erb.must_er(source.value.type_(xx, loc))?;
+        if source.value.is_none() {
+            return Ok(source);
+        }
+        let source_type = erb.must_er(source.value.as_ref().unwrap().type_(xx, loc))?;
         let dest;
         if source_type.can_cast_to(xx, loc, dest_type) {
             dest = erb.must_er(source_type.cast_to(xx, loc, source, dest_type))?;
@@ -3682,7 +4262,7 @@ fn walk_build_binding(
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_.clone() }),
+                value: Some(Rc::new(value::type_any::r#const::ValueAnyConst { inner: type_.clone() })),
             };
             let any_const_type: Rc<dyn Type> = Rc::new(value::type_any::r#const::TypeAnyConst);
             let bind = aspect_bind_get(xx, loc, any_const_type.as_ref()).into_res()?;

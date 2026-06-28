@@ -129,10 +129,10 @@ impl AspectStackValueDynamic for TypeNullDynamic {
                 loc: loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeNullDynamic),
-            }),
+            })),
         }
     }
 }
@@ -224,14 +224,14 @@ impl Type for TypeNullDynamic {
 
     fn cast_from(&self, ex: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = erb.must_er(cv.value.type_(ex, loc))?;
+            let type_ = erb.must_er(cv.value.as_ref().unwrap().type_(ex, loc))?;
             erb.must_er(aspect_null_get(ex, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeNullDynamic),
-                }),
+                })),
             });
         });
     }
@@ -239,10 +239,10 @@ impl Type for TypeNullDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeNullDynamic),
-            }),
+            })),
         })
     }
 

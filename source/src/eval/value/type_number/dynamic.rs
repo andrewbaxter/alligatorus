@@ -120,8 +120,9 @@ impl AspectConsumeDynamic for TypeNumberDynamic {
 impl AspectField for TypeNumberDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
-            let key_name = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?.get(key.value.as_ref());
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
+            let key_name =
+                erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?.get(key.value.as_deref().unwrap());
             let field_type = match self.field_type_opt(xx, &ConstKey::String(key_name.clone())) {
                 Some(t) => t,
                 None => return erb.err_new(format!("Field '{}' not found on dynamic number", key_name)),
@@ -141,12 +142,16 @@ impl AspectField for TypeNumberDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: js_name, }),
                     type_: field_type,
-                }),
+                })),
             });
         });
+    }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
@@ -191,10 +196,10 @@ impl AspectOperatorAdd for TypeNumberDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeNumberDynamic),
-                }),
+                })),
             });
         });
     }
@@ -217,10 +222,10 @@ impl AspectOperatorEq for TypeNumberDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeBoolDynamic),
-                }),
+                })),
             });
         });
     }
@@ -243,10 +248,10 @@ impl AspectOperatorLt for TypeNumberDynamic {
                         }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeBoolDynamic),
-                }),
+                })),
             });
         });
     }
@@ -364,9 +369,10 @@ impl Type for TypeNumberDynamic {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = erb.must_er(cv.value.type_(xx, loc))?;
+            let type_ = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
             if let Some(aspect_number) = aspect_number_const_get_maybe(xx, type_.as_ref()) {
                 let CodeValue { code, value } = cv;
+                let value = value.unwrap();
                 let mut seq = vec![];
                 if let Some(c) = erb.must_er(code.cast::<CodeDynamic>())? {
                     seq.push(c.clone());
@@ -386,18 +392,18 @@ impl Type for TypeNumberDynamic {
                             )
                         }))
                     },
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeNumberDynamic),
-                    }),
+                    })),
                 });
             } else {
                 return Ok(CodeValue {
                     code: cv.code,
-                    value: Rc::new(ValueDynamic {
+                    value: Some(Rc::new(ValueDynamic {
                         source: ValueDynamicSource::Expr,
                         type_: Rc::new(TypeNumberDynamic),
-                    })
+                    }))
                 });
             }
         });
@@ -406,10 +412,10 @@ impl Type for TypeNumberDynamic {
     fn cast_to(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue, _type_: &dyn Type) -> EvalRes {
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeNumberDynamic),
-            }),
+            })),
         })
     }
 

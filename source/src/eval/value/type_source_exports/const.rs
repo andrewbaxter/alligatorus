@@ -82,7 +82,7 @@ impl AspectBind for TypeSourceExportsLiftedConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
+            }, Box::new(BindingValue { value: value.unwrap() }) as Box<dyn Binding>)),
         };
     }
 }
@@ -90,9 +90,9 @@ impl AspectBind for TypeSourceExportsLiftedConst {
 impl AspectField for TypeSourceExportsLiftedConst {
     fn field(&self, xx: &ExprContext, loc: QExprId, _self_: CodeValue, key: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let key_type = erb.must_er(key.value.type_(xx, loc))?;
+            let key_type = erb.must_er(key.value.as_ref().unwrap().type_(xx, loc))?;
             let key_string = erb.must_er(aspect_string_const_get(xx, loc, key_type.as_ref()))?;
-            let key_name = key_string.get(key.value.as_ref());
+            let key_name = key_string.get(key.value.as_deref().unwrap());
             {
                 let functions = self.set.functions.borrow();
                 for func_data in functions.iter() {
@@ -109,7 +109,7 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(ValueAnyConst { inner: func_type, }),
+                            value: Some(Rc::new(ValueAnyConst { inner: func_type, })),
                         });
                     }
                 }
@@ -124,13 +124,17 @@ impl AspectField for TypeSourceExportsLiftedConst {
                                 loc,
                                 code: Code_::None,
                             },
-                            value: Rc::new(ValueAnyConst { inner: ctor_type, }),
+                            value: Some(Rc::new(ValueAnyConst { inner: ctor_type, })),
                         });
                     }
                 }
             }
             return erb.err_new(format!("'{}' not found in definition set", key_name));
         });
+    }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {

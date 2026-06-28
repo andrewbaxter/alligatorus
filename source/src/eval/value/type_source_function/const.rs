@@ -93,7 +93,7 @@ impl AspectBind for TypeSourceFunctionConst {
             v: Some((Code {
                 loc: loc,
                 code: Code_::None,
-            }, Box::new(BindingValue { value }) as Box<dyn Binding>)),
+            }, Box::new(BindingValue { value: value.unwrap() }) as Box<dyn Binding>)),
         };
     }
 }
@@ -112,6 +112,10 @@ impl AspectFunction for TypeSourceFunctionConst {
             type_: CodeDynamicType::BindingUse(CodeDynamicBindingUse { id: scope_id }),
         };
         dynamic_call(xx, loc, func_code, arg_type, ret_type, argument)
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        self.data.exception_type.borrow().clone()
     }
 }
 
@@ -227,6 +231,7 @@ impl ExporterRootDelegate for TypeSourceFunctionConst {
                         captured_externals: std::cell::RefCell::new(Vec::new()),
                         compiled_source: std::cell::RefCell::new(Some(body.compiled_source.clone())),
                         description: std::cell::RefCell::new(None),
+                        exception_type: std::cell::RefCell::new(None),
                         impl_expr: std::cell::RefCell::new(None),
                         name: body.name.clone(),
                         ret_type: std::cell::RefCell::new(None),

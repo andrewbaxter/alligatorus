@@ -42,7 +42,7 @@ impl Aspect for TypeOptionConstructorConst { }
 
 impl AspectFunction for TypeOptionConstructorConst {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_meta = match argument.value.type_(xx, loc).into_res() {
+        let arg_meta = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -56,7 +56,7 @@ impl AspectFunction for TypeOptionConstructorConst {
                 errors: Some(e),
             },
         };
-        let element_type = aspect_type.type_(argument.value.as_ref());
+        let element_type = aspect_type.type_(argument.value.as_deref().unwrap());
         let opt_type: Rc<dyn Type> =
             Rc::new(super::super::type_option::dynamic::TypeOptionDynamic { element_type });
         EvalRes::ok(CodeValue {
@@ -64,8 +64,12 @@ impl AspectFunction for TypeOptionConstructorConst {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueAnyConst { inner: opt_type }),
+            value: Some(Rc::new(ValueAnyConst { inner: opt_type })),
         })
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 

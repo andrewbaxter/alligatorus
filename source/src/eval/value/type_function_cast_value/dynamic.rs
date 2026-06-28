@@ -57,7 +57,7 @@ impl Aspect for TypeFunctionCastValueDynamic { }
 
 impl AspectFunction for TypeFunctionCastValueDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
-        let arg_type = match argument.value.type_(xx, loc).into_res() {
+        let arg_type = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -71,7 +71,7 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                 format!("cast_value: argument type ({}) is not a tuple — expected `(value, type)`", arg_type.desc(),),
             ),
         };
-        let CodeValue { code: _, value: arg_value } = argument;
+        let arg_value = argument.value.unwrap();
         let elements = arg_tuple.take_elements(arg_value);
         if elements.len() != 2 {
             return EvalRes::err(
@@ -94,14 +94,21 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                 errors: Some(e),
             },
         };
-        let type_value_any: &dyn Any = type_.value.as_ref();
+        let type_value_any: &dyn Any = type_.value.as_deref().unwrap();
         let data = match type_value_any.downcast_ref::<TypeSourceObjectConst>() {
             Some(t) => t.data.clone(),
             None => return EvalRes::err(
                 loc,
                 format!(
                     "cast_value: type argument's value is not `TypeSourceObjectConst` (got {})",
-                    type_.value.type_(xx, loc).v.map(|t| t.desc()).unwrap_or_else(|| "?".to_string()),
+                    type_
+                        .value
+                        .as_ref()
+                        .unwrap()
+                        .type_(xx, loc)
+                        .v
+                        .map(|t| t.desc())
+                        .unwrap_or_else(|| "?".to_string()),
                 ),
             ),
         };
@@ -131,12 +138,16 @@ impl AspectFunction for TypeFunctionCastValueDynamic {
                     loc,
                     code: Code_::Dyn(Rc::new(call_code))
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: result_type,
-                }),
+                })),
             });
         });
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 

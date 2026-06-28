@@ -8,6 +8,7 @@ use {
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
             ConstKey,
             EResult,
@@ -18,9 +19,11 @@ use {
             Value,
         },
         r#gen::{
+            AspectDropDynamic,
             AspectField,
             AspectFunction,
             AspectPostDeserialize,
+            IM_ASPECT_DROP_DYNAMIC_DROP_FIELD,
             IM_ASPECT_FIELD_FIELD_FIELD,
             IM_ASPECT_FUNCTION_CALL_FIELD,
         },
@@ -38,6 +41,26 @@ pub(crate) struct AspectPull {
 
 impl Aspect for AspectPull { }
 
+impl AspectDropDynamic for AspectPull {
+    fn drop(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Code> {
+        let res =
+            dispatch_aspect_method(
+                &self.bundle,
+                xx,
+                loc,
+                IM_ASPECT_DROP_DYNAMIC_DROP_FIELD,
+                vec![("inner".to_string(), cv)],
+            );
+        match res.into_res() {
+            Ok(cv) => EResult::ok(cv.code),
+            Err(e) => EResult {
+                errors: Some(e),
+                v: None,
+            },
+        }
+    }
+}
+
 impl AspectField for AspectPull {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
         dispatch_aspect_method(
@@ -47,6 +70,10 @@ impl AspectField for AspectPull {
             IM_ASPECT_FIELD_FIELD_FIELD,
             vec![("inner".to_string(), self_), ("key".to_string(), key)],
         )
+    }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, _key: &ConstKey) -> Option<Rc<dyn Type>> {
@@ -63,6 +90,10 @@ impl AspectFunction for AspectPull {
             IM_ASPECT_FUNCTION_CALL_FIELD,
             vec![("inner".to_string(), self_), ("argument".to_string(), argument)],
         )
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 
@@ -106,6 +137,7 @@ fn dispatch_aspect_method(
         import_state: xx.import_state.clone(),
         scope: xx.scope.clone(),
         target: xx.target.clone(),
+        current_exception_type: xx.current_exception_type.clone(),
     }));
     let xx_key = match v8::String::new(scope, &ConstKey::String("xx".to_string()).to_str()) {
         Some(k) => k,

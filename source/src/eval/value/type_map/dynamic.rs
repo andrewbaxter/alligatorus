@@ -136,7 +136,7 @@ impl AspectConsumeDynamic for TypeMapDynamic {
 
 impl AspectField for TypeMapDynamic {
     fn field(&self, xx: &ExprContext, loc: QExprId, self_: CodeValue, key: CodeValue) -> EvalRes {
-        let key_type = match key.value.type_(xx, loc).into_res() {
+        let key_type = match key.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -150,7 +150,7 @@ impl AspectField for TypeMapDynamic {
                 errors: Some(e),
             },
         };
-        let key_name = key_string.get(key.value.as_ref());
+        let key_name = key_string.get(key.value.as_deref().unwrap());
         if key_name == "new" {
             let new_type: Rc<dyn Type> = Rc::new(TypeMapNewDynamic {
                 key_type: self.key_type.clone(),
@@ -161,7 +161,7 @@ impl AspectField for TypeMapDynamic {
                     loc,
                     code: Code_::None,
                 },
-                value: Rc::new(ValueAnyConst { inner: new_type }),
+                value: Some(Rc::new(ValueAnyConst { inner: new_type })),
             });
         }
         return er_seq_cv!(loc, erb, {
@@ -177,10 +177,10 @@ impl AspectField for TypeMapDynamic {
                         loc,
                         code: Code_::Dyn(Rc::new(self_code)),
                     },
-                    value: Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapGetFnDynamic {
+                    value: Some(Rc::new(ValueEmptyConst { type_: Rc::new(TypeMapGetFnDynamic {
                         key_type: self.key_type.clone(),
                         value_type: self.value_type.clone(),
-                    }) }),
+                    }) })),
                 });
             }
             let access_code = CodeDynamicType::FieldUse(CodeDynamicFieldUse {
@@ -195,12 +195,16 @@ impl AspectField for TypeMapDynamic {
                         type_: access_code
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Field(ValueDynamicDataAccess { key: key_name, }),
                     type_: field_type,
-                }),
+                })),
             });
         });
+    }
+
+    fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
+        Vec::new()
     }
 
     fn field_type_opt(&self, _xx: &ExprContext, key: &ConstKey) -> Option<Rc<dyn Type>> {
@@ -303,10 +307,10 @@ impl AspectStackValueDynamic for TypeMapDynamic {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(self.clone()),
-            }),
+            })),
         }
     }
 }
@@ -486,7 +490,7 @@ impl Type for TypeMapDynamic {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -519,14 +523,16 @@ impl Type for TypeMapDynamic {
             }
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                })),
             });
         }
         let record: Record =
-            Rc::try_unwrap(downcast_value::<Record>(cv.value)).ok().expect("Record Rc not unique in map cast");
+            Rc::try_unwrap(downcast_value::<Record>(cv.value.unwrap()))
+                .ok()
+                .expect("Record Rc not unique in map cast");
         return er_seq_cv!(loc, erb, {
             let value_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.value_type.as_ref()))?;
             let key_to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, self.key_type.as_ref()))?;
@@ -539,14 +545,14 @@ impl Type for TypeMapDynamic {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(ValueStringConst(s.clone()),),
+                        value: Some(Rc::new(ValueStringConst(s.clone()),)),
                     },
                     ConstKey::Usize(n) => CodeValue {
                         code: Code {
                             loc,
                             code: Code_::None
                         },
-                        value: Rc::new(ValueNumberConst(*n as f64),),
+                        value: Some(Rc::new(ValueNumberConst(*n as f64),)),
                     },
                 };
                 let key_cv = erb.must_er(typecheck_convert(xx, loc, self.key_type.as_ref(), key_cv))?;
@@ -581,10 +587,10 @@ impl Type for TypeMapDynamic {
                         type_: CodeDynamicType::NewMap(CodeDynamicNewMap { fields: dynamic_fields }),
                     })),
                 },
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(self.clone()),
-                }),
+                })),
             });
         });
     }
@@ -632,6 +638,10 @@ impl AspectFunction for TypeMapGetFnDynamic {
                 }),
             }));
         });
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 
@@ -702,7 +712,7 @@ impl AspectFunction for TypeMapNewDynamic {
             key_type: self.key_type.clone(),
             value_type: self.value_type.clone(),
         });
-        let arg_type = match argument.value.type_(xx, loc).into_res() {
+        let arg_type = match argument.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -721,6 +731,10 @@ impl AspectFunction for TypeMapNewDynamic {
             }
         }
         typecheck_convert(xx, loc, instance_type.as_ref(), argument)
+    }
+
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 

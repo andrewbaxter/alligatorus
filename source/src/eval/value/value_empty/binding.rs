@@ -25,7 +25,7 @@ impl Binding for BindingEmpty {
                 loc,
                 code: Code_::None,
             },
-            value: Rc::new(ValueEmptyConst { type_: self.type_.clone() }),
+            value: Some(Rc::new(ValueEmptyConst { type_: self.type_.clone() })),
         }
     }
 }

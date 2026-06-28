@@ -54,6 +54,12 @@ pub(crate) struct CodeDynamicCall {
 }
 
 #[derive(Clone)]
+pub(crate) struct CodeDynamicCatch {
+    pub(crate) binding: BindingId,
+    pub(crate) body: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
 pub(crate) struct CodeDynamicFieldSet {
     pub(crate) base: Box<CodeDynamic>,
     pub(crate) key: String,
@@ -140,6 +146,18 @@ pub(crate) struct CodeDynamicSubscriptUse {
 }
 
 #[derive(Clone)]
+pub(crate) struct CodeDynamicThrow {
+    pub(crate) value: Box<CodeDynamic>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CodeDynamicTry {
+    pub(crate) body: Box<CodeDynamic>,
+    pub(crate) catch: Option<CodeDynamicCatch>,
+    pub(crate) finally: Option<Box<CodeDynamic>>,
+}
+
+#[derive(Clone)]
 pub(crate) enum CodeDynamicType {
     BindingSet(CodeDynamicBindingSet),
     BindingUse(CodeDynamicBindingUse),
@@ -159,4 +177,6 @@ pub(crate) enum CodeDynamicType {
     OperatorEq(CodeDynamicOperatorEq),
     OperatorLt(CodeDynamicOperatorLt),
     SubscriptUse(CodeDynamicSubscriptUse),
+    Throw(CodeDynamicThrow),
+    Try(CodeDynamicTry),
 }

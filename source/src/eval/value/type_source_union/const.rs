@@ -112,10 +112,10 @@ impl AspectPostDeserialize for TypeSourceUnionConst {
     fn post_deserialize(&self, _xx: &ExprContext, _loc: QExprId, cv: CodeValue) -> EResult<CodeValue> {
         EResult::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(super::dynamic::TypeSourceUnionDynamic { data: self.data.clone() }),
-            }),
+            })),
         })
     }
 }
@@ -127,10 +127,10 @@ impl AspectStackValueDynamic for TypeSourceUnionConst {
                 loc,
                 code: Code_::Dyn(Rc::new(value)),
             },
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceUnionConst { data: self.data.clone() }),
-            }),
+            })),
         }
     }
 }
@@ -328,7 +328,7 @@ impl Type for TypeSourceUnionConst {
     }
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
-        let source_type = match cv.value.type_(xx, loc).into_res() {
+        let source_type = match cv.value.as_ref().unwrap().type_(xx, loc).into_res() {
             Ok(v) => v,
             Err(e) => return EvalRes {
                 v: None,
@@ -338,18 +338,18 @@ impl Type for TypeSourceUnionConst {
         if source_type.aspect(xx, &self.data.identity).is_some() {
             return EvalRes::ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueDynamic {
+                value: Some(Rc::new(ValueDynamic {
                     source: ValueDynamicSource::Expr,
                     type_: Rc::new(TypeSourceUnionConst { data: self.data.clone() }),
-                }),
+                })),
             });
         }
         EvalRes::ok(CodeValue {
             code: cv.code,
-            value: Rc::new(ValueDynamic {
+            value: Some(Rc::new(ValueDynamic {
                 source: ValueDynamicSource::Expr,
                 type_: Rc::new(TypeSourceUnionConst { data: self.data.clone() }),
-            }),
+            })),
         })
     }
 

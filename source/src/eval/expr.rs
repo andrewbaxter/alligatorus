@@ -37,6 +37,7 @@ pub(crate) enum Expr_ {
     Seq(ExprSeq),
     Set(ExprSet),
     Stage(ExprStage),
+    Try(ExprTry),
     Tuple(ExprTuple),
 }
 
@@ -155,6 +156,20 @@ pub(crate) struct ExprSet {
 #[derive(Clone)]
 pub(crate) struct ExprStage {
     pub expr: Rc<Expr>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ExprTry {
+    pub body: Rc<Expr>,
+    pub catch: Option<ExprTryCatch>,
+    pub finally: Option<Rc<Expr>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ExprTryCatch {
+    pub binding_name: Rc<Expr>,
+    pub body: Rc<Expr>,
+    pub exception_type: Rc<Expr>,
 }
 
 #[derive(Clone)]

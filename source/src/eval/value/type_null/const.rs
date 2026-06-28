@@ -143,11 +143,11 @@ impl Type for TypeNullConst {
 
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let type_ = erb.must_er(cv.value.type_(xx, loc))?;
+            let type_ = erb.must_er(cv.value.as_ref().unwrap().type_(xx, loc))?;
             erb.must_er(aspect_null_get(xx, loc, type_.as_ref()))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst)
+                value: Some(Rc::new(ValueNullConst))
             });
         });
     }
@@ -157,7 +157,7 @@ impl Type for TypeNullConst {
             erb.must_er(aspect_null_get(xx, loc, type_))?;
             return Ok(CodeValue {
                 code: cv.code,
-                value: Rc::new(ValueNullConst)
+                value: Some(Rc::new(ValueNullConst))
             });
         });
     }
