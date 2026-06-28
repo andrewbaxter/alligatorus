@@ -651,6 +651,17 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         });
                         let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_deref().unwrap()))?;
                         frames.last_mut().unwrap().codes.push(base.code);
+                        if value.value.is_none() {
+                            erb.errors.push(ExprErr {
+                                loc: sub.loc,
+                                errors: vec![
+                                    ExprSubErr::Opaque(
+                                        "Cannot bind result of expression that ends control flow".to_string(),
+                                    ),
+                                ],
+                            });
+                            return Err(());
+                        }
                         let value_type = erb.must_er(value.value.as_ref().unwrap().type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
                         let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;

@@ -622,3 +622,165 @@ fn test_01460_finally_drops_result() {
         messages,
     );
 }
+
+#[test]
+fn test_01470_bind_of_throw_errors() {
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.seq(
+                            vec![
+                                mb.bind(
+                                    "my_func",
+                                    mb.lower(
+                                        mb.seq(
+                                            vec![
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
+                                                mb.bind(
+                                                    "nfr",
+                                                    mb.call(
+                                                        mb.field(mb.scope_use("d"), mb.str("func")),
+                                                        mb.str("f"),
+                                                    ),
+                                                ),
+                                                mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scope_use("nfr"),
+                                                        mb.str("set_exception_type"),
+                                                    ),
+                                                    mb.types_string(),
+                                                ),
+                                                mb.call(
+                                                    mb.field(mb.scope_use("nfr"), mb.str("impl")),
+                                                    mb.tuple(
+                                                        vec![
+                                                            mb.types_null(),
+                                                            mb.types_null(),
+                                                            mb.stage(
+                                                                mb.seq(
+                                                                    vec![
+                                                                        mb.bind("x", mb.throw(mb.str("boom"))),
+                                                                        mb.null(),
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                                mb.scope_use("f"),
+                                            ],
+                                        ),
+                                    ),
+                                ),
+                                mb.try_(
+                                    mb.call(mb.scope_use("my_func"), mb.tuple(vec![])),
+                                    Some(
+                                        ("e", mb.builtin(&["types", "string"]), mb.call(mb.log(), mb.scope_use("e"))),
+                                    ),
+                                    None,
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            ].into_iter().collect(),
+        );
+    let res = compile(gx, SourceSpecAbsolute::Virtual("main".to_string()));
+    let err = match res {
+        Err(e) => e,
+        Ok(_) => panic!("expected compile error binding result of throw"),
+    };
+    let msg = format!("{:?}", err);
+    assert!(
+        msg.contains("Cannot bind result of expression that ends control flow"),
+        "expected bind-of-throw error message, got: {}",
+        msg,
+    );
+}
+
+#[test]
+fn test_01480_log_after_throw_in_seq_errors() {
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx =
+        new_gx(
+            [
+                (
+                    "main",
+                    SourceModule::V1(
+                        mb.seq(
+                            vec![
+                                mb.bind(
+                                    "my_func",
+                                    mb.lower(
+                                        mb.seq(
+                                            vec![
+                                                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
+                                                mb.bind(
+                                                    "nfr",
+                                                    mb.call(
+                                                        mb.field(mb.scope_use("d"), mb.str("func")),
+                                                        mb.str("f"),
+                                                    ),
+                                                ),
+                                                mb.bind("f", mb.field(mb.scope_use("nfr"), mb.str("func"))),
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scope_use("nfr"),
+                                                        mb.str("set_exception_type"),
+                                                    ),
+                                                    mb.types_string(),
+                                                ),
+                                                mb.call(
+                                                    mb.field(mb.scope_use("nfr"), mb.str("impl")),
+                                                    mb.tuple(
+                                                        vec![
+                                                            mb.types_null(),
+                                                            mb.types_null(),
+                                                            mb.stage(
+                                                                mb.seq(
+                                                                    vec![
+                                                                        mb.throw(mb.str("boom")),
+                                                                        mb.call(mb.log(), mb.str("unreachable")),
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                                mb.scope_use("f"),
+                                            ],
+                                        ),
+                                    ),
+                                ),
+                                mb.try_(
+                                    mb.call(mb.scope_use("my_func"), mb.tuple(vec![])),
+                                    Some(
+                                        ("e", mb.builtin(&["types", "string"]), mb.call(mb.log(), mb.scope_use("e"))),
+                                    ),
+                                    None,
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            ].into_iter().collect(),
+        );
+    let res = compile(gx, SourceSpecAbsolute::Virtual("main".to_string()));
+    let err = match res {
+        Err(e) => e,
+        Ok(_) => panic!("expected compile error for code after throw"),
+    };
+    let msg = format!("{:?}", err);
+    assert!(
+        msg.contains("Unreachable"),
+        "expected Unreachable error message, got: {}",
+        msg,
+    );
+}
