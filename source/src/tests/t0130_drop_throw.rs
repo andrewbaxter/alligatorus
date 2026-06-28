@@ -537,3 +537,88 @@ fn test_01360_set_exception_type_allows_throw() {
     let messages: Vec<&str> = res.logs.iter().map(|l| l.message.as_str()).collect();
     assert_eq!(messages, vec!["x"]);
 }
+
+#[test]
+fn test_01440_try_catch_unifies_branch_types() {
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx = new_gx([(
+        "main",
+        SourceModule::V1(
+            mb.seq(
+                vec![
+                    mb.try_(
+                        mb.call(mb.log(), mb.str("body")),
+                        Some(("e", mb.builtin(&["types", "string"]), mb.call(mb.log(), mb.str("caught")))),
+                        None,
+                    ),
+                    mb.call(mb.log(), mb.str("after")),
+                ],
+            ),
+        ),
+    )].into_iter().collect());
+    let res = compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).unwrap_or_else(|e| {
+        panic!("expected compile to succeed: {:?}", e)
+    });
+    let messages: Vec<&str> = res.logs.iter().map(|l| l.message.as_str()).collect();
+    assert_eq!(messages, vec!["body", "after"]);
+}
+
+#[test]
+fn test_01450_try_catch_branch_type_mismatch_errors() {
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx = new_gx([(
+        "main",
+        SourceModule::V1(
+            mb.try_(
+                mb.call(mb.log(), mb.str("body")),
+                Some(("e", mb.builtin(&["types", "string"]), mb.scope_use("e"))),
+                None,
+            ),
+        ),
+    )].into_iter().collect());
+    let res = compile(gx, SourceSpecAbsolute::Virtual("main".to_string()));
+    assert!(
+        res.is_err(),
+        "Try with incompatible body/catch result types should fail compile: {:?}",
+        res.map(|_| ())
+    );
+}
+
+#[test]
+fn test_01460_finally_drops_result() {
+    setup_v8();
+    let mb = ModuleBuilder::default();
+    let gx = new_gx([(
+        "main",
+        SourceModule::V1(
+            mb.seq(
+                vec![
+                    mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
+                    mb.try_(
+                        mb.call(mb.log(), mb.str("body")),
+                        None,
+                        Some(
+                            mb.as_(mb.as_(mb.str("V"), mb.types_string()), mb.scope_use("counter")),
+                        ),
+                    ),
+                    mb.call(mb.log(), mb.str("after")),
+                ],
+            ),
+        ),
+    )].into_iter().collect());
+    let res = compile(gx, SourceSpecAbsolute::Virtual("main".to_string())).unwrap();
+    let messages: Vec<&str> = res.logs.iter().map(|l| l.message.as_str()).collect();
+    let drop_idx = messages.iter().position(|m| *m == "dropped").expect(
+        &format!("expected 'dropped' log, got {:?}", messages),
+    );
+    let after_idx = messages.iter().position(|m| *m == "after").expect(
+        &format!("expected 'after' log, got {:?}", messages),
+    );
+    assert!(
+        drop_idx < after_idx,
+        "finally result drop should run before 'after'; got logs={:?}",
+        messages,
+    );
+}

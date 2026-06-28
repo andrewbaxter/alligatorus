@@ -1324,6 +1324,11 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                     current_exception_type: body_exc_type.clone(),
                 };
                 let body_cv = erb.must_er(const_eval(&body_xx, e.body.as_ref()))?;
+                let body_type: Option<Rc<dyn Type>> = if let Some(v) = body_cv.value.as_ref() {
+                    Some(erb.must_er(v.type_(xx, expr.loc))?)
+                } else {
+                    None
+                };
                 let body_dyn = match &body_cv.code.code {
                     Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
                         Some(d) => d.clone(),
@@ -1351,6 +1356,11 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         current_exception_type: xx.current_exception_type.clone(),
                     };
                     let catch_cv = erb.must_er(const_eval(&catch_xx, catch.body.as_ref()))?;
+                    let catch_cv = if let (Some(bt), Some(_)) = (body_type.as_ref(), catch_cv.value.as_ref()) {
+                        erb.must_er(typecheck_convert(&catch_xx, expr.loc, bt.as_ref(), catch_cv))?
+                    } else {
+                        catch_cv
+                    };
                     if result_value.is_none() {
                         result_value = catch_cv.value.clone();
                     }
@@ -1377,7 +1387,33 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         },
                         Code_::None => return erb.err_new("Try finally body must produce CodeDynamic (got Code::None)".to_string()),
                     };
-                    Some(Box::new(finally_code_dyn))
+                    let finally_drop_code: Option<Code> = if let Some(fv) = finally_cv.value.as_ref() {
+                        let finally_type = erb.must_er(fv.type_(xx, expr.loc))?;
+                        if let Some(drop_aspect) =
+                            crate::r#gen::aspect_drop_dynamic_get_maybe(xx, finally_type.as_ref()) {
+                            Some(erb.must_er(crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), xx, expr.loc, finally_cv.clone()))?)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    let combined_finally_dyn = if let Some(drop_code) = finally_drop_code {
+                        let combined = erb.must_er(xx.target.seq(expr.loc, vec![
+                            Code { loc: expr.loc, code: Code_::Dyn(Rc::new(finally_code_dyn)) },
+                            drop_code,
+                        ]))?;
+                        match &combined.code {
+                            Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
+                                Some(d) => d.clone(),
+                                None => return erb.err_new("Try finally combined must produce CodeDynamic".to_string()),
+                            },
+                            Code_::None => return erb.err_new("Try finally combined must produce CodeDynamic (got Code::None)".to_string()),
+                        }
+                    } else {
+                        finally_code_dyn
+                    };
+                    Some(Box::new(combined_finally_dyn))
                 } else {
                     None
                 };
