@@ -114,13 +114,8 @@ impl AspectFunction for TypeSourceFunctionConst {
         dynamic_call(xx, loc, func_code, arg_type, ret_type, argument)
     }
 
-    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
-        self
-            .data
-            .exception_type
-            .borrow()
-            .clone()
-            .unwrap_or_else(|| std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever))
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        self.data.exception_type.borrow().clone()
     }
 }
 

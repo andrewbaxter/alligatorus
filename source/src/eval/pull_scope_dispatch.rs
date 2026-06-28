@@ -116,4 +116,15 @@ impl Target for PullTarget {
     ) -> EvalRes {
         TargetDynamic.stage(xx, loc, tree, lower_values, graft_values)
     }
+
+    fn cast_exception(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        call_code: Code,
+        catch_binding: BindingId,
+        cast_code: Code,
+    ) -> EResult<Code> {
+        TargetDynamic.cast_exception(xx, loc, call_code, catch_binding, cast_code)
+    }
 }

@@ -18,7 +18,6 @@ pub mod type_list;
 pub mod type_list_constructor;
 pub mod type_map;
 pub mod type_map_constructor;
-pub mod type_never;
 pub mod type_null;
 pub mod type_number;
 pub mod type_option;

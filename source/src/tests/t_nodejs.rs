@@ -429,6 +429,10 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     ),
                 ),
                 ("stage", mb.field(mb.scope_use("arg"), mb.str("xx"))),
+                (
+                    "cast_exception",
+                    mb.call(mb.field(mb.call(mb.types_option(), mb.types_codedyn()), mb.str("none")), mb.null()),
+                ),
             ],
         ),
     );

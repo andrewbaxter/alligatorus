@@ -99,11 +99,7 @@ impl SourceFunctionData {
         if let Some(arg_ib) = aspect_initial_bind_get_maybe(xx, arg_type.as_ref()) {
             body_scope.insert(ConstKey::String("arg".to_string()), arg_ib.initial_bind(arg_id));
         }
-        let exc_type: Rc<dyn Type> = self
-            .exception_type
-            .borrow()
-            .clone()
-            .unwrap_or_else(|| Rc::new(crate::eval::value::type_never::r#const::TypeNever));
+        let exc_type: Option<Rc<dyn Type>> = self.exception_type.borrow().clone();
         let func_xx = Rc::new(ExprContext {
             vx: body_ex,
             import_state: xx.import_state.clone(),

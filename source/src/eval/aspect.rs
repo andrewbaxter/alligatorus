@@ -92,8 +92,8 @@ impl AspectFunction for AspectPull {
         )
     }
 
-    fn exception_type(&self) -> std::rc::Rc<dyn crate::langhelp::Type> {
-        std::rc::Rc::new(crate::eval::value::type_never::r#const::TypeNever)
+    fn exception_type(&self) -> Option<std::rc::Rc<dyn crate::langhelp::Type>> {
+        None
     }
 }
 

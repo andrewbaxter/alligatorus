@@ -340,6 +340,20 @@ pub fn emit_gen_builtin_tree(
                         ("graft_values", TypeRef::opaque(quote!(Vec < crate:: langhelp:: CodeValue >))),
                     ],
                 }),
+            }, Method {
+                name: "cast_exception",
+                ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![
+                        ("xx", quote!(&crate::langhelp::ExprContext)),
+                        ("loc", quote!(crate::langhelp::QExprId)),
+                    ],
+                    data: vec![
+                        ("call_code", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                        ("catch_binding", TypeRef::opaque(quote!(crate::langhelp::BindingId))),
+                        ("cast_code", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                    ],
+                }),
             }],
         }
     };
@@ -659,7 +673,7 @@ pub fn emit_gen_builtin_tree(
                                                 import_state: Rc::new(Cell::new(parent_ex.ix.import_state)),
                                                 scope: new_scope,
                                                 target: target_arg,
-                                                current_exception_type: Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic),
+                                                current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
                                             });
                                             crate::eval::code_value_extern::ExprContextPush(xx)
                                         },

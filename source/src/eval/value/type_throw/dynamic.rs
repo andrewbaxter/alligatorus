@@ -49,7 +49,12 @@ impl Aspect for TypeThrowDynamic { }
 impl AspectFunction for TypeThrowDynamic {
     fn call(&self, xx: &ExprContext, loc: QExprId, _function: CodeValue, argument: CodeValue) -> EvalRes {
         return er_seq_cv!(loc, erb, {
-            let exc_type = xx.current_exception_type.clone();
+            let exc_type = match xx.current_exception_type.as_ref() {
+                Some(t) => t.clone(),
+                None => return erb.err_new(
+                    "throw not allowed: enclosing function did not declare an exception type".to_string(),
+                ),
+            };
             let converted = erb.must_er(typecheck_convert(xx, loc, exc_type.as_ref(), argument))?;
             let to_dynamic = erb.must_er(aspect_consume_dynamic_get(xx, loc, exc_type.as_ref()))?;
             let value_code = erb.must_er(to_dynamic.to_dynamic(xx, loc, converted))?;
@@ -67,8 +72,8 @@ impl AspectFunction for TypeThrowDynamic {
         });
     }
 
-    fn exception_type(&self) -> Rc<dyn Type> {
-        Rc::new(crate::eval::value::type_never::r#const::TypeNever)
+    fn exception_type(&self) -> Option<Rc<dyn Type>> {
+        None
     }
 }
 

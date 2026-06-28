@@ -321,7 +321,7 @@ pub(crate) struct EvalContext {
 pub(crate) type EvalRes = EResult<CodeValue>;
 
 pub(crate) struct ExprContext {
-    pub(crate) current_exception_type: Rc<dyn Type>,
+    pub(crate) current_exception_type: Option<Rc<dyn Type>>,
     pub(crate) import_state: Rc<Cell<ImportStateId>>,
     pub(crate) scope: Rc<Scope>,
     pub(crate) target: Rc<dyn Target>,

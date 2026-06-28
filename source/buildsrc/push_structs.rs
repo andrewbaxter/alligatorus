@@ -240,7 +240,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 parent: None,
                             }),
                             target: std::rc::Rc::new(crate::eval::TargetDynamic),
-                            current_exception_type: std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic),
+                            current_exception_type: Some(std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
                         });
                         if let Err(errors) = self_.inner.finish(&xx) {
                             crate::eval::dynamic_util::throw_error(
@@ -299,7 +299,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             parent: None,
                         }),
                         target: Rc::new(crate::eval::TargetDynamic),
-                        current_exception_type: Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic),
+                        current_exception_type: Some(Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)),
                     });
                     let is_some = self_.type_ref.aspect(&xx, &unique).is_some();
                     OptionPush { is_some_inner: is_some }

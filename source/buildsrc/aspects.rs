@@ -220,9 +220,9 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                 },
                 AspectMethod {
                     name: "exception_type",
-                    doc: doc("Returns the declared exception type of this function, or TypeNever if none."),
+                    doc: doc("Returns the declared exception type of this function, or None if not declared."),
                     params: vec![],
-                    ret: "std::rc::Rc<dyn crate::langhelp::Type>",
+                    ret: "Option<std::rc::Rc<dyn crate::langhelp::Type>>",
                 },
             ],
         },
