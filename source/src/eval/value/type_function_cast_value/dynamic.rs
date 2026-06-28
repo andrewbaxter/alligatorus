@@ -1,23 +1,25 @@
 use {
     crate::{
         artifact::ExporterAny,
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicCall,
-            CodeDynamicType,
-        },
-        eval::value::{
-            type_any::r#const::ValueAnyConst,
-            type_binding::dynamic::BindingDynamicBinding,
-            type_root::r#const::TypeRoot,
-            type_source_object::{
-                dynamic::TypeSourceObjectDynamic,
-                r#const::TypeSourceObjectConst,
+        eval::{
+            dynamic::code::{
+                CodeDynamic,
+                CodeDynamicBindingUse,
+                CodeDynamicCall,
+                CodeDynamicType,
             },
-            value_dynamic::{
-                ValueDynamic,
-                ValueDynamicSource,
+            value::{
+                type_any::r#const::ValueAnyConst,
+                type_binding::dynamic::BindingDynamicBinding,
+                type_root::r#const::TypeRoot,
+                type_source_object::{
+                    dynamic::TypeSourceObjectDynamic,
+                    r#const::TypeSourceObjectConst,
+                },
+                value_dynamic::{
+                    ValueDynamic,
+                    ValueDynamicSource,
+                },
             },
         },
         langhelp::{

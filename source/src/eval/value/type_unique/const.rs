@@ -5,13 +5,13 @@ use {
             ArtifactBody,
             ExporterAny,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicCall,
-            CodeDynamicType,
-        },
         eval::{
+            dynamic::code::{
+                CodeDynamic,
+                CodeDynamicBindingUse,
+                CodeDynamicCall,
+                CodeDynamicType,
+            },
             from_dynamic_ref,
             push::Push,
             to_dynamic_ext,

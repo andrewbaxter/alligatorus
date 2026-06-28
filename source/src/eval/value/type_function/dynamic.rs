@@ -1,16 +1,18 @@
 use {
     crate::{
         artifact::ExporterAny,
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicCall,
-            CodeDynamicType,
-        },
         eval::{
-            TargetBindSub,
-            dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicCall,
+                    CodeDynamicType,
+                },
+                target::TargetBindSub,
+                util::{
+                    bind_dynamic_default,
+                    bind_via_target,
+                },
             },
             typecheck_convert,
             value::{

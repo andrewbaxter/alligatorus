@@ -354,7 +354,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("loc", "crate::langhelp::QExprId"),
                         ("cv", "crate::langhelp::CodeValue"),
                     ],
-                    ret: "crate::langhelp::EResult<Option<crate::eval::TargetBindSub>>",
+                    ret: "crate::langhelp::EResult<Option<crate::eval::dynamic::target::TargetBindSub>>",
                 },
             ],
         },
@@ -375,7 +375,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                         ("loc", "crate::langhelp::QExprId"),
                         ("cv", "crate::langhelp::CodeValue"),
                     ],
-                    ret: "crate::langhelp::EResult<crate::code_dynamic::CodeDynamic>",
+                    ret: "crate::langhelp::EResult<crate::eval::dynamic::code::CodeDynamic>",
                 },
             ],
         },
@@ -391,7 +391,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, _sc
                     params: vec![
                         //. .
                         ("loc", "crate::langhelp::QExprId"),
-                        ("self_", "crate::code_dynamic::CodeDynamic"),
+                        ("self_", "crate::eval::dynamic::code::CodeDynamic"),
                     ],
                     ret: "crate::langhelp::CodeValue",
                 },

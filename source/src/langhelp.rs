@@ -7,8 +7,8 @@ use {
             ExporterAny,
         },
         eval::{
-            StageLiftCell,
             definition_set::DefinitionSet,
+            dynamic::target::StageLiftCell,
             expr::StagedExprCell,
         },
         r#gen::{

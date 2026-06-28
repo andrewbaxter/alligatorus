@@ -10,13 +10,13 @@ use {
             impl_export_independent_artifact,
             impl_import_independent_artifact,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicType,
-        },
         eval::{
             definition_set::DefinitionSet,
+            dynamic::code::{
+                CodeDynamic,
+                CodeDynamicBindingUse,
+                CodeDynamicType,
+            },
             from_dynamic_ref,
             push::Push,
             to_dynamic_ext,

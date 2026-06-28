@@ -8,17 +8,19 @@ use {
             export_artifact,
             import_type_artifact,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicNewObject,
-            CodeDynamicType,
-        },
         eval::{
-            TargetBindSub,
-            dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
-                dynamic_set,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicNewObject,
+                    CodeDynamicType,
+                },
+                target::TargetBindSub,
+                util::{
+                    bind_dynamic_default,
+                    bind_via_target,
+                    dynamic_set,
+                },
             },
             from_dynamic_ref,
             push::Push,

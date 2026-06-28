@@ -45,7 +45,7 @@ fn main() {
             AnyType,
             StagedExpr
         };
-        use crate::eval::dynamic_util::throw_error;
+        use crate::eval::dynamic::util::throw_error;
     };
     buildsrc::aspects::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
     let mut extra_iface_specs: Vec<buildsrc::util::InterfaceSpec> = Vec::new();

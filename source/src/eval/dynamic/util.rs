@@ -1,15 +1,17 @@
 use {
     crate::{
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingSet,
-            CodeDynamicBlock,
-            CodeDynamicBlockEntry,
-            CodeDynamicFieldSet,
-            CodeDynamicType,
-        },
         eval::{
-            TargetBindSub,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicBindingSet,
+                    CodeDynamicBlock,
+                    CodeDynamicBlockEntry,
+                    CodeDynamicFieldSet,
+                    CodeDynamicType,
+                },
+                target::TargetBindSub,
+            },
             typecheck_convert,
             value::{
                 type_binding::dynamic::BindingDynamicBinding,

@@ -6,17 +6,19 @@ use {
             ArtifactIdSource,
             ExporterAny,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicType,
-        },
         eval::{
-            TargetBindSub,
-            dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
-                dynamic_consume_to_dynamic,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicBindingUse,
+                    CodeDynamicType,
+                },
+                target::TargetBindSub,
+                util::{
+                    bind_dynamic_default,
+                    bind_via_target,
+                    dynamic_consume_to_dynamic,
+                },
             },
             expr::{
                 Expr,

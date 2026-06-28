@@ -6,12 +6,14 @@ use {
             ExporterAny,
             impl_export_independent_artifact,
         },
-        code_dynamic::CodeDynamic,
         eval::{
-            TargetBindSub,
-            dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
+            dynamic::{
+                code::CodeDynamic,
+                target::TargetBindSub,
+                util::{
+                    bind_dynamic_default,
+                    bind_via_target,
+                },
             },
             value::{
                 type_any::r#const::ValueAnyConst,

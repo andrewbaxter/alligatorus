@@ -57,19 +57,22 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         ret: <() as crate:: eval:: push:: Push >:: dynamic_type(),
                     },
                 );
-                let self_code = erb.must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?.unwrap().clone();
+                let self_code =
+                    erb.must_er(self_.code.cast::<crate::eval::dynamic::code::CodeDynamic>())?.unwrap().clone();
                 return Ok(crate:: langhelp:: CodeValue {
                     code: crate:: langhelp:: Code {
                         loc,
-                        code: crate:: langhelp:: Code_:: Dyn(std:: rc:: Rc:: new(crate:: code_dynamic:: CodeDynamic {
-                            loc,
-                            type_: crate:: code_dynamic:: CodeDynamicType:: FieldUse(
-                                crate:: code_dynamic:: CodeDynamicFieldUse {
-                                    base: Box:: new(self_code),
-                                    field: #method_idx_str.to_string(),
-                                },
-                            ),
-                        },)),
+                        code: crate:: langhelp:: Code_:: Dyn(
+                            std:: rc:: Rc:: new(crate:: eval:: dynamic:: code:: CodeDynamic {
+                                loc,
+                                type_: crate:: eval:: dynamic:: code:: CodeDynamicType:: FieldUse(
+                                    crate:: eval:: dynamic:: code:: CodeDynamicFieldUse {
+                                        base: Box:: new(self_code),
+                                        field: #method_idx_str.to_string(),
+                                    },
+                                ),
+                            },)
+                        ),
                     },
                     value: Some(std::rc::Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
                         source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
@@ -193,7 +196,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     body: quote!{
                         let xx = scope.get_slot::<crate::eval::DynamicExprContextSlot>().unwrap().xx.clone();
                         if let Err(errors) = self_.inner.finish(&xx) {
-                            crate::eval::dynamic_util::throw_error(
+                            crate::eval::dynamic::util::throw_error(
                                 scope,
                                 &format!("definition set finish failed: {:?}", errors)
                             );
@@ -679,7 +682,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let variant_index = {
                         let mut variants = self_.data.variants.borrow_mut();
                         let idx = variants.len();
-                        let js_tag = format!("{}{}", crate::code_dynamic::TAG_PREFIX, self_.data.next_tag_id.next(),);
+                        let js_tag =
+                            format!("{}{}", crate::eval::dynamic::code::TAG_PREFIX, self_.data.next_tag_id.next(),);
                         variants.push(SourceUnionVariant {
                             js_tag,
                             tag: crate::langhelp::ConstKey::String(tag),
@@ -764,15 +768,15 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     let field_type: std:: rc:: Rc < dyn crate:: langhelp:: Type > = <#f_ty as crate:: eval:: push:: Push >:: dynamic_type(
                     );
                     let self_code =
-                        erb.must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?.unwrap().clone();
+                        erb.must_er(self_.code.cast::<crate::eval::dynamic::code::CodeDynamic>())?.unwrap().clone();
                     return Ok(crate:: langhelp:: CodeValue {
                         code: crate:: langhelp:: Code {
                             loc,
                             code: crate:: langhelp:: Code_:: Dyn(
-                                std:: rc:: Rc:: new(crate:: code_dynamic:: CodeDynamic {
+                                std:: rc:: Rc:: new(crate:: eval:: dynamic:: code:: CodeDynamic {
                                     loc,
-                                    type_: crate:: code_dynamic:: CodeDynamicType:: FieldUse(
-                                        crate:: code_dynamic:: CodeDynamicFieldUse {
+                                    type_: crate:: eval:: dynamic:: code:: CodeDynamicType:: FieldUse(
+                                        crate:: eval:: dynamic:: code:: CodeDynamicFieldUse {
                                             base: Box:: new(self_code),
                                             field: #idx_str.to_string(),
                                         },
@@ -803,15 +807,15 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         },
                     );
                     let self_code =
-                        erb.must_er(self_.code.cast::<crate::code_dynamic::CodeDynamic>())?.unwrap().clone();
+                        erb.must_er(self_.code.cast::<crate::eval::dynamic::code::CodeDynamic>())?.unwrap().clone();
                     return Ok(crate:: langhelp:: CodeValue {
                         code: crate:: langhelp:: Code {
                             loc,
                             code: crate:: langhelp:: Code_:: Dyn(
-                                std:: rc:: Rc:: new(crate:: code_dynamic:: CodeDynamic {
+                                std:: rc:: Rc:: new(crate:: eval:: dynamic:: code:: CodeDynamic {
                                     loc,
-                                    type_: crate:: code_dynamic:: CodeDynamicType:: FieldUse(
-                                        crate:: code_dynamic:: CodeDynamicFieldUse {
+                                    type_: crate:: eval:: dynamic:: code:: CodeDynamicType:: FieldUse(
+                                        crate:: eval:: dynamic:: code:: CodeDynamicFieldUse {
                                             base: Box:: new(self_code),
                                             field: #idx_str.to_string(),
                                         },
@@ -1044,8 +1048,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     _xx: &crate::langhelp::ExprContext,
                     _loc: crate::langhelp::QExprId,
                     cv: crate::langhelp::CodeValue,
-                ) -> crate::langhelp::EResult<crate::code_dynamic::CodeDynamic> {
-                    cv.code.cast::<crate::code_dynamic::CodeDynamic>().map(|x| x.unwrap().clone())
+                ) -> crate::langhelp::EResult<crate::eval::dynamic::code::CodeDynamic> {
+                    cv.code.cast::<crate::eval::dynamic::code::CodeDynamic>().map(|x| x.unwrap().clone())
                 }
             }
             impl crate:: r#gen:: AspectBindDynamic for #type_name {
@@ -1054,8 +1058,8 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     xx: &crate::langhelp::ExprContext,
                     loc: crate::langhelp::QExprId,
                     cv: crate::langhelp::CodeValue,
-                ) -> crate::langhelp::EResult<Option<crate::eval::TargetBindSub>> {
-                    crate::eval::dynamic_util::bind_dynamic_default(xx, loc, cv)
+                ) -> crate::langhelp::EResult<Option<crate::eval::dynamic::target::TargetBindSub>> {
+                    crate::eval::dynamic::util::bind_dynamic_default(xx, loc, cv)
                 }
             }
             impl crate:: r#gen:: AspectBind for #type_name {
@@ -1065,14 +1069,14 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     loc: crate::langhelp::QExprId,
                     cv: crate::langhelp::CodeValue,
                 ) -> crate::langhelp::EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::Binding>)> {
-                    crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
+                    crate::eval::dynamic::util::bind_via_target(xx, loc, cv)
                 }
             }
             impl crate:: r#gen:: AspectStackValueDynamic for #type_name {
                 fn to_value(
                     &self,
                     loc: crate:: langhelp:: QExprId,
-                    value: crate:: code_dynamic:: CodeDynamic,
+                    value: crate:: eval:: dynamic:: code:: CodeDynamic,
                 ) -> crate:: langhelp:: CodeValue {
                     crate:: langhelp:: CodeValue {
                         code: crate:: langhelp:: Code {

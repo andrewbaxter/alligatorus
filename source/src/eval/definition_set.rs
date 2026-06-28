@@ -13,7 +13,7 @@ use {
             import_type_artifact,
         },
         eval::{
-            StageLiftCell,
+            dynamic::target::StageLiftCell,
             expr::{
                 Expr,
                 StagedExprCell,

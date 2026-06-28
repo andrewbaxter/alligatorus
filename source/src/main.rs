@@ -1,5 +1,4 @@
 pub mod artifact;
-pub mod code_dynamic;
 pub mod eval;
 pub mod invariant;
 pub mod langhelp;

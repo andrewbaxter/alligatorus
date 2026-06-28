@@ -1,18 +1,20 @@
 use {
     crate::{
         artifact::ExporterAny,
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicCall,
-            CodeDynamicFieldUse,
-            CodeDynamicType,
-        },
         eval::{
-            TargetBindSub,
-            dynamic_util::{
-                bind_dynamic_default,
-                bind_via_target,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicBindingUse,
+                    CodeDynamicCall,
+                    CodeDynamicFieldUse,
+                    CodeDynamicType,
+                },
+                target::TargetBindSub,
+                util::{
+                    bind_dynamic_default,
+                    bind_via_target,
+                },
             },
             from_dynamic_ref,
             value::{

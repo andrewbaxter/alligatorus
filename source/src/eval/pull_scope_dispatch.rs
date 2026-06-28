@@ -1,8 +1,10 @@
 use {
     crate::{
         eval::{
-            TargetBindSub,
-            TargetDynamic,
+            dynamic::target::{
+                TargetBindSub,
+                TargetDynamic,
+            },
             expr::Expr,
             push::Push,
         },

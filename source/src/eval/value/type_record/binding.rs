@@ -1,6 +1,6 @@
 use {
     crate::{
-        code_dynamic::{
+        eval::dynamic::code::{
             CodeDynamic,
             CodeDynamicBindingUse,
             CodeDynamicType,

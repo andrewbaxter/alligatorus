@@ -11,14 +11,16 @@ use {
             impl_import_independent_artifact,
             independent_finalize_import_artifact,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicNewObject,
-            CodeDynamicType,
-        },
         eval::{
             EResult,
-            dynamic_util::bind_via_target,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicNewObject,
+                    CodeDynamicType,
+                },
+                util::bind_via_target,
+            },
             typecheck_convert,
             value::{
                 type_any::r#const::ValueAnyConst,

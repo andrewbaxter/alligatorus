@@ -5,19 +5,21 @@ use {
             ArtifactBody,
             ExporterAny,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicType,
-        },
-        eval::value::{
-            type_root::r#const::{
-                ExporterRootDelegate,
-                TypeRoot,
+        eval::{
+            dynamic::code::{
+                CodeDynamic,
+                CodeDynamicType,
             },
-            type_string::dynamic::TypeStringDynamic,
-            type_tuple::binding::BindingValue,
-            value_string::r#const::ValueStringConst,
-            value_type_string::r#const::ValueTypeStringConst,
+            value::{
+                type_root::r#const::{
+                    ExporterRootDelegate,
+                    TypeRoot,
+                },
+                type_string::dynamic::TypeStringDynamic,
+                type_tuple::binding::BindingValue,
+                value_string::r#const::ValueStringConst,
+                value_type_string::r#const::ValueTypeStringConst,
+            },
         },
         invariant::must_downcast_ref,
         langhelp::{

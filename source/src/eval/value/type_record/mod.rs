@@ -16,17 +16,19 @@ use {
             export_artifact,
             impl_export_independent_artifact,
         },
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicCall,
-            CodeDynamicFieldUse,
-            CodeDynamicNewObject,
-            CodeDynamicType,
-        },
         eval::{
-            TargetBindSub,
-            dynamic_util::wrap_with_carry,
+            dynamic::{
+                code::{
+                    CodeDynamic,
+                    CodeDynamicBindingUse,
+                    CodeDynamicCall,
+                    CodeDynamicFieldUse,
+                    CodeDynamicNewObject,
+                    CodeDynamicType,
+                },
+                target::TargetBindSub,
+                util::wrap_with_carry,
+            },
             typecheck_convert,
             util::er_seq_cv_inline,
             value::{

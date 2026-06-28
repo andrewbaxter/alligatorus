@@ -1,8 +1,10 @@
 use {
     crate::{
         eval::{
-            TargetBindSub,
-            dynamic_util::throw_error,
+            dynamic::{
+                target::TargetBindSub,
+                util::throw_error,
+            },
             from_dynamic_ref,
             value::{
                 type_any::dynamic::TypeAnyDynamic,

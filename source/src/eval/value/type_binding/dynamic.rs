@@ -1,14 +1,16 @@
 use {
     crate::{
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicBindingUse,
-            CodeDynamicType,
-        },
-        eval::value::value_dynamic::{
-            ValueDynamic,
-            ValueDynamicDataScope,
-            ValueDynamicSource,
+        eval::{
+            dynamic::code::{
+                CodeDynamic,
+                CodeDynamicBindingUse,
+                CodeDynamicType,
+            },
+            value::value_dynamic::{
+                ValueDynamic,
+                ValueDynamicDataScope,
+                ValueDynamicSource,
+            },
         },
         langhelp::{
             BindingId,

@@ -1,12 +1,12 @@
 use {
     crate::{
         artifact::ExporterAny,
-        code_dynamic::{
-            CodeDynamic,
-            CodeDynamicThrow,
-            CodeDynamicType,
-        },
         eval::{
+            dynamic::code::{
+                CodeDynamic,
+                CodeDynamicThrow,
+                CodeDynamicType,
+            },
             typecheck_convert,
             value::{
                 type_binding::dynamic::BindingDynamicBinding,

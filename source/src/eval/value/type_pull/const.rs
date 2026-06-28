@@ -535,7 +535,7 @@ impl crate::r#gen::AspectBind for TypePullAspectImpls {
         loc: QExprId,
         cv: CodeValue,
     ) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::Binding>)> {
-        crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
+        crate::eval::dynamic::util::bind_via_target(xx, loc, cv)
     }
 }
 
@@ -545,8 +545,8 @@ impl crate::r#gen::AspectBindDynamic for TypePullAspectImpls {
         xx: &ExprContext,
         loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<Option<crate::eval::TargetBindSub>> {
-        crate::eval::dynamic_util::bind_dynamic_default(xx, loc, cv)
+    ) -> EResult<Option<crate::eval::dynamic::target::TargetBindSub>> {
+        crate::eval::dynamic::util::bind_dynamic_default(xx, loc, cv)
     }
 }
 
@@ -556,8 +556,8 @@ impl crate::r#gen::AspectConsumeDynamic for TypePullAspectImpls {
         _xx: &ExprContext,
         _loc: QExprId,
         cv: CodeValue,
-    ) -> EResult<crate::code_dynamic::CodeDynamic> {
-        cv.code.cast::<crate::code_dynamic::CodeDynamic>().map(|x| x.unwrap().clone())
+    ) -> EResult<crate::eval::dynamic::code::CodeDynamic> {
+        cv.code.cast::<crate::eval::dynamic::code::CodeDynamic>().map(|x| x.unwrap().clone())
     }
 }
 
@@ -588,7 +588,7 @@ impl crate::r#gen::AspectLift for TypePullAspectImpls {
 }
 
 impl crate::r#gen::AspectStackValueDynamic for TypePullAspectImpls {
-    fn to_value(&self, loc: QExprId, value: crate::code_dynamic::CodeDynamic) -> CodeValue {
+    fn to_value(&self, loc: QExprId, value: crate::eval::dynamic::code::CodeDynamic) -> CodeValue {
         CodeValue {
             code: crate::langhelp::Code {
                 loc,

@@ -44,8 +44,10 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                         values.push(StageLowerValue::Value(value));
                     }
                 } else {
-                    let lift_cell: Rc<crate::eval::StageLiftCell> =
-                        crate::eval::from_dynamic_ref::<Rc<crate::eval::StageLiftCell>>(&*lift_arg).clone();
+                    let lift_cell: Rc<crate::eval::dynamic::target::StageLiftCell> =
+                        crate::eval::from_dynamic_ref::<Rc<crate::eval::dynamic::target::StageLiftCell>>(
+                            &*lift_arg
+                        ).clone();
                     let lift_xx = crate::langhelp::ExprContext {
                         vx: lift_cell.vx.clone(),
                         import_state: lift_cell.import_state.clone(),
@@ -325,7 +327,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 fields.insert(
                     const_key,
                     crate::eval::value::type_record::RecordField::Dynamic(
-                        crate::eval::dynamic_util::dynamic_value_to_type(scope, val),
+                        crate::eval::dynamic::util::dynamic_value_to_type(scope, val),
                     ),
                 );
             }
@@ -349,7 +351,7 @@ pub fn build(out: &mut TokenStream, scope_ids: &mut HashSet<usize>) {
                 let elem = arr.get_index(scope, i).unwrap();
                 elements.push(
                     crate::eval::value::type_tuple::TupleElement::Dynamic(
-                        crate::eval::dynamic_util::dynamic_value_to_type(scope, elem),
+                        crate::eval::dynamic::util::dynamic_value_to_type(scope, elem),
                     ),
                 );
             }

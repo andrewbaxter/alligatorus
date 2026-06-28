@@ -4,7 +4,6 @@ pub mod r#const;
 
 use {
     crate::{
-        code_dynamic::CodeDynamic,
         eval::{
             DynamicSourceBuilder,
             Scope,
@@ -12,6 +11,7 @@ use {
             body_builtin_scope,
             const_eval,
             definition_set::DefinitionSet,
+            dynamic::code::CodeDynamic,
             expr::Expr,
             render_code,
             typecheck_convert,
