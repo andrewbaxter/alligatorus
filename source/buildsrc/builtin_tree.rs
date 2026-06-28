@@ -354,6 +354,26 @@ pub fn emit_gen_builtin_tree(
                         ("cast_cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue))),
                     ],
                 }),
+            }, Method {
+                name: "drop",
+                ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![
+                        ("xx", quote!(&crate::langhelp::ExprContext)),
+                        ("loc", quote!(crate::langhelp::QExprId)),
+                    ],
+                    data: vec![("cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue)))],
+                }),
+            }, Method {
+                name: "try_finally",
+                ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
+                args: MethodArgs::Rust(MethodSig {
+                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    data: vec![
+                        ("body", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                        ("finally", TypeRef::via_push(quote!(crate::langhelp::Code))),
+                    ],
+                }),
             }],
         }
     };

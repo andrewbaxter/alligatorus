@@ -623,38 +623,26 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                 current_exception_type: xx.current_exception_type.clone(),
             };
             return er_seq_cv!(expr.loc, erb, {
-                #[derive(Clone)]
-                enum SeqSegment {
-                    Pre(Vec<Code>),
-                    BindingDrop {
-                        before: Vec<Code>,
-                        binding_code: Code,
-                        drop_code: Option<Code>,
-                    },
+                struct Frame {
+                    codes: Vec<Code>,
+                    drop_code: Code,
                 }
-                let mut segments: Vec<SeqSegment> = vec![SeqSegment::Pre(vec![])];
-                let mut last_val: Option<Rc<dyn Value>> = None;
-                let mut previous_non_binding: Option<CodeValue> = None;
+                let mut frames: Vec<Frame> = vec![Frame { codes: vec![], drop_code: Code { loc: expr.loc, code: Code_::None } }];
+                let mut last_val: Option<Rc<dyn Value>> = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
+                let mut pending_discard: Option<CodeValue> = None;
                 let mut control_ended = false;
                 let total = e.exprs.len();
-                fn push_code(segments: &mut Vec<SeqSegment>, code: Code) {
-                    match segments.last_mut().unwrap() {
-                        SeqSegment::Pre(v) => v.push(code),
-                        SeqSegment::BindingDrop { before: _, .. } => {
-                            segments.push(SeqSegment::Pre(vec![code]));
-                        },
-                    }
-                }
                 for (idx, sub) in e.exprs.iter().enumerate() {
-                    if let Some(prev) = previous_non_binding.take() {
-                        if let Some(prev_v) = prev.value.as_ref() {
-                            let prev_type = erb.must_er(prev_v.type_(&child_xx, sub.loc))?;
-                            if let Some(drop_aspect) =
-                                crate::r#gen::aspect_drop_dynamic_get_maybe(&child_xx, prev_type.as_ref()) {
-                                let drop_code = erb.must_er(crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), &child_xx, sub.loc, prev))?;
-                                push_code(&mut segments, drop_code);
-                            }
-                        }
+                    if control_ended {
+                        erb.errors.push(ExprErr {
+                            loc: sub.loc,
+                            errors: vec![ExprSubErr::Opaque("Unreachable: control flow ended at prior expression".to_string())],
+                        });
+                        continue;
+                    }
+                    if let Some(prev) = pending_discard.take() {
+                        let drop_code = erb.must_er(crate::r#gen::Target::drop(child_xx.target.as_ref(), &child_xx, sub.loc, prev))?;
+                        frames.last_mut().unwrap().codes.push(drop_code);
                     }
                     if let Expr_::Bind(bind) = &sub.r#type {
                         er_all!(erb, {
@@ -662,131 +650,52 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                             value = const_eval(&child_xx, bind.value.as_ref()),
                         });
                         let base_constkey = erb.must_res(extract_const_key(&child_xx, sub.loc, base.value.as_deref().unwrap()))?;
-                        push_code(&mut segments, base.code);
+                        frames.last_mut().unwrap().codes.push(base.code);
                         let value_type = erb.must_er(value.value.as_ref().unwrap().type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
                         let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
-                        let drop_code = if let Some(drop_aspect) =
-                            crate::r#gen::aspect_drop_dynamic_get_maybe(&child_xx, value_type.as_ref()) {
+                        let drop_code = if crate::r#gen::aspect_drop_dynamic_get_maybe(&child_xx, value_type.as_ref()).is_some() {
                             let binding_use_cv = binding.1.use_(&child_xx, sub.loc, Code { loc: sub.loc, code: Code_::None });
-                            Some(erb.must_er(crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), &child_xx, sub.loc, binding_use_cv))?)
+                            erb.must_er(crate::r#gen::Target::drop(child_xx.target.as_ref(), &child_xx, sub.loc, binding_use_cv))?
                         } else {
-                            None
+                            Code { loc: sub.loc, code: Code_::None }
                         };
-                        let before = std::mem::replace(&mut segments, vec![]);
-                        let prev_segs = before;
-                        segments = prev_segs;
-                        let last = match segments.pop().unwrap() {
-                            SeqSegment::Pre(v) => v,
-                            other => {
-                                segments.push(other);
-                                vec![]
-                            },
-                        };
-                        segments.push(SeqSegment::BindingDrop {
-                            before: last,
-                            binding_code: binding.0,
-                            drop_code,
-                        });
-                        segments.push(SeqSegment::Pre(vec![]));
+                        frames.last_mut().unwrap().codes.push(binding.0);
+                        frames.push(Frame { codes: vec![], drop_code });
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
                         last_val = Some(Rc::new(ValueNullConst) as Rc<dyn Value>);
                     } else {
                         let r = erb.must_er(const_eval(&child_xx, sub))?;
-                        push_code(&mut segments, r.code.clone());
+                        frames.last_mut().unwrap().codes.push(r.code.clone());
                         if r.value.is_none() {
                             control_ended = true;
                             last_val = None;
-                            break;
+                            continue;
                         }
                         if idx + 1 < total {
-                            previous_non_binding = Some(r);
+                            pending_discard = Some(r);
                         } else {
                             last_val = r.value;
                         }
                     }
                 }
-                fn build_segments(
-                    segments: Vec<SeqSegment>,
-                    loc: QExprId,
-                    target: &Rc<dyn Target>,
-                ) -> EResult<Vec<Code>> {
-                    let mut out: Vec<Code> = vec![];
-                    let mut i = 0;
-                    while i < segments.len() {
-                        match &segments[i] {
-                            SeqSegment::Pre(v) => {
-                                for c in v {
-                                    out.push(c.clone());
-                                }
-                                i += 1;
-                            },
-                            SeqSegment::BindingDrop { before, binding_code, drop_code } => {
-                                for c in before {
-                                    out.push(c.clone());
-                                }
-                                out.push(binding_code.clone());
-                                let rest_segs = segments[i+1..].to_vec();
-                                let rest_eres = build_segments(rest_segs, loc, target);
-                                if rest_eres.errors.is_some() || rest_eres.v.is_none() {
-                                    return rest_eres;
-                                }
-                                let rest_codes = rest_eres.v.unwrap();
-                                if let Some(drop_code) = drop_code {
-                                    let body_eres = target.seq(loc, rest_codes);
-                                    if body_eres.errors.is_some() || body_eres.v.is_none() {
-                                        return EResult { errors: body_eres.errors, v: None };
-                                    }
-                                    let body_code = body_eres.v.unwrap();
-                                    let finally_dyn = match &drop_code.code {
-                                        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
-                                            Some(d) => d.clone(),
-                                            None => return EResult::err(loc, "Drop code must produce CodeDynamic".to_string()),
-                                        },
-                                        Code_::None => return EResult::err(loc, "Drop code must produce CodeDynamic".to_string()),
-                                    };
-                                    let body_dyn_opt = match &body_code.code {
-                                        Code_::Dyn(c) => match (c.as_ref() as &dyn Any).downcast_ref::<CodeDynamic>() {
-                                            Some(d) => Some(d.clone()),
-                                            None => return EResult::err(loc, "Seq body must produce CodeDynamic for drop wrap".to_string()),
-                                        },
-                                        Code_::None => None,
-                                    };
-                                    if let Some(body_dyn) = body_dyn_opt {
-                                        let try_code = CodeDynamic {
-                                            loc,
-                                            type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
-                                                body: Box::new(body_dyn),
-                                                catch: None,
-                                                finally: Some(Box::new(finally_dyn)),
-                                            }),
-                                        };
-                                        out.push(Code {
-                                            loc,
-                                            code: Code_::Dyn(Rc::new(try_code)),
-                                        });
-                                    } else {
-                                        out.push(Code {
-                                            loc,
-                                            code: Code_::Dyn(Rc::new(finally_dyn)),
-                                        });
-                                    }
-                                } else {
-                                    for c in rest_codes {
-                                        out.push(c);
-                                    }
-                                }
-                                return EResult::ok(out);
-                            },
-                        }
+                while frames.len() > 1 {
+                    let inner = frames.pop().unwrap();
+                    match &inner.drop_code.code {
+                        Code_::None => {
+                            frames.last_mut().unwrap().codes.extend(inner.codes);
+                        },
+                        Code_::Dyn(_) => {
+                            let body = erb.must_er(child_xx.target.seq(expr.loc, inner.codes))?;
+                            let wrapped = erb.must_er(child_xx.target.try_finally(expr.loc, body, inner.drop_code))?;
+                            frames.last_mut().unwrap().codes.push(wrapped);
+                        },
                     }
-                    EResult::ok(out)
                 }
-                let final_codes = erb.must_er(build_segments(segments, expr.loc, &xx.target))?;
-                let _ = control_ended;
+                let outer = frames.pop().unwrap();
                 return Ok(CodeValue {
-                    code: erb.must_er(xx.target.seq(expr.loc, final_codes))?,
-                    value: last_val.or_else(|| if control_ended { None } else { Some(Rc::new(ValueNullConst) as Rc<dyn Value>) }),
+                    code: erb.must_er(child_xx.target.seq(expr.loc, outer.codes))?,
+                    value: last_val,
                 });
             });
         },
@@ -4106,6 +4015,62 @@ impl Target for TargetDynamic {
             loc,
             code: Code_::Dyn(Rc::new(try_code)),
         })
+    }
+
+    fn drop(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Code> {
+        let Some(value) = cv.value.as_ref() else {
+            return EResult::ok(Code {
+                loc,
+                code: Code_::None,
+            });
+        };
+        let vtype = match value.type_(xx, loc).into_res() {
+            Ok(t) => t,
+            Err(e) => return EResult { v: None, errors: Some(e) },
+        };
+        let Some(drop_aspect) = crate::r#gen::aspect_drop_dynamic_get_maybe(xx, vtype.as_ref()) else {
+            return EResult::ok(Code {
+                loc,
+                code: Code_::None,
+            });
+        };
+        crate::r#gen::AspectDropDynamic::drop(drop_aspect.as_ref(), xx, loc, cv)
+    }
+
+    fn try_finally(&self, loc: QExprId, body: Code, finally: Code) -> EResult<Code> {
+        let body_dyn_opt = match body.cast::<CodeDynamic>().into_res() {
+            Ok(v) => v.cloned(),
+            Err(e) => return EResult { v: None, errors: Some(e) },
+        };
+        let finally_dyn_opt = match finally.cast::<CodeDynamic>().into_res() {
+            Ok(v) => v.cloned(),
+            Err(e) => return EResult { v: None, errors: Some(e) },
+        };
+        match (body_dyn_opt, finally_dyn_opt) {
+            (None, None) => EResult::ok(Code { loc, code: Code_::None }),
+            (Some(b), None) => EResult::ok(Code {
+                loc,
+                code: Code_::Dyn(Rc::new(b)),
+            }),
+            (None, Some(f)) => EResult::ok(Code {
+                loc,
+                code: Code_::Dyn(Rc::new(f)),
+            }),
+            (Some(b), Some(f)) => {
+                let try_code = CodeDynamic {
+                    loc,
+                    type_: CodeDynamicType::Try(crate::code_dynamic::CodeDynamicTry {
+                        body: Box::new(b),
+                        catch: None,
+                        finally: Some(Box::new(f)),
+                    }),
+                };
+                EResult::ok(Code {
+                    loc,
+                    code: Code_::Dyn(Rc::new(try_code)),
+                })
+            },
+        }
     }
 }
 

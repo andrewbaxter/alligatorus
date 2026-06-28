@@ -433,6 +433,14 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                     "cast_exception",
                     mb.call(mb.field(mb.call(mb.types_option(), mb.types_codedyn()), mb.str("none")), mb.null()),
                 ),
+                (
+                    "drop",
+                    mb.call(mb.field(mb.call(mb.types_option(), mb.types_codedyn()), mb.str("none")), mb.null()),
+                ),
+                (
+                    "try_finally",
+                    mb.call(mb.field(mb.call(mb.types_option(), mb.types_codedyn()), mb.str("none")), mb.null()),
+                ),
             ],
         ),
     );

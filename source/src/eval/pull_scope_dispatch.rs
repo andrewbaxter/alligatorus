@@ -127,4 +127,12 @@ impl Target for PullTarget {
     ) -> EResult<Code> {
         TargetDynamic.cast_exception(xx, loc, call_code, catch_binding, cast_cv)
     }
+
+    fn drop(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Code> {
+        TargetDynamic.drop(xx, loc, cv)
+    }
+
+    fn try_finally(&self, loc: QExprId, body: Code, finally: Code) -> EResult<Code> {
+        TargetDynamic.try_finally(loc, body, finally)
+    }
 }
