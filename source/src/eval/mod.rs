@@ -654,12 +654,8 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
                         let value_type = erb.must_er(value.value.as_ref().unwrap().type_(&child_xx, sub.loc))?;
                         let bind_aspect = erb.must_er(aspect_bind_get(&child_xx, sub.loc, value_type.as_ref()))?;
                         let binding = erb.must_er(bind_aspect.bind(&child_xx, sub.loc, value))?;
-                        let drop_code = if crate::r#gen::aspect_drop_dynamic_get_maybe(&child_xx, value_type.as_ref()).is_some() {
-                            let binding_use_cv = binding.1.use_(&child_xx, sub.loc, Code { loc: sub.loc, code: Code_::None });
-                            erb.must_er(crate::r#gen::Target::drop(child_xx.target.as_ref(), &child_xx, sub.loc, binding_use_cv))?
-                        } else {
-                            Code { loc: sub.loc, code: Code_::None }
-                        };
+                        let binding_use_cv = binding.1.use_(&child_xx, sub.loc, Code { loc: sub.loc, code: Code_::None });
+                        let drop_code = erb.must_er(crate::r#gen::Target::drop(child_xx.target.as_ref(), &child_xx, sub.loc, binding_use_cv))?;
                         frames.last_mut().unwrap().codes.push(binding.0);
                         frames.push(Frame { codes: vec![], drop_code });
                         child_xx.scope.values.borrow_mut().insert(base_constkey, binding.1);
