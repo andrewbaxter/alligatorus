@@ -990,6 +990,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "prefixes"
+version = "0.1.0"
+
+[[package]]
 name = "prettyplease"
 version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1273,6 +1277,7 @@ dependencies = [
  "http",
  "ordered-float",
  "paste",
+ "prefixes",
  "proc-macro2",
  "quote",
  "regex",

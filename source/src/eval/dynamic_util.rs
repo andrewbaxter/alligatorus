@@ -213,6 +213,38 @@ pub(crate) fn dynamic_stack_to_value(loc: QExprId, value: CodeDynamic, type_: Rc
     }
 }
 
+pub(crate) fn dynamic_value_to_type(
+    _scope: &mut v8::PinnedRef<v8::HandleScope>,
+    value: v8::Local<v8::Value>,
+) -> Rc<dyn Type> {
+    if value.is_external() {
+        let any = crate::eval::from_dynamic_any(&*value);
+        if any.is::<Rc<dyn Type>>() {
+            return must_downcast_ref::<Rc<dyn Type>>(any).clone();
+        }
+        if let Some(iface_ref) =
+            any.downcast_ref::<Rc<crate::eval::value::type_source_interface::SourceInterfaceRef>>() {
+            return Rc::new(
+                crate::eval::value::type_source_interface::r#const::TypeSourceInterfaceConst {
+                    data: iface_ref.data.clone(),
+                },
+            );
+        }
+        if let Some(tu_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_union::SourceUnionRef>>() {
+            return Rc::new(
+                crate::eval::value::type_source_union::r#const::TypeSourceUnionConst { data: tu_ref.data.clone() },
+            );
+        }
+        if let Some(dt_ref) = any.downcast_ref::<Rc<crate::eval::value::type_source_object::SourceObjectRef>>() {
+            return Rc::new(
+                crate::eval::value::type_source_object::dynamic::TypeSourceObjectDynamic { data: dt_ref.data.clone() },
+            );
+        }
+        return crate::eval::from_dynamic_ref::<Rc<dyn Type>>(&*value).clone();
+    }
+    panic!("dynamic_value_to_type: expected `Rc<dyn Type>` external, got something else");
+}
+
 pub(crate) fn throw_error(scope: &mut v8::PinnedRef<'_, v8::HandleScope<'_>>, msg: &str) {
     let msg = v8::String::new(scope, msg).unwrap();
     let exception = v8::Exception::error(scope, msg);

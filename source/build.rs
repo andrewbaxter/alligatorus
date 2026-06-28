@@ -20,18 +20,10 @@ fn main() {
             Cell,
             RefCell
         };
-        use std::collections::HashMap;
         use dumpster::unsync::Gc;
-        use crate::langhelp::{
-            ExprContext,
-            Scope,
-            Unique,
-        };
+        use crate::langhelp::Unique;
         use crate::eval::definition_set::DefinitionSet;
-        use crate::eval::value::type_source_function::{
-            SourceFunctionData,
-            r#const::TypeSourceFunctionConst
-        };
+        use crate::eval::value::type_source_function::r#const::TypeSourceFunctionConst;
         use crate::eval::value::type_source_union::{
             SourceUnionData,
             SourceUnionRef,
@@ -40,14 +32,12 @@ fn main() {
         use crate::eval::value::type_source_union_new::SourceUnionNewRef;
         use crate::eval::value::type_source_object::{
             SourceDataMethodData,
-            SourceObjectData,
             SourceObjectInterfaceImplData,
             SourceObjectInterfaceMethodImplData,
             SourceObjectRef,
         };
         use crate::eval::value::type_source_object_new::TypeSourceObjectNewConst;
         use crate::eval::value::type_source_interface::{
-            SourceInterfaceData,
             SourceInterfaceMethodData,
             SourceInterfaceRef,
         };
@@ -66,8 +56,9 @@ fn main() {
     interface_specs.extend(buildsrc::traits::specs());
     interface_specs.extend(extra_iface_specs);
     buildsrc::interfaces::build(&mut out, &mut builtin_unique_ids, &mut scope_ids, interface_specs);
-    buildsrc::identities::build(&mut out, &mut builtin_unique_ids, &mut scope_ids);
+    buildsrc::identities::build(&mut out, &mut builtin_unique_ids);
     buildsrc::push_structs::build(&mut out, &mut builtin_unique_ids, buildsrc::traits::specs());
+    buildsrc::invisible_builtins::build(&mut out, &mut scope_ids);
     out.extend(tree_out);
     fs::write(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("gen.rs"), out.to_string()).unwrap();
 }

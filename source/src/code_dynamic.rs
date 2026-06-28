@@ -3,12 +3,14 @@ use crate::langhelp::{
     QExprId,
     BindingId,
 };
+pub(crate) use prefixes::{
+    BINDING_PREFIX,
+    BUILTIN_PREFIX,
+    DEF_PREFIX,
+    EXPR_PREFIX,
+    TAG_PREFIX,
+};
 
-pub(crate) const BINDING_PREFIX: &str = "a";
-pub(crate) const BUILTIN_PREFIX: &str = "b";
-pub(crate) const DEF_PREFIX: &str = "d";
-pub(crate) const EXPR_PREFIX: &str = "e";
-pub(crate) const TAG_PREFIX: &str = "t";
 pub(crate) const TAG_VAR: &str = "__tag";
 
 #[derive(Clone)]

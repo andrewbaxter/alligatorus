@@ -134,23 +134,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![("name", "String")],
                     ret: "SourceFuncResult",
                     body: quote!{
-                        let ds = self_.inner.clone();
-                        let entry_id = ds.next_entry_id.next();
-                        let func_data = Gc::new(SourceFunctionData {
-                            set: RefCell::new(Some(ds.clone())),
-                            name: Some(name),
-                            description: RefCell::new(None),
-                            exception_type: RefCell::new(None),
-                            impl_expr: RefCell::new(None),
-                            arg_type: RefCell::new(None),
-                            ret_type: RefCell::new(None),
-                            binding_id: Cell::new(Some(crate::langhelp::BindingId::Def(ds.def_set_id, entry_id,),)),
-                            artifact_id: RefCell::new(None),
-                            compiled_source: RefCell::new(None),
-                            captured_externals: RefCell::new(Vec::new()),
-                        });
-                        ds.functions.borrow_mut().push(func_data.clone());
-                        let func_ref = Rc::new(TypeSourceFunctionConst { data: func_data });
+                        let func_ref = crate::eval::value::type_source_function::register_in_set(&self_.inner, name);
                         SourceFuncResult { func_ref }
                     },
                 },
@@ -159,24 +143,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![("name", "String")],
                     ret: "SourceObjectResult",
                     body: quote!{
-                        let ds = self_.inner.clone();
                         let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
-                        let data_field = format!("_{}", ds.next_field_id.next());
-                        let dt_data = Gc::new(SourceObjectData {
-                            set: RefCell::new(Some(ds.clone())),
-                            name: Some(name),
-                            description: RefCell::new(None),
-                            underlying_type: crate::invariant::DeserialLazy::new(),
-                            methods: RefCell::new(Vec::new()),
-                            interface_impls: RefCell::new(Vec::new()),
-                            identity,
-                            data_field,
-                            artifact_id: RefCell::new(None),
-                            new_artifact_id: RefCell::new(None),
-                        });
-                        ds.objects.borrow_mut().push(dt_data.clone());
-                        let object_ref = Rc::new(SourceObjectRef { data: dt_data });
+                        let object_ref =
+                            crate::eval::value::type_source_object::register_in_set(&self_.inner, name, identity,);
                         SourceObjectResult { object_ref }
                     },
                 },
@@ -209,20 +179,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![],
                     ret: "SourceInterfaceResult",
                     body: quote!{
-                        let ds = self_.inner.clone();
                         let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
-                        let iface_data = Gc::new(SourceInterfaceData {
-                            artifact_id: RefCell::new(None),
-                            builtin_kind: None,
-                            set: RefCell::new(Some(ds.clone())),
-                            description: RefCell::new(None),
-                            is_aspect: Cell::new(false),
-                            methods: RefCell::new(Vec::new()),
-                            identity,
-                        });
-                        ds.interfaces.borrow_mut().push(iface_data.clone());
-                        let interface_ref = Rc::new(SourceInterfaceRef { data: iface_data });
+                        let interface_ref =
+                            crate::eval::value::type_source_interface::register_in_set(&self_.inner, identity,);
                         SourceInterfaceResult { interface_ref }
                     },
                 },
@@ -231,19 +191,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                     args: vec![],
                     ret: "DefinitionSetBuilder",
                     body: quote!{
-                        let ex = scope.get_slot::<crate::eval::DynamicEvalContextSlot>().unwrap().ex.clone();
-                        let xx = std::rc::Rc::new(crate::langhelp::ExprContext {
-                            vx: ex.clone(),
-                            import_state: std::rc::Rc::new(std::cell::Cell::new(ex.ix.import_state)),
-                            scope: std::rc::Rc::new(crate::langhelp::Scope {
-                                values: std::cell::RefCell::new(std::collections::HashMap::new()),
-                                parent: None,
-                            }),
-                            target: std::rc::Rc::new(crate::eval::TargetDynamic),
-                            current_exception_type: Some(
-                                std::rc::Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
-                            ),
-                        });
+                        let xx = scope.get_slot::<crate::eval::DynamicExprContextSlot>().unwrap().xx.clone();
                         if let Err(errors) = self_.inner.finish(&xx) {
                             crate::eval::dynamic_util::throw_error(
                                 scope,
@@ -288,23 +236,12 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                 args: vec![("unique", "Unique")],
                 ret: "OptionPush",
                 body: quote!{
-                    let ex_slot =
+                    let xx =
                         scope
-                            .get_slot::<crate::eval::DynamicEvalContextSlot>()
-                            .expect("TypeRefPush.aspect: DynamicEvalContextSlot not set");
-                    let import_state_id = ex_slot.ex.ix.import_state;
-                    let xx = Rc::new(ExprContext {
-                        vx: ex_slot.ex.clone(),
-                        import_state: Rc::new(Cell::new(import_state_id)),
-                        scope: Rc::new(Scope {
-                            values: RefCell::new(HashMap::new()),
-                            parent: None,
-                        }),
-                        target: Rc::new(crate::eval::TargetDynamic),
-                        current_exception_type: Some(
-                            Rc::new(crate::eval::value::type_string::dynamic::TypeStringDynamic)
-                        ),
-                    });
+                            .get_slot::<crate::eval::DynamicExprContextSlot>()
+                            .expect("TypeRefPush.aspect: DynamicExprContextSlot not set")
+                            .xx
+                            .clone();
                     let is_some = self_.type_ref.aspect(&xx, &unique).is_some();
                     OptionPush { is_some_inner: is_some }
                 },
@@ -618,16 +555,10 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                         let ds = self_.object_ref.data.set.borrow().as_ref().unwrap().clone();
                         let uc = scope.get_slot::<crate::eval::DynamicUniqueCounter>().unwrap();
                         let identity = Unique::Source(uc.compile_id.clone(), uc.counter.next());
-                        let iface_data = Gc::new(SourceInterfaceData {
-                            artifact_id: RefCell::new(None),
-                            builtin_kind: None,
-                            set: RefCell::new(Some(ds.clone())),
-                            description: RefCell::new(None),
-                            is_aspect: Cell::new(true),
-                            methods: RefCell::new(Vec::new()),
-                            identity: identity.clone(),
-                        });
-                        ds.interfaces.borrow_mut().push(iface_data.clone());
+                        let interface_ref =
+                            crate::eval::value::type_source_interface::register_in_set(&ds, identity.clone());
+                        let iface_data = interface_ref.data.clone();
+                        iface_data.is_aspect.set(true);
                         let iface_method_names: Vec<String> = {
                             record_entries.keys().map(|k| match k {
                                 crate::langhelp::ConstKey::String(s) => s.clone(),
@@ -720,7 +651,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             interface: iface_data.clone(),
                             method_impls,
                         });
-                        Rc::new(SourceInterfaceRef { data: iface_data })
+                        interface_ref
                     },
                 },
             ],

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+prefixes = { path = "prefixes" }
 aargvark = { version = "0.9", features = ["serde_json"] }
 dumpster = "2.1.0"
 flowcontrol = "0.2"
@@ -19,6 +20,7 @@ urlencoding = "2"
 v8 = "146"
 
 [build-dependencies]
+prefixes = { path = "prefixes" }
 genemichaels-lib = "0.5"
 quote = "1"
 proc-macro2 = "1"

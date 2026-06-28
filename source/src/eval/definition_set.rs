@@ -313,6 +313,32 @@ impl DefinitionSet {
         Ok(())
     }
 
+    pub fn install(
+        self_gc: &Gc<Self>,
+        xx: &ExprContext,
+        root_loc: QExprId,
+        code1: &mut crate::eval::DynamicSourceBuilder,
+    ) -> Result<bool, Vec<crate::langhelp::ExprErr>> {
+        let mut any = false;
+        for func_data in self_gc.functions.borrow().iter() {
+            if func_data.install(xx, root_loc, code1)? {
+                any = true;
+            }
+        }
+        for dt_data in self_gc.objects.borrow().iter() {
+            if crate::eval::value::type_source_object::SourceObjectData::install(
+                dt_data,
+                xx,
+                root_loc,
+                code1,
+                self_gc,
+            )? {
+                any = true;
+            }
+        }
+        Ok(any)
+    }
+
     pub fn new(def_set_id: DefSetId) -> Self {
         DefinitionSet {
             artifact_id: RefCell::new(None),

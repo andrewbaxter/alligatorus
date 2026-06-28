@@ -38,6 +38,20 @@ pub(crate) enum BuiltinInterfaceKind {
     Value,
 }
 
+pub(crate) fn register_in_set(ds: &Gc<DefinitionSet>, identity: Unique) -> Rc<SourceInterfaceRef> {
+    let iface_data = Gc::new(SourceInterfaceData {
+        artifact_id: RefCell::new(None),
+        builtin_kind: None,
+        set: RefCell::new(Some(ds.clone())),
+        description: RefCell::new(None),
+        is_aspect: Cell::new(false),
+        methods: RefCell::new(Vec::new()),
+        identity,
+    });
+    ds.interfaces.borrow_mut().push(iface_data.clone());
+    Rc::new(SourceInterfaceRef { data: iface_data })
+}
+
 pub(crate) struct SourceInterfaceData {
     pub artifact_id: RefCell<Option<crate::artifact::ArtifactIdSource>>,
     pub builtin_kind: Option<BuiltinInterfaceKind>,

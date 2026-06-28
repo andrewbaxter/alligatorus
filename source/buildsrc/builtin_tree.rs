@@ -133,6 +133,9 @@ pub fn emit_gen_builtin_tree(
     scope_ids: &mut HashSet<usize>,
     extra_iface_specs: &mut Vec<InterfaceSpec>,
 ) {
+    assert!(scope_ids.insert(ASPECT_COMPILE_SCOPE_ID));
+    assert!(scope_ids.insert(CAST_VALUE_COMPILE_SCOPE_ID));
+    assert!(scope_ids.insert(THROW_COMPILE_SCOPE_ID));
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
     let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
     let iface_aspect_function = InterfaceSpec {
@@ -410,11 +413,11 @@ pub fn emit_gen_builtin_tree(
                     });
                 }))),
                 ("define", leaf(push_fn(out, scope_ids, 5002, &[], "DefinitionSetBuilder", quote!{
-                    let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
-                    let compile_id = crate::langhelp::CompileId(ex_slot.ex.ix.import_state, ex_slot.ex.ix.source_id);
-                    let def_set_id = DefSetId(compile_id, ex_slot.ex.ix.def_set_counter.next());
+                    let ex = scope.get_slot::<DynamicExprContextSlot>().unwrap().xx.vx.clone();
+                    let compile_id = crate::langhelp::CompileId(ex.ix.import_state, ex.ix.source_id);
+                    let def_set_id = DefSetId(compile_id, ex.ix.def_set_counter.next());
                     let inner = Gc::new(DefinitionSet::new(def_set_id));
-                    ex_slot.ex.definition_sets.borrow_mut().insert(def_set_id, inner.clone());
+                    ex.definition_sets.borrow_mut().insert(def_set_id, inner.clone());
                     DefinitionSetBuilder { inner }
                 }))),
                 (
@@ -654,8 +657,9 @@ pub fn emit_gen_builtin_tree(
                                         &[("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
                                         "String",
                                         quote!{
-                                            let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
-                                            let id = ex_slot.ex.next_local_id.next();
+                                            let ex =
+                                                scope.get_slot::<DynamicExprContextSlot>().unwrap().xx.vx.clone();
+                                            let id = ex.next_local_id.next();
                                             format!("a{}", id)
                                         },
                                     ),
@@ -677,8 +681,8 @@ pub fn emit_gen_builtin_tree(
                                         ],
                                         "crate::eval::code_value_extern::ExprContextPush",
                                         quote!{
-                                            let ex_slot = scope.get_slot::<DynamicEvalContextSlot>().unwrap();
-                                            let parent_ex = ex_slot.ex.clone();
+                                            let parent_ex =
+                                                scope.get_slot::<DynamicExprContextSlot>().unwrap().xx.vx.clone();
                                             let mut scope_values: HashMap<ConstKey, Box<dyn crate::r#gen::Binding>> =
                                                 HashMap::new();
                                             for (k, v) in scope_arg {
@@ -882,7 +886,7 @@ fn submodule_prelude() -> TokenStream {
             Unique,
         };
         #[allow(unused_imports)]
-        use crate::eval::DynamicEvalContextSlot;
+        use crate::eval::DynamicExprContextSlot;
         #[allow(unused_imports)]
         use crate::eval::DynamicLogStore;
         #[allow(unused_imports)]
