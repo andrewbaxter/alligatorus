@@ -544,13 +544,11 @@ pub(crate) fn const_eval(xx: &ExprContext, expr: &Expr) -> EvalRes {
             });
             let base_type = erb.must_er(base.value.as_ref().unwrap().type_(xx, expr.loc))?;
             let aspect_field = erb.must_er(aspect_field_get(xx, expr.loc, base_type.as_ref()))?;
-            let extracted_key = field.value.as_ref().and_then(|v| {
-                extract_const_key(xx, expr.loc, v.as_ref()).ok()
-            });
+            let extracted_key = erb.must_res(extract_const_key(xx, expr.loc, field.value.as_deref().unwrap()))?;
             let mut sibling_drops: Vec<Code> = Vec::new();
             let field_keys = aspect_field.field_keys(xx);
             for key in field_keys {
-                if Some(&key) == extracted_key.as_ref() {
+                if key == extracted_key {
                     continue;
                 }
                 let key_value: Rc<dyn Value> = match &key {
