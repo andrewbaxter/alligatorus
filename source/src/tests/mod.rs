@@ -13,4 +13,5 @@ mod t0100_import;
 mod t0110_const_folding;
 mod t0120_impl_type;
 mod t0130_drop_throw;
+mod t0140_panic;
 mod t_nodejs;

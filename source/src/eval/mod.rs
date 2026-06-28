@@ -122,6 +122,7 @@ use {
 };
 
 const KEY_BUILTINS: &str = "builtins";
+pub(crate) const PANIC_MARKER_KEY: &str = "__panic__";
 
 pub(crate) fn binding_id_dynamic_key(e: BindingId) -> String {
     match e {
@@ -1615,7 +1616,23 @@ fn eval(
             let text;
             match dynamic_scope.exception() {
                 Some(e) => {
-                    text = e.to_rust_string_lossy(&dynamic_scope);
+                    let mut rendered = e.to_rust_string_lossy(&dynamic_scope);
+                    if let Ok(obj) = v8::Local::<v8::Object>::try_from(e) {
+                        if let Some(panic_key) = v8::String::new(&mut *dynamic_scope, PANIC_MARKER_KEY) {
+                            let panic_val = obj.get(&mut *dynamic_scope, panic_key.into());
+                            if panic_val.map_or(false, |v| v.boolean_value(&mut *dynamic_scope)) {
+                                if let Some(message_key) = v8::String::new(&mut *dynamic_scope, "message") {
+                                    if let Some(message_val) = obj.get(&mut *dynamic_scope, message_key.into()) {
+                                        if !message_val.is_undefined() && !message_val.is_null() {
+                                            let message_text = message_val.to_rust_string_lossy(&mut *dynamic_scope);
+                                            rendered = format!("panic: {}", message_text);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    text = rendered;
                 },
                 None => {
                     text = format!("Script failed to return, but no exception captured (compiler bug)");
@@ -1981,6 +1998,16 @@ pub(crate) fn render_code(lines: &mut DynamicSourceBuilder, code: &CodeDynamic) 
             if let Some(catch) = &c.catch {
                 let bind_key = binding_id_dynamic_key(catch.binding);
                 lines.push(code.loc, format!("}} catch ({}) {{", bind_key));
+                lines.push(
+                    code.loc,
+                    format!(
+                        "if ({} && {}[{}]) {{ throw {}; }}",
+                        bind_key,
+                        bind_key,
+                        serde_json::to_string(PANIC_MARKER_KEY).unwrap(),
+                        bind_key,
+                    ),
+                );
                 let catch_var = render_code(lines, &catch.body);
                 lines.push(code.loc, format!("{} = {};", out, catch_var));
             }

@@ -316,6 +316,7 @@ impl ExporterRootDelegate for TypeSourceInterfaceConst {
                             field_name: m.field_name.clone(),
                             name: m.name.clone(),
                             ret_type: std::cell::RefCell::new(None),
+                            data_field_names: Vec::new(),
                         })
                     }).collect();
                     let iface_data = dumpster::unsync::Gc::new(super::SourceInterfaceData {

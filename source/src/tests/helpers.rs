@@ -326,6 +326,11 @@ impl ModuleBuilder {
         };
     }
 
+    #[allow(dead_code)]
+    pub fn panic(&self, message: SourceExpr) -> SourceExpr {
+        return self.call(self.builtin(&["panic"]), message);
+    }
+
     pub fn record(&self, entries: Vec<(&str, SourceExpr)>) -> SourceExpr {
         return SourceExpr {
             id: self.id(),

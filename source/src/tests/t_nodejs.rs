@@ -388,39 +388,15 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                         ],
                     ),
                 ),
-                (
-                    "bind_sub_record",
-                    mb.record(
-                        vec![
-                            ("carry", mb.field(mb.scope_use("arg"), mb.str("carry"))),
-                            ("fields", mb.field(mb.scope_use("arg"), mb.str("fields"))),
-                        ],
-                    ),
-                ),
-                (
-                    "bind_sub_tuple",
-                    mb.record(
-                        vec![
-                            ("carry", mb.field(mb.scope_use("arg"), mb.str("carry"))),
-                            ("elements", mb.field(mb.scope_use("arg"), mb.str("elements"))),
-                        ],
-                    ),
-                ),
+                ("bind_sub_record", mb.panic(mb.str("ntarget.bind_sub_record not implemented"))),
+                ("bind_sub_tuple", mb.panic(mb.str("ntarget.bind_sub_tuple not implemented"))),
                 (
                     "seq",
                     mb.call(mb.field(mb.call(mb.types_option(), mb.types_codedyn()), mb.str("none")), mb.null()),
                 ),
-                (
-                    "code_to_bind_sub",
-                    mb.record(
-                        vec![
-                            ("code", mb.field(mb.scope_use("arg"), mb.str("code"))),
-                            ("type", mb.field(mb.scope_use("arg"), mb.str("type"))),
-                        ],
-                    ),
-                ),
-                ("if", mb.field(mb.scope_use("arg"), mb.str("xx"))),
-                ("match", mb.field(mb.scope_use("arg"), mb.str("xx"))),
+                ("code_to_bind_sub", mb.panic(mb.str("ntarget.code_to_bind_sub not implemented"))),
+                ("if", mb.panic(mb.str("ntarget.if not implemented"))),
+                ("match", mb.panic(mb.str("ntarget.match not implemented"))),
                 (
                     "maybe_bind_sub",
                     mb.call(
@@ -428,7 +404,7 @@ fn build_nodejs(mb: &ModuleBuilder) -> SourceExpr {
                         mb.field(mb.scope_use("arg"), mb.str("cv")),
                     ),
                 ),
-                ("stage", mb.field(mb.scope_use("arg"), mb.str("xx"))),
+                ("stage", mb.panic(mb.str("ntarget.stage not implemented"))),
                 (
                     "cast_exception",
                     mb.call(mb.field(mb.call(mb.types_option(), mb.types_codedyn()), mb.str("none")), mb.null()),

@@ -50,7 +50,7 @@ pub enum MethodArgs {
 }
 
 pub struct MethodSig {
-    pub context: Vec<(&'static str, TokenStream)>,
+    pub context: Vec<(&'static str, TypeRef)>,
     pub data: Vec<(&'static str, TypeRef)>,
 }
 
@@ -104,6 +104,15 @@ impl TypeRef {
                 <#tokens as crate:: eval:: push:: Push >:: dynamic_type()
             },
             path: tokens,
+        }
+    }
+
+    pub fn via_push_as(rust_path: TokenStream, push_type: TokenStream) -> Self {
+        TypeRef {
+            dynamic_type: quote!{
+                <#push_type as crate:: eval:: push:: Push >:: dynamic_type()
+            },
+            path: rust_path,
         }
     }
 }

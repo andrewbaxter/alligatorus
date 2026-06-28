@@ -22,6 +22,7 @@ pub mod type_null;
 pub mod type_number;
 pub mod type_option;
 pub mod type_option_constructor;
+pub mod type_panic;
 pub mod type_pull;
 pub mod type_record;
 pub mod type_root;

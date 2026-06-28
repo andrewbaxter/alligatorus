@@ -417,6 +417,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                             arg_record_type: RefCell::new(None),
                             ret_type: RefCell::new(None),
                             field_name,
+                            data_field_names: Vec::new(),
                         });
                         iface_data.methods.borrow_mut().push(method.clone());
                         SourceInterfaceMethodResult { method, }
@@ -582,6 +583,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 arg_record_type: RefCell::new(None),
                                 ret_type: RefCell::new(Some(any_type.clone())),
                                 field_name,
+                                data_field_names: Vec::new(),
                             }));
                         }
                         let aspect_unique_field =
@@ -597,6 +599,7 @@ pub fn build(out: &mut TokenStream, builtin_unique_ids: &mut HashSet<usize>, tra
                                 )
                             ),
                             field_name: aspect_unique_field,
+                            data_field_names: Vec::new(),
                         }));
                         *iface_data.methods.borrow_mut() = methods;
                         let dt_data = &self_.object_ref.data;

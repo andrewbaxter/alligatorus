@@ -112,6 +112,22 @@ where
     }
 }
 
+impl Push for (SourceId, ExprId) {
+    fn dynamic_type() -> Rc<dyn Type> {
+        Rc::new(TypeStringDynamic)
+    }
+
+    fn from_dynamic<
+        's,
+    >(_scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>, _value: v8::Local<'s, v8::Value>) -> Self {
+        unimplemented!("QExprId::from_dynamic: cross-dynamic QExprId transfer not yet wired");
+    }
+
+    fn into_dynamic<'s>(self, _scope: &mut v8::PinnedRef<'s, v8::HandleScope<'_>>) -> v8::Local<'s, v8::Value> {
+        unimplemented!("QExprId::into_dynamic: cross-dynamic QExprId transfer not yet wired");
+    }
+}
+
 impl Push for BindingId {
     fn dynamic_type() -> Rc<dyn Type> {
         Rc::new(TypeStringDynamic)

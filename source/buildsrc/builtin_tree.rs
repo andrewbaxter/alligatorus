@@ -16,6 +16,7 @@ use {
 
 const ASPECT_COMPILE_SCOPE_ID: usize = 7023;
 const CAST_VALUE_COMPILE_SCOPE_ID: usize = 7024;
+const PANIC_COMPILE_SCOPE_ID: usize = 7026;
 const THROW_COMPILE_SCOPE_ID: usize = 7025;
 
 fn any_const(type_tokens: TokenStream) -> TokenStream {
@@ -136,6 +137,7 @@ pub fn emit_gen_builtin_tree(
     assert!(scope_ids.insert(ASPECT_COMPILE_SCOPE_ID));
     assert!(scope_ids.insert(CAST_VALUE_COMPILE_SCOPE_ID));
     assert!(scope_ids.insert(THROW_COMPILE_SCOPE_ID));
+    assert!(scope_ids.insert(PANIC_COMPILE_SCOPE_ID));
     let any = || TypeRef::unit(quote!(crate::eval::value::type_any::dynamic::TypeAnyDynamic));
     let cve = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeCodeValueExternDynamic));
     let iface_aspect_function = InterfaceSpec {
@@ -205,8 +207,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!(crate::langhelp::CodeValue)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![("code", TypeRef::via_push(quote!(crate::langhelp::Code)))],
                 }),
@@ -230,8 +238,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!((crate::langhelp::Code, crate::langhelp::BindingId))),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![("sub", TypeRef::via_push(quote!(crate::eval::dynamic::target::TargetBindSub)))],
                 }),
@@ -239,7 +253,7 @@ pub fn emit_gen_builtin_tree(
                 name: "bind_sub_record",
                 ret_type: TypeRef::via_push(quote!(crate::eval::dynamic::target::TargetBindSub)),
                 args: MethodArgs::Rust(MethodSig {
-                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    context: vec![("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId)))],
                     data: vec![
                         ("carry", TypeRef::via_push(quote!(crate::langhelp::Code))),
                         (
@@ -254,7 +268,7 @@ pub fn emit_gen_builtin_tree(
                 name: "bind_sub_tuple",
                 ret_type: TypeRef::via_push(quote!(crate::eval::dynamic::target::TargetBindSub)),
                 args: MethodArgs::Rust(MethodSig {
-                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    context: vec![("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId)))],
                     data: vec![
                         ("carry", TypeRef::via_push(quote!(crate::langhelp::Code))),
                         (
@@ -267,7 +281,7 @@ pub fn emit_gen_builtin_tree(
                 name: "seq",
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
                 args: MethodArgs::Rust(MethodSig {
-                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    context: vec![("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId)))],
                     data: vec![("entries", TypeRef::opaque(quote!(Vec < crate:: langhelp:: Code >)))],
                 }),
             }, Method {
@@ -276,7 +290,7 @@ pub fn emit_gen_builtin_tree(
                     quote!(crate:: langhelp:: EResult < crate:: eval:: dynamic:: target:: TargetBindSub >),
                 ),
                 args: MethodArgs::Rust(MethodSig {
-                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    context: vec![("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId)))],
                     data: vec![
                         ("code", TypeRef::via_push(quote!(crate::langhelp::Code))),
                         ("type_", TypeRef::opaque(quote!(std:: rc:: Rc < dyn crate:: langhelp:: Type >))),
@@ -287,8 +301,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![
                         (
@@ -303,8 +323,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![
                         ("base", TypeRef::opaque(quote!(crate::langhelp::CodeValue))),
@@ -331,8 +357,14 @@ pub fn emit_gen_builtin_tree(
                 ),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![("cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue)))],
                 }),
@@ -341,8 +373,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: CodeValue >)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![
                         ("tree", TypeRef::via_push(quote!(crate::eval::expr::Expr))),
@@ -355,8 +393,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![
                         ("call_code", TypeRef::via_push(quote!(crate::langhelp::Code))),
@@ -369,8 +413,14 @@ pub fn emit_gen_builtin_tree(
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
                 args: MethodArgs::Rust(MethodSig {
                     context: vec![
-                        ("xx", quote!(&crate::langhelp::ExprContext)),
-                        ("loc", quote!(crate::langhelp::QExprId)),
+                        (
+                            "xx",
+                            TypeRef::via_push_as(
+                                quote!(&crate::langhelp::ExprContext),
+                                quote!(crate::eval::code_value_extern::ExprContextPush),
+                            ),
+                        ),
+                        ("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId))),
                     ],
                     data: vec![("cv", TypeRef::opaque(quote!(crate::langhelp::CodeValue)))],
                 }),
@@ -378,7 +428,7 @@ pub fn emit_gen_builtin_tree(
                 name: "try_finally",
                 ret_type: TypeRef::via_push(quote!(crate:: langhelp:: EResult < crate:: langhelp:: Code >)),
                 args: MethodArgs::Rust(MethodSig {
-                    context: vec![("loc", quote!(crate::langhelp::QExprId))],
+                    context: vec![("loc", TypeRef::via_push(quote!(crate::langhelp::QExprId)))],
                     data: vec![
                         ("body", TypeRef::via_push(quote!(crate::langhelp::Code))),
                         ("finally", TypeRef::via_push(quote!(crate::langhelp::Code))),
@@ -407,6 +457,15 @@ pub fn emit_gen_builtin_tree(
                         initial_bind(
                             THROW_COMPILE_SCOPE_ID,
                             quote!(crate::eval::value::type_throw::dynamic::TypeThrowDynamic),
+                        ),
+                    ),
+                ),
+                (
+                    "panic",
+                    leaf(
+                        initial_bind(
+                            PANIC_COMPILE_SCOPE_ID,
+                            quote!(crate::eval::value::type_panic::dynamic::TypePanicDynamic),
                         ),
                     ),
                 ),
@@ -661,7 +720,7 @@ pub fn emit_gen_builtin_tree(
                                         out,
                                         scope_ids,
                                         5006,
-                                        &[("_xx", "crate::eval::code_value_extern::CodeValueExtern")],
+                                        &[("_xx", "crate::eval::code_value_extern::ExprContextPush")],
                                         "String",
                                         quote!{
                                             let ex =

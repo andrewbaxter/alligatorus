@@ -47,6 +47,23 @@ pub fn build(
         let methods_expr_items: Vec<TokenStream> = iface.methods.iter().enumerate().map(|(idx, m)| {
             let name = m.name.trim_end_matches('_');
             let field_name = format!("_im_{}{}", prefix, idx);
+            let data_field_names: Vec<String> = match &m.args {
+                MethodArgs::Rust(rs) => {
+                    rs
+                        .context
+                        .iter()
+                        .chain(rs.data.iter())
+                        .map(|(n, _)| n.trim_end_matches('_').to_string())
+                        .collect()
+                },
+                MethodArgs::Source(fields) => {
+                    fields.iter().map(|(n, _)| n.trim_end_matches('_').to_string()).collect()
+                },
+            };
+            let data_field_names_expr = {
+                let entries: Vec<TokenStream> = data_field_names.iter().map(|n| quote!(#n.to_string())).collect();
+                quote!(vec![#(#entries), *])
+            };
             let arg_dynamic_type = match &m.args {
                 MethodArgs::Source(_) => {
                     quote!{
@@ -56,7 +73,7 @@ pub fn build(
                 },
                 MethodArgs::Rust(rs) => {
                     let dynamic_types: Vec<TokenStream> =
-                        rs.data.iter().map(|(_, t)| t.dynamic_type.clone()).collect();
+                        rs.context.iter().chain(rs.data.iter()).map(|(_, t)| t.dynamic_type.clone()).collect();
                     crate::buildsrc::util::arg_dynamic_type_expr(&dynamic_types)
                 },
             };
@@ -93,6 +110,7 @@ pub fn build(
                     arg_record_type: std:: cell:: RefCell:: new(#arg_record_dynamic_type),
                     ret_type: std:: cell:: RefCell:: new(Some(#ret)),
                     field_name: #field_name.to_string(),
+                    data_field_names: #data_field_names_expr,
                 })
             }
         }).collect();
@@ -155,7 +173,7 @@ pub fn build(
                     rs
                         .context
                         .iter()
-                        .map(|(n, ty)| (n, ty.clone()))
+                        .map(|(n, t)| (n, t.path.clone()))
                         .chain(rs.data.iter().map(|(n, t)| (n, t.path.clone())))
                         .map(|(n, ty)| {
                             let name = format_ident!("{}", n);

@@ -392,6 +392,15 @@ impl AspectConsumeDynamic for TypeExprContextPushDynamic {
     }
 }
 
+impl AspectInitialBind for TypeExprContextPushDynamic {
+    fn initial_bind(&self, dynamic_key: crate::langhelp::BindingId) -> Box<dyn Binding> {
+        Box::new(BindingDynamicBinding {
+            dynamic_key,
+            type_: Rc::new(TypeExprContextPushDynamic),
+        })
+    }
+}
+
 impl AspectStackValueDynamic for TypeExprContextPushDynamic {
     fn to_value(&self, loc: QExprId, value: CodeDynamic) -> CodeValue {
         dynamic_stack_to_value(loc, value, Rc::new(TypeExprContextPushDynamic))
@@ -428,6 +437,9 @@ impl Type for TypeExprContextPushDynamic {
         }
         if *key == aspect_stack_value_dynamic_aspect_id() {
             return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectStackValueDynamic>));
+        }
+        if *key == aspect_initial_bind_aspect_id() {
+            return Some(Box::new(Box::new(TypeExprContextPushDynamic) as Box<dyn AspectInitialBind>));
         }
         if *key == crate::r#gen::aspect_post_deserialize_aspect_id() {
             return Some(
