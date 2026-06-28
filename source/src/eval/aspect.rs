@@ -8,6 +8,7 @@ use {
         },
         langhelp::{
             Aspect,
+            Code,
             CodeValue,
             ConstKey,
             EResult,
@@ -18,9 +19,11 @@ use {
             Value,
         },
         r#gen::{
+            AspectDropDynamic,
             AspectField,
             AspectFunction,
             AspectPostDeserialize,
+            IM_ASPECT_DROP_DYNAMIC_DROP_FIELD,
             IM_ASPECT_FIELD_FIELD_FIELD,
             IM_ASPECT_FUNCTION_CALL_FIELD,
         },
@@ -55,6 +58,26 @@ impl AspectField for AspectPull {
 
     fn field_keys(&self, _xx: &crate::langhelp::ExprContext) -> Vec<crate::langhelp::ConstKey> {
         Vec::new()
+    }
+}
+
+impl AspectDropDynamic for AspectPull {
+    fn drop(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<Code> {
+        let res =
+            dispatch_aspect_method(
+                &self.bundle,
+                xx,
+                loc,
+                IM_ASPECT_DROP_DYNAMIC_DROP_FIELD,
+                vec![("inner".to_string(), cv)],
+            );
+        match res.into_res() {
+            Ok(cv) => EResult::ok(cv.code),
+            Err(e) => EResult {
+                errors: Some(e),
+                v: None,
+            },
+        }
     }
 }
 

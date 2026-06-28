@@ -126,10 +126,6 @@ impl AspectFunction for TypeSourceObjectNewConst {
                 }));
             }
             for impl_data in self.data.interface_impls.borrow().iter() {
-                if impl_data.interface.builtin_kind ==
-                    Some(super::super::type_source_interface::BuiltinInterfaceKind::AspectDropDynamic) {
-                    continue;
-                }
                 let iface_methods = impl_data.interface.methods.borrow();
                 for method_impl in &impl_data.method_impls {
                     let iface_method = &iface_methods[method_impl.interface_method_index];

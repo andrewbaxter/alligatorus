@@ -15,40 +15,107 @@ use {
     },
 };
 
-/// Build a source-level definition of an object type with a drop implementation.
-/// The drop impl body is the source expression `call(log, str(drop_message))` —
-/// at drop dispatch the glue const-evals this body with `inner` in scope, getting
-/// the log call code with null result type. Returns the SourceExpr that, when
-/// evaluated in a lower context, produces the constructor `(underlying) -> Counter`.
-fn make_counter_ctor(mb: &ModuleBuilder, name: &str, drop_message: &str) -> SourceExpr {
-    return mb.lower(
-        mb.seq(
-            vec![
-                mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
-                mb.bind("ndr", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str(name))),
-                mb.call(mb.field(mb.scope_use("ndr"), mb.str("set_inner")), mb.types_string()),
-                mb.call(
-                    mb.field(mb.scope_use("ndr"), mb.str("impl_interface")),
-                    mb.tuple(
-                        vec![
-                            mb.builtin(&["eval", "aspect_drop_dynamic"]),
-                            mb.call(
-                                mb.field(
-                                    mb.call(mb.types_map(), mb.tuple(vec![mb.types_constkey(), mb.types_expr()])),
-                                    mb.str("new"),
-                                ),
-                                mb.record(
-                                    vec![("drop", mb.stage(mb.call(mb.log(), mb.str(drop_message))))],
-                                ),
-                            ),
-                        ],
-                    ),
-                ),
-                mb.field(mb.scope_use("ndr"), mb.str("new")),
-            ],
-        ),
+fn iface_methods(mb: &ModuleBuilder, methods: Vec<(&str, SourceExpr)>) -> SourceExpr {
+    let entries: Vec<(&str, SourceExpr)> = methods.into_iter().map(|(k, v)| (k, mb.stage(v))).collect();
+    return mb.call(
+        mb.field(mb.call(mb.types_map(), mb.tuple(vec![mb.types_constkey(), mb.types_expr()])), mb.str("new")),
+        mb.record(entries),
     );
 }
+
+fn make_counter_instance(mb: &ModuleBuilder, name: &str, drop_message: &str) -> SourceExpr {
+    return mb.call(
+        mb.lower(
+            mb.seq(
+                vec![
+                    mb.bind("d", mb.call(mb.define(), mb.tuple(vec![]))),
+                    mb.bind("u", mb.call(mb.field(mb.scope_use("d"), mb.str("object")), mb.str(name))),
+                    mb.call(mb.field(mb.scope_use("u"), mb.str("set_inner")), mb.types_null()),
+                    mb.call(
+                        mb.field(mb.scope_use("u"), mb.str("value")),
+                        iface_methods(mb, vec![("type", mb.scope_use("inner"))]),
+                    ),
+                    mb.call(
+                        mb.field(mb.scope_use("u"), mb.str("type")),
+                        iface_methods(
+                            mb,
+                            vec![
+                                (
+                                    "can_cast_from",
+                                    mb.seq(
+                                        vec![
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.field(mb.scope_use("arg"), mb.str("source_type")),
+                                                            mb.str("aspect"),
+                                                        ),
+                                                        mb.eval_aspect_string_dynamic(),
+                                                    ),
+                                                    mb.str("is_some"),
+                                                ),
+                                                mb.tuple(vec![]),
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                                (
+                                    "cast_from",
+                                    mb.call(
+                                        mb.eval_const_eval(),
+                                        mb.tuple(
+                                            vec![
+                                                mb.field(mb.scope_use("arg"), mb.str("xx")),
+                                                mb.stage(mb.graft(mb.field(mb.scope_use("arg"), mb.str("cv")))),
+                                            ],
+                                        ),
+                                    ),
+                                ),
+                                ("desc", mb.seq(vec![mb.str(name)])),
+                                (
+                                    "aspect",
+                                    mb.call(
+                                        mb.field(mb.call(mb.types_option(), mb.types_aspect()), mb.str("none")),
+                                        mb.null(),
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                    mb.call(
+                        mb.field(mb.scope_use("u"), mb.str("impl_interface")),
+                        mb.tuple(
+                            vec![
+                                mb.builtin(&["eval", "aspect_drop_dynamic"]),
+                                iface_methods(
+                                    mb,
+                                    vec![
+                                        (
+                                            "drop",
+                                            mb.call(
+                                                mb.eval_const_eval(),
+                                                mb.tuple(
+                                                    vec![
+                                                        mb.field(mb.scope_use("arg"), mb.str("xx")),
+                                                        mb.stage(mb.call(mb.log(), mb.str(drop_message))),
+                                                    ],
+                                                ),
+                                            ),
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ),
+                    mb.field(mb.scope_use("u"), mb.str("new")),
+                ],
+            ),
+        ),
+        mb.null(),
+    );
+}
+
 
 #[test]
 fn test_01400_end_of_scope_drop_runtime() {
@@ -59,8 +126,8 @@ fn test_01400_end_of_scope_drop_runtime() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("make_counter", make_counter_ctor(&mb, "Counter", "dropped")),
-                    mb.bind("ctr", mb.call(mb.scope_use("make_counter"), mb.str("X"))),
+                    mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
+                    mb.bind("ctr", mb.as_(mb.as_(mb.str("X"), mb.types_string()), mb.scope_use("counter"))),
                     mb.call(mb.log(), mb.str("after")),
                 ],
             ),
@@ -89,8 +156,8 @@ fn test_01410_discarded_seq_entry_runtime() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("make_counter", make_counter_ctor(&mb, "Counter", "dropped")),
-                    mb.call(mb.scope_use("make_counter"), mb.str("Y")),
+                    mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
+                    mb.as_(mb.as_(mb.str("Y"), mb.types_string()), mb.scope_use("counter")),
                     mb.call(mb.log(), mb.str("after")),
                 ],
             ),
@@ -115,14 +182,14 @@ fn test_01420_field_sibling_drop_runtime() {
         SourceModule::V1(
             mb.seq(
                 vec![
-                    mb.bind("make_a", make_counter_ctor(&mb, "CounterA", "dropped_a")),
-                    mb.bind("make_b", make_counter_ctor(&mb, "CounterB", "dropped_b")),
+                    mb.bind("counter_a", mb.lower(make_counter_instance(&mb, "CounterA", "dropped_a"))),
+                    mb.bind("counter_b", mb.lower(make_counter_instance(&mb, "CounterB", "dropped_b"))),
                     mb.bind(
                         "rec",
                         mb.record(
                             vec![
-                                ("a", mb.call(mb.scope_use("make_a"), mb.str("A"))),
-                                ("b", mb.call(mb.scope_use("make_b"), mb.str("B"))),
+                                ("a", mb.as_(mb.as_(mb.str("A"), mb.types_string()), mb.scope_use("counter_a"))),
+                                ("b", mb.as_(mb.as_(mb.str("B"), mb.types_string()), mb.scope_use("counter_b"))),
                             ],
                         ),
                     ),
@@ -155,8 +222,8 @@ fn test_01430_drop_on_throw_runtime() {
             mb.try_(
                 mb.seq(
                     vec![
-                        mb.bind("make_counter", make_counter_ctor(&mb, "Counter", "dropped")),
-                        mb.bind("ctr", mb.call(mb.scope_use("make_counter"), mb.str("Z"))),
+                        mb.bind("counter", mb.lower(make_counter_instance(&mb, "Counter", "dropped"))),
+                        mb.bind("ctr", mb.as_(mb.as_(mb.str("Z"), mb.types_string()), mb.scope_use("counter"))),
                         mb.throw(mb.str("boom")),
                     ],
                 ),

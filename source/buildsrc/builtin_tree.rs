@@ -169,6 +169,7 @@ pub fn emit_gen_builtin_tree(
             args: MethodArgs::Source(vec![("key", cve())]),
         }],
     };
+    let xx_ref = || TypeRef::unit(quote!(crate::eval::code_value_extern::TypeExprContextPushDynamic));
     let iface_aspect_drop_dynamic = InterfaceSpec {
         name: "aspect_drop_dynamic",
         builtin_unique_id: 2008,
@@ -181,7 +182,7 @@ pub fn emit_gen_builtin_tree(
         methods: vec![Method {
             name: "drop",
             ret_type: cve(),
-            args: MethodArgs::Source(vec![("inner", cve())]),
+            args: MethodArgs::Source(vec![("xx", xx_ref()), ("inner", cve())]),
         }],
     };
     let iface_binding = {

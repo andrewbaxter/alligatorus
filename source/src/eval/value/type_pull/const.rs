@@ -359,6 +359,52 @@ impl Type for TypePull {
     }
 
     fn aspect(&self, xx: &ExprContext, key: &Unique) -> Option<Box<dyn Any>> {
+        if *key == crate::r#gen::aspect_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypePullAspectImpls { type_: self.clone() }) as Box<dyn crate::r#gen::AspectBind>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_bind_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypePullAspectImpls { type_: self.clone() }) as
+                        Box<dyn crate::r#gen::AspectBindDynamic>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_initial_bind_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypePullAspectImpls { type_: self.clone() }) as
+                        Box<dyn crate::r#gen::AspectInitialBind>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_consume_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypePullAspectImpls { type_: self.clone() }) as
+                        Box<dyn crate::r#gen::AspectConsumeDynamic>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_lift_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypePullAspectImpls { type_: self.clone() }) as Box<dyn crate::r#gen::AspectLift>,
+                ),
+            );
+        }
+        if *key == crate::r#gen::aspect_stack_value_dynamic_aspect_id() {
+            return Some(
+                Box::new(
+                    Box::new(TypePullAspectImpls { type_: self.clone() }) as
+                        Box<dyn crate::r#gen::AspectStackValueDynamic>,
+                ),
+            );
+        }
         if *key == aspect_artifact_aspect_id() {
             return Some(Box::new(Box::new(TypePull {
                 data: self.data.clone(),
@@ -376,6 +422,20 @@ impl Type for TypePull {
                         iface_ref: Rc::new(SourceInterfaceRef { data: impl_data.interface.clone() }),
                         bundle: Some(bundle.clone()),
                     }) as Box<dyn AspectField>));
+                }
+            }
+            if *key == crate::r#gen::aspect_drop_dynamic_aspect_id() {
+                let has_drop = interface_impls.iter().any(|i| {
+                    i.interface.builtin_kind ==
+                        Some(crate::eval::value::type_source_interface::BuiltinInterfaceKind::AspectDropDynamic)
+                });
+                if has_drop {
+                    return Some(
+                        Box::new(
+                            Box::new(crate::eval::aspect::AspectPull { bundle: bundle.clone() }) as
+                                Box<dyn crate::r#gen::AspectDropDynamic>,
+                        ),
+                    );
                 }
             }
         }
@@ -400,6 +460,10 @@ impl Type for TypePull {
         None
     }
 
+    fn can_cast_to(&self, _xx: &ExprContext, _loc: QExprId, _type_: &dyn Type) -> bool {
+        true
+    }
+
     fn can_cast_from(&self, xx: &ExprContext, loc: QExprId, source_type: &dyn Type) -> bool {
         let bundle = self.bundle.borrow();
         let bundle = bundle.as_ref().expect("TypePull::can_cast_from called before bundle populated");
@@ -409,15 +473,119 @@ impl Type for TypePull {
     fn cast_from(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EvalRes {
         let bundle = self.bundle.borrow();
         let bundle = bundle.as_ref().expect("TypePull::cast_from called before bundle populated");
-        pull_cast_from_v8(&self.data, bundle, xx, loc, cv)
+        let inner = pull_cast_from_v8(&self.data, bundle, xx, loc, cv);
+        let cv = match inner.into_res() {
+            Ok(cv) => cv,
+            Err(e) => return EvalRes {
+                v: None,
+                errors: Some(e),
+            },
+        };
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Some(
+                Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                    source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                    type_: Rc::new(self.clone()),
+                }),
+            ),
+        })
     }
 
-    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, _cv: CodeValue, _type_: &dyn Type) -> EvalRes {
-        EvalRes::err(loc, format!("Cannot convert {}", self.desc()))
+    fn cast_to(&self, _xx: &ExprContext, loc: QExprId, cv: CodeValue, type_: &dyn Type) -> EvalRes {
+        let Some(dest_rc) = type_.clone_rc() else {
+            return EvalRes::err(loc, format!("Cannot clone dest type {}", type_.desc()));
+        };
+        EvalRes::ok(CodeValue {
+            code: cv.code,
+            value: Some(
+                Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                    source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                    type_: dest_rc,
+                }),
+            ),
+        })
     }
 
     fn desc(&self) -> String {
         pull_desc(&self.data)
+    }
+}
+
+pub(crate) struct TypePullAspectImpls {
+    pub type_: TypePull,
+}
+
+impl crate::langhelp::Aspect for TypePullAspectImpls { }
+
+impl crate::r#gen::AspectBind for TypePullAspectImpls {
+    fn bind(&self, xx: &ExprContext, loc: QExprId, cv: CodeValue) -> EResult<(crate::langhelp::Code, Box<dyn crate::r#gen::Binding>)> {
+        crate::eval::dynamic_util::bind_via_target(xx, loc, cv)
+    }
+}
+
+impl crate::r#gen::AspectBindDynamic for TypePullAspectImpls {
+    fn bind_dynamic(
+        &self,
+        xx: &ExprContext,
+        loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<Option<crate::eval::TargetBindSub>> {
+        crate::eval::dynamic_util::bind_dynamic_default(xx, loc, cv)
+    }
+}
+
+impl crate::r#gen::AspectInitialBind for TypePullAspectImpls {
+    fn initial_bind(&self, dynamic_key: crate::langhelp::BindingId) -> Box<dyn crate::r#gen::Binding> {
+        Box::new(crate::eval::value::type_binding::dynamic::BindingDynamicBinding {
+            dynamic_key,
+            type_: Rc::new(self.type_.clone()),
+        })
+    }
+}
+
+impl crate::r#gen::AspectConsumeDynamic for TypePullAspectImpls {
+    fn to_dynamic(
+        &self,
+        _xx: &ExprContext,
+        _loc: QExprId,
+        cv: CodeValue,
+    ) -> EResult<crate::code_dynamic::CodeDynamic> {
+        cv.code.cast::<crate::code_dynamic::CodeDynamic>().map(|x| x.unwrap().clone())
+    }
+}
+
+impl crate::r#gen::AspectLift for TypePullAspectImpls {
+    fn lift(
+        &self,
+        xx: &ExprContext,
+        scope: &v8::PinScope,
+        value: v8::Local<v8::Value>,
+    ) -> Result<Rc<dyn Value>, String> {
+        let underlying_type = self.type_.data.underlying_type.get().clone();
+        let underlying_lift =
+            crate::r#gen::aspect_lift_get_maybe(
+                xx,
+                underlying_type.as_ref(),
+            ).ok_or_else(|| format!("Underlying type ({}) missing AspectLift", underlying_type.desc()))?;
+        underlying_lift.lift(xx, scope, value)
+    }
+}
+
+impl crate::r#gen::AspectStackValueDynamic for TypePullAspectImpls {
+    fn to_value(&self, loc: QExprId, value: crate::code_dynamic::CodeDynamic) -> CodeValue {
+        CodeValue {
+            code: crate::langhelp::Code {
+                loc,
+                code: crate::langhelp::Code_::Dyn(Rc::new(value)),
+            },
+            value: Some(
+                Rc::new(crate::eval::value::value_dynamic::ValueDynamic {
+                    source: crate::eval::value::value_dynamic::ValueDynamicSource::Expr,
+                    type_: Rc::new(self.type_.clone()),
+                }),
+            ),
+        }
     }
 }
 
