@@ -28,7 +28,6 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.code;
     exports compilerxyz.eval.value.code_value_extern;
     exports compilerxyz.eval.value.constkey;
-    exports compilerxyz.eval.value.empty;
     exports compilerxyz.eval.value.expr;
     exports compilerxyz.eval.value.function;
     exports compilerxyz.eval.value.list;

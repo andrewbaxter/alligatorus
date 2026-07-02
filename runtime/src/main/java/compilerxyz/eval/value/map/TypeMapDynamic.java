@@ -43,7 +43,6 @@ import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.ValueAnyConst;
-import compilerxyz.eval.value.empty.ValueEmptyConst;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.number.ValueNumberConst;
 import compilerxyz.eval.value.record.Record;
@@ -178,7 +177,8 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           }
           yield EResult.ok(
               new CodeValue(
-                  Code.of(loc, selfDyn), Opt.some(new ValueEmptyConst(g.type()))));
+                  Code.of(loc, selfDyn),
+                  Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), g.type()))));
         }
       };
     }

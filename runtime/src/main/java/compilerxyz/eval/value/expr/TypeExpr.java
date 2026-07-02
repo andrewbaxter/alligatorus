@@ -29,7 +29,6 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.empty.ValueEmptyConst;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
@@ -125,11 +124,9 @@ public record TypeExpr()
       }
       return EResult.ok(cv);
     }
-    var emptyExpr =
-        new Expr(
-            loc,
-            new Expr.Literal(Expr.LitValue.shared(new ValueEmptyConst(sourceType))));
-    return EResult.ok(new CodeValue(cv.code(), Opt.some(emptyExpr)));
+    var literalExpr =
+        new Expr(loc, new Expr.Literal(Expr.LitValue.shared(sourceValue)));
+    return EResult.ok(new CodeValue(cv.code(), Opt.some(literalExpr)));
   }
 
   @Override
