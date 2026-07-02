@@ -26,8 +26,7 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
         Code.of(loc, new CodeDynamic(loc, new JavaBytecode.BindingUse(dynamicKey))),
         Opt.some(
             new Record(
-                Opt.<RecordBase>some(
-                    new RecordBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
+                Opt.some(new RecordBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
                 resultFields)));
   }
 }

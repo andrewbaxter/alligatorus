@@ -53,8 +53,6 @@ public final class InterfacesGen {
       ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
   private static final ClassName RECORD_BASE_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.record", "RecordBaseDynamic");
-  private static final ClassName RECORD_BASE =
-      ClassName.get("compilerxyz.eval.value.record", "RecordBase");
 
   private static final ClassName TUPLE = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
   private static final ClassName TUPLE_ELEMENT =
@@ -288,11 +286,10 @@ public final class InterfacesGen {
           asTypeExpr(field.type().dynamicType()));
     }
     b.addStatement(
-        "$N.argRecordType = new $T($T.<$T>some(new $T()), $N)",
+        "$N.argRecordType = new $T($T.some(new $T()), $N)",
         methodVar,
         RECORD,
         OPT,
-        RECORD_BASE,
         RECORD_BASE_DYNAMIC,
         mapVar);
     return b.build();

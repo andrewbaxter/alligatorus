@@ -42,7 +42,7 @@ import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fields)
+public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
     implements
         Type,
         Value,
@@ -78,29 +78,7 @@ public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fi
       var t = recordFieldType(entry.getValue());
       fieldTypes.put(entry.getKey(), new RecordField.Dynamic(t));
     }
-    Opt<RecordBase> baseClone =
-        switch (base) {
-          case Opt.Some<RecordBase> s -> Opt.some(s.value().recordBaseCloneBase());
-          case Opt.None<RecordBase> n -> Opt.none();
-        };
-    return new Record(baseClone, fieldTypes);
-  }
-
-  public Record cloneAsType() {
-    var out = new TOrderedMap<ConstKey, RecordField>();
-    for (var entry : fields.entrySet()) {
-      if (!(entry.getValue() instanceof RecordField.Dynamic d)) {
-        throw new IllegalStateException(
-            "Record::cloneAsType: field " + entry.getKey() + " is not Dynamic-only");
-      }
-      out.put(entry.getKey(), new RecordField.Dynamic(d.type()));
-    }
-    Opt<RecordBase> baseClone =
-        switch (base) {
-          case Opt.Some<RecordBase> s -> Opt.some(s.value().recordBaseCloneBase());
-          case Opt.None<RecordBase> n -> Opt.none();
-        };
-    return new Record(baseClone, out);
+    return new Record(base, fieldTypes);
   }
 
   @Override
@@ -149,7 +127,7 @@ public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fi
       return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on record");
     }
     var entryType = recordFieldType(typeField);
-    if (base instanceof Opt.Some<RecordBase> baseSome) {
+    if (base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
       return EResult.ok(
           baseSome.value().recordBaseFieldAccess(xx, loc, ck.toCanonical(), entryType));
     }
@@ -175,7 +153,7 @@ public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fi
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    if (!(base instanceof Opt.Some<RecordBase>)) {
+    if (!(base instanceof Opt.Some<RecordBaseDynamic>)) {
       return new TList<>();
     }
     var out = new TList<ConstKey>(fields.size());
@@ -253,8 +231,8 @@ public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fi
     }
     var carry = cv.code();
 
-    if (base instanceof Opt.Some<RecordBase> baseSome) {
-      Type recordType = cloneAsType();
+    if (base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
+      Type recordType = this;
       var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
       for (var entry : fields.entrySet()) {
         if (!(entry.getValue() instanceof RecordField.Dynamic d)) {
@@ -411,7 +389,7 @@ public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fi
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var carry = cv.code();
-    if (base instanceof Opt.Some<RecordBase> some) {
+    if (base instanceof Opt.Some<RecordBaseDynamic> some) {
       return some.value().recordBaseToDynamic(loc, carry);
     }
     if (!(cv.value() instanceof Opt.Some<Value> valueSome)) {

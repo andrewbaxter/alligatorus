@@ -20,7 +20,7 @@ public record BindingRecordBound(
   public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
     boolean hasDynamic = fields.values().stream().anyMatch(f -> f instanceof RecordScopeField.Dynamic);
     Code useCode;
-    Opt<RecordBase> base;
+    Opt<RecordBaseDynamic> base;
     if (hasDynamic) {
       if (!(jsKey instanceof Opt.Some<BindingId> some)) {
         throw new IllegalStateException(

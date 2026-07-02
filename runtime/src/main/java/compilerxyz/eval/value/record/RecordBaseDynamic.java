@@ -15,29 +15,13 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TOrderedMap;
 
-public final class RecordBaseDynamic implements RecordBase {
-  private final ValueDynamic.Source source;
+public record RecordBaseDynamic(ValueDynamic.Source source) {
 
-  public RecordBaseDynamic(ValueDynamic.Source source) {
-    this.source = source;
-  }
-
-  public ValueDynamic.Source source() {
-    return source;
-  }
-
-  @Override
   public EResult<TargetBindSub> recordBaseBindSub(
       ExprContext xx, QExprId loc, Code carry, Type recordType) {
     return xx.target.targetCodeToBindSub(loc, carry, recordType);
   }
 
-  @Override
-  public RecordBase recordBaseCloneBase() {
-    return new RecordBaseDynamic(source);
-  }
-
-  @Override
   public CodeValue recordBaseFieldAccess(
       ExprContext xx, QExprId loc, String key, Type entryType) {
     var childSource = new ValueDynamic.Source.Field(source, key);
@@ -62,22 +46,11 @@ public final class RecordBaseDynamic implements RecordBase {
     return new CodeValue(fieldCode, Opt.some(valueDynamic));
   }
 
-  @Override
   public EResult<CodeDynamic> recordBaseToDynamic(QExprId loc, Code carry) {
     var dyn = carry.dynamic();
     if (dyn == null) {
       return EResult.err(loc, "RecordBaseDynamic::toDynamic: carry has no dynamic code");
     }
     return EResult.ok(dyn);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    return o instanceof RecordBaseDynamic other && source.equals(other.source);
-  }
-
-  @Override
-  public int hashCode() {
-    return source.hashCode();
   }
 }

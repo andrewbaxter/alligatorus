@@ -95,17 +95,6 @@ public record Tuple(TList<TupleElement> elements)
     return new Tuple(slotTypes);
   }
 
-  public Tuple cloneAsType() {
-    var out = new TList<TupleElement>(elements.size());
-    for (var e : elements) {
-      if (!(e instanceof TupleElement.Dynamic d)) {
-        throw new IllegalStateException("Tuple::cloneAsType: slot is not Dynamic-only");
-      }
-      out.add(new TupleElement.Dynamic(d.type()));
-    }
-    return new Tuple(out);
-  }
-
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectTuple.ID)
