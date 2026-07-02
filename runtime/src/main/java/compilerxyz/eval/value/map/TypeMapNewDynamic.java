@@ -17,6 +17,10 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
@@ -58,16 +62,17 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome
         && argTupleSome.value().elementTypes().isEmpty()) {
       var retStackRes = AspectStackValueDynamic.get(xx, loc, instanceType);
-      if (retStackRes.hasErrors()) {
-        return retStackRes.reerr();
-      }
+      if (retStackRes.hasErrors()) return retStackRes.reerr();
 
       var torderedMapIntname = JavaInternalName.of("compilerxyz/util/TOrderedMap");
-      var seqElements =
+      var newMap =
           JavaBytecodeUtils.instantiate(
-              -1, torderedMapIntname, JavaMethodDescriptor.VOID_NOARGS, new TList<>());
-      var newMap = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(seqElements));
-      return EResult.ok(retStackRes.valueOrNull().toValue(loc, newMap));
+              loc,
+              torderedMapIntname,
+              JavaMethodDescriptor.fromConstructorParts(TList.of()),
+              new CodeDynamic(loc, new JavaBytecodeSequence()));
+      return EResult.ok(
+          retStackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, newMap));
     }
     return Eval.typecheckConvert(xx, loc, instanceType, argument);
   }

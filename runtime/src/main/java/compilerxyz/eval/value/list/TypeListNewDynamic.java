@@ -18,6 +18,11 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -60,41 +65,30 @@ public record TypeListNewDynamic(Type elementType)
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome) {
       var elements = argTupleSome.value().takeElements(argSome.value());
       for (var elemRes : elements) {
-        if (elemRes.hasErrors()) {
-          return elemRes.reerr();
-        }
-        var elemCv = elemRes.valueOrNull();
-        if (elemCv == null) {
-          return EResult.err(loc, "TypeListNewDynamic::call: tuple element failed to evaluate");
-        }
+        if (elemRes.hasErrors()) return elemRes.reerr();
+        var elemCv = elemRes.requireValue("takeElements");
         var convertedRes = Eval.typecheckConvert(xx, loc, elementType, elemCv);
-        if (convertedRes.hasErrors()) {
-          return convertedRes.reerr();
-        }
+        if (convertedRes.hasErrors()) return convertedRes.reerr();
         var consumeRes = AspectConsumeDynamic.get(xx, loc, elementType);
-        if (consumeRes.hasErrors()) {
-          return consumeRes.reerr();
-        }
-        var dynRes = consumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
-        if (dynRes.hasErrors()) {
-          return dynRes.reerr();
-        }
-        dynamicElements.add(dynRes.valueOrNull());
+        if (consumeRes.hasErrors()) return consumeRes.reerr();
+        var dynRes =
+            consumeRes
+                .requireValue("AspectConsumeDynamic.get")
+                .toDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
+        if (dynRes.hasErrors()) return dynRes.reerr();
+        dynamicElements.add(dynRes.requireValue("toDynamic"));
       }
     } else {
       var convertedRes = Eval.typecheckConvert(xx, loc, elementType, argument);
-      if (convertedRes.hasErrors()) {
-        return convertedRes.reerr();
-      }
+      if (convertedRes.hasErrors()) return convertedRes.reerr();
       var consumeRes = AspectConsumeDynamic.get(xx, loc, elementType);
-      if (consumeRes.hasErrors()) {
-        return consumeRes.reerr();
-      }
-      var dynRes = consumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
-      if (dynRes.hasErrors()) {
-        return dynRes.reerr();
-      }
-      dynamicElements.add(dynRes.valueOrNull());
+      if (consumeRes.hasErrors()) return consumeRes.reerr();
+      var dynRes =
+          consumeRes
+              .requireValue("AspectConsumeDynamic.get")
+              .toDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
+      if (dynRes.hasErrors()) return dynRes.reerr();
+      dynamicElements.add(dynRes.requireValue("toDynamic"));
     }
     Type instanceType = new TypeListDynamic(elementType);
     var retStackRes = AspectStackValueDynamic.get(xx, loc, instanceType);
@@ -102,22 +96,24 @@ public record TypeListNewDynamic(Type elementType)
       return retStackRes.reerr();
     }
     var tlistIntname = JavaInternalName.of("compilerxyz/util/TList");
+    var descObject = JavaDataDescriptor.fromClass(Object.class);
     var addDesc =
-        JavaMethodDescriptor.fromParts(JvmConstants.DESC_BOOL, JvmConstants.DESC_OBJECT);
-    var seqElements = new TList<JavaBytecode.LoweredSequence.Element>();
-    seqElements.addAll(
+        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));
+    var seq = new JavaBytecodeSequence();
+    seq.add(
         JavaBytecodeUtils.instantiate(
-            -1, tlistIntname, JavaMethodDescriptor.VOID_NOARGS, new TList<>()));
+            loc,
+            tlistIntname,
+            JavaMethodDescriptor.fromConstructorParts(TList.of()),
+            new CodeDynamic(loc, new JavaBytecodeSequence())));
     for (var element : dynamicElements) {
-      seqElements.add(new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.DUP)));
-      seqElements.add(new JavaBytecode.LoweredSequence.Code(element));
-      seqElements.add(
-          new JavaBytecode.LoweredSequence.Bytecode(
-              JavaBytecodeUtils.callMethod(-1, tlistIntname, "add", addDesc)));
-      seqElements.add(new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.POP)));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      seq.add(element);
+      seq.add(JavaBytecodeUtils.callMethod(loc, tlistIntname, "add", addDesc));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
     }
-    var newArrayCode = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(seqElements));
-    return EResult.ok(retStackRes.valueOrNull().toValue(loc, newArrayCode));
+    return EResult.ok(
+        retStackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, new CodeDynamic(loc, seq)));
   }
 
   @Override
