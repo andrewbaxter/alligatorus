@@ -37,6 +37,10 @@ public final class PushStructsGen {
   private static final ClassName CODE_VALUE = ClassName.get("compilerxyz.eval", "CodeValue");
   private static final ClassName CODE = ClassName.get("compilerxyz.eval", "Code");
   private static final ClassName CONST_KEY = ClassName.get("compilerxyz.eval", "ConstKey");
+  private static final ClassName CONST_KEY_STR =
+      ClassName.get("compilerxyz.eval", "ConstKey", "Str");
+  private static final ClassName EVAL = ClassName.get("compilerxyz.eval", "Eval");
+  private static final ClassName ERB = ClassName.get("compilerxyz.eval", "Erb");
   private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
 
   private static final ClassName ASPECT = ClassName.get("compilerxyz.eval.aspect", "Aspect");
@@ -351,17 +355,24 @@ public final class PushStructsGen {
             .addParameter(CODE_VALUE, "self")
             .addParameter(CODE_VALUE, "key");
 
-    var noKey =
-        CodeBlock.of(
-            "if (!(key.value() instanceof $T.Some<$T> keySome)"
-                + " || !(keySome.value() instanceof $T keyStrConst))",
-            OPT,
-            VALUE,
-            VALUE_STRING_CONST);
-    m.beginControlFlow("$L", noKey);
-    m.addStatement("return $T.err(loc, $S)", ERESULT, "key must be a const string");
+    m.addStatement("var erb = new $T(loc)", ERB);
+    m.beginControlFlow(
+        "if (!(key.value() instanceof $T.Some<$T> keySome))", OPT, VALUE);
+    m.addStatement(
+        "return $T.err(loc, $S)",
+        ERESULT,
+        spec.name() + "::field: key has no compile-time value");
     m.endControlFlow();
-    m.addStatement("var keyStr = keyStrConst.value()");
+    m.addStatement("var ckOpt = erb.mustRes($T.extractConstKey(xx, loc, keySome.value()))", EVAL);
+    m.addStatement("if (ckOpt.isEmpty()) return $T.errs(erb.errors())", ERESULT);
+    m.addStatement("var ck = ckOpt.get()");
+    m.beginControlFlow("if (!(ck instanceof $T ckStr))", CONST_KEY_STR);
+    m.addStatement(
+        "return $T.err(loc, $S + ck.toCanonical())",
+        ERESULT,
+        spec.name() + ": unknown field ");
+    m.endControlFlow();
+    m.addStatement("var keyStr = ckStr.value()");
 
     m.addStatement("var dyn = self.code().dynamic()");
     m.beginControlFlow("if (dyn == null)");

@@ -177,6 +177,20 @@ public final class DynUtil {
         return new JavaBytecode.LoweredSequence(elements);
     }
 
+    public static CodeDynamic renderSource(QExprId loc, ValueDynamic.Source src) {
+        return switch (src) {
+            case ValueDynamic.Source.Binding b ->
+                new CodeDynamic(loc, new JavaBytecode.BindingUse(b.key()));
+            case ValueDynamic.Source.Field f ->
+                new CodeDynamic(loc, buildFieldGetSequence(renderSource(loc, f.base()), f.key()));
+            case ValueDynamic.Source.MethodField mf ->
+                new CodeDynamic(loc, buildFieldGetSequence(renderSource(loc, mf.base()), mf.key()));
+            case ValueDynamic.Source.Expr e ->
+                throw new IllegalStateException(
+                    "ValueDynamic.Source.Expr has no reconstructable code");
+        };
+    }
+
     public static EResult<AspectBind.BindResult> bindViaTarget(
             ExprContext xx, QExprId loc, CodeValue cv) {
         var valueOpt = cv.value();
@@ -326,7 +340,7 @@ public final class DynUtil {
                         loc,
                         "TODO assertion set left hand doesn't evaluate to dynamic code (empty)");
             }
-            CodeDynamic baseCode = fieldSrc.base();
+            CodeDynamic baseCode = renderSource(loc, fieldSrc.base());
             var setElements = new TList<JavaBytecode.LoweredSequence.Element>();
             setElements.add(new JavaBytecode.LoweredSequence.Code(baseCode));
             setElements.add(

@@ -14,6 +14,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -26,7 +28,6 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.Target;
@@ -136,37 +137,36 @@ public record Record(Opt<RecordBase> base, TOrderedMap<ConstKey, RecordField> fi
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "Record::field: key has no compile-time value");
     }
-    var keyValue = keySome.value();
-    var keyMeta = keyValue.valueTypeOf();
-    var stringAspectRes = AspectStringConst.get(xx, loc, keyMeta);
-    if (stringAspectRes.hasErrors()) return stringAspectRes.reerr();
-    var keyName = stringAspectRes.valueOrNull().get(keyValue);
-    var constKey = new ConstKey.Str(keyName);
-    var typeField = fields.getOrNull(constKey);
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    var typeField = fields.getOrNull(ck);
     if (typeField == null) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on record");
+      return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on record");
     }
     var entryType = recordFieldType(typeField);
     if (base instanceof Opt.Some<RecordBase> baseSome) {
-      return EResult.ok(baseSome.value().recordBaseFieldAccess(xx, loc, self_.code(), keyName, entryType));
+      return EResult.ok(
+          baseSome.value().recordBaseFieldAccess(xx, loc, ck.toCanonical(), entryType));
     }
     if (!(self_.value() instanceof Opt.Some<Value> selfSome)
         || !(selfSome.value() instanceof Record recordValue)) {
       throw new IllegalStateException(
           "Record::field: baseless record self_ does not carry a Record value");
     }
-    var valueField = recordValue.fields.getOrNull(constKey);
+    var valueField = recordValue.fields.getOrNull(ck);
     if (valueField == null) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on record value");
+      return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on record value");
     }
     return switch (valueField) {
       case RecordField.EvalRes er -> {
         var inner = er.result();
         if (inner.valueOrNull() instanceof CodeValue cv) yield EResult.ok(cv);
-        yield EResult.err(loc, "Field '" + keyName + "' evaluated to error");
+        yield EResult.err(loc, "Field '" + ck.toCanonical() + "' evaluated to error");
       }
       case RecordField.Dynamic d ->
           throw new IllegalStateException("Record::field: baseless record value has Dynamic field");

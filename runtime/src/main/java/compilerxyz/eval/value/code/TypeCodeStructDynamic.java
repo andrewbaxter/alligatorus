@@ -6,6 +6,8 @@ import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -16,7 +18,6 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
@@ -59,14 +60,17 @@ public record TypeCodeStructDynamic()
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeCodeStructDynamic::field: key has no compile-time value");
     }
-    var keyValue = keySome.value();
-    var keyMeta = keyValue.valueTypeOf();
-    var stringAspectRes = AspectStringConst.get(xx, loc, keyMeta);
-    if (stringAspectRes.hasErrors()) return stringAspectRes.reerr();
-    var keyName = stringAspectRes.valueOrNull().get(keyValue);
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on Code struct");
+    }
+    String keyName = keyStr.value();
     if ("code".equals(keyName)) {
       return EResult.ok(
           new CodeValue(

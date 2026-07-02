@@ -16,7 +16,15 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TOrderedMap;
 
 public final class RecordBaseDynamic implements RecordBase {
-  public RecordBaseDynamic() {}
+  private final ValueDynamic.Source source;
+
+  public RecordBaseDynamic(ValueDynamic.Source source) {
+    this.source = source;
+  }
+
+  public ValueDynamic.Source source() {
+    return source;
+  }
 
   @Override
   public EResult<TargetBindSub> recordBaseBindSub(
@@ -26,20 +34,14 @@ public final class RecordBaseDynamic implements RecordBase {
 
   @Override
   public RecordBase recordBaseCloneBase() {
-    return new RecordBaseDynamic();
+    return new RecordBaseDynamic(source);
   }
 
   @Override
   public CodeValue recordBaseFieldAccess(
-      ExprContext xx, QExprId loc, Code selfCodeRaw, String key, Type entryType) {
-    var selfDyn = selfCodeRaw.dynamic();
-    if (selfDyn == null) {
-      throw new IllegalStateException(
-          "RecordBaseDynamic::fieldAccess: carry has no dynamic code");
-    }
-    var fieldCode =
-        new Code(
-            loc, new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, key)));
+      ExprContext xx, QExprId loc, String key, Type entryType) {
+    var childSource = new ValueDynamic.Source.Field(source, key);
+    var fieldCode = new Code(loc, DynUtil.renderSource(loc, childSource));
     if (entryType instanceof Record recordType) {
       var newFields = new TOrderedMap<ConstKey, RecordField>();
       for (var entry : recordType.fields().entrySet()) {
@@ -53,11 +55,10 @@ public final class RecordBaseDynamic implements RecordBase {
             };
         newFields.put(entry.getKey(), new RecordField.Dynamic(t));
       }
-      Value innerRecord = new Record(Opt.some(new RecordBaseDynamic()), newFields);
+      Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(childSource)), newFields);
       return new CodeValue(fieldCode, Opt.some(innerRecord));
     }
-    Value valueDynamic =
-        new ValueDynamic(new ValueDynamic.Source.Field(selfDyn, key), entryType);
+    Value valueDynamic = new ValueDynamic(childSource, entryType);
     return new CodeValue(fieldCode, Opt.some(valueDynamic));
   }
 
@@ -72,11 +73,11 @@ public final class RecordBaseDynamic implements RecordBase {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof RecordBaseDynamic;
+    return o instanceof RecordBaseDynamic other && source.equals(other.source);
   }
 
   @Override
   public int hashCode() {
-    return RecordBaseDynamic.class.hashCode();
+    return source.hashCode();
   }
 }

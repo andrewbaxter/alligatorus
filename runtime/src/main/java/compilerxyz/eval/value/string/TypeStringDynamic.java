@@ -13,6 +13,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -33,6 +35,8 @@ import compilerxyz.gen.AspectStringDynamic;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
@@ -41,9 +45,10 @@ import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.AspectType;
@@ -62,6 +67,15 @@ public record TypeStringDynamic()
         AspectStackValueDynamic,
         AspectStringDynamic,
         ExporterAny {
+
+  private static final TMap<ConstKey, Type> METHOD_FIELDS =
+      TMap.ofEntries(
+          new Pair<>(
+              new ConstKey.Str("toLowerCase"),
+              new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic())),
+          new Pair<>(
+              new ConstKey.Str("toUpperCase"),
+              new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic())));
 
   @Override
   public String typeDesc() {
@@ -150,52 +164,37 @@ public record TypeStringDynamic()
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeStringDynamic::field: key has no compile-time value");
     }
-    var keyType = keySome.value().valueTypeOf();
-    var stringConstRes = AspectStringConst.get(xx, loc, keyType);
-    if (stringConstRes.hasErrors()) {
-      return stringConstRes.reerr();
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(fieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic string");
     }
-    var stringConst = stringConstRes.valueOrNull();
-    if (stringConst == null) {
-      throw new IllegalStateException(
-          "AspectStringConst.get returned neither value nor errors");
+    if (!(self_.value() instanceof Opt.Some<Value> selfSome)
+        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
+      return EResult.err(loc, "TypeStringDynamic::field: receiver is not a ValueDynamic");
     }
-    String keyName = stringConst.get(keySome.value());
-    var fieldTypeOpt = fieldTypeOpt(xx, new ConstKey.Str(keyName));
-    if (!(fieldTypeOpt instanceof Opt.Some<Type> fieldTypeSome)) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on dynamic string");
-    }
-    var selfDyn = self_.code().dynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeStringDynamic::field: self has no dynamic code");
-    }
-    var fieldUse = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, keyName));
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, fieldUse),
+            self_.code(),
             Opt.some(
                 new ValueDynamic(
-                    new ValueDynamic.Source.Field(selfDyn, keyName), fieldTypeSome.value()))));
+                    new ValueDynamic.Source.MethodField(selfVd.source(), ck.toCanonical()),
+                    fieldTypeSome.value()))));
   }
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
+    return TList.from(METHOD_FIELDS.keySet());
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (!(key instanceof ConstKey.Str s)) {
-      return Opt.none();
-    }
-    return switch (s.value()) {
-      case "toLowerCase", "toUpperCase" ->
-          Opt.some(new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic()));
-      default -> Opt.none();
-    };
+    return METHOD_FIELDS.getOpt(key);
   }
 
   @Override
@@ -229,19 +228,18 @@ public record TypeStringDynamic()
     var stringConstOpt = AspectStringConst.getMaybe(xx, sourceType);
     if (stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome) {
       String strVal = stringConstSome.value().get(some.value());
-      var literal =
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                  JavaBytecodeUtils.jsonLiteral(new JsonValueString(strVal))));
-      var entries = new TList<JavaBytecode.BlockEntry>();
-      var existingDyn = cv.code().dynamic();
+      // Concatenate the source's existing dynamic code (if any) with an LDC of the string
+      // literal, matching the semantics of the old Block(existing, literal) construction.
+      var seq = new JavaBytecodeSequence();
+      var existingDyn = CodeDynamic.fromCode(cv.code());
       if (existingDyn != null) {
-        entries.add(new JavaBytecode.BlockEntry.Code(existingDyn));
+        seq.add(existingDyn);
       }
-      entries.add(new JavaBytecode.BlockEntry.Code(literal));
-      var block = new CodeDynamic(loc, new JavaBytecode.Block(entries));
+      seq.add(JavaBytecodeUtils.literalString(loc, strVal));
+      var result = new CodeDynamic(loc, seq);
       return EResult.ok(
           new CodeValue(
-              Code.of(loc, block),
+              Code.of(result),
               Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
     }
     return EResult.ok(

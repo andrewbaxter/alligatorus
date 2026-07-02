@@ -13,6 +13,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.External;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
@@ -28,7 +30,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -117,19 +118,17 @@ public record TypeAnyDynamic()
     if (selfDyn == null) {
       return EResult.err(loc, "TypeAnyDynamic::field: receiver has no runtime code");
     }
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeAnyDynamic::field: key has no compile-time value");
     }
-    var keyType = keySome.value().valueTypeOf();
-    var stringConstRes = AspectStringConst.get(xx, loc, keyType);
-    if (stringConstRes.hasErrors()) {
-      return stringConstRes.reerr();
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on any");
     }
-    var stringConst = stringConstRes.valueOrNull();
-    if (stringConst == null) {
-      throw new IllegalStateException("AspectStringConst.get returned neither value nor errors");
-    }
-    String keyName = stringConst.get(keySome.value());
+    String keyName = keyStr.value();
     var fieldUse = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, keyName));
     return EResult.ok(
         new CodeValue(

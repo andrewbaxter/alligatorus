@@ -231,7 +231,9 @@ public record TypeFunctionDynamic(Type arg, Type ret)
     if (receiver instanceof Opt.Some<ValueDynamic.Source.MethodField> some) {
       var mf = some.value();
       return new CodeDynamic(
-          loc, DynUtil.buildCallContextualMethodSequence(mf.base(), mf.key(), args));
+          loc,
+          DynUtil.buildCallContextualMethodSequence(
+              DynUtil.renderSource(loc, mf.base()), mf.key(), args));
     }
     return new CodeDynamic(loc, DynUtil.buildCallSequence(xx, funcCode, args));
   }

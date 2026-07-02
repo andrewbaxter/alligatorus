@@ -7,6 +7,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.External;
@@ -22,7 +24,6 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
@@ -107,18 +108,21 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeSourceObjectDynamic::field: key has no compile-time value");
     }
-    var keyValue = keySome.value();
-    var keyMetaType = keyValue.valueTypeOf();
-    var stringConstRes = AspectStringConst.get(xx, loc, keyMetaType);
-    if (stringConstRes.hasErrors()) return stringConstRes.reerr();
-    var stringConst = stringConstRes.valueOrNull();
-    if (stringConst == null) {
-      throw new IllegalStateException("AspectStringConst.get returned neither value nor errors");
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(
+          loc,
+          "Field "
+              + ck.toCanonical()
+              + " not found on object (underlying-type Record fallback deferred)");
     }
-    String keyName = stringConst.get(keyValue);
+    String keyName = keyStr.value();
     String fieldName = null;
     Type argType = null;
     Type retType = null;
@@ -159,23 +163,23 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
               + keyName
               + "' not found on object (underlying-type Record fallback deferred)");
     }
-    var selfDyn = self.code().dynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeSourceObjectDynamic::field: receiver has no runtime code");
+    if (!(self.value() instanceof Opt.Some<Value> selfSome)
+        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
+      return EResult.err(
+          loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");
     }
 
     if (data.set != null) {
       xx.vx.definitionSets.putIfAbsent(data.set.defSetId, data.set);
     }
     var methodFieldKey = new ConstKey.Str(fieldName).toCanonical();
-    var methodAccess = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, methodFieldKey));
+    var childSource = new ValueDynamic.Source.MethodField(selfVd.source(), methodFieldKey);
+    var methodAccess = DynUtil.renderSource(loc, childSource);
     var fieldType = new TypeFunctionDynamic(argType, retType);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, methodAccess),
-            Opt.some(
-                new ValueDynamic(
-                    new ValueDynamic.Source.MethodField(selfDyn, methodFieldKey), fieldType))));
+            Opt.some(new ValueDynamic(childSource, fieldType))));
   }
 
   @Override

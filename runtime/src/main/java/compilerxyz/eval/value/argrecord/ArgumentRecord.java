@@ -6,6 +6,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -13,7 +15,6 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectField;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
@@ -41,23 +42,16 @@ public record ArgumentRecord(TOrderedMap<ConstKey, Binding> fields)
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "ArgumentRecord::field: key has no compile-time value");
     }
-    var keyType = some.value().valueTypeOf();
-    var aspect = AspectStringConst.getMaybe(xx, keyType);
-    if (!(aspect instanceof Opt.Some<AspectStringConst> a)) {
-      return EResult.err(
-          loc,
-          "ArgumentRecord::field: key type "
-              + keyType.typeDesc()
-              + " does not implement AspectStringConst");
-    }
-    var keyName = a.value().get(some.value());
-    var constKey = new ConstKey.Str(keyName);
-    var binding = fields.getOrNull(constKey);
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, some.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    var binding = fields.getOrNull(ck);
     if (binding == null) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on argument record");
+      return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on argument record");
     }
     return EResult.ok(binding.bindingUse_(xx, loc, Code.none(loc)));
   }

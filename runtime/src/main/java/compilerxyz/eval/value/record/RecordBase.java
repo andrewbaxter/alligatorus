@@ -15,8 +15,7 @@ public interface RecordBase {
 
   RecordBase recordBaseCloneBase();
 
-  CodeValue recordBaseFieldAccess(
-      ExprContext xx, QExprId loc, Code selfCodeRaw, String key, Type entryType);
+  CodeValue recordBaseFieldAccess(ExprContext xx, QExprId loc, String key, Type entryType);
 
   EResult<CodeDynamic> recordBaseToDynamic(QExprId loc, Code carry);
 }

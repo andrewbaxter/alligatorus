@@ -13,6 +13,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -33,7 +35,6 @@ import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.AspectOperatorLt;
 import compilerxyz.gen.AspectSet;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -159,36 +160,32 @@ public record TypeNumberDynamic()
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeNumberDynamic::field: key has no compile-time value");
     }
-    var keyType = keySome.value().valueTypeOf();
-    var stringConstRes = AspectStringConst.get(xx, loc, keyType);
-    if (stringConstRes.hasErrors()) {
-      return stringConstRes.reerr();
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic number");
     }
-    var stringConst = stringConstRes.valueOrNull();
-    if (stringConst == null) {
-      throw new IllegalStateException(
-          "AspectStringConst.get returned neither value nor errors");
-    }
-    String keyName = stringConst.get(keySome.value());
+    String keyName = keyStr.value();
     var fieldTypeOpt = fieldTypeOpt(xx, new ConstKey.Str(keyName));
     if (!(fieldTypeOpt instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field '" + keyName + "' not found on dynamic number");
     }
     var jsName = keyName.equals("to_string") ? "toString" : keyName;
-    var selfDyn = self_.code().dynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeNumberDynamic::field: self has no dynamic code");
+    if (!(self_.value() instanceof Opt.Some<Value> selfSome)
+        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
+      return EResult.err(loc, "TypeNumberDynamic::field: receiver is not a ValueDynamic");
     }
-    var fieldUse = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, jsName));
+    var childSource = new ValueDynamic.Source.Field(selfVd.source(), jsName);
+    var fieldUse = DynUtil.renderSource(loc, childSource);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldUse),
-            Opt.some(
-                new ValueDynamic(
-                    new ValueDynamic.Source.Field(selfDyn, jsName), fieldTypeSome.value()))));
+            Opt.some(new ValueDynamic(childSource, fieldTypeSome.value()))));
   }
 
   @Override

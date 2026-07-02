@@ -11,6 +11,8 @@ import compilerxyz.eval.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -25,7 +27,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectIterable;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -121,19 +122,17 @@ public record TypeMapDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeMapDynamic::field: key has no compile-time value");
     }
-    var keyMetaType = keySome.value().valueTypeOf();
-    var stringConstRes = AspectStringConst.get(xx, loc, keyMetaType);
-    if (stringConstRes.hasErrors()) {
-      return stringConstRes.reerr();
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on map");
     }
-    var stringConst = stringConstRes.valueOrNull();
-    if (stringConst == null) {
-      throw new IllegalStateException("AspectStringConst.get returned neither value nor errors");
-    }
-    String keyName = stringConst.get(keySome.value());
+    String keyName = keyStr.value();
     if (keyName.equals("new")) {
       Type newType = new TypeMapNewDynamic(keyType, valueType);
       return EResult.ok(
@@ -153,13 +152,16 @@ public record TypeMapDynamic(Type keyType, Type valueType)
               Code.of(loc, selfDyn),
               Opt.some(new ValueEmptyConst(new TypeMapGetFnDynamic(keyType, valueType)))));
     }
-    var fieldUse = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, keyName));
+    if (!(self.value() instanceof Opt.Some<Value> selfSome)
+        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
+      return EResult.err(loc, "TypeMapDynamic::field: receiver is not a ValueDynamic");
+    }
+    var childSource = new ValueDynamic.Source.Field(selfVd.source(), keyName);
+    var fieldUse = DynUtil.renderSource(loc, childSource);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldUse),
-            Opt.some(
-                new ValueDynamic(
-                    new ValueDynamic.Source.Field(selfDyn, keyName), fieldTypeSome.value()))));
+            Opt.some(new ValueDynamic(childSource, fieldTypeSome.value()))));
   }
 
   @Override

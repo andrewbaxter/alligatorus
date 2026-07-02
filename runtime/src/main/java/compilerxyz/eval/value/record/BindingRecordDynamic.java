@@ -9,6 +9,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TOrderedMap;
 
@@ -23,6 +24,10 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
     }
     return new CodeValue(
         Code.of(loc, new CodeDynamic(loc, new JavaBytecode.BindingUse(dynamicKey))),
-        Opt.some(new Record(Opt.<RecordBase>some(new RecordBaseDynamic()), resultFields)));
+        Opt.some(
+            new Record(
+                Opt.<RecordBase>some(
+                    new RecordBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
+                resultFields)));
   }
 }

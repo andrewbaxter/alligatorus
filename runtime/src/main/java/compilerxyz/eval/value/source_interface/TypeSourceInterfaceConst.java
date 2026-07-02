@@ -13,6 +13,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -24,7 +26,6 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.AspectStringConst;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -112,14 +113,17 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+    var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeSourceInterfaceConst::field: key has no compile-time value");
     }
-    var keyValue = keySome.value();
-    var keyMeta = keyValue.valueTypeOf();
-    var stringAspectRes = AspectStringConst.get(xx, loc, keyMeta);
-    if (stringAspectRes.hasErrors()) return stringAspectRes.reerr();
-    var keyName = stringAspectRes.valueOrNull().get(keyValue);
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on interface");
+    }
+    String keyName = keyStr.value();
     SourceInterfaceMethodData match = null;
     for (var m : data.methods) {
       if (m.name.equals(keyName)) {
@@ -136,20 +140,19 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
       return EResult.err(
           loc, "Interface method '" + keyName + "' is missing arg or return type");
     }
-    var selfDyn = self.code().dynamic();
-    if (selfDyn == null) {
+    if (!(self.value() instanceof Opt.Some<Value> selfSome)
+        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
       return EResult.err(
-          loc, "TypeSourceInterfaceConst::field: receiver has no dynamic code");
+          loc, "TypeSourceInterfaceConst::field: receiver is not a ValueDynamic");
     }
     var fieldKey = new ConstKey.Str(match.fieldName).toCanonical();
-    var fieldDyn = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, fieldKey));
+    var childSource = new ValueDynamic.Source.MethodField(selfVd.source(), fieldKey);
+    var fieldDyn = DynUtil.renderSource(loc, childSource);
     var fieldType = new TypeFunctionDynamic(argType, retType);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldDyn),
-            Opt.some(
-                new ValueDynamic(
-                    new ValueDynamic.Source.MethodField(selfDyn, fieldKey), fieldType))));
+            Opt.some(new ValueDynamic(childSource, fieldType))));
   }
 
   @Override
