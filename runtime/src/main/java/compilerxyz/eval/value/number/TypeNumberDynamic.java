@@ -38,6 +38,9 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeInstructionObj;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
@@ -51,9 +54,10 @@ import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 
@@ -74,6 +78,12 @@ public record TypeNumberDynamic()
         AspectSet,
         AspectStackValueDynamic,
         ExporterAny {
+
+  private static final TMap<ConstKey, Type> METHOD_FIELDS =
+      TMap.ofEntries(
+          new Pair<>(
+              new ConstKey.Str("to_string"),
+              new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic())));
 
   @Override
   public String typeDesc() {
@@ -167,42 +177,30 @@ public record TypeNumberDynamic()
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
-    if (!(ck instanceof ConstKey.Str keyStr)) {
+    if (!(fieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic number");
     }
-    String keyName = keyStr.value();
-    var fieldTypeOpt = fieldTypeOpt(xx, new ConstKey.Str(keyName));
-    if (!(fieldTypeOpt instanceof Opt.Some<Type> fieldTypeSome)) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on dynamic number");
-    }
-    var jsName = keyName.equals("to_string") ? "toString" : keyName;
     if (!(self_.value() instanceof Opt.Some<Value> selfSome)
         || !(selfSome.value() instanceof ValueDynamic selfVd)) {
       return EResult.err(loc, "TypeNumberDynamic::field: receiver is not a ValueDynamic");
     }
-    var childSource = new ValueDynamic.Source.Field(selfVd.source(), jsName);
-    var fieldUse = DynUtil.renderSource(loc, childSource);
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, fieldUse),
-            Opt.some(new ValueDynamic(childSource, fieldTypeSome.value()))));
+            self_.code(),
+            Opt.some(
+                new ValueDynamic(
+                    new ValueDynamic.Source.MethodField(selfVd.source(), ck.toCanonical()),
+                    fieldTypeSome.value()))));
   }
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
+    return TList.from(METHOD_FIELDS.keySet());
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (!(key instanceof ConstKey.Str s)) {
-      return Opt.none();
-    }
-    if (s.value().equals("to_string")) {
-
-      return Opt.some(new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic()));
-    }
-    return Opt.none();
+    return METHOD_FIELDS.getOpt(key);
   }
 
   @Override
@@ -263,69 +261,42 @@ public record TypeNumberDynamic()
       throw new IllegalStateException(
           "TypeNumberDynamic::binOp: toDynamic returned neither value nor errors");
     }
-    var elements = new TList<JavaBytecode.LoweredSequence.Element>();
-    elements.add(new JavaBytecode.LoweredSequence.Code(baseCode));
-    elements.add(new JavaBytecode.LoweredSequence.Bytecode(unboxDoubleBytecode()));
-    elements.add(new JavaBytecode.LoweredSequence.Code(refCode));
-    elements.add(new JavaBytecode.LoweredSequence.Bytecode(unboxDoubleBytecode()));
+    var seq = new JavaBytecodeSequence();
+    seq.add(baseCode);
+    seq.add(refCode);
     switch (op) {
-      case ADD -> {
-        elements.add(
-            new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.DADD)));
-        elements.add(
-            new JavaBytecode.LoweredSequence.Bytecode(
-                JavaBytecodeUtils.callStaticMethod(
-                    -1,
-                    JvmConstants.INTNAME_BOXED_DOUBLE,
-                    "valueOf",
-                    JavaMethodDescriptor.fromParts(
-                        JvmConstants.DESC_BOXED_DOUBLE, JvmConstants.DESC_DOUBLE))));
+      case ADD -> seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DADD));
+      case EQ -> {
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPL));
+        seq.add(compareToBoolBytecode(loc, Opcodes.IFEQ));
       }
-      case EQ ->
-          elements.add(
-              new JavaBytecode.LoweredSequence.Bytecode(
-                  compareToBoolBytecode(Opcodes.DCMPL, Opcodes.IFEQ)));
-      case LT ->
-          elements.add(
-              new JavaBytecode.LoweredSequence.Bytecode(
-                  compareToBoolBytecode(Opcodes.DCMPG, Opcodes.IFLT)));
+      case LT -> {
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPG));
+        seq.add(compareToBoolBytecode(loc, Opcodes.IFLT));
+      }
     }
     Type resultType = op == OpKind.ADD ? this : new TypeBoolDynamic();
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, new CodeDynamic(loc, new JavaBytecode.LoweredSequence(elements))),
+            Code.of(new CodeDynamic(loc, seq)),
             Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), resultType))));
   }
 
-  private static compilerxyz.eval.dynamic.JavaBytecodeSequence unboxDoubleBytecode() {
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-    seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_BOXED_DOUBLE)));
-    seq.add(
-        JavaBytecodeUtils.callMethod(
-            -1,
-            JvmConstants.INTNAME_BOXED_DOUBLE,
-            "doubleValue",
-            JavaMethodDescriptor.fromParts(JvmConstants.DESC_DOUBLE)));
-    return seq;
-  }
-
-  private static compilerxyz.eval.dynamic.JavaBytecodeSequence compareToBoolBytecode(
-      int cmpOpcode, int branchTrueOpcode) {
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+  private static CodeDynamic compareToBoolBytecode(QExprId loc, int branchTrueOpcode) {
+    var seq = new JavaBytecodeSequence();
     var trueLabel = new LabelNode();
     var endLabel = new LabelNode();
-    seq.add(JavaBytecodeUtils.inst(cmpOpcode));
-    seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(branchTrueOpcode, trueLabel)));
     seq.add(
-        JavaBytecodeUtils.accessStaticField(
-            -1, JvmConstants.INTNAME_BOXED_BOOL, "FALSE", JvmConstants.DESC_BOXED_BOOL));
-    seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, endLabel)));
-    seq.add(new JavaBytecodeInstruction.Obj(trueLabel));
+        new CodeDynamic(
+            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(branchTrueOpcode, trueLabel))));
+    seq.add(JavaBytecodeUtils.literalIntShortByte(loc, 0));
     seq.add(
-        JavaBytecodeUtils.accessStaticField(
-            -1, JvmConstants.INTNAME_BOXED_BOOL, "TRUE", JvmConstants.DESC_BOXED_BOOL));
-    seq.add(new JavaBytecodeInstruction.Obj(endLabel));
-    return seq;
+        new CodeDynamic(
+            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, endLabel))));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(trueLabel)));
+    seq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(endLabel)));
+    return new CodeDynamic(loc, seq);
   }
 
   @Override
@@ -358,19 +329,15 @@ public record TypeNumberDynamic()
     var numConstOpt = AspectNumberConst.getMaybe(xx, sourceType);
     if (numConstOpt instanceof Opt.Some<AspectNumberConst> numConstSome) {
       double numVal = numConstSome.value().get(some.value());
-      var literal =
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                  JavaBytecodeUtils.jsonLiteral(new JsonValueNumber(numVal))));
-      var entries = new TList<JavaBytecode.BlockEntry>();
+      var seq = new JavaBytecodeSequence();
       var existingDyn = cv.code().dynamic();
       if (existingDyn != null) {
-        entries.add(new JavaBytecode.BlockEntry.Code(existingDyn));
+        seq.add(existingDyn);
       }
-      entries.add(new JavaBytecode.BlockEntry.Code(literal));
-      var block = new CodeDynamic(loc, new JavaBytecode.Block(entries));
+      seq.add(JavaBytecodeUtils.literalDouble(loc, numVal));
       return EResult.ok(
           new CodeValue(
-              Code.of(loc, block),
+              Code.of(new CodeDynamic(loc, seq)),
               Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
     }
     return EResult.ok(

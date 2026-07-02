@@ -1,5 +1,6 @@
 package compilerxyz.eval.dynamic;
 
+import static org.objectweb.asm.Opcodes.ACONST_NULL;
 import static org.objectweb.asm.Opcodes.ALOAD;
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.CHECKCAST;
@@ -162,6 +163,14 @@ public class JavaBytecodeUtils {
 
   public static CodeDynamic literalLong(QExprId loc, long value) {
     return new CodeDynamic(loc, new JavaBytecodeInstructionObj(new LdcInsnNode(value)));
+  }
+
+  public static CodeDynamic literalDouble(QExprId loc, double value) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionObj(new LdcInsnNode(value)));
+  }
+
+  public static CodeDynamic literalNull(QExprId loc) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionInt(ACONST_NULL));
   }
 
   public static CodeDynamic literalBool(QExprId loc, boolean value) {

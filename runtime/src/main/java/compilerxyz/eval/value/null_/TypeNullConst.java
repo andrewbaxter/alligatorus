@@ -101,8 +101,7 @@ public record TypeNullConst()
 
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.ok(
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(JavaBytecodeUtils.jsonLiteral(new JsonValueNull()))));
+    return EResult.ok(JavaBytecodeUtils.literalNull(loc));
   }
 
   @Override

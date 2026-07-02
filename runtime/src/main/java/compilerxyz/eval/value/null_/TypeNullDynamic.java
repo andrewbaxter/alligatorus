@@ -9,6 +9,7 @@ import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.Binding;
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
@@ -27,6 +28,8 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -93,8 +96,7 @@ public record TypeNullDynamic()
     if (dyn != null) {
       return EResult.ok(dyn);
     }
-    return EResult.ok(
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(JavaBytecodeUtils.jsonLiteral(new JsonValueNull()))));
+    return EResult.ok(JavaBytecodeUtils.literalNull(loc));
   }
 
   @Override
@@ -150,6 +152,14 @@ public record TypeNullDynamic()
     var nullRes = AspectNull.get(xx, loc, sourceType);
     if (nullRes.hasErrors()) {
       return nullRes.reerr();
+    }
+    if (cv.code().isNone()) {
+      var seq = new JavaBytecodeSequence();
+      seq.add(JavaBytecodeUtils.literalNull(loc));
+      return EResult.ok(
+          new CodeValue(
+              Code.of(new CodeDynamic(loc, seq)),
+              Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
     }
     return EResult.ok(
         new CodeValue(

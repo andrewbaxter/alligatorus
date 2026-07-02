@@ -118,9 +118,7 @@ public record TypeStringConst()
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some
         && some.value() instanceof ValueStringConst v) {
-      return EResult.ok(
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                  JavaBytecodeUtils.jsonLiteral(new JsonValueString(v.value())))));
+      return EResult.ok(JavaBytecodeUtils.literalString(loc, v.value()));
     }
     return EResult.err(loc, "TypeStringConst::toDynamic: expected ValueStringConst");
   }

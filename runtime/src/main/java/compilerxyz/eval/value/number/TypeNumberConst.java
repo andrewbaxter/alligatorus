@@ -128,9 +128,7 @@ public record TypeNumberConst()
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some
         && some.value() instanceof ValueNumberConst v) {
-      return EResult.ok(
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                  JavaBytecodeUtils.jsonLiteral(new JsonValueNumber(v.value())))));
+      return EResult.ok(JavaBytecodeUtils.literalDouble(loc, v.value()));
     }
     return EResult.err(loc, "TypeNumberConst::toDynamic: expected ValueNumberConst");
   }

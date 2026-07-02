@@ -31,12 +31,13 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -163,19 +164,15 @@ public record TypeBoolDynamic()
     var boolConstOpt = AspectBoolConst.getMaybe(xx, sourceType);
     if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
       boolean boolVal = boolConstSome.value().get(some.value());
-      var literal =
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                  JavaBytecodeUtils.jsonLiteral(new JsonValueBoolean(boolVal))));
-      var entries = new TList<JavaBytecode.BlockEntry>();
+      var seq = new JavaBytecodeSequence();
       var existingDyn = cv.code().dynamic();
       if (existingDyn != null) {
-        entries.add(new JavaBytecode.BlockEntry.Code(existingDyn));
+        seq.add(existingDyn);
       }
-      entries.add(new JavaBytecode.BlockEntry.Code(literal));
-      var block = new CodeDynamic(loc, new JavaBytecode.Block(entries));
+      seq.add(JavaBytecodeUtils.literalBool(loc, boolVal));
       return EResult.ok(
           new CodeValue(
-              Code.of(loc, block),
+              Code.of(new CodeDynamic(loc, seq)),
               Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
     }
     return EResult.ok(
