@@ -30,7 +30,16 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeInstructionObj;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.ValueAnyConst;
@@ -44,6 +53,7 @@ import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 import java.util.function.Function;
 
 public record TypeListDynamic(Type elementType)
@@ -113,6 +123,39 @@ public record TypeListDynamic(Type elementType)
         }
       };
 
+  private sealed interface FieldSpec {
+    Type fieldType();
+
+    record Factory(Type type) implements FieldSpec {
+      @Override
+      public Type fieldType() {
+        return type;
+      }
+    }
+
+    record Method(Type type) implements FieldSpec {
+      @Override
+      public Type fieldType() {
+        return type;
+      }
+    }
+  }
+
+  private TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
+    var m = TMap.<ConstKey, FieldSpec>of();
+    m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
+    m.put(
+        new ConstKey.Str("push"),
+        new FieldSpec.Method(new TypeFunctionDynamic(elementType, new TypeNullDynamic())));
+    if (AspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
+      m.put(
+          new ConstKey.Str("join"),
+          new FieldSpec.Method(
+              new TypeFunctionDynamic(new TypeStringDynamic(), new TypeStringDynamic())));
+    }
+    return m;
+  }
+
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
@@ -122,56 +165,39 @@ public record TypeListDynamic(Type elementType)
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
-    if (!(ck instanceof ConstKey.Str keyStr)) {
+    var spec = fieldSpecs(xx).getOrNull(ck);
+    if (spec == null) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on list");
     }
-    String keyName = keyStr.value();
-    if (keyName.equals("new")) {
-      Type newType = new TypeListNewDynamic(elementType);
-      return EResult.ok(
-          new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(newType))));
-    }
-    var fieldTypeOpt = fieldTypeOpt(xx, new ConstKey.Str(keyName));
-    if (!(fieldTypeOpt instanceof Opt.Some<Type> fieldTypeSome)) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on list");
-    }
-    if (!(self.value() instanceof Opt.Some<Value> selfSome)
-        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
-      return EResult.err(loc, "TypeListDynamic::field: receiver is not a ValueDynamic");
-    }
-    var childSource = new ValueDynamic.Source.Field(selfVd.source(), keyName);
-    var fieldUse = DynUtil.renderSource(loc, childSource);
-    return EResult.ok(
-        new CodeValue(
-            Code.of(loc, fieldUse),
-            Opt.some(new ValueDynamic(childSource, fieldTypeSome.value()))));
+    return switch (spec) {
+      case FieldSpec.Factory f ->
+          EResult.ok(
+              new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
+      case FieldSpec.Method m -> {
+        if (!(self.value() instanceof Opt.Some<Value> selfSome)
+            || !(selfSome.value() instanceof ValueDynamic selfVd)) {
+          yield EResult.err(loc, "TypeListDynamic::field: receiver is not a ValueDynamic");
+        }
+        yield EResult.ok(
+            new CodeValue(
+                self.code(),
+                Opt.some(
+                    new ValueDynamic(
+                        new ValueDynamic.Source.MethodField(selfVd.source(), ck.toCanonical()),
+                        m.type()))));
+      }
+    };
   }
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
+    return TList.from(fieldSpecs(xx).keySet());
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (!(key instanceof ConstKey.Str s)) return Opt.none();
-    return switch (s.value()) {
-      case "new" -> Opt.some(new TypeListNewDynamic(elementType));
-      case "push" ->
-          Opt.some(
-              new TypeFunctionDynamic(
-                  elementType, new TypeNullDynamic()));
-      case "join" -> {
-        if (AspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
-          yield Opt.some(
-              new TypeFunctionDynamic(
-                  new TypeStringDynamic(),
-                  new TypeStringDynamic()));
-        }
-        yield Opt.none();
-      }
-      default -> Opt.none();
-    };
+    var spec = fieldSpecs(xx).getOrNull(key);
+    return spec == null ? Opt.none() : Opt.some(spec.fieldType());
   }
 
   @Override
@@ -187,9 +213,11 @@ public record TypeListDynamic(Type elementType)
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeListDynamic::toDynamic: CodeValue has no dynamic code");
+    if (dyn == null) {
+      throw new IllegalStateException(
+          "TypeListDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
+    }
+    return EResult.ok(dyn);
   }
 
   @Override
@@ -206,26 +234,56 @@ public record TypeListDynamic(Type elementType)
   public EResult<CodeValue> foreach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
     var baseConsumeRes = AspectConsumeDynamic.get(xx, loc, this);
-    if (baseConsumeRes.hasErrors()) {
-      return baseConsumeRes.reerr();
+    if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
+    var baseDynRes =
+        baseConsumeRes.requireValue("AspectConsumeDynamic.get").toDynamic(xx, loc, base);
+    if (baseDynRes.hasErrors()) return baseDynRes.reerr();
+    var baseDyn = baseDynRes.requireValue("toDynamic(base)");
+
+    var iterableName = JavaInternalName.of("java/lang/Iterable");
+    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var descObject = JavaDataDescriptor.fromClass(Object.class);
+    var descBool = JavaDataDescriptor.DESC_BOOL;
+    var iterMethod =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
+    var hasNextMethod = JavaMethodDescriptor.fromParts(descBool, TList.of());
+    var nextMethod = JavaMethodDescriptor.fromParts(descObject, TList.of());
+
+    var loopLabel = new LabelNode();
+    var doneLabel = new LabelNode();
+    var seq = new JavaBytecodeSequence();
+    seq.add(baseDyn);
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iteratorName, "hasNext", hasNextMethod));
+    seq.add(
+        new CodeDynamic(
+            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IFEQ, doneLabel))));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iteratorName, "next", nextMethod));
+    if (!(elementScopeId instanceof BindingId.Local localBinding)) {
+      throw new IllegalStateException(
+          "TypeListDynamic::foreach: element binding must be BindingId.Local");
     }
-    var baseDynRes = baseConsumeRes.valueOrNull().toDynamic(xx, loc, base);
-    if (baseDynRes.hasErrors()) {
-      return baseDynRes.reerr();
+    seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));
+    var bodyDyn = body.code().dynamic();
+    if (bodyDyn != null) {
+      seq.add(bodyDyn);
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
     }
-    CodeDynamic bodyDyn = body.code().dynamic();
-    if (bodyDyn == null) {
-      bodyDyn =
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(JavaBytecodeUtils.jsonLiteral(new JsonValueNull())));
-    }
-    var foreachDyn =
-        new CodeDynamic(loc, new JavaBytecode.Foreach(baseDynRes.valueOrNull(), elementScopeId, bodyDyn));
-    Type nullType = new TypeNullDynamic();
-    var stackRes = AspectStackValueDynamic.get(xx, loc, nullType);
-    if (stackRes.hasErrors()) {
-      return stackRes.reerr();
-    }
-    return EResult.ok(stackRes.valueOrNull().toValue(loc, foreachDyn));
+    seq.add(
+        new CodeDynamic(
+            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    seq.add(JavaBytecodeUtils.literalNull(loc));
+
+    var stackRes = AspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
+    if (stackRes.hasErrors()) return stackRes.reerr();
+    return EResult.ok(
+        stackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, new CodeDynamic(loc, seq)));
   }
 
   @Override

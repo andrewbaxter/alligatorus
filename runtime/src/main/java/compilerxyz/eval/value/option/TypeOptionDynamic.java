@@ -33,7 +33,9 @@ import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -118,6 +120,27 @@ public record TypeOptionDynamic(Type elementType)
         }
       };
 
+  private sealed interface FieldSpec {
+    Type fieldType();
+
+    record Factory(Type type) implements FieldSpec {
+      @Override
+      public Type fieldType() {
+        return type;
+      }
+    }
+  }
+
+  private TMap<ConstKey, FieldSpec> fieldSpecs() {
+    return TMap.ofEntries(
+        new Pair<>(
+            new ConstKey.Str("some"),
+            new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, true))),
+        new Pair<>(
+            new ConstKey.Str("none"),
+            new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, false))));
+  }
+
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
@@ -127,39 +150,26 @@ public record TypeOptionDynamic(Type elementType)
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
-    if (!(ck instanceof ConstKey.Str keyStr)) {
+    var spec = fieldSpecs().getOrNull(ck);
+    if (spec == null) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on option");
     }
-    String keyName = keyStr.value();
-    return switch (keyName) {
-      case "some" -> EResult.ok(
-          new CodeValue(
-              Code.none(loc),
-              Opt.some(
-                  new ValueAnyConst(new TypeOptionVariantConstructorDynamic(elementType, true)))));
-      case "none" -> EResult.ok(
-          new CodeValue(
-              Code.none(loc),
-              Opt.some(
-                  new ValueAnyConst(
-                      new TypeOptionVariantConstructorDynamic(elementType, false)))));
-      default -> EResult.err(loc, "Field '" + keyName + "' not found on option");
+    return switch (spec) {
+      case FieldSpec.Factory f ->
+          EResult.ok(
+              new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
     };
   }
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
+    return TList.from(fieldSpecs().keySet());
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (!(key instanceof ConstKey.Str s)) return Opt.none();
-    return switch (s.value()) {
-      case "some" -> Opt.some(new TypeOptionVariantConstructorDynamic(elementType, true));
-      case "none" -> Opt.some(new TypeOptionVariantConstructorDynamic(elementType, false));
-      default -> Opt.none();
-    };
+    var spec = fieldSpecs().getOrNull(key);
+    return spec == null ? Opt.none() : Opt.some(spec.fieldType());
   }
 
   @Override
@@ -170,9 +180,11 @@ public record TypeOptionDynamic(Type elementType)
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeOptionDynamic::toDynamic: CodeValue has no dynamic code");
+    if (dyn == null) {
+      throw new IllegalStateException(
+          "TypeOptionDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
+    }
+    return EResult.ok(dyn);
   }
 
   @Override

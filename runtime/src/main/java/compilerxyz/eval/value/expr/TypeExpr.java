@@ -175,7 +175,7 @@ public record TypeExpr()
       return EResult.err(loc, "TypeExpr::toDynamic: CodeValue has no value to stage");
     }
     var cell = new StagedExprCell(some.value());
-    var id = new BindingId.Local(xx.vx.nextLocalId.next());
+    var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(id, new External.StagedExprCellExternal(cell)));
     return EResult.ok(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));

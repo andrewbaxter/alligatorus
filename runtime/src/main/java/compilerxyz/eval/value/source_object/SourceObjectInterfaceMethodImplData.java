@@ -84,9 +84,9 @@ public final class SourceObjectInterfaceMethodImplData {
     var innerVx = new EvalContext(xx.vx.ix);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
-    var selfId = new BindingId.Local(innerVx.nextLocalId.next());
+    var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     innerBindingId = selfId;
-    var outerId = new BindingId.Local(innerVx.nextLocalId.next());
+    var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
 
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
@@ -153,7 +153,7 @@ public final class SourceObjectInterfaceMethodImplData {
       var ids = new TList<BindingId.Local>(dataFieldNames.size());
       var fields = new TOrderedMap<ConstKey, Binding>();
       for (int i = 0; i < dataFieldNames.size(); i++) {
-        var pid = new BindingId.Local(innerVx.nextLocalId.next());
+        var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         ids.add(pid);
         var ibResult = AspectInitialBind.get(xx, rootLoc, paramTypes.get(i));
         if (ibResult.hasErrors()) {
@@ -177,7 +177,7 @@ public final class SourceObjectInterfaceMethodImplData {
         bodyScope.values.put(
             new ConstKey.Str("inner"), selfIbSome.value().initialBind(selfId));
       }
-      var argId = new BindingId.Local(innerVx.nextLocalId.next());
+      var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       var argT = ifaceMethod.argRecordType != null ? ifaceMethod.argRecordType : ifaceMethod.argType;
       if (argT != null) {
         var argIbMaybe = AspectInitialBind.getMaybe(xx, argT);

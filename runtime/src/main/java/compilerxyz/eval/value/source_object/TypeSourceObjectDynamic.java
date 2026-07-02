@@ -383,7 +383,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
   private CodeValue emitBuiltinCast(
       ExprContext xx, QExprId loc, CodeDynamic sourceCode, BindingId runtimeFn, Type resultType) {
     Type template = new TypeSourceObjectConst(data);
-    var templateId = new BindingId.Local(xx.vx.nextLocalId.next());
+    var templateId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(new EvalContext.ExternalEntry(templateId, new External.TypeExternal(template)));
     var templateCode = new CodeDynamic(loc, new JavaBytecode.BindingUse(templateId));
     var args = new TList<CodeDynamic>();

@@ -409,6 +409,23 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
+  record MapEntryDynamic() implements TypeRoot {
+    @Override
+    public String typeDesc() {
+      return "type<map-entry-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
   record MapConstructorConst() implements TypeRoot {
     @Override
     public String typeDesc() {

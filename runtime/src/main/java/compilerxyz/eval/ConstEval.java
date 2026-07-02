@@ -454,7 +454,7 @@ public final class ConstEval {
     var iterOpt = erb.mustEr(AspectIterable.get(xx, loc, baseType));
     if (iterOpt.isEmpty()) return EResult.errs(erb.errors());
     var iterable = iterOpt.get();
-    var elementScopeId = new BindingId.Local(xx.vx.nextLocalId.next());
+    var elementScopeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var childScope = new Scope(xx.scope);
     var elementType = iterable.elementType();
     var ibOpt = erb.mustEr(AspectInitialBind.get(xx, loc, elementType));
@@ -752,7 +752,7 @@ public final class ConstEval {
       var bnCkOpt =
           erb.mustRes(Eval.extractConstKey(xx, catchObj.bindingName().loc(), bnv.value()));
       if (bnCkOpt.isEmpty()) return EResult.errs(erb.errors());
-      var bindingId = new BindingId.Local(xx.vx.nextLocalId.next());
+      var bindingId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       var catchScope = new Scope(xx.scope);
       var ibMaybe = AspectInitialBind.getMaybe(xx, bodyExcType);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {

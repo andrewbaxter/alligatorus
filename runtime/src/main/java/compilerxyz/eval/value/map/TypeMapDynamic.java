@@ -31,7 +31,15 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.eval.dynamic.JavaBytecodeInstructionObj;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.ValueAnyConst;
@@ -47,10 +55,10 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
-import compilerxyz.util.TOrderedMap;
+import compilerxyz.util.TMap;
 import java.util.function.Function;
 
 public record TypeMapDynamic(Type keyType, Type valueType)
@@ -120,6 +128,34 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         }
       };
 
+  private sealed interface FieldSpec {
+    Type fieldType();
+
+    record Factory(Type type) implements FieldSpec {
+      @Override
+      public Type fieldType() {
+        return type;
+      }
+    }
+
+    record GetFn(Type type) implements FieldSpec {
+      @Override
+      public Type fieldType() {
+        return type;
+      }
+    }
+  }
+
+  private TMap<ConstKey, FieldSpec> fieldSpecs() {
+    return TMap.ofEntries(
+        new Pair<>(
+            new ConstKey.Str("new"),
+            new FieldSpec.Factory(new TypeMapNewDynamic(keyType, valueType))),
+        new Pair<>(
+            new ConstKey.Str("get"),
+            new FieldSpec.GetFn(new TypeMapGetFnDynamic(keyType, valueType))));
+  }
+
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
@@ -129,54 +165,49 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
+    var spec = fieldSpecs().getOrNull(ck);
+    if (spec != null) {
+      return switch (spec) {
+        case FieldSpec.Factory f ->
+            EResult.ok(
+                new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
+        case FieldSpec.GetFn g -> {
+          var selfDyn = self.code().dynamic();
+          if (selfDyn == null) {
+            yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
+          }
+          yield EResult.ok(
+              new CodeValue(
+                  Code.of(loc, selfDyn), Opt.some(new ValueEmptyConst(g.type()))));
+        }
+      };
+    }
     if (!(ck instanceof ConstKey.Str keyStr)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on map");
-    }
-    String keyName = keyStr.value();
-    if (keyName.equals("new")) {
-      Type newType = new TypeMapNewDynamic(keyType, valueType);
-      return EResult.ok(
-          new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(newType))));
-    }
-    var fieldTypeOpt = fieldTypeOpt(xx, new ConstKey.Str(keyName));
-    if (!(fieldTypeOpt instanceof Opt.Some<Type> fieldTypeSome)) {
-      return EResult.err(loc, "Field '" + keyName + "' not found on map");
-    }
-    var selfDyn = self.code().dynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
-    }
-    if (keyName.equals("get")) {
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, selfDyn),
-              Opt.some(new ValueEmptyConst(new TypeMapGetFnDynamic(keyType, valueType)))));
     }
     if (!(self.value() instanceof Opt.Some<Value> selfSome)
         || !(selfSome.value() instanceof ValueDynamic selfVd)) {
       return EResult.err(loc, "TypeMapDynamic::field: receiver is not a ValueDynamic");
     }
-    var childSource = new ValueDynamic.Source.Field(selfVd.source(), keyName);
+    var childSource = new ValueDynamic.Source.Field(selfVd.source(), keyStr.value());
     var fieldUse = DynUtil.renderSource(loc, childSource);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldUse),
-            Opt.some(new ValueDynamic(childSource, fieldTypeSome.value()))));
+            Opt.some(new ValueDynamic(childSource, valueType))));
   }
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
+    return TList.from(fieldSpecs().keySet());
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (!(key instanceof ConstKey.Str s)) return Opt.none();
-    return switch (s.value()) {
-      case "new" -> Opt.some(new TypeMapNewDynamic(keyType, valueType));
-      case "get" -> Opt.some(new TypeFunctionDynamic(keyType, valueType));
-      default -> Opt.some(valueType);
-    };
+    var spec = fieldSpecs().getOrNull(key);
+    if (spec != null) return Opt.some(spec.fieldType());
+    if (key instanceof ConstKey.Str) return Opt.some(valueType);
+    return Opt.none();
   }
 
   @Override
@@ -192,9 +223,11 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeMapDynamic::toDynamic: CodeValue has no dynamic code");
+    if (dyn == null) {
+      throw new IllegalStateException(
+          "TypeMapDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
+    }
+    return EResult.ok(dyn);
   }
 
   @Override
@@ -204,40 +237,67 @@ public record TypeMapDynamic(Type keyType, Type valueType)
 
   @Override
   public Type elementType() {
-    var fields =
-        new TOrderedMap<ConstKey, RecordField>();
-    fields.put(
-        new ConstKey.Str("key"), new RecordField.Dynamic(keyType));
-    fields.put(
-        new ConstKey.Str("value"),
-        new RecordField.Dynamic(valueType));
-    return new Record(Opt.none(), fields);
+    return new TypeMapEntryDynamic(keyType, valueType);
   }
 
   @Override
   public EResult<CodeValue> foreach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
     var baseConsumeRes = AspectConsumeDynamic.get(xx, loc, this);
-    if (baseConsumeRes.hasErrors()) {
-      return baseConsumeRes.reerr();
+    if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
+    var baseDynRes =
+        baseConsumeRes.requireValue("AspectConsumeDynamic.get").toDynamic(xx, loc, base);
+    if (baseDynRes.hasErrors()) return baseDynRes.reerr();
+    var baseDyn = baseDynRes.requireValue("toDynamic(base)");
+
+    var mapName = JavaInternalName.of("java/util/Map");
+    var setName = JavaInternalName.of("java/util/Set");
+    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var descObject = JavaDataDescriptor.fromClass(Object.class);
+    var descBool = JavaDataDescriptor.DESC_BOOL;
+    var entrySetMethod =
+        JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
+    var iterMethod =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
+    var hasNextMethod = JavaMethodDescriptor.fromParts(descBool, TList.of());
+    var nextMethod = JavaMethodDescriptor.fromParts(descObject, TList.of());
+
+    var loopLabel = new LabelNode();
+    var doneLabel = new LabelNode();
+    var seq = new JavaBytecodeSequence();
+    seq.add(baseDyn);
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iteratorName, "hasNext", hasNextMethod));
+    seq.add(
+        new CodeDynamic(
+            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IFEQ, doneLabel))));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iteratorName, "next", nextMethod));
+    if (!(elementScopeId instanceof BindingId.Local localBinding)) {
+      throw new IllegalStateException(
+          "TypeMapDynamic::foreach: element binding must be BindingId.Local");
     }
-    var baseDynRes = baseConsumeRes.valueOrNull().toDynamic(xx, loc, base);
-    if (baseDynRes.hasErrors()) {
-      return baseDynRes.reerr();
+    seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));
+    var bodyDyn = body.code().dynamic();
+    if (bodyDyn != null) {
+      seq.add(bodyDyn);
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
     }
-    CodeDynamic bodyDyn = body.code().dynamic();
-    if (bodyDyn == null) {
-      bodyDyn =
-          new CodeDynamic(loc, new JavaBytecode.LoweredSequence(JavaBytecodeUtils.jsonLiteral(new JsonValueNull())));
-    }
-    var foreachDyn =
-        new CodeDynamic(loc, new JavaBytecode.ForeachMap(baseDynRes.valueOrNull(), elementScopeId, bodyDyn));
-    Type nullType = new TypeNullDynamic();
-    var stackRes = AspectStackValueDynamic.get(xx, loc, nullType);
-    if (stackRes.hasErrors()) {
-      return stackRes.reerr();
-    }
-    return EResult.ok(stackRes.valueOrNull().toValue(loc, foreachDyn));
+    seq.add(
+        new CodeDynamic(
+            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    seq.add(JavaBytecodeUtils.literalNull(loc));
+
+    var stackRes = AspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
+    if (stackRes.hasErrors()) return stackRes.reerr();
+    return EResult.ok(
+        stackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, new CodeDynamic(loc, seq)));
   }
 
   @Override
@@ -248,10 +308,8 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     if (sourceType instanceof TypeMapDynamic sourceMap) {
-      if (!sourceMap.keyType.getClass().equals(keyType.getClass())) {
-        return false;
-      }
-      return typesConvertible(xx, loc, sourceMap.valueType, valueType);
+      return typesConvertible(xx, loc, sourceMap.keyType, keyType)
+          && typesConvertible(xx, loc, sourceMap.valueType, valueType);
     }
     if (sourceType instanceof Record
         && AspectConsumeDynamic.getMaybe(xx, sourceType) instanceof Opt.Some<?>) {
@@ -267,7 +325,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     }
     var sourceType = some.value().valueTypeOf();
     if (sourceType instanceof TypeMapDynamic sourceMap) {
-      if (!sourceMap.keyType.getClass().equals(keyType.getClass())) {
+      if (!typesConvertible(xx, loc, sourceMap.keyType, keyType)) {
         return EResult.err(
             loc,
             "Incompatible map key types: "
@@ -304,13 +362,15 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     }
     var keyToDynamic = keyToDynamicOpt.get();
     var torderedMapIntname = JavaInternalName.of("compilerxyz/util/TOrderedMap");
-    var putDesc =
-        JavaMethodDescriptor.fromParts(
-            JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
-    var seqElements = new TList<JavaBytecode.LoweredSequence.Element>();
-    seqElements.addAll(
+    var descObject = JavaDataDescriptor.fromClass(Object.class);
+    var putDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject, descObject));
+    var seq = new JavaBytecodeSequence();
+    seq.add(
         JavaBytecodeUtils.instantiate(
-            -1, torderedMapIntname, JavaMethodDescriptor.VOID_NOARGS, new TList<>()));
+            loc,
+            torderedMapIntname,
+            JavaMethodDescriptor.fromConstructorParts(TList.of()),
+            new CodeDynamic(loc, new JavaBytecodeSequence())));
     for (var entry : record.fields().entrySet()) {
       var fieldKey = entry.getKey();
       var fieldVal = entry.getValue();
@@ -323,25 +383,18 @@ public record TypeMapDynamic(Type keyType, Type valueType)
                 new CodeValue(Code.none(loc), Opt.some(new ValueNumberConst((double) u.value())));
       }
       var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
-      if (keyConvOpt.isEmpty()) {
-        return EResult.errs(erb.errors());
-      }
+      if (keyConvOpt.isEmpty()) return EResult.errs(erb.errors());
       var keyCodeOpt = erb.mustEr(keyToDynamic.toDynamic(xx, loc, keyConvOpt.get()));
-      if (keyCodeOpt.isEmpty()) {
-        return EResult.errs(erb.errors());
-      }
+      if (keyCodeOpt.isEmpty()) return EResult.errs(erb.errors());
       CodeValue entryCv;
       switch (fieldVal) {
         case RecordField.EvalRes er -> {
           var inner = er.result();
           var innerErrs = inner.errorsOrNull();
-          if (innerErrs != null) {
-            erb.errors().addAll(innerErrs);
-          }
+          if (innerErrs != null) erb.errors().addAll(innerErrs);
           var innerVal = inner.valueOrNull();
           if (innerVal == null) {
-            erb.errPush(
-                "Record entry '" + fieldKey.toCanonical() + "' failed to evaluate");
+            erb.errPush("Record entry '" + fieldKey.toCanonical() + "' failed to evaluate");
             return EResult.errs(erb.errors());
           }
           entryCv = innerVal;
@@ -355,25 +408,18 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         }
       }
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, valueType, entryCv));
-      if (convertedOpt.isEmpty()) {
-        return EResult.errs(erb.errors());
-      }
+      if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
       var jsValOpt = erb.mustEr(valueToDynamic.toDynamic(xx, loc, convertedOpt.get()));
-      if (jsValOpt.isEmpty()) {
-        return EResult.errs(erb.errors());
-      }
-      seqElements.add(new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.DUP)));
-      seqElements.add(new JavaBytecode.LoweredSequence.Code(keyCodeOpt.get()));
-      seqElements.add(new JavaBytecode.LoweredSequence.Code(jsValOpt.get()));
-      seqElements.add(
-          new JavaBytecode.LoweredSequence.Bytecode(
-              JavaBytecodeUtils.callMethod(-1, torderedMapIntname, "put", putDesc)));
-      seqElements.add(new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.POP)));
+      if (jsValOpt.isEmpty()) return EResult.errs(erb.errors());
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      seq.add(keyCodeOpt.get());
+      seq.add(jsValOpt.get());
+      seq.add(JavaBytecodeUtils.callMethod(loc, torderedMapIntname, "put", putDesc));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
     }
-    var newMap = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(seqElements));
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, newMap),
+            Code.of(new CodeDynamic(loc, seq)),
             Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
   }
 

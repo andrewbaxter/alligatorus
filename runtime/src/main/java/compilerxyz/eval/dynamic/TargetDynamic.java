@@ -121,7 +121,7 @@ public final class TargetDynamic implements Target {
 
   @Override
   public BindResult targetBind(QExprId loc, TargetBindSub sub) {
-    var local = new BindingId.Local(localIds.next());
+    var local = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var bind = new JavaBytecode.BlockEntry.Bind(local, sub.data());
     var block = new CodeDynamic(loc, new JavaBytecode.Block(TList.of(bind)));
     return new BindResult(block, local);
@@ -255,7 +255,7 @@ public final class TargetDynamic implements Target {
     if (baseConsumeOpt.isEmpty()) return EResult.errs(erb.errors());
     var baseJsOpt = erb.mustEr(baseConsumeOpt.get().toDynamic(xx, loc, base));
     if (baseJsOpt.isEmpty()) return EResult.errs(erb.errors());
-    var elementScopeId = new BindingId.Local(xx.vx.nextLocalId.next());
+    var elementScopeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var dynamicCases = new TList<JavaBytecode.MatchBranch>(cases.size());
     compilerxyz.eval.Type resultType = null;
     for (var tc : cases) {
@@ -334,7 +334,7 @@ public final class TargetDynamic implements Target {
       TList<CodeValue> graftValues) {
     var erb = new Erb(loc);
     var treeCell = new StagedExprCell(tree);
-    var treeId = new BindingId.Local(xx.vx.nextLocalId.next());
+    var treeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(treeId, new External.StagedExprCellExternal(treeCell)));
     var stageArgs = new TList<CodeDynamic>();
@@ -348,7 +348,7 @@ public final class TargetDynamic implements Target {
           return EResult.err(loc, "TargetDynamic::stage: lower CodeValue has no value");
         }
         var cell = new StagedExprCell(some.value());
-        var id = new BindingId.Local(xx.vx.nextLocalId.next());
+        var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(id, new External.StagedExprCellExternal(cell)));
         stageArgs.add(
@@ -362,7 +362,7 @@ public final class TargetDynamic implements Target {
         var liftCell =
             new StageLiftCell(
                 loc, xx.vx, xx.importState, xx.scope, vtype, xx.currentExceptionType, this);
-        var liftId = new BindingId.Local(xx.vx.nextLocalId.next());
+        var liftId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(liftId, new External.StageLiftCellExternal(liftCell)));
         var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
@@ -378,7 +378,7 @@ public final class TargetDynamic implements Target {
         var cell =
             new CodeValueExternCell(
                 new CodeValue(Code.none(loc), cv.value()));
-        var id = new BindingId.Local(xx.vx.nextLocalId.next());
+        var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(id, new External.CodeValueExternCellExternal(cell)));
         stageArgs.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));

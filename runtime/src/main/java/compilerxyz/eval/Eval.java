@@ -132,7 +132,7 @@ public final class Eval {
     }
     var callerExc = xx.currentExceptionType;
     var erb = new Erb(loc);
-    var catchBinding = new BindingId.Local(xx.vx.nextLocalId.next());
+    var catchBinding = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var initialBindOpt = erb.mustEr(AspectInitialBind.get(xx, loc, calleeExcType));
     if (initialBindOpt.isEmpty()) {
       return EResult.errs(erb.errors());

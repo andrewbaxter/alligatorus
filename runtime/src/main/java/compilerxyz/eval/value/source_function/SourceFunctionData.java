@@ -110,7 +110,7 @@ public final class SourceFunctionData {
     var innerVx = new EvalContext(xx.vx.ix);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
-    var argId = new BindingId.Local(innerVx.nextLocalId.next());
+    var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
 
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
