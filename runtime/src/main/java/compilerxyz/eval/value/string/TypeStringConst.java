@@ -17,6 +17,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -130,12 +131,7 @@ public record TypeStringConst()
     if (convertedRes.hasErrors()) {
       return convertedRes.reerr();
     }
-    var converted = convertedRes.valueOrNull();
-    if (converted == null) {
-      throw new IllegalStateException(
-          "TypeStringDynamic::typeCastFrom returned neither value nor errors");
-    }
-    return dynType.field(xx, loc, converted, key);
+    return dynType.field(xx, loc, convertedRes.requireValue("TypeStringDynamic::typeCastFrom"), key);
   }
 
   @Override

@@ -167,7 +167,11 @@ public record TypeNumberConst()
     if (refN.hasErrors()) return EResult.err(loc, opErrMsg(op, "reference", refN));
     return EResult.ok(
         new CodeValue(
-            base.code(), Opt.some(f.apply(baseN.valueOrNull(), refN.valueOrNull()))));
+            base.code(),
+            Opt.some(
+                f.apply(
+                    baseN.requireValue("extractDouble(base)"),
+                    refN.requireValue("extractDouble(reference)")))));
   }
 
   private EResult<Double> extractDouble(ExprContext xx, QExprId loc, CodeValue cv, String op) {
@@ -204,12 +208,7 @@ public record TypeNumberConst()
     if (convertedRes.hasErrors()) {
       return convertedRes.reerr();
     }
-    var converted = convertedRes.valueOrNull();
-    if (converted == null) {
-      throw new IllegalStateException(
-          "TypeNumberConst::field: typeCastFrom returned neither value nor errors");
-    }
-    return dyn.field(xx, loc, converted, key);
+    return dyn.field(xx, loc, convertedRes.requireValue("TypeNumberDynamic::typeCastFrom"), key);
   }
 
   @Override

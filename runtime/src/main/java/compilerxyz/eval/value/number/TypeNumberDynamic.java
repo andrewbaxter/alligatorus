@@ -206,19 +206,42 @@ public record TypeNumberDynamic()
   @Override
   public EResult<CodeValue> add(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOp(xx, loc, base, reference, OpKind.ADD);
+    var seqRes = binOpSeq(xx, loc, base, reference);
+    if (seqRes.hasErrors()) return seqRes.reerr();
+    var seq = seqRes.requireValue("binOpSeq");
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DADD));
+    return EResult.ok(
+        new CodeValue(
+            Code.of(new CodeDynamic(loc, seq)),
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
   }
 
   @Override
   public EResult<CodeValue> eq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOp(xx, loc, base, reference, OpKind.EQ);
+    var seqRes = binOpSeq(xx, loc, base, reference);
+    if (seqRes.hasErrors()) return seqRes.reerr();
+    var seq = seqRes.requireValue("binOpSeq");
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPL));
+    seq.add(compareToBoolBytecode(loc, Opcodes.IFEQ));
+    return EResult.ok(
+        new CodeValue(
+            Code.of(new CodeDynamic(loc, seq)),
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), new TypeBoolDynamic()))));
   }
 
   @Override
   public EResult<CodeValue> lt(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOp(xx, loc, base, reference, OpKind.LT);
+    var seqRes = binOpSeq(xx, loc, base, reference);
+    if (seqRes.hasErrors()) return seqRes.reerr();
+    var seq = seqRes.requireValue("binOpSeq");
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPG));
+    seq.add(compareToBoolBytecode(loc, Opcodes.IFLT));
+    return EResult.ok(
+        new CodeValue(
+            Code.of(new CodeDynamic(loc, seq)),
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), new TypeBoolDynamic()))));
   }
 
   @Override
@@ -226,60 +249,18 @@ public record TypeNumberDynamic()
     return DynUtil.dynamicSet(xx, loc, base, value);
   }
 
-  private enum OpKind {
-    ADD,
-    EQ,
-    LT
-  }
-
-  private EResult<CodeValue> binOp(
-      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference, OpKind op) {
+  private EResult<JavaBytecodeSequence> binOpSeq(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var baseCodeRes = toDynamic(xx, loc, base);
-    if (baseCodeRes.hasErrors()) {
-      return baseCodeRes.reerr();
-    }
-    var baseCode = baseCodeRes.valueOrNull();
-    if (baseCode == null) {
-      throw new IllegalStateException(
-          "TypeNumberDynamic::binOp: toDynamic returned neither value nor errors");
-    }
+    if (baseCodeRes.hasErrors()) return baseCodeRes.reerr();
     var refCvRes = typeCastFrom(xx, loc, reference);
-    if (refCvRes.hasErrors()) {
-      return refCvRes.reerr();
-    }
-    var refCv = refCvRes.valueOrNull();
-    if (refCv == null) {
-      throw new IllegalStateException(
-          "TypeNumberDynamic::binOp: typeCastFrom returned neither value nor errors");
-    }
-    var refCodeRes = toDynamic(xx, loc, refCv);
-    if (refCodeRes.hasErrors()) {
-      return refCodeRes.reerr();
-    }
-    var refCode = refCodeRes.valueOrNull();
-    if (refCode == null) {
-      throw new IllegalStateException(
-          "TypeNumberDynamic::binOp: toDynamic returned neither value nor errors");
-    }
+    if (refCvRes.hasErrors()) return refCvRes.reerr();
+    var refCodeRes = toDynamic(xx, loc, refCvRes.requireValue("typeCastFrom"));
+    if (refCodeRes.hasErrors()) return refCodeRes.reerr();
     var seq = new JavaBytecodeSequence();
-    seq.add(baseCode);
-    seq.add(refCode);
-    switch (op) {
-      case ADD -> seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DADD));
-      case EQ -> {
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPL));
-        seq.add(compareToBoolBytecode(loc, Opcodes.IFEQ));
-      }
-      case LT -> {
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPG));
-        seq.add(compareToBoolBytecode(loc, Opcodes.IFLT));
-      }
-    }
-    Type resultType = op == OpKind.ADD ? this : new TypeBoolDynamic();
-    return EResult.ok(
-        new CodeValue(
-            Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), resultType))));
+    seq.add(baseCodeRes.requireValue("toDynamic(base)"));
+    seq.add(refCodeRes.requireValue("toDynamic(reference)"));
+    return EResult.ok(seq);
   }
 
   private static CodeDynamic compareToBoolBytecode(QExprId loc, int branchTrueOpcode) {

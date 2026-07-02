@@ -35,6 +35,14 @@ public final class EResult<T> {
     return value;
   }
 
+  public T requireValue(String context) {
+    if (value == null) {
+      throw new IllegalStateException(
+          context + " returned neither value nor errors");
+    }
+    return value;
+  }
+
   public @Nullable TList<ExprErr> errorsOrNull() {
     return errors;
   }
