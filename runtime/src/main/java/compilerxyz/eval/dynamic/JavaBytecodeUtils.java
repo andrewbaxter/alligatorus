@@ -55,10 +55,9 @@ public class JavaBytecodeUtils {
     pw.flush();
   }
 
-  /** Wrap a raw {@link JavaBytecode} primitive as a source-annotated {@link CodeDynamic}. */
-  private static CodeDynamic w(QExprId loc, JavaBytecode bc) {
-    return new CodeDynamic(loc, bc);
-  }
+    private static CodeDynamic w(QExprId loc, JavaBytecode bc) {
+        return new CodeDynamic(loc, bc);
+    }
 
   public static CodeDynamic instantiate(
       QExprId loc, JavaInternalName klass, JavaMethodDescriptor desc, CodeDynamic arguments) {

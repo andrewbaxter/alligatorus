@@ -11,7 +11,6 @@ public class JavaBytecodeOther<Q> implements JavaBytecode{
 
     @Override
     public <T> T dispatch(Dispatcher<T> dispatcher) {
-    // Not type safe... oh well
-    return (T) callback.get();
+        return (T) callback.get();
     }
 }

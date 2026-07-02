@@ -22,9 +22,8 @@ import compilerxyz.util.TSet;
 public final class SourceObjectEmitter {
   private SourceObjectEmitter() {}
 
-  // Project-specific internal-name constants used by this emitter.
-  private static final JavaInternalName INTNAME_DYN_RUNTIME =
-      JavaInternalName.of("compilerxyz/eval/dynamic/DynRuntime");
+    private static final JavaInternalName INTNAME_DYN_RUNTIME =
+            JavaInternalName.of("compilerxyz/eval/dynamic/DynRuntime");
   private static final JavaInternalName INTNAME_EXPR_CONTEXT =
       JavaInternalName.of("compilerxyz/eval/ExprContext");
   private static final JavaInternalName INTNAME_QEXPR_ID =
@@ -74,9 +73,8 @@ public final class SourceObjectEmitter {
   private static final JavaInternalName INTNAME_OBJECT_ARRAY_ELEM =
       JavaInternalName.of("[Ljava/lang/Object;");
 
-  // Common descriptors used across the emitter.
-  private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
-      JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT);
+    private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
+            JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT);
   private static final JavaDataDescriptor DESC_QEXPR_ID =
       JavaDataDescriptor.fromInternalName(INTNAME_QEXPR_ID);
   private static final JavaDataDescriptor DESC_TYPE =
@@ -108,10 +106,9 @@ public final class SourceObjectEmitter {
   private static final JavaDataDescriptor DESC_LIST =
       JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_LIST);
 
-  // Common method descriptors.
-  private static final JavaMethodDescriptor MDESC_METHOD_METHOD =
-      JavaMethodDescriptor.fromParts(
-          JvmConstants.DESC_OBJECT, DESC_EXPR_CONTEXT, JvmConstants.DESC_OBJECT);
+    private static final JavaMethodDescriptor MDESC_METHOD_METHOD =
+            JavaMethodDescriptor.fromParts(
+                    JvmConstants.DESC_OBJECT, DESC_EXPR_CONTEXT, JvmConstants.DESC_OBJECT);
   private static final JavaMethodDescriptor MDESC_FIELD_GET =
       JavaMethodDescriptor.fromParts(
           JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT, JvmConstants.DESC_STRING);

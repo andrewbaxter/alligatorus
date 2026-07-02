@@ -464,15 +464,10 @@ public final class TargetDynamic implements Target {
           seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, ctx.slotOf(local)));
       case BindingId.Def def -> {
         if (isStaticFunctionDef(def)) {
-          // Reifying a static-def function reference as a ContextualFunction
-          // value requires either INVOKEDYNAMIC via LambdaMetafactory or a
-          // dedicated FunctionClassEmitter-generated wrapper per def. Neither
-          // is implemented yet. Not routing through a DynRuntime helper — the
-          // whole refactor exists to eliminate RTTI dispatch.
-          throw new IllegalStateException(
-              "Static-def function-as-value not yet implemented; def="
-                  + def
-                  + ". Needs LambdaMetafactory INVOKEDYNAMIC or a wrapper class emitter.");
+            throw new IllegalStateException(
+                    "Static-def function-as-value not yet implemented; def="
+                            + def
+                            + ". Needs LambdaMetafactory INVOKEDYNAMIC or a wrapper class emitter.");
         } else {
           seq.add(
               JavaBytecodeUtils.accessStaticField(
@@ -541,28 +536,24 @@ public final class TargetDynamic implements Target {
   }
 
   private void emitForeach(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.Foreach v) {
-    // Foreach over a List/Iterable base — emit primitive iterator loop directly.
-    emitInner(seq, ctx, v.base());
-    seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_ITERABLE)));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_ITERABLE, "iterator", MDESC_ITERATOR));
-    emitIterLoop(seq, ctx, v.elementKey(), v.body(), /* wrapEntryAsKvMap= */ false);
+      emitInner(seq, ctx, v.base());
+      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_ITERABLE)));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_ITERABLE, "iterator", MDESC_ITERATOR));
+      emitIterLoop(seq, ctx, v.elementKey(), v.body(), false);
   }
 
   private void emitForeachMap(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.ForeachMap v) {
-    // ForeachMap over a Map base — iterate entrySet, wrap each entry as
-    // {"key":k, "value":v} LinkedHashMap so the body sees it as a Map
-    // (matches the semantic contract callers rely on).
-    emitInner(seq, ctx, v.base());
-    seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP)));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_MAP, "entrySet", MDESC_MAP_ENTRY_SET));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_SET, "iterator", MDESC_ITERATOR));
-    emitIterLoop(seq, ctx, v.elementKey(), v.body(), /* wrapEntryAsKvMap= */ true);
+      emitInner(seq, ctx, v.base());
+      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP)));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_MAP, "entrySet", MDESC_MAP_ENTRY_SET));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_SET, "iterator", MDESC_ITERATOR));
+      emitIterLoop(seq, ctx, v.elementKey(), v.body(), true);
   }
 
   private void emitIterLoop(
@@ -571,62 +562,56 @@ public final class TargetDynamic implements Target {
       BindingId elementKey,
       CodeDynamic body,
       boolean wrapEntryAsKvMap) {
-    // Stack going in: Iterator
-    var iterSlot = ctx.nextSlot++;
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, iterSlot));
-    var elementSlot = slotForBinding(ctx, elementKey);
+      var iterSlot = ctx.nextSlot++;
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, iterSlot));
+      var elementSlot = slotForBinding(ctx, elementKey);
 
-    var loopStartNode = new LabelNode();
-    var loopEndNode = new LabelNode();
-    seq.add(new JavaBytecodeInstruction.Obj(loopStartNode));
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, iterSlot));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_ITERATOR, "hasNext", MDESC_HAS_NEXT));
-    seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, loopEndNode)));
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, iterSlot));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_ITERATOR, "next", MDESC_NEXT));
-    if (wrapEntryAsKvMap) {
-      // Stack: Map.Entry. Save it, then build a {"key":k, "value":v} LinkedHashMap.
-      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP_ENTRY)));
-      var entrySlot = ctx.nextSlot++;
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, entrySlot));
-      // NEW LinkedHashMap; DUP; INVOKESPECIAL <init>()V
-      seq.add(new JavaBytecodeInstruction.Obj(new TypeInsnNode(Opcodes.NEW, JvmConstants.INTNAME_LINKED_HASH_MAP.value())));
-      seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.callConstructor(-1, JvmConstants.INTNAME_LINKED_HASH_MAP, JavaMethodDescriptor.VOID_NOARGS));
-      // put("key", entry.getKey())
-      seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.literalString("key"));
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
+      var loopStartNode = new LabelNode();
+      var loopEndNode = new LabelNode();
+      seq.add(new JavaBytecodeInstruction.Obj(loopStartNode));
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, iterSlot));
       seq.add(
-          JavaBytecodeUtils.callInterfaceMethod(
-              -1, JvmConstants.INTNAME_MAP_ENTRY, "getKey", MDESC_MAP_ENTRY_GET));
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_ITERATOR, "hasNext", MDESC_HAS_NEXT));
+      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, loopEndNode)));
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, iterSlot));
       seq.add(
-          JavaBytecodeUtils.callInterfaceMethod(
-              -1, JvmConstants.INTNAME_MAP, "put", MDESC_MAP_PUT));
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_ITERATOR, "next", MDESC_NEXT));
+      if (wrapEntryAsKvMap) {
+          seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP_ENTRY)));
+          var entrySlot = ctx.nextSlot++;
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, entrySlot));
+          seq.add(new JavaBytecodeInstruction.Obj(new TypeInsnNode(Opcodes.NEW, JvmConstants.INTNAME_LINKED_HASH_MAP.value())));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
+          seq.add(JavaBytecodeUtils.callConstructor(-1, JvmConstants.INTNAME_LINKED_HASH_MAP, JavaMethodDescriptor.VOID_NOARGS));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
+          seq.add(JavaBytecodeUtils.literalString("key"));
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
+          seq.add(
+                  JavaBytecodeUtils.callInterfaceMethod(
+                          -1, JvmConstants.INTNAME_MAP_ENTRY, "getKey", MDESC_MAP_ENTRY_GET));
+          seq.add(
+                  JavaBytecodeUtils.callInterfaceMethod(
+                          -1, JvmConstants.INTNAME_MAP, "put", MDESC_MAP_PUT));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
+          seq.add(JavaBytecodeUtils.literalString("value"));
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
+          seq.add(
+                  JavaBytecodeUtils.callInterfaceMethod(
+                          -1, JvmConstants.INTNAME_MAP_ENTRY, "getValue", MDESC_MAP_ENTRY_GET));
+          seq.add(
+                  JavaBytecodeUtils.callInterfaceMethod(
+                          -1, JvmConstants.INTNAME_MAP, "put", MDESC_MAP_PUT));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
+      }
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, elementSlot));
+      emitInner(seq, ctx, body);
       seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
-      // put("value", entry.getValue())
-      seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.literalString("value"));
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
-      seq.add(
-          JavaBytecodeUtils.callInterfaceMethod(
-              -1, JvmConstants.INTNAME_MAP_ENTRY, "getValue", MDESC_MAP_ENTRY_GET));
-      seq.add(
-          JavaBytecodeUtils.callInterfaceMethod(
-              -1, JvmConstants.INTNAME_MAP, "put", MDESC_MAP_PUT));
-      seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
-      // Stack: LinkedHashMap
-    }
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, elementSlot));
-    emitInner(seq, ctx, body);
-    seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
-    seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, loopStartNode)));
-    seq.add(new JavaBytecodeInstruction.Obj(loopEndNode));
-    seq.add(JavaBytecodeUtils.inst(Opcodes.ACONST_NULL));
+      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, loopStartNode)));
+      seq.add(new JavaBytecodeInstruction.Obj(loopEndNode));
+      seq.add(JavaBytecodeUtils.inst(Opcodes.ACONST_NULL));
   }
 
   private void emitIf(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.If v) {
@@ -653,57 +638,55 @@ public final class TargetDynamic implements Target {
   }
 
   private void emitMatch(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.Match v) {
-    // Base is a single-tag payload — a Map with exactly one entry {tag: payload}.
-    // Extract the sole Map.Entry inline: entrySet().iterator().next().
-    emitInner(seq, ctx, v.base());
-    seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP)));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_MAP, "entrySet", MDESC_MAP_ENTRY_SET));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_SET, "iterator", MDESC_ITERATOR));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_ITERATOR, "next", MDESC_NEXT));
-    seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP_ENTRY)));
-    var entrySlot = ctx.nextSlot++;
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, entrySlot));
-
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_MAP_ENTRY, "getKey", MDESC_MAP_ENTRY_GET));
-    seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_STRING)));
-    var tagSlot = ctx.nextSlot++;
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, tagSlot));
-
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            -1, JvmConstants.INTNAME_MAP_ENTRY, "getValue", MDESC_MAP_ENTRY_GET));
-    var elementSlot = slotForBinding(ctx, v.elementKey());
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, elementSlot));
-
-    var endNode = new LabelNode();
-    for (var branch : v.cases()) {
-      var nextCaseNode = new LabelNode();
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, tagSlot));
-      seq.add(JavaBytecodeUtils.literalString(branch.dynamicTag()));
+      emitInner(seq, ctx, v.base());
+      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP)));
       seq.add(
-          JavaBytecodeUtils.callMethod(
-              -1, JvmConstants.INTNAME_STRING, "equals", MDESC_STRING_EQUALS));
-      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, nextCaseNode)));
-      emitInner(seq, ctx, branch.body());
-      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, endNode)));
-      seq.add(new JavaBytecodeInstruction.Obj(nextCaseNode));
-    }
-    if (v.fallback() instanceof Opt.Some<CodeDynamic> some) {
-      emitInner(seq, ctx, some.value());
-    } else {
-      seq.add(JavaBytecodeUtils.inst(Opcodes.ACONST_NULL));
-    }
-    seq.add(new JavaBytecodeInstruction.Obj(endNode));
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_MAP, "entrySet", MDESC_MAP_ENTRY_SET));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_SET, "iterator", MDESC_ITERATOR));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_ITERATOR, "next", MDESC_NEXT));
+      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP_ENTRY)));
+      var entrySlot = ctx.nextSlot++;
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, entrySlot));
+
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_MAP_ENTRY, "getKey", MDESC_MAP_ENTRY_GET));
+      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_STRING)));
+      var tagSlot = ctx.nextSlot++;
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, tagSlot));
+
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, entrySlot));
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      -1, JvmConstants.INTNAME_MAP_ENTRY, "getValue", MDESC_MAP_ENTRY_GET));
+      var elementSlot = slotForBinding(ctx, v.elementKey());
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, elementSlot));
+
+      var endNode = new LabelNode();
+      for (var branch : v.cases()) {
+          var nextCaseNode = new LabelNode();
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, tagSlot));
+          seq.add(JavaBytecodeUtils.literalString(branch.dynamicTag()));
+          seq.add(
+                  JavaBytecodeUtils.callMethod(
+                          -1, JvmConstants.INTNAME_STRING, "equals", MDESC_STRING_EQUALS));
+          seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, nextCaseNode)));
+          emitInner(seq, ctx, branch.body());
+          seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, endNode)));
+          seq.add(new JavaBytecodeInstruction.Obj(nextCaseNode));
+      }
+      if (v.fallback() instanceof Opt.Some<CodeDynamic> some) {
+          emitInner(seq, ctx, some.value());
+      } else {
+          seq.add(JavaBytecodeUtils.inst(Opcodes.ACONST_NULL));
+      }
+      seq.add(new JavaBytecodeInstruction.Obj(endNode));
   }
 
   private void emitSequence(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.LoweredSequence v) {
@@ -718,102 +701,87 @@ public final class TargetDynamic implements Target {
   }
 
   private void emitTry(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.Try v) {
-    // Uses raw ASM labels + TryCatch nodes because the handler exception types
-    // (DynException for catch, null=any for finally) differ from what the
-    // JavaBytecodeCatch node hardcodes (RuntimeException). Labels and jumps are
-    // emitted into the sequence via Obj(LabelNode/JumpInsnNode); try-catch
-    // records are emitted via JavaBytecodeInstruction.TryCatch nodes.
-    var bodyStart = new Label();
-    var bodyEnd = new Label();
-    var handlerStart = new Label();
-    var afterBody = new Label();
-    var end = new Label();
+      var bodyStart = new Label();
+      var bodyEnd = new Label();
+      var handlerStart = new Label();
+      var afterBody = new Label();
+      var end = new Label();
 
-    var bodyStartNode = new LabelNode(bodyStart);
-    var bodyEndNode = new LabelNode(bodyEnd);
-    var handlerStartNode = new LabelNode(handlerStart);
-    var afterBodyNode = new LabelNode(afterBody);
-    var endNode = new LabelNode(end);
+      var bodyStartNode = new LabelNode(bodyStart);
+      var bodyEndNode = new LabelNode(bodyEnd);
+      var handlerStartNode = new LabelNode(handlerStart);
+      var afterBodyNode = new LabelNode(afterBody);
+      var endNode = new LabelNode(end);
 
-    var hasCatch = v.catchClause() instanceof Opt.Some<JavaBytecode.Catch>;
-    var hasFinally = v.finallyBlock() instanceof Opt.Some<CodeDynamic>;
-    var finallyHandler = hasFinally ? new Label() : null;
-    var finallyHandlerNode = finallyHandler == null ? null : new LabelNode(finallyHandler);
+      var hasCatch = v.catchClause() instanceof Opt.Some<JavaBytecode.Catch>;
+      var hasFinally = v.finallyBlock() instanceof Opt.Some<CodeDynamic>;
+      var finallyHandler = hasFinally ? new Label() : null;
+      var finallyHandlerNode = finallyHandler == null ? null : new LabelNode(finallyHandler);
 
-    seq.add(new JavaBytecodeInstruction.Obj(bodyStartNode));
-    emitInner(seq, ctx, v.body());
-    var resultSlot = ctx.nextSlot++;
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, resultSlot));
-    seq.add(new JavaBytecodeInstruction.Obj(bodyEndNode));
-    seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, afterBodyNode)));
-
-    if (hasCatch) {
-      seq.add(
-          new JavaBytecodeInstruction.TryCatch(
-              bodyStart, bodyEnd, handlerStart, INTNAME_DYN_EXCEPTION.value()));
-    }
-    if (hasFinally) {
-      seq.add(new JavaBytecodeInstruction.TryCatch(bodyStart, bodyEnd, finallyHandler, null));
-    }
-
-    if (hasCatch) {
-      var catchClause = ((Opt.Some<JavaBytecode.Catch>) v.catchClause()).value();
-      seq.add(new JavaBytecodeInstruction.Obj(handlerStartNode));
-
-      // Stack: DynException (JVM auto-pushed on catch).
-      // DUP so we can re-ATHROW below if the payload is a panic marker.
-      seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
-      // Extract payload for the user binding.
-      seq.add(
-          JavaBytecodeUtils.accessField(
-              -1, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
-      var bindingSlot = slotForBinding(ctx, catchClause.binding());
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, bindingSlot));
-      // Stack still: DynException.
-
-      // Panic check: if payload is a Map containing PANIC_MARKER_KEY, re-throw
-      // the DynException so user catch cannot swallow panics.
-      var noPanicNode = new LabelNode();
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, bindingSlot));
-      seq.add(new JavaBytecodeInstruction.Obj(
-          new org.objectweb.asm.tree.TypeInsnNode(Opcodes.INSTANCEOF, JvmConstants.INTNAME_MAP.value())));
-      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, noPanicNode)));
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, bindingSlot));
-      seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP)));
-      seq.add(JavaBytecodeUtils.literalString(Eval.PANIC_MARKER_KEY));
-      seq.add(
-          JavaBytecodeUtils.callInterfaceMethod(
-              -1, JvmConstants.INTNAME_MAP, "containsKey", MDESC_MAP_CONTAINS_KEY));
-      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, noPanicNode)));
-      // Panic path: re-throw the still-on-stack DynException.
-      seq.add(JavaBytecodeUtils.inst(Opcodes.ATHROW));
-      // Non-panic path: discard the saved DynException, run catch body.
-      seq.add(new JavaBytecodeInstruction.Obj(noPanicNode));
-      seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
-
-      emitInner(seq, ctx, catchClause.body());
+      seq.add(new JavaBytecodeInstruction.Obj(bodyStartNode));
+      emitInner(seq, ctx, v.body());
+      var resultSlot = ctx.nextSlot++;
       seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, resultSlot));
+      seq.add(new JavaBytecodeInstruction.Obj(bodyEndNode));
       seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, afterBodyNode)));
-    }
 
-    seq.add(new JavaBytecodeInstruction.Obj(afterBodyNode));
-    if (hasFinally) {
-      var finallyBody = ((Opt.Some<CodeDynamic>) v.finallyBlock()).value();
-      emitInner(seq, ctx, finallyBody);
-      seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
-      seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, endNode)));
+      if (hasCatch) {
+          seq.add(
+                  new JavaBytecodeInstruction.TryCatch(
+                          bodyStart, bodyEnd, handlerStart, INTNAME_DYN_EXCEPTION.value()));
+      }
+      if (hasFinally) {
+          seq.add(new JavaBytecodeInstruction.TryCatch(bodyStart, bodyEnd, finallyHandler, null));
+      }
 
-      seq.add(new JavaBytecodeInstruction.Obj(finallyHandlerNode));
-      var excSlot = ctx.nextSlot++;
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, excSlot));
-      emitInner(seq, ctx, finallyBody);
-      seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
-      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, excSlot));
-      seq.add(JavaBytecodeUtils.inst(Opcodes.ATHROW));
-    }
+      if (hasCatch) {
+          var catchClause = ((Opt.Some<JavaBytecode.Catch>) v.catchClause()).value();
+          seq.add(new JavaBytecodeInstruction.Obj(handlerStartNode));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.DUP));
+          seq.add(
+                  JavaBytecodeUtils.accessField(
+                          -1, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
+          var bindingSlot = slotForBinding(ctx, catchClause.binding());
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, bindingSlot));
+          var noPanicNode = new LabelNode();
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, bindingSlot));
+          seq.add(new JavaBytecodeInstruction.Obj(
+                  new org.objectweb.asm.tree.TypeInsnNode(Opcodes.INSTANCEOF, JvmConstants.INTNAME_MAP.value())));
+          seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, noPanicNode)));
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, bindingSlot));
+          seq.add(JavaBytecodeUtils.cast(JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP)));
+          seq.add(JavaBytecodeUtils.literalString(Eval.PANIC_MARKER_KEY));
+          seq.add(
+                  JavaBytecodeUtils.callInterfaceMethod(
+                          -1, JvmConstants.INTNAME_MAP, "containsKey", MDESC_MAP_CONTAINS_KEY));
+          seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.IFEQ, noPanicNode)));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.ATHROW));
+          seq.add(new JavaBytecodeInstruction.Obj(noPanicNode));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
 
-    seq.add(new JavaBytecodeInstruction.Obj(endNode));
-    seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, resultSlot));
+          emitInner(seq, ctx, catchClause.body());
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, resultSlot));
+          seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, afterBodyNode)));
+      }
+
+      seq.add(new JavaBytecodeInstruction.Obj(afterBodyNode));
+      if (hasFinally) {
+          var finallyBody = ((Opt.Some<CodeDynamic>) v.finallyBlock()).value();
+          emitInner(seq, ctx, finallyBody);
+          seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
+          seq.add(new JavaBytecodeInstruction.Obj(new JumpInsnNode(Opcodes.GOTO, endNode)));
+
+          seq.add(new JavaBytecodeInstruction.Obj(finallyHandlerNode));
+          var excSlot = ctx.nextSlot++;
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ASTORE, excSlot));
+          emitInner(seq, ctx, finallyBody);
+          seq.add(JavaBytecodeUtils.inst(Opcodes.POP));
+          seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, excSlot));
+          seq.add(JavaBytecodeUtils.inst(Opcodes.ATHROW));
+      }
+
+      seq.add(new JavaBytecodeInstruction.Obj(endNode));
+      seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, resultSlot));
   }
 
   private int slotForBinding(EmitCtx ctx, BindingId id) {
