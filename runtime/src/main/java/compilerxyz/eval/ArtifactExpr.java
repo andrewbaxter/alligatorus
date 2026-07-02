@@ -1,0 +1,73 @@
+package compilerxyz.eval;
+
+import compilerxyz.artifact.Artifact;
+import compilerxyz.safejson.SafeJsonSerializable;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
+
+public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements SafeJsonSerializable {
+
+  public record ArtifactQExprId(long source, long expr) {}
+
+  public record CondBranch(ArtifactExpr condition, ArtifactExpr body) {}
+
+  public record MatchBranchA(ArtifactExpr condition, ArtifactExpr body) {}
+
+  public record TryCatchA(
+      ArtifactExpr bindingName, ArtifactExpr exceptionType, ArtifactExpr body) {}
+
+  public sealed interface Variant {
+
+    record As(ArtifactExpr base, ArtifactExpr target) implements Variant {}
+
+    record Bind(ArtifactExpr base, ArtifactExpr value) implements Variant {}
+
+    record Call(ArtifactExpr func, ArtifactExpr arg) implements Variant {}
+
+    record Field(ArtifactExpr base, ArtifactExpr key) implements Variant {}
+
+    record Foreach(ArtifactExpr base, ArtifactExpr elementKey, ArtifactExpr body)
+        implements Variant {}
+
+    record Graft(ArtifactExpr expr) implements Variant {}
+
+    record If(TList<CondBranch> conditions, Opt<ArtifactExpr> else_) implements Variant {}
+
+    record Import(ArtifactExpr spec) implements Variant {}
+
+    record Literal(Artifact value) implements Variant {}
+
+    record Lower(ArtifactExpr expr) implements Variant {}
+
+    record Match(
+        ArtifactExpr base,
+        TList<MatchBranchA> cases,
+        ArtifactExpr elementKey,
+        Opt<ArtifactExpr> fallback)
+        implements Variant {}
+
+    record OperatorAdd(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
+
+    record OperatorEq(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
+
+    record OperatorLt(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
+
+    record Record(TList<RecordEntryA> entries) implements Variant {}
+
+    record ScopeUse(ArtifactExpr key) implements Variant {}
+
+    record Seq(TList<ArtifactExpr> exprs) implements Variant {}
+
+    record Set(ArtifactExpr base, ArtifactExpr value) implements Variant {}
+
+    record Stage(ArtifactExpr expr) implements Variant {}
+
+    record Try(
+        ArtifactExpr body, Opt<TryCatchA> catchClause, Opt<ArtifactExpr> finallyBlock)
+        implements Variant {}
+
+    record Tuple(TList<ArtifactExpr> elements) implements Variant {}
+  }
+
+  public record RecordEntryA(ArtifactExpr key, ArtifactExpr value) {}
+}

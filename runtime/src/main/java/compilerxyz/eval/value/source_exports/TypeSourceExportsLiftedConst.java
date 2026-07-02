@@ -1,0 +1,229 @@
+package compilerxyz.eval.value.source_exports;
+
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ExporterAny;
+import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.Binding;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.EResult;
+import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.Type;
+import compilerxyz.eval.Unique;
+import compilerxyz.eval.Value;
+import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectStringConst;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
+import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewConst;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
+import java.util.function.Function;
+import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.artifact.ArtifactSupport;
+import compilerxyz.eval.DefinitionSet;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.safejson.JsonValues;
+
+public record TypeSourceExportsLiftedConst(SourceExportsData set)
+    implements Type, AspectArtifact, AspectBind, AspectField, ExporterAny {
+
+  @Override
+  public String typeDesc() {
+    return "definition_set_exports";
+  }
+
+  @Override
+  public Type valueTypeOf() {
+    return new TypeRoot.SourceExportsLiftedConst();
+  }
+
+  @Override
+  public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(AspectArtifact.ID)
+        || key.equals(AspectBind.ID)
+        || key.equals(AspectField.ID)) {
+      return Opt.some(this);
+    }
+    if (key.equals(AspectPostDeserialize.ID)) {
+      return Opt.some(PostDeserializeIdentity.INSTANCE);
+    }
+    return Opt.none();
+  }
+
+  @Override
+  public ArtifactExporter exporter() {
+    return ExporterRoot.SOURCE_EXPORTS_LIFTED_CONST;
+  }
+
+  public static final ExporterRootDelegate DELEGATE =
+      new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+            ExprContext xx,
+            QExprId loc,
+            ExporterAny self,
+            Function<JsonValue, ArtifactBody> makeBody) {
+          if (!(self instanceof TypeSourceExportsLiftedConst exports)) {
+            return EResult.err(
+                loc,
+                "TypeSourceExportsLiftedConst::exporterRootDelegateSelfExport: expected "
+                    + "TypeSourceExportsLiftedConst, got "
+                    + self.getClass());
+          }
+          var setId = exports.set.setId;
+          if (setId == null) {
+            return EResult.err(
+                loc,
+                "TypeSourceExportsLiftedConst::exporterRootDelegateSelfExport: SourceExportsData has no def-set id");
+          }
+          var liveSet = xx.vx.definitionSets.get(setId);
+          if (liveSet == null) {
+            return EResult.err(
+                loc,
+                "TypeSourceExportsLiftedConst::exporterRootDelegateSelfExport: def-set "
+                    + setId
+                    + " not registered in EvalContext.definitionSets");
+          }
+          var errors = new TList<ExprErr>();
+          var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, liveSet);
+          defSetArtRes.drainInto(errors);
+          var defSetArt = defSetArtRes.valueOrNull();
+          if (defSetArt == null) {
+            return EResult.errs(errors);
+          }
+          var body = new ArtifactDataDefSetExportsLifted(defSetArt, setId);
+          var artifact =
+              new Artifact.Body(
+                  makeBody.apply(JsonValues.toValue(body)));
+          if (errors.isEmpty()) {
+            return EResult.ok(artifact);
+          }
+          return EResult.mixed(artifact, errors);
+        }
+
+        @Override
+        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+            ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+          ArtifactDataDefSetExportsLifted body;
+          try {
+            body =
+                JsonValues.fromValue(
+                    ArtifactDataDefSetExportsLifted.class, data);
+          } catch (RuntimeException e) {
+            return EResult.err(
+                loc,
+                "TypeSourceExportsLiftedConst::exporterRootDelegateSelfFromArtifactData: failed to parse "
+                    + "ArtifactDataDefSetExportsLifted: "
+                    + e.getMessage());
+          }
+          var errors = new TList<ExprErr>();
+          var importRes =
+              ArtifactSupport.importArtifact(xx, loc, body.defSet());
+          importRes.drainInto(errors);
+          var imported = importRes.valueOrNull();
+          if (!(imported instanceof DefinitionSet ds)) {
+            return EResult.err(
+                loc,
+                "TypeSourceExportsLiftedConst::exporterRootDelegateSelfFromArtifactData: def-set artifact "
+                    + "resolved to "
+                    + (imported == null ? "null" : imported.getClass())
+                    + " (expected DefinitionSet)");
+          }
+          xx.vx.definitionSets.putIfAbsent(ds.defSetId, ds);
+          var exportsData = new SourceExportsData(ds.defSetId, ds.functions, ds.objects);
+          ExporterAny out = new TypeSourceExportsLiftedConst(exportsData);
+          if (errors.isEmpty()) {
+            return EResult.ok(out);
+          }
+          return EResult.mixed(out, errors);
+        }
+      };
+
+  @Override
+  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+      return EResult.err(
+          loc, "TypeSourceExportsLiftedConst::bind: CodeValue has no compile-time value");
+    }
+    Value v = some.value();
+    return EResult.ok(new BindResult(Code.none(loc), new SourceExportsConstBinding(v)));
+  }
+
+  @Override
+  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+    if (!(key.value() instanceof Opt.Some<Value> keySome)) {
+      return EResult.err(loc, "TypeSourceExportsLiftedConst::field: key has no compile-time value");
+    }
+    var keyValue = keySome.value();
+    var keyMeta = keyValue.valueTypeOf();
+    var stringAspectRes = AspectStringConst.get(xx, loc, keyMeta);
+    if (stringAspectRes.hasErrors()) return stringAspectRes.reerr();
+    var keyName = stringAspectRes.valueOrNull().get(keyValue);
+    for (var funcData : set.functions) {
+      if (keyName.equals(funcData.name)) {
+        Type funcType = new TypeSourceFunctionConst(funcData);
+        return EResult.ok(
+            new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(funcType))));
+      }
+    }
+    for (var objData : set.objects) {
+      if (keyName.equals(objData.name)) {
+        Type ctorType = new TypeSourceObjectNewConst(objData);
+        return EResult.ok(
+            new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(ctorType))));
+      }
+    }
+    return EResult.err(loc, "'" + keyName + "' not found in definition set");
+  }
+
+  @Override
+  public TList<ConstKey> fieldKeys(ExprContext xx) {
+    return new TList<>();
+  }
+
+  @Override
+  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
+    if (!(key instanceof ConstKey.Str s)) return Opt.none();
+    for (var funcData : set.functions) {
+      if (s.value().equals(funcData.name)) {
+        return Opt.some(new TypeSourceFunctionConst(funcData));
+      }
+    }
+    for (var objData : set.objects) {
+      if (s.value().equals(objData.name)) {
+        return Opt.some(new TypeSourceObjectNewConst(objData));
+      }
+    }
+    return Opt.none();
+  }
+
+  @Override
+  public EResult<Type> exporterAnyAsType() {
+    return EResult.ok(this);
+  }
+
+  @Override
+  public EResult<Value> exporterAnyAsValue() {
+    return EResult.ok(this);
+  }
+
+  private record SourceExportsConstBinding(Value value) implements Binding {
+    @Override
+    public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+      return new CodeValue(Code.none(loc), Opt.some(value));
+    }
+  }
+}

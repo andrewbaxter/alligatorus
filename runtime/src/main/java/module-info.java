@@ -1,0 +1,58 @@
+@org.jspecify.annotations.NullMarked
+module compilerxyz.runtime {
+    requires transitive org.jspecify;
+    requires transitive compilerxyz.util;
+    requires transitive com.google.gson;
+    requires transitive org.objectweb.asm;
+    requires transitive org.objectweb.asm.tree;
+    requires transitive org.objectweb.asm.util;
+    requires transitive com.github.benmanes.caffeine;
+    requires transitive org.pcollections;
+
+    exports compilerxyz.artifact;
+    exports compilerxyz.eval;
+    exports compilerxyz.eval.aspect;
+    exports compilerxyz.eval.binding;
+    exports compilerxyz.eval.builtin;
+    exports compilerxyz.eval.definition_set;
+    exports compilerxyz.eval.dynamic;
+    exports compilerxyz.eval.dynamic.target;
+    exports compilerxyz.eval.expr;
+    exports compilerxyz.eval.push;
+    exports compilerxyz.eval.value;
+    exports compilerxyz.eval.value.any;
+    exports compilerxyz.eval.value.argrecord;
+    exports compilerxyz.eval.value.aspect;
+    exports compilerxyz.eval.value.binding;
+    exports compilerxyz.eval.value.bool_;
+    exports compilerxyz.eval.value.code;
+    exports compilerxyz.eval.value.code_value_extern;
+    exports compilerxyz.eval.value.constkey;
+    exports compilerxyz.eval.value.empty;
+    exports compilerxyz.eval.value.expr;
+    exports compilerxyz.eval.value.function;
+    exports compilerxyz.eval.value.list;
+    exports compilerxyz.eval.value.map;
+    exports compilerxyz.eval.value.null_;
+    exports compilerxyz.eval.value.number;
+    exports compilerxyz.eval.value.option;
+    exports compilerxyz.eval.value.panic;
+    exports compilerxyz.eval.value.record;
+    exports compilerxyz.eval.value.source_exports;
+    exports compilerxyz.eval.value.source_function;
+    exports compilerxyz.eval.value.source_interface;
+    exports compilerxyz.eval.value.source_object;
+    exports compilerxyz.eval.value.source_object_new;
+    exports compilerxyz.eval.value.source_union;
+    exports compilerxyz.eval.value.source_union_new;
+    exports compilerxyz.eval.value.string;
+    exports compilerxyz.eval.value.throw_;
+    exports compilerxyz.eval.value.tuple;
+    exports compilerxyz.eval.value.unique;
+    exports compilerxyz.eval.value.value_source_object;
+    exports compilerxyz.gen;
+    exports compilerxyz.gen.codec;
+    exports compilerxyz.langhelp;
+    exports compilerxyz.safejson;
+    exports compilerxyz.syntax;
+}

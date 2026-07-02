@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>compilerxyz</groupId>
+        <artifactId>allig3-parent</artifactId>
+        <version>0.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>allig3-codegen</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>compilerxyz</groupId>
+            <artifactId>allig3-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.palantir.javaformat</groupId>
+            <artifactId>palantir-java-format</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javaparser</groupId>
+            <artifactId>javaparser-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>
+                        --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

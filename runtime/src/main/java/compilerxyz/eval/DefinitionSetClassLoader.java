@@ -1,0 +1,91 @@
+package compilerxyz.eval;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
+import compilerxyz.util.TOrderedMap;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import compilerxyz.eval.dynamic.RecordClassEmitter;
+import compilerxyz.eval.dynamic.TupleClassEmitter;
+
+public final class DefinitionSetClassLoader extends ClassLoader {
+
+  public static final Cache<DefSetId, DefinitionSetClassLoader> SHARED_CACHE =
+      Caffeine.newBuilder().weakValues().build();
+
+  private final TList<DefinitionSetClassLoader> dependencyLoaders;
+  private final TMap<String, byte[]> pendingBytecode = new TMap<>();
+  private final TMap<String, TOrderedMap<String, Object>> pendingExternals = new TMap<>();
+
+  public DefinitionSetClassLoader(
+      ClassLoader parent, TList<DefinitionSetClassLoader> dependencyLoaders) {
+    super(parent);
+    this.dependencyLoaders = dependencyLoaders;
+  }
+
+  public void registerClass(String binaryName, byte[] bytecode) {
+    pendingBytecode.put(binaryName, bytecode);
+  }
+
+  public void registerExternals(String binaryName, TOrderedMap<String, Object> staticFieldValues) {
+    pendingExternals.put(binaryName, staticFieldValues);
+  }
+
+  @Override
+  protected Class<?> findClass(String name) throws ClassNotFoundException {
+    var bytes = pendingBytecode.getOrNull(name);
+    if (bytes != null) {
+      var defined = defineClass(name, bytes, 0, bytes.length);
+      injectExternals(defined, name);
+      return defined;
+    }
+
+    if (name.startsWith(TupleClassEmitter.BINARY_NAME_PREFIX)) {
+      var resolved =
+          TupleClassEmitter.findLoadedByName(name);
+      if (resolved != null) return resolved;
+    }
+    if (name.startsWith(RecordClassEmitter.BINARY_NAME_PREFIX)) {
+      var resolved =
+          RecordClassEmitter.findLoadedByName(name);
+      if (resolved != null) return resolved;
+    }
+    for (var dep : dependencyLoaders) {
+      try {
+        return dep.loadClass(name);
+      } catch (ClassNotFoundException ignored) {
+
+      }
+    }
+    throw new ClassNotFoundException(name);
+  }
+
+  private void injectExternals(Class<?> defined, String name) {
+    var externals = pendingExternals.getOrNull(name);
+    if (externals == null) return;
+    for (var entry : externals.entrySet()) {
+      Field field;
+      try {
+        field = defined.getDeclaredField(entry.getKey());
+      } catch (NoSuchFieldException e) {
+        throw new AssertionError(
+            "External field "
+                + entry.getKey()
+                + " not declared on generated class "
+                + name,
+            e);
+      }
+      if (!Modifier.isStatic(field.getModifiers())) {
+        throw new AssertionError("External field " + entry.getKey() + " must be static");
+      }
+      field.setAccessible(true);
+      try {
+        field.set(null, entry.getValue());
+      } catch (IllegalAccessException e) {
+        throw new AssertionError(e);
+      }
+    }
+  }
+}

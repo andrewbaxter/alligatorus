@@ -1,0 +1,154 @@
+package compilerxyz.eval.value.source_union;
+
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ExporterAny;
+import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.Binding;
+import compilerxyz.eval.BindingId;
+import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EResult;
+import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.Type;
+import compilerxyz.eval.Unique;
+import compilerxyz.eval.Value;
+import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectType;
+import compilerxyz.gen.AspectUnion;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
+import java.util.function.Function;
+import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.eval.dynamic.DynUtil;
+
+public record TypeSourceUnionConst(SourceUnionData data)
+    implements
+        Type,
+        AspectArtifact,
+        AspectBind,
+        AspectBindDynamic,
+        AspectConsumeDynamic,
+        AspectInitialBind,
+        AspectType,
+        AspectUnion,
+        ExporterAny {
+
+  @Override
+  public String typeDesc() {
+    return "union";
+  }
+
+  @Override
+  public Type valueTypeOf() {
+    return new TypeRoot.SourceUnionConst();
+  }
+
+  @Override
+  public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(data.identity)
+        || key.equals(AspectArtifact.ID)
+        || key.equals(AspectBind.ID)
+        || key.equals(AspectBindDynamic.ID)
+        || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectInitialBind.ID)
+        || key.equals(AspectType.ID)
+        || key.equals(AspectUnion.ID)) {
+      return Opt.some(this);
+    }
+    if (key.equals(AspectPostDeserialize.ID)) {
+      return Opt.some(PostDeserializeIdentity.INSTANCE);
+    }
+    return Opt.none();
+  }
+
+  @Override
+  public ArtifactExporter exporter() {
+    return ExporterRoot.SOURCE_UNION_CONST;
+  }
+
+  public static final ExporterRootDelegate DELEGATE =
+      new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+            ExprContext xx,
+            QExprId loc,
+            ExporterAny self,
+            Function<JsonValue, ArtifactBody> makeBody) {
+          return EResult.err(
+              loc,
+              "TypeSourceUnionConst::exporterRootDelegateSelfExport: recursive export_artifact + per-variant payload "
+                  + "type export deferred");
+        }
+
+        @Override
+        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+            ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+          return EResult.err(
+              loc,
+              "TypeSourceUnionConst::exporterRootDelegateSelfFromArtifactData: recursive import_independent_artifact "
+                  + "+ per-variant payload type import deferred");
+        }
+      };
+
+  @Override
+  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.bindViaTarget(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Opt<TargetBindSub>> bindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.bindDynamicDefault(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+    var dyn = cv.code().dynamic();
+    if (dyn != null) return EResult.ok(dyn);
+    return EResult.err(
+        loc, "TypeSourceUnionConst::toDynamic: CodeValue has no dynamic code");
+  }
+
+  @Override
+  public Binding initialBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, new TypeSourceUnionConst(data));
+  }
+
+  @Override
+  public Type type_(Value value) {
+    return new TypeSourceUnionConst(data);
+  }
+
+  @Override
+  public TList<AspectUnion.Variant> variants() {
+    var out = new TList<AspectUnion.Variant>();
+    for (var v : data.variants) {
+      out.add(new AspectUnion.Variant(v.tag, v.jsTag, v.type));
+    }
+    return out;
+  }
+
+  @Override
+  public EResult<Type> exporterAnyAsType() {
+    return EResult.ok(this);
+  }
+
+  @Override
+  public EResult<Value> exporterAnyAsValue() {
+    return EResult.ok(this);
+  }
+}
