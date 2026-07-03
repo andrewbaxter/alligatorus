@@ -303,6 +303,8 @@ public final class Eval {
     if (registerDynamic) {
       cix.builtinsRegistered = true;
     }
+    var binaryName = EvalRootEmitter.allocateBinaryName();
+    vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
     var cvRes = ConstEval.constEval(xx, expr);
     if (cvRes.hasErrors()) {
       return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull());
@@ -429,8 +431,6 @@ public final class Eval {
                                   + " ported to the JVM target")))));
         }
       }
-      var binaryName = EvalRootEmitter.allocateBinaryName();
-      vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
       var emitted =
           EvalRootEmitter.emit(
               target,

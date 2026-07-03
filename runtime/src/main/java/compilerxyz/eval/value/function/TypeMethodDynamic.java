@@ -99,11 +99,17 @@ public record TypeMethodDynamic(
               loc,
               JavaInternalName.of(vx.evalRootInternalName),
               compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              DESC_EXPR_CONTEXT));
+              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
     }
     var argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor.value);
     int paramOffset = needsExprContext ? 1 : 0;
+    int descriptorArgs = argTypes.length - paramOffset;
     for (int i = 0; i < args.size(); i++) {
+      if (i >= descriptorArgs) {
+        // Language-level arg that isn't reflected in the JVM descriptor
+        // (e.g. a null placeholder for a no-arg method). Skip.
+        continue;
+      }
       seq.add(args.get(i));
       var t = argTypes[paramOffset + i];
       if (t.getSort() == org.objectweb.asm.Type.OBJECT

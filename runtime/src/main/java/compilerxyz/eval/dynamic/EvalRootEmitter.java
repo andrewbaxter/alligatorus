@@ -17,6 +17,9 @@ public final class EvalRootEmitter {
 
   public static final String EXPR_CONTEXT_FIELD = "__exprContext";
 
+  public static final JavaDataDescriptor DESC_EXPR_CONTEXT =
+      JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));
+
   private static final JavaMethodDescriptor MDESC_RUN =
       JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of());
 
@@ -137,27 +140,29 @@ public final class EvalRootEmitter {
         JvmConstants.INTNAME_OBJECT.value(),
         null);
 
-    var fieldNames = new TOrderedSet<String>();
-    fieldNames.addAll(builtinDynamics.keySet());
-    fieldNames.add(EXPR_CONTEXT_FIELD);
+    var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
+    for (var name : builtinDynamics.keySet()) {
+      fieldDescriptors.put(name, JvmConstants.DESC_OBJECT);
+    }
+    fieldDescriptors.put(EXPR_CONTEXT_FIELD, DESC_EXPR_CONTEXT);
     var externalFieldNames = new TList<String>(externals.size());
     for (int i = 0; i < externals.size(); i++) {
       var fieldName = Prefixes.EXTERNAL_PREFIX + i;
       externalFieldNames.add(fieldName);
-      fieldNames.add(fieldName);
+      fieldDescriptors.put(fieldName, JvmConstants.DESC_OBJECT);
     }
 
     for (var def : referencedDefIds(rootCode)) {
       if (staticFunctionDefs.contains(def)) {
         continue;
       }
-      fieldNames.add(ImportInstall.bindingIdDynamicKey(def));
+      fieldDescriptors.put(ImportInstall.bindingIdDynamicKey(def), JvmConstants.DESC_OBJECT);
     }
-    for (var name : fieldNames) {
+    for (var entry : fieldDescriptors.entrySet()) {
       cw.visitField(
               Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-              name,
-              JvmConstants.DESC_OBJECT.value(),
+              entry.getKey(),
+              entry.getValue().value(),
               null,
               null)
           .visitEnd();

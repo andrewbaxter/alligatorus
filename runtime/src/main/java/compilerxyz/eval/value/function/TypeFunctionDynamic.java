@@ -17,6 +17,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
@@ -77,7 +78,7 @@ public record TypeFunctionDynamic(
               loc,
               JavaInternalName.of(vx.evalRootInternalName),
               compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              DESC_EXPR_CONTEXT));
+              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
     }
     var argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor.value);
     int paramOffset = needsExprContext ? 1 : 0;
