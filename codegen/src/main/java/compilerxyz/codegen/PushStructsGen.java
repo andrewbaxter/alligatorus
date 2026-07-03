@@ -72,6 +72,15 @@ public final class PushStructsGen {
 
   private static final ClassName TYPE_FUNCTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
+  private static final ClassName TYPE_METHOD_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.function", "TypeMethodDynamic");
+  private static final ClassName JAVA_INTERNAL_NAME =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+  private static final ClassName JAVA_METHOD_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
+  private static final ClassName JAVA_DATA_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+  private static final String DYN_RUNTIME_INTNAME = "compilerxyz/eval/dynamic/DynRuntime";
 
   private static final ClassName TUPLE = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
   private static final ClassName TUPLE_ELEMENT_DYNAMIC =
@@ -380,14 +389,11 @@ public final class PushStructsGen {
         "return $T.err(loc, $S)", ERESULT, spec.name() + ": self has no dynamic code");
     m.endControlFlow();
 
-    var idx = 0;
     for (var f : spec.fields()) {
-      var key = "_" + idx++;
-      m.addCode(buildFieldUseArm(pushMethodName(f.name()), key, f.ret().dynamicType()));
+      m.addCode(buildFieldGetterArm(sentinel, pushMethodName(f.name()), f));
     }
     for (var meth : spec.methods()) {
-      var key = "_" + idx++;
-      m.addCode(buildFieldUseArm(pushMethodName(meth.name()), key, methodFunctionType(meth)));
+      m.addCode(buildMethodArm(sentinel, pushMethodName(meth.name()), meth));
     }
     m.addStatement(
         "return $T.err(loc, $S + keyStr)",
@@ -396,21 +402,37 @@ public final class PushStructsGen {
     return m.build();
   }
 
-  private static CodeBlock buildFieldUseArm(String keyName, String dynamicFieldKey, CodeBlock fieldType) {
+  private static CodeBlock buildFieldGetterArm(ClassName sentinel, String keyName, PushField f) {
     return CodeBlock.builder()
         .beginControlFlow("if (keyStr.equals($S))", keyName)
         .addStatement(
-            "var fieldSeq = $T.buildFieldGetSequence(dyn, $S)", DYN_UTIL, dynamicFieldKey)
-        .addStatement("var fieldCode = new $T(loc, fieldSeq)", CODE_DYNAMIC)
-        .addStatement(
-            "return $T.ok(new $T($T.of(loc, fieldCode), $T.some(new $T(new $T(), $L))))",
+            "return $T.ok(new $T(self.code(), $T.some(new $T(new $T(), $L))))",
             ERESULT,
             CODE_VALUE,
-            CODE,
             OPT,
             VALUE_DYNAMIC,
             VALUE_DYNAMIC_SOURCE_EXPR,
-            fieldType)
+            f.ret().dynamicType())
+        .endControlFlow()
+        .build();
+  }
+
+  private static CodeBlock buildMethodArm(ClassName sentinel, String keyName, PushMethod meth) {
+    var dynRuntimeMethod = meth.dynRuntimeMethod();
+    if (dynRuntimeMethod == null) {
+      throw new IllegalStateException(
+          "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
+    }
+    return CodeBlock.builder()
+        .beginControlFlow("if (keyStr.equals($S))", keyName)
+        .addStatement(
+            "return $T.ok(new $T(self.code(), $T.some(new $T(new $T(), $L))))",
+            ERESULT,
+            CODE_VALUE,
+            OPT,
+            VALUE_DYNAMIC,
+            VALUE_DYNAMIC_SOURCE_EXPR,
+            methodFunctionType(sentinel, meth, dynRuntimeMethod))
         .endControlFlow()
         .build();
   }
@@ -431,9 +453,15 @@ public final class PushStructsGen {
       m.addStatement("return $T.some($L)", OPT, f.ret().dynamicType());
       m.endControlFlow();
     }
+    var sentinelForTypeOpt = ClassName.get(GEN_PACKAGE, "Type" + spec.name() + "Dynamic");
     for (var meth : spec.methods()) {
       m.beginControlFlow("if (keyStr.value().equals($S))", pushMethodName(meth.name()));
-      m.addStatement("return $T.some($L)", OPT, methodFunctionType(meth));
+      var dynRuntimeMethod = meth.dynRuntimeMethod();
+      if (dynRuntimeMethod == null) {
+        throw new IllegalStateException(
+            "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
+      }
+      m.addStatement("return $T.some($L)", OPT, methodFunctionType(sentinelForTypeOpt, meth, dynRuntimeMethod));
       m.endControlFlow();
     }
     m.addStatement("return $T.none()", OPT);
@@ -450,12 +478,37 @@ public final class PushStructsGen {
         .build();
   }
 
-  private static CodeBlock methodFunctionType(PushMethod m) {
+  private static CodeBlock methodFunctionType(
+      ClassName sentinel, PushMethod m, String dynRuntimeMethodName) {
+    var argDynType = argDynamicTypeExpr(m.args());
+    var retDynType = unitOrDynamic(m.ret());
+    var descriptor = methodDescriptorExpr(m);
     return CodeBlock.of(
-        "new $T($L, $L)",
-        TYPE_FUNCTION_DYNAMIC,
-        argDynamicTypeExpr(m.args()),
-        unitOrDynamic(m.ret()));
+        "new $T(new $T(), $L, $L, $T.of($S), $S, $L, true)",
+        TYPE_METHOD_DYNAMIC,
+        sentinel,
+        argDynType,
+        retDynType,
+        JAVA_INTERNAL_NAME,
+        DYN_RUNTIME_INTNAME,
+        dynRuntimeMethodName,
+        descriptor);
+  }
+
+  private static CodeBlock methodDescriptorExpr(PushMethod m) {
+    var argListExpr = CodeBlock.builder();
+    argListExpr.add("$T.of($T.fromClass($T.class)", TLIST, JAVA_DATA_DESCRIPTOR, EXPR_CONTEXT);
+    argListExpr.add(", $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, ClassName.OBJECT);
+    for (var a : m.args()) {
+      argListExpr.add(", $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, ClassName.OBJECT);
+    }
+    argListExpr.add(")");
+    return CodeBlock.of(
+        "$T.fromParts($T.fromClass($T.class), $L)",
+        JAVA_METHOD_DESCRIPTOR,
+        JAVA_DATA_DESCRIPTOR,
+        ClassName.OBJECT,
+        argListExpr.build());
   }
 
   private static CodeBlock argDynamicTypeExpr(TList<NamedTypeRef> args) {
@@ -604,20 +657,26 @@ public final class PushStructsGen {
                     "func",
                     TList.of(new NamedTypeRef("name", string)),
                     dynExpr(T_SOURCE_FUNC_RESULT_DYN),
-                    empty),
+                    empty,
+                    "defSetBuilderFunc"),
                 new PushMethod(
                     "object",
                     TList.of(new NamedTypeRef("name", string)),
                     dynExpr(T_SOURCE_OBJECT_RESULT_DYN),
-                    empty),
+                    empty,
+                    "defSetBuilderObject"),
                 new PushMethod(
-                    "build", TList.of(), dynExpr(T_DEFINITION_SET_BUILDER_DYN), empty),
+                    "build", TList.of(), dynExpr(T_DEFINITION_SET_BUILDER_DYN), empty,
+                    "defSetBuilderBuild"),
                 new PushMethod(
-                    "union", TList.of(), dynExpr(T_SOURCE_UNION_BUILDER_DYN), empty),
+                    "union", TList.of(), dynExpr(T_SOURCE_UNION_BUILDER_DYN), empty,
+                    "defSetBuilderUnion"),
                 new PushMethod(
-                    "interface", TList.of(), dynExpr(T_SOURCE_INTERFACE_RESULT_DYN), empty),
+                    "interface", TList.of(), dynExpr(T_SOURCE_INTERFACE_RESULT_DYN), empty,
+                    "defSetBuilderInterface"),
                 new PushMethod(
-                    "finish", TList.of(), dynExpr(T_DEFINITION_SET_BUILDER_DYN), empty)),
+                    "finish", TList.of(), dynExpr(T_DEFINITION_SET_BUILDER_DYN), empty,
+                    "defSetBuilderFinish")),
             "compilerxyz.eval.definition_set.DefinitionSetExtraAspect.extraAspect");
 
     var optionPush =
@@ -628,7 +687,8 @@ public final class PushStructsGen {
             TList.of(),
             TList.of(
                 new PushMethod(
-                    "is_some_", TList.of(), dynExpr(TYPE_BOOL_DYNAMIC), empty)));
+                    "is_some_", TList.of(), dynExpr(TYPE_BOOL_DYNAMIC), empty,
+                    "optionPushGet")));
 
     var typeRefPush =
         new PushStructSpec(
@@ -641,7 +701,8 @@ public final class PushStructsGen {
                     "aspect",
                     TList.of(new NamedTypeRef("unique", uniqueArg)),
                     dynExpr(T_OPTION_PUSH_DYN),
-                    empty)));
+                    empty,
+                    "typeRefPushAspect")));
 
     var sourceFuncResult =
         new PushStructSpec(
@@ -660,7 +721,8 @@ public final class PushStructsGen {
                     "set_description",
                     TList.of(new NamedTypeRef("description", string)),
                     "()",
-                    empty),
+                    empty,
+                    "srcFuncSetDescription"),
                 new PushMethod(
                     "impl_",
                     TList.of(
@@ -668,12 +730,14 @@ public final class PushStructsGen {
                         new NamedTypeRef("ret", anyTypeArg),
                         new NamedTypeRef("impl_body", stagedExprArg)),
                     "()",
-                    empty),
+                    empty,
+                    "srcFuncSetTypesAndImpl"),
                 new PushMethod(
                     "set_exception_type",
                     TList.of(new NamedTypeRef("exception_type", anyTypeArg)),
                     "()",
-                    empty)));
+                    empty,
+                    "srcFuncSetExcType")));
 
     var sourceObjectMethodResult =
         new PushStructSpec(
@@ -689,7 +753,8 @@ public final class PushStructsGen {
                         new NamedTypeRef("ret", anyTypeArg),
                         new NamedTypeRef("impl_body", stagedExprArg)),
                     "()",
-                    empty)));
+                    empty,
+                    "srcObjectMethodSetTypesAndImpl")));
 
     var sourceInterfaceResult =
         new PushStructSpec(
@@ -708,17 +773,20 @@ public final class PushStructsGen {
                     "set_description",
                     TList.of(new NamedTypeRef("description", string)),
                     "()",
-                    empty),
+                    empty,
+                    "srcInterfaceSetDescription"),
                 new PushMethod(
                     "func",
                     TList.of(new NamedTypeRef("name", string)),
                     dynExpr(T_SOURCE_INTERFACE_METHOD_RESULT_DYN),
-                    empty),
+                    empty,
+                    "srcInterfaceAddMethod"),
                 new PushMethod(
                     "set_is_aspect",
                     TList.of(new NamedTypeRef("is_aspect", bool)),
                     "()",
-                    empty)));
+                    empty,
+                    "srcInterfaceSetIsAspect")));
 
     var sourceObjectMethods = new TList<PushMethod>();
     sourceObjectMethods.add(
@@ -726,19 +794,22 @@ public final class PushStructsGen {
             "set_description",
             TList.of(new NamedTypeRef("description", string)),
             "()",
-            empty));
+            empty,
+            "srcObjectSetDescription"));
     sourceObjectMethods.add(
         new PushMethod(
             "set_inner",
             TList.of(new NamedTypeRef("type_ref", anyTypeArg)),
             "()",
-            empty));
+            empty,
+            "srcObjectSetInnerType"));
     sourceObjectMethods.add(
         new PushMethod(
             "func",
             TList.of(new NamedTypeRef("name", string)),
             dynExpr(T_SOURCE_OBJECT_METHOD_RESULT_DYN),
-            empty));
+            empty,
+            "srcObjectAddMethod"));
     sourceObjectMethods.add(
         new PushMethod(
             "impl_interface",
@@ -746,22 +817,35 @@ public final class PushStructsGen {
                 new NamedTypeRef("iface_ref", ifaceRefArg),
                 new NamedTypeRef("record", recordArg)),
             "()",
-            empty));
+            empty,
+            "srcObjectImplInterface"));
     sourceObjectMethods.add(
         new PushMethod(
             "aspect",
             TList.of(new NamedTypeRef("record", recordArg)),
             "new " + TYPE_SOURCE_INTERFACE_DYNAMIC.canonicalName() + "()",
-            empty));
+            empty,
+            "srcObjectImplAspect"));
 
     for (var traitSpec : traitSpecs) {
       if (traitSpec.registerInScope()) continue;
+      var runtimeName =
+          traitSpec.name().equals("value")
+              ? "srcObjectImplValue"
+              : traitSpec.name().equals("type")
+                  ? "srcObjectImplTypeInterface"
+                  : null;
+      if (runtimeName == null) {
+        throw new IllegalStateException(
+            "PushStructsGen: no DynRuntime method mapped for trait '" + traitSpec.name() + "'");
+      }
       sourceObjectMethods.add(
           new PushMethod(
               traitSpec.name(),
               TList.of(new NamedTypeRef("record", recordArg)),
               "()",
-              empty));
+              empty,
+              runtimeName));
     }
     var sourceObjectResult =
         new PushStructSpec(
@@ -802,7 +886,8 @@ public final class PushStructsGen {
                         new NamedTypeRef("tag", string),
                         new NamedTypeRef("type_ref", anyTypeArg)),
                     "new " + TYPE_SOURCE_UNION_NEW_DYNAMIC.canonicalName() + "()",
-                    empty)));
+                    empty,
+                    "srcUnionAddVariant")));
 
     var sourceInterfaceMethodResult =
         new PushStructSpec(
@@ -817,7 +902,8 @@ public final class PushStructsGen {
                         new NamedTypeRef("arg", anyTypeArg),
                         new NamedTypeRef("ret", anyTypeArg)),
                     "()",
-                    empty)));
+                    empty,
+                    "srcInterfaceMethodSetTypes")));
 
     return TList.of(
         definitionSetBuilder,
