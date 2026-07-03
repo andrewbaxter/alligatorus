@@ -19,5 +19,6 @@ public final class EvalContext {
     this.ix = ix;
   }
 
-  public record ExternalEntry(BindingId id, External external) {}
+  public record ExternalEntry(
+      compilerxyz.eval.dynamic.JavaBytecodeBindingKey key, Type type, External external) {}
 }

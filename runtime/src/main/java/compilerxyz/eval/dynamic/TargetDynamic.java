@@ -472,9 +472,12 @@ public final class TargetDynamic implements Target {
       TList<CodeValue> graftValues) {
     var erb = new Erb(loc);
     var treeCell = new StagedExprCell(tree);
-    var treeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+    var treeKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    var treeId = new BindingId.Local(treeKey);
+    var treeExprType = new compilerxyz.eval.value.expr.TypeExpr();
     xx.vx.externals.add(
-        new EvalContext.ExternalEntry(treeId, new External.StagedExprCellExternal(treeCell)));
+        new EvalContext.ExternalEntry(
+            treeKey, treeExprType, new External.StagedExprCellExternal(treeCell)));
     var restElements = new TList<CodeDynamic>();
     for (var cv : lowerValues) {
       if (cv.code().isNone()) {
@@ -482,9 +485,13 @@ public final class TargetDynamic implements Target {
           return EResult.err(loc, "TargetDynamic::stage: lower CodeValue has no value");
         }
         var cell = new StagedExprCell(some.value());
-        var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+        var id = new BindingId.Local(key);
         xx.vx.externals.add(
-            new EvalContext.ExternalEntry(id, new External.StagedExprCellExternal(cell)));
+            new EvalContext.ExternalEntry(
+                key,
+                new compilerxyz.eval.value.expr.TypeExpr(),
+                new External.StagedExprCellExternal(cell)));
         restElements.add(JavaBytecodeUtils.literalNull(loc));
         restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
@@ -495,9 +502,11 @@ public final class TargetDynamic implements Target {
         var liftCell =
             new StageLiftCell(
                 loc, xx.vx, xx.importState, xx.scope, vtype, xx.currentExceptionType, this);
-        var liftId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var liftKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+        var liftId = new BindingId.Local(liftKey);
         xx.vx.externals.add(
-            new EvalContext.ExternalEntry(liftId, new External.StageLiftCellExternal(liftCell)));
+            new EvalContext.ExternalEntry(
+                liftKey, vtype, new External.StageLiftCellExternal(liftCell)));
         var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
@@ -511,9 +520,15 @@ public final class TargetDynamic implements Target {
         var cell =
             new CodeValueExternCell(
                 new CodeValue(Code.none(loc), cv.value()));
-        var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+        var id = new BindingId.Local(key);
+        var graftType =
+            cv.value() instanceof Opt.Some<Value> vSome
+                ? vSome.value().valueTypeOf()
+                : new TypeNullDynamic();
         xx.vx.externals.add(
-            new EvalContext.ExternalEntry(id, new External.CodeValueExternCellExternal(cell)));
+            new EvalContext.ExternalEntry(
+                key, graftType, new External.CodeValueExternCellExternal(cell)));
         restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {

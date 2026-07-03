@@ -140,10 +140,10 @@ public final class EvalRootEmitter {
     var fieldNames = new TOrderedSet<String>();
     fieldNames.addAll(builtinDynamics.keySet());
     fieldNames.add(EXPR_CONTEXT_FIELD);
-    var externalFieldNames = new TOrderedMap<BindingId, String>();
-    for (var entry : externals) {
-      var fieldName = ImportInstall.bindingIdDynamicKey(entry.id());
-      externalFieldNames.put(entry.id(), fieldName);
+    var externalFieldNames = new TList<String>(externals.size());
+    for (int i = 0; i < externals.size(); i++) {
+      var fieldName = Prefixes.EXTERNAL_PREFIX + i;
+      externalFieldNames.add(fieldName);
       fieldNames.add(fieldName);
     }
 
@@ -175,17 +175,15 @@ public final class EvalRootEmitter {
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
 
     var ownerInternal = JavaInternalName.of(internalName);
-    for (var entry : externals) {
-      if (!(entry.id() instanceof BindingId.Local localId)) {
-        throw new IllegalStateException(
-            "External captured under non-Local BindingId: " + entry.id());
-      }
-      var fieldName = externalFieldNames.get(localId);
+    for (int i = 0; i < externals.size(); i++) {
+      var entry = externals.get(i);
+      var fieldName = externalFieldNames.get(i);
       seq.add(
           JavaBytecodeUtils.accessStaticField(
               loc, ownerInternal, fieldName, JvmConstants.DESC_OBJECT));
-      var slot = ctx.allocSlot(localId);
-      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, slot));
+      seq.add(
+          new CodeDynamic(
+              loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
     }
     target.emit(seq, ctx, rootCode);
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
@@ -195,9 +193,8 @@ public final class EvalRootEmitter {
 
     var staticFields = new TOrderedMap<String, Object>();
     staticFields.putAll(builtinDynamics);
-    for (var entry : externals) {
-      var fieldName = externalFieldNames.get(entry.id());
-      staticFields.put(fieldName, entry.external().externalHostValue());
+    for (int i = 0; i < externals.size(); i++) {
+      staticFields.put(externalFieldNames.get(i), externals.get(i).external().externalHostValue());
     }
     return new EmittedRoot(binaryName, internalName, bytecode, staticFields);
   }

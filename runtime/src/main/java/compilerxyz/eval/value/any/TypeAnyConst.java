@@ -144,9 +144,10 @@ public record TypeAnyConst()
       return aspectTypeRes.reerr();
     }
     var resolvedType = aspectTypeRes.valueOrNull().type_(some.value());
-    var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+    var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    var id = new BindingId.Local(key);
     xx.vx.externals.add(
-        new EvalContext.ExternalEntry(id, new External.TypeExternal(resolvedType)));
+        new EvalContext.ExternalEntry(key, this, new External.TypeExternal(resolvedType)));
     return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
   }
 

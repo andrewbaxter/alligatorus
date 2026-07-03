@@ -87,12 +87,9 @@ public final class DefSetFunctionsEmitter {
         }
       }
 
-      for (var entry : spec.externals()) {
-        var id = entry.id();
-        if (!(id instanceof BindingId.Local)) {
-          throw new IllegalStateException("External captured under non-Local BindingId: " + id);
-        }
-        var name = prefix + ImportInstall.bindingIdDynamicKey(id);
+      for (int i = 0; i < spec.externals().size(); i++) {
+        var entry = spec.externals().get(i);
+        var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
         if (allFieldNames.add(name)) {
           staticFieldValues.put(name, entry.external().externalHostValue());
         }
@@ -151,17 +148,14 @@ public final class DefSetFunctionsEmitter {
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, argSlot));
 
     var ownerInternal = JavaInternalName.of(internalName);
-    for (var entry : spec.externals()) {
-      if (!(entry.id() instanceof BindingId.Local localId)) {
-        throw new IllegalStateException(
-            "External captured under non-Local BindingId: " + entry.id());
-      }
-      var fieldName = prefix + ImportInstall.bindingIdDynamicKey(localId);
+    for (int i = 0; i < spec.externals().size(); i++) {
+      var entry = spec.externals().get(i);
+      var fieldName = prefix + Prefixes.EXTERNAL_PREFIX + i;
       seq.add(
           JavaBytecodeUtils.accessStaticField(
               loc, ownerInternal, fieldName, JvmConstants.DESC_OBJECT));
-      var slot = ctx.allocSlot(localId);
-      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, slot));
+      seq.add(
+          new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
     }
 
     target.emit(seq, ctx, spec.bodyCode());

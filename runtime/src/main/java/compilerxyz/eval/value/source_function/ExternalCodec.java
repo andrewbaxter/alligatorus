@@ -22,13 +22,7 @@ public final class ExternalCodec {
     var errors = new TList<ExprErr>();
     var out = new TList<ArtifactExternal.CapturedEntry>(entries.size());
     for (var entry : entries) {
-      if (!(entry.id() instanceof BindingId.Local local)) {
-        return EResult.err(
-            loc,
-            "ExternalCodec.exportExternals: external captured under non-Local BindingId: "
-                + entry.id());
-      }
-      var localIdx = local.key();
+      var localIdx = entry.key();
       var ext = entry.external();
       ArtifactExternal artExt;
       switch (ext) {
@@ -70,7 +64,13 @@ public final class ExternalCodec {
                   + ext.getClass().getSimpleName());
         }
       }
-      out.add(new ArtifactExternal.CapturedEntry(entry.id(), artExt));
+      var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, entry.type());
+      typeArtRes.drainInto(errors);
+      var typeArt = typeArtRes.valueOrNull();
+      if (typeArt == null) {
+        return EResult.errs(errors);
+      }
+      out.add(new ArtifactExternal.CapturedEntry(entry.key(), typeArt, artExt));
     }
     return errors.isEmpty() ? EResult.ok(out) : EResult.mixed(out, errors);
   }
@@ -110,7 +110,14 @@ public final class ExternalCodec {
                   + artExt.getClass().getSimpleName());
         }
       }
-      out.add(new EvalContext.ExternalEntry(entry.binding(), external));
+      var typeRes =
+          ArtifactSupport.independentFinalizeImportTypeArtifact(xx, loc, entry.typeArtifact());
+      typeRes.drainInto(errors);
+      var t = typeRes.valueOrNull();
+      if (t == null) {
+        return EResult.errs(errors);
+      }
+      out.add(new EvalContext.ExternalEntry(entry.key(), t, external));
     }
     return errors.isEmpty() ? EResult.ok(out) : EResult.mixed(out, errors);
   }

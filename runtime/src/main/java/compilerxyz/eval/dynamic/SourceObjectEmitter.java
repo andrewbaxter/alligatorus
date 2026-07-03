@@ -312,12 +312,9 @@ public final class SourceObjectEmitter {
           }
         }
       }
-      for (var entry : method.capturedExternals) {
-        var id = entry.id();
-        if (!(id instanceof BindingId.Local)) {
-          throw new IllegalStateException("External captured under non-Local BindingId: " + id);
-        }
-        var name = prefix + ImportInstall.bindingIdDynamicKey(id);
+      for (int i = 0; i < method.capturedExternals.size(); i++) {
+        var entry = method.capturedExternals.get(i);
+        var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
         if (allFieldNames.add(name)) {
           staticFieldValues.put(name, entry.external().externalHostValue());
         }
@@ -453,15 +450,14 @@ public final class SourceObjectEmitter {
       seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ASTORE, argSlot));
     }
 
-    for (var entry : method.capturedExternals) {
-      if (!(entry.id() instanceof BindingId.Local localId)) {
-        throw new IllegalStateException(
-            "External captured under non-Local BindingId: " + entry.id());
-      }
-      var fieldName = prefix + ImportInstall.bindingIdDynamicKey(localId);
+    for (int i = 0; i < method.capturedExternals.size(); i++) {
+      var entry = method.capturedExternals.get(i);
+      var fieldName = prefix + Prefixes.EXTERNAL_PREFIX + i;
       seq.add(JavaBytecodeUtils.accessStaticField(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, internalName, fieldName, JvmConstants.DESC_OBJECT));
-      var slot = ctx.allocSlot(localId);
-      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ASTORE, slot));
+      seq.add(
+          new CodeDynamic(
+              compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE,
+              new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
     }
     target.emit(seq, ctx, bodyCode);
     seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
@@ -485,12 +481,9 @@ public final class SourceObjectEmitter {
         }
       }
     }
-    for (var entry : capturedExternals) {
-      var id = entry.id();
-      if (!(id instanceof BindingId.Local)) {
-        throw new IllegalStateException("External captured under non-Local BindingId: " + id);
-      }
-      var name = prefix + ImportInstall.bindingIdDynamicKey(id);
+    for (int i = 0; i < capturedExternals.size(); i++) {
+      var entry = capturedExternals.get(i);
+      var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
       if (allFieldNames.add(name)) {
         staticFieldValues.put(name, entry.external().externalHostValue());
       }
@@ -570,15 +563,14 @@ public final class SourceObjectEmitter {
       }
     }
 
-    for (var entry : m.capturedExternals) {
-      if (!(entry.id() instanceof BindingId.Local localId)) {
-        throw new IllegalStateException(
-            "External captured under non-Local BindingId: " + entry.id());
-      }
-      var fieldName = prefix + ImportInstall.bindingIdDynamicKey(localId);
+    for (int i = 0; i < m.capturedExternals.size(); i++) {
+      var entry = m.capturedExternals.get(i);
+      var fieldName = prefix + Prefixes.EXTERNAL_PREFIX + i;
       seq.add(JavaBytecodeUtils.accessStaticField(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, internalName, fieldName, JvmConstants.DESC_OBJECT));
-      var slot = ctx.allocSlot(localId);
-      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ASTORE, slot));
+      seq.add(
+          new CodeDynamic(
+              compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE,
+              new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
     }
     target.emit(seq, ctx, bodyCode);
     seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));

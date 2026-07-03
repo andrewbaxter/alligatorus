@@ -396,8 +396,10 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
       compilerxyz.eval.value.function.TypeFunctionDynamic runtimeFn,
       Type resultType) {
     Type template = new TypeSourceObjectConst(data);
-    var templateId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    xx.vx.externals.add(new EvalContext.ExternalEntry(templateId, new External.TypeExternal(template)));
+    var templateKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    var templateId = new BindingId.Local(templateKey);
+    xx.vx.externals.add(new EvalContext.ExternalEntry(
+        templateKey, new compilerxyz.eval.value.any.TypeAnyDynamic(), new External.TypeExternal(template)));
     var templateCode = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, templateId);
     var args = new TList<CodeDynamic>();
     args.add(templateCode);

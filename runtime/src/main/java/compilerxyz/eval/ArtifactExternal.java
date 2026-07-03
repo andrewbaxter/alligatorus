@@ -16,5 +16,6 @@ public sealed interface ArtifactExternal extends SafeJsonSerializable {
 
   record Unique(JavaBytecodeBindingKey artifactExternalLocalId, compilerxyz.eval.Unique unique) implements ArtifactExternal {}
 
-  record CapturedEntry(BindingId binding, ArtifactExternal external) {}
+  record CapturedEntry(
+      JavaBytecodeBindingKey key, Artifact typeArtifact, ArtifactExternal external) {}
 }

@@ -224,9 +224,10 @@ public record TypeAnyDynamic()
       return aspectTypeRes.reerr();
     }
     var resolvedType = aspectTypeRes.valueOrNull().type_(some.value());
-    var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+    var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    var id = new BindingId.Local(key);
     xx.vx.externals.add(new EvalContext.ExternalEntry(
-        id, new External.TypeExternal(resolvedType)));
+        key, this, new External.TypeExternal(resolvedType)));
     var bindingUse = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id);
     return EResult.ok(
         new CodeValue(
