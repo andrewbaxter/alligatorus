@@ -41,6 +41,12 @@ public final class DynRuntime {
     }
   }
 
+  public static final class DynPanic extends RuntimeException {
+    public DynPanic(String message) {
+      super(message);
+    }
+  }
+
   private static final JavaInternalName INTNAME = JavaInternalName.fromClass(DynRuntime.class);
   private static final TypeAnyDynamic ANY = new TypeAnyDynamic();
 
@@ -142,10 +148,7 @@ public final class DynRuntime {
   }
 
   public static Object panic(ExprContext xx, String message) {
-    var payload = new java.util.LinkedHashMap<String, Object>();
-    payload.put(compilerxyz.eval.Eval.PANIC_MARKER_KEY, Boolean.TRUE);
-    payload.put("message", message);
-    throw new DynException(payload);
+    throw new DynPanic(message);
   }
 
   public static Object throwValue(ExprContext xx, Object value) {

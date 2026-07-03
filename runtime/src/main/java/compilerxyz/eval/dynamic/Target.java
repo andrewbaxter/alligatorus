@@ -115,6 +115,17 @@ public interface Target {
 
   record IfBranch(CodeValue condition, Expr body) {}
 
+  default EResult<CodeDynamic> targetTryCatchFinally(
+      QExprId loc,
+      CodeDynamic body,
+      Opt<TryCatchClause> catch_,
+      Opt<CodeDynamic> finally_) {
+    throw new AssertionError(
+        "user did not provide a Target::tryCatchFinally method on " + getClass().getName());
+  }
+
+  record TryCatchClause(BindingId.Local binding, CodeDynamic body) {}
+
   default EResult<CodeValue> targetMatch_(
       ExprContext xx,
       QExprId loc,

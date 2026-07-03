@@ -740,9 +740,7 @@ public final class ConstEval {
       return EResult.errs(erb.errors());
     }
     Opt<Value> resultValue = bodyCv.value();
-    return EResult.err(loc, "ConstEval.constEvalTry: try/catch/finally expansion into low-level bytecode API (JavaBytecodeJump/Land/CatchStart/Catch) is not yet ported");
-    /* PORT PENDING
-    Opt<CodeDynamic> catchDyn = Opt.none();
+    Opt<Target.TryCatchClause> catch_ = Opt.none();
     if (e.catchClause() instanceof Opt.Some<Expr.TryCatch> catchSome2) {
       var catchObj = catchSome2.value();
       var bnCvOpt = erb.mustEr(constEval(xx, catchObj.bindingName()));
@@ -778,9 +776,9 @@ public final class ConstEval {
         erb.errPush("Try catch body must produce CodeDynamic (got Code.none)");
         return EResult.errs(erb.errors());
       }
-      catchDyn = Opt.some(new JavaBytecode.Catch(bindingId, catchCd));
+      catch_ = Opt.some(new Target.TryCatchClause(bindingId, catchCd));
     }
-    Opt<CodeDynamic> finallyDyn = Opt.none();
+    Opt<CodeDynamic> finally_ = Opt.none();
     if (e.finallyBlock() instanceof Opt.Some<Expr> finSome) {
       var finCvOpt = erb.mustEr(constEval(xx, finSome.value()));
       if (finCvOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -815,11 +813,12 @@ public final class ConstEval {
       } else {
         combinedFinally = finCd;
       }
-      finallyDyn = Opt.some(combinedFinally);
+      finally_ = Opt.some(combinedFinally);
     }
-    var tryCode = new CodeDynamic(loc, bodyCd);
-    return EResult.ok(new CodeValue(Code.of(loc, tryCode), resultValue));
-    */
+    var tryOpt =
+        erb.mustEr(xx.target.targetTryCatchFinally(loc, bodyCd, catch_, finally_));
+    if (tryOpt.isEmpty()) return EResult.errs(erb.errors());
+    return EResult.ok(new CodeValue(Code.of(loc, tryOpt.get()), resultValue));
   }
 
   private static EResult<CodeValue> constEvalStage(ExprContext xx, QExprId loc, Expr.Stage e) {

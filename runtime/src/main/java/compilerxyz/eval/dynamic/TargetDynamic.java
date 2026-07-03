@@ -83,8 +83,6 @@ public final class TargetDynamic implements Target {
   private static final JavaMethodDescriptor MDESC_MAP_PUT =
       JavaMethodDescriptor.fromParts(
           JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
-  private static final JavaMethodDescriptor MDESC_MAP_CONTAINS_KEY =
-      JavaMethodDescriptor.fromParts(JvmConstants.DESC_BOOL, JvmConstants.DESC_OBJECT);
   private static final JavaMethodDescriptor MDESC_STRING_EQUALS =
       JavaMethodDescriptor.fromParts(JvmConstants.DESC_BOOL, JvmConstants.DESC_OBJECT);
 
@@ -143,10 +141,119 @@ public final class TargetDynamic implements Target {
     if (bodyDyn == null) {
       return EResult.ok(Code.of(loc, finallyDyn));
     }
-    return EResult.err(
-        loc,
-        "TargetDynamic::targetTryFinally: try/finally expansion into the new low-level bytecode"
-            + " API (JavaBytecodeCatchStart + JavaBytecodeCatch) is not yet ported");
+    // Stack-neutral: body and finally do not produce values here (used by the
+    // scoped-drop wrap path). Any exception thrown by body runs finally too and
+    // is re-thrown.
+    var bodyStart = new Label();
+    var bodyEnd = new Label();
+    var handler = new Label();
+    var end = new Label();
+    var seq = new JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
+    seq.add(bodyDyn);
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
+    seq.add(finallyDyn);
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc),
+            new JavaBytecodeInstructionTryCatch(bodyStart, bodyEnd, handler, null)));
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(handler)));
+    var excKey = new JavaBytecodeBindingKey();
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, excKey)));
+    seq.add(finallyDyn);
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, excKey)));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(end)));
+    return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
+  }
+
+  @Override
+  public EResult<CodeDynamic> targetTryCatchFinally(
+      QExprId loc,
+      CodeDynamic body,
+      Opt<TryCatchClause> catch_,
+      Opt<CodeDynamic> finally_) {
+    var bodyStart = new Label();
+    var bodyEnd = new Label();
+    var handler = new Label();
+    var afterBody = new Label();
+    var end = new Label();
+    var finallyHandler = finally_ instanceof Opt.Some<?> ? new Label() : null;
+
+    var resultKey = new JavaBytecodeBindingKey();
+    var seq = new JavaBytecodeSequence();
+
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
+    seq.add(body);
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(afterBody))));
+
+    if (catch_ instanceof Opt.Some<TryCatchClause> someCatch) {
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeInstructionTryCatch(
+                  bodyStart, bodyEnd, handler, INTNAME_DYN_EXCEPTION.value())));
+    }
+    if (finallyHandler != null) {
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeInstructionTryCatch(bodyStart, bodyEnd, finallyHandler, null)));
+    }
+
+    if (catch_ instanceof Opt.Some<TryCatchClause> someCatch2) {
+      var clause = someCatch2.value();
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(handler)));
+      // Stack: DynException (JVM auto-pushed on catch). Panics use DynPanic,
+      // which is not a DynException, so the JVM catch table excludes them and
+      // they propagate past this handler untouched.
+      seq.add(
+          JavaBytecodeUtils.accessField(
+              loc, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeStoreLoad(Opcodes.ASTORE, clause.binding().key())));
+      seq.add(clause.body());
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(afterBody))));
+    }
+
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(afterBody)));
+    if (finally_ instanceof Opt.Some<CodeDynamic> someFinally) {
+      seq.add(someFinally.value());
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
+
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(finallyHandler)));
+      var excKey = new JavaBytecodeBindingKey();
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, excKey)));
+      seq.add(someFinally.value());
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, excKey)));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+    }
+
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(end)));
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, resultKey)));
+    return EResult.ok(new CodeDynamic(loc, seq));
   }
 
   @Override

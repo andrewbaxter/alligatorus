@@ -31,8 +31,6 @@ public final class Eval {
 
   public static final String KEY_BUILTINS = "builtins";
 
-  public static final String PANIC_MARKER_KEY = "__panic__";
-
   private Eval() {}
 
   public static boolean codeUsesBinding(CodeDynamic code, BindingId targetId) {
@@ -463,6 +461,12 @@ public final class Eval {
       } catch (ReflectiveOperationException e) {
         var cause = e.getCause();
 
+        if (cause instanceof DynRuntime.DynPanic panic) {
+          return new CompileImport.EvalOutcome.Err(
+              TList.of(
+                  new ExprErr(rootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
+        }
+
         if (cause instanceof DynRuntime.DynException dynEx) {
           var rendered = renderThrownValue(dynEx.payload);
           return new CompileImport.EvalOutcome.Err(
@@ -511,16 +515,6 @@ public final class Eval {
   }
 
   private static String renderThrownValue(Object payload) {
-    if (payload instanceof java.util.Map<?, ?> map) {
-      var marker = map.get(PANIC_MARKER_KEY);
-      var isPanic = marker instanceof Boolean b && b;
-      if (isPanic) {
-        var msg = map.get("message");
-        if (msg != null) {
-          return "panic: " + msg;
-        }
-      }
-    }
     return payload == null ? "null" : payload.toString();
   }
 }
