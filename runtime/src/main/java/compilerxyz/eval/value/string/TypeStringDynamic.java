@@ -103,6 +103,11 @@ public record TypeStringDynamic()
   }
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/String");
+  }
+
+  @Override
   public Type valueTypeOf() {
     return new TypeRoot.StringDynamic();
   }

@@ -54,6 +54,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         ExporterAny {
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
+  }
+
+  @Override
   public String typeDesc() {
     var inner =
         fields.entrySet().stream()

@@ -219,6 +219,7 @@ public final class PushStructsGen {
     cls.addMethod(buildFieldTypeOpt(spec));
     cls.addMethod(buildFieldKeys());
     cls.addMethod(buildToDynamicMethod());
+    cls.addMethod(buildConsumeDynamicJvmClassMethod());
     cls.addMethod(buildBindMethod());
     cls.addMethod(buildBindDynamicMethod());
     cls.addMethod(buildToValueMethod(sentinel));
@@ -268,6 +269,18 @@ public final class PushStructsGen {
         .addParameter(QEXPR_ID, "loc")
         .addParameter(CODE_VALUE, "cv")
         .addStatement("return $T.dynamicConsumeToDynamic(xx, loc, cv)", DYN_UTIL)
+        .build();
+  }
+
+  private static final ClassName JVM_CONSTANTS =
+      ClassName.get("compilerxyz.eval.dynamic", "JvmConstants");
+
+  private static MethodSpec buildConsumeDynamicJvmClassMethod() {
+    return MethodSpec.methodBuilder("consumeDynamicJvmClass")
+        .addModifiers(Modifier.PUBLIC)
+        .addAnnotation(Override.class)
+        .returns(JAVA_INTERNAL_NAME)
+        .addStatement("return $T.INTNAME_OBJECT", JVM_CONSTANTS)
         .build();
   }
 

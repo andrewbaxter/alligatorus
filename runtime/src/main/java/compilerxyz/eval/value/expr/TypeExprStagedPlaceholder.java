@@ -20,6 +20,11 @@ public record TypeExprStagedPlaceholder()
     implements Type, Value, AspectConsumeDynamic, AspectLift, ExporterAny {
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
+  }
+
+  @Override
   public String typeDesc() {
     return "stage result";
   }

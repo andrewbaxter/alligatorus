@@ -30,6 +30,11 @@ public record TypeCodeEnumDynamic()
         ExporterAny {
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
+  }
+
+  @Override
   public String typeDesc() {
     return "Code_";
   }

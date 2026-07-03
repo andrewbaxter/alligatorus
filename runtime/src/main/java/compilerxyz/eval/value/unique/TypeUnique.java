@@ -57,6 +57,11 @@ public record TypeUnique()
   public static final BindingId UNIQUE_EQ_FN_SCOPE_ID = new BindingId.Builtin(7021);
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
+  }
+
+  @Override
   public String typeDesc() {
     return "unique";
   }

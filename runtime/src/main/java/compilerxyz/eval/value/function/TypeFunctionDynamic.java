@@ -80,20 +80,18 @@ public record TypeFunctionDynamic(
               compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
               compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
     }
-    var argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor.value);
-    int paramOffset = needsExprContext ? 1 : 0;
-    for (int i = 0; i < args.size(); i++) {
-      seq.add(args.get(i));
-      var t = argTypes[paramOffset + i];
-      if (t.getSort() == org.objectweb.asm.Type.OBJECT
-          && !t.getInternalName().equals("java/lang/Object")) {
-        seq.add(
-            JavaBytecodeUtils.cast(
-                loc, JavaDataDescriptor.fromInternalName(JavaInternalName.of(t.getInternalName()))));
-      }
+    // The arg's stack JVM class is declared via AspectConsumeDynamic and the code
+    // it produces already leaves a properly-typed value. No CHECKCAST here.
+    for (var argCode : args) {
+      seq.add(argCode);
     }
     seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, descriptor));
     return new CodeDynamic(loc, seq);
+  }
+
+  @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
   }
 
   @Override

@@ -64,7 +64,17 @@ final class AspectsGen {
   private static final ClassName NULLABLE =
       ClassName.get("org.jspecify.annotations", "Nullable");
 
-  private record AspectMethod(String javadoc, String name, TList<Param> params, TypeName ret) {}
+  private record AspectMethod(
+      String javadoc,
+      String name,
+      TList<Param> params,
+      TypeName ret,
+      String defaultBody,
+      Object[] defaultBodyArgs) {
+    AspectMethod(String javadoc, String name, TList<Param> params, TypeName ret) {
+      this(javadoc, name, params, ret, null, null);
+    }
+  }
 
   private record NestedRecord(String javadoc, String name, TList<Param> components) {}
 
@@ -123,10 +133,13 @@ final class AspectsGen {
     }
 
     for (var m : spec.methods) {
-      var method =
-          MethodSpec.methodBuilder(m.name)
-              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-              .returns(m.ret);
+      var method = MethodSpec.methodBuilder(m.name).returns(m.ret);
+      if (m.defaultBody != null) {
+        method.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+        method.addStatement(m.defaultBody, m.defaultBodyArgs);
+      } else {
+        method.addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
+      }
       if (m.javadoc != null && !m.javadoc.isEmpty()) {
         method.addJavadoc(m.javadoc + "\n");
       }
@@ -453,7 +466,16 @@ final class AspectsGen {
                     "Convert the value to dynamic and return the code that this produced.",
                     "toDynamic",
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE_DYNAMIC)))),
+                    ParameterizedTypeName.get(ERESULT, CODE_DYNAMIC)),
+                new AspectMethod(
+                    "The JVM class that {@code toDynamic}'s produced code leaves on the stack."
+                        + " Drives derived method descriptors for call sites (INVOKESTATIC via"
+                        + " {@code TypeFunctionDynamic}/{@code TypeMethodDynamic}); the presence of"
+                        + " this aspect already implies the type has a host stack representation,"
+                        + " so this is infallible.",
+                    "consumeDynamicJvmClass",
+                    TList.of(),
+                    ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName")))),
         new AspectSpec(
             "",
             "StackValueDynamic",

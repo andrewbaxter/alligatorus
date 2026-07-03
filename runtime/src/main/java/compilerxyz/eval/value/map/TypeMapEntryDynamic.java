@@ -52,6 +52,11 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaInternalName.of("java/util/Map$Entry");
+  }
+
+  @Override
   public String typeDesc() {
     return "map-entry(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
   }

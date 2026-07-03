@@ -78,6 +78,11 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaInternalName.of("java/util/HashMap");
+  }
+
+  @Override
   public Type valueTypeOf() {
     return new TypeRoot.MapDynamic();
   }
@@ -280,6 +285,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       throw new IllegalStateException(
           "TypeMapDynamic::foreach: element binding must be BindingId.Local");
     }
+    // Iterator.next() returns Object; cast to Map.Entry (the element language
+    // type) so the binding slot is typed as promised.
+    seq.add(
+        JavaBytecodeUtils.cast(loc,
+            JavaDataDescriptor.fromInternalName(
+                JavaInternalName.of("java/util/Map$Entry"))));
     seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));
     var bodyDyn = body.code().dynamic();
     if (bodyDyn != null) {

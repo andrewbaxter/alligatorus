@@ -106,6 +106,9 @@ public final class Eval {
     }
     var erb = new Erb(loc);
     var sourceType = ((Opt.Some<Value>) source.value()).value().valueTypeOf();
+    if (sourceType.equals(destType)) {
+      return EResult.ok(source);
+    }
     CodeValue dest;
     if (sourceType.typeCanCastTo(xx, loc, destType)) {
       var castOpt = erb.mustEr(sourceType.typeCastTo(xx, loc, source, destType));

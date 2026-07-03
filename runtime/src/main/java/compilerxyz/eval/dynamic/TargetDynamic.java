@@ -149,15 +149,15 @@ public final class TargetDynamic implements Target {
     var handler = new Label();
     var end = new Label();
     var seq = new JavaBytecodeSequence();
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc),
+            new JavaBytecodeInstructionTryCatch(bodyStart, bodyEnd, handler, null)));
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
     seq.add(bodyDyn);
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
     seq.add(finallyDyn);
     seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
-    seq.add(
-        new CodeDynamic(
-            new CodeLoc.Some(loc),
-            new JavaBytecodeInstructionTryCatch(bodyStart, bodyEnd, handler, null)));
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(handler)));
     var excKey = new JavaBytecodeBindingKey();
     seq.add(
@@ -188,14 +188,37 @@ public final class TargetDynamic implements Target {
     var resultKey = new JavaBytecodeBindingKey();
     var seq = new JavaBytecodeSequence();
 
-    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
-    seq.add(body);
+    // Reserve the JVM slot for resultKey (and for catch payload / finally exc if
+    // present) up front, before any jumps. The frame-index tracker requires all
+    // control-flow paths that reach a label to agree on the variable set —
+    // reserving early avoids the case where the try body's GOTO to afterBody has
+    // fewer slots than the handler's GOTO to the same label.
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
     seq.add(
         new CodeDynamic(
             new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
-    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
-    seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(afterBody))));
+    JavaBytecodeBindingKey finallyExcKey = null;
+    if (finallyHandler != null) {
+      finallyExcKey = new JavaBytecodeBindingKey();
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
+    }
+    if (catch_ instanceof Opt.Some<TryCatchClause> someCatchInit) {
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeStoreLoad(
+                  Opcodes.ASTORE, someCatchInit.value().binding().key())));
+    }
 
+    // Emit try-catch table entries BEFORE the body. The frame-index tracker
+    // snapshots at try-catch declaration time to be able to restore the frame
+    // at the handler label — if these come after the body's terminating GOTO,
+    // currentIndexes is null and the snapshot is missed.
     if (catch_ instanceof Opt.Some<TryCatchClause> someCatch) {
       seq.add(
           new CodeDynamic(
@@ -209,6 +232,14 @@ public final class TargetDynamic implements Target {
               new CodeLoc.Some(loc),
               new JavaBytecodeInstructionTryCatch(bodyStart, bodyEnd, finallyHandler, null)));
     }
+
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
+    seq.add(body);
+    seq.add(
+        new CodeDynamic(
+            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
+    seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(afterBody))));
 
     if (catch_ instanceof Opt.Some<TryCatchClause> someCatch2) {
       var clause = someCatch2.value();
@@ -237,15 +268,14 @@ public final class TargetDynamic implements Target {
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
 
       seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(finallyHandler)));
-      var excKey = new JavaBytecodeBindingKey();
       seq.add(
           new CodeDynamic(
-              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, excKey)));
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
       seq.add(someFinally.value());
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
       seq.add(
           new CodeDynamic(
-              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, excKey)));
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, finallyExcKey)));
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
     }
 

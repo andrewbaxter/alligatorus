@@ -59,6 +59,11 @@ public record Tuple(TList<TupleElement> elements)
         ExporterAny {
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
+  }
+
+  @Override
   public String typeDesc() {
     var inner =
         elements.stream()
@@ -124,6 +129,28 @@ public record Tuple(TList<TupleElement> elements)
       return Opt.some(new TupleLift(elementLifts, elementTypes));
     }
     return Opt.none();
+  }
+
+  @Override
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+    // The empty tuple `()` is the language-level unit value and converts to null.
+    return elements.isEmpty()
+        && compilerxyz.gen.AspectNull.getMaybe(xx, destType).optIsSome();
+  }
+
+  @Override
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+    // Empty tuple → null: produce a fresh null CodeValue of the destination type.
+    // Skip AspectNull dispatch on the source (Tuple isn't AspectNull), and skip
+    // typeCastFrom on the dest (which would itself route through AspectNull).
+    return EResult.ok(
+        new compilerxyz.eval.CodeValue(
+            compilerxyz.eval.Code.of(
+                loc,
+                compilerxyz.eval.dynamic.JavaBytecodeUtils.literalNull(loc)),
+            Opt.some(
+                new compilerxyz.eval.value.ValueDynamic(
+                    new compilerxyz.eval.value.ValueDynamic.Source.Expr(), destType))));
   }
 
   @Override

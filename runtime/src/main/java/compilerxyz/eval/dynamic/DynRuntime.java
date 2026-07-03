@@ -106,12 +106,12 @@ public final class DynRuntime {
           "dataInstanceToAspect",
           desc(cls(Aspect.class), cls(ExprContext.class), cls(Aspect.class)));
 
-  public static Object listPush(ArrayList<Object> list, Object element) {
+  public static Object listPush(TList<Object> list, Object element) {
     list.add(element);
     return null;
   }
 
-  public static String listJoin(ArrayList<Object> list, String separator) {
+  public static String listJoin(TList<Object> list, String separator) {
     var sb = new StringBuilder();
     boolean first = true;
     for (var e : list) {

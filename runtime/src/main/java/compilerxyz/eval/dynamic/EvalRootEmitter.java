@@ -146,10 +146,19 @@ public final class EvalRootEmitter {
     }
     fieldDescriptors.put(EXPR_CONTEXT_FIELD, DESC_EXPR_CONTEXT);
     var externalFieldNames = new TList<String>(externals.size());
+    var externalFieldDescriptors = new TList<JavaDataDescriptor>(externals.size());
     for (int i = 0; i < externals.size(); i++) {
+      var entry = externals.get(i);
       var fieldName = Prefixes.EXTERNAL_PREFIX + i;
       externalFieldNames.add(fieldName);
-      fieldDescriptors.put(fieldName, JvmConstants.DESC_OBJECT);
+      if (!(entry.type() instanceof compilerxyz.gen.AspectConsumeDynamic consume)) {
+        throw new IllegalStateException(
+            "External type " + entry.type().getClass().getName()
+                + " does not implement AspectConsumeDynamic — cannot determine field JVM class");
+      }
+      var desc = JavaDataDescriptor.fromInternalName(consume.consumeDynamicJvmClass());
+      externalFieldDescriptors.add(desc);
+      fieldDescriptors.put(fieldName, desc);
     }
 
     for (var def : referencedDefIds(rootCode)) {
@@ -182,10 +191,9 @@ public final class EvalRootEmitter {
     var ownerInternal = JavaInternalName.of(internalName);
     for (int i = 0; i < externals.size(); i++) {
       var entry = externals.get(i);
-      var fieldName = externalFieldNames.get(i);
       seq.add(
           JavaBytecodeUtils.accessStaticField(
-              loc, ownerInternal, fieldName, JvmConstants.DESC_OBJECT));
+              loc, ownerInternal, externalFieldNames.get(i), externalFieldDescriptors.get(i)));
       seq.add(
           new CodeDynamic(
               loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));

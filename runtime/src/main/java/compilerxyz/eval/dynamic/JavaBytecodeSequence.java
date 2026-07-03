@@ -454,6 +454,15 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             @Override
                                             public void handleTryCatch(JavaBytecodeInstructionTryCatch n) {
                                                 out.visitTryCatchBlock(n.start, n.end, n.handler, n.excType);
+                                                // Register the handler label as an entry point so that when
+                                                // its LabelNode is emitted, the current frame (variable index
+                                                // allocations) is restored — otherwise a preceding GOTO nulls
+                                                // currentIndexes[0] and any StoreLoad inside the handler NPEs.
+                                                if (currentIndexes[0] != null) {
+                                                    branchIndexes.put(
+                                                        n.handler,
+                                                        new Pair<>(currentIndexes[0], currentRevIndexes[0]));
+                                                }
                                             }
                                         });
                                 return null;

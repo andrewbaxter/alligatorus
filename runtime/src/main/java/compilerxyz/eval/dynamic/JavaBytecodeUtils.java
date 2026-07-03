@@ -41,7 +41,7 @@ import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
 public class JavaBytecodeUtils {
-  public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionObj(new InsnNode(DUP));
+  public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionInt(DUP);
 
   public static boolean empty(JavaBytecode e) {
     if (e == null) return true;
@@ -137,7 +137,20 @@ public class JavaBytecodeUtils {
   }
 
   public static CodeDynamic literalDouble(CodeLoc loc, double value) {
-    return wrapObj(loc, new LdcInsnNode(value));
+    var seq = new JavaBytecodeSequence();
+    seq.add(wrapObj(loc, new LdcInsnNode(value)));
+    // Box double → java.lang.Double so the stack matches TypeNumberDynamic's
+    // consumeDynamicJvmClass().
+    seq.add(
+        callStaticMethod(
+            loc,
+            JavaInternalName.of("java/lang/Double"),
+            "valueOf",
+            JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.fromInternalName(
+                    JavaInternalName.of("java/lang/Double")),
+                TList.of(JavaDataDescriptor.DESC_DOUBLE))));
+    return new CodeDynamic(loc, seq);
   }
 
   public static CodeDynamic literalDouble(QExprId loc, double value) {

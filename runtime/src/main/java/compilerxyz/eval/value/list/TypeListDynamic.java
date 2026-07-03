@@ -74,6 +74,11 @@ public record TypeListDynamic(Type elementType)
         ExporterAny {
 
   @Override
+  public JavaInternalName consumeDynamicJvmClass() {
+    return JavaInternalName.of("compilerxyz/util/TList");
+  }
+
+  @Override
   public String typeDesc() {
     return "list(" + elementType.typeDesc() + ")";
   }
@@ -150,13 +155,15 @@ public record TypeListDynamic(Type elementType)
       JavaMethodDescriptor.fromParts(
           JavaDataDescriptor.fromClass(Object.class),
           TList.of(
-              JavaDataDescriptor.fromClass(java.util.ArrayList.class),
+              JavaDataDescriptor.fromInternalName(
+                  JavaInternalName.of("compilerxyz/util/TList")),
               JavaDataDescriptor.fromClass(Object.class)));
   private static final JavaMethodDescriptor DESC_LIST_JOIN =
       JavaMethodDescriptor.fromParts(
           JavaDataDescriptor.fromClass(String.class),
           TList.of(
-              JavaDataDescriptor.fromClass(java.util.ArrayList.class),
+              JavaDataDescriptor.fromInternalName(
+                  JavaInternalName.of("compilerxyz/util/TList")),
               JavaDataDescriptor.fromClass(String.class)));
 
   private TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
@@ -291,6 +298,14 @@ public record TypeListDynamic(Type elementType)
     if (!(elementScopeId instanceof BindingId.Local localBinding)) {
       throw new IllegalStateException(
           "TypeListDynamic::foreach: element binding must be BindingId.Local");
+    }
+    // Iterator.next() returns Object; cast to the element type's declared JVM
+    // class so the binding slot is typed as promised.
+    if (elementType instanceof AspectConsumeDynamic elemConsume) {
+      var elemJvm = elemConsume.consumeDynamicJvmClass();
+      if (!elemJvm.value().equals(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT.value())) {
+        seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(elemJvm)));
+      }
     }
     seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));
     var bodyDyn = body.code().dynamic();

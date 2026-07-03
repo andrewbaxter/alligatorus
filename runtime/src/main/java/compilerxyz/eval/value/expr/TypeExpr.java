@@ -53,6 +53,11 @@ public record TypeExpr()
         ExporterAny {
 
   @Override
+  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/expr/StagedExprCell");
+  }
+
+  @Override
   public String typeDesc() {
     return "expr";
   }
