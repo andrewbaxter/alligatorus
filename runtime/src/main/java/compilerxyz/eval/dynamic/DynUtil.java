@@ -28,20 +28,19 @@ public final class DynUtil {
     }
 
 
-    public static JavaBytecode.LoweredSequence buildFieldGetSequence(CodeDynamic baseCode, String fieldKey) {
-        var elements = new TList<JavaBytecode.LoweredSequence.Element>();
-        elements.add(new JavaBytecode.LoweredSequence.Code(baseCode));
-        elements.add(
-                new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.literalString(fieldKey)));
-        elements.add(
-                new JavaBytecode.LoweredSequence.Bytecode(
-                        JavaBytecodeUtils.callInterfaceMethod(
-                                -1,
-                                JvmConstants.INTNAME_MAP,
-                                "get",
-                                JavaMethodDescriptor.fromParts(
-                                        JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT))));
-        return new JavaBytecode.LoweredSequence(elements);
+    public static CodeDynamic buildFieldGetSequence(QExprId loc, CodeDynamic baseCode, String fieldKey) {
+        var seq = new JavaBytecodeSequence();
+        seq.add(baseCode);
+        seq.add(JavaBytecodeUtils.literalString(loc, fieldKey));
+        seq.add(
+                JavaBytecodeUtils.callInterfaceMethod(
+                        loc,
+                        JvmConstants.INTNAME_MAP,
+                        "get",
+                        JavaMethodDescriptor.fromParts(
+                                JvmConstants.DESC_OBJECT,
+                                TList.of(JvmConstants.DESC_OBJECT))));
+        return new CodeDynamic(loc, seq);
     }
 
     public static CodeDynamic renderSource(QExprId loc, ValueDynamic.Source src) {
@@ -49,7 +48,7 @@ public final class DynUtil {
             case ValueDynamic.Source.Binding b ->
                 new CodeDynamic(loc, new JavaBytecode.BindingUse(b.key()));
             case ValueDynamic.Source.Field f ->
-                new CodeDynamic(loc, buildFieldGetSequence(renderSource(loc, f.base()), f.key()));
+                buildFieldGetSequence(loc, renderSource(loc, f.base()), f.key());
             case ValueDynamic.Source.Expr e ->
                 throw new IllegalStateException(
                     "ValueDynamic.Source.Expr has no reconstructable code");
@@ -206,26 +205,23 @@ public final class DynUtil {
                         "TODO assertion set left hand doesn't evaluate to dynamic code (empty)");
             }
             CodeDynamic baseCode = renderSource(loc, fieldSrc.base());
-            var setElements = new TList<JavaBytecode.LoweredSequence.Element>();
-            setElements.add(new JavaBytecode.LoweredSequence.Code(baseCode));
-            setElements.add(
-                    new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.literalString(fieldSrc.key())));
-            setElements.add(new JavaBytecode.LoweredSequence.Code(valueCode));
-            setElements.add(
-                    new JavaBytecode.LoweredSequence.Bytecode(
-                            JavaBytecodeUtils.callInterfaceMethod(
-                                    -1,
-                                    JavaInternalName.of("java/util/Map"),
-                                    "put",
-                                    JavaMethodDescriptor.fromParts(
-                                            JvmConstants.DESC_OBJECT,
+            var setSeq = new JavaBytecodeSequence();
+            setSeq.add(baseCode);
+            setSeq.add(JavaBytecodeUtils.literalString(loc, fieldSrc.key()));
+            setSeq.add(valueCode);
+            setSeq.add(
+                    JavaBytecodeUtils.callInterfaceMethod(
+                            loc,
+                            JavaInternalName.of("java/util/Map"),
+                            "put",
+                            JavaMethodDescriptor.fromParts(
+                                    JvmConstants.DESC_OBJECT,
+                                    TList.of(
                                             JvmConstants.DESC_OBJECT,
                                             JvmConstants.DESC_OBJECT))));
-            setElements.add(
-                    new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.POP)));
-            setElements.add(
-                    new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.ACONST_NULL)));
-            var setJs = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(setElements));
+            setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+            setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+            var setJs = new CodeDynamic(loc, setSeq);
             return EResult.ok(nullStack.toValue(loc, setJs));
         }
         if (selfDyn.source() instanceof ValueDynamic.Source.Binding bindingSrc) {

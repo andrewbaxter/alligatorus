@@ -65,26 +65,22 @@ public record TypePanicDynamic()
       return EResult.errs(erb.errors());
     }
     var msgCode = msgCodeOpt.get();
-    var markerCode =
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                JavaBytecodeUtils.jsonLiteral(new JsonValueBoolean(true))));
-    var fieldNames = new TList<String>();
-    fieldNames.add(Eval.PANIC_MARKER_KEY);
-    fieldNames.add("message");
-    var fieldValues = new TList<CodeDynamic>();
-    fieldValues.add(markerCode);
-    fieldValues.add(msgCode);
-    var panicObj =
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                JavaBytecodeUtils.instantiateLinkedHashMapWithFields(fieldNames, fieldValues)));
-    var throwElements =
-        JavaBytecodeUtils.instantiate(
-            -1,
-            JavaInternalName.of("compilerxyz/eval/dynamic/DynRuntime$DynException"),
-            JavaMethodDescriptor.fromConstructorParts(JvmConstants.DESC_OBJECT),
-            TList.of(new JavaBytecode.LoweredSequence.Code(panicObj)));
-    throwElements.add(new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.ATHROW)));
-    var throwCode = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(throwElements));
+    var args = new TList<CodeDynamic>();
+    args.add(msgCode);
+    var panicType =
+        new compilerxyz.eval.value.function.TypeFunctionDynamic(
+            stringType,
+            stringType,
+            compilerxyz.eval.dynamic.JavaInternalName.fromClass(
+                compilerxyz.eval.dynamic.DynRuntime.class),
+            "panic",
+            compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+                TList.of(
+                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(ExprContext.class),
+                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class))),
+            true);
+    var throwCode = panicType.emitInvocation(loc, xx.vx, args);
     return EResult.ok(new CodeValue(Code.of(loc, throwCode), Opt.none()));
   }
 

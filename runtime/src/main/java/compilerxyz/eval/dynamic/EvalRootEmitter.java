@@ -98,12 +98,8 @@ public final class EvalRootEmitter {
           }
           return;
       }
-      if (v instanceof JavaBytecode.LoweredSequence s) {
-          for (var e : s.elements()) {
-              if (e instanceof JavaBytecode.LoweredSequence.Code c) {
-                  collectReferencedBuiltins(c.code(), out);
-              }
-          }
+      if (v instanceof JavaBytecodeSequence s) {
+          for (var child : s.children) collectReferencedBuiltins(child, out);
           return;
       }
       if (v instanceof JavaBytecode.Try t) {
@@ -174,12 +170,8 @@ public final class EvalRootEmitter {
           }
           return;
       }
-      if (v instanceof JavaBytecode.LoweredSequence s) {
-          for (var e : s.elements()) {
-              if (e instanceof JavaBytecode.LoweredSequence.Code c) {
-                  collectReferencedDefs(c.code(), out);
-              }
-          }
+      if (v instanceof JavaBytecodeSequence s) {
+          for (var child : s.children) collectReferencedDefs(child, out);
           return;
       }
       if (v instanceof JavaBytecode.Try t) {

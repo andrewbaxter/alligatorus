@@ -6,6 +6,7 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.eval.value.any.TypeAnyConst;
@@ -77,15 +78,10 @@ public final class Eval {
           case Opt.None<CodeDynamic> n -> false;
         };
       }
-      case JavaBytecode.LoweredSequence s -> {
+      case JavaBytecodeSequence s -> {
         boolean found = false;
-        for (var e : s.elements()) {
-          boolean hit = switch (e) {
-            case JavaBytecode.LoweredSequence.Bytecode b -> false;
-            case JavaBytecode.LoweredSequence.Code c -> codeUsesBinding(c.code(), targetId);
-            case JavaBytecode.LoweredSequence.LoadExprContext lxc -> false;
-          };
-          if (hit) {
+        for (var child : s.children) {
+          if (codeUsesBinding(child, targetId)) {
             found = true;
             break;
           }

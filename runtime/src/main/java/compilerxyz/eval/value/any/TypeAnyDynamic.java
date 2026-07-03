@@ -129,7 +129,7 @@ public record TypeAnyDynamic()
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on any");
     }
     String keyName = keyStr.value();
-    var fieldUse = new CodeDynamic(loc, DynUtil.buildFieldGetSequence(selfDyn, keyName));
+    var fieldUse = DynUtil.buildFieldGetSequence(loc, selfDyn, keyName);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldUse),

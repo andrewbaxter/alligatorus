@@ -37,7 +37,7 @@ public record TypeExprStagedPlaceholder()
     return Opt.none();
   }
 
-  @Override  @Override
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof StagedExprCell cell)) {

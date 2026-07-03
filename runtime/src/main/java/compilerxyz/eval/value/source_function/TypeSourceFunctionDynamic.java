@@ -78,7 +78,7 @@ public record TypeSourceFunctionDynamic()
     return new BindingDynamicBinding(dynamicKey, this);
   }
 
-  @Override  @Override
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof TypeSourceFunctionConst funcType)) {

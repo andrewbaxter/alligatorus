@@ -567,17 +567,12 @@ public record TypeSourceObjectConst(SourceObjectData data)
     var objInternalName =
         SourceObjectEmitter.internalNameFor(
             set.defSetId, objectIndex);
-    var ctorArgs = new TList<compilerxyz.eval.dynamic.JavaBytecode.LoweredSequence.Element>();
-    ctorArgs.add(new compilerxyz.eval.dynamic.JavaBytecode.LoweredSequence.Code(underlyingJs));
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.of(
-                SourceObjectEmitter.DATA_CTOR_DESCRIPTOR));
+            TList.of(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT));
     var result =
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(
-                    -1, klass, ctorDesc, ctorArgs)));
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
     if (erb.errors().isEmpty()) {
       return EResult.ok(result);
     }

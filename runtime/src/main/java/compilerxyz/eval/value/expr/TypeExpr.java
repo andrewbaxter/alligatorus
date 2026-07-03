@@ -129,7 +129,7 @@ public record TypeExpr()
     return EResult.ok(new CodeValue(cv.code(), Opt.some(literalExpr)));
   }
 
-  @Override  @Override
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof StagedExprCell cell)) {

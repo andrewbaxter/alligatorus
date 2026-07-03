@@ -336,11 +336,7 @@ public final class TargetDynamic implements Target {
     var treeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(treeId, new External.StagedExprCellExternal(treeCell)));
-    var stageArgs = new TList<CodeDynamic>();
-    stageArgs.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(treeId)));
-    stageArgs.add(
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                JavaBytecodeUtils.jsonLiteral(new JsonValueNumber(lowerValues.size())))));
+    var restElements = new TList<CodeDynamic>();
     for (var cv : lowerValues) {
       if (cv.code().isNone()) {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
@@ -350,9 +346,8 @@ public final class TargetDynamic implements Target {
         var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(id, new External.StagedExprCellExternal(cell)));
-        stageArgs.add(
-            new CodeDynamic(loc, new JavaBytecode.LoweredSequence(JavaBytecodeUtils.jsonLiteral(new JsonValueNull()))));
-        stageArgs.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));
+        restElements.add(JavaBytecodeUtils.literalNull(loc));
+        restElements.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::stage: dynamic lower CodeValue has no value");
@@ -368,8 +363,8 @@ public final class TargetDynamic implements Target {
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
-        stageArgs.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(liftId)));
-        stageArgs.add(innerJsOpt.get());
+        restElements.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(liftId)));
+        restElements.add(innerJsOpt.get());
       }
     }
     for (var cv : graftValues) {
@@ -380,7 +375,7 @@ public final class TargetDynamic implements Target {
         var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(id, new External.CodeValueExternCellExternal(cell)));
-        stageArgs.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));
+        restElements.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::stage: dynamic graft CodeValue has no value");
@@ -390,9 +385,13 @@ public final class TargetDynamic implements Target {
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
-        stageArgs.add(innerJsOpt.get());
+        restElements.add(innerJsOpt.get());
       }
     }
+    var stageArgs = new TList<CodeDynamic>();
+    stageArgs.add(new CodeDynamic(loc, new JavaBytecode.BindingUse(treeId)));
+    stageArgs.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
+    stageArgs.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
     var stageCall =
         compilerxyz.eval.dynamic.DynRuntime.STAGE_TYPE.emitInvocation(
             loc, xx.vx, stageArgs);
@@ -414,7 +413,9 @@ public final class TargetDynamic implements Target {
       case JavaBytecode.ForeachMap v -> emitForeachMap(seq, ctx, v);
       case JavaBytecode.If v -> emitIf(seq, ctx, v);
       case JavaBytecode.Match v -> emitMatch(seq, ctx, v);
-      case JavaBytecode.LoweredSequence v -> emitSequence(seq, ctx, v);
+      case JavaBytecodeSequence v -> {
+        for (var child : v.children) emitInner(seq, ctx, child);
+      }
       case JavaBytecode.Try v -> emitTry(seq, ctx, v);
       case CodeDynamic nested -> emitInner(seq, ctx, nested);
       case JavaBytecode jbc -> seq.add(jbc);
@@ -686,16 +687,6 @@ public final class TargetDynamic implements Target {
       seq.add(new JavaBytecodeInstruction.Obj(endNode));
   }
 
-  private void emitSequence(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.LoweredSequence v) {
-    for (var e : v.elements()) {
-      switch (e) {
-        case JavaBytecode.LoweredSequence.Bytecode b -> seq.add(b.bytecode());
-        case JavaBytecode.LoweredSequence.Code c -> emitInner(seq, ctx, c.code());
-        case JavaBytecode.LoweredSequence.LoadExprContext lxc ->
-            seq.add(JavaBytecodeUtils.varInsn(Opcodes.ALOAD, ctx.xxSlot));
-      }
-    }
-  }
 
   private void emitTry(JavaBytecodeSequence seq, EmitCtx ctx, JavaBytecode.Try v) {
       var bodyStart = new Label();

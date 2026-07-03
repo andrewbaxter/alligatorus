@@ -74,10 +74,7 @@ public interface Target {
     var klass = JavaInternalName.of(RecordClassEmitter.internalNameFor(fieldKeys));
     var dynamicCode =
         DynUtil.wrapWithCarry(
-            loc,
-            carry,
-            new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                    JavaBytecodeUtils.instantiateVarargs(klass, entryCodes))));
+            loc, carry, JavaBytecodeUtils.instantiateVarargs(loc, klass, entryCodes));
     return new TargetBindSub(dynamicCode, recordType);
   }
 

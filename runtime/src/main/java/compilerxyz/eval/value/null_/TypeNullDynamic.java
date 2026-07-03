@@ -109,7 +109,7 @@ public record TypeNullDynamic()
     return DynUtil.dynamicStackToValue(loc, value, this);
   }
 
-  @Override  @Override
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     return EResult.ok(new ValueNullConst());

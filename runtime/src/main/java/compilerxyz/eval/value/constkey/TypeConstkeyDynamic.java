@@ -85,9 +85,7 @@ public record TypeConstkeyDynamic()
     }
     var s = stringConstSome.value().get(some.value());
     var canonical = new ConstKey.Str(s).toCanonical();
-    var literal =
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                JavaBytecodeUtils.jsonLiteral(new JsonValueString(canonical))));
+    var literal = JavaBytecodeUtils.literalString(loc, canonical);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, literal),

@@ -86,7 +86,7 @@ public record TypeSourceUnionNewDynamic()
     return DynUtil.dynamicStackToValue(loc, value, this);
   }
 
-  @Override  @Override
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof SourceUnionNewRef ref)) {

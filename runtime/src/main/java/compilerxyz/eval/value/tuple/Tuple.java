@@ -443,9 +443,8 @@ public record Tuple(TList<TupleElement> elements)
         DynUtil.wrapWithCarry(
             loc,
             carry,
-            new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                    compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiateVarargs(
-                        klass, dynamicElements)))));
+            compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiateVarargs(
+                loc, klass, dynamicElements)));
   }
 
   @Override
@@ -469,8 +468,8 @@ public record Tuple(TList<TupleElement> elements)
       this.elementTypes = elementTypes;
     }
 
-    @Override    @Override
-    public EResult<Value> lift(
+    @Override
+  public EResult<Value> lift(
         ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
 
       if (externalHostValue == null && elementLifts.isEmpty()) {

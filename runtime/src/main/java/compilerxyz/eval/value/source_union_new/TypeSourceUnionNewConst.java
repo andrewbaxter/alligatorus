@@ -133,14 +133,25 @@ public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
       return EResult.errs(erb.errors());
     }
     var underlyingJs = underlyingJsOpt.get();
-    var fieldNames = new TList<String>();
-    fieldNames.add(new ConstKey.Str(jsTag).toCanonical());
-    var fieldValues = new TList<CodeDynamic>();
-    fieldValues.add(underlyingJs);
     Type resultType = new TypeSourceUnionConst(data);
-    var newObject =
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                JavaBytecodeUtils.instantiateLinkedHashMapWithFields(fieldNames, fieldValues)));
+    var canonicalTag = new ConstKey.Str(jsTag).toCanonical();
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.literalString(loc, canonicalTag));
+    seq.add(underlyingJs);
+    var descriptor =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+            TList.of(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+    seq.add(
+        JavaBytecodeUtils.callStaticMethod(
+            loc,
+            compilerxyz.eval.dynamic.JavaInternalName.fromClass(
+                compilerxyz.eval.dynamic.DynRuntime.class),
+            "unionWrap",
+            descriptor));
+    var newObject = new CodeDynamic(loc, seq);
     return EResult.ok(DynUtil.dynamicStackToValue(loc, newObject, resultType));
   }
 

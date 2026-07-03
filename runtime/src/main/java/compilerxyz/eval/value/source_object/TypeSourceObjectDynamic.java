@@ -206,7 +206,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     return new BindingDynamicBinding(dynamicKey, new TypeSourceObjectDynamic(data));
   }
 
-  @Override  @Override
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     var underlyingType = data.underlyingType;

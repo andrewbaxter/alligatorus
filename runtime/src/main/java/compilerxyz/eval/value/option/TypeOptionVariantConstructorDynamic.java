@@ -103,27 +103,26 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     var underlyingJs = underlyingJsOpt.get();
 
     Type resultType = new TypeOptionDynamic(elementType);
-    TList<JavaBytecode.LoweredSequence.Element> elements;
+    CodeDynamic newOpt;
     if (isSome) {
-      elements =
+      newOpt =
           JavaBytecodeUtils.instantiate(
-              -1,
+              loc,
               JavaInternalName.of("compilerxyz/util/Opt$Some"),
-              JavaMethodDescriptor.fromConstructorParts(JvmConstants.DESC_OBJECT),
-              TList.of(new JavaBytecode.LoweredSequence.Code(underlyingJs)));
+              JavaMethodDescriptor.fromConstructorParts(
+                  TList.of(JvmConstants.DESC_OBJECT)),
+              underlyingJs);
     } else {
-      elements = new TList<>();
-      elements.add(
-          new JavaBytecode.LoweredSequence.Bytecode(
-              JavaBytecodeUtils.callStaticInterfaceMethod(
-                  -1,
-                  JavaInternalName.of("compilerxyz/util/Opt"),
-                  "none",
-                  JavaMethodDescriptor.fromParts(
-                      JavaDataDescriptor.fromInternalName(
-                          JavaInternalName.of("compilerxyz/util/Opt"))))));
+      newOpt =
+          JavaBytecodeUtils.callStaticMethod(
+              loc,
+              JavaInternalName.of("compilerxyz/util/Opt"),
+              "none",
+              JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromInternalName(
+                      JavaInternalName.of("compilerxyz/util/Opt")),
+                  TList.of()));
     }
-    var newOpt = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(elements));
     return EResult.ok(DynUtil.dynamicStackToValue(loc, newOpt, resultType));
   }
 

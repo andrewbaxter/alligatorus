@@ -166,6 +166,33 @@ public class JavaBytecodeUtils {
         loc, new JavaBytecodeInstructionObj(new org.objectweb.asm.tree.VarInsnNode(opcode, index)));
   }
 
+  public static CodeDynamic buildObjectArray(QExprId loc, TList<CodeDynamic> elements) {
+    var seq = new JavaBytecodeSequence();
+    seq.add(literalIntShortByte(loc, elements.size()));
+    seq.add(
+        new CodeDynamic(
+            loc,
+            new JavaBytecodeInstructionObj(
+                new org.objectweb.asm.tree.TypeInsnNode(
+                    org.objectweb.asm.Opcodes.ANEWARRAY,
+                    JvmConstants.INTNAME_OBJECT.value()))));
+    for (int i = 0; i < elements.size(); i++) {
+      seq.add(inst(loc, org.objectweb.asm.Opcodes.DUP));
+      seq.add(literalIntShortByte(loc, i));
+      seq.add(elements.get(i));
+      seq.add(inst(loc, org.objectweb.asm.Opcodes.AASTORE));
+    }
+    return new CodeDynamic(loc, seq);
+  }
+
+  public static CodeDynamic instantiateVarargs(
+      QExprId loc, JavaInternalName klass, TList<CodeDynamic> args) {
+    var ctorDesc =
+        JavaMethodDescriptor.fromConstructorParts(
+            TList.of(JvmConstants.DESC_OBJECT.array()));
+    return instantiate(loc, klass, ctorDesc, buildObjectArray(loc, args));
+  }
+
   public static CodeDynamic invokeSpecial(
       QExprId loc, JavaInternalName klass, String method, JavaMethodDescriptor desc) {
     return new CodeDynamic(

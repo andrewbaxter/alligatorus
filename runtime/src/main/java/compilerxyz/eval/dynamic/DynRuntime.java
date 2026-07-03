@@ -141,6 +141,23 @@ public final class DynRuntime {
     return null;
   }
 
+  public static Object panic(ExprContext xx, String message) {
+    var payload = new java.util.LinkedHashMap<String, Object>();
+    payload.put(compilerxyz.eval.Eval.PANIC_MARKER_KEY, Boolean.TRUE);
+    payload.put("message", message);
+    throw new DynException(payload);
+  }
+
+  public static Object throwValue(ExprContext xx, Object value) {
+    throw new DynException(value);
+  }
+
+  public static Object unionWrap(String tag, Object value) {
+    var m = new java.util.LinkedHashMap<String, Object>();
+    m.put(tag, value);
+    return m;
+  }
+
   public static StagedExprCell stage(
       ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
     var treeValue = treeCell.take();

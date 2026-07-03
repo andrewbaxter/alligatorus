@@ -67,14 +67,21 @@ public record TypeThrowDynamic()
     if (valueCodeOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
-    var elements =
-        JavaBytecodeUtils.instantiate(
-            -1,
-            JavaInternalName.of("compilerxyz/eval/dynamic/DynRuntime$DynException"),
-            JavaMethodDescriptor.fromConstructorParts(JvmConstants.DESC_OBJECT),
-            TList.of(new JavaBytecode.LoweredSequence.Code(valueCodeOpt.get())));
-    elements.add(new JavaBytecode.LoweredSequence.Bytecode(JavaBytecodeUtils.inst(Opcodes.ATHROW)));
-    var throwCode = new CodeDynamic(loc, new JavaBytecode.LoweredSequence(elements));
+    var args = new TList<CodeDynamic>();
+    args.add(valueCodeOpt.get());
+    var throwType =
+        new compilerxyz.eval.value.function.TypeFunctionDynamic(
+            excType,
+            excType,
+            JavaInternalName.fromClass(compilerxyz.eval.dynamic.DynRuntime.class),
+            "throwValue",
+            JavaMethodDescriptor.fromParts(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+                TList.of(
+                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(ExprContext.class),
+                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class))),
+            true);
+    var throwCode = throwType.emitInvocation(loc, xx.vx, args);
     return EResult.ok(new CodeValue(Code.of(loc, throwCode), Opt.none()));
   }
 

@@ -31,8 +31,8 @@ public final class DefinitionSetExtraAspect {
 
     private TypeDefinitionSetLiftDynamic() {}
 
-    @Override    @Override
-    public EResult<Value> lift(
+    @Override
+  public EResult<Value> lift(
         ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
       if (!(externalHostValue instanceof DefinitionSetBuilder dsb)) {
         return EResult.err(

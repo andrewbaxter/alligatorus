@@ -472,9 +472,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         DynUtil.wrapWithCarry(
             loc,
             carry,
-            new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                    compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiateVarargs(
-                        klass, entryCodes)))));
+            compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiateVarargs(loc, klass, entryCodes)));
   }
 
   @Override
@@ -513,8 +511,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       this.entryLifts = sorted;
     }
 
-    @Override    @Override
-    public EResult<Value> lift(
+    @Override
+  public EResult<Value> lift(
         ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
       var fieldKeys = new TList<RecordClassEmitter.FieldKey>(entryLifts.size());
       for (var entry : entryLifts) {

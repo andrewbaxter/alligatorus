@@ -134,9 +134,6 @@ public record TypeSourceObjectNewConst(SourceObjectData data)
     var underlyingJs = underlyingJsOpt.get();
     Type resultType = new TypeSourceObjectDynamic(data);
 
-    var ctorArgs = new TList<compilerxyz.eval.dynamic.JavaBytecode.LoweredSequence.Element>();
-    ctorArgs.add(new compilerxyz.eval.dynamic.JavaBytecode.LoweredSequence.Code(underlyingJs));
-
     var objectIndex = set.objects.indexOf(data);
     if (objectIndex < 0) {
       return EResult.err(
@@ -147,12 +144,9 @@ public record TypeSourceObjectNewConst(SourceObjectData data)
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.of(
-                SourceObjectEmitter.DATA_CTOR_DESCRIPTOR));
+            TList.of(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT));
     var newInstance =
-        new CodeDynamic(loc, new JavaBytecode.LoweredSequence(
-                compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(
-                    -1, klass, ctorDesc, ctorArgs)));
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
     return EResult.ok(DynUtil.dynamicStackToValue(loc, newInstance, resultType));
   }
 
