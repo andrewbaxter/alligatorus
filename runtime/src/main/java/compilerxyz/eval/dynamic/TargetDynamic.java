@@ -223,7 +223,7 @@ public final class TargetDynamic implements Target {
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(id, new External.StagedExprCellExternal(cell)));
         restElements.add(JavaBytecodeUtils.literalNull(loc));
-        restElements.add(JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+        restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::stage: dynamic lower CodeValue has no value");
@@ -239,7 +239,7 @@ public final class TargetDynamic implements Target {
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
-        restElements.add(JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, liftId));
+        restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, liftId));
         restElements.add(innerJsOpt.get());
       }
     }
@@ -251,7 +251,7 @@ public final class TargetDynamic implements Target {
         var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(id, new External.CodeValueExternCellExternal(cell)));
-        restElements.add(JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+        restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::stage: dynamic graft CodeValue has no value");
@@ -265,7 +265,7 @@ public final class TargetDynamic implements Target {
       }
     }
     var stageArgs = new TList<CodeDynamic>();
-    stageArgs.add(JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, treeId));
+    stageArgs.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, treeId));
     stageArgs.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
     stageArgs.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
     var stageCall =

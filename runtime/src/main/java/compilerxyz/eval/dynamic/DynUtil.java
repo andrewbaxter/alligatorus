@@ -47,7 +47,7 @@ public final class DynUtil {
             ExprContext xx, QExprId loc, ValueDynamic.Source src) {
         return switch (src) {
             case ValueDynamic.Source.Binding b ->
-                JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, b.key());
+                BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, b.key());
             case ValueDynamic.Source.Field f ->
                 buildFieldGetSequence(loc, renderSource(xx, loc, f.base()), f.key());
             case ValueDynamic.Source.Expr e ->
@@ -228,7 +228,7 @@ public final class DynUtil {
             if (selfCode != null) {
                 seq.add(selfCode);
             }
-            seq.add(JavaBytecodeUtils.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
+            seq.add(BindingCode.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
             var setJs = new CodeDynamic(loc, seq);
             return EResult.ok(nullStack.toValue(loc, setJs));
         }

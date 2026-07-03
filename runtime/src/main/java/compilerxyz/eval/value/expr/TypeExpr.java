@@ -29,6 +29,7 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.TypeRoot;
@@ -172,7 +173,7 @@ public record TypeExpr()
     var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(id, new External.StagedExprCellExternal(cell)));
-    return EResult.ok(JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+    return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
   }
 
   @Override
