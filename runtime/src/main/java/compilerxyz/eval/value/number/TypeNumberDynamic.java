@@ -225,6 +225,7 @@ public record TypeNumberDynamic()
     if (seqRes.hasErrors()) return seqRes.reerr();
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DADD));
+    seq.add(boxDouble(loc));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -239,6 +240,7 @@ public record TypeNumberDynamic()
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPL));
     seq.add(compareToBoolBytecode(loc, Opcodes.IFEQ));
+    seq.add(boxBoolean(loc));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -253,6 +255,7 @@ public record TypeNumberDynamic()
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPG));
     seq.add(compareToBoolBytecode(loc, Opcodes.IFLT));
+    seq.add(boxBoolean(loc));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -274,8 +277,41 @@ public record TypeNumberDynamic()
     if (refCodeRes.hasErrors()) return refCodeRes.reerr();
     var seq = new JavaBytecodeSequence();
     seq.add(baseCodeRes.requireValue("toDynamic(base)"));
+    seq.add(unboxDouble(loc));
     seq.add(refCodeRes.requireValue("toDynamic(reference)"));
+    seq.add(unboxDouble(loc));
     return EResult.ok(seq);
+  }
+
+  private static CodeDynamic unboxDouble(QExprId loc) {
+    return JavaBytecodeUtils.callMethod(
+        loc,
+        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"),
+        "doubleValue",
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE));
+  }
+
+  private static CodeDynamic boxDouble(QExprId loc) {
+    return JavaBytecodeUtils.callStaticMethod(
+        loc,
+        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"),
+        "valueOf",
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+                compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double")),
+            TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE)));
+  }
+
+  private static CodeDynamic boxBoolean(QExprId loc) {
+    return JavaBytecodeUtils.callStaticMethod(
+        loc,
+        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean"),
+        "valueOf",
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+                compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean")),
+            TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BOOL)));
   }
 
   private static CodeDynamic compareToBoolBytecode(QExprId loc, int branchTrueOpcode) {
