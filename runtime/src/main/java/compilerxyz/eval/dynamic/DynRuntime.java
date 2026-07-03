@@ -86,26 +86,6 @@ public final class DynRuntime {
               cls(Unique.class),
               cls(Unique.class)));
 
-  public static final TypeFunctionDynamic DATA_INSTANCE_TO_TYPE_TYPE =
-      fn(
-          "dataInstanceToType",
-          desc(cls(Type.class), cls(ExprContext.class), cls(Object.class), cls(Type.class)));
-
-  public static final TypeFunctionDynamic DATA_INSTANCE_TO_TARGET_TYPE =
-      fn(
-          "dataInstanceToTarget",
-          desc(cls(Target.class), cls(ExprContext.class), cls(Object.class), cls(Target.class)));
-
-  public static final TypeFunctionDynamic DATA_INSTANCE_TO_BINDING_TYPE =
-      fn(
-          "dataInstanceToBinding",
-          desc(cls(Binding.class), cls(ExprContext.class), cls(Object.class), cls(Binding.class)));
-
-  public static final TypeFunctionDynamic DATA_INSTANCE_TO_ASPECT_TYPE =
-      fn(
-          "dataInstanceToAspect",
-          desc(cls(Aspect.class), cls(ExprContext.class), cls(Aspect.class)));
-
   public static Object listPush(TList<Object> list, Object element) {
     list.add(element);
     return null;
@@ -126,20 +106,12 @@ public final class DynRuntime {
     return map.get(key);
   }
 
-  public static String numberToString(Double number, Object unused) {
+  public static String numberToString(Double number) {
     var d = number.doubleValue();
     if (d == Math.floor(d) && !Double.isInfinite(d)) {
       return Long.toString((long) d);
     }
     return Double.toString(d);
-  }
-
-  public static String stringToLowerCase(String s, Object unused) {
-    return s.toLowerCase();
-  }
-
-  public static String stringToUpperCase(String s, Object unused) {
-    return s.toUpperCase();
   }
 
   public static Object log(ExprContext xx, Object arg) {
@@ -238,22 +210,6 @@ public final class DynRuntime {
 
   public static boolean uniqueEq(ExprContext xx, Unique a, Unique b) {
     return a.equals(b);
-  }
-
-  public static Type dataInstanceToType(ExprContext xx, Object template, Type instance) {
-    return instance;
-  }
-
-  public static Target dataInstanceToTarget(ExprContext xx, Object template, Target instance) {
-    return instance;
-  }
-
-  public static Binding dataInstanceToBinding(ExprContext xx, Object template, Binding instance) {
-    return instance;
-  }
-
-  public static Aspect dataInstanceToAspect(ExprContext xx, Aspect instance) {
-    return instance;
   }
 
   public static Type recordToType(ExprContext xx, Object instance) {

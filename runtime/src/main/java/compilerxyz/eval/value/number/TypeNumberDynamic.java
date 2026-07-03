@@ -85,16 +85,13 @@ public record TypeNumberDynamic()
   private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_DBL_TO_STR =
       compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
           compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-          TList.of(
-              compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Double.class),
-              compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Double.class)));
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
           new Pair<>(
               new ConstKey.Str("to_string"),
-              new compilerxyz.eval.value.function.TypeMethodDynamic(
-                  new TypeNumberDynamic(),
+              new compilerxyz.eval.value.function.TypeFunctionDynamic(
                   new TypeNullDynamic(),
                   new TypeStringDynamic(),
                   DYN_RUNTIME,

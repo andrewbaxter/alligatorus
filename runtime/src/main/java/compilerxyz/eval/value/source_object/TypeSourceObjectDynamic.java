@@ -197,8 +197,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
                 compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
                 compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
     var fieldType =
-        new compilerxyz.eval.value.function.TypeMethodDynamic(
-            this,
+        new compilerxyz.eval.value.function.TypeFunctionDynamic(
             argType,
             retType,
             compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_object_class"),
@@ -318,34 +317,18 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
           return EResult.err(
               loc, "cast " + typeDesc() + " -> any: source has no runtime code");
         }
-        return EResult.ok(
-            emitBuiltinCast(
-                xx,
-                loc,
-                sourceCode,
-                compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_TYPE_TYPE,
-                new TypeAnyDynamic()));
+        return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, new TypeAnyDynamic()));
       }
     }
     for (var impl : data.interfaceImpls) {
       if (destType.typeAspect(xx, impl.interface_.identity).optIsSome()) {
         var builtinKind = impl.interface_.builtinKind;
-        compilerxyz.eval.value.function.TypeFunctionDynamic runtimeFn = null;
         Type resultType = null;
         if (builtinKind != null) {
           switch (builtinKind) {
-            case TYPE -> {
-              runtimeFn = compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_TYPE_TYPE;
-              resultType = new TypeAnyDynamic();
-            }
-            case TARGET -> {
-              runtimeFn = compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_TARGET_TYPE;
-              resultType = new TypeAnyTargetDynamic();
-            }
-            case BINDING -> {
-              runtimeFn = compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_BINDING_TYPE;
-              resultType = new TypeAnyBindingDynamic();
-            }
+            case TYPE -> resultType = new TypeAnyDynamic();
+            case TARGET -> resultType = new TypeAnyTargetDynamic();
+            case BINDING -> resultType = new TypeAnyBindingDynamic();
             case CODE_DYN -> {
               return EResult.err(
                   loc,
@@ -364,13 +347,13 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
             }
           }
         }
-        if (runtimeFn != null) {
+        if (resultType != null) {
           var sourceCode = cv.code().dynamic();
           if (sourceCode == null) {
             return EResult.err(
                 loc, "cast " + typeDesc() + " -> interface: source has no runtime code");
           }
-          return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, runtimeFn, resultType));
+          return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, resultType));
         }
         return EResult.ok(
             new CodeValue(
@@ -387,15 +370,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         return EResult.err(
             loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
       }
-      var args = new TList<CodeDynamic>();
-      args.add(sourceCode);
-      var call =
-          compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_ASPECT_TYPE.emitInvocation(
-              loc, xx.vx, args);
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, call),
-              Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), new TypeAspectDynamic()))));
+      return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, new TypeAspectDynamic()));
     }
     return EResult.err(loc, "Cannot convert " + typeDesc());
   }
@@ -406,23 +381,9 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
   }
 
   private CodeValue emitBuiltinCast(
-      ExprContext xx,
-      QExprId loc,
-      CodeDynamic sourceCode,
-      compilerxyz.eval.value.function.TypeFunctionDynamic runtimeFn,
-      Type resultType) {
-    Type template = new TypeSourceObjectConst(data);
-    var templateKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
-    var templateId = new BindingId.Local(templateKey);
-    xx.vx.externals.add(new EvalContext.ExternalEntry(
-        templateKey, new compilerxyz.eval.value.any.TypeAnyDynamic(), new External.TypeExternal(template)));
-    var templateCode = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, templateId);
-    var args = new TList<CodeDynamic>();
-    args.add(templateCode);
-    args.add(sourceCode);
-    var call = runtimeFn.emitInvocation(loc, xx.vx, args);
+      ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
     return new CodeValue(
-        Code.of(loc, call),
+        Code.of(loc, sourceCode),
         Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), resultType)));
   }
 

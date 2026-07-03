@@ -69,14 +69,11 @@ public record TypeStringDynamic()
         AspectStringDynamic,
         ExporterAny {
 
-  private static final compilerxyz.eval.dynamic.JavaInternalName DYN_RUNTIME =
-      compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.dynamic.DynRuntime.class);
-  private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_STR_TO_STR =
+  private static final compilerxyz.eval.dynamic.JavaInternalName JAVA_STRING =
+      compilerxyz.eval.dynamic.JavaInternalName.fromClass(String.class);
+  private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_TO_STR =
       compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-          compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-          TList.of(
-              compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-              compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+          compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class), TList.of());
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
@@ -86,9 +83,9 @@ public record TypeStringDynamic()
                   new TypeStringDynamic(),
                   new TypeNullDynamic(),
                   new TypeStringDynamic(),
-                  DYN_RUNTIME,
-                  "stringToLowerCase",
-                  DESC_STR_TO_STR,
+                  JAVA_STRING,
+                  "toLowerCase",
+                  DESC_TO_STR,
                   false)),
           new Pair<>(
               new ConstKey.Str("toUpperCase"),
@@ -96,9 +93,9 @@ public record TypeStringDynamic()
                   new TypeStringDynamic(),
                   new TypeNullDynamic(),
                   new TypeStringDynamic(),
-                  DYN_RUNTIME,
-                  "stringToUpperCase",
-                  DESC_STR_TO_STR,
+                  JAVA_STRING,
+                  "toUpperCase",
+                  DESC_TO_STR,
                   false)));
 
   @Override

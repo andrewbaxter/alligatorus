@@ -102,7 +102,9 @@ public record TypeMethodDynamic(
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
     argList.add(receiverDyn);
-    argList.add(argDynRes.valueOrNull());
+    if (!(arg instanceof compilerxyz.eval.value.null_.TypeNullDynamic)) {
+      argList.add(argDynRes.valueOrNull());
+    }
     return EResult.ok(
         retStackRes.valueOrNull().toValue(loc, emitInvocation(loc, xx.vx, argList)));
   }
@@ -124,7 +126,7 @@ public record TypeMethodDynamic(
     for (var argCode : args) {
       seq.add(argCode);
     }
-    seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, descriptor));
+    seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
     return new CodeDynamic(loc, seq);
   }
 

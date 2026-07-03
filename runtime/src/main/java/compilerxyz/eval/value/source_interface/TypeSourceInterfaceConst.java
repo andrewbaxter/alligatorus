@@ -162,8 +162,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
                 compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
                 compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
     var fieldType =
-        new compilerxyz.eval.value.function.TypeMethodDynamic(
-            new compilerxyz.eval.value.any.TypeAnyDynamic(),
+        new compilerxyz.eval.value.function.TypeFunctionDynamic(
             argType,
             retType,
             compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_interface_class"),
@@ -196,8 +195,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
                       compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
                       compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
           return Opt.some(
-              new compilerxyz.eval.value.function.TypeMethodDynamic(
-                  new compilerxyz.eval.value.any.TypeAnyDynamic(),
+              new compilerxyz.eval.value.function.TypeFunctionDynamic(
                   argType,
                   retType,
                   compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_interface_class"),

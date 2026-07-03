@@ -467,9 +467,8 @@ public final class PushStructsGen {
     var retDynType = unitOrDynamic(m.ret());
     var descriptor = methodDescriptorExpr(m);
     return CodeBlock.of(
-        "new $T(new $T(), $L, $L, $T.of($S), $S, $L, true)",
-        TYPE_METHOD_DYNAMIC,
-        sentinel,
+        "new $T($L, $L, $T.of($S), $S, $L, true)",
+        TYPE_FUNCTION_DYNAMIC,
         argDynType,
         retDynType,
         JAVA_INTERNAL_NAME,

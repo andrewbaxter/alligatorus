@@ -183,8 +183,7 @@ public record TypeListDynamic(Type elementType)
     m.put(
         new ConstKey.Str("push"),
         new FieldSpec.Method(
-            new TypeMethodDynamic(
-                this,
+            new compilerxyz.eval.value.function.TypeFunctionDynamic(
                 elementType,
                 new TypeNullDynamic(),
                 DYN_RUNTIME,
@@ -195,8 +194,7 @@ public record TypeListDynamic(Type elementType)
       m.put(
           new ConstKey.Str("join"),
           new FieldSpec.Method(
-              new TypeMethodDynamic(
-                  this,
+              new compilerxyz.eval.value.function.TypeFunctionDynamic(
                   new TypeStringDynamic(),
                   new TypeStringDynamic(),
                   DYN_RUNTIME,

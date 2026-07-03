@@ -138,7 +138,11 @@ public record TypeFunctionDynamic(
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
-    argList.add(argDynRes.valueOrNull());
+    var selfDyn = self.code().dynamic();
+    if (selfDyn != null) argList.add(selfDyn);
+    if (!(arg instanceof compilerxyz.eval.value.null_.TypeNullDynamic)) {
+      argList.add(argDynRes.valueOrNull());
+    }
     return EResult.ok(
         retStackRes.valueOrNull().toValue(loc, emitInvocation(loc, xx.vx, argList)));
   }
@@ -163,7 +167,7 @@ public record TypeFunctionDynamic(
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, this);
+    return new BindingFunctionDynamic(dynamicKey, this);
   }
 
   @Override
