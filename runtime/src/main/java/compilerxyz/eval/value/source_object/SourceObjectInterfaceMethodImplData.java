@@ -105,11 +105,9 @@ public final class SourceObjectInterfaceMethodImplData {
       if (argIbResult.hasErrors()) {
         return argIbResult.reerr();
       }
-      var argIbAspect = argIbResult.valueOrNull();
-      if (argIbAspect == null) {
-        throw new IllegalStateException(
-            "AspectInitialBind.get returned neither value nor errors");
-      }
+      var argIbAspect =
+          argIbResult.requireValue(
+              "SourceObjectInterfaceMethodImplData::compile arg InitialBind");
       bodyScope.values.put(
           new ConstKey.Str("arg"), argIbAspect.initialBind(selfId));
       argParamIds = TList.empty();
@@ -156,11 +154,9 @@ public final class SourceObjectInterfaceMethodImplData {
         if (ibResult.hasErrors()) {
           return ibResult.reerr();
         }
-        var ibAspect = ibResult.valueOrNull();
-        if (ibAspect == null) {
-          throw new IllegalStateException(
-              "AspectInitialBind.get returned neither value nor errors");
-        }
+        var ibAspect =
+            ibResult.requireValue(
+                "SourceObjectInterfaceMethodImplData::compile param InitialBind");
         fields.put(new ConstKey.Str(dataFieldNames.get(i)), ibAspect.initialBind(pid));
       }
       var argRecord = new ArgumentRecord(fields);
@@ -190,18 +186,15 @@ public final class SourceObjectInterfaceMethodImplData {
     if (implResult.hasErrors()) {
       return implResult.reerr();
     }
-    var implCv = implResult.valueOrNull();
-    if (implCv == null) {
-      throw new IllegalStateException("constEval returned neither value nor errors");
-    }
+    var implCv =
+        implResult.requireValue("SourceObjectInterfaceMethodImplData::compile constEval");
     var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
     if (convertedResult.hasErrors()) {
       return convertedResult.reerr();
     }
-    var convertedCv = convertedResult.valueOrNull();
-    if (convertedCv == null) {
-      throw new IllegalStateException("typecheckConvert returned neither value nor errors");
-    }
+    var convertedCv =
+        convertedResult.requireValue(
+            "SourceObjectInterfaceMethodImplData::compile typecheckConvert");
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
       var valueType = someVal.value().valueTypeOf();
@@ -209,18 +202,16 @@ public final class SourceObjectInterfaceMethodImplData {
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
       }
-      var consume = consumeResult.valueOrNull();
-      if (consume == null) {
-        throw new IllegalStateException("AspectConsumeDynamic.get returned neither value nor errors");
-      }
+      var consume =
+          consumeResult.requireValue(
+              "SourceObjectInterfaceMethodImplData::compile consume aspect");
       var dynResult = consume.toDynamic(methodXx, rootLoc, convertedCv);
       if (dynResult.hasErrors()) {
         return dynResult.reerr();
       }
-      bodyCode = dynResult.valueOrNull();
-      if (bodyCode == null) {
-        throw new IllegalStateException("AspectConsumeDynamic.toDynamic returned neither value nor errors");
-      }
+      bodyCode =
+          dynResult.requireValue(
+              "SourceObjectInterfaceMethodImplData::compile consume.toDynamic");
     } else {
       bodyCode = convertedCv.code().dynamic();
       if (bodyCode == null) {

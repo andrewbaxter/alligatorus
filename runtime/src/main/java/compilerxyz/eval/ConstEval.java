@@ -394,9 +394,9 @@ public final class ConstEval {
       var kRes = constEval(xx, entry.key());
       if (kRes.hasErrors()) {
         kRes.drainInto(errors);
+        continue;
       }
-      var kCv = kRes.valueOrNull();
-      if (kCv == null) continue;
+      var kCv = kRes.requireValue("ConstEval::record key");
       if (kCv.code().dynamic() != null) {
         keyCodes.add(kCv.code().dynamic());
       }

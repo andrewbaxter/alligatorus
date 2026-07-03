@@ -62,12 +62,12 @@ public final class CompileImport {
                 new ExprContext(
                     rootScope, target, vx, importState, new TypeStringDynamic());
             var artifactRes = ArtifactSupport.exportArtifact(xx, rootLoc, ok.value());
-            var artifactErrors = new TList<ExprErr>();
-            artifactRes.drainInto(artifactErrors);
-            var artifact = artifactRes.valueOrNull();
-            if (artifact == null || !artifactErrors.isEmpty()) {
+            if (artifactRes.hasErrors()) {
+              var artifactErrors = new TList<ExprErr>();
+              artifactRes.drainInto(artifactErrors);
               return new CompileRes(allLogs, new CompileResResult.Err(artifactErrors));
             }
+            var artifact = artifactRes.requireValue("CompileImport::compile artifact export");
             return new CompileRes(allLogs, new CompileResResult.Ok(artifact));
           }
           if (!(ok.value() instanceof Expr nextExpr)) {

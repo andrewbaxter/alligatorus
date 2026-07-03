@@ -181,7 +181,8 @@ public record TypeAnyDynamic()
     if (consumeRes.hasErrors()) {
       return consumeRes.reerr();
     }
-    var argCodeRes = consumeRes.valueOrNull().toDynamic(xx, loc, argument);
+    var argCodeRes =
+        consumeRes.requireValue("TypeAnyDynamic::call consume aspect").toDynamic(xx, loc, argument);
     if (argCodeRes.hasErrors()) {
       return argCodeRes.reerr();
     }
@@ -239,7 +240,10 @@ public record TypeAnyDynamic()
     if (aspectTypeRes.hasErrors()) {
       return aspectTypeRes.reerr();
     }
-    var resolvedType = aspectTypeRes.valueOrNull().type_(some.value());
+    var resolvedType =
+        aspectTypeRes
+            .requireValue("TypeAnyDynamic::typeCastFrom AspectType")
+            .type_(some.value());
     var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(new EvalContext.ExternalEntry(

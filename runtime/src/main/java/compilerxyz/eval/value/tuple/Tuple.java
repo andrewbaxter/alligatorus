@@ -97,11 +97,11 @@ public record Tuple(TList<TupleElement> elements)
             case TupleElement.Dynamic d -> d.type();
             case TupleElement.EvalRes r -> {
               var er = r.result();
-              if (er.valueOrNull() instanceof CodeValue cv
-                  && cv.value() instanceof Opt.Some<Value> some) {
+              if (!er.hasErrors()
+                  && er.requireValue("Tuple::valueTypeOf element").value()
+                      instanceof Opt.Some<Value> some) {
                 yield some.value().valueTypeOf();
               }
-
               yield new Tuple(new TList<>());
             }
           };
@@ -198,8 +198,12 @@ public record Tuple(TList<TupleElement> elements)
       switch (destSlot) {
         case TupleElement.Dynamic d -> destElemType = d.type();
         case TupleElement.EvalRes er -> {
-          var destCv = er.result().valueOrNull();
-          if (destCv == null || !(destCv.value() instanceof Opt.Some<Value> destSome)) {
+          var destRes = er.result();
+          if (destRes.hasErrors()) {
+            return EResult.err(loc, "Tuple::typeCastFrom: dest element " + i + " missing");
+          }
+          var destCv = destRes.requireValue("Tuple::typeCastFrom dest element");
+          if (!(destCv.value() instanceof Opt.Some<Value> destSome)) {
             return EResult.err(loc, "Tuple::typeCastFrom: dest element " + i + " missing");
           }
           destElemType = destSome.value().valueTypeOf();
@@ -209,20 +213,19 @@ public record Tuple(TList<TupleElement> elements)
       TupleElement converted;
       switch (elem) {
         case TupleElement.EvalRes elemRes -> {
-          var elemCv = elemRes.result().valueOrNull();
-          if (elemCv != null) {
+          var innerRes = elemRes.result();
+          if (innerRes.hasErrors()) {
+            var errs = innerRes.errorsOrNull();
+            converted =
+                new TupleElement.EvalRes(
+                    EResult.errs(errs != null ? errs : new TList<>()));
+          } else {
+            var elemCv = innerRes.requireValue("Tuple::typeCastFrom source element");
             var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destElemType, elemCv));
             if (convOpt.isEmpty()) {
               return EResult.errs(erb.errors());
             }
             converted = new TupleElement.EvalRes(EResult.ok(convOpt.get()));
-          } else {
-            var errs = elemRes.result().errorsOrNull();
-            if (errs != null) {
-              converted = new TupleElement.EvalRes(EResult.errs(errs));
-            } else {
-              converted = new TupleElement.EvalRes(EResult.errs(new TList<>()));
-            }
           }
         }
         case TupleElement.Dynamic d -> converted = new TupleElement.Dynamic(destElemType);
@@ -290,8 +293,24 @@ public record Tuple(TList<TupleElement> elements)
             switch (e) {
               case TupleElement.Dynamic d -> elemType = d.type();
               case TupleElement.EvalRes r -> {
-                var cv = r.result().valueOrNull();
-                if (cv == null || !(cv.value() instanceof Opt.Some<Value> some)) {
+                var innerRes = r.result();
+                if (innerRes.hasErrors()) {
+                  innerRes.drainInto(errors);
+                  errors.add(
+                      new ExprErr(
+                          loc,
+                          TList.of(
+                              new ExprSubErr.Opaque(
+                                  "Tuple element has no value to serialize"))));
+                  elementArtifacts.add(
+                      new Artifact.Body(
+                          new ArtifactBody(
+                              new JsonValueNull(),
+                              new ArtifactBodyExporter.Root())));
+                  continue;
+                }
+                var cv = innerRes.requireValue("Tuple::exporterExport element");
+                if (!(cv.value() instanceof Opt.Some<Value> some)) {
                   errors.add(
                       new ExprErr(
                           loc,
@@ -310,16 +329,15 @@ public record Tuple(TList<TupleElement> elements)
               default -> throw new IllegalStateException();
             }
             var artRes = ArtifactSupport.exportArtifact(xx, loc, elemType);
-            artRes.drainInto(errors);
-            var artVal = artRes.valueOrNull();
-            if (artVal == null) {
+            if (artRes.hasErrors()) {
+              artRes.drainInto(errors);
               elementArtifacts.add(
                   new Artifact.Body(
                       new ArtifactBody(
                           new JsonValueNull(),
                           new ArtifactBodyExporter.Root())));
             } else {
-              elementArtifacts.add(artVal);
+              elementArtifacts.add(artRes.requireValue("Tuple::exporterExport element artifact"));
             }
           }
           var artifact =
@@ -362,7 +380,7 @@ public record Tuple(TList<TupleElement> elements)
                 if (decoded.hasErrors()) {
                   return new Result.Err<>("Tuple data: malformed elements");
                 }
-                return new Result.Ok<>(decoded.valueOrNull());
+                return new Result.Ok<>(decoded.requireValue("Tuple::exporterFromArtifactData elements"));
               },
               (elementArts) -> {
                 elementArtifactsHolder.add(elementArts);
@@ -392,11 +410,13 @@ public record Tuple(TList<TupleElement> elements)
                       for (var ea : elementArts) {
                         var t =
                             ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, ea);
-                        if (t.hasErrors() || t.valueOrNull() == null) {
+                        if (t.hasErrors()) {
                           throw new IllegalStateException(
                               "Failed to deserialize tuple element type");
                         }
-                        slots.add(new TupleElement.Dynamic(t.valueOrNull()));
+                        slots.add(
+                            new TupleElement.Dynamic(
+                                t.requireValue("Tuple::finalizer element type")));
                       }
                       holder[0] = new Tuple(slots);
                     };
@@ -452,29 +472,31 @@ public record Tuple(TList<TupleElement> elements)
       if (elemRes.hasErrors()) {
         if (errors == null) errors = new TList<>();
         elemRes.drainInto(errors);
+        continue;
       }
-      var elemCv = elemRes.valueOrNull();
-      if (elemCv == null) continue;
+      var elemCv = elemRes.requireValue("Tuple::toDynamic element value");
       var lookup = AspectConsumeDynamic.get(xx, loc, elemType);
       if (lookup.hasErrors()) {
         if (errors == null) errors = new TList<>();
         lookup.drainInto(errors);
         continue;
       }
-      var toDyn = lookup.valueOrNull();
-      if (toDyn == null) continue;
+      var toDyn = lookup.requireValue("Tuple::toDynamic consume aspect");
       var lowered = toDyn.toDynamic(xx, loc, elemCv);
       if (lowered.hasErrors()) {
         if (errors == null) errors = new TList<>();
         lowered.drainInto(errors);
+        continue;
       }
-      var loweredCode = lowered.valueOrNull();
-      if (loweredCode != null) {
-        dynamicElements.add(loweredCode);
-      }
+      var loweredCode = lowered.requireValue("Tuple::toDynamic element lowered");
+      dynamicElements.add(loweredCode);
     }
     if (errors != null && !errors.isEmpty()) {
       return EResult.errs(errors);
+    }
+    if (types.isEmpty()) {
+      var empty = new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence());
+      return EResult.ok(DynUtil.wrapWithCarry(loc, carry, empty));
     }
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(TupleClassEmitter.internalNameFor(types));
     return EResult.ok(
@@ -552,11 +574,7 @@ public record Tuple(TList<TupleElement> elements)
           lifted.drainInto(errors);
           continue;
         }
-        var liftedValue = lifted.valueOrNull();
-        if (liftedValue == null) {
-          throw new IllegalStateException(
-              "Tuple TupleLift::lift: element lift returned neither value nor errors");
-        }
+        var liftedValue = lifted.requireValue("Tuple TupleLift::lift element value");
         out.add(
             new TupleElement.EvalRes(
                 EResult.ok(new CodeValue(Code.none(loc), Opt.some(liftedValue)))));

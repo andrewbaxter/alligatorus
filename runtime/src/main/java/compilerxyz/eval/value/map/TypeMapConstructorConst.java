@@ -71,10 +71,10 @@ public record TypeMapConstructorConst()
     }
     var keyRes = elements.get(0);
     if (keyRes.hasErrors()) return keyRes.reerr();
-    var keyCv = keyRes.valueOrNull();
+    var keyCv = keyRes.requireValue("TypeMapConstructorConst::call key element");
     var valueRes = elements.get(1);
     if (valueRes.hasErrors()) return valueRes.reerr();
-    var valueCv = valueRes.valueOrNull();
+    var valueCv = valueRes.requireValue("TypeMapConstructorConst::call value element");
     if (!(keyCv.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeMapConstructorConst::call: key slot has no compile-time value");
     }
@@ -86,10 +86,12 @@ public record TypeMapConstructorConst()
     var valueValue = valueSome.value();
     var keyAtRes = AspectType.get(xx, loc, keyValue.valueTypeOf());
     if (keyAtRes.hasErrors()) return keyAtRes.reerr();
-    var keyType = keyAtRes.valueOrNull().type_(keyValue);
+    var keyType =
+        keyAtRes.requireValue("TypeMapConstructorConst::call key AspectType").type_(keyValue);
     var valueAtRes = AspectType.get(xx, loc, valueValue.valueTypeOf());
     if (valueAtRes.hasErrors()) return valueAtRes.reerr();
-    var valueType = valueAtRes.valueOrNull().type_(valueValue);
+    var valueType =
+        valueAtRes.requireValue("TypeMapConstructorConst::call value AspectType").type_(valueValue);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
         new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(mapType))));

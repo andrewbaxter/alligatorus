@@ -99,18 +99,13 @@ public final class SourceDataMethodData {
     if (implResult.hasErrors()) {
       return implResult.reerr();
     }
-    var implCv = implResult.valueOrNull();
-    if (implCv == null) {
-      throw new IllegalStateException("constEval returned neither value nor errors");
-    }
+    var implCv = implResult.requireValue("SourceDataMethodData::compile constEval");
     var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
     if (convertedResult.hasErrors()) {
       return convertedResult.reerr();
     }
-    var convertedCv = convertedResult.valueOrNull();
-    if (convertedCv == null) {
-      throw new IllegalStateException("typecheckConvert returned neither value nor errors");
-    }
+    var convertedCv =
+        convertedResult.requireValue("SourceDataMethodData::compile typecheckConvert");
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
       var valueType = someVal.value().valueTypeOf();
@@ -118,18 +113,12 @@ public final class SourceDataMethodData {
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
       }
-      var consume = consumeResult.valueOrNull();
-      if (consume == null) {
-        throw new IllegalStateException("AspectConsumeDynamic.get returned neither value nor errors");
-      }
+      var consume = consumeResult.requireValue("SourceDataMethodData::compile consume aspect");
       var dynResult = consume.toDynamic(methodXx, rootLoc, convertedCv);
       if (dynResult.hasErrors()) {
         return dynResult.reerr();
       }
-      bodyCode = dynResult.valueOrNull();
-      if (bodyCode == null) {
-        throw new IllegalStateException("AspectConsumeDynamic.toDynamic returned neither value nor errors");
-      }
+      bodyCode = dynResult.requireValue("SourceDataMethodData::compile consume.toDynamic");
     } else {
       bodyCode = convertedCv.code().dynamic();
       if (bodyCode == null) {

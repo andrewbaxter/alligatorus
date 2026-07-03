@@ -17,11 +17,8 @@ public final class ImportInstall {
       if (depResult.hasErrors()) {
         return depResult.reerr();
       }
-      var depLoader = depResult.valueOrNull();
-      if (depLoader == null) {
-        throw new AssertionError(
-            "installDefSetToDynamic returned ok with null loader for dependency");
-      }
+      var depLoader =
+          depResult.requireValue("ImportInstall::installDefSetToDynamic dependency loader");
       depLoaders.add(depLoader);
     }
     var existing = DefinitionSetClassLoader.SHARED_CACHE.getIfPresent(set.defSetId);

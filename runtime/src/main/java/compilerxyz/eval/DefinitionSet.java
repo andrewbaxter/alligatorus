@@ -140,32 +140,40 @@ public final class DefinitionSet implements ExporterAny {
           for (var dt : set.objects) {
             var dtConst = new TypeSourceObjectConst(dt);
             var artRes = ArtifactSupport.exportArtifact(xx, loc, dtConst);
-            artRes.drainInto(errors);
-            var v = artRes.valueOrNull();
-            if (v != null) objects.add(v);
+            if (artRes.hasErrors()) {
+              artRes.drainInto(errors);
+              continue;
+            }
+            objects.add(artRes.requireValue("DefinitionSet::exporterExport object artifact"));
           }
           var functions = new TList<Artifact>(set.functions.size());
           for (var f : set.functions) {
             var fConst = new TypeSourceFunctionConst(f);
             var artRes = ArtifactSupport.exportArtifact(xx, loc, fConst);
-            artRes.drainInto(errors);
-            var v = artRes.valueOrNull();
-            if (v != null) functions.add(v);
+            if (artRes.hasErrors()) {
+              artRes.drainInto(errors);
+              continue;
+            }
+            functions.add(artRes.requireValue("DefinitionSet::exporterExport function artifact"));
           }
           var interfaces = new TList<Artifact>(set.interfaces.size());
           for (var i : set.interfaces) {
             var iConst = new TypeSourceInterfaceConst(i);
             var artRes = ArtifactSupport.exportArtifact(xx, loc, iConst);
-            artRes.drainInto(errors);
-            var v = artRes.valueOrNull();
-            if (v != null) interfaces.add(v);
+            if (artRes.hasErrors()) {
+              artRes.drainInto(errors);
+              continue;
+            }
+            interfaces.add(artRes.requireValue("DefinitionSet::exporterExport interface artifact"));
           }
           var dependencies = new TList<Artifact>(set.dependencies.size());
           for (var entry : set.dependencies.entrySet()) {
             var depRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, entry.getValue());
-            depRes.drainInto(errors);
-            var v = depRes.valueOrNull();
-            if (v != null) dependencies.add(v);
+            if (depRes.hasErrors()) {
+              depRes.drainInto(errors);
+              continue;
+            }
+            dependencies.add(depRes.requireValue("DefinitionSet::exporterExport dependency artifact"));
           }
           var body =
               new ArtifactDataDefSet(
@@ -217,7 +225,7 @@ public final class DefinitionSet implements ExporterAny {
                       for (var dtArt : body.objects()) {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dtArt);
-                        var v = any.valueOrNull();
+                        var v = any.requireValue("DefinitionSet::finalizer object artifact");
                         SourceObjectData dtData;
                         if (v instanceof TypeSourceObjectConst dtConst) {
                           dtData = dtConst.data();
@@ -226,15 +234,14 @@ public final class DefinitionSet implements ExporterAny {
                           dtData = impDt.data();
                         } else {
                           throw new IllegalStateException(
-                              "def-set object artifact had wrong type: "
-                                  + (v == null ? "null" : v.getClass()));
+                              "def-set object artifact had wrong type: " + v.getClass());
                         }
                         set.objects.add(dtData);
                       }
                       for (var fArt : body.functions()) {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, fArt);
-                        var v = any.valueOrNull();
+                        var v = any.requireValue("DefinitionSet::finalizer function artifact");
                         SourceFunctionData fData;
                         if (v instanceof TypeSourceFunctionConst fConst) {
                           fData = fConst.data();
@@ -244,30 +251,27 @@ public final class DefinitionSet implements ExporterAny {
                           fData = impFn.data();
                         } else {
                           throw new IllegalStateException(
-                              "def-set function artifact had wrong type: "
-                                  + (v == null ? "null" : v.getClass()));
+                              "def-set function artifact had wrong type: " + v.getClass());
                         }
                         set.functions.add(fData);
                       }
                       for (var iArt : body.interfaces()) {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
-                        var v = any.valueOrNull();
+                        var v = any.requireValue("DefinitionSet::finalizer interface artifact");
                         if (!(v instanceof TypeSourceInterfaceConst iConst)) {
                           throw new IllegalStateException(
-                              "def-set interface artifact had wrong type: "
-                                  + (v == null ? "null" : v.getClass()));
+                              "def-set interface artifact had wrong type: " + v.getClass());
                         }
                         set.interfaces.add(iConst.data());
                       }
                       for (var dep : body.dependencies()) {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dep);
-                        var v = any.valueOrNull();
+                        var v = any.requireValue("DefinitionSet::finalizer dependency artifact");
                         if (!(v instanceof DefinitionSet depSet)) {
                           throw new IllegalStateException(
-                              "def-set dependency artifact had wrong type: "
-                                  + (v == null ? "null" : v.getClass()));
+                              "def-set dependency artifact had wrong type: " + v.getClass());
                         }
                         set.dependencies.putIfAbsent(depSet.defSetId, depSet);
                       }

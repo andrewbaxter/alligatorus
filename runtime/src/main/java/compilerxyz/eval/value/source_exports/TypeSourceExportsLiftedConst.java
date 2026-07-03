@@ -100,11 +100,13 @@ public record TypeSourceExportsLiftedConst(SourceExportsData set)
           }
           var errors = new TList<ExprErr>();
           var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, liveSet);
-          defSetArtRes.drainInto(errors);
-          var defSetArt = defSetArtRes.valueOrNull();
-          if (defSetArt == null) {
+          if (defSetArtRes.hasErrors()) {
+            defSetArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var defSetArt =
+              defSetArtRes.requireValue(
+                  "TypeSourceExportsLiftedConst::exporterExport defSet artifact");
           var body = new ArtifactDataDefSetExportsLifted(defSetArt, setId);
           var artifact =
               new Artifact.Body(
@@ -133,14 +135,19 @@ public record TypeSourceExportsLiftedConst(SourceExportsData set)
           var errors = new TList<ExprErr>();
           var importRes =
               ArtifactSupport.importArtifact(xx, loc, body.defSet());
-          importRes.drainInto(errors);
-          var imported = importRes.valueOrNull();
+          if (importRes.hasErrors()) {
+            importRes.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var imported =
+              importRes.requireValue(
+                  "TypeSourceExportsLiftedConst::exporterFromArtifactData imported");
           if (!(imported instanceof DefinitionSet ds)) {
             return EResult.err(
                 loc,
                 "TypeSourceExportsLiftedConst::exporterRootDelegateSelfFromArtifactData: def-set artifact "
                     + "resolved to "
-                    + (imported == null ? "null" : imported.getClass())
+                    + imported.getClass()
                     + " (expected DefinitionSet)");
           }
           xx.vx.definitionSets.putIfAbsent(ds.defSetId, ds);

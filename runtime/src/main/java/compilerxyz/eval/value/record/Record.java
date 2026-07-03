@@ -159,8 +159,10 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     return switch (valueField) {
       case RecordField.EvalRes er -> {
         var inner = er.result();
-        if (inner.valueOrNull() instanceof CodeValue cv) yield EResult.ok(cv);
-        yield EResult.err(loc, "Field '" + ck.toCanonical() + "' evaluated to error");
+        if (inner.hasErrors()) {
+          yield EResult.err(loc, "Field '" + ck.toCanonical() + "' evaluated to error");
+        }
+        yield EResult.ok(inner.requireValue("Record::field EvalRes"));
       }
       case RecordField.Dynamic d ->
           throw new IllegalStateException("Record::field: baseless record value has Dynamic field");
@@ -218,10 +220,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (subRes.hasErrors()) {
       return subRes.reerr();
     }
-    var sub = subRes.valueOrNull();
-    if (sub == null) {
-      throw new IllegalStateException("Record::bind: bindSub returned neither value nor errors");
-    }
+    var sub = subRes.requireValue("Record::bind bindSub");
     if (sub.targetSub() instanceof Opt.Some<TargetBindSub> targetSome) {
       var bound = xx.target.targetBind(loc, targetSome.value());
       return EResult.ok(
@@ -260,11 +259,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (subRes.hasErrors()) {
         return subRes.reerr();
       }
-      var sub = subRes.valueOrNull();
-      if (sub == null) {
-        throw new IllegalStateException(
-            "Record::bindSub: base.bindSub returned neither value nor errors");
-      }
+      var sub = subRes.requireValue("Record::bindSub base.bindSub");
       return EResult.ok(new BindSub(scopeFields, Opt.some(sub)));
     }
 
@@ -292,9 +287,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           if (inner.hasErrors()) {
             if (errors == null) errors = new TList<>();
             inner.drainInto(errors);
+            continue;
           }
-          var elemCv = inner.valueOrNull();
-          if (elemCv == null) continue;
+          var elemCv = inner.requireValue("Record::bindSub field value");
           var savedValue = elemCv.value();
           var subRes = xx.target.targetMaybeBindSub(xx, loc, elemCv);
           if (subRes.hasErrors()) {
@@ -302,11 +297,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             subRes.drainInto(errors);
             continue;
           }
-          var subOpt = subRes.valueOrNull();
-          if (subOpt == null) {
-            throw new IllegalStateException(
-                "Record::bindSub: maybeBindSub returned neither value nor errors");
-          }
+          var subOpt = subRes.requireValue("Record::bindSub targetMaybeBindSub");
           if (subOpt instanceof Opt.Some<TargetBindSub> subSome) {
             hasTarget = true;
             bindResults.add(new FieldBindResult(key, Opt.some(subSome.value()), Opt.none()));
@@ -341,21 +332,13 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           scopeFields.put(br.key(), new RecordScopeField.Error(bindRes.errorsOrNull()));
           continue;
         }
-        var bind = bindRes.valueOrNull();
-        if (bind == null) {
-          throw new IllegalStateException(
-              "Record::bindSub: AspectBind.get returned neither value nor errors");
-        }
+        var bind = bindRes.requireValue("Record::bindSub AspectBind");
         var fieldBindRes = bind.bind(xx, loc, fieldCv);
         if (fieldBindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(fieldBindRes.errorsOrNull()));
           continue;
         }
-        var fieldBind = fieldBindRes.valueOrNull();
-        if (fieldBind == null) {
-          throw new IllegalStateException(
-              "Record::bindSub: field AspectBind.bind returned neither value nor errors");
-        }
+        var fieldBind = fieldBindRes.requireValue("Record::bindSub field AspectBind.bind");
         scopeFields.put(br.key(), new RecordScopeField.Scope(fieldBind.binding()));
       }
       return EResult.ok(new BindSub(scopeFields, Opt.none()));
@@ -378,21 +361,13 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           scopeFields.put(br.key(), new RecordScopeField.Error(bindRes.errorsOrNull()));
           continue;
         }
-        var bind = bindRes.valueOrNull();
-        if (bind == null) {
-          throw new IllegalStateException(
-              "Record::bindSub: AspectBind.get returned neither value nor errors");
-        }
+        var bind = bindRes.requireValue("Record::bindSub AspectBind");
         var fieldBindRes = bind.bind(xx, loc, fieldCv);
         if (fieldBindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(fieldBindRes.errorsOrNull()));
           continue;
         }
-        var fieldBind = fieldBindRes.valueOrNull();
-        if (fieldBind == null) {
-          throw new IllegalStateException(
-              "Record::bindSub: field AspectBind.bind returned neither value nor errors");
-        }
+        var fieldBind = fieldBindRes.requireValue("Record::bindSub field AspectBind.bind");
         scopeFields.put(br.key(), new RecordScopeField.Scope(fieldBind.binding()));
       } else {
         throw new IllegalStateException("Record::bindSub: bind result has neither target nor const");
@@ -442,9 +417,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           if (elemRes.hasErrors()) {
             if (errors == null) errors = new TList<>();
             elemRes.drainInto(errors);
+            continue;
           }
-          var elemCv = elemRes.valueOrNull();
-          if (elemCv == null) continue;
+          var elemCv = elemRes.requireValue("Record::toDynamic field value");
           if (!(elemCv.value() instanceof Opt.Some<Value> elemValueSome)) {
             throw new IllegalStateException(
                 "Record::toDynamic: field '" + key.toCanonical() + "' CodeValue has no value");
@@ -469,13 +444,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           if (lowered.hasErrors()) {
             if (errors == null) errors = new TList<>();
             lowered.drainInto(errors);
+            continue;
           }
-          var loweredCode = lowered.valueOrNull();
-          if (loweredCode != null) {
-            fieldKeys.add(
-                new RecordClassEmitter.FieldKey(key.toCanonical(), elemType));
-            entryCodes.add(loweredCode);
-          }
+          var loweredCode = lowered.requireValue("Record::toDynamic field lowered");
+          fieldKeys.add(new RecordClassEmitter.FieldKey(key.toCanonical(), elemType));
+          entryCodes.add(loweredCode);
         }
       }
     }
@@ -580,11 +553,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           lifted.drainInto(errors);
           continue;
         }
-        var liftedValue = lifted.valueOrNull();
-        if (liftedValue == null) {
-          throw new IllegalStateException(
-              "Record RecordLift::lift: entry lift returned neither value nor errors");
-        }
+        var liftedValue = lifted.requireValue("Record RecordLift::lift entry value");
         out.put(
             entry.key(),
             new RecordField.EvalRes(
@@ -602,11 +571,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       case RecordField.Dynamic d -> d.type();
       case RecordField.EvalRes er -> {
         var inner = er.result();
-        if (inner.valueOrNull() instanceof CodeValue cv
-            && cv.value() instanceof Opt.Some<Value> some) {
+        if (!inner.hasErrors()
+            && inner.requireValue("Record::recordFieldType inner").value()
+                instanceof Opt.Some<Value> some) {
           yield some.value().valueTypeOf();
         }
-
         yield new Tuple(new TList<>());
       }
     };

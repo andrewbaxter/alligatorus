@@ -150,10 +150,7 @@ public final class Eval {
     if (treeRes.hasErrors()) {
       return treeRes.reerr();
     }
-    var tree = treeRes.valueOrNull();
-    if (tree == null) {
-      throw new IllegalStateException("genBuiltinTree returned neither value nor errors");
-    }
+    var tree = treeRes.requireValue("Eval::initBuiltinScope genBuiltinTree");
     if (registerDynamic) {
       walkRegisterDynamic(xx, tree);
     }
@@ -161,10 +158,7 @@ public final class Eval {
     if (bindingRes.hasErrors()) {
       return bindingRes.reerr();
     }
-    var rootBinding = bindingRes.valueOrNull();
-    if (rootBinding == null) {
-      throw new IllegalStateException("walkBuildBinding returned neither value nor errors");
-    }
+    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope walkBuildBinding");
     xx.vx.ix.builtinScopeRootBinding = rootBinding;
     var scopeEntries = new TMap<ConstKey, Binding>();
     scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
@@ -187,10 +181,8 @@ public final class Eval {
         if (childRes.hasErrors()) {
           return childRes.reerr();
         }
-        var childBinding = childRes.valueOrNull();
-        if (childBinding == null) {
-          throw new IllegalStateException("walkBuildBinding child returned neither value nor errors");
-        }
+        var childBinding =
+            childRes.requireValue("Eval::walkBuildBinding child binding");
         fields.put(new ConstKey.Str(child.name()), childBinding);
       }
       return EResult.ok(new ArgumentRecordBinding(new ArgumentRecord(fields)));
@@ -219,18 +211,12 @@ public final class Eval {
       if (bindRes.hasErrors()) {
         return bindRes.reerr();
       }
-      var bind = bindRes.valueOrNull();
-      if (bind == null) {
-        throw new IllegalStateException("AspectBind.get returned neither value nor errors");
-      }
+      var bind = bindRes.requireValue("Eval::walkBuildBinding AnyConst bind aspect");
       var br = bind.bind(xx, loc, cv);
       if (br.hasErrors()) {
         return br.reerr();
       }
-      var result = br.valueOrNull();
-      if (result == null) {
-        throw new IllegalStateException("AspectBind.bind returned neither value nor errors");
-      }
+      var result = br.requireValue("Eval::walkBuildBinding AnyConst bind result");
       return EResult.ok(result.binding());
     }
     throw new IllegalStateException("Unhandled BuiltinLeaf variant: " + leaf.getClass());
@@ -242,10 +228,7 @@ public final class Eval {
     if (ibRes.hasErrors()) {
       return ibRes.reerr();
     }
-    var ib = ibRes.valueOrNull();
-    if (ib == null) {
-      throw new IllegalStateException("AspectInitialBind.get returned neither value nor errors");
-    }
+    var ib = ibRes.requireValue("Eval::initialBindLeaf AspectInitialBind");
     return EResult.ok(ib.initialBind(dynamicKey));
   }
 
@@ -298,10 +281,7 @@ public final class Eval {
     if (scopeRes.hasErrors()) {
       return new CompileImport.EvalOutcome.Err(scopeRes.errorsOrNull());
     }
-    var scopeEntries = scopeRes.valueOrNull();
-    if (scopeEntries == null) {
-      throw new IllegalStateException("initBuiltinScope returned neither value nor errors");
-    }
+    var scopeEntries = scopeRes.requireValue("Eval::eval initBuiltinScope");
     rootScope.values.putAll(scopeEntries);
     if (registerDynamic) {
       cix.builtinsRegistered = true;
@@ -312,10 +292,7 @@ public final class Eval {
     if (cvRes.hasErrors()) {
       return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull());
     }
-    var cv = cvRes.valueOrNull();
-    if (cv == null) {
-      throw new IllegalStateException("constEval returned neither value nor errors");
-    }
+    var cv = cvRes.requireValue("Eval::eval constEval");
     if (!(cv.value() instanceof Opt.Some<Value> cvValSome)) {
       return new CompileImport.EvalOutcome.Err(
           TList.of(
@@ -337,20 +314,12 @@ public final class Eval {
       if (consumeRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull());
       }
-      var consume = consumeRes.valueOrNull();
-      if (consume == null) {
-        throw new IllegalStateException(
-            "AspectConsumeDynamic.get returned neither value nor errors");
-      }
+      var consume = consumeRes.requireValue("Eval::eval consume aspect");
       var dynamicRes = consume.toDynamic(xx, rootLoc, cv);
       if (dynamicRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(dynamicRes.errorsOrNull());
       }
-      var dynamicCode = dynamicRes.valueOrNull();
-      if (dynamicCode == null) {
-        throw new IllegalStateException(
-            "AspectConsumeDynamic.toDynamic returned neither value nor errors");
-      }
+      var dynamicCode = dynamicRes.requireValue("Eval::eval consume.toDynamic");
       stage1Code = Opt.some(dynamicCode);
       fallbackValue = Opt.none();
     }
@@ -380,11 +349,8 @@ public final class Eval {
         if (installRes.hasErrors()) {
           return new CompileImport.EvalOutcome.Err(installRes.errorsOrNull());
         }
-        var installedLoader = installRes.valueOrNull();
-        if (installedLoader == null) {
-          throw new IllegalStateException(
-              "installDefSetToDynamic returned neither value nor errors");
-        }
+        var installedLoader =
+            installRes.requireValue("Eval::eval installDefSetToDynamic");
         dependencyLoaders.add(installedLoader);
         for (var dep : ds.dependencies.values()) {
           if (!seenSets.contains(dep.defSetId)) {
@@ -499,19 +465,12 @@ public final class Eval {
       if (liftRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(liftRes.errorsOrNull());
       }
-      var liftAspect = liftRes.valueOrNull();
-      if (liftAspect == null) {
-        throw new IllegalStateException("AspectLift.get returned neither value nor errors");
-      }
+      var liftAspect = liftRes.requireValue("Eval::eval lift aspect");
       var liftedRes = liftAspect.lift(xx, rootLoc, rawResult);
       if (liftedRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(liftedRes.errorsOrNull());
       }
-      var lifted = liftedRes.valueOrNull();
-      if (lifted == null) {
-        throw new IllegalStateException(
-            "AspectLift.lift returned neither value nor errors");
-      }
+      var lifted = liftedRes.requireValue("Eval::eval lift result");
       finalValue = lifted;
     }
     return new CompileImport.EvalOutcome.Ok(finalValue, vx.logs, true);

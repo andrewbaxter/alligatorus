@@ -60,7 +60,10 @@ public record TypeOptionConstructorConst()
     var argMeta = argValue.valueTypeOf();
     var aspectTypeRes = AspectType.get(xx, loc, argMeta);
     if (aspectTypeRes.hasErrors()) return aspectTypeRes.reerr();
-    var elementType = aspectTypeRes.valueOrNull().type_(argValue);
+    var elementType =
+        aspectTypeRes
+            .requireValue("TypeOptionConstructorConst::call AspectType")
+            .type_(argValue);
     Type optType = new TypeOptionDynamic(elementType);
     return EResult.ok(
         new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(optType))));

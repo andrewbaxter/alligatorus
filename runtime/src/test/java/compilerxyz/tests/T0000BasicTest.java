@@ -99,7 +99,7 @@ public final class T0000BasicTest {
                 mb.log(),
                 mb.call(
                     mb.field(mb.str("HELLO WORLD"), mb.str("toLowerCase")),
-                    mb.literalNull()))));
+                    mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);

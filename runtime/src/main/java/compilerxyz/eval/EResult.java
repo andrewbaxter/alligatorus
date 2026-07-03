@@ -31,10 +31,6 @@ public final class EResult<T> {
     return new EResult<>(value, errors);
   }
 
-  public @Nullable T valueOrNull() {
-    return value;
-  }
-
   public T requireValue(String context) {
     if (value == null) {
       throw new IllegalStateException(

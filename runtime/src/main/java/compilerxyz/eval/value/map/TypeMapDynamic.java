@@ -411,14 +411,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       switch (fieldVal) {
         case RecordField.EvalRes er -> {
           var inner = er.result();
-          var innerErrs = inner.errorsOrNull();
-          if (innerErrs != null) erb.errors().addAll(innerErrs);
-          var innerVal = inner.valueOrNull();
-          if (innerVal == null) {
+          if (inner.hasErrors()) {
+            inner.drainInto(erb.errors());
             erb.errPush("Record entry '" + fieldKey.toCanonical() + "' failed to evaluate");
             return EResult.errs(erb.errors());
           }
-          entryCv = innerVal;
+          entryCv = inner.requireValue("TypeMapDynamic::construct record entry");
         }
         case RecordField.Dynamic d -> {
           erb.errPush(

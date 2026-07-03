@@ -59,13 +59,20 @@ public record ValueSourceObjectConst(SourceObjectData data, Value underlying)
           var errors = new TList<ExprErr>();
           var typeValue = new TypeSourceObjectConst(inst.data);
           var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, typeValue);
-          typeArtRes.drainInto(errors);
-          var typeArt = typeArtRes.valueOrNull();
-          if (typeArt == null) return EResult.errs(errors);
+          if (typeArtRes.hasErrors()) {
+            typeArtRes.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var typeArt =
+              typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
           var underArtRes = ArtifactSupport.exportArtifact(xx, loc, inst.underlying);
-          underArtRes.drainInto(errors);
-          var underArt = underArtRes.valueOrNull();
-          if (underArt == null) return EResult.errs(errors);
+          if (underArtRes.hasErrors()) {
+            underArtRes.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var underArt =
+              underArtRes.requireValue(
+                  "ValueSourceObjectConst::exporterExport underlying artifact");
           var body = new ArtifactValueSourceObject(typeArt, underArt);
           var artifact = new Artifact.Body(makeBody.apply(JsonValues.toValue(body)));
           if (errors.isEmpty()) return EResult.ok(artifact);
@@ -87,8 +94,12 @@ public record ValueSourceObjectConst(SourceObjectData data, Value underlying)
           }
           var errors = new TList<ExprErr>();
           var typeRes = ArtifactSupport.importArtifact(xx, loc, body.typeArtifact());
-          typeRes.drainInto(errors);
-          var typeAny = typeRes.valueOrNull();
+          if (typeRes.hasErrors()) {
+            typeRes.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var typeAny =
+              typeRes.requireValue("ValueSourceObjectConst::exporterFromArtifactData type any");
           SourceObjectData dt;
           if (typeAny instanceof TypeSourceObjectConst tc) {
             dt = tc.data();
@@ -99,16 +110,24 @@ public record ValueSourceObjectConst(SourceObjectData data, Value underlying)
             return EResult.err(
                 loc,
                 "ValueSourceObjectConst::exporterRootDelegateSelfFromArtifactData: type artifact resolved to "
-                    + (typeAny == null ? "null" : typeAny.getClass()));
+                    + typeAny.getClass());
           }
           var underRes = ArtifactSupport.importArtifact(xx, loc, body.underlying());
-          underRes.drainInto(errors);
-          var underAny = underRes.valueOrNull();
-          if (underAny == null) return EResult.errs(errors);
+          if (underRes.hasErrors()) {
+            underRes.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var underAny =
+              underRes.requireValue(
+                  "ValueSourceObjectConst::exporterFromArtifactData underlying any");
           var underVal = underAny.exporterAnyAsValue();
-          underVal.drainInto(errors);
-          var underlying = underVal.valueOrNull();
-          if (underlying == null) return EResult.errs(errors);
+          if (underVal.hasErrors()) {
+            underVal.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var underlying =
+              underVal.requireValue(
+                  "ValueSourceObjectConst::exporterFromArtifactData underlying value");
           ExporterAny out = new ValueSourceObjectConst(dt, underlying);
           if (errors.isEmpty()) return EResult.ok(out);
           return EResult.mixed(out, errors);

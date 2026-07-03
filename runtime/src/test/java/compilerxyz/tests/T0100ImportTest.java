@@ -70,7 +70,7 @@ public final class T0100ImportTest {
                                             mb.field(
                                                 mb.scopeUse("inner"),
                                                 mb.str("toUpperCase")),
-                                            mb.literalNull())))),
+                                            mb.tupleOf())))),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.call(mb.scopeUse("ctor"), mb.str("hello")))));
     modules.put(
@@ -82,7 +82,7 @@ public final class T0100ImportTest {
                     mb.log(),
                     mb.call(
                         mb.field(mb.scopeUse("val"), mb.str("to_string")),
-                        mb.literalNull())))));
+                        mb.tupleOf())))));
     var gxa = Helpers.newGxWithArtifacts(modules);
     var res = Compile.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);

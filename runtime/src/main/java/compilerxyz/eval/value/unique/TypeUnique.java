@@ -131,7 +131,10 @@ public record TypeUnique()
             if (decoded.hasErrors()) {
               return EResult.err(loc, "TypeUnique::exporterRootDelegateSelfFromArtifactData: malformed");
             }
-            return EResult.ok(new ValueUnique(decoded.valueOrNull()));
+            return EResult.ok(
+                new ValueUnique(
+                    decoded.requireValue(
+                        "TypeUnique::exporterRootDelegateSelfFromArtifactData decoded")));
           }
           return EResult.err(loc, "TypeUnique::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
         }
@@ -226,7 +229,11 @@ public record TypeUnique()
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: reference lowering failed");
     var call =
         compilerxyz.eval.dynamic.DynRuntime.UNIQUE_EQ_TYPE.emitInvocation(
-            loc, xx.vx, TList.of(baseDyn.valueOrNull(), refDyn.valueOrNull()));
+            loc,
+            xx.vx,
+            TList.of(
+                baseDyn.requireValue("TypeUnique::eq base dynamic"),
+                refDyn.requireValue("TypeUnique::eq reference dynamic")));
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),

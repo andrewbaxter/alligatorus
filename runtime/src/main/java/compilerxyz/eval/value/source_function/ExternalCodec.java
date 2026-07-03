@@ -25,26 +25,26 @@ public final class ExternalCodec {
     var out = new TList<ArtifactExternal>(entries.size());
     for (var entry : entries) {
       var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, entry.type());
-      typeArtRes.drainInto(errors);
-      var typeArt = typeArtRes.valueOrNull();
-      if (typeArt == null) {
+      if (typeArtRes.hasErrors()) {
+        typeArtRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var typeArt = typeArtRes.requireValue("ExternalCodec::exportExternals type artifact");
       var valueRes = externalToValue(loc, entry.external());
-      valueRes.drainInto(errors);
-      var valueVal = valueRes.valueOrNull();
-      if (valueVal == null) {
+      if (valueRes.hasErrors()) {
+        valueRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var valueVal = valueRes.requireValue("ExternalCodec::exportExternals value");
       var valueArtRes = ArtifactSupport.exportArtifact(xx, loc, valueVal);
-      valueArtRes.drainInto(errors);
-      var valueArt = valueArtRes.valueOrNull();
-      if (valueArt == null) {
+      if (valueArtRes.hasErrors()) {
+        valueArtRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var valueArt = valueArtRes.requireValue("ExternalCodec::exportExternals value artifact");
       out.add(new ArtifactExternal(entry.key(), typeArt, valueArt));
     }
-    return errors.isEmpty() ? EResult.ok(out) : EResult.mixed(out, errors);
+    return EResult.ok(out);
   }
 
   public static EResult<TList<EvalContext.ExternalEntry>> importExternals(
@@ -54,32 +54,32 @@ public final class ExternalCodec {
     for (var entry : entries) {
       var typeRes =
           ArtifactSupport.independentFinalizeImportTypeArtifact(xx, loc, entry.typeArtifact());
-      typeRes.drainInto(errors);
-      var type = typeRes.valueOrNull();
-      if (type == null) {
+      if (typeRes.hasErrors()) {
+        typeRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var type = typeRes.requireValue("ExternalCodec::importExternals type");
       var valueAnyRes = ArtifactSupport.importArtifact(xx, loc, entry.valueArtifact());
-      valueAnyRes.drainInto(errors);
-      var valueAny = valueAnyRes.valueOrNull();
-      if (valueAny == null) {
+      if (valueAnyRes.hasErrors()) {
+        valueAnyRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var valueAny = valueAnyRes.requireValue("ExternalCodec::importExternals valueAny");
       var valueRes = valueAny.exporterAnyAsValue();
-      valueRes.drainInto(errors);
-      var value = valueRes.valueOrNull();
-      if (value == null) {
+      if (valueRes.hasErrors()) {
+        valueRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var value = valueRes.requireValue("ExternalCodec::importExternals value");
       var externalRes = valueToExternal(loc, type, value);
-      externalRes.drainInto(errors);
-      var external = externalRes.valueOrNull();
-      if (external == null) {
+      if (externalRes.hasErrors()) {
+        externalRes.drainInto(errors);
         return EResult.errs(errors);
       }
+      var external = externalRes.requireValue("ExternalCodec::importExternals external");
       out.add(new EvalContext.ExternalEntry(entry.key(), type, external));
     }
-    return errors.isEmpty() ? EResult.ok(out) : EResult.mixed(out, errors);
+    return EResult.ok(out);
   }
 
   private static EResult<Value> externalToValue(QExprId loc, External ext) {

@@ -77,7 +77,7 @@ public final class T0010DefineFuncTest {
                                             mb.field(
                                                 mb.scopeUse("arg"),
                                                 mb.str("toUpperCase")),
-                                            mb.literalNull())))),
+                                            mb.tupleOf())))),
                             mb.scopeUse("f")))),
                 mb.call(
                     mb.log(),
@@ -119,7 +119,7 @@ public final class T0010DefineFuncTest {
                                             mb.field(
                                                 mb.scopeUse("arg"),
                                                 mb.str("toUpperCase")),
-                                            mb.literalNull())))),
+                                            mb.tupleOf())))),
                             mb.scopeUse("f")))),
                 mb.call(
                     mb.log(),

@@ -132,7 +132,11 @@ public record TypeFunctionDynamic(
     if (argConsumeRes.hasErrors()) return argConsumeRes.reerr();
     var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
-    var argDynRes = argConsumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
+    var argDynRes =
+        argConsumeRes
+            .requireValue("TypeFunctionDynamic::call arg consume")
+            .toDynamic(
+                xx, loc, convertedRes.requireValue("TypeFunctionDynamic::call converted arg"));
     if (argDynRes.hasErrors()) return argDynRes.reerr();
     var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
@@ -140,11 +144,11 @@ public record TypeFunctionDynamic(
     var argList = new compilerxyz.util.TList<CodeDynamic>();
     var selfDyn = self.code().dynamic();
     if (selfDyn != null) argList.add(selfDyn);
-    if (!(arg instanceof compilerxyz.eval.value.null_.TypeNullDynamic)) {
-      argList.add(argDynRes.valueOrNull());
-    }
+    argList.add(argDynRes.requireValue("TypeFunctionDynamic::call arg"));
     return EResult.ok(
-        retStackRes.valueOrNull().toValue(loc, emitInvocation(loc, xx.vx, argList)));
+        retStackRes
+            .requireValue("TypeFunctionDynamic::call ret stack")
+            .toValue(loc, emitInvocation(loc, xx.vx, argList)));
   }
 
   @Override

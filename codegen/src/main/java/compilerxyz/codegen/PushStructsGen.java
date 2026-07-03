@@ -72,8 +72,6 @@ public final class PushStructsGen {
 
   private static final ClassName TYPE_FUNCTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
-  private static final ClassName TYPE_METHOD_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.function", "TypeMethodDynamic");
   private static final ClassName JAVA_INTERNAL_NAME =
       ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
   private static final ClassName JAVA_METHOD_DESCRIPTOR =

@@ -67,14 +67,14 @@ public final class T0030DefineInterfaceTest {
                                                             mb.field(
                                                                 mb.scopeUse("inner"),
                                                                 mb.str("toUpperCase")),
-                                                            mb.literalNull())))))))),
+                                                            mb.tupleOf())))))))),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
                 mb.call(
                     mb.log(),
                     mb.call(
                         mb.field(mb.scopeUse("val"), mb.str("to_string")),
-                        mb.literalNull())))));
+                        mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
@@ -137,7 +137,7 @@ public final class T0030DefineInterfaceTest {
                                                             mb.field(
                                                                 mb.scopeUse("inner"),
                                                                 mb.str("toUpperCase")),
-                                                            mb.literalNull())))))))),
+                                                            mb.tupleOf())))))))),
                             mb.bind(
                                 "do_log_fn",
                                 mb.call(
@@ -155,7 +155,7 @@ public final class T0030DefineInterfaceTest {
                                                 mb.field(
                                                     mb.scopeUse("arg"),
                                                     mb.str("to_string")),
-                                                mb.literalNull()))))),
+                                                mb.tupleOf()))))),
                             mb.call(
                                 mb.field(mb.scopeUse("d"), mb.str("finish")),
                                 mb.tupleOf())))),
@@ -226,7 +226,7 @@ public final class T0030DefineInterfaceTest {
                                                             mb.field(
                                                                 mb.scopeUse("inner"),
                                                                 mb.str("toUpperCase")),
-                                                            mb.literalNull())))))))),
+                                                            mb.tupleOf())))))))),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));

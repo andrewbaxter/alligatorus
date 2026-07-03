@@ -111,7 +111,7 @@ public record TypeAnyConst()
     var inner = wrapper.inner();
     var asp = AspectField.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.valueOrNull().field(xx, loc, self, key);
+    return asp.requireValue("TypeAnyConst::field AspectField").field(xx, loc, self, key);
   }
 
   @Override
@@ -134,7 +134,7 @@ public record TypeAnyConst()
     var inner = wrapper.inner();
     var asp = AspectFunction.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.valueOrNull().call(xx, loc, self, argument);
+    return asp.requireValue("TypeAnyConst::call AspectFunction").call(xx, loc, self, argument);
   }
 
   @Override
@@ -159,7 +159,10 @@ public record TypeAnyConst()
     if (aspectTypeRes.hasErrors()) {
       return aspectTypeRes.reerr();
     }
-    var resolvedType = aspectTypeRes.valueOrNull().type_(some.value());
+    var resolvedType =
+        aspectTypeRes
+            .requireValue("TypeAnyConst::toDynamic AspectType")
+            .type_(some.value());
     var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(

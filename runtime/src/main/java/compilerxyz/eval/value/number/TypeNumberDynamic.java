@@ -87,12 +87,15 @@ public record TypeNumberDynamic()
           compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
           TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Double.class)));
 
+  private static final Type EMPTY_TUPLE =
+      new compilerxyz.eval.value.tuple.Tuple(new TList<>());
+
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
           new Pair<>(
               new ConstKey.Str("to_string"),
               new compilerxyz.eval.value.function.TypeFunctionDynamic(
-                  new TypeNullDynamic(),
+                  EMPTY_TUPLE,
                   new TypeStringDynamic(),
                   DYN_RUNTIME,
                   "numberToString",

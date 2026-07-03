@@ -160,29 +160,35 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
           }
           var errors = new TList<ExprErr>();
           var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
-          defSetArtRes.drainInto(errors);
-          var defSetArt = defSetArtRes.valueOrNull();
-          if (defSetArt == null) {
+          if (defSetArtRes.hasErrors()) {
+            defSetArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var defSetArt =
+              defSetArtRes.requireValue(
+                  "TypeSourceFunctionConst::exporterExport defSet artifact");
           var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argType);
-          argArtRes.drainInto(errors);
-          var argArt = argArtRes.valueOrNull();
-          if (argArt == null) {
+          if (argArtRes.hasErrors()) {
+            argArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var argArt =
+              argArtRes.requireValue("TypeSourceFunctionConst::exporterExport arg artifact");
           var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retType);
-          retArtRes.drainInto(errors);
-          var retArt = retArtRes.valueOrNull();
-          if (retArt == null) {
+          if (retArtRes.hasErrors()) {
+            retArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var retArt =
+              retArtRes.requireValue("TypeSourceFunctionConst::exporterExport ret artifact");
           var externalsRes = ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
-          externalsRes.drainInto(errors);
-          var externals = externalsRes.valueOrNull();
-          if (externals == null) {
+          if (externalsRes.hasErrors()) {
+            externalsRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var externals =
+              externalsRes.requireValue(
+                  "TypeSourceFunctionConst::exporterExport externals");
           var body =
               new ArtifactDataDefSetFunction(
                   defSetArt,
@@ -252,39 +258,35 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                       var defSetAny =
                           ArtifactSupport.independentFinalizeImportArtifact(
                               xx2, loc2, body.defSet());
-                      var defSetVal = defSetAny.valueOrNull();
+                      var defSetVal =
+                          defSetAny.requireValue(
+                              "TypeSourceFunctionConst::finalizer defSet artifact");
                       if (!(defSetVal instanceof DefinitionSet set)) {
                         throw new IllegalStateException(
                             "TypeSourceFunctionConst finalizer: def-set artifact resolved to "
-                                + (defSetVal == null ? "null" : defSetVal.getClass())
+                                + defSetVal.getClass()
                                 + " (expected DefinitionSet)");
                       }
                       funcData.initSetReflectively(set);
                       var argRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(
                               xx2, loc2, body.argType());
-                      var argVal = argRes.valueOrNull();
-                      if (argVal == null) {
-                        throw new IllegalStateException(
-                            "TypeSourceFunctionConst finalizer: arg type resolution failed");
-                      }
+                      var argVal =
+                          argRes.requireValue(
+                              "TypeSourceFunctionConst::finalizer arg type");
                       funcData.argType = argVal;
                       var retRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(
                               xx2, loc2, body.retType());
-                      var retVal = retRes.valueOrNull();
-                      if (retVal == null) {
-                        throw new IllegalStateException(
-                            "TypeSourceFunctionConst finalizer: ret type resolution failed");
-                      }
+                      var retVal =
+                          retRes.requireValue(
+                              "TypeSourceFunctionConst::finalizer ret type");
                       funcData.retType = retVal;
                       var extRes =
                           ExternalCodec.importExternals(xx2, loc2, body.capturedExternals());
-                      var extVal = extRes.valueOrNull();
-                      if (extVal == null) {
-                        throw new IllegalStateException(
-                            "TypeSourceFunctionConst finalizer: captured externals import failed");
-                      }
+                      var extVal =
+                          extRes.requireValue(
+                              "TypeSourceFunctionConst::finalizer externals");
                       funcData.capturedExternals.addAll(extVal);
                     };
                 return new Result.Ok<>(

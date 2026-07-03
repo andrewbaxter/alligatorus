@@ -171,11 +171,7 @@ public final class DynRuntime {
                   + ": "
                   + liftRes.errorsOrNull());
         }
-        var liftAspect = liftRes.valueOrNull();
-        if (liftAspect == null) {
-          throw new IllegalStateException(
-              "__stage: AspectLift.get returned neither value nor errors");
-        }
+        var liftAspect = liftRes.requireValue("DynRuntime::__stage AspectLift.get");
         var liftedRes = liftAspect.lift(liftXx, liftCell.loc(), valArg);
         if (liftedRes.hasErrors()) {
           throw new IllegalStateException(
@@ -184,11 +180,7 @@ public final class DynRuntime {
                   + ": "
                   + liftedRes.errorsOrNull());
         }
-        var lifted = liftedRes.valueOrNull();
-        if (lifted == null) {
-          throw new IllegalStateException(
-              "__stage: AspectLift.lift returned neither value nor errors");
-        }
+        var lifted = liftedRes.requireValue("DynRuntime::__stage AspectLift.lift");
         values.add(new StageLowerValue.Val(lifted));
       }
     }

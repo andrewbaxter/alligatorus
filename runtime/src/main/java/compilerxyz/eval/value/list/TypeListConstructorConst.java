@@ -60,7 +60,10 @@ public record TypeListConstructorConst()
     var argMeta = argValue.valueTypeOf();
     var aspectTypeRes = AspectType.get(xx, loc, argMeta);
     if (aspectTypeRes.hasErrors()) return aspectTypeRes.reerr();
-    var elementType = aspectTypeRes.valueOrNull().type_(argValue);
+    var elementType =
+        aspectTypeRes
+            .requireValue("TypeListConstructorConst::call AspectType")
+            .type_(argValue);
     Type listType = new TypeListDynamic(elementType);
     return EResult.ok(
         new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(listType))));

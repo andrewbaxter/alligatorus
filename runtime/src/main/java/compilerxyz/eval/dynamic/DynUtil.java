@@ -76,10 +76,7 @@ public final class DynUtil {
         if (subRes.hasErrors()) {
             return subRes.reerr();
         }
-        var subOpt = subRes.valueOrNull();
-        if (subOpt == null) {
-            throw new IllegalStateException("AspectBindDynamic.bindDynamic returned neither value nor errors");
-        }
+        var subOpt = subRes.requireValue("DynUtil::bindViaTarget bindDynamic");
         if (!(subOpt instanceof Opt.Some<TargetBindSub> subSome)) {
             return EResult.err(
                     loc, "Type (" + vtype.typeDesc() + ") returned None from AspectBindDynamic");
@@ -104,11 +101,7 @@ public final class DynUtil {
         if (dynRes.hasErrors()) {
             return dynRes.reerr();
         }
-        var dyn = dynRes.valueOrNull();
-        if (dyn == null) {
-            throw new IllegalStateException(
-                    "dynamicConsumeToDynamic returned neither value nor errors");
-        }
+        var dyn = dynRes.requireValue("DynUtil::bindDynamicDefault dynamicConsumeToDynamic");
         return EResult.ok(Opt.some(new TargetBindSub(dyn, vtype)));
     }
 
@@ -189,11 +182,7 @@ public final class DynUtil {
         if (convRes.hasErrors()) {
             return convRes.reerr();
         }
-        var converted = convRes.valueOrNull();
-        if (converted == null) {
-            throw new IllegalStateException(
-                    "dynamicSet: typecheckConvert returned neither value nor errors");
-        }
+        var converted = convRes.requireValue("DynUtil::dynamicSet typecheckConvert");
         if (!(converted.value() instanceof Opt.Some<Value> convSome)) {
             return EResult.err(loc, "dynamicSet: converted value has no compile-time value");
         }
@@ -202,30 +191,18 @@ public final class DynUtil {
         if (valueToDynRes.hasErrors()) {
             return valueToDynRes.reerr();
         }
-        var valueToDyn = valueToDynRes.valueOrNull();
-        if (valueToDyn == null) {
-            throw new IllegalStateException(
-                    "dynamicSet: AspectConsumeDynamic.get returned neither value nor errors");
-        }
+        var valueToDyn = valueToDynRes.requireValue("DynUtil::dynamicSet consume aspect");
         var valueCodeRes = valueToDyn.toDynamic(xx, loc, converted);
         if (valueCodeRes.hasErrors()) {
             return valueCodeRes.reerr();
         }
-        var valueCode = valueCodeRes.valueOrNull();
-        if (valueCode == null) {
-            throw new IllegalStateException(
-                    "dynamicSet: AspectConsumeDynamic.toDynamic returned neither value nor errors");
-        }
+        var valueCode = valueCodeRes.requireValue("DynUtil::dynamicSet consume.toDynamic");
         var selfCode = self_.code().dynamic();
         var nullStackRes = AspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
         if (nullStackRes.hasErrors()) {
             return nullStackRes.reerr();
         }
-        var nullStack = nullStackRes.valueOrNull();
-        if (nullStack == null) {
-            throw new IllegalStateException(
-                    "dynamicSet: AspectStackValueDynamic.get returned neither value nor errors");
-        }
+        var nullStack = nullStackRes.requireValue("DynUtil::dynamicSet null stack aspect");
         if (selfDyn.source() instanceof ValueDynamic.Source.Field fieldSrc) {
             if (selfCode == null) {
                 return EResult.err(

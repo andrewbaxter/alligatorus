@@ -165,17 +165,20 @@ public record TypeSourceObjectConst(SourceObjectData data)
           }
           var errors = new TList<ExprErr>();
           var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
-          defSetArtRes.drainInto(errors);
-          var defSetArt = defSetArtRes.valueOrNull();
-          if (defSetArt == null) {
+          if (defSetArtRes.hasErrors()) {
+            defSetArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var defSetArt =
+              defSetArtRes.requireValue("TypeSourceObjectConst::exporterExport defSet artifact");
           var underlyingArtRes = ArtifactSupport.exportArtifact(xx, loc, underlying);
-          underlyingArtRes.drainInto(errors);
-          var underlyingArt = underlyingArtRes.valueOrNull();
-          if (underlyingArt == null) {
+          if (underlyingArtRes.hasErrors()) {
+            underlyingArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
+          var underlyingArt =
+              underlyingArtRes.requireValue(
+                  "TypeSourceObjectConst::exporterExport underlying artifact");
           var methods = new TList<ArtifactDataDefSetMethod>();
           for (var m : dt.methods) {
             var argT = m.argType;
@@ -215,25 +218,28 @@ public record TypeSourceObjectConst(SourceObjectData data)
                       + ")");
             }
             var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argT);
-            argArtRes.drainInto(errors);
-            var argArt = argArtRes.valueOrNull();
-            if (argArt == null) {
+            if (argArtRes.hasErrors()) {
+              argArtRes.drainInto(errors);
               return EResult.errs(errors);
             }
+            var argArt =
+                argArtRes.requireValue("TypeSourceObjectConst::exporterExport method arg artifact");
             var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retT);
-            retArtRes.drainInto(errors);
-            var retArt = retArtRes.valueOrNull();
-            if (retArt == null) {
+            if (retArtRes.hasErrors()) {
+              retArtRes.drainInto(errors);
               return EResult.errs(errors);
             }
+            var retArt =
+                retArtRes.requireValue("TypeSourceObjectConst::exporterExport method ret artifact");
             var extRes =
                 ExternalCodec.exportExternals(
                     xx, loc, m.capturedExternals);
-            extRes.drainInto(errors);
-            var ext = extRes.valueOrNull();
-            if (ext == null) {
+            if (extRes.hasErrors()) {
+              extRes.drainInto(errors);
               return EResult.errs(errors);
             }
+            var ext =
+                extRes.requireValue("TypeSourceObjectConst::exporterExport method externals");
             methods.add(
                 new ArtifactDataDefSetMethod(
                     m.name,
@@ -252,11 +258,13 @@ public record TypeSourceObjectConst(SourceObjectData data)
             if (kind == null) {
               var ifaceConst = new TypeSourceInterfaceConst(impl.interface_);
               var ifaceArtRes = ArtifactSupport.exportArtifact(xx, loc, ifaceConst);
-              ifaceArtRes.drainInto(errors);
-              userIface = ifaceArtRes.valueOrNull();
-              if (userIface == null) {
+              if (ifaceArtRes.hasErrors()) {
+                ifaceArtRes.drainInto(errors);
                 return EResult.errs(errors);
               }
+              userIface =
+                  ifaceArtRes.requireValue(
+                      "TypeSourceObjectConst::exporterExport user interface artifact");
             }
             var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
             for (var mi : impl.methodImpls) {
@@ -287,11 +295,13 @@ public record TypeSourceObjectConst(SourceObjectData data)
               var extRes =
                   ExternalCodec.exportExternals(
                       xx, loc, mi.capturedExternals);
-              extRes.drainInto(errors);
-              var ext = extRes.valueOrNull();
-              if (ext == null) {
+              if (extRes.hasErrors()) {
+                extRes.drainInto(errors);
                 return EResult.errs(errors);
               }
+              var ext =
+                  extRes.requireValue(
+                      "TypeSourceObjectConst::exporterExport interface method externals");
               methodImpls.add(
                   new ArtifactDataDefSetInterfaceMethodImpl(
                       mi.interfaceMethodIndex,
@@ -394,11 +404,13 @@ public record TypeSourceObjectConst(SourceObjectData data)
                       var defSetAny =
                           ArtifactSupport.independentFinalizeImportArtifact(
                               xx2, loc2, body.defSet());
-                      var defSetVal = defSetAny.valueOrNull();
+                      var defSetVal =
+                          defSetAny.requireValue(
+                              "TypeSourceObjectConst::finalizer defSet artifact");
                       if (!(defSetVal instanceof DefinitionSet set)) {
                         throw new IllegalStateException(
                             "TypeSourceObjectConst finalizer: def-set artifact resolved to "
-                                + (defSetVal == null ? "null" : defSetVal.getClass())
+                                + defSetVal.getClass()
                                 + " (expected DefinitionSet)");
                       }
                       dt.initSetReflectively(set);
@@ -406,11 +418,9 @@ public record TypeSourceObjectConst(SourceObjectData data)
                       var underlyingRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(
                               xx2, loc2, body.underlyingType());
-                      var underlyingVal = underlyingRes.valueOrNull();
-                      if (underlyingVal == null) {
-                        throw new IllegalStateException(
-                            "TypeSourceObjectConst finalizer: underlying type resolution failed");
-                      }
+                      var underlyingVal =
+                          underlyingRes.requireValue(
+                              "TypeSourceObjectConst::finalizer underlying type");
                       dt.underlyingType = underlyingVal;
                       var bodyMethodsIt = body.methods().iterator();
                       for (var md : dt.methods) {
@@ -418,29 +428,23 @@ public record TypeSourceObjectConst(SourceObjectData data)
                         var argRes =
                             ArtifactSupport.independentFinalizeImportTypeArtifact(
                                 xx2, loc2, sm.argType());
-                        var argVal = argRes.valueOrNull();
-                        if (argVal == null) {
-                          throw new IllegalStateException(
-                              "TypeSourceObjectConst finalizer: method arg type resolution failed");
-                        }
+                        var argVal =
+                            argRes.requireValue(
+                                "TypeSourceObjectConst::finalizer method arg type");
                         md.argType = argVal;
                         var retRes =
                             ArtifactSupport.independentFinalizeImportTypeArtifact(
                                 xx2, loc2, sm.retType());
-                        var retVal = retRes.valueOrNull();
-                        if (retVal == null) {
-                          throw new IllegalStateException(
-                              "TypeSourceObjectConst finalizer: method ret type resolution failed");
-                        }
+                        var retVal =
+                            retRes.requireValue(
+                                "TypeSourceObjectConst::finalizer method ret type");
                         md.retType = retVal;
                         var extRes =
                             ExternalCodec.importExternals(
                                 xx2, loc2, sm.capturedExternals());
-                        var extVal = extRes.valueOrNull();
-                        if (extVal == null) {
-                          throw new IllegalStateException(
-                              "TypeSourceObjectConst finalizer: method captured externals import failed");
-                        }
+                        var extVal =
+                            extRes.requireValue(
+                                "TypeSourceObjectConst::finalizer method externals");
                         md.capturedExternals.addAll(extVal);
                       }
                       for (var impl : body.interfaceImpls()) {
@@ -459,11 +463,13 @@ public record TypeSourceObjectConst(SourceObjectData data)
                           var ifaceAny =
                               ArtifactSupport.independentFinalizeImportArtifact(
                                   xx2, loc2, ifaceArt);
-                          var ifaceVal = ifaceAny.valueOrNull();
+                          var ifaceVal =
+                              ifaceAny.requireValue(
+                                  "TypeSourceObjectConst::finalizer user iface artifact");
                           if (!(ifaceVal instanceof TypeSourceInterfaceConst ic)) {
                             throw new IllegalStateException(
                                 "TypeSourceObjectConst finalizer: user iface artifact resolved to "
-                                    + (ifaceVal == null ? "null" : ifaceVal.getClass()));
+                                    + ifaceVal.getClass());
                           }
                           iface = ic.data();
                         }
@@ -478,12 +484,9 @@ public record TypeSourceObjectConst(SourceObjectData data)
                           var extRes =
                               ExternalCodec.importExternals(
                                   xx2, loc2, mi.capturedExternals());
-                          var extVal = extRes.valueOrNull();
-                          if (extVal == null) {
-                            throw new IllegalStateException(
-                                "TypeSourceObjectConst finalizer: iface method captured externals "
-                                    + "import failed");
-                          }
+                          var extVal =
+                              extRes.requireValue(
+                                  "TypeSourceObjectConst::finalizer iface method externals");
                           mid.capturedExternals.addAll(extVal);
                           implData.methodImpls.add(mid);
                         }
@@ -601,10 +604,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
     }
     var selfCodeRes = toDynamic(xx, loc, self);
     if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
-    var selfCode = selfCodeRes.valueOrNull();
-    if (selfCode == null) {
-      throw new IllegalStateException("TypeSourceObjectConst::field: toDynamic returned neither value nor errors");
-    }
+    var selfCode = selfCodeRes.requireValue("TypeSourceObjectConst::field toDynamic");
     var selfDynamic =
         new CodeValue(
             Code.of(loc, selfCode),

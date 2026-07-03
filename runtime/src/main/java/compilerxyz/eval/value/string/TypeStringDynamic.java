@@ -75,28 +75,29 @@ public record TypeStringDynamic()
       compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
           compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class), TList.of());
 
+  private static final Type EMPTY_TUPLE =
+      new compilerxyz.eval.value.tuple.Tuple(new TList<>());
+
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
           new Pair<>(
               new ConstKey.Str("toLowerCase"),
               new compilerxyz.eval.value.function.TypeMethodDynamic(
                   new TypeStringDynamic(),
-                  new TypeNullDynamic(),
+                  EMPTY_TUPLE,
                   new TypeStringDynamic(),
                   JAVA_STRING,
                   "toLowerCase",
-                  DESC_TO_STR,
-                  false)),
+                  DESC_TO_STR)),
           new Pair<>(
               new ConstKey.Str("toUpperCase"),
               new compilerxyz.eval.value.function.TypeMethodDynamic(
                   new TypeStringDynamic(),
-                  new TypeNullDynamic(),
+                  EMPTY_TUPLE,
                   new TypeStringDynamic(),
                   JAVA_STRING,
                   "toUpperCase",
-                  DESC_TO_STR,
-                  false)));
+                  DESC_TO_STR)));
 
   @Override
   public String typeDesc() {

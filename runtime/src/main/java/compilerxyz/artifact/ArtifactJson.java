@@ -35,12 +35,12 @@ public final class ArtifactJson {
       case "body" -> {
         var inner = decodeArtifactBody(loc, entry.getValue());
         if (inner.hasErrors()) yield inner.reerr();
-        yield EResult.ok(new Artifact.Body(inner.valueOrNull()));
+        yield EResult.ok(new Artifact.Body(inner.requireValue("ArtifactJson::decodeArtifact body")));
       }
       case "ref" -> {
         var inner = decodeArtifactIdSource(loc, entry.getValue());
         if (inner.hasErrors()) yield inner.reerr();
-        yield EResult.ok(new Artifact.Ref(inner.valueOrNull()));
+        yield EResult.ok(new Artifact.Ref(inner.requireValue("ArtifactJson::decodeArtifact ref")));
       }
       default -> EResult.err(loc, "decodeArtifact: unknown tag " + entry.getKey());
     };
@@ -64,7 +64,7 @@ public final class ArtifactJson {
     }
     var exp = decodeArtifactBodyExporter(loc, exporterJson);
     if (exp.hasErrors()) return exp.reerr();
-    return EResult.ok(new ArtifactBody(data, exp.valueOrNull()));
+    return EResult.ok(new ArtifactBody(data, exp.requireValue("ArtifactJson::decodeArtifactBody exporter")));
   }
 
   public static JsonValue encodeArtifactBodyExporter(ArtifactBodyExporter ex) {
@@ -88,13 +88,13 @@ public final class ArtifactJson {
       case "body" -> {
         var inner = decodeArtifactBody(loc, entry.getValue());
         if (inner.hasErrors()) yield inner.reerr();
-        yield EResult.ok(new ArtifactBodyExporter.Body(inner.valueOrNull()));
+        yield EResult.ok(new ArtifactBodyExporter.Body(inner.requireValue("ArtifactJson::decodeArtifactBodyExporter body")));
       }
       case "root" -> EResult.ok(new ArtifactBodyExporter.Root());
       case "source_ref" -> {
         var inner = decodeArtifactIdSource(loc, entry.getValue());
         if (inner.hasErrors()) yield inner.reerr();
-        yield EResult.ok(new ArtifactBodyExporter.SourceRef(inner.valueOrNull()));
+        yield EResult.ok(new ArtifactBodyExporter.SourceRef(inner.requireValue("ArtifactJson::decodeArtifactBodyExporter source_ref")));
       }
       default -> EResult.err(loc, "decodeArtifactBodyExporter: unknown tag " + entry.getKey());
     };
@@ -141,7 +141,7 @@ public final class ArtifactJson {
     for (var e : arr.elements()) {
       var a = decodeArtifact(loc, e);
       if (a.hasErrors()) return a.reerr();
-      out.add(a.valueOrNull());
+      out.add(a.requireValue("ArtifactJson::decodeArtifactList element"));
     }
     return EResult.ok(out);
   }

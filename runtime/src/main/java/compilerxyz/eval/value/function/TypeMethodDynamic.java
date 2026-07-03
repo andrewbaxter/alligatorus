@@ -16,9 +16,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -36,8 +34,7 @@ public record TypeMethodDynamic(
     Type ret,
     JavaInternalName klass,
     String methodName,
-    JavaMethodDescriptor descriptor,
-    boolean needsExprContext)
+    JavaMethodDescriptor descriptor)
     implements
         Type,
         AspectBind,
@@ -47,20 +44,16 @@ public record TypeMethodDynamic(
         AspectInitialBind,
         ExporterAny {
 
-  private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
-      JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));
-
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+      ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -95,39 +88,23 @@ public record TypeMethodDynamic(
     if (argConsumeRes.hasErrors()) return argConsumeRes.reerr();
     var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
-    var argDynRes = argConsumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
+    var argDynRes =
+        argConsumeRes
+            .requireValue("TypeMethodDynamic::call arg consume")
+            .toDynamic(
+                xx, loc, convertedRes.requireValue("TypeMethodDynamic::call converted arg"));
     if (argDynRes.hasErrors()) return argDynRes.reerr();
     var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var argList = new compilerxyz.util.TList<CodeDynamic>();
-    argList.add(receiverDyn);
-    if (!(arg instanceof compilerxyz.eval.value.null_.TypeNullDynamic)) {
-      argList.add(argDynRes.valueOrNull());
-    }
-    return EResult.ok(
-        retStackRes.valueOrNull().toValue(loc, emitInvocation(loc, xx.vx, argList)));
-  }
-
-  public CodeDynamic emitInvocation(
-      QExprId loc, compilerxyz.eval.EvalContext vx, compilerxyz.util.TList<CodeDynamic> args) {
     var seq = new JavaBytecodeSequence();
-    if (needsExprContext) {
-      seq.add(
-          JavaBytecodeUtils.accessStaticField(
-              loc,
-              JavaInternalName.of(vx.evalRootInternalName),
-              compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
-    }
-    // Each language arg's Type owns its stack JVM class via AspectConsumeDynamic,
-    // and the code produced by that aspect already leaves a properly-typed value
-    // on the stack. No CHECKCAST here.
-    for (var argCode : args) {
-      seq.add(argCode);
-    }
+    seq.add(receiverDyn);
+    seq.add(argDynRes.requireValue("TypeMethodDynamic::call arg"));
     seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
-    return new CodeDynamic(loc, seq);
+    return EResult.ok(
+        retStackRes
+            .requireValue("TypeMethodDynamic::call ret stack")
+            .toValue(loc, new CodeDynamic(loc, seq)));
   }
 
   @Override
@@ -144,8 +121,7 @@ public record TypeMethodDynamic(
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeMethodDynamic::toDynamic: CodeValue has no dynamic code");
+    return EResult.err(loc, "TypeMethodDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override

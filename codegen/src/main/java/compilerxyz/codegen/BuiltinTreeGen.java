@@ -1052,13 +1052,15 @@ public final class BuiltinTreeGen {
         "null");
     b.endControlFlow();
     b.addStatement("var res = $T.constEval(targetXx, exprAst)", constEval);
-    b.addStatement("var resCv = res.valueOrNull()");
-    b.beginControlFlow("if (resCv == null)");
+    b.beginControlFlow("if (res.hasErrors())");
     b.addStatement(
         "throw new $T($S + res.errorsOrNull())",
         IllegalStateException.class,
         "builtin 5008 (const_eval): const_eval produced no value; errors: ");
     b.endControlFlow();
+    b.addStatement(
+        "var resCv = res.requireValue($S)",
+        "BuiltinTreeGen builtin 5008 const_eval result");
     b.addStatement("return new $T(resCv)", codeValueExternCell);
     return b.build();
   }

@@ -31,15 +31,11 @@ public final class Erb {
   }
 
   public <T> Optional<T> mustEr(EResult<T> r) {
-    var errs = r.errorsOrNull();
-    if (errs != null) {
-      this.errors.addAll(errs);
-    }
-    var v = r.valueOrNull();
-    if (v == null) {
+    if (r.hasErrors()) {
+      r.drainInto(this.errors);
       return Optional.empty();
     }
-    return Optional.of(v);
+    return Optional.of(r.requireValue("Erb::mustEr value"));
   }
 
   public <T> Optional<T> mustRes(Result<T, String> r) {

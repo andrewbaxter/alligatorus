@@ -50,7 +50,6 @@ import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.function.TypeMethodDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.gen.AspectStringDynamic;
