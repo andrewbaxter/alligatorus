@@ -49,7 +49,6 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.safejson.JsonValue;
@@ -79,11 +78,25 @@ public record TypeNumberDynamic()
         AspectStackValueDynamic,
         ExporterAny {
 
+  private static final compilerxyz.eval.dynamic.JavaInternalName DYN_RUNTIME =
+      compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.dynamic.DynRuntime.class);
+  private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_DBL_TO_STR =
+      compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+          compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
+          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Double.class)));
+
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
           new Pair<>(
               new ConstKey.Str("to_string"),
-              new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic())));
+              new compilerxyz.eval.value.function.TypeMethodDynamic(
+                  new TypeNumberDynamic(),
+                  new TypeNullDynamic(),
+                  new TypeStringDynamic(),
+                  DYN_RUNTIME,
+                  "numberToString",
+                  DESC_DBL_TO_STR,
+                  false)));
 
   @Override
   public String typeDesc() {
@@ -180,17 +193,10 @@ public record TypeNumberDynamic()
     if (!(fieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic number");
     }
-    if (!(self_.value() instanceof Opt.Some<Value> selfSome)
-        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
-      return EResult.err(loc, "TypeNumberDynamic::field: receiver is not a ValueDynamic");
-    }
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            Opt.some(
-                new ValueDynamic(
-                    new ValueDynamic.Source.MethodField(selfVd.source(), ck.toCanonical()),
-                    fieldTypeSome.value()))));
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), fieldTypeSome.value()))));
   }
 
   @Override

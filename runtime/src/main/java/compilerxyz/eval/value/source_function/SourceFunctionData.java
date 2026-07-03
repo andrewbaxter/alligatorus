@@ -12,7 +12,6 @@ import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
-import compilerxyz.eval.dynamic.FunctionClassEmitter;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Scope;
 import compilerxyz.eval.Type;
@@ -20,7 +19,6 @@ import compilerxyz.eval.Value;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.ContextualFunction;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -43,8 +41,6 @@ public final class SourceFunctionData {
   public @Nullable byte[] compiledBytecode;
 
   public DefSetFunctionsEmitter.@Nullable FunctionSpec functionSpec;
-
-  public @Nullable ContextualFunction compiledFunctionInstance;
 
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
   public final TList<EvalContext.ExternalEntry> capturedExternals;

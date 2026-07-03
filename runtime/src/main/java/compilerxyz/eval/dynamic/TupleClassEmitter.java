@@ -2,6 +2,7 @@ package compilerxyz.eval.dynamic;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.util.TList;
 import org.objectweb.asm.ClassWriter;
@@ -123,21 +124,24 @@ public final class TupleClassEmitter {
             null);
     ctor.visitCode();
 
+    var loc = QExprId.NONE;
     var seq = JavaBytecodeUtils.seq();
-    seq.varInsn(Opcodes.ALOAD, 0);
-    seq.invokeSpecial(JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS);
+    seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
+    seq.add(
+        JavaBytecodeUtils.invokeSpecial(
+            loc, JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS));
 
     for (int i = 0; i < arity; i++) {
-      seq.varInsn(Opcodes.ALOAD, 0);
-      seq.varInsn(Opcodes.ALOAD, 1);
-      seq.add(JavaBytecodeUtils.literalIntShortByte(i));
-      seq.insn(Opcodes.AALOAD);
-      seq.putField(ownName, slotFieldName(i), JvmConstants.DESC_OBJECT);
+      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
+      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 1));
+      seq.add(JavaBytecodeUtils.literalIntShortByte(loc, i));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.AALOAD));
+      seq.add(
+          JavaBytecodeUtils.setField(
+              loc, ownName, slotFieldName(i), JvmConstants.DESC_OBJECT));
     }
-    seq.insn(Opcodes.RETURN);
-    seq.render(ctor, TList.of());
-    ctor.visitMaxs(0, 0);
-    ctor.visitEnd();
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.RETURN));
+    JavaBytecodeUtils.renderMethod(seq, ctor, TList.of());
 
     cw.visitEnd();
     return cw.toByteArray();

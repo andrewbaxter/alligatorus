@@ -208,10 +208,9 @@ public record TypeUnique()
     if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: base lowering failed");
     var refDyn = toDynamic(xx, loc, reference);
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: reference lowering failed");
-    var fnCode = new CodeDynamic(loc, new JavaBytecode.BindingUse(UNIQUE_EQ_FN_SCOPE_ID));
     var call =
-        new CodeDynamic(loc, DynUtil.buildCallSequence(
-                xx, fnCode, TList.of(baseDyn.valueOrNull(), refDyn.valueOrNull())));
+        compilerxyz.eval.dynamic.DynRuntime.UNIQUE_EQ_TYPE.emitInvocation(
+            loc, xx.vx, TList.of(baseDyn.valueOrNull(), refDyn.valueOrNull()));
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),

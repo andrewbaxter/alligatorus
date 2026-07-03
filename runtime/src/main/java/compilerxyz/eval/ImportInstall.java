@@ -155,10 +155,6 @@ public final class ImportInstall {
         }
         continue;
       }
-      var instResult = func.instantiate(loc, loader);
-      if (instResult.hasErrors()) {
-        return instResult.reerr();
-      }
     }
 
     for (var obj : set.objects) {
@@ -181,10 +177,6 @@ public final class ImportInstall {
         if (staticFields != null && !staticFields.isEmpty()) {
           loader.registerExternals(binaryName, staticFields);
         }
-        var instResult = method.instantiate(loc, loader);
-        if (instResult.hasErrors()) {
-          return instResult.reerr();
-        }
       }
       for (var impl : obj.interfaceImpls) {
         for (var m : impl.methodImpls) {
@@ -205,10 +197,6 @@ public final class ImportInstall {
           loader.registerClass(binaryName, bytecode);
           if (staticFields != null && !staticFields.isEmpty()) {
             loader.registerExternals(binaryName, staticFields);
-          }
-          var instResult = m.instantiate(loc, loader);
-          if (instResult.hasErrors()) {
-            return instResult.reerr();
           }
         }
       }

@@ -20,7 +20,6 @@ import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import compilerxyz.eval.ContextualFunction;
 import org.jspecify.annotations.Nullable;
 
 public final class SourceDataMethodData {
@@ -35,8 +34,6 @@ public final class SourceDataMethodData {
   public @Nullable BindingId innerBindingId;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
-  public @Nullable ContextualFunction compiledFunctionInstance;
-
   public @Nullable CodeDynamic compiledBodyCode;
 
   public BindingId.@Nullable Local compiledArgBindingId;
@@ -156,35 +153,4 @@ public final class SourceDataMethodData {
     return EResult.ok(null);
   }
 
-  public EResult<Void> instantiate(QExprId rootLoc, DefinitionSetClassLoader loader) {
-    if (compiledFunctionInstance != null) {
-      return EResult.ok(null);
-    }
-    var binaryName = compiledClassName;
-    if (binaryName == null) {
-
-      return EResult.ok(null);
-    }
-    Class<?> cls;
-    try {
-      cls = Class.forName(binaryName, true, loader);
-    } catch (ClassNotFoundException e) {
-      throw new AssertionError(
-          "SourceDataMethodData.instantiate: generated class " + binaryName + " failed to load", e);
-    }
-    Object instance;
-    try {
-      instance = cls.getDeclaredConstructor().newInstance();
-    } catch (ReflectiveOperationException e) {
-      throw new AssertionError(
-          "SourceDataMethodData.instantiate: generated class "
-              + binaryName
-              + " failed to instantiate",
-          e);
-    }
-    @SuppressWarnings("unchecked")
-    var fn = (ContextualFunction) instance;
-    compiledFunctionInstance = fn;
-    return EResult.ok(null);
-  }
 }

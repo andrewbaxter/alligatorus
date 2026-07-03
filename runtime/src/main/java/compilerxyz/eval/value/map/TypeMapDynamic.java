@@ -43,7 +43,6 @@ import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.ValueAnyConst;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.number.ValueNumberConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;

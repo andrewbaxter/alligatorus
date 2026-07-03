@@ -20,7 +20,6 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenIdentities;
-import compilerxyz.gen.GenInvisibleBuiltins;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -124,10 +123,9 @@ public record TypeSourceInterfaceDynamic()
       }
       var args = new TList<CodeDynamic>();
       args.add(sourceCode);
-      var funcRef =
-          new CodeDynamic(loc, new JavaBytecode.BindingUse(GenInvisibleBuiltins.INTERFACE_REF_TO_TYPE_FN_SCOPE_ID));
       var call =
-          new CodeDynamic(loc, DynUtil.buildCallSequence(xx, funcRef, args));
+          compilerxyz.eval.dynamic.DynRuntime.INTERFACE_REF_TO_TYPE_TYPE.emitInvocation(
+              loc, xx.vx, args);
       return EResult.ok(
           new CodeValue(
               Code.of(loc, call),

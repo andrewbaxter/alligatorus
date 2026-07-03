@@ -441,16 +441,16 @@ public final class SourceObjectEmitter {
     var seq = new JavaBytecodeSequence();
     var dataFieldCanonical = new ConstKey.Str(dataField).toCanonical();
     var selfSlot = ctx.allocSlot(selfId);
-    seq.varInsn(Opcodes.ALOAD, 0);
-    seq.loadConstant(dataFieldCanonical);
-    seq.invokeStatic(INTNAME_DYN_RUNTIME, "fieldGet", MDESC_FIELD_GET);
-    seq.varInsn(Opcodes.ASTORE, selfSlot);
+    seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
+    seq.add(JavaBytecodeUtils.literalString(compilerxyz.eval.QExprId.NONE, dataFieldCanonical));
+    seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "fieldGet", MDESC_FIELD_GET));
+    seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, selfSlot));
 
     var argId = method.compiledArgBindingId;
     if (argId != null) {
       var argSlot = ctx.allocSlot(argId);
-      seq.varInsn(Opcodes.ALOAD, 2);
-      seq.varInsn(Opcodes.ASTORE, argSlot);
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 2));
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, argSlot));
     }
 
     for (var entry : method.capturedExternals) {
@@ -459,13 +459,13 @@ public final class SourceObjectEmitter {
             "External captured under non-Local BindingId: " + entry.id());
       }
       var fieldName = prefix + ImportInstall.bindingIdDynamicKey(localId);
-      seq.getStatic(internalName, fieldName, JvmConstants.DESC_OBJECT);
+      seq.add(JavaBytecodeUtils.accessStaticField(compilerxyz.eval.QExprId.NONE, internalName, fieldName, JvmConstants.DESC_OBJECT));
       var slot = ctx.allocSlot(localId);
-      seq.varInsn(Opcodes.ASTORE, slot);
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, slot));
     }
     target.emit(seq, ctx, bodyCode);
-    seq.insn(Opcodes.ARETURN);
-    seq.renderMethod(mv, TList.of());
+    seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
+    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 
   private static void collectMethodFields(
@@ -540,33 +540,33 @@ public final class SourceObjectEmitter {
     if (isArgMethod) {
 
       var selfSlot = ctx.allocSlot(selfId);
-      seq.varInsn(Opcodes.ALOAD, 2);
-      seq.checkCast(INTNAME_OBJECT_ARRAY_ELEM);
-      seq.loadConstant(0);
-      seq.insn(Opcodes.AALOAD);
-      seq.varInsn(Opcodes.ASTORE, selfSlot);
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 2));
+      seq.add(JavaBytecodeUtils.cast(compilerxyz.eval.QExprId.NONE, JavaDataDescriptor.fromInternalName(INTNAME_OBJECT_ARRAY_ELEM)));
+      seq.add(JavaBytecodeUtils.literalIntShortByte(compilerxyz.eval.QExprId.NONE, 0));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AALOAD));
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, selfSlot));
     } else {
 
       var dataFieldCanonical = new ConstKey.Str(dataField).toCanonical();
       var selfSlot = ctx.allocSlot(selfId);
-      seq.varInsn(Opcodes.ALOAD, 2);
-      seq.checkCast(INTNAME_OBJECT_ARRAY_ELEM);
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 2));
+      seq.add(JavaBytecodeUtils.cast(compilerxyz.eval.QExprId.NONE, JavaDataDescriptor.fromInternalName(INTNAME_OBJECT_ARRAY_ELEM)));
       if (!argParamIds.isEmpty()) {
-        seq.insn(Opcodes.DUP);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
       }
-      seq.loadConstant(0);
-      seq.insn(Opcodes.AALOAD);
-      seq.loadConstant(dataFieldCanonical);
-      seq.invokeStatic(INTNAME_DYN_RUNTIME, "fieldGet", MDESC_FIELD_GET);
-      seq.varInsn(Opcodes.ASTORE, selfSlot);
+      seq.add(JavaBytecodeUtils.literalIntShortByte(compilerxyz.eval.QExprId.NONE, 0));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AALOAD));
+      seq.add(JavaBytecodeUtils.literalString(compilerxyz.eval.QExprId.NONE, dataFieldCanonical));
+      seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "fieldGet", MDESC_FIELD_GET));
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, selfSlot));
       for (int i = 0; i < argParamIds.size(); i++) {
         var slot = ctx.allocSlot(argParamIds.get(i));
         if (i < argParamIds.size() - 1) {
-          seq.insn(Opcodes.DUP);
+          seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
         }
-        seq.loadConstant(i + 1);
-        seq.insn(Opcodes.AALOAD);
-        seq.varInsn(Opcodes.ASTORE, slot);
+        seq.add(JavaBytecodeUtils.literalIntShortByte(compilerxyz.eval.QExprId.NONE, i + 1));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AALOAD));
+        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, slot));
       }
     }
 
@@ -576,13 +576,13 @@ public final class SourceObjectEmitter {
             "External captured under non-Local BindingId: " + entry.id());
       }
       var fieldName = prefix + ImportInstall.bindingIdDynamicKey(localId);
-      seq.getStatic(internalName, fieldName, JvmConstants.DESC_OBJECT);
+      seq.add(JavaBytecodeUtils.accessStaticField(compilerxyz.eval.QExprId.NONE, internalName, fieldName, JvmConstants.DESC_OBJECT));
       var slot = ctx.allocSlot(localId);
-      seq.varInsn(Opcodes.ASTORE, slot);
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ASTORE, slot));
     }
     target.emit(seq, ctx, bodyCode);
-    seq.insn(Opcodes.ARETURN);
-    seq.renderMethod(mv, TList.of());
+    seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
+    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 
   private record HostMethodSpec(String hostName, JavaMethodDescriptor hostDescriptor, ReturnKind returnKind) {}
@@ -908,7 +908,7 @@ public final class SourceObjectEmitter {
               Opcodes.ACC_PUBLIC, spec.hostName(), spec.hostDescriptor().value(), null, null);
       var seq = new JavaBytecodeSequence();
       if (spec.passData()) {
-        seq.getStatic(internalName, SOURCE_OBJECT_DATA_FIELD, JvmConstants.DESC_OBJECT);
+        seq.add(JavaBytecodeUtils.accessStaticField(compilerxyz.eval.QExprId.NONE, internalName, SOURCE_OBJECT_DATA_FIELD, JvmConstants.DESC_OBJECT));
       }
       int slot = 1;
       var descriptor = spec.hostDescriptor().value();
@@ -916,11 +916,11 @@ public final class SourceObjectEmitter {
       while (i < descriptor.length() && descriptor.charAt(i) != ')') {
         var c = descriptor.charAt(i);
         if (c == 'L') {
-          seq.varInsn(Opcodes.ALOAD, slot);
+          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, slot));
           slot++;
           i = descriptor.indexOf(';', i) + 1;
         } else if (c == '[') {
-          seq.varInsn(Opcodes.ALOAD, slot);
+          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, slot));
           slot++;
           i++;
           while (i < descriptor.length() && descriptor.charAt(i) == '[') i++;
@@ -930,28 +930,28 @@ public final class SourceObjectEmitter {
             i++;
           }
         } else {
-          seq.varInsn(Opcodes.ALOAD, slot);
+          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, slot));
           slot++;
           i++;
         }
       }
-      seq.invokeStatic(INTNAME_DYN_RUNTIME, spec.helperName(), spec.helperDescriptor());
+      seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, spec.helperName(), spec.helperDescriptor()));
       var closeParen = descriptor.indexOf(')');
       var retChar = descriptor.charAt(closeParen + 1);
       if (retChar == 'Z' || retChar == 'B' || retChar == 'C' || retChar == 'S' || retChar == 'I') {
-        seq.insn(Opcodes.IRETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.IRETURN));
       } else if (retChar == 'J') {
-        seq.insn(Opcodes.LRETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.LRETURN));
       } else if (retChar == 'F') {
-        seq.insn(Opcodes.FRETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.FRETURN));
       } else if (retChar == 'D') {
-        seq.insn(Opcodes.DRETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DRETURN));
       } else if (retChar == 'V') {
-        seq.insn(Opcodes.RETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.RETURN));
       } else {
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
       }
-      seq.renderMethod(mv, TList.of());
+      JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
     }
   }
 
@@ -973,62 +973,62 @@ public final class SourceObjectEmitter {
         hostDescStr.startsWith("(" + DESC_EXPR_CONTEXT.value());
 
     var seq = new JavaBytecodeSequence();
-    seq.varInsn(Opcodes.ALOAD, 0);
+    seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
 
     if (firstParamIsExprContext) {
-      seq.varInsn(Opcodes.ALOAD, 1);
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 1));
     } else {
-      seq.insn(Opcodes.ACONST_NULL);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
     }
 
     emitArgPacking(seq, kind, m, ifaceMethod, firstParamIsExprContext, paramSlotCount);
 
-    seq.invokeVirtual(
-        internalName, interfaceMethodMethodName(implIdx, mIdx), MDESC_METHOD_METHOD);
+    seq.add(JavaBytecodeUtils.callMethod(compilerxyz.eval.QExprId.NONE, 
+        internalName, interfaceMethodMethodName(implIdx, mIdx), MDESC_METHOD_METHOD));
 
     switch (spec.returnKind()) {
       case BOOLEAN_UNBOX -> {
-        seq.checkCast(JvmConstants.INTNAME_BOXED_BOOL);
-        seq.invokeVirtual(JvmConstants.INTNAME_BOXED_BOOL, "booleanValue", MDESC_BOOLEAN_VALUE);
-        seq.insn(Opcodes.IRETURN);
+        seq.add(JavaBytecodeUtils.cast(compilerxyz.eval.QExprId.NONE, JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_BOXED_BOOL)));
+        seq.add(JavaBytecodeUtils.callMethod(compilerxyz.eval.QExprId.NONE, JvmConstants.INTNAME_BOXED_BOOL, "booleanValue", MDESC_BOOLEAN_VALUE));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.IRETURN));
       }
       case OBJECT_CAST -> {
         var retInternal = returnTypeInternalName(hostDescStr);
         if (retInternal != null) {
-          seq.checkCast(retInternal);
+          seq.add(JavaBytecodeUtils.cast(compilerxyz.eval.QExprId.NONE, JavaDataDescriptor.fromInternalName(retInternal)));
         }
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
       }
       case ERESULT_FROM_CV_CELL -> {
-        seq.invokeStatic(INTNAME_DYN_RUNTIME, "eresultFromCvCell", MDESC_ERESULT_FROM_ONE);
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "eresultFromCvCell", MDESC_ERESULT_FROM_ONE));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
       }
       case ERESULT_CODE_FROM_CV_CELL -> {
-        seq.invokeStatic(INTNAME_DYN_RUNTIME, "eresultCodeFromCvCell", MDESC_ERESULT_FROM_ONE);
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "eresultCodeFromCvCell", MDESC_ERESULT_FROM_ONE));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
       }
       case ERESULT_FROM_CV_CELL_RETAGGED -> {
-        seq.varInsn(Opcodes.ALOAD, 0);
-        seq.invokeStatic(INTNAME_DYN_RUNTIME, "eresultFromCvCellRetagged", MDESC_ERESULT_FROM_TWO);
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
+        seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "eresultFromCvCellRetagged", MDESC_ERESULT_FROM_TWO));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
       }
       case OPT_ASPECT_WITH_DELEGATE_FALLTHROUGH -> {
-        seq.checkCast(INTNAME_OPT);
-        seq.insn(Opcodes.DUP);
+        seq.add(JavaBytecodeUtils.cast(compilerxyz.eval.QExprId.NONE, JavaDataDescriptor.fromInternalName(INTNAME_OPT)));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
         seq.instanceOf(INTNAME_OPT_SOME);
         var fallthrough = new org.objectweb.asm.Label();
         var fallthroughNode = new org.objectweb.asm.tree.LabelNode(fallthrough);
         seq.obj(new org.objectweb.asm.tree.JumpInsnNode(Opcodes.IFEQ, fallthroughNode));
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
         seq.obj(fallthroughNode);
-        seq.insn(Opcodes.POP);
-        seq.varInsn(Opcodes.ALOAD, 0);
-        seq.varInsn(Opcodes.ALOAD, 2);
-        seq.invokeStatic(INTNAME_DYN_RUNTIME, "sourceObjectDelegatedAspect", MDESC_DELEGATED_ASPECT);
-        seq.insn(Opcodes.ARETURN);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.POP));
+        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
+        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 2));
+        seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "sourceObjectDelegatedAspect", MDESC_DELEGATED_ASPECT));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
       }
     }
-    seq.renderMethod(mv, TList.of());
+    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 
   private static @org.jspecify.annotations.Nullable JavaInternalName returnTypeInternalName(
@@ -1055,81 +1055,81 @@ public final class SourceObjectEmitter {
     if (m.compiledIsArgMethod) {
 
       seq.newInstance(JvmConstants.INTNAME_HASH_MAP);
-      seq.insn(Opcodes.DUP);
-      seq.invokeSpecial(JvmConstants.INTNAME_HASH_MAP, "<init>", MDESC_HASHMAP_INIT);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.QExprId.NONE, JvmConstants.INTNAME_HASH_MAP, "<init>", MDESC_HASHMAP_INIT));
       var dataFields = ifaceMethod.dataFieldNames;
       var sourceName = ifaceMethod.name;
       boolean isCastFrom = "cast_from".equals(sourceName);
       boolean isCanCastFrom = "can_cast_from".equals(sourceName);
       for (int i = 0; i < dataFields.size(); i++) {
         var fieldName = dataFields.get(i);
-        seq.insn(Opcodes.DUP);
-        seq.loadConstant(fieldName);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.literalString(compilerxyz.eval.QExprId.NONE, fieldName));
         switch (fieldName) {
           case "xx" -> {
             if (firstParamIsExprContext) {
-              seq.varInsn(Opcodes.ALOAD, 1);
-              seq.invokeStatic(INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ);
+              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 1));
+              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ));
             } else {
-              seq.insn(Opcodes.ACONST_NULL);
+              seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
             }
           }
           case "source_type" -> {
             if (isCanCastFrom && paramSlotCount >= 3) {
 
-              seq.varInsn(Opcodes.ALOAD, 3);
-              seq.invokeStatic(INTNAME_DYN_RUNTIME, "wrapTypeRefPush", MDESC_WRAP_ONE_OBJ);
+              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 3));
+              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "wrapTypeRefPush", MDESC_WRAP_ONE_OBJ));
             } else if (isCastFrom && paramSlotCount >= 3) {
 
-              seq.varInsn(Opcodes.ALOAD, 1);
-              seq.varInsn(Opcodes.ALOAD, 3);
-              seq.invokeStatic(INTNAME_DYN_RUNTIME, "deriveSourceTypeFromCv", MDESC_WRAP_TWO_OBJ);
+              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 1));
+              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 3));
+              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "deriveSourceTypeFromCv", MDESC_WRAP_TWO_OBJ));
             } else {
-              seq.insn(Opcodes.ACONST_NULL);
+              seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
             }
           }
           case "cv" -> {
             if (isCastFrom && paramSlotCount >= 3) {
-              seq.varInsn(Opcodes.ALOAD, 3);
-              seq.invokeStatic(INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ);
+              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 3));
+              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ));
             } else {
-              seq.insn(Opcodes.ACONST_NULL);
+              seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
             }
           }
-          default -> seq.insn(Opcodes.ACONST_NULL);
+          default -> seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
         }
-        seq.invokeVirtual(JvmConstants.INTNAME_HASH_MAP, "put", MDESC_HASHMAP_PUT);
-        seq.insn(Opcodes.POP);
+        seq.add(JavaBytecodeUtils.callMethod(compilerxyz.eval.QExprId.NONE, JvmConstants.INTNAME_HASH_MAP, "put", MDESC_HASHMAP_PUT));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.POP));
       }
 
-      seq.insn(Opcodes.ICONST_1);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_1));
       seq.obj(new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value()));
-      seq.insn(Opcodes.DUP_X1);
-      seq.insn(Opcodes.SWAP);
-      seq.insn(Opcodes.ICONST_0);
-      seq.insn(Opcodes.SWAP);
-      seq.insn(Opcodes.AASTORE);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP_X1));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.SWAP));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_0));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.SWAP));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
     } else if (kind == BuiltinInterfaceKind.BINDING || kind == BuiltinInterfaceKind.TARGET) {
 
       var dataFields = ifaceMethod.dataFieldNames;
       var arrSize = 1 + dataFields.size();
       pushIntConst(seq, arrSize);
       seq.obj(new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value()));
-      seq.insn(Opcodes.DUP);
-      seq.insn(Opcodes.ICONST_0);
-      seq.varInsn(Opcodes.ALOAD, 0);
-      seq.insn(Opcodes.AASTORE);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_0));
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
 
       for (int i = 0; i < dataFields.size(); i++) {
-        seq.insn(Opcodes.DUP);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
         pushIntConst(seq, i + 1);
         var hostSlot = 1 + i;
         if (hostSlot <= paramSlotCount) {
-          seq.varInsn(Opcodes.ALOAD, hostSlot);
+          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, hostSlot));
         } else {
-          seq.insn(Opcodes.ACONST_NULL);
+          seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
         }
-        seq.insn(Opcodes.AASTORE);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
       }
     } else if ((kind == BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC
             || kind == BuiltinInterfaceKind.ASPECT_FIELD
@@ -1138,39 +1138,39 @@ public final class SourceObjectEmitter {
 
       pushIntConst(seq, 2);
       seq.obj(new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value()));
-      seq.insn(Opcodes.DUP);
-      seq.insn(Opcodes.ICONST_0);
-      seq.varInsn(Opcodes.ALOAD, 0);
-      seq.insn(Opcodes.AASTORE);
-      seq.insn(Opcodes.DUP);
-      seq.insn(Opcodes.ICONST_1);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_0));
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_1));
       seq.newInstance(JvmConstants.INTNAME_HASH_MAP);
-      seq.insn(Opcodes.DUP);
-      seq.invokeSpecial(JvmConstants.INTNAME_HASH_MAP, "<init>", MDESC_HASHMAP_INIT);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.QExprId.NONE, JvmConstants.INTNAME_HASH_MAP, "<init>", MDESC_HASHMAP_INIT));
       int nextCvSlot = 3;
       for (var fieldName : ifaceMethod.dataFieldNames) {
-        seq.insn(Opcodes.DUP);
-        seq.loadConstant(fieldName);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.literalString(compilerxyz.eval.QExprId.NONE, fieldName));
         if ("xx".equals(fieldName)) {
           if (firstParamIsExprContext) {
-            seq.varInsn(Opcodes.ALOAD, 1);
-            seq.invokeStatic(INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ);
+            seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 1));
+            seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ));
           } else {
-            seq.insn(Opcodes.ACONST_NULL);
+            seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
           }
         } else {
           if (nextCvSlot <= paramSlotCount) {
-            seq.varInsn(Opcodes.ALOAD, nextCvSlot);
-            seq.invokeStatic(INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ);
+            seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, nextCvSlot));
+            seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.QExprId.NONE, INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ));
             nextCvSlot++;
           } else {
-            seq.insn(Opcodes.ACONST_NULL);
+            seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
           }
         }
-        seq.invokeVirtual(JvmConstants.INTNAME_HASH_MAP, "put", MDESC_HASHMAP_PUT);
-        seq.insn(Opcodes.POP);
+        seq.add(JavaBytecodeUtils.callMethod(compilerxyz.eval.QExprId.NONE, JvmConstants.INTNAME_HASH_MAP, "put", MDESC_HASHMAP_PUT));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.POP));
       }
-      seq.insn(Opcodes.AASTORE);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
     } else {
 
       var argParamIds = m.compiledArgParamIds;
@@ -1178,27 +1178,27 @@ public final class SourceObjectEmitter {
       var arrSize = hasArg ? 2 : 1;
       pushIntConst(seq, arrSize);
       seq.obj(new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value()));
-      seq.insn(Opcodes.DUP);
-      seq.insn(Opcodes.ICONST_0);
-      seq.varInsn(Opcodes.ALOAD, 0);
-      seq.insn(Opcodes.AASTORE);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_0));
+      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, 0));
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
       if (hasArg) {
-        seq.insn(Opcodes.DUP);
-        seq.insn(Opcodes.ICONST_1);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_1));
 
         if (paramSlotCount >= 1) {
-          seq.varInsn(Opcodes.ALOAD, paramSlotCount);
+          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.QExprId.NONE, Opcodes.ALOAD, paramSlotCount));
         } else {
-          seq.insn(Opcodes.ACONST_NULL);
+          seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
         }
-        seq.insn(Opcodes.AASTORE);
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.AASTORE));
       }
     }
   }
 
   private static void pushIntConst(JavaBytecodeSequence seq, int value) {
     if (value >= 0 && value <= 5) {
-      seq.insn(Opcodes.ICONST_0 + value);
+      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ICONST_0 + value));
     } else {
       seq.obj(new org.objectweb.asm.tree.IntInsnNode(Opcodes.BIPUSH, value));
     }
@@ -1228,9 +1228,9 @@ public final class SourceObjectEmitter {
                 null,
                 null);
         var seq = new JavaBytecodeSequence();
-        seq.insn(Opcodes.ACONST_NULL);
-        seq.insn(Opcodes.ARETURN);
-        seq.renderMethod(mv, TList.of());
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ACONST_NULL));
+        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.QExprId.NONE, Opcodes.ARETURN));
+        JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
       }
     }
   }

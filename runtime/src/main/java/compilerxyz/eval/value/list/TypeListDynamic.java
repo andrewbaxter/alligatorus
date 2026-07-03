@@ -45,7 +45,11 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.value.function.TypeMethodDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.gen.AspectStringDynamic;
@@ -141,17 +145,46 @@ public record TypeListDynamic(Type elementType)
     }
   }
 
+  private static final JavaInternalName DYN_RUNTIME = JavaInternalName.fromClass(DynRuntime.class);
+  private static final JavaMethodDescriptor DESC_LIST_PUSH =
+      JavaMethodDescriptor.fromParts(
+          JavaDataDescriptor.fromClass(Object.class),
+          TList.of(
+              JavaDataDescriptor.fromClass(java.util.ArrayList.class),
+              JavaDataDescriptor.fromClass(Object.class)));
+  private static final JavaMethodDescriptor DESC_LIST_JOIN =
+      JavaMethodDescriptor.fromParts(
+          JavaDataDescriptor.fromClass(String.class),
+          TList.of(
+              JavaDataDescriptor.fromClass(java.util.ArrayList.class),
+              JavaDataDescriptor.fromClass(String.class)));
+
   private TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
     var m = TMap.<ConstKey, FieldSpec>of();
     m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
     m.put(
         new ConstKey.Str("push"),
-        new FieldSpec.Method(new TypeFunctionDynamic(elementType, new TypeNullDynamic())));
+        new FieldSpec.Method(
+            new TypeMethodDynamic(
+                this,
+                elementType,
+                new TypeNullDynamic(),
+                DYN_RUNTIME,
+                "listPush",
+                DESC_LIST_PUSH,
+                false)));
     if (AspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
       m.put(
           new ConstKey.Str("join"),
           new FieldSpec.Method(
-              new TypeFunctionDynamic(new TypeStringDynamic(), new TypeStringDynamic())));
+              new TypeMethodDynamic(
+                  this,
+                  new TypeStringDynamic(),
+                  new TypeStringDynamic(),
+                  DYN_RUNTIME,
+                  "listJoin",
+                  DESC_LIST_JOIN,
+                  false)));
     }
     return m;
   }
@@ -173,19 +206,11 @@ public record TypeListDynamic(Type elementType)
       case FieldSpec.Factory f ->
           EResult.ok(
               new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
-      case FieldSpec.Method m -> {
-        if (!(self.value() instanceof Opt.Some<Value> selfSome)
-            || !(selfSome.value() instanceof ValueDynamic selfVd)) {
-          yield EResult.err(loc, "TypeListDynamic::field: receiver is not a ValueDynamic");
-        }
-        yield EResult.ok(
-            new CodeValue(
-                self.code(),
-                Opt.some(
-                    new ValueDynamic(
-                        new ValueDynamic.Source.MethodField(selfVd.source(), ck.toCanonical()),
-                        m.type()))));
-      }
+      case FieldSpec.Method m ->
+          EResult.ok(
+              new CodeValue(
+                  self.code(),
+                  Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), m.type()))));
     };
   }
 

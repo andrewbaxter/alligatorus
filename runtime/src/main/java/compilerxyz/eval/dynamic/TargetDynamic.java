@@ -28,7 +28,6 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.expr.TypeExprStagedPlaceholder;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
-import compilerxyz.gen.GenInvisibleBuiltins;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueArray;
 import compilerxyz.safejson.JsonValueBoolean;
@@ -395,10 +394,8 @@ public final class TargetDynamic implements Target {
       }
     }
     var stageCall =
-        new CodeDynamic(loc, DynUtil.buildCallSequence(
-                xx,
-                new CodeDynamic(loc, new JavaBytecode.BindingUse(GenInvisibleBuiltins.STAGE_FN_SCOPE_ID)),
-                stageArgs));
+        compilerxyz.eval.dynamic.DynRuntime.STAGE_TYPE.emitInvocation(
+            loc, xx.vx, stageArgs);
     var resultValue =
         new ValueDynamic(new ValueDynamic.Source.Expr(), new TypeExprStagedPlaceholder());
     return EResult.ok(new CodeValue(Code.of(loc, stageCall), Opt.some(resultValue)));

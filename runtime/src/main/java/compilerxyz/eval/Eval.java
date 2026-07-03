@@ -20,7 +20,6 @@ import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TSet;
 import java.util.ArrayDeque;
-import compilerxyz.eval.builtin.InvisibleBuiltinDispatch;
 import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
@@ -209,8 +208,6 @@ public final class Eval {
     }
     if (registerDynamic) {
       walkRegisterDynamic(xx, tree);
-      xx.vx.ix.builtinDynamics.putAll(
-          InvisibleBuiltinDispatch.hostValues());
     }
     var bindingRes = walkBuildBinding(xx, loc, tree);
     if (bindingRes.hasErrors()) {
@@ -315,10 +312,6 @@ public final class Eval {
     BindingId dynamicKey;
     External dynamicValue;
     switch (leaf) {
-      case BuiltinTree.BuiltinLeaf.Function fn -> {
-        dynamicKey = fn.dynamicKey();
-        dynamicValue = fn.dynamicValue();
-      }
       case BuiltinTree.BuiltinLeaf.Interface iface -> {
         dynamicKey = iface.dynamicKey();
         dynamicValue = iface.dynamicValue();
@@ -327,9 +320,11 @@ public final class Eval {
         dynamicKey = aspectId.dynamicKey();
         dynamicValue = aspectId.dynamicValue();
       }
-      case BuiltinTree.BuiltinLeaf.Constructor ctor -> {
-        dynamicKey = ctor.dynamicKey();
-        dynamicValue = ctor.dynamicValue();
+      case BuiltinTree.BuiltinLeaf.Function ignored -> {
+        return;
+      }
+      case BuiltinTree.BuiltinLeaf.Constructor ignored -> {
+        return;
       }
       case BuiltinTree.BuiltinLeaf.AnyConst ignored -> {
         return;
@@ -489,9 +484,12 @@ public final class Eval {
                                   + " ported to the JVM target")))));
         }
       }
+      var binaryName = EvalRootEmitter.allocateBinaryName();
+      vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
       var emitted =
           EvalRootEmitter.emit(
               target,
+              binaryName,
               rootSome.value(),
               vx.externals,
               cix.builtinDynamics,
@@ -503,49 +501,7 @@ public final class Eval {
 
       var rootStaticFields = new TOrderedMap<String, Object>();
       rootStaticFields.putAll(emitted.staticFieldValues());
-      for (var defRef : EvalRootEmitter.referencedDefIds(rootSome.value())) {
-
-        if (cix.staticFunctionDefs.contains(defRef)) {
-          continue;
-        }
-        var fieldName = ImportInstall.bindingIdDynamicKey(defRef);
-        if (rootStaticFields.containsKey(fieldName)) {
-          continue;
-        }
-        var defSet = vx.definitionSets.getOrNull(defRef.defSet());
-        if (defSet == null) {
-          continue;
-        }
-        Object defValue = null;
-        for (var func : defSet.functions) {
-          if (defRef.equals(func.bindingId)) {
-            defValue = func.compiledFunctionInstance;
-            break;
-          }
-        }
-        if (defValue == null) {
-          outer:
-          for (var obj : defSet.objects) {
-            for (var method : obj.methods) {
-              if (defRef.equals(method.bindingId)) {
-                defValue = method.compiledFunctionInstance;
-                break outer;
-              }
-            }
-            for (var impl : obj.interfaceImpls) {
-              for (var m : impl.methodImpls) {
-                if (defRef.equals(m.bindingId)) {
-                  defValue = m.compiledFunctionInstance;
-                  break outer;
-                }
-              }
-            }
-          }
-        }
-        if (defValue != null) {
-          rootStaticFields.put(fieldName, defValue);
-        }
-      }
+      rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
       loader.registerExternals(emitted.binaryName(), rootStaticFields);
       Class<?> rootClass;
       try {
@@ -555,8 +511,8 @@ public final class Eval {
             "Generated root class " + emitted.binaryName() + " failed to load", e);
       }
       try {
-        var runMethod = rootClass.getDeclaredMethod("run", ExprContext.class);
-        rawResult = runMethod.invoke(null, xx);
+        var runMethod = rootClass.getDeclaredMethod("run");
+        rawResult = runMethod.invoke(null);
       } catch (ReflectiveOperationException e) {
         var cause = e.getCause();
 
@@ -579,7 +535,6 @@ public final class Eval {
             e);
       }
     } finally {
-
     }
 
     Value finalValue;

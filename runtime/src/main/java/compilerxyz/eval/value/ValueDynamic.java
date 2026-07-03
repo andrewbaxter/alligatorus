@@ -17,7 +17,5 @@ public record ValueDynamic(Source source, Type type_) implements Value {
     record Expr() implements Source {}
 
     record Field(Source base, String key) implements Source {}
-
-    record MethodField(Source base, String key) implements Source {}
   }
 }

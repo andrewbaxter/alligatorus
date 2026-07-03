@@ -165,13 +165,9 @@ public record TypeAnyDynamic()
     if (argCodeRes.hasErrors()) {
       return argCodeRes.reerr();
     }
-    var args = new TList<CodeDynamic>();
-    args.add(argCodeRes.valueOrNull());
-    var call = new CodeDynamic(loc, DynUtil.buildCallSequence(xx, funcDyn, args));
-    return EResult.ok(
-        new CodeValue(
-            Code.of(loc, call),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+    return EResult.err(
+        loc,
+        "TypeAnyDynamic::call: calling an any-typed value is not supported (no static callee info)");
   }
 
   @Override

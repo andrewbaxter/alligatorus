@@ -15,11 +15,19 @@ import org.objectweb.asm.Opcodes;
 public final class EvalRootEmitter {
   private static final AtomicLong ROOT_COUNTER = new AtomicLong();
 
-  private static final JavaInternalName INTNAME_EXPR_CONTEXT =
-      JavaInternalName.of("compilerxyz/eval/ExprContext");
+  public static final String EXPR_CONTEXT_FIELD = "__exprContext";
+
   private static final JavaMethodDescriptor MDESC_RUN =
-      JavaMethodDescriptor.fromParts(
-          JvmConstants.DESC_OBJECT, JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT));
+      JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of());
+
+  public static String allocateBinaryName() {
+    var index = ROOT_COUNTER.getAndIncrement();
+    return "compilerxyz.eval.gen.EvalRoot$" + index;
+  }
+
+  public static String toInternalName(String binaryName) {
+    return binaryName.replace('.', '/');
+  }
 
   private EvalRootEmitter() {}
 
@@ -196,21 +204,21 @@ public final class EvalRootEmitter {
 
   public static EmittedRoot emit(
       TargetDynamic target,
+      String binaryName,
       CodeDynamic rootCode,
       TList<EvalContext.ExternalEntry> externals,
       TOrderedMap<String, Object> builtinDynamics) {
-    return emit(target, rootCode, externals, builtinDynamics, new TSet<>());
+    return emit(target, binaryName, rootCode, externals, builtinDynamics, new TSet<>());
   }
 
   public static EmittedRoot emit(
       TargetDynamic target,
+      String binaryName,
       CodeDynamic rootCode,
       TList<EvalContext.ExternalEntry> externals,
       TOrderedMap<String, Object> builtinDynamics,
       TSet<BindingId.Def> staticFunctionDefs) {
-    var index = ROOT_COUNTER.getAndIncrement();
-    var binaryName = "compilerxyz.eval.gen.EvalRoot$" + index;
-    var internalName = binaryName.replace('.', '/');
+    var internalName = toInternalName(binaryName);
 
     var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
     cw.visit(
@@ -223,6 +231,7 @@ public final class EvalRootEmitter {
 
     var fieldNames = new TOrderedSet<String>();
     fieldNames.addAll(builtinDynamics.keySet());
+    fieldNames.add(EXPR_CONTEXT_FIELD);
     var externalFieldNames = new TOrderedMap<BindingId, String>();
     for (var entry : externals) {
       var fieldName = ImportInstall.bindingIdDynamicKey(entry.id());
@@ -253,8 +262,9 @@ public final class EvalRootEmitter {
             MDESC_RUN.value(),
             null,
             null);
-    var ctx = new EmitCtx(internalName, 0, 1);
+    var ctx = new EmitCtx(internalName, 0);
     var seq = new JavaBytecodeSequence();
+    var loc = compilerxyz.eval.QExprId.NONE;
 
     var ownerInternal = JavaInternalName.of(internalName);
     for (var entry : externals) {
@@ -263,13 +273,15 @@ public final class EvalRootEmitter {
             "External captured under non-Local BindingId: " + entry.id());
       }
       var fieldName = externalFieldNames.get(localId);
-      seq.getStatic(ownerInternal, fieldName, JvmConstants.DESC_OBJECT);
+      seq.add(
+          JavaBytecodeUtils.accessStaticField(
+              loc, ownerInternal, fieldName, JvmConstants.DESC_OBJECT));
       var slot = ctx.allocSlot(localId);
-      seq.varInsn(Opcodes.ASTORE, slot);
+      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, slot));
     }
     target.emit(seq, ctx, rootCode);
-    seq.insn(Opcodes.ARETURN);
-    seq.renderMethod(mv, TList.of());
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
+    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
     cw.visitEnd();
     var bytecode = cw.toByteArray();
 

@@ -13,25 +13,30 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.AspectNull;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.gen.AspectTuple;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import compilerxyz.eval.ExprErr;
-import compilerxyz.eval.ExprSubErr;
-import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.value.ValueDynamic;
 
-public record TypeFunctionDynamic(Type arg, Type ret)
+public record TypeFunctionDynamic(
+    Type arg,
+    Type ret,
+    JavaInternalName klass,
+    String methodName,
+    JavaMethodDescriptor descriptor,
+    boolean needsExprContext)
     implements
         Type,
         AspectBind,
@@ -39,6 +44,56 @@ public record TypeFunctionDynamic(Type arg, Type ret)
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
+      JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));
+  private static final JavaDataDescriptor DESC_OBJECT =
+      JavaDataDescriptor.fromClass(Object.class);
+  private static final JavaMethodDescriptor DESC_CTX_OBJ_TO_OBJ =
+      JavaMethodDescriptor.fromParts(DESC_OBJECT, TList.of(DESC_EXPR_CONTEXT, DESC_OBJECT));
+
+  /**
+   * Convenience factory for builtin function types whose Java implementation is a static method
+   * {@code Object <klassName>.<methodName>(ExprContext, Object)}.
+   */
+  public static TypeFunctionDynamic builtinWithCtx(
+      String klassName, String methodName, Type argType, Type retType) {
+    return new TypeFunctionDynamic(
+        argType, retType, JavaInternalName.of(klassName), methodName, DESC_CTX_OBJ_TO_OBJ, true);
+  }
+
+  /**
+   * Low-level: emit the INVOKESTATIC (with an optional preceding GETSTATIC for {@code
+   * __exprContext}) using pre-built {@link CodeDynamic} args. Bypasses source-level typecheck and
+   * dynamic-lowering because the internal callers (e.g. invisible-builtin dispatch) already have
+   * their args in {@code CodeDynamic} form.
+   */
+  public CodeDynamic emitInvocation(
+      QExprId loc, compilerxyz.eval.EvalContext vx, compilerxyz.util.TList<CodeDynamic> args) {
+    var seq = new JavaBytecodeSequence();
+    if (needsExprContext) {
+      seq.add(
+          JavaBytecodeUtils.accessStaticField(
+              loc,
+              JavaInternalName.of(vx.evalRootInternalName),
+              compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
+              DESC_EXPR_CONTEXT));
+    }
+    var argTypes = org.objectweb.asm.Type.getArgumentTypes(descriptor.value);
+    int paramOffset = needsExprContext ? 1 : 0;
+    for (int i = 0; i < args.size(); i++) {
+      seq.add(args.get(i));
+      var t = argTypes[paramOffset + i];
+      if (t.getSort() == org.objectweb.asm.Type.OBJECT
+          && !t.getInternalName().equals("java/lang/Object")) {
+        seq.add(
+            JavaBytecodeUtils.cast(
+                loc, JavaDataDescriptor.fromInternalName(JavaInternalName.of(t.getInternalName()))));
+      }
+    }
+    seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, descriptor));
+    return new CodeDynamic(loc, seq);
+  }
 
   @Override
   public String typeDesc() {
@@ -63,179 +118,19 @@ public record TypeFunctionDynamic(Type arg, Type ret)
 
   @Override
   public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (!(self.value() instanceof Opt.Some<Value> selfSome)) {
-      return EResult.err(loc, "TypeFunctionDynamic::call: function has no compile-time value");
-    }
-    var funcType = selfSome.value().valueTypeOf();
-    var funcConsumeRes = AspectConsumeDynamic.get(xx, loc, funcType);
-    if (funcConsumeRes.hasErrors()) {
-      return funcConsumeRes.reerr();
-    }
-    var funcCodeRes = funcConsumeRes.valueOrNull().toDynamic(xx, loc, self);
-    if (funcCodeRes.hasErrors()) {
-      return funcCodeRes.reerr();
-    }
-    var funcCode = funcCodeRes.valueOrNull();
-    Opt<ValueDynamic.Source.MethodField> receiver = Opt.none();
-    if (!(selfSome.value() instanceof ValueDynamic vd)) {
-      throw new AssertionError(
-          "TypeFunctionDynamic::call: function value is not ValueDynamic: " + selfSome.value());
-    }
-    if (vd.source() instanceof ValueDynamic.Source.MethodField mf) {
-      receiver = Opt.some(mf);
-    }
-    return dynamicCall(xx, loc, funcCode, arg, ret, argument, receiver);
-  }
-
-  public static EResult<CodeValue> dynamicCall(
-      ExprContext xx,
-      QExprId loc,
-      CodeDynamic funcCode,
-      Type argType,
-      Type retType,
-      CodeValue argument) {
-    return dynamicCall(xx, loc, funcCode, argType, retType, argument, Opt.none());
-  }
-
-  public static EResult<CodeValue> dynamicCall(
-      ExprContext xx,
-      QExprId loc,
-      CodeDynamic funcCode,
-      Type argType,
-      Type retType,
-      CodeValue argument,
-      Opt<ValueDynamic.Source.MethodField> receiver) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
-      return EResult.err(loc, "dynamic_call: argument has no compile-time value");
-    }
-    var argValueType = argSome.value().valueTypeOf();
-    var retStackRes = AspectStackValueDynamic.get(xx, loc, retType);
-    if (retStackRes.hasErrors()) {
-      return retStackRes.reerr();
-    }
-    var retStack = retStackRes.valueOrNull();
-    var argTupleOpt = AspectTuple.getMaybe(xx, argValueType);
-    if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome) {
-      var argTuple = argTupleSome.value();
-      var argTypeTupleOpt = AspectTuple.getMaybe(xx, argType);
-      TList<Type> paramTypes;
-      if (argTypeTupleOpt instanceof Opt.Some<AspectTuple> paramTupleSome) {
-        paramTypes = paramTupleSome.value().elementTypes();
-      } else {
-        paramTypes = TList.of(argType);
-      }
-      var elements = argTuple.takeElements(argSome.value());
-      if (elements.isEmpty()
-          && paramTypes.size() == 1
-          && AspectNull.getMaybe(xx, paramTypes.get(0)).optIsSome()) {
-        paramTypes = new TList<>();
-      }
-      if (elements.size() != paramTypes.size()) {
-        if (elements.isEmpty()
-            && paramTypes.size() == 1
-            && !(argTypeTupleOpt instanceof Opt.Some<AspectTuple>)) {
-          var unitCv =
-              new CodeValue(Code.none(loc), Opt.some(new Tuple(new TList<>())));
-          var argConsumeRes = AspectConsumeDynamic.get(xx, loc, argType);
-          if (argConsumeRes.hasErrors()) {
-            return argConsumeRes.reerr();
-          }
-          var convertedRes = Eval.typecheckConvert(xx, loc, argType, unitCv);
-          if (convertedRes.hasErrors()) {
-            return convertedRes.reerr();
-          }
-          var argDynRes =
-              argConsumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
-          if (argDynRes.hasErrors()) {
-            return argDynRes.reerr();
-          }
-          var argsOne = new TList<CodeDynamic>();
-          argsOne.add(argDynRes.valueOrNull());
-          var callOne = buildCallVariant(xx, loc, funcCode, argsOne, receiver);
-          return EResult.ok(retStack.toValue(loc, callOne));
-        }
-        return EResult.err(
-            loc,
-            "Function expects " + paramTypes.size() + " arguments, got " + elements.size());
-      }
-      var errors = new TList<ExprErr>();
-      var dynamicArgs = new TList<CodeDynamic>();
-      for (int i = 0; i < elements.size(); i++) {
-        var elem = elements.get(i);
-        var paramType = paramTypes.get(i);
-        elem.drainInto(errors);
-        var cv = elem.valueOrNull();
-        if (cv == null) {
-          errors.add(
-              new ExprErr(
-                  loc,
-                  TList.of(
-                      new ExprSubErr.Opaque(
-                          "Tuple element failed to evaluate"))));
-          return EResult.errs(errors);
-        }
-        var convertedRes = Eval.typecheckConvert(xx, loc, paramType, cv);
-        if (convertedRes.hasErrors()) {
-          convertedRes.drainInto(errors);
-          if (convertedRes.valueOrNull() == null) {
-            return EResult.errs(errors);
-          }
-        }
-        var elemConsumeRes = AspectConsumeDynamic.get(xx, loc, paramType);
-        if (elemConsumeRes.hasErrors()) {
-          elemConsumeRes.drainInto(errors);
-          if (elemConsumeRes.valueOrNull() == null) {
-            return EResult.errs(errors);
-          }
-        }
-        var dynRes =
-            elemConsumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
-        if (dynRes.hasErrors()) {
-          dynRes.drainInto(errors);
-          if (dynRes.valueOrNull() == null) {
-            return EResult.errs(errors);
-          }
-        }
-        dynamicArgs.add(dynRes.valueOrNull());
-      }
-      var call = buildCallVariant(xx, loc, funcCode, dynamicArgs, receiver);
-      if (!errors.isEmpty()) {
-        return EResult.mixed(retStack.toValue(loc, call), errors);
-      }
-      return EResult.ok(retStack.toValue(loc, call));
-    }
-    var argConsumeRes = AspectConsumeDynamic.get(xx, loc, argType);
-    if (argConsumeRes.hasErrors()) {
-      return argConsumeRes.reerr();
-    }
-    var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
-    if (convertedRes.hasErrors()) {
-      return convertedRes.reerr();
-    }
+    var argConsumeRes = AspectConsumeDynamic.get(xx, loc, arg);
+    if (argConsumeRes.hasErrors()) return argConsumeRes.reerr();
+    var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
+    if (convertedRes.hasErrors()) return convertedRes.reerr();
     var argDynRes = argConsumeRes.valueOrNull().toDynamic(xx, loc, convertedRes.valueOrNull());
-    if (argDynRes.hasErrors()) {
-      return argDynRes.reerr();
-    }
-    var args = new TList<CodeDynamic>();
-    args.add(argDynRes.valueOrNull());
-    var call = buildCallVariant(xx, loc, funcCode, args, receiver);
-    return EResult.ok(retStack.toValue(loc, call));
-  }
+    if (argDynRes.hasErrors()) return argDynRes.reerr();
+    var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
+    if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-  private static CodeDynamic buildCallVariant(
-      ExprContext xx,
-      QExprId loc,
-      CodeDynamic funcCode,
-      TList<CodeDynamic> args,
-      Opt<ValueDynamic.Source.MethodField> receiver) {
-    if (receiver instanceof Opt.Some<ValueDynamic.Source.MethodField> some) {
-      var mf = some.value();
-      return new CodeDynamic(
-          loc,
-          DynUtil.buildCallContextualMethodSequence(
-              DynUtil.renderSource(loc, mf.base()), mf.key(), args));
-    }
-    return new CodeDynamic(loc, DynUtil.buildCallSequence(xx, funcCode, args));
+    var argList = new compilerxyz.util.TList<CodeDynamic>();
+    argList.add(argDynRes.valueOrNull());
+    return EResult.ok(
+        retStackRes.valueOrNull().toValue(loc, emitInvocation(loc, xx.vx, argList)));
   }
 
   @Override

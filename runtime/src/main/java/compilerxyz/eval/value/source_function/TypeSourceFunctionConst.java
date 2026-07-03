@@ -331,8 +331,21 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       return EResult.err(
           loc, "TypeSourceFunctionConst::call: definition set function missing return type");
     }
-    var funcCode = new CodeDynamic(loc, new JavaBytecode.BindingUse(scopeId));
-    return TypeFunctionDynamic.dynamicCall(xx, loc, funcCode, argType, retType, argument);
+    if (!(scopeId instanceof BindingId.Def def)) {
+      return EResult.err(
+          loc, "TypeSourceFunctionConst::call: bindingId is not a Def");
+    }
+    var klass =
+        compilerxyz.eval.dynamic.JavaInternalName.of(
+            compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(def.defSet()));
+    var methodName =
+        compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionMethodName(def.index());
+    var descriptor =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+            TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+    var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, descriptor, false);
+    return fnType.call(xx, loc, function, argument);
   }
 
   @Override

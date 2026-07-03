@@ -44,13 +44,6 @@ public sealed interface External {
     }
   }
 
-  record FunctionExternal(ContextualFunction function) implements External {
-    @Override
-    public Object externalHostValue() {
-      return function;
-    }
-  }
-
   record SourceInterfaceRefExternal(SourceInterfaceRef ref) implements External {
     @Override
     public Object externalHostValue() {

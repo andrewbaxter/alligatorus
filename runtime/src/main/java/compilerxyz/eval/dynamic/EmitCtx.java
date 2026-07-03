@@ -9,19 +9,16 @@ public final class EmitCtx {
 
   public final String ownerInternalName;
 
-  public final int xxSlot;
-
   public final TMap<BindingId, Integer> slots = new TMap<>();
 
   public final String fieldPrefix;
 
-  public EmitCtx(String ownerInternalName, int xxSlot, int nextSlot) {
-    this(ownerInternalName, xxSlot, nextSlot, "");
+  public EmitCtx(String ownerInternalName, int nextSlot) {
+    this(ownerInternalName, nextSlot, "");
   }
 
-  public EmitCtx(String ownerInternalName, int xxSlot, int nextSlot, String fieldPrefix) {
+  public EmitCtx(String ownerInternalName, int nextSlot, String fieldPrefix) {
     this.ownerInternalName = ownerInternalName;
-    this.xxSlot = xxSlot;
     this.nextSlot = nextSlot;
     this.fieldPrefix = fieldPrefix;
   }

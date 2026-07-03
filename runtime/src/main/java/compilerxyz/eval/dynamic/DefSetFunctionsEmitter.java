@@ -14,13 +14,9 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
 public final class DefSetFunctionsEmitter {
-  private static final JavaInternalName INTNAME_EXPR_CONTEXT =
-      JavaInternalName.of("compilerxyz/eval/ExprContext");
   private static final JavaMethodDescriptor MDESC_FUNCTION_METHOD =
       JavaMethodDescriptor.fromParts(
-          JvmConstants.DESC_OBJECT,
-          JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT),
-          JvmConstants.DESC_OBJECT);
+          JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of(JvmConstants.DESC_OBJECT));
 
   private DefSetFunctionsEmitter() {}
 
@@ -145,13 +141,14 @@ public final class DefSetFunctionsEmitter {
             null);
     var target = new TargetDynamic(new Counter());
     target.registerStaticFunctionDefs(staticFunctionDefs);
-    var ctx = new EmitCtx(internalName, 0, 2, prefix);
+    var ctx = new EmitCtx(internalName, 1, prefix);
+    var loc = compilerxyz.eval.QExprId.NONE;
 
     var seq = JavaBytecodeUtils.seq();
 
     var argSlot = ctx.allocSlot(spec.argId());
-    seq.varInsn(Opcodes.ALOAD, 1);
-    seq.varInsn(Opcodes.ASTORE, argSlot);
+    seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
+    seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, argSlot));
 
     var ownerInternal = JavaInternalName.of(internalName);
     for (var entry : spec.externals()) {
@@ -160,13 +157,15 @@ public final class DefSetFunctionsEmitter {
             "External captured under non-Local BindingId: " + entry.id());
       }
       var fieldName = prefix + ImportInstall.bindingIdDynamicKey(localId);
-      seq.getStatic(ownerInternal, fieldName, JvmConstants.DESC_OBJECT);
+      seq.add(
+          JavaBytecodeUtils.accessStaticField(
+              loc, ownerInternal, fieldName, JvmConstants.DESC_OBJECT));
       var slot = ctx.allocSlot(localId);
-      seq.varInsn(Opcodes.ASTORE, slot);
+      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, slot));
     }
 
     target.emit(seq, ctx, spec.bodyCode());
-    seq.insn(Opcodes.ARETURN);
-    seq.renderMethod(mv, TList.of());
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
+    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 }

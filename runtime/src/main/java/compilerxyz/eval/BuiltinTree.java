@@ -15,11 +15,9 @@ public sealed interface BuiltinTree {
     record AspectId(BindingId dynamicKey, Unique unique, External dynamicValue)
         implements BuiltinLeaf {}
 
-    record Constructor(BindingId dynamicKey, Type type, External dynamicValue)
-        implements BuiltinLeaf {}
+    record Constructor(BindingId dynamicKey, Type type) implements BuiltinLeaf {}
 
-    record Function(BindingId dynamicKey, Type type, External dynamicValue)
-        implements BuiltinLeaf {}
+    record Function(BindingId dynamicKey, Type type) implements BuiltinLeaf {}
 
     record InitialBind(BindingId dynamicKey, Type type) implements BuiltinLeaf {}
 

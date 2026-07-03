@@ -161,6 +161,28 @@ public class JavaBytecodeUtils {
     return new CodeDynamic(loc, new JavaBytecodeInstructionInt(opcode));
   }
 
+  public static CodeDynamic varInsn(QExprId loc, int opcode, int index) {
+    return new CodeDynamic(
+        loc, new JavaBytecodeInstructionObj(new org.objectweb.asm.tree.VarInsnNode(opcode, index)));
+  }
+
+  public static CodeDynamic invokeSpecial(
+      QExprId loc, JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new MethodInsnNode(INVOKESPECIAL, klass.value, method, desc.value, false)));
+  }
+
+  public static void renderMethod(
+      JavaBytecodeSequence seq,
+      org.objectweb.asm.MethodVisitor mv,
+      compilerxyz.util.TList<JavaBytecodeBindingKey> initialIndexes) {
+    seq.render(mv, initialIndexes);
+    mv.visitMaxs(0, 0);
+    mv.visitEnd();
+  }
+
   public static CodeDynamic literalLong(QExprId loc, long value) {
     return new CodeDynamic(loc, new JavaBytecodeInstructionObj(new LdcInsnNode(value)));
   }

@@ -13,6 +13,8 @@ public final class EvalContext {
 
   public final TList<LogEntry> logs = new TList<>();
 
+  public String evalRootInternalName;
+
   public EvalContext(CompileImportContext ix) {
     this.ix = ix;
   }

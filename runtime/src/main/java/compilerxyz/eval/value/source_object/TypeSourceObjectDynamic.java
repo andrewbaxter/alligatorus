@@ -25,7 +25,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
@@ -39,7 +38,6 @@ import compilerxyz.eval.value.code.TypeCodeDynHandleDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.gen.GenIdentities;
-import compilerxyz.gen.GenInvisibleBuiltins;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -172,14 +170,25 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     if (data.set != null) {
       xx.vx.definitionSets.putIfAbsent(data.set.defSetId, data.set);
     }
-    var methodFieldKey = new ConstKey.Str(fieldName).toCanonical();
-    var childSource = new ValueDynamic.Source.MethodField(selfVd.source(), methodFieldKey);
-    var methodAccess = DynUtil.renderSource(loc, childSource);
-    var fieldType = new TypeFunctionDynamic(argType, retType);
+    var descObjObj =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+            TList.of(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+    var fieldType =
+        new compilerxyz.eval.value.function.TypeMethodDynamic(
+            this,
+            argType,
+            retType,
+            compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_object_class"),
+            fieldName,
+            descObjObj,
+            false);
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, methodAccess),
-            Opt.some(new ValueDynamic(childSource, fieldType))));
+            self.code(),
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), fieldType))));
   }
 
   @Override
@@ -298,32 +307,37 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         }
         return EResult.ok(
             emitBuiltinCast(
-                xx, loc, sourceCode, GenInvisibleBuiltins.DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID,
+                xx,
+                loc,
+                sourceCode,
+                compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_TYPE_TYPE,
                 new TypeAnyDynamic()));
       }
     }
     for (var impl : data.interfaceImpls) {
       if (destType.typeAspect(xx, impl.interface_.identity).optIsSome()) {
         var builtinKind = impl.interface_.builtinKind;
-        BindingId runtimeFn = null;
+        compilerxyz.eval.value.function.TypeFunctionDynamic runtimeFn = null;
         Type resultType = null;
         if (builtinKind != null) {
           switch (builtinKind) {
             case TYPE -> {
-              runtimeFn = GenInvisibleBuiltins.DATA_INSTANCE_TO_TYPE_FN_SCOPE_ID;
+              runtimeFn = compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_TYPE_TYPE;
               resultType = new TypeAnyDynamic();
             }
             case TARGET -> {
-              runtimeFn = GenInvisibleBuiltins.DATA_INSTANCE_TO_TARGET_FN_SCOPE_ID;
+              runtimeFn = compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_TARGET_TYPE;
               resultType = new TypeAnyTargetDynamic();
             }
             case BINDING -> {
-              runtimeFn = GenInvisibleBuiltins.DATA_INSTANCE_TO_BINDING_FN_SCOPE_ID;
+              runtimeFn = compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_BINDING_TYPE;
               resultType = new TypeAnyBindingDynamic();
             }
             case CODE_DYN -> {
-              runtimeFn = GenInvisibleBuiltins.DATA_INSTANCE_TO_CODE_FN_SCOPE_ID;
-              resultType = new TypeCodeDynHandleDynamic();
+              return EResult.err(
+                  loc,
+                  "TypeSourceObjectDynamic::typeCastTo: BuiltinInterfaceKind.CODE_DYN's "
+                      + "invisible builtin data_instance_to_code is not yet ported");
             }
             case VALUE -> {
               return EResult.err(
@@ -362,11 +376,9 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
       }
       var args = new TList<CodeDynamic>();
       args.add(sourceCode);
-      var funcRef =
-          new CodeDynamic(loc, new JavaBytecode.BindingUse(
-                  GenInvisibleBuiltins.DATA_INSTANCE_TO_ASPECT_FN_SCOPE_ID));
       var call =
-          new CodeDynamic(loc, DynUtil.buildCallSequence(xx, funcRef, args));
+          compilerxyz.eval.dynamic.DynRuntime.DATA_INSTANCE_TO_ASPECT_TYPE.emitInvocation(
+              loc, xx.vx, args);
       return EResult.ok(
           new CodeValue(
               Code.of(loc, call),
@@ -381,7 +393,11 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
   }
 
   private CodeValue emitBuiltinCast(
-      ExprContext xx, QExprId loc, CodeDynamic sourceCode, BindingId runtimeFn, Type resultType) {
+      ExprContext xx,
+      QExprId loc,
+      CodeDynamic sourceCode,
+      compilerxyz.eval.value.function.TypeFunctionDynamic runtimeFn,
+      Type resultType) {
     Type template = new TypeSourceObjectConst(data);
     var templateId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(new EvalContext.ExternalEntry(templateId, new External.TypeExternal(template)));
@@ -389,9 +405,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     var args = new TList<CodeDynamic>();
     args.add(templateCode);
     args.add(sourceCode);
-    var funcRef = new CodeDynamic(loc, new JavaBytecode.BindingUse(runtimeFn));
-    var call =
-        new CodeDynamic(loc, DynUtil.buildCallSequence(xx, funcRef, args));
+    var call = runtimeFn.emitInvocation(loc, xx.vx, args);
     return new CodeValue(
         Code.of(loc, call),
         Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), resultType)));

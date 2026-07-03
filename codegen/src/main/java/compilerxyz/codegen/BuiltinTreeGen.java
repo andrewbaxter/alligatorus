@@ -319,28 +319,31 @@ public final class BuiltinTreeGen {
 
               "$L",
               interfaceLeafExpr(ifc.spec()));
-      case LeafSpec.Function fn ->
-          CodeBlock.of(
-              "new $T(new $T($LL), ($T) new $T($L, $L), new $T($T::invoke))",
-              BUILTIN_LEAF_FUNCTION,
-              BINDING_ID_BUILTIN,
-              fn.builtinScopeId(),
-              TYPE,
-              ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic"),
-              argDynamicTypeExpr(fn.args()),
-              fn.retDynamicType(),
-              EXTERNAL_FUNCTION,
-              ClassName.get(GEN_PACKAGE, builtinHelperName(fn.builtinScopeId())));
-      case LeafSpec.Constructor c ->
-          CodeBlock.of(
-              "new $T(new $T($LL), ($T) $L, new $T($T::invoke))",
-              BUILTIN_LEAF_CONSTRUCTOR,
-              BINDING_ID_BUILTIN,
-              c.builtinScopeId(),
-              TYPE,
-              c.typeExpr(),
-              EXTERNAL_FUNCTION,
-              ClassName.get(GEN_PACKAGE, builtinHelperName(c.builtinScopeId())));
+      case LeafSpec.Function fn -> {
+        var helperClass = ClassName.get(GEN_PACKAGE, builtinHelperName(fn.builtinScopeId()));
+        var helperInternalName =
+            (GEN_PACKAGE + "." + builtinHelperName(fn.builtinScopeId())).replace('.', '/');
+        yield CodeBlock.of(
+            "new $T(new $T($LL), ($T) $T.builtinWithCtx($S, $S, $L, $L))",
+            BUILTIN_LEAF_FUNCTION,
+            BINDING_ID_BUILTIN,
+            fn.builtinScopeId(),
+            TYPE,
+            ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic"),
+            helperInternalName,
+            "invoke",
+            argDynamicTypeExpr(fn.args()),
+            fn.retDynamicType());
+      }
+      case LeafSpec.Constructor c -> {
+        yield CodeBlock.of(
+            "new $T(new $T($LL), ($T) $L)",
+            BUILTIN_LEAF_CONSTRUCTOR,
+            BINDING_ID_BUILTIN,
+            c.builtinScopeId(),
+            TYPE,
+            c.typeExpr());
+      }
     };
   }
 

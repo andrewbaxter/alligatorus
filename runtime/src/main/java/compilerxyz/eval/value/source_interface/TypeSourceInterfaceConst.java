@@ -32,7 +32,6 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
@@ -140,19 +139,25 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
       return EResult.err(
           loc, "Interface method '" + keyName + "' is missing arg or return type");
     }
-    if (!(self.value() instanceof Opt.Some<Value> selfSome)
-        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
-      return EResult.err(
-          loc, "TypeSourceInterfaceConst::field: receiver is not a ValueDynamic");
-    }
-    var fieldKey = new ConstKey.Str(match.fieldName).toCanonical();
-    var childSource = new ValueDynamic.Source.MethodField(selfVd.source(), fieldKey);
-    var fieldDyn = DynUtil.renderSource(loc, childSource);
-    var fieldType = new TypeFunctionDynamic(argType, retType);
+    var descObjObj =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+            TList.of(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+    var fieldType =
+        new compilerxyz.eval.value.function.TypeMethodDynamic(
+            new compilerxyz.eval.value.any.TypeAnyDynamic(),
+            argType,
+            retType,
+            compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_interface_class"),
+            match.fieldName,
+            descObjObj,
+            false);
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, fieldDyn),
-            Opt.some(new ValueDynamic(childSource, fieldType))));
+            self.code(),
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), fieldType))));
   }
 
   @Override
@@ -168,7 +173,21 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
         var argType = m.argType;
         var retType = m.retType;
         if (argType != null && retType != null) {
-          return Opt.some(new TypeFunctionDynamic(argType, retType));
+          var descObjObj =
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+                  TList.of(
+                      compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
+                      compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+          return Opt.some(
+              new compilerxyz.eval.value.function.TypeMethodDynamic(
+                  new compilerxyz.eval.value.any.TypeAnyDynamic(),
+                  argType,
+                  retType,
+                  compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_interface_class"),
+                  m.fieldName,
+                  descObjObj,
+                  false));
         }
         return Opt.none();
       }

@@ -41,7 +41,6 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
@@ -68,14 +67,35 @@ public record TypeStringDynamic()
         AspectStringDynamic,
         ExporterAny {
 
+  private static final compilerxyz.eval.dynamic.JavaInternalName DYN_RUNTIME =
+      compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.dynamic.DynRuntime.class);
+  private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_STR_TO_STR =
+      compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+          compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
+          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class)));
+
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
           new Pair<>(
               new ConstKey.Str("toLowerCase"),
-              new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic())),
+              new compilerxyz.eval.value.function.TypeMethodDynamic(
+                  new TypeStringDynamic(),
+                  new TypeNullDynamic(),
+                  new TypeStringDynamic(),
+                  DYN_RUNTIME,
+                  "stringToLowerCase",
+                  DESC_STR_TO_STR,
+                  false)),
           new Pair<>(
               new ConstKey.Str("toUpperCase"),
-              new TypeFunctionDynamic(new TypeNullDynamic(), new TypeStringDynamic())));
+              new compilerxyz.eval.value.function.TypeMethodDynamic(
+                  new TypeStringDynamic(),
+                  new TypeNullDynamic(),
+                  new TypeStringDynamic(),
+                  DYN_RUNTIME,
+                  "stringToUpperCase",
+                  DESC_STR_TO_STR,
+                  false)));
 
   @Override
   public String typeDesc() {
@@ -174,17 +194,10 @@ public record TypeStringDynamic()
     if (!(fieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic string");
     }
-    if (!(self_.value() instanceof Opt.Some<Value> selfSome)
-        || !(selfSome.value() instanceof ValueDynamic selfVd)) {
-      return EResult.err(loc, "TypeStringDynamic::field: receiver is not a ValueDynamic");
-    }
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            Opt.some(
-                new ValueDynamic(
-                    new ValueDynamic.Source.MethodField(selfVd.source(), ck.toCanonical()),
-                    fieldTypeSome.value()))));
+            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), fieldTypeSome.value()))));
   }
 
   @Override
