@@ -868,7 +868,7 @@ public final class SourceObjectEmitter {
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
           false),
       new InlineHelperSpec(
-          "liftRuntime",
+          "lift",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, JvmConstants.DESC_OBJECT),
           "sourceObjectLiftRuntime",

@@ -86,20 +86,13 @@ public record TypeSourceUnionNewDynamic()
     return DynUtil.dynamicStackToValue(loc, value, this);
   }
 
-  @Override
-  public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.err(
-        loc,
-        "TypeSourceUnionNewDynamic::lift(CodeValue): staging-side lift wrapper not yet ported");
-  }
-
-  @Override
-  public EResult<Value> liftRuntime(
+  @Override  @Override
+  public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof SourceUnionNewRef ref)) {
       return EResult.err(
           loc,
-          "TypeSourceUnionNewDynamic::liftRuntime: expected SourceUnionNewRef, got "
+          "TypeSourceUnionNewDynamic::lift: expected SourceUnionNewRef, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
     return EResult.ok(new ValueAnyConst(new TypeSourceUnionNewConst(ref.data(), ref.variantIndex())));

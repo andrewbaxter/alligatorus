@@ -31,21 +31,13 @@ public final class DefinitionSetExtraAspect {
 
     private TypeDefinitionSetLiftDynamic() {}
 
-    @Override
-    public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-      return EResult.err(
-          loc,
-          "TypeDefinitionSetLiftDynamic::lift(CodeValue): staging-side const-lift wrapper not"
-              + " used on the JVM target (host runtime value path uses liftRuntime)");
-    }
-
-    @Override
-    public EResult<Value> liftRuntime(
+    @Override    @Override
+    public EResult<Value> lift(
         ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
       if (!(externalHostValue instanceof DefinitionSetBuilder dsb)) {
         return EResult.err(
             loc,
-            "TypeDefinitionSetLiftDynamic::liftRuntime: expected DefinitionSetBuilder, got "
+            "TypeDefinitionSetLiftDynamic::lift: expected DefinitionSetBuilder, got "
                 + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
       }
       DefinitionSet ds = dsb.inner;

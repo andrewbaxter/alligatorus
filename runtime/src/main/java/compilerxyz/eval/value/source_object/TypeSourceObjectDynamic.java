@@ -206,26 +206,19 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     return new BindingDynamicBinding(dynamicKey, new TypeSourceObjectDynamic(data));
   }
 
-  @Override
-  public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.err(
-        loc,
-        "TypeSourceObjectDynamic::lift(CodeValue): staging-side lift wrapper not yet ported");
-  }
-
-  @Override
-  public EResult<Value> liftRuntime(
+  @Override  @Override
+  public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     var underlyingType = data.underlyingType;
     if (underlyingType == null) {
       return EResult.err(
-          loc, "TypeSourceObjectDynamic::liftRuntime: object underlying type not finalised");
+          loc, "TypeSourceObjectDynamic::lift: object underlying type not finalised");
     }
     var underlyingLiftOpt = AspectLift.getMaybe(xx, underlyingType);
     if (underlyingLiftOpt.optIsNone()) {
       return EResult.err(
           loc,
-          "TypeSourceObjectDynamic::liftRuntime: underlying type ("
+          "TypeSourceObjectDynamic::lift: underlying type ("
               + underlyingType.typeDesc()
               + ") missing AspectLift");
     }
@@ -238,7 +231,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         underlyingHost = field.get(externalHostValue);
       } catch (NoSuchFieldException | IllegalAccessException e) {
         throw new AssertionError(
-            "TypeSourceObjectDynamic::liftRuntime: source-object instance "
+            "TypeSourceObjectDynamic::lift: source-object instance "
                 + externalHostValue.getClass().getName()
                 + " missing "
                 + SourceObjectEmitter.DATA_INSTANCE_FIELD
@@ -248,10 +241,10 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     } else {
       return EResult.err(
           loc,
-          "TypeSourceObjectDynamic::liftRuntime: expected SourceObjectInstance, got "
+          "TypeSourceObjectDynamic::lift: expected SourceObjectInstance, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    return underlyingLift.liftRuntime(xx, loc, underlyingHost)
+    return underlyingLift.lift(xx, loc, underlyingHost)
         .map(
             underlying ->
                 new ValueSourceObjectConst(

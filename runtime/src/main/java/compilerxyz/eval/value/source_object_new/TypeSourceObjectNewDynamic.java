@@ -64,20 +64,13 @@ public record TypeSourceObjectNewDynamic()
     return new BindingDynamicBinding(dynamicKey, this);
   }
 
-  @Override
-  public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.err(
-        loc,
-        "TypeSourceObjectNewDynamic::lift(CodeValue): staging-side lift wrapper not yet ported");
-  }
-
-  @Override
-  public EResult<Value> liftRuntime(
+  @Override  @Override
+  public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof TypeSourceObjectNewConst ctorType)) {
       return EResult.err(
           loc,
-          "TypeSourceObjectNewDynamic::liftRuntime: expected TypeSourceObjectNewConst, got "
+          "TypeSourceObjectNewDynamic::lift: expected TypeSourceObjectNewConst, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
     return EResult.ok(new ValueAnyConst(ctorType));

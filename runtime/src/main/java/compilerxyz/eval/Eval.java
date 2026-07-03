@@ -549,14 +549,14 @@ public final class Eval {
       if (liftAspect == null) {
         throw new IllegalStateException("AspectLift.get returned neither value nor errors");
       }
-      var liftedRes = liftAspect.liftRuntime(xx, rootLoc, rawResult);
+      var liftedRes = liftAspect.lift(xx, rootLoc, rawResult);
       if (liftedRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(liftedRes.errorsOrNull());
       }
       var lifted = liftedRes.valueOrNull();
       if (lifted == null) {
         throw new IllegalStateException(
-            "AspectLift.liftRuntime returned neither value nor errors");
+            "AspectLift.lift returned neither value nor errors");
       }
       finalValue = lifted;
     }

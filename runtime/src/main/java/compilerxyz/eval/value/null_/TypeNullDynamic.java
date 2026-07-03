@@ -109,15 +109,8 @@ public record TypeNullDynamic()
     return DynUtil.dynamicStackToValue(loc, value, this);
   }
 
-  @Override
-  public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.err(
-        loc,
-        "TypeNullDynamic::lift(CodeValue): staging-side lift wrapper not yet ported");
-  }
-
-  @Override
-  public EResult<Value> liftRuntime(
+  @Override  @Override
+  public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     return EResult.ok(new ValueNullConst());
   }

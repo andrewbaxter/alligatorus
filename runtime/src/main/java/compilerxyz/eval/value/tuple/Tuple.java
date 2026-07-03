@@ -469,14 +469,8 @@ public record Tuple(TList<TupleElement> elements)
       this.elementTypes = elementTypes;
     }
 
-    @Override
-    public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-      return EResult.err(
-          loc, "Tuple TupleLift::lift(CodeValue): staging-side lift wrapper not yet ported");
-    }
-
-    @Override
-    public EResult<Value> liftRuntime(
+    @Override    @Override
+    public EResult<Value> lift(
         ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
 
       if (externalHostValue == null && elementLifts.isEmpty()) {
@@ -486,7 +480,7 @@ public record Tuple(TList<TupleElement> elements)
       if (externalHostValue == null || externalHostValue.getClass() != expectedClass) {
         return EResult.err(
             loc,
-            "Tuple TupleLift::liftRuntime: expected "
+            "Tuple TupleLift::lift: expected "
                 + expectedClass.getName()
                 + ", got "
                 + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
@@ -499,7 +493,7 @@ public record Tuple(TList<TupleElement> elements)
             fields[i] = expectedClass.getField(TupleClassEmitter.slotFieldName(i));
           } catch (NoSuchFieldException e) {
             throw new AssertionError(
-                "Tuple TupleLift::liftRuntime: generated class missing slot field _" + i, e);
+                "Tuple TupleLift::lift: generated class missing slot field _" + i, e);
           }
         }
         cachedFields = fields;
@@ -513,9 +507,9 @@ public record Tuple(TList<TupleElement> elements)
           slotValue = fields[i].get(externalHostValue);
         } catch (IllegalAccessException e) {
           throw new AssertionError(
-              "Tuple TupleLift::liftRuntime: cannot read slot field _" + i, e);
+              "Tuple TupleLift::lift: cannot read slot field _" + i, e);
         }
-        var lifted = elemLift.liftRuntime(xx, loc, slotValue);
+        var lifted = elemLift.lift(xx, loc, slotValue);
         if (lifted.hasErrors()) {
           if (errors == null) errors = new TList<>();
           lifted.drainInto(errors);
@@ -524,7 +518,7 @@ public record Tuple(TList<TupleElement> elements)
         var liftedValue = lifted.valueOrNull();
         if (liftedValue == null) {
           throw new IllegalStateException(
-              "Tuple TupleLift::liftRuntime: element lift returned neither value nor errors");
+              "Tuple TupleLift::lift: element lift returned neither value nor errors");
         }
         out.add(
             new TupleElement.EvalRes(

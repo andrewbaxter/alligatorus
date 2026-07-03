@@ -37,27 +37,20 @@ public record TypeExprStagedPlaceholder()
     return Opt.none();
   }
 
-  @Override
-  public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.err(
-        loc,
-        "TypeExprStagedPlaceholder::lift(CodeValue): staging-side lift wrapper not yet ported");
-  }
-
-  @Override
-  public EResult<Value> liftRuntime(
+  @Override  @Override
+  public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof StagedExprCell cell)) {
       return EResult.err(
           loc,
-          "TypeExprStagedPlaceholder::liftRuntime: expected StagedExprCell, got "
+          "TypeExprStagedPlaceholder::lift: expected StagedExprCell, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
     var inner = cell.take();
     if (!(inner instanceof Value value)) {
       return EResult.err(
           loc,
-          "TypeExprStagedPlaceholder::liftRuntime: StagedExprCell contained non-Value: "
+          "TypeExprStagedPlaceholder::lift: StagedExprCell contained non-Value: "
               + inner.getClass().getName());
     }
     return EResult.ok(value);

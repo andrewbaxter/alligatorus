@@ -481,33 +481,16 @@ final class AspectsGen {
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
                     ParameterizedTypeName.get(ERESULT, CODE_VALUE)))),
         new AspectSpec(
-            "Called to turn a dynamic value back into a const after dynamic evaluation finishes."
-                + " This is also used to increase the type specificity at the border: e.g. a"
-                + " definition set function result (generic) has its type replaced with"
-                + " {@code TypeSourceFunction} with specific signature and becomes callable. The"
-                + " Rust method takes {@code &v8::PinScope}/{@code v8::Local<v8::Value>}; the JVM"
-                + " target has no v8 binding, so the JVM version splits the Rust {@code lift}"
-                + " into a staging-side {@code lift(CodeValue)} and a host-runtime"
-                + " {@code liftRuntime(Object)} that receives the JVM host object produced by"
-                + " emitted bytecode.",
+            "Called to turn a dynamic host-runtime value back into a typed {@link Value}. Mirrors"
+                + " Rust's {@code AspectLift::lift(&self, &ExprContext, &v8::PinScope,"
+                + " v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String>}, with the v8"
+                + " scope/value pair replaced by the boxed Java object the bytecode produced.",
             "Lift",
             1026,
             TList.of(
                 new AspectMethod(
-                    "Staging-side lift: wrap a const-shaped {@link CodeValue} through this"
-                        + " aspect's staging pipeline. Mirrors Rust's {@code AspectLift::lift}"
-                        + " staging path used by {@code __stage}.",
+                    "",
                     "lift",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    EVAL_RES),
-                new AspectMethod(
-                    "Convert a host-runtime object (the result of invoking JVM-emitted bytecode"
-                        + " or a captured external read) back into a typed {@link Value}."
-                        + " Mirrors Rust's {@code AspectLift::lift(&self, &ExprContext,"
-                        + " &v8::PinScope, v8::Local<v8::Value>) -> Result<Rc<dyn Value>,"
-                        + " String>}, with the v8 scope/value pair replaced by the boxed Java"
-                        + " object the bytecode produced.",
-                    "liftRuntime",
                     TList.of(
                         xxParam,
                         locParam,

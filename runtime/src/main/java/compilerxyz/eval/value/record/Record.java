@@ -513,14 +513,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       this.entryLifts = sorted;
     }
 
-    @Override
-    public EResult<CodeValue> lift(ExprContext xx, QExprId loc, CodeValue cv) {
-      return EResult.err(
-          loc, "Record RecordLift::lift(CodeValue): staging-side lift wrapper not yet ported");
-    }
-
-    @Override
-    public EResult<Value> liftRuntime(
+    @Override    @Override
+    public EResult<Value> lift(
         ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
       var fieldKeys = new TList<RecordClassEmitter.FieldKey>(entryLifts.size());
       for (var entry : entryLifts) {
@@ -531,7 +525,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (externalHostValue == null || externalHostValue.getClass() != expectedClass) {
         return EResult.err(
             loc,
-            "Record RecordLift::liftRuntime: expected "
+            "Record RecordLift::lift: expected "
                 + expectedClass.getName()
                 + ", got "
                 + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
@@ -545,7 +539,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             fields[i] = expectedClass.getField(fieldName);
           } catch (NoSuchFieldException e) {
             throw new AssertionError(
-                "Record RecordLift::liftRuntime: generated class missing entry field "
+                "Record RecordLift::lift: generated class missing entry field "
                     + fieldName,
                 e);
           }
@@ -561,12 +555,12 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           fieldValue = fields[i].get(externalHostValue);
         } catch (IllegalAccessException e) {
           throw new AssertionError(
-              "Record RecordLift::liftRuntime: cannot read entry field for '"
+              "Record RecordLift::lift: cannot read entry field for '"
                   + entry.key().toCanonical()
                   + "'",
               e);
         }
-        var lifted = entry.lift().liftRuntime(xx, loc, fieldValue);
+        var lifted = entry.lift().lift(xx, loc, fieldValue);
         if (lifted.hasErrors()) {
           if (errors == null) errors = new TList<>();
           lifted.drainInto(errors);
@@ -575,7 +569,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         var liftedValue = lifted.valueOrNull();
         if (liftedValue == null) {
           throw new IllegalStateException(
-              "Record RecordLift::liftRuntime: entry lift returned neither value nor errors");
+              "Record RecordLift::lift: entry lift returned neither value nor errors");
         }
         out.put(
             entry.key(),

@@ -184,10 +184,10 @@ public final class DynRuntime {
           throw new IllegalStateException(
               "__stage: AspectLift.get returned neither value nor errors");
         }
-        var liftedRes = liftAspect.liftRuntime(liftXx, liftCell.loc(), valArg);
+        var liftedRes = liftAspect.lift(liftXx, liftCell.loc(), valArg);
         if (liftedRes.hasErrors()) {
           throw new IllegalStateException(
-              "__stage: AspectLift.liftRuntime failed for source type "
+              "__stage: AspectLift.lift failed for source type "
                   + liftCell.sourceType().typeDesc()
                   + ": "
                   + liftedRes.errorsOrNull());
@@ -195,7 +195,7 @@ public final class DynRuntime {
         var lifted = liftedRes.valueOrNull();
         if (lifted == null) {
           throw new IllegalStateException(
-              "__stage: AspectLift.liftRuntime returned neither value nor errors");
+              "__stage: AspectLift.lift returned neither value nor errors");
         }
         values.add(new StageLowerValue.Val(lifted));
       }
