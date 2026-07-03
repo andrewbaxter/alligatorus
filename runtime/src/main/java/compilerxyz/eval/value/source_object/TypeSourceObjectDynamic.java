@@ -21,6 +21,7 @@ import compilerxyz.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
@@ -53,6 +54,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectInitialBind,
         AspectLift,
@@ -81,6 +83,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectLift.ID)) {

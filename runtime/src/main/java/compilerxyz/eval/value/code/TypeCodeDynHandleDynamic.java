@@ -17,6 +17,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.GenBuiltinInterfaces;
@@ -34,6 +35,7 @@ public record TypeCodeDynHandleDynamic()
         Type,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectInitialBind,
         ExporterAny {
@@ -59,6 +61,7 @@ public record TypeCodeDynHandleDynamic()
         || key.equals(GenBuiltinInterfaces.builtinCodeDynIfaceIdentity())
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);

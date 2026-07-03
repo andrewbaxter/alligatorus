@@ -21,6 +21,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectNull;
@@ -46,6 +47,7 @@ public record TypeNullDynamic()
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectLift,
         AspectNull,
@@ -71,6 +73,7 @@ public record TypeNullDynamic()
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectLift.ID)
         || key.equals(AspectNull.ID)

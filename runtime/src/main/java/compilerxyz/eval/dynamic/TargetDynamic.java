@@ -263,8 +263,9 @@ public final class TargetDynamic implements Target {
 
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(afterBody)));
     if (finally_ instanceof Opt.Some<CodeDynamic> someFinally) {
+      // Caller passes finally_ already drop-wrapped (stack-neutral) — the drop
+      // aspect emits its own POP.
       seq.add(someFinally.value());
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
 
       seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(finallyHandler)));
@@ -272,7 +273,6 @@ public final class TargetDynamic implements Target {
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
       seq.add(someFinally.value());
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, finallyExcKey)));

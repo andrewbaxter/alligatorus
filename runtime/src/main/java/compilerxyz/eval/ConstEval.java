@@ -307,20 +307,6 @@ public final class ConstEval {
         var dropOpt = erb.mustEr(childXx.target.targetDrop(childXx, sub.loc(), pendingDiscard));
         if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(dropOpt.get());
-        // The pendingDiscard's return value is sitting on the JVM operand
-        // stack from its emit — consume it. targetDrop is drop-semantics only
-        // and does not POP.
-        if (pendingDiscard.value() instanceof Opt.Some<Value> pdV
-            && pdV.value().valueTypeOf() instanceof compilerxyz.gen.AspectConsumeDynamic) {
-          frames
-              .get(frames.size() - 1)
-              .codes
-              .add(
-                  compilerxyz.eval.Code.of(
-                      sub.loc(),
-                      compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(
-                          sub.loc(), org.objectweb.asm.Opcodes.POP)));
-        }
         pendingDiscard = null;
       }
       if (sub.variant() instanceof Expr.Bind bind) {

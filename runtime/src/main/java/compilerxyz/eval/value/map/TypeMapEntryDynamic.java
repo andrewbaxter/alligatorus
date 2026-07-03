@@ -25,6 +25,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.util.Opt;
@@ -36,6 +37,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     implements
         Type,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectInitialBind,
         ExporterAny {
@@ -69,6 +71,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);

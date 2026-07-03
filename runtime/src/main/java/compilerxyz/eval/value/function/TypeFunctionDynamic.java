@@ -25,6 +25,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
@@ -42,6 +43,7 @@ public record TypeFunctionDynamic(
         Type,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
@@ -108,6 +110,7 @@ public record TypeFunctionDynamic(
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectFunction.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);

@@ -24,6 +24,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -46,6 +47,7 @@ public record TypeOptionDynamic(Type elementType)
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectInitialBind,
         ExporterAny {
@@ -71,6 +73,7 @@ public record TypeOptionDynamic(Type elementType)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);

@@ -21,6 +21,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.gen.AspectUnion;
@@ -43,6 +44,7 @@ public record TypeSourceUnionConst(SourceUnionData data)
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectType,
         AspectUnion,
@@ -70,6 +72,7 @@ public record TypeSourceUnionConst(SourceUnionData data)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectType.ID)
         || key.equals(AspectUnion.ID)) {

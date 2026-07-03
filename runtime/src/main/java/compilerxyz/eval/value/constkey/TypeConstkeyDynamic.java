@@ -15,6 +15,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -31,6 +32,7 @@ public record TypeConstkeyDynamic()
         Type,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         ExporterAny {
 
@@ -53,6 +55,7 @@ public record TypeConstkeyDynamic()
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }

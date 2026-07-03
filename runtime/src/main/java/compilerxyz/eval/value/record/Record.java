@@ -25,6 +25,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
@@ -49,6 +50,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectInitialBind,
         ExporterAny {
@@ -91,6 +93,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);

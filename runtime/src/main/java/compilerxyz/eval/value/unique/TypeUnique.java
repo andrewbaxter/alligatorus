@@ -24,6 +24,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.AspectOperatorEq;
@@ -50,6 +51,7 @@ public record TypeUnique()
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectOperatorEq,
         ExporterAny {
@@ -77,6 +79,7 @@ public record TypeUnique()
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectOperatorEq.ID)) {
       return Opt.some(this);

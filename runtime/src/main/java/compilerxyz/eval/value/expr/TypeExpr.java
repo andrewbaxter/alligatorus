@@ -22,6 +22,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectType;
@@ -47,6 +48,7 @@ public record TypeExpr()
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectLift,
         AspectType,
@@ -73,6 +75,7 @@ public record TypeExpr()
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectLift.ID)
         || key.equals(AspectType.ID)) {

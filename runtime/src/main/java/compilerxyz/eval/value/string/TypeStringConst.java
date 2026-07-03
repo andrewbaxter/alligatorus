@@ -21,6 +21,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
@@ -41,6 +42,7 @@ public record TypeStringConst()
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectStringConst,
         ExporterAny {
@@ -66,6 +68,7 @@ public record TypeStringConst()
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)) {
       return Opt.some(this);
     }

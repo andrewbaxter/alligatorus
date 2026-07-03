@@ -545,10 +545,17 @@ final class AspectsGen {
             1032,
             TList.of(
                 new AspectMethod(
-                    "",
+                    "Default: if the value's source root is stack (a fresh Expr), emit a POP"
+                        + " so the JVM stack does not accumulate discarded returns; otherwise"
+                        + " no-op (the value lives in a slot / field / etc.). Override to add"
+                        + " type-specific cleanup on top.",
                     "drop",
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE)))),
+                    ParameterizedTypeName.get(ERESULT, CODE),
+                    "return $T.dropDefault(xx, loc, cv)",
+                    new Object[] {
+                      ClassName.get("compilerxyz.eval.dynamic", "DynUtil")
+                    }))),
         new AspectSpec(
             "Identity aspect for aspects (types representing values holding aspect"
                 + " implementations).",

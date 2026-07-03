@@ -20,6 +20,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBoolConst;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -39,6 +40,7 @@ public record TypeBoolConst()
         AspectBind,
         AspectBoolConst,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         ExporterAny {
 
   @Override
@@ -61,7 +63,8 @@ public record TypeBoolConst()
     if (key.equals(AspectBoolConst.ID)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)) {
+        || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)) {
       return Opt.some(this);
     }
     if (key.equals(AspectPostDeserialize.ID)) {

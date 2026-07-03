@@ -13,6 +13,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
@@ -26,6 +27,7 @@ public record TypeCodeEnumDynamic()
         Type,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         ExporterAny {
 
@@ -49,6 +51,7 @@ public record TypeCodeEnumDynamic()
     if (key.equals(GenIdentities.TYPE_CODE_ENUM_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }

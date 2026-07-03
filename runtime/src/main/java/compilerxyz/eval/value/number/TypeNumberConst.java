@@ -20,6 +20,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectNumberConst;
 import compilerxyz.gen.AspectOperatorAdd;
@@ -45,6 +46,7 @@ public record TypeNumberConst()
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectNumberConst,
         AspectOperatorAdd,
@@ -73,6 +75,7 @@ public record TypeNumberConst()
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectOperatorAdd.ID)
         || key.equals(AspectOperatorEq.ID)

@@ -14,6 +14,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
@@ -32,6 +33,7 @@ public record TypeCodeValueExternDynamic()
         Type,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectInitialBind,
         AspectStackValueDynamic,
@@ -57,6 +59,7 @@ public record TypeCodeValueExternDynamic()
     if (key.equals(GenIdentities.CODE_VALUE_EXTERN_TYPE_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectStackValueDynamic.ID)) {

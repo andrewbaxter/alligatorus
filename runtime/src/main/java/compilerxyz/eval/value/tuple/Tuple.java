@@ -26,6 +26,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStackValueDynamic;
@@ -53,6 +54,7 @@ public record Tuple(TList<TupleElement> elements)
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectStackValueDynamic,
         AspectTuple,
@@ -106,6 +108,7 @@ public record Tuple(TList<TupleElement> elements)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectStackValueDynamic.ID)) {
       return Opt.some(this);

@@ -26,6 +26,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
@@ -58,6 +59,7 @@ public record TypeAnyDynamic()
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectField,
         AspectFunction,
         AspectInitialBind,
@@ -86,6 +88,7 @@ public record TypeAnyDynamic()
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectFunction.ID)
         || key.equals(AspectInitialBind.ID)

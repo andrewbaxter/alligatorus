@@ -10,6 +10,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.expr.StagedExprCell;
@@ -17,7 +18,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.util.Opt;
 
 public record TypeExprStagedPlaceholder()
-    implements Type, Value, AspectConsumeDynamic, AspectLift, ExporterAny {
+    implements Type, Value, AspectConsumeDynamic, AspectDropDynamic, AspectLift, ExporterAny {
 
   @Override
   public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
@@ -36,7 +37,8 @@ public record TypeExprStagedPlaceholder()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectConsumeDynamic.ID) || key.equals(AspectLift.ID)) {
+    if (key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID) || key.equals(AspectLift.ID)) {
       return Opt.some(this);
     }
     return Opt.none();

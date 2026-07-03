@@ -13,6 +13,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
@@ -21,7 +22,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
 
 public record TypeSourceObjectRefDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectInitialBind, ExporterAny {
+    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamic, AspectInitialBind, ExporterAny {
 
   @Override
   public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
@@ -42,6 +43,7 @@ public record TypeSourceObjectRefDynamic()
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }

@@ -112,6 +112,27 @@ public final class DynUtil {
         return EResult.ok(Opt.some(new TargetBindSub(dyn, vtype)));
     }
 
+    public static EResult<Code> dropDefault(ExprContext xx, QExprId loc, CodeValue cv) {
+        if (!(cv.value() instanceof Opt.Some<Value> some)) {
+            return EResult.ok(Code.none(loc));
+        }
+        if (!(some.value() instanceof ValueDynamic vd)) {
+            return EResult.ok(Code.none(loc));
+        }
+        if (!isStackRooted(vd.source())) {
+            return EResult.ok(Code.none(loc));
+        }
+        return EResult.ok(Code.of(loc, JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP)));
+    }
+
+    private static boolean isStackRooted(ValueDynamic.Source source) {
+        return switch (source) {
+            case ValueDynamic.Source.Expr expr -> true;
+            case ValueDynamic.Source.Binding binding -> false;
+            case ValueDynamic.Source.Field field -> isStackRooted(field.base());
+        };
+    }
+
     public static EResult<CodeDynamic> dynamicConsumeToDynamic(
             ExprContext xx, QExprId loc, CodeValue cv) {
         var dyn = cv.code().dynamic();

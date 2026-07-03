@@ -19,6 +19,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectNull;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
@@ -33,7 +34,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 
 public record TypeNullConst()
     implements
-        Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectNull, ExporterAny {
+        Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamic, AspectNull, ExporterAny {
 
   @Override
   public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
@@ -55,7 +56,8 @@ public record TypeNullConst()
     if (key.equals(AspectNull.ID)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)) {
+        || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)) {
       return Opt.some(this);
     }
     if (key.equals(AspectPostDeserialize.ID)) {

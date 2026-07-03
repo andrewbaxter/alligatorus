@@ -24,6 +24,7 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectBoolConst;
 import compilerxyz.gen.AspectBoolDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -51,6 +52,7 @@ public record TypeBoolDynamic()
         AspectBindDynamic,
         AspectBoolDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectLift,
         AspectStackValueDynamic,
@@ -75,6 +77,7 @@ public record TypeBoolDynamic()
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBoolDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectStackValueDynamic.ID)

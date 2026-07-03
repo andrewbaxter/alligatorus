@@ -14,6 +14,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -30,6 +31,7 @@ public record TypeSourceUnionRefDynamic()
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectInitialBind,
         AspectLift,
         ExporterAny {
@@ -55,6 +57,7 @@ public record TypeSourceUnionRefDynamic()
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectLift.ID)) {
       return Opt.some(this);
