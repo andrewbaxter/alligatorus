@@ -72,8 +72,8 @@ public record TypeBoolDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean");
+  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean"));
   }
 
   @Override

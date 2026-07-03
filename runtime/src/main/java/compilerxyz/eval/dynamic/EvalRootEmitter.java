@@ -156,7 +156,7 @@ public final class EvalRootEmitter {
             "External type " + entry.type().getClass().getName()
                 + " does not implement AspectConsumeDynamic — cannot determine field JVM class");
       }
-      var desc = JavaDataDescriptor.fromInternalName(consume.consumeDynamicJvmClass());
+      var desc = consume.consumeDynamicJvmClass();
       externalFieldDescriptors.add(desc);
       fieldDescriptors.put(fieldName, desc);
     }

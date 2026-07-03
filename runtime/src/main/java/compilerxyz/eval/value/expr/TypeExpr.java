@@ -63,8 +63,8 @@ public record TypeExpr()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/expr/StagedExprCell");
+  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/expr/StagedExprCell"));
   }
 
   @Override

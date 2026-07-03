@@ -78,8 +78,8 @@ public record TypeSourceObjectConst(SourceObjectData data)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT;
+  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override

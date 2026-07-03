@@ -84,8 +84,8 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public JavaInternalName consumeDynamicJvmClass() {
-    return JavaInternalName.of("compilerxyz/util/TList");
+  public JavaDataDescriptor consumeDynamicJvmClass() {
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/util/TList"));
   }
 
   @Override
@@ -313,9 +313,9 @@ public record TypeListDynamic(Type elementType)
     // Iterator.next() returns Object; cast to the element type's declared JVM
     // class so the binding slot is typed as promised.
     if (elementType instanceof AspectConsumeDynamic elemConsume) {
-      var elemJvm = elemConsume.consumeDynamicJvmClass();
-      if (!elemJvm.value().equals(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT.value())) {
-        seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(elemJvm)));
+      var elemDesc = elemConsume.consumeDynamicJvmClass();
+      if (!elemDesc.value().equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
+        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
       }
     }
     seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));

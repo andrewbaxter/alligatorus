@@ -88,8 +88,8 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaInternalName.of("java/util/HashMap");
+  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/util/HashMap"));
   }
 
   @Override

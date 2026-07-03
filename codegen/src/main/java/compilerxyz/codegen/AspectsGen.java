@@ -468,14 +468,15 @@ final class AspectsGen {
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
                     ParameterizedTypeName.get(ERESULT, CODE_DYNAMIC)),
                 new AspectMethod(
-                    "The JVM class that {@code toDynamic}'s produced code leaves on the stack."
-                        + " Drives derived method descriptors for call sites (INVOKESTATIC via"
-                        + " {@code TypeFunctionDynamic}/{@code TypeMethodDynamic}); the presence of"
-                        + " this aspect already implies the type has a host stack representation,"
-                        + " so this is infallible.",
+                    "The JVM data descriptor for the value {@code toDynamic}'s produced code"
+                        + " leaves on the stack. Primitive types (D, I, J, Z, F) as well as"
+                        + " reference types (L…;) are both valid; drives field descriptors"
+                        + " and CHECKCAST decisions. The presence of this aspect already"
+                        + " implies the type has a host stack representation, so this is"
+                        + " infallible.",
                     "consumeDynamicJvmClass",
                     TList.of(),
-                    ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName")))),
+                    ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")))),
         new AspectSpec(
             "",
             "StackValueDynamic",

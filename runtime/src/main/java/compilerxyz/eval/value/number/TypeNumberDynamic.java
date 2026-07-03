@@ -114,8 +114,8 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double");
+  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"));
   }
 
   @Override

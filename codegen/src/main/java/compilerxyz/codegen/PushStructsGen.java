@@ -282,8 +282,8 @@ public final class PushStructsGen {
     return MethodSpec.methodBuilder("consumeDynamicJvmClass")
         .addModifiers(Modifier.PUBLIC)
         .addAnnotation(Override.class)
-        .returns(JAVA_INTERNAL_NAME)
-        .addStatement("return $T.INTNAME_OBJECT", JVM_CONSTANTS)
+        .returns(JAVA_DATA_DESCRIPTOR)
+        .addStatement("return $T.DESC_OBJECT", JVM_CONSTANTS)
         .build();
   }
 
