@@ -28,6 +28,7 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.safejson.JsonValue;

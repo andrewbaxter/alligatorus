@@ -125,7 +125,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
     }
 
-  private static CodeDynamic wrap(compilerxyz.eval.QExprId loc, JavaBytecode bc) {
+  private static CodeDynamic wrap(CodeLoc loc, JavaBytecode bc) {
     return new CodeDynamic(loc, bc);
   }
 
@@ -162,14 +162,16 @@ public class JavaBytecodeSequence implements JavaBytecode {
             final int[] catchIndex = {0};
             walk(
                     cd -> {
-                        locCounter[0] += 1;
-                        int line = locCounter[0];
-                        locMap.put(line, cd.loc());
-                        var label = new LabelNode(new Label());
-                        flattened.add(new JavaBytecodeInstructionObj(label));
-                        flattened.add(
-                                new JavaBytecodeInstructionObj(
-                                        new org.objectweb.asm.tree.LineNumberNode(line, label)));
+                        if (cd.loc() instanceof CodeLoc.Some some) {
+                            locCounter[0] += 1;
+                            int line = locCounter[0];
+                            locMap.put(line, some.qExprId());
+                            var label = new LabelNode(new Label());
+                            flattened.add(new JavaBytecodeInstructionObj(label));
+                            flattened.add(
+                                    new JavaBytecodeInstructionObj(
+                                            new org.objectweb.asm.tree.LineNumberNode(line, label)));
+                        }
                         return cd.code()
                                 .dispatch(
                                         new Dispatcher<Iterator<CodeDynamic>>() {
@@ -531,6 +533,98 @@ public class JavaBytecodeSequence implements JavaBytecode {
         if (element == null) return this;
         children.add(element);
         return this;
+    }
+
+    public JavaBytecodeSequence add(JavaBytecode bc) {
+        if (bc == null) return this;
+        if (bc instanceof CodeDynamic cd) {
+            children.add(cd);
+        } else {
+            children.add(new CodeDynamic(CodeLoc.Infallible.INSTANCE, bc));
+        }
+        return this;
+    }
+
+    public JavaBytecodeSequence insn(int opcode) {
+        return add(JavaBytecodeUtils.inst(opcode));
+    }
+
+    public JavaBytecodeSequence varInsn(int opcode, int index) {
+        return add(JavaBytecodeUtils.varInsn(opcode, index));
+    }
+
+    public JavaBytecodeSequence loadConstant(int value) {
+        return add(JavaBytecodeUtils.literalIntShortByte(value));
+    }
+
+    public JavaBytecodeSequence loadConstant(String value) {
+        return add(JavaBytecodeUtils.literalString(value));
+    }
+
+    public JavaBytecodeSequence checkCast(JavaInternalName name) {
+        return add(
+            new CodeDynamic(
+                CodeLoc.Infallible.INSTANCE,
+                new JavaBytecodeInstructionObj(
+                    new org.objectweb.asm.tree.TypeInsnNode(
+                        org.objectweb.asm.Opcodes.CHECKCAST, name.value))));
+    }
+
+    public JavaBytecodeSequence invokeSpecial(
+            JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+        return add(JavaBytecodeUtils.invokeSpecial(klass, method, desc));
+    }
+
+    public JavaBytecodeSequence invokeStatic(
+            JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+        return add(
+            new CodeDynamic(
+                CodeLoc.Infallible.INSTANCE,
+                new JavaBytecodeInstructionObj(
+                    new org.objectweb.asm.tree.MethodInsnNode(
+                        org.objectweb.asm.Opcodes.INVOKESTATIC, klass.value, method, desc.value, false))));
+    }
+
+    public JavaBytecodeSequence invokeVirtual(
+            JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+        return add(
+            new CodeDynamic(
+                CodeLoc.Infallible.INSTANCE,
+                new JavaBytecodeInstructionObj(
+                    new org.objectweb.asm.tree.MethodInsnNode(
+                        org.objectweb.asm.Opcodes.INVOKEVIRTUAL, klass.value, method, desc.value, false))));
+    }
+
+    public JavaBytecodeSequence invokeInterface(
+            JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+        return add(
+            new CodeDynamic(
+                CodeLoc.Infallible.INSTANCE,
+                new JavaBytecodeInstructionObj(
+                    new org.objectweb.asm.tree.MethodInsnNode(
+                        org.objectweb.asm.Opcodes.INVOKEINTERFACE, klass.value, method, desc.value, true))));
+    }
+
+    public JavaBytecodeSequence getStatic(
+            JavaInternalName klass, String field, JavaDataDescriptor desc) {
+        return add(JavaBytecodeUtils.accessStaticField(klass, field, desc));
+    }
+
+    public JavaBytecodeSequence putStatic(
+            JavaInternalName klass, String field, JavaDataDescriptor desc) {
+        return add(JavaBytecodeUtils.setStaticField(klass, field, desc));
+    }
+
+    public JavaBytecodeSequence putField(
+            JavaInternalName klass, String field, JavaDataDescriptor desc) {
+        return add(JavaBytecodeUtils.setField(klass, field, desc));
+    }
+
+    public void renderMethod(
+            org.objectweb.asm.MethodVisitor mv, TList<JavaBytecodeBindingKey> initialIndexes) {
+        render(mv, initialIndexes);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
     }
 
   public int size() {

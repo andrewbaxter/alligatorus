@@ -8,6 +8,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.util.Opt;
 
 public record BindingUniqueDualMode(BindingId dynamicKey, Unique unique) implements Binding {

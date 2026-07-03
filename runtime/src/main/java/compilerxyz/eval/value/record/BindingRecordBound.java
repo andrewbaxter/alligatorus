@@ -9,6 +9,7 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TOrderedMap;

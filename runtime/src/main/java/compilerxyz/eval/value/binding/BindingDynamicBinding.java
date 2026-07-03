@@ -9,6 +9,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.util.Opt;
 

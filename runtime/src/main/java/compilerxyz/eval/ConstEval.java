@@ -15,6 +15,7 @@ import compilerxyz.gen.AspectSet;
 import compilerxyz.gen.AspectType;
 import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.dynamic.Target;
 import compilerxyz.eval.dynamic.target.TargetCase;
 import compilerxyz.eval.value.number.ValueNumberConst;

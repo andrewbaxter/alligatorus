@@ -3,7 +3,12 @@ package compilerxyz.eval.dynamic;
 import compilerxyz.util.TList;
 
 public class JavaMethodDescriptor {
+  public static final JavaMethodDescriptor VOID_NOARGS =
+      new JavaMethodDescriptor("()V");
+
   public final String value;
+
+    public String value() { return value; }
 
   private JavaMethodDescriptor(String value) {
     this.value = value;
@@ -19,6 +24,15 @@ public class JavaMethodDescriptor {
 
   public static JavaMethodDescriptor fromConstructorParts(TList<JavaDataDescriptor> argDescriptors) {
     return fromParts(JavaDataDescriptor.DESC_VOID, argDescriptors);
+  }
+
+  public static JavaMethodDescriptor fromParts(
+      JavaDataDescriptor returnDescriptor, JavaDataDescriptor... argDescriptors) {
+    return fromParts(returnDescriptor, TList.of(argDescriptors));
+  }
+
+  public static JavaMethodDescriptor fromConstructorParts(JavaDataDescriptor... argDescriptors) {
+    return fromParts(JavaDataDescriptor.DESC_VOID, TList.of(argDescriptors));
   }
 
   @Override

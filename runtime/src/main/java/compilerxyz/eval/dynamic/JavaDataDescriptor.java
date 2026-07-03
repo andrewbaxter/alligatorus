@@ -13,6 +13,8 @@ public class JavaDataDescriptor {
 
     public final String value;
 
+    public String value() { return value; }
+
     public JavaDataDescriptor(String value) {
         this.value = value;
     }
@@ -23,6 +25,10 @@ public class JavaDataDescriptor {
 
     public static JavaDataDescriptor fromJVMName(JavaInternalName name) {
         return new JavaDataDescriptor("L" + name.value + ";");
+    }
+
+    public static JavaDataDescriptor fromInternalName(JavaInternalName name) {
+        return fromJVMName(name);
     }
 
     public static JavaDataDescriptor fromObjectClass(Class<?> klass) {

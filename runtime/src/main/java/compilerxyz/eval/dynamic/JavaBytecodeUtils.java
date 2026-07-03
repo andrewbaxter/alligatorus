@@ -161,6 +161,163 @@ public class JavaBytecodeUtils {
     return new CodeDynamic(loc, new JavaBytecodeInstructionInt(opcode));
   }
 
+  public static CodeDynamic inst(CodeLoc loc, int opcode) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionInt(opcode));
+  }
+
+  public static CodeDynamic inst(int opcode) {
+    return inst(CodeLoc.Infallible.INSTANCE, opcode);
+  }
+
+  public static CodeDynamic varInsn(int opcode, int index) {
+    return varInsn(CodeLoc.Infallible.INSTANCE, opcode, index);
+  }
+
+  public static CodeDynamic literalString(String value) {
+    return literalString(CodeLoc.Infallible.INSTANCE, value);
+  }
+
+  public static CodeDynamic literalIntShortByte(int value) {
+    return literalIntShortByte(CodeLoc.Infallible.INSTANCE, value);
+  }
+
+  public static CodeDynamic literalNull() {
+    return literalNull(CodeLoc.Infallible.INSTANCE);
+  }
+
+  public static CodeDynamic accessStaticField(
+      JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return accessStaticField(CodeLoc.Infallible.INSTANCE, klass, field, fieldDesc);
+  }
+
+  public static CodeDynamic setStaticField(
+      JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return setStaticField(CodeLoc.Infallible.INSTANCE, klass, field, fieldDesc);
+  }
+
+  public static CodeDynamic setField(
+      JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return setField(CodeLoc.Infallible.INSTANCE, klass, field, fieldDesc);
+  }
+
+  public static CodeDynamic accessField(
+      JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return accessField(CodeLoc.Infallible.INSTANCE, klass, field, fieldDesc);
+  }
+
+  public static CodeDynamic invokeSpecial(
+      JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+    return invokeSpecial(CodeLoc.Infallible.INSTANCE, klass, method, desc);
+  }
+
+  public static CodeDynamic callStaticMethod(
+      JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return callStaticMethod(CodeLoc.Infallible.INSTANCE, klass, method, methodDesc);
+  }
+
+  public static CodeDynamic callInterfaceMethod(
+      JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return callInterfaceMethod(CodeLoc.Infallible.INSTANCE, klass, method, methodDesc);
+  }
+
+  public static CodeDynamic callMethod(
+      JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return callMethod(CodeLoc.Infallible.INSTANCE, klass, method, methodDesc);
+  }
+
+  public static CodeDynamic cast(JavaDataDescriptor toClass) {
+    return cast(CodeLoc.Infallible.INSTANCE, toClass);
+  }
+
+  public static CodeDynamic varInsn(CodeLoc loc, int opcode, int index) {
+    return new CodeDynamic(
+        loc, new JavaBytecodeInstructionObj(new org.objectweb.asm.tree.VarInsnNode(opcode, index)));
+  }
+
+  public static CodeDynamic literalString(CodeLoc loc, String value) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionObj(new LdcInsnNode(value)));
+  }
+
+  public static CodeDynamic literalIntShortByte(CodeLoc loc, int value) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionObj(new LdcInsnNode(value)));
+  }
+
+  public static CodeDynamic literalNull(CodeLoc loc) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionInt(ACONST_NULL));
+  }
+
+  public static CodeDynamic accessStaticField(
+      CodeLoc loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new FieldInsnNode(GETSTATIC, klass.value, field, fieldDesc.value)));
+  }
+
+  public static CodeDynamic setStaticField(
+      CodeLoc loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new FieldInsnNode(PUTSTATIC, klass.value, field, fieldDesc.value)));
+  }
+
+  public static CodeDynamic setField(
+      CodeLoc loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new FieldInsnNode(PUTFIELD, klass.value, field, fieldDesc.value)));
+  }
+
+  public static CodeDynamic invokeSpecial(
+      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor desc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new MethodInsnNode(INVOKESPECIAL, klass.value, method, desc.value, false)));
+  }
+
+  public static CodeDynamic callStaticMethod(
+      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new MethodInsnNode(INVOKESTATIC, klass.value, method, methodDesc.value, false)));
+  }
+
+  public static CodeDynamic callInterfaceMethod(
+      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new MethodInsnNode(INVOKEINTERFACE, klass.value, method, methodDesc.value, true)));
+  }
+
+  public static CodeDynamic callMethod(
+      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new MethodInsnNode(INVOKEVIRTUAL, klass.value, method, methodDesc.value, false)));
+  }
+
+  public static CodeDynamic accessField(
+      CodeLoc loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new FieldInsnNode(GETFIELD, klass.value, field, fieldDesc.value)));
+  }
+
+  public static CodeDynamic cast(CodeLoc loc, JavaDataDescriptor toClass) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new org.objectweb.asm.tree.TypeInsnNode(CHECKCAST, toClass.value.substring(1, toClass.value.length() - 1))));
+  }
+
+
   public static CodeDynamic varInsn(QExprId loc, int opcode, int index) {
     return new CodeDynamic(
         loc, new JavaBytecodeInstructionObj(new org.objectweb.asm.tree.VarInsnNode(opcode, index)));

@@ -23,6 +23,10 @@ public final class EmitCtx {
     this.fieldPrefix = fieldPrefix;
   }
 
+  public EmitCtx(String ownerInternalName, int xxSlotUnused, int nextSlot, String fieldPrefix) {
+    this(ownerInternalName, nextSlot, fieldPrefix);
+  }
+
   public int allocSlot(BindingId id) {
     var slot = nextSlot;
     nextSlot += 1;
