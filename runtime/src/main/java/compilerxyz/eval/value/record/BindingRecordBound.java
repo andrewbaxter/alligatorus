@@ -9,6 +9,8 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.util.Opt;
@@ -27,7 +29,7 @@ public record BindingRecordBound(
         throw new IllegalStateException(
             "BindingRecordBound: record has dynamic fields but no jsKey");
       }
-      useCode = Code.of(loc, new CodeDynamic(loc, new JavaBytecode.BindingUse(some.value())));
+      useCode = Code.of(loc, JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
       base = Opt.some(new RecordBaseDynamic(new ValueDynamic.Source.Binding(some.value())));
     } else {
       useCode = Code.none(loc);

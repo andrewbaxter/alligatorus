@@ -124,7 +124,7 @@ public final class TupleClassEmitter {
             null);
     ctor.visitCode();
 
-    var loc = QExprId.NONE;
+    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
     var seq = JavaBytecodeUtils.seq();
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(

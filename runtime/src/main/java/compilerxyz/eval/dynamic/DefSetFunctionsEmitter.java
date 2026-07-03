@@ -142,7 +142,7 @@ public final class DefSetFunctionsEmitter {
     var target = new TargetDynamic(new Counter());
     target.registerStaticFunctionDefs(staticFunctionDefs);
     var ctx = new EmitCtx(internalName, 1, prefix);
-    var loc = compilerxyz.eval.QExprId.NONE;
+    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
 
     var seq = JavaBytecodeUtils.seq();
 

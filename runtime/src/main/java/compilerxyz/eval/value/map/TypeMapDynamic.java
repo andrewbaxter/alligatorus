@@ -189,7 +189,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.err(loc, "TypeMapDynamic::field: receiver is not a ValueDynamic");
     }
     var childSource = new ValueDynamic.Source.Field(selfVd.source(), keyStr.value());
-    var fieldUse = DynUtil.renderSource(loc, childSource);
+    var fieldUse = DynUtil.renderSource(xx, loc, childSource);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldUse),

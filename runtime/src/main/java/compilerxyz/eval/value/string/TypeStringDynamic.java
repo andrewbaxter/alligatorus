@@ -237,7 +237,7 @@ public record TypeStringDynamic()
       // Concatenate the source's existing dynamic code (if any) with an LDC of the string
       // literal, matching the semantics of the old Block(existing, literal) construction.
       var seq = new JavaBytecodeSequence();
-      var existingDyn = CodeDynamic.fromCode(cv.code());
+      var existingDyn = cv.code().dynamic();
       if (existingDyn != null) {
         seq.add(existingDyn);
       }

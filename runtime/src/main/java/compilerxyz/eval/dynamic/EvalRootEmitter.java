@@ -51,50 +51,14 @@ public final class EvalRootEmitter {
 
   private static void collectReferencedBuiltins(CodeDynamic code, TOrderedSet<Long> out) {
       var v = code.code();
-      if (v instanceof JavaBytecode.BindingUse bu) {
-          if (bu.id() instanceof BindingId.Builtin b) {
-              out.add(b.index());
-          }
-          return;
-      }
-      if (v instanceof JavaBytecode.BindingSet bs) {
-          collectReferencedBuiltins(bs.value(), out);
-          return;
-      }
-      if (v instanceof JavaBytecode.Block b) {
-          for (var entry : b.entries()) {
-              switch (entry) {
-                  case JavaBytecode.BlockEntry.Code c -> collectReferencedBuiltins(c.code(), out);
-                  case JavaBytecode.BlockEntry.Bind bb -> collectReferencedBuiltins(bb.value(), out);
-              }
-          }
-          return;
-      }
-      if (v instanceof JavaBytecode.Foreach f) {
-          collectReferencedBuiltins(f.base(), out);
-          collectReferencedBuiltins(f.body(), out);
-          return;
-      }
-      if (v instanceof JavaBytecode.ForeachMap f) {
-          collectReferencedBuiltins(f.base(), out);
-          collectReferencedBuiltins(f.body(), out);
-          return;
-      }
-      if (v instanceof JavaBytecode.If i) {
-          for (var branch : i.conditions()) {
-              collectReferencedBuiltins(branch.condition(), out);
-              collectReferencedBuiltins(branch.body(), out);
-          }
-          if (i.elseBody() instanceof Opt.Some<CodeDynamic> some) {
-              collectReferencedBuiltins(some.value(), out);
-          }
-          return;
-      }
-      if (v instanceof JavaBytecode.Match m) {
-          collectReferencedBuiltins(m.base(), out);
-          for (var c : m.cases()) collectReferencedBuiltins(c.body(), out);
-          if (m.fallback() instanceof Opt.Some<CodeDynamic> some) {
-              collectReferencedBuiltins(some.value(), out);
+      if (v instanceof JavaBytecodeInstructionObj obj
+          && obj.node instanceof org.objectweb.asm.tree.FieldInsnNode fi
+          && fi.getOpcode() == org.objectweb.asm.Opcodes.GETSTATIC
+          && fi.name.startsWith(Prefixes.BUILTIN_PREFIX)) {
+          try {
+              out.add(Long.parseLong(fi.name.substring(Prefixes.BUILTIN_PREFIX.length())));
+          } catch (NumberFormatException e) {
+              // not a builtin id we understand
           }
           return;
       }
@@ -102,91 +66,19 @@ public final class EvalRootEmitter {
           for (var child : s.children) collectReferencedBuiltins(child, out);
           return;
       }
-      if (v instanceof JavaBytecode.Try t) {
-          collectReferencedBuiltins(t.body(), out);
-          if (t.catchClause() instanceof Opt.Some<JavaBytecode.Catch> some) {
-              collectReferencedBuiltins(some.value().body(), out);
-          }
-          if (t.finallyBlock() instanceof Opt.Some<CodeDynamic> some) {
-              collectReferencedBuiltins(some.value(), out);
-          }
-          return;
-      }
       if (v instanceof CodeDynamic nested) {
           collectReferencedBuiltins(nested, out);
-          return;
       }
   }
 
   private static void collectReferencedDefs(CodeDynamic code, TOrderedSet<BindingId.Def> out) {
       var v = code.code();
-      if (v instanceof JavaBytecode.BindingUse bu) {
-          if (bu.id() instanceof BindingId.Def d) {
-              out.add(d);
-          }
-          return;
-      }
-      if (v instanceof JavaBytecode.BindingSet bs) {
-          if (bs.base() instanceof BindingId.Def d) {
-              out.add(d);
-          }
-          collectReferencedDefs(bs.value(), out);
-          return;
-      }
-      if (v instanceof JavaBytecode.Block b) {
-          for (var entry : b.entries()) {
-              switch (entry) {
-                  case JavaBytecode.BlockEntry.Code c -> collectReferencedDefs(c.code(), out);
-                  case JavaBytecode.BlockEntry.Bind bb -> collectReferencedDefs(bb.value(), out);
-              }
-          }
-          return;
-      }
-      if (v instanceof JavaBytecode.Foreach f) {
-          collectReferencedDefs(f.base(), out);
-          collectReferencedDefs(f.body(), out);
-          return;
-      }
-      if (v instanceof JavaBytecode.ForeachMap f) {
-          collectReferencedDefs(f.base(), out);
-          collectReferencedDefs(f.body(), out);
-          return;
-      }
-      if (v instanceof JavaBytecode.If i) {
-          for (var branch : i.conditions()) {
-              collectReferencedDefs(branch.condition(), out);
-              collectReferencedDefs(branch.body(), out);
-          }
-          if (i.elseBody() instanceof Opt.Some<CodeDynamic> some) {
-              collectReferencedDefs(some.value(), out);
-          }
-          return;
-      }
-      if (v instanceof JavaBytecode.Match m) {
-          collectReferencedDefs(m.base(), out);
-          for (var c : m.cases()) collectReferencedDefs(c.body(), out);
-          if (m.fallback() instanceof Opt.Some<CodeDynamic> some) {
-              collectReferencedDefs(some.value(), out);
-          }
-          return;
-      }
       if (v instanceof JavaBytecodeSequence s) {
           for (var child : s.children) collectReferencedDefs(child, out);
           return;
       }
-      if (v instanceof JavaBytecode.Try t) {
-          collectReferencedDefs(t.body(), out);
-          if (t.catchClause() instanceof Opt.Some<JavaBytecode.Catch> some) {
-              collectReferencedDefs(some.value().body(), out);
-          }
-          if (t.finallyBlock() instanceof Opt.Some<CodeDynamic> some) {
-              collectReferencedDefs(some.value(), out);
-          }
-          return;
-      }
       if (v instanceof CodeDynamic nested) {
           collectReferencedDefs(nested, out);
-          return;
       }
   }
 
@@ -256,7 +148,7 @@ public final class EvalRootEmitter {
             null);
     var ctx = new EmitCtx(internalName, 0);
     var seq = new JavaBytecodeSequence();
-    var loc = compilerxyz.eval.QExprId.NONE;
+    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
 
     var ownerInternal = JavaInternalName.of(internalName);
     for (var entry : externals) {

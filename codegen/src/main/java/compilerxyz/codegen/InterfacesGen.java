@@ -269,11 +269,10 @@ public final class InterfacesGen {
           asTypeExpr(field.type().dynamicType()));
     }
     b.addStatement(
-        "$N.argRecordType = new $T($T.some(new $T()), $N)",
+        "$N.argRecordType = new $T($T.none(), $N)",
         methodVar,
         RECORD,
         OPT,
-        RECORD_BASE_DYNAMIC,
         mapVar);
     return b.build();
   }

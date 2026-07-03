@@ -23,6 +23,7 @@ import compilerxyz.gen.AspectNull;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;

@@ -18,6 +18,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;

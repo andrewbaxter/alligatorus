@@ -25,6 +25,8 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
@@ -395,7 +397,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     Type template = new TypeSourceObjectConst(data);
     var templateId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(new EvalContext.ExternalEntry(templateId, new External.TypeExternal(template)));
-    var templateCode = new CodeDynamic(loc, new JavaBytecode.BindingUse(templateId));
+    var templateCode = JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, templateId);
     var args = new TList<CodeDynamic>();
     args.add(templateCode);
     args.add(sourceCode);

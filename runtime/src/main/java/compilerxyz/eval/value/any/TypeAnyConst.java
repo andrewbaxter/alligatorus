@@ -24,6 +24,8 @@ import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.External;
 import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -144,7 +146,7 @@ public record TypeAnyConst()
     var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(id, new External.TypeExternal(resolvedType)));
-    return EResult.ok(new CodeDynamic(loc, new JavaBytecode.BindingUse(id)));
+    return EResult.ok(JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
   }
 
   @Override

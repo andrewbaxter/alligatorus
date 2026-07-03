@@ -110,6 +110,14 @@ public class JavaBytecodeUtils {
             new MethodInsnNode(INVOKESPECIAL, klass.value, "<init>", methodDesc.value, false)));
   }
 
+  public static CodeDynamic callConstructor(
+      JavaInternalName klass, JavaMethodDescriptor methodDesc) {
+    return new CodeDynamic(
+        CodeLoc.Infallible.INSTANCE,
+        new JavaBytecodeInstructionObj(
+            new MethodInsnNode(INVOKESPECIAL, klass.value, "<init>", methodDesc.value, false)));
+  }
+
   public static CodeDynamic callInterfaceMethod(
       QExprId loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
     return new CodeDynamic(
@@ -227,6 +235,79 @@ public class JavaBytecodeUtils {
 
   public static CodeDynamic cast(JavaDataDescriptor toClass) {
     return cast(CodeLoc.Infallible.INSTANCE, toClass);
+  }
+
+  public static CodeDynamic instanceOf(CodeLoc loc, JavaInternalName klass) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new org.objectweb.asm.tree.TypeInsnNode(
+                org.objectweb.asm.Opcodes.INSTANCEOF, klass.value())));
+  }
+
+  public static CodeDynamic newInstance(CodeLoc loc, JavaInternalName klass) {
+    return new CodeDynamic(
+        loc,
+        new JavaBytecodeInstructionObj(
+            new org.objectweb.asm.tree.TypeInsnNode(
+                org.objectweb.asm.Opcodes.NEW, klass.value())));
+  }
+
+  public static CodeDynamic wrapObj(CodeLoc loc, org.objectweb.asm.tree.AbstractInsnNode node) {
+    return new CodeDynamic(loc, new JavaBytecodeInstructionObj(node));
+  }
+
+  public static CodeDynamic bindingUse(
+      CodeLoc loc, compilerxyz.eval.EvalContext vx, compilerxyz.eval.BindingId id) {
+    return switch (id) {
+      case compilerxyz.eval.BindingId.Local local ->
+          new CodeDynamic(
+              loc,
+              new JavaBytecodeStoreLoad(org.objectweb.asm.Opcodes.ALOAD, local.key()));
+      case compilerxyz.eval.BindingId.Def def ->
+          accessStaticField(
+              loc,
+              JavaInternalName.of(vx.evalRootInternalName),
+              compilerxyz.eval.ImportInstall.bindingIdDynamicKey(id),
+              JvmConstants.DESC_OBJECT);
+      case compilerxyz.eval.BindingId.Builtin builtin ->
+          accessStaticField(
+              loc,
+              JavaInternalName.of(vx.evalRootInternalName),
+              compilerxyz.eval.ImportInstall.bindingIdDynamicKey(id),
+              JvmConstants.DESC_OBJECT);
+    };
+  }
+
+  public static CodeDynamic bindingSet(
+      CodeLoc loc,
+      compilerxyz.eval.EvalContext vx,
+      compilerxyz.eval.BindingId id,
+      CodeDynamic value) {
+    var seq = new JavaBytecodeSequence();
+    seq.add(value);
+    switch (id) {
+      case compilerxyz.eval.BindingId.Local local ->
+          seq.add(
+              new CodeDynamic(
+                  loc,
+                  new JavaBytecodeStoreLoad(org.objectweb.asm.Opcodes.ASTORE, local.key())));
+      case compilerxyz.eval.BindingId.Def def ->
+          seq.add(
+              setStaticField(
+                  loc,
+                  JavaInternalName.of(vx.evalRootInternalName),
+                  compilerxyz.eval.ImportInstall.bindingIdDynamicKey(id),
+                  JvmConstants.DESC_OBJECT));
+      case compilerxyz.eval.BindingId.Builtin builtin ->
+          seq.add(
+              setStaticField(
+                  loc,
+                  JavaInternalName.of(vx.evalRootInternalName),
+                  compilerxyz.eval.ImportInstall.bindingIdDynamicKey(id),
+                  JvmConstants.DESC_OBJECT));
+    }
+    return new CodeDynamic(loc, seq);
   }
 
   public static CodeDynamic varInsn(CodeLoc loc, int opcode, int index) {

@@ -37,48 +37,8 @@ public final class Eval {
 
   public static boolean codeUsesBinding(CodeDynamic code, BindingId targetId) {
     return switch (code.code()) {
-      case JavaBytecode.BindingUse b -> b.id().equals(targetId);
-      case JavaBytecode.BindingSet b -> codeUsesBinding(b.value(), targetId);
-      case JavaBytecode.Block b -> {
-        boolean found = false;
-        for (var e : b.entries()) {
-          boolean hit = switch (e) {
-            case JavaBytecode.BlockEntry.Code c -> codeUsesBinding(c.code(), targetId);
-            case JavaBytecode.BlockEntry.Bind bb -> codeUsesBinding(bb.value(), targetId);
-          };
-          if (hit) {
-            found = true;
-            break;
-          }
-        }
-        yield found;
-      }
-      case JavaBytecode.Foreach f ->
-          codeUsesBinding(f.base(), targetId) || codeUsesBinding(f.body(), targetId);
-      case JavaBytecode.ForeachMap f ->
-          codeUsesBinding(f.base(), targetId) || codeUsesBinding(f.body(), targetId);
-      case JavaBytecode.If i -> {
-        for (var branch : i.conditions()) {
-          if (codeUsesBinding(branch.condition(), targetId)
-              || codeUsesBinding(branch.body(), targetId)) {
-            yield true;
-          }
-        }
-        yield switch (i.elseBody()) {
-          case Opt.Some<CodeDynamic> els -> codeUsesBinding(els.value(), targetId);
-          case Opt.None<CodeDynamic> n -> false;
-        };
-      }
-      case JavaBytecode.Match m -> {
-        if (codeUsesBinding(m.base(), targetId)) yield true;
-        for (var c : m.cases()) {
-          if (codeUsesBinding(c.body(), targetId)) yield true;
-        }
-        yield switch (m.fallback()) {
-          case Opt.Some<CodeDynamic> fb -> codeUsesBinding(fb.value(), targetId);
-          case Opt.None<CodeDynamic> n -> false;
-        };
-      }
+      case compilerxyz.eval.dynamic.JavaBytecodeStoreLoad sl ->
+          targetId instanceof BindingId.Local local && local.key().equals(sl.key);
       case JavaBytecodeSequence s -> {
         boolean found = false;
         for (var child : s.children) {
@@ -88,16 +48,6 @@ public final class Eval {
           }
         }
         yield found;
-      }
-      case JavaBytecode.Try t -> {
-        if (codeUsesBinding(t.body(), targetId)) yield true;
-        if (t.catchClause() instanceof Opt.Some<JavaBytecode.Catch> cs) {
-          if (codeUsesBinding(cs.value().body(), targetId)) yield true;
-        }
-        yield switch (t.finallyBlock()) {
-          case Opt.Some<CodeDynamic> fb -> codeUsesBinding(fb.value(), targetId);
-          case Opt.None<CodeDynamic> none -> false;
-        };
       }
       case CodeDynamic nested -> codeUsesBinding(nested, targetId);
       case JavaBytecode jbc -> false;

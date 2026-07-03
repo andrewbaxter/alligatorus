@@ -33,6 +33,8 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
@@ -224,7 +226,7 @@ public record TypeAnyDynamic()
     var id = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     xx.vx.externals.add(new EvalContext.ExternalEntry(
         id, new External.TypeExternal(resolvedType)));
-    var bindingUse = new CodeDynamic(loc, new JavaBytecode.BindingUse(id));
+    var bindingUse = JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, id);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, bindingUse),

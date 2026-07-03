@@ -206,7 +206,10 @@ public final class ImportInstall {
 
   public static String bindingIdDynamicKey(BindingId id) {
     return switch (id) {
-      case BindingId.Local local -> Prefixes.BINDING_PREFIX + local.index();
+      case BindingId.Local local ->
+          throw new AssertionError(
+              "bindingIdDynamicKey(Local): locals are JVM slots, not static fields; caller must"
+                  + " handle Local separately (JavaBytecodeStoreLoad ALOAD/ASTORE on the key)");
       case BindingId.Builtin builtin -> Prefixes.BUILTIN_PREFIX + builtin.index();
       case BindingId.Def def -> {
         var defSet = def.defSet();

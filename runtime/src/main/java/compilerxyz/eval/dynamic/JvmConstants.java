@@ -9,6 +9,8 @@ public final class JvmConstants {
       JavaInternalName.of("java/lang/Boolean");
   public static final JavaInternalName INTNAME_HASH_MAP =
       JavaInternalName.of("java/util/HashMap");
+  public static final JavaInternalName INTNAME_LINKED_HASH_MAP =
+      JavaInternalName.of("java/util/LinkedHashMap");
   public static final JavaInternalName INTNAME_MAP = JavaInternalName.of("java/util/Map");
   public static final JavaInternalName INTNAME_MAP_ENTRY =
       JavaInternalName.of("java/util/Map$Entry");

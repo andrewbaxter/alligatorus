@@ -28,7 +28,7 @@ public final class ExternalCodec {
             "ExternalCodec.exportExternals: external captured under non-Local BindingId: "
                 + entry.id());
       }
-      var localIdx = local.index();
+      var localIdx = local.key();
       var ext = entry.external();
       ArtifactExternal artExt;
       switch (ext) {

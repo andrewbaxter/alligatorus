@@ -422,9 +422,9 @@ public final class ConstEval {
     if (keyCodes.isEmpty()) {
       code = Code.none(loc);
     } else {
-      var blockEntries = new TList<JavaBytecode.BlockEntry>(keyCodes.size());
-      for (var c : keyCodes) blockEntries.add(new JavaBytecode.BlockEntry.Code(c));
-      code = Code.of(loc, new CodeDynamic(loc, new JavaBytecode.Block(blockEntries)));
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      for (var c : keyCodes) seq.add(c);
+      code = Code.of(loc, new CodeDynamic(loc, seq));
     }
     var fields = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : entries.entrySet()) {
@@ -740,7 +740,9 @@ public final class ConstEval {
       return EResult.errs(erb.errors());
     }
     Opt<Value> resultValue = bodyCv.value();
-    Opt<JavaBytecode.Catch> catchDyn = Opt.none();
+    return EResult.err(loc, "ConstEval.constEvalTry: try/catch/finally expansion into low-level bytecode API (JavaBytecodeJump/Land/CatchStart/Catch) is not yet ported");
+    /* PORT PENDING
+    Opt<CodeDynamic> catchDyn = Opt.none();
     if (e.catchClause() instanceof Opt.Some<Expr.TryCatch> catchSome2) {
       var catchObj = catchSome2.value();
       var bnCvOpt = erb.mustEr(constEval(xx, catchObj.bindingName()));
@@ -815,8 +817,9 @@ public final class ConstEval {
       }
       finallyDyn = Opt.some(combinedFinally);
     }
-    var tryCode = new CodeDynamic(loc, new JavaBytecode.Try(bodyCd, catchDyn, finallyDyn));
+    var tryCode = new CodeDynamic(loc, bodyCd);
     return EResult.ok(new CodeValue(Code.of(loc, tryCode), resultValue));
+    */
   }
 
   private static EResult<CodeValue> constEvalStage(ExprContext xx, QExprId loc, Expr.Stage e) {

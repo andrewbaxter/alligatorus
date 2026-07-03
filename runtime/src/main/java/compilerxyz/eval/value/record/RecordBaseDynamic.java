@@ -25,7 +25,7 @@ public record RecordBaseDynamic(ValueDynamic.Source source) {
   public CodeValue recordBaseFieldAccess(
       ExprContext xx, QExprId loc, String key, Type entryType) {
     var childSource = new ValueDynamic.Source.Field(source, key);
-    var fieldCode = new Code(loc, DynUtil.renderSource(loc, childSource));
+    var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, childSource));
     if (entryType instanceof Record recordType) {
       var newFields = new TOrderedMap<ConstKey, RecordField>();
       for (var entry : recordType.fields().entrySet()) {

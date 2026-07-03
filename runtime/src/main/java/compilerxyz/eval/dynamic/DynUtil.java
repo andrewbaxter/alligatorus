@@ -43,12 +43,13 @@ public final class DynUtil {
         return new CodeDynamic(loc, seq);
     }
 
-    public static CodeDynamic renderSource(QExprId loc, ValueDynamic.Source src) {
+    public static CodeDynamic renderSource(
+            ExprContext xx, QExprId loc, ValueDynamic.Source src) {
         return switch (src) {
             case ValueDynamic.Source.Binding b ->
-                new CodeDynamic(loc, new JavaBytecode.BindingUse(b.key()));
+                JavaBytecodeUtils.bindingUse(new CodeLoc.Some(loc), xx.vx, b.key());
             case ValueDynamic.Source.Field f ->
-                buildFieldGetSequence(loc, renderSource(loc, f.base()), f.key());
+                buildFieldGetSequence(loc, renderSource(xx, loc, f.base()), f.key());
             case ValueDynamic.Source.Expr e ->
                 throw new IllegalStateException(
                     "ValueDynamic.Source.Expr has no reconstructable code");
@@ -132,16 +133,14 @@ public final class DynUtil {
         if (carryDyn == null) {
             return dynamicCode;
         }
-        var entries = new TList<JavaBytecode.BlockEntry>();
-        if (carryDyn.code() instanceof JavaBytecode.Block block) {
-            for (var e : block.entries()) {
-                entries.add(e);
-            }
+        var seq = new JavaBytecodeSequence();
+        if (carryDyn.code() instanceof JavaBytecodeSequence carrySeq) {
+            for (var child : carrySeq.children) seq.add(child);
         } else {
-            entries.add(new JavaBytecode.BlockEntry.Code(carryDyn));
+            seq.add(carryDyn);
         }
-        entries.add(new JavaBytecode.BlockEntry.Code(dynamicCode));
-        return new CodeDynamic(loc, new JavaBytecode.Block(entries));
+        seq.add(dynamicCode);
+        return new CodeDynamic(loc, seq);
     }
 
     public static EResult<CodeValue> dynamicSet(
@@ -204,7 +203,7 @@ public final class DynUtil {
                         loc,
                         "TODO assertion set left hand doesn't evaluate to dynamic code (empty)");
             }
-            CodeDynamic baseCode = renderSource(loc, fieldSrc.base());
+            CodeDynamic baseCode = renderSource(xx, loc, fieldSrc.base());
             var setSeq = new JavaBytecodeSequence();
             setSeq.add(baseCode);
             setSeq.add(JavaBytecodeUtils.literalString(loc, fieldSrc.key()));
@@ -225,14 +224,12 @@ public final class DynUtil {
             return EResult.ok(nullStack.toValue(loc, setJs));
         }
         if (selfDyn.source() instanceof ValueDynamic.Source.Binding bindingSrc) {
-            var entries = new TList<JavaBytecode.BlockEntry>();
+            var seq = new JavaBytecodeSequence();
             if (selfCode != null) {
-                entries.add(new JavaBytecode.BlockEntry.Code(selfCode));
+                seq.add(selfCode);
             }
-            entries.add(
-                    new JavaBytecode.BlockEntry.Code(
-                            new CodeDynamic(loc, new JavaBytecode.BindingSet(bindingSrc.key(), valueCode))));
-            var setJs = new CodeDynamic(loc, new JavaBytecode.Block(entries));
+            seq.add(JavaBytecodeUtils.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
+            var setJs = new CodeDynamic(loc, seq);
             return EResult.ok(nullStack.toValue(loc, setJs));
         }
         return EResult.err(loc, "Cannot modify a temporary value");
