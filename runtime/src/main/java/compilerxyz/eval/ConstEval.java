@@ -458,6 +458,13 @@ public final class ConstEval {
     var elementScopeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var childScope = new Scope(xx.scope);
     var elementType = iterable.elementType();
+    // If the element type is a boxed dynamic primitive (AspectDynamicUnboxed),
+    // bind the loop variable as its unboxed primitive counterpart so the loop
+    // body sees the primitive form (matching the emitted unbox at load time).
+    var unboxOpt = compilerxyz.gen.AspectDynamicUnboxed.getMaybe(xx, elementType);
+    if (unboxOpt instanceof Opt.Some<compilerxyz.gen.AspectDynamicUnboxed> unboxSome) {
+      elementType = unboxSome.value().unboxedForm();
+    }
     var ibOpt = erb.mustEr(AspectInitialBind.get(xx, loc, elementType));
     if (ibOpt.isEmpty()) return EResult.errs(erb.errors());
     childScope.values.put(ekOpt.get(), ibOpt.get().initialBind(elementScopeId));

@@ -25,6 +25,7 @@ import compilerxyz.gen.AspectBoolConst;
 import compilerxyz.gen.AspectBoolDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDynamicBoxed;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -53,6 +54,7 @@ public record TypeBoolDynamic()
         AspectBoolDynamic,
         AspectConsumeDynamic,
         AspectDropDynamic,
+        AspectDynamicBoxed,
         AspectInitialBind,
         AspectLift,
         AspectStackValueDynamic,
@@ -73,7 +75,12 @@ public record TypeBoolDynamic()
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean"));
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BOOL;
+  }
+
+  @Override
+  public Type boxedForm() {
+    return new TypeBoolDynamicBox();
   }
 
   @Override
@@ -86,6 +93,7 @@ public record TypeBoolDynamic()
     if (key.equals(AspectBoolDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDynamicBoxed.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectStackValueDynamic.ID)

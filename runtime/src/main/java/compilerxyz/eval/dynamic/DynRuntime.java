@@ -106,8 +106,7 @@ public final class DynRuntime {
     return map.get(key);
   }
 
-  public static String numberToString(Double number) {
-    var d = number.doubleValue();
+  public static String numberToString(double d) {
     if (d == Math.floor(d) && !Double.isInfinite(d)) {
       return Long.toString((long) d);
     }

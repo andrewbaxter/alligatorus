@@ -137,6 +137,40 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
+  record NumberDynamicBox() implements TypeRoot {
+    @Override
+    public String typeDesc() {
+      return "type<number-dynamic-box>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record BoolDynamicBox() implements TypeRoot {
+    @Override
+    public String typeDesc() {
+      return "type<bool-dynamic-box>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
   record StringDynamic() implements TypeRoot {
     @Override
     public String typeDesc() {

@@ -129,7 +129,10 @@ public record TypeBoolConst()
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some && some.value() instanceof ValueBoolConst v) {
-      return EResult.ok(JavaBytecodeUtils.literalBool(loc, v.value()));
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(JavaBytecodeUtils.literalBool(loc, v.value()));
+      seq.add(compilerxyz.eval.value.number.TypeNumberDynamic.boxBoolean(loc));
+      return EResult.ok(new CodeDynamic(loc, seq));
     }
     return EResult.err(loc, "TypeBoolConst::toDynamic: expected ValueBoolConst");
   }

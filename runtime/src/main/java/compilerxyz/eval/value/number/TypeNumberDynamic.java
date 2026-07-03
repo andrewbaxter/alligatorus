@@ -26,6 +26,7 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDynamicBoxed;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
@@ -69,6 +70,7 @@ public record TypeNumberDynamic()
         AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamic,
+        AspectDynamicBoxed,
         AspectField,
         AspectInitialBind,
         AspectLift,
@@ -85,7 +87,7 @@ public record TypeNumberDynamic()
   private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_DBL_TO_STR =
       compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
           compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Double.class)));
+          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE));
 
   private static final Type EMPTY_TUPLE =
       new compilerxyz.eval.value.tuple.Tuple(new TList<>());
@@ -117,8 +119,12 @@ public record TypeNumberDynamic()
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"));
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE;
+  }
+
+  @Override
+  public Type boxedForm() {
+    return new TypeNumberDynamicBox();
   }
 
   @Override
@@ -131,6 +137,7 @@ public record TypeNumberDynamic()
     if (key.equals(AspectNumberDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDynamicBoxed.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectField.ID)
@@ -228,7 +235,6 @@ public record TypeNumberDynamic()
     if (seqRes.hasErrors()) return seqRes.reerr();
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DADD));
-    seq.add(boxDouble(loc));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -243,7 +249,6 @@ public record TypeNumberDynamic()
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPL));
     seq.add(compareToBoolBytecode(loc, Opcodes.IFEQ));
-    seq.add(boxBoolean(loc));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -258,7 +263,6 @@ public record TypeNumberDynamic()
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPG));
     seq.add(compareToBoolBytecode(loc, Opcodes.IFLT));
-    seq.add(boxBoolean(loc));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -280,22 +284,11 @@ public record TypeNumberDynamic()
     if (refCodeRes.hasErrors()) return refCodeRes.reerr();
     var seq = new JavaBytecodeSequence();
     seq.add(baseCodeRes.requireValue("toDynamic(base)"));
-    seq.add(unboxDouble(loc));
     seq.add(refCodeRes.requireValue("toDynamic(reference)"));
-    seq.add(unboxDouble(loc));
     return EResult.ok(seq);
   }
 
-  private static CodeDynamic unboxDouble(QExprId loc) {
-    return JavaBytecodeUtils.callMethod(
-        loc,
-        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"),
-        "doubleValue",
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE));
-  }
-
-  private static CodeDynamic boxDouble(QExprId loc) {
+  public static CodeDynamic boxDouble(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
         compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"),
@@ -306,7 +299,7 @@ public record TypeNumberDynamic()
             TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE)));
   }
 
-  private static CodeDynamic boxBoolean(QExprId loc) {
+  public static CodeDynamic boxBoolean(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
         compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean"),

@@ -137,18 +137,7 @@ public class JavaBytecodeUtils {
   }
 
   public static CodeDynamic literalDouble(CodeLoc loc, double value) {
-    var seq = new JavaBytecodeSequence();
-    seq.add(wrapObj(loc, new LdcInsnNode(value)));
-    seq.add(
-        callStaticMethod(
-            loc,
-            JavaInternalName.of("java/lang/Double"),
-            "valueOf",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromInternalName(
-                    JavaInternalName.of("java/lang/Double")),
-                TList.of(JavaDataDescriptor.DESC_DOUBLE))));
-    return new CodeDynamic(loc, seq);
+    return wrapObj(loc, new LdcInsnNode(value));
   }
 
   public static CodeDynamic literalDouble(QExprId loc, double value) {

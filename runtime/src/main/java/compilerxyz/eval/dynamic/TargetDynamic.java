@@ -332,10 +332,6 @@ public final class TargetDynamic implements Target {
       if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
       var nextLabel = new LabelNode();
       seq.add(condDynOpt.get());
-      seq.add(JavaBytecodeUtils.cast(loc, boolDesc));
-      seq.add(
-          JavaBytecodeUtils.callMethod(
-              loc, JvmConstants.INTNAME_BOXED_BOOL, "booleanValue", MDESC_BOOL_VALUE));
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextLabel)));
       seq.add(bodyDynOpt.get());
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));

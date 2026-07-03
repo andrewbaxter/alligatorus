@@ -308,14 +308,55 @@ public record TypeListDynamic(Type elementType)
           "TypeListDynamic::foreach: element binding must be BindingId.Local");
     }
     // Iterator.next() returns Object; cast to the element type's declared JVM
-    // class so the binding slot is typed as promised.
-    if (elementType instanceof AspectConsumeDynamic elemConsume) {
+    // class so the binding slot is typed as promised. If the element type is a
+    // JVM boxed dynamic type (AspectDynamicUnboxed), downcast to the box and
+    // unbox to the primitive form before storing, so the binding slot holds the
+    // primitive representation (matching typical arithmetic/field access needs).
+    int storeOp = Opcodes.ASTORE;
+    Type effectiveElementType = elementType;
+    var unboxOpt = compilerxyz.gen.AspectDynamicUnboxed.getMaybe(xx, elementType);
+    if (unboxOpt instanceof Opt.Some<compilerxyz.gen.AspectDynamicUnboxed> unboxSome) {
+      var boxConsume = (AspectConsumeDynamic) elementType;
+      var boxDesc = boxConsume.consumeDynamicJvmClass();
+      seq.add(JavaBytecodeUtils.cast(loc, boxDesc));
+      var primType = unboxSome.value().unboxedForm();
+      effectiveElementType = primType;
+      if (!(primType instanceof AspectConsumeDynamic primConsume)) {
+        throw new IllegalStateException(
+            "TypeListDynamic::foreach: unboxed form is not AspectConsumeDynamic");
+      }
+      var primDesc = primConsume.consumeDynamicJvmClass();
+      var boxDescStr = boxDesc.value();
+      if (boxDescStr.length() < 3 || boxDescStr.charAt(0) != 'L' || boxDescStr.charAt(boxDescStr.length() - 1) != ';') {
+        throw new IllegalStateException(
+            "TypeListDynamic::foreach: boxed form descriptor is not an object type: " + boxDescStr);
+      }
+      var boxIntName = JavaInternalName.of(boxDescStr.substring(1, boxDescStr.length() - 1));
+      char c = primDesc.value().charAt(0);
+      if (c == 'D') {
+        seq.add(JavaBytecodeUtils.callMethod(loc, boxIntName, "doubleValue",
+            JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_DOUBLE)));
+        storeOp = Opcodes.DSTORE;
+      } else if (c == 'Z') {
+        seq.add(JavaBytecodeUtils.callMethod(loc, boxIntName, "booleanValue",
+            JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL)));
+        storeOp = Opcodes.ISTORE;
+      } else {
+        throw new IllegalStateException(
+            "TypeListDynamic::foreach: unhandled unbox descriptor " + primDesc.value());
+      }
+    } else if (elementType instanceof AspectConsumeDynamic elemConsume) {
       var elemDesc = elemConsume.consumeDynamicJvmClass();
-      if (!elemDesc.value().equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
-        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+      var d = elemDesc.value();
+      if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
+        char c = d.charAt(0);
+        if (c == 'L' || c == '[') {
+          seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+        }
       }
     }
-    seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));
+    seq.add(new CodeDynamic(loc,
+        new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(storeOp, localBinding.key())));
     var bodyDyn = body.code().dynamic();
     if (bodyDyn != null) {
       seq.add(bodyDyn);

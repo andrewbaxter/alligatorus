@@ -210,6 +210,7 @@ public record Tuple(TList<TupleElement> elements)
         }
         default -> throw new IllegalStateException();
       }
+      destElemType = DynUtil.substituteBoxed(xx, destElemType);
       TupleElement converted;
       switch (elem) {
         case TupleElement.EvalRes elemRes -> {

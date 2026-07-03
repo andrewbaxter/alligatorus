@@ -269,6 +269,35 @@ final class AspectsGen {
         new AspectSpec(
             "Identity aspect for dynamic list", "ListDynamic", 1011, TList.of()),
         new AspectSpec(
+            "Marker aspect implemented by unboxed primitive dynamic types (e.g."
+                + " TypeNumberDynamic, TypeBoolDynamic) to point to their JVM boxed"
+                + " counterpart. Container constructors (list, map, tuple) call this at"
+                + " type-construction time to substitute the boxed element type, so that"
+                + " values flowing through Object-shaped containers are typed as boxed"
+                + " and go through the normal typecheck-convert path (which emits the"
+                + " actual {@code valueOf} via the box type's {@code typeCastFrom}).",
+            "DynamicBoxed",
+            1033,
+            TList.of(
+                new AspectMethod(
+                    "Returns the JVM boxed counterpart of this unboxed primitive type.",
+                    "boxedForm",
+                    TList.of(),
+                    TYPE))),
+        new AspectSpec(
+            "Marker aspect implemented by JVM boxed dynamic types (e.g."
+                + " TypeNumberDynamicBox, TypeBoolDynamicBox) to point to their unboxed"
+                + " primitive counterpart. Used by iteration sites that want to load"
+                + " and unbox to the primitive form.",
+            "DynamicUnboxed",
+            1034,
+            TList.of(
+                new AspectMethod(
+                    "Returns the unboxed primitive counterpart of this boxed type.",
+                    "unboxedForm",
+                    TList.of(),
+                    TYPE))),
+        new AspectSpec(
             "Identity aspect for dynamic map",
             "MapDynamic",
             1012,

@@ -143,6 +143,21 @@ public final class DynUtil {
         return EResult.ok(dyn);
     }
 
+    /**
+     * If {@code type} carries AspectDynamicBoxed (i.e. is an unboxed primitive
+     * dynamic type with a boxed counterpart), returns the boxed counterpart type.
+     * Otherwise returns {@code type} unchanged. Used at container (list/map/tuple)
+     * type-construction sites so element types are always boxed when flowing
+     * through Object-shaped runtime containers.
+     */
+    public static Type substituteBoxed(ExprContext xx, Type type) {
+        var boxedOpt = compilerxyz.gen.AspectDynamicBoxed.getMaybe(xx, type);
+        if (boxedOpt instanceof Opt.Some<compilerxyz.gen.AspectDynamicBoxed> boxedSome) {
+            return boxedSome.value().boxedForm();
+        }
+        return type;
+    }
+
     public static CodeValue dynamicStackToValue(QExprId loc, CodeDynamic value, Type type_) {
         var dynValue =
                 new ValueDynamic(
@@ -231,9 +246,6 @@ public final class DynUtil {
         }
         if (selfDyn.source() instanceof ValueDynamic.Source.Binding bindingSrc) {
             var seq = new JavaBytecodeSequence();
-            if (selfCode != null) {
-                seq.add(selfCode);
-            }
             if (bindingSrc.key() instanceof compilerxyz.eval.BindingId.Local local) {
                 // Local slot: pick the typed store opcode from the binding's type
                 // so a primitive-typed slot uses DSTORE / ISTORE / etc.

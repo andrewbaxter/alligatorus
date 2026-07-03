@@ -92,6 +92,8 @@ public record TypeMapConstructorConst()
     if (valueAtRes.hasErrors()) return valueAtRes.reerr();
     var valueType =
         valueAtRes.requireValue("TypeMapConstructorConst::call value AspectType").type_(valueValue);
+    keyType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, keyType);
+    valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
         new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(mapType))));

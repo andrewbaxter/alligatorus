@@ -145,7 +145,10 @@ public record TypeNumberConst()
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some
         && some.value() instanceof ValueNumberConst v) {
-      return EResult.ok(JavaBytecodeUtils.literalDouble(loc, v.value()));
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(JavaBytecodeUtils.literalDouble(loc, v.value()));
+      seq.add(TypeNumberDynamic.boxDouble(loc));
+      return EResult.ok(new CodeDynamic(loc, seq));
     }
     return EResult.err(loc, "TypeNumberConst::toDynamic: expected ValueNumberConst");
   }
