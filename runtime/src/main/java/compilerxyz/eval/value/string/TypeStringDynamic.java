@@ -74,7 +74,9 @@ public record TypeStringDynamic()
   private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_STR_TO_STR =
       compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
           compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class)));
+          TList.of(
+              compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
+              compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(

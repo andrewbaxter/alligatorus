@@ -126,7 +126,7 @@ public final class DynRuntime {
     return map.get(key);
   }
 
-  public static String numberToString(Double number) {
+  public static String numberToString(Double number, Object unused) {
     var d = number.doubleValue();
     if (d == Math.floor(d) && !Double.isInfinite(d)) {
       return Long.toString((long) d);
@@ -134,11 +134,11 @@ public final class DynRuntime {
     return Double.toString(d);
   }
 
-  public static String stringToLowerCase(String s) {
+  public static String stringToLowerCase(String s, Object unused) {
     return s.toLowerCase();
   }
 
-  public static String stringToUpperCase(String s) {
+  public static String stringToUpperCase(String s, Object unused) {
     return s.toUpperCase();
   }
 

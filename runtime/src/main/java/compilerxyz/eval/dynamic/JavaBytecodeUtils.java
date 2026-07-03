@@ -139,8 +139,6 @@ public class JavaBytecodeUtils {
   public static CodeDynamic literalDouble(CodeLoc loc, double value) {
     var seq = new JavaBytecodeSequence();
     seq.add(wrapObj(loc, new LdcInsnNode(value)));
-    // Box double → java.lang.Double so the stack matches TypeNumberDynamic's
-    // consumeDynamicJvmClass().
     seq.add(
         callStaticMethod(
             loc,

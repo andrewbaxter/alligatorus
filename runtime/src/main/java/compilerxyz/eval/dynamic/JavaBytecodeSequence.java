@@ -510,7 +510,10 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             }
                                         }
                                         if (index == -1) {
-                                            index = currentIndexes[0].size();
+                                            // Use total JVM slot count (currentRevIndexes.size),
+                                            // not distinct-key count, so wide bindings that
+                                            // consume 2 slots push the next allocation past both.
+                                            index = currentRevIndexes[0].size();
                                             currentIndexes[0] = currentIndexes[0].plus(storeLoad.key, index);
                                             currentRevIndexes[0] = currentRevIndexes[0].plus(storeLoad.key);
                                             if (wide) {

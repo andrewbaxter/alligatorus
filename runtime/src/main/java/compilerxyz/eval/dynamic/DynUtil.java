@@ -269,6 +269,9 @@ public final class DynUtil {
             } else {
                 seq.add(BindingCode.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
             }
+            // set expression's language type is null → push a matching Object null
+            // so downstream consumers see a stack value.
+            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
             var setJs = new CodeDynamic(loc, seq);
             return EResult.ok(nullStack.toValue(loc, setJs));
         }

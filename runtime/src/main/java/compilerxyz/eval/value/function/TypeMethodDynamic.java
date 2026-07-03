@@ -102,11 +102,7 @@ public record TypeMethodDynamic(
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
     argList.add(receiverDyn);
-    // TypeNullDynamic is a language-level "no arg" marker — it has no JVM stack
-    // representation in the method descriptor, so don't push it.
-    if (!(arg instanceof compilerxyz.eval.value.null_.TypeNullDynamic)) {
-      argList.add(argDynRes.valueOrNull());
-    }
+    argList.add(argDynRes.valueOrNull());
     return EResult.ok(
         retStackRes.valueOrNull().toValue(loc, emitInvocation(loc, xx.vx, argList)));
   }
