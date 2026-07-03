@@ -73,12 +73,36 @@ public final class EvalRootEmitter {
 
   private static void collectReferencedDefs(CodeDynamic code, TOrderedSet<BindingId.Def> out) {
       var v = code.code();
+      if (v instanceof JavaBytecodeInstructionObj obj
+          && obj.node instanceof org.objectweb.asm.tree.FieldInsnNode fi
+          && (fi.getOpcode() == org.objectweb.asm.Opcodes.GETSTATIC
+              || fi.getOpcode() == org.objectweb.asm.Opcodes.PUTSTATIC)
+          && fi.name.startsWith(Prefixes.DEF_PREFIX)) {
+          var def = parseDefFieldName(fi.name);
+          if (def != null) out.add(def);
+          return;
+      }
       if (v instanceof JavaBytecodeSequence s) {
           for (var child : s.children) collectReferencedDefs(child, out);
           return;
       }
       if (v instanceof CodeDynamic nested) {
           collectReferencedDefs(nested, out);
+      }
+  }
+
+  private static BindingId.Def parseDefFieldName(String name) {
+      var body = name.substring(Prefixes.DEF_PREFIX.length());
+      var parts = body.split("_");
+      if (parts.length != 4) return null;
+      try {
+          var importState = new compilerxyz.eval.ImportStateId(Long.parseLong(parts[0]));
+          var source = new compilerxyz.eval.SourceId(Long.parseLong(parts[1]));
+          var defSet = new compilerxyz.eval.DefSetId(
+              new compilerxyz.eval.CompileId(importState, source), Long.parseLong(parts[2]));
+          return new BindingId.Def(defSet, Long.parseLong(parts[3]));
+      } catch (NumberFormatException e) {
+          return null;
       }
   }
 
