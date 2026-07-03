@@ -82,10 +82,9 @@ final class CodecEmitter {
     var target = classNameOf(qname);
 
     var cls =
-        TypeSpec.classBuilder(codecClassName)
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addSuperinterface(ParameterizedTypeName.get(CODEC, target))
-            .addJavadoc("Generated codec for {@link $L}.\n", qname);
+            TypeSpec.classBuilder(codecClassName)
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addSuperinterface(ParameterizedTypeName.get(CODEC, target));
 
     cls.addField(
         FieldSpec.builder(codecType, "INSTANCE", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
@@ -622,12 +621,8 @@ final class CodecEmitter {
   static String emitInit(
       TList<String> emitted, TOrderedSet<String> closure, TypeIndex index, TSet<String> handCoded) {
     var cls =
-        TypeSpec.classBuilder("CodecsInit")
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addJavadoc(
-                "Generated registration of every emitted codec. Loaded by "
-                    + "{@link $T}'s static initialiser.\n",
-                CODEC_REGISTRY);
+            TypeSpec.classBuilder("CodecsInit")
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
     cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
     var staticBlock = CodeBlock.builder();
