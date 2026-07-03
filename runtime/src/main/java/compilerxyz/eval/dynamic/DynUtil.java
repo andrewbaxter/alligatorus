@@ -122,7 +122,15 @@ public final class DynUtil {
         if (!isStackRooted(vd.source())) {
             return EResult.ok(Code.none(loc));
         }
-        return EResult.ok(Code.of(loc, JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP)));
+        // Wide primitives (double, long) occupy two operand-stack slots — use POP2.
+        int popOp = org.objectweb.asm.Opcodes.POP;
+        if (vd.type_() instanceof compilerxyz.gen.AspectConsumeDynamic consume) {
+            var d = consume.consumeDynamicJvmClass().value();
+            if (!d.isEmpty() && (d.charAt(0) == 'D' || d.charAt(0) == 'J')) {
+                popOp = org.objectweb.asm.Opcodes.POP2;
+            }
+        }
+        return EResult.ok(Code.of(loc, JavaBytecodeUtils.inst(loc, popOp)));
     }
 
     private static boolean isStackRooted(ValueDynamic.Source source) {
@@ -249,7 +257,18 @@ public final class DynUtil {
             if (selfCode != null) {
                 seq.add(selfCode);
             }
-            seq.add(BindingCode.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
+            if (bindingSrc.key() instanceof compilerxyz.eval.BindingId.Local local) {
+                // Local slot: pick the typed store opcode from the binding's type
+                // so a primitive-typed slot uses DSTORE / ISTORE / etc.
+                seq.add(valueCode);
+                seq.add(
+                    new CodeDynamic(
+                        new CodeLoc.Some(loc),
+                        new JavaBytecodeStoreLoad(
+                            JvmSort.storeOpcode(targetType), local.key())));
+            } else {
+                seq.add(BindingCode.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
+            }
             var setJs = new CodeDynamic(loc, seq);
             return EResult.ok(nullStack.toValue(loc, setJs));
         }

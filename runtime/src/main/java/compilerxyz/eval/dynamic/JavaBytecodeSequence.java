@@ -5,8 +5,10 @@ import static org.objectweb.asm.Opcodes.ASM8;
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.ATHROW;
 import static org.objectweb.asm.Opcodes.BASTORE;
+import static org.objectweb.asm.Opcodes.DLOAD;
 import static org.objectweb.asm.Opcodes.DSTORE;
 import static org.objectweb.asm.Opcodes.FSTORE;
+import static org.objectweb.asm.Opcodes.LLOAD;
 import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.IFEQ;
 import static org.objectweb.asm.Opcodes.IFGE;
@@ -476,6 +478,10 @@ public class JavaBytecodeSequence implements JavaBytecode {
                             @Override
                             public Object handleStoreLoad(JavaBytecodeStoreLoad storeLoad) {
                                 int index = currentIndexes[0].getOrDefault(storeLoad.key, -1);
+                                boolean wide = storeLoad.code == DSTORE
+                                        || storeLoad.code == LSTORE
+                                        || storeLoad.code == DLOAD
+                                        || storeLoad.code == LLOAD;
                                 if (index == -1) {
                                     if (storeLoad.code == ISTORE
                                             || storeLoad.code == LSTORE
@@ -483,16 +489,33 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             || storeLoad.code == BASTORE
                                             || storeLoad.code == FSTORE
                                             || storeLoad.code == DSTORE) {
+                                        // Reserve a run of 1 (narrow) or 2 (wide) consecutive
+                                        // free slots.
+                                        int need = wide ? 2 : 1;
+                                        int run = 0;
                                         for (int j = 0; j < currentRevIndexes[0].size(); j++) {
-                                            if (currentRevIndexes[0].get(j) != null) continue;
-                                            currentIndexes[0] = currentIndexes[0].plus(storeLoad.key, j);
-                                            currentRevIndexes[0] = currentRevIndexes[0].with(j, storeLoad.key);
-                                            index = j;
+                                            if (currentRevIndexes[0].get(j) == null) {
+                                                run++;
+                                                if (run == need) {
+                                                    int start = j - need + 1;
+                                                    currentIndexes[0] = currentIndexes[0].plus(storeLoad.key, start);
+                                                    for (int k = 0; k < need; k++) {
+                                                        currentRevIndexes[0] = currentRevIndexes[0].with(start + k, storeLoad.key);
+                                                    }
+                                                    index = start;
+                                                    break;
+                                                }
+                                            } else {
+                                                run = 0;
+                                            }
                                         }
                                         if (index == -1) {
                                             index = currentIndexes[0].size();
                                             currentIndexes[0] = currentIndexes[0].plus(storeLoad.key, index);
                                             currentRevIndexes[0] = currentRevIndexes[0].plus(storeLoad.key);
+                                            if (wide) {
+                                                currentRevIndexes[0] = currentRevIndexes[0].plus(storeLoad.key);
+                                            }
                                         }
                                     } else {
                                         throw new AssertionError();
@@ -502,6 +525,9 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                 if (bindingLastUses.get(storeLoad.key).lastIndexOf(finalCodeIndex) != -1) {
                                     currentIndexes[0] = currentIndexes[0].minus(storeLoad.key);
                                     currentRevIndexes[0] = currentRevIndexes[0].with(index, null);
+                                    if (wide) {
+                                        currentRevIndexes[0] = currentRevIndexes[0].with(index + 1, null);
+                                    }
                                 }
                                 return null;
                             }

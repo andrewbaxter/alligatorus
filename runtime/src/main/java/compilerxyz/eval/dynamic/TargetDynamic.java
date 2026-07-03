@@ -124,7 +124,9 @@ public final class TargetDynamic implements Target {
     seq.add(sub.data());
     seq.add(
         new CodeDynamic(
-            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, key)));
+            new CodeLoc.Some(loc),
+            new JavaBytecodeStoreLoad(
+                JvmSort.storeOpcode(sub.type()), key)));
     return new BindResult(new CodeDynamic(loc, seq), local);
   }
 
