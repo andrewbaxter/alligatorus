@@ -76,6 +76,14 @@ public record TypeListDynamic(Type elementType)
         ExporterAny {
 
   @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
+  @Override
   public JavaInternalName consumeDynamicJvmClass() {
     return JavaInternalName.of("compilerxyz/util/TList");
   }

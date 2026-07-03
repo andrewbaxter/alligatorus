@@ -540,22 +540,19 @@ final class AspectsGen {
                     "Returns the exporter", "exporter", TList.of(), ARTIFACT_EXPORTER))),
         new AspectSpec(
             "Allows a value to emit cleanup (drop) code when its scope ends, when it is"
-                + " discarded as a Seq entry, or when a sibling field is not extracted.",
+                + " discarded as a Seq entry, or when a sibling field is not extracted."
+                + " Implementations typically delegate to {@link"
+                + " compilerxyz.eval.dynamic.DynUtil#dropDefault} which emits a POP when the"
+                + " value's source root is a stack Expr; types with additional cleanup"
+                + " prepend that before delegating.",
             "DropDynamic",
             1032,
             TList.of(
                 new AspectMethod(
-                    "Default: if the value's source root is stack (a fresh Expr), emit a POP"
-                        + " so the JVM stack does not accumulate discarded returns; otherwise"
-                        + " no-op (the value lives in a slot / field / etc.). Override to add"
-                        + " type-specific cleanup on top.",
+                    "",
                     "drop",
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE),
-                    "return $T.dropDefault(xx, loc, cv)",
-                    new Object[] {
-                      ClassName.get("compilerxyz.eval.dynamic", "DynUtil")
-                    }))),
+                    ParameterizedTypeName.get(ERESULT, CODE)))),
         new AspectSpec(
             "Identity aspect for aspects (types representing values holding aspect"
                 + " implementations).",

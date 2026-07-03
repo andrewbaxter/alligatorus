@@ -105,6 +105,14 @@ public record TypeStringDynamic()
   }
 
   @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
+  @Override
   public compilerxyz.eval.dynamic.JavaInternalName consumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/String");
   }

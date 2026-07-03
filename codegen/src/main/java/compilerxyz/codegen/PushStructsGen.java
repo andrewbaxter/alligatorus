@@ -186,6 +186,8 @@ public final class PushStructsGen {
                       .addSuperinterface(TYPE)
                       .addSuperinterface(ASPECT_FIELD)
                       .addSuperinterface(ASPECT_CONSUME_DYNAMIC)
+                      .addSuperinterface(
+                          ClassName.get("compilerxyz.gen", "AspectDropDynamic"))
                       .addSuperinterface(ASPECT_BIND)
                       .addSuperinterface(ASPECT_BIND_DYNAMIC)
                       .addSuperinterface(ASPECT_STACK_VALUE_DYNAMIC);
@@ -220,6 +222,7 @@ public final class PushStructsGen {
     cls.addMethod(buildFieldKeys());
     cls.addMethod(buildToDynamicMethod());
     cls.addMethod(buildConsumeDynamicJvmClassMethod());
+    cls.addMethod(buildDropMethod());
     cls.addMethod(buildBindMethod());
     cls.addMethod(buildBindDynamicMethod());
     cls.addMethod(buildToValueMethod(sentinel));
@@ -281,6 +284,18 @@ public final class PushStructsGen {
         .addAnnotation(Override.class)
         .returns(JAVA_INTERNAL_NAME)
         .addStatement("return $T.INTNAME_OBJECT", JVM_CONSTANTS)
+        .build();
+  }
+
+  private static MethodSpec buildDropMethod() {
+    return MethodSpec.methodBuilder("drop")
+        .addModifiers(Modifier.PUBLIC)
+        .addAnnotation(Override.class)
+        .returns(ParameterizedTypeName.get(ERESULT_RT, CODE))
+        .addParameter(EXPR_CONTEXT, "xx")
+        .addParameter(QEXPR_ID, "loc")
+        .addParameter(CODE_VALUE, "cv")
+        .addStatement("return $T.dropDefault(xx, loc, cv)", DYN_UTIL)
         .build();
   }
 
