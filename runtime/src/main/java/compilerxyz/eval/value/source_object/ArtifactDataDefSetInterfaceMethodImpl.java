@@ -9,4 +9,4 @@ public record ArtifactDataDefSetInterfaceMethodImpl(
     @Nullable String compiledClassName,
     @Nullable byte[] compiledBytecode,
     long entryId,
-    TList<ArtifactExternal.CapturedEntry> capturedExternals) {}
+    TList<ArtifactExternal> capturedExternals) {}

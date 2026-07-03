@@ -16,5 +16,5 @@ public record ArtifactDataDefSetFunction(
     Artifact retType,
     String compiledClassName,
     byte[] compiledBytecode,
-    TList<ArtifactExternal.CapturedEntry> capturedExternals)
+    TList<ArtifactExternal> capturedExternals)
     implements SafeJsonSerializable {}

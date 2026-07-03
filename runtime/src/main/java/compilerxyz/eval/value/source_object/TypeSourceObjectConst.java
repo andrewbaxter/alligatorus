@@ -358,9 +358,8 @@ public record TypeSourceObjectConst(SourceObjectData data)
                   deps.add(m.argType());
                   deps.add(m.retType());
                   for (var ce : m.capturedExternals()) {
-                    if (ce.external() instanceof ArtifactExternal.Type t) {
-                      deps.add(t.typeArtifact());
-                    }
+                    deps.add(ce.typeArtifact());
+                    deps.add(ce.valueArtifact());
                   }
                 }
                 for (var impl : body.interfaceImpls()) {
@@ -369,9 +368,8 @@ public record TypeSourceObjectConst(SourceObjectData data)
                   }
                   for (var mi : impl.methodImpls()) {
                     for (var ce : mi.capturedExternals()) {
-                      if (ce.external() instanceof ArtifactExternal.Type t) {
-                        deps.add(t.typeArtifact());
-                      }
+                      deps.add(ce.typeArtifact());
+                      deps.add(ce.valueArtifact());
                     }
                   }
                 }

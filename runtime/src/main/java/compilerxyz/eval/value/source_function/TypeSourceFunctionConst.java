@@ -244,9 +244,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                 deps.add(body.argType());
                 deps.add(body.retType());
                 for (var ext : body.capturedExternals()) {
-                  if (ext.external() instanceof ArtifactExternal.Type t) {
-                    deps.add(t.typeArtifact());
-                  }
+                  deps.add(ext.typeArtifact());
+                  deps.add(ext.valueArtifact());
                 }
                 ArtifactSupport.ImportIndependentResult.Finalizer fin =
                     (xx2, loc2) -> {
