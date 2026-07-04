@@ -60,7 +60,49 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    // Record is a destructive stack-allocated composite: its runtime shape is a
+    // RecordClassEmitter-generated class whose public Object fields hold the
+    // per-key values. When the base sits on the JVM stack (Source.Expr) each
+    // AspectDropDynamic-carrying child needs a DUP + GETFIELD + child.drop()
+    // before the base is popped. Records with a dynamic base thread the source
+    // through RecordBaseDynamic (Source.Field / Source.Binding), so the
+    // stack-rooted case is only reachable for base==None records; in the
+    // current test corpus these never appear as ValueDynamic with Source.Expr
+    // (see feedback: records/tuples flow through Source.Binding). Implemented
+    // for future-proofing per the drop policy.
+    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<Value> some)
+        || !(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)
+        || !(vd.source() instanceof compilerxyz.eval.value.ValueDynamic.Source.Expr)) {
+      return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    }
+    if (base instanceof Opt.Some<RecordBaseDynamic>) {
+      return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    }
+    var fieldKeys = new TList<compilerxyz.eval.dynamic.RecordClassEmitter.FieldKey>(fields.size());
+    var sortedKeys = new TList<ConstKey>(fields.size());
+    sortedKeys.addAll(fields.keySet());
+    sortedKeys.sort(ConstKey.CANONICAL_ORDER);
+    for (var k : sortedKeys) {
+      var f = fields.getOrNull(k);
+      var t = recordFieldType(f);
+      fieldKeys.add(new compilerxyz.eval.dynamic.RecordClassEmitter.FieldKey(k.toCanonical(), t));
+    }
+    var klass =
+        compilerxyz.eval.dynamic.JavaInternalName.of(
+            compilerxyz.eval.dynamic.RecordClassEmitter.internalNameFor(fieldKeys));
+    var children = new TList<DynUtil.DropChild>(fieldKeys.size());
+    for (int i = 0; i < fieldKeys.size(); i++) {
+      var fk = fieldKeys.get(i);
+      var fieldName = compilerxyz.eval.dynamic.RecordClassEmitter.disambiguatedFieldName(fieldKeys, i);
+      var access =
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+              loc,
+              klass,
+              fieldName,
+              compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT);
+      children.add(new DynUtil.DropChild(fk.type(), access));
+    }
+    return DynUtil.dropDestructiveComposite(xx, loc, cv, children);
   }
 
   @Override

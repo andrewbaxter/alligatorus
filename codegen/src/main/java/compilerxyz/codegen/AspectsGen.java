@@ -346,7 +346,8 @@ final class AspectsGen {
             TList.of(
                 new AspectMethod(
                     "Return a value representing the access of this field. Error if the field"
-                        + " doesn't exist.",
+                        + " doesn't exist. Emits only field-access code; sibling-field drop policy"
+                        + " lives in {@link AspectDropDynamic#drop} for the base type.",
                     "field",
                     TList.of(
                         xxParam,

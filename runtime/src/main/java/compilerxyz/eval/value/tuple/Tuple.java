@@ -65,7 +65,49 @@ public record Tuple(TList<TupleElement> elements)
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    // Tuple mirrors Record: destructive stack-allocated composite backed by a
+    // TupleClassEmitter class with numbered Object slot fields. Stack-rooted
+    // tuples destructure per slot before POPping the base. In current tests
+    // tuples only surface as Tuple values or via Source.Binding, so this path
+    // is unreachable — implemented for future-proofing.
+    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Value> some)
+        || !(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)
+        || !(vd.source() instanceof compilerxyz.eval.value.ValueDynamic.Source.Expr)) {
+      return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    }
+    var slotTypes = new compilerxyz.util.TList<compilerxyz.eval.Type>(elements.size());
+    for (var e : elements) {
+      var t =
+          switch (e) {
+            case TupleElement.Dynamic d -> d.type();
+            case TupleElement.EvalRes r -> {
+              var er = r.result();
+              if (!er.hasErrors()
+                  && er.requireValue("Tuple::drop slot type").value()
+                      instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Value> vs) {
+                yield vs.value().valueTypeOf();
+              }
+              yield (compilerxyz.eval.Type) new Tuple(new compilerxyz.util.TList<>());
+            }
+          };
+      slotTypes.add(t);
+    }
+    var klass =
+        compilerxyz.eval.dynamic.JavaInternalName.of(
+            compilerxyz.eval.dynamic.TupleClassEmitter.internalNameFor(slotTypes));
+    var children =
+        new compilerxyz.util.TList<
+            compilerxyz.eval.dynamic.DynUtil.DropChild>(slotTypes.size());
+    for (int i = 0; i < slotTypes.size(); i++) {
+      var access =
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+              loc,
+              klass,
+              compilerxyz.eval.dynamic.TupleClassEmitter.slotFieldName(i),
+              compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT);
+      children.add(new compilerxyz.eval.dynamic.DynUtil.DropChild(slotTypes.get(i), access));
+    }
+    return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, cv, children);
   }
 
   @Override

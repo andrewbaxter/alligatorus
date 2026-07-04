@@ -18,11 +18,9 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.dynamic.Target;
 import compilerxyz.eval.dynamic.target.TargetCase;
-import compilerxyz.eval.value.number.ValueNumberConst;
 import compilerxyz.eval.value.null_.ValueNullConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
-import compilerxyz.eval.value.string.ValueStringConst;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.artifact.Artifact;
@@ -125,7 +123,7 @@ public final class ConstEval {
           erb.errPush("Field: base has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        if (!(field.value() instanceof Opt.Some<Value> fv)) {
+        if (!(field.value() instanceof Opt.Some<Value>)) {
           erb.errPush("Field: field key has no compile-time value");
           yield EResult.errs(erb.errors());
         }
@@ -133,56 +131,9 @@ public final class ConstEval {
         var aspectFieldOpt = erb.mustEr(AspectField.get(xx, loc, baseType));
         if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectField = aspectFieldOpt.get();
-        var extractedKeyOpt = erb.mustRes(Eval.extractConstKey(xx, loc, fv.value()));
-        if (extractedKeyOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var extractedKey = extractedKeyOpt.get();
-        var siblingDrops = new TList<Code>();
-        boolean fieldFail = false;
-        EResult<CodeValue> earlyReturn = null;
-        for (var key : aspectField.fieldKeys(xx)) {
-          if (key.equals(extractedKey)) continue;
-          Value keyValue = switch (key) {
-            case ConstKey.Str s -> new ValueStringConst(s.value());
-            case ConstKey.Uint u -> new ValueNumberConst((double) u.value());
-          };
-          var keyCv = new CodeValue(Code.none(loc), Opt.some(keyValue));
-          var fieldCvOpt = erb.mustEr(aspectField.field(xx, loc, base, keyCv));
-          if (fieldCvOpt.isEmpty()) {
-            earlyReturn = EResult.errs(erb.errors());
-            fieldFail = true;
-            break;
-          }
-          var fieldCv = fieldCvOpt.get();
-          if (!(fieldCv.value() instanceof Opt.Some<Value> sib)) {
-            erb.errPush(
-                "Sibling field '" + key + "' listed in fieldKeys() but field() returned no value");
-            earlyReturn = EResult.errs(erb.errors());
-            fieldFail = true;
-            break;
-          }
-          var fieldType = sib.value().valueTypeOf();
-          var dropAspectOpt = AspectDropDynamic.getMaybe(xx, fieldType);
-          if (dropAspectOpt instanceof Opt.Some<AspectDropDynamic> dropSome) {
-            var dropOpt = erb.mustEr(dropSome.value().drop(xx, loc, fieldCv));
-            if (dropOpt.isEmpty()) {
-              earlyReturn = EResult.errs(erb.errors());
-              fieldFail = true;
-              break;
-            }
-            siblingDrops.add(dropOpt.get());
-          }
-        }
-        if (fieldFail) yield earlyReturn;
         var primaryOpt = erb.mustEr(aspectField.field(xx, loc, base, field));
         if (primaryOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var primary = primaryOpt.get();
-        if (siblingDrops.isEmpty()) {
-          yield EResult.ok(primary);
-        }
-        siblingDrops.add(primary.code());
-        var combinedOpt = erb.mustEr(xx.target.targetSeq(loc, siblingDrops));
-        if (combinedOpt.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(new CodeValue(combinedOpt.get(), primary.value()));
+        yield EResult.ok(primaryOpt.get());
       }
       case Expr.Bind ignored ->
           EResult.err(loc, "Bind expression must be directly inside a block");

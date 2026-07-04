@@ -58,7 +58,30 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    // Map entry has exactly two child slots (key, value) accessed through
+    // Map.Entry.getKey / getValue. In practice both slots are just GC-managed
+    // Object references, so the base POP suffices, but the destructuring
+    // policy is emitted for correctness when a child type introduces its own
+    // drop semantics.
+    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Value> some)
+        || !(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)
+        || !(vd.source() instanceof compilerxyz.eval.value.ValueDynamic.Source.Expr)) {
+      return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    }
+    var descObjNoArgs =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.fromClass(Object.class), TList.of());
+    var children =
+        new compilerxyz.util.TList<compilerxyz.eval.dynamic.DynUtil.DropChild>(2);
+    children.add(
+        new compilerxyz.eval.dynamic.DynUtil.DropChild(
+            keyType,
+            JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getKey", descObjNoArgs)));
+    children.add(
+        new compilerxyz.eval.dynamic.DynUtil.DropChild(
+            valueType,
+            JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
+    return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, cv, children);
   }
 
   @Override
@@ -113,6 +136,20 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
             spec.jvmGetter(),
             JavaMethodDescriptor.fromParts(
                 JavaDataDescriptor.fromClass(Object.class), TList.of())));
+    // Iterator.next() and Map.Entry.getKey/getValue return Object; cast to the
+    // field type's declared JVM class so the stack shape matches the language
+    // type. Container element types are already box-substituted at construction
+    // time, so the target descriptor is always object-shaped here.
+    if (spec.type() instanceof AspectConsumeDynamic fieldConsume) {
+      var fieldDesc = fieldConsume.consumeDynamicJvmClass();
+      var d = fieldDesc.value();
+      if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
+        char c = d.charAt(0);
+        if (c == 'L' || c == '[') {
+          seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
+        }
+      }
+    }
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
