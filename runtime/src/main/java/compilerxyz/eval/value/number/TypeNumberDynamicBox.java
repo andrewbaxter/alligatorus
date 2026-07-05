@@ -27,7 +27,7 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectDynamicUnboxed;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
@@ -45,7 +45,7 @@ public record TypeNumberDynamicBox()
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectDynamicUnboxed,
         AspectField,
         AspectInitialBind,
@@ -55,12 +55,6 @@ public record TypeNumberDynamicBox()
   @Override
   public String typeDesc() {
     return "dynamic number";
-  }
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      ExprContext xx, QExprId loc, CodeValue cv) {
-    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -82,7 +76,7 @@ public record TypeNumberDynamicBox()
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectDynamicUnboxed.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
@@ -161,7 +155,7 @@ public record TypeNumberDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   @Override
@@ -169,7 +163,7 @@ public record TypeNumberDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   @Override
@@ -185,7 +179,7 @@ public record TypeNumberDynamicBox()
     var unboxedSelf =
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), unboxed)));
+            Opt.some(ValueDynamic.stack(unboxed)));
     return unboxed.field(xx, loc, unboxedSelf, key);
   }
 

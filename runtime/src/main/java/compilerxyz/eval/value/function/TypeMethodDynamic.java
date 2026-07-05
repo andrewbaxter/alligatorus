@@ -22,7 +22,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
@@ -39,16 +39,10 @@ public record TypeMethodDynamic(
         Type,
         AspectBind,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      ExprContext xx, QExprId loc, CodeValue cv) {
-    return DynUtil.dropDefault(xx, loc, cv);
-  }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -70,7 +64,7 @@ public record TypeMethodDynamic(
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectFunction.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);

@@ -24,7 +24,7 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectBoolConst;
 import compilerxyz.gen.AspectBoolDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectDynamicBoxed;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
@@ -53,7 +53,7 @@ public record TypeBoolDynamic()
         AspectBindDynamic,
         AspectBoolDynamic,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectDynamicBoxed,
         AspectInitialBind,
         AspectLift,
@@ -63,14 +63,6 @@ public record TypeBoolDynamic()
   @Override
   public String typeDesc() {
     return "dynamic bool";
-  }
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -92,7 +84,7 @@ public record TypeBoolDynamic()
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBoolDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectDynamicBoxed.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
@@ -190,12 +182,12 @@ public record TypeBoolDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),
-              Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+              Opt.some(ValueDynamic.stack(this))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   @Override
@@ -203,7 +195,7 @@ public record TypeBoolDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

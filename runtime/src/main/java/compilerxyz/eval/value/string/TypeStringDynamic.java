@@ -25,7 +25,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
@@ -60,7 +60,7 @@ public record TypeStringDynamic()
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         AspectLift,
@@ -105,14 +105,6 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
-
-  @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/String"));
   }
@@ -126,7 +118,7 @@ public record TypeStringDynamic()
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectStringDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectField.ID)
@@ -206,7 +198,7 @@ public record TypeStringDynamic()
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), fieldTypeSome.value()))));
+            Opt.some(ValueDynamic.stack(fieldTypeSome.value()))));
   }
 
   @Override
@@ -262,12 +254,12 @@ public record TypeStringDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(result),
-              Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+              Opt.some(ValueDynamic.stack(this))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   @Override
@@ -275,7 +267,7 @@ public record TypeStringDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

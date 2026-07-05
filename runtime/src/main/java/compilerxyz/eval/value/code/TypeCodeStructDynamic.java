@@ -16,7 +16,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -33,18 +33,10 @@ public record TypeCodeStructDynamic()
         Type,
         AspectBind,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -66,7 +58,7 @@ public record TypeCodeStructDynamic()
     if (key.equals(GenIdentities.TYPE_CODE_STRUCT_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
@@ -92,8 +84,7 @@ public record TypeCodeStructDynamic()
           new CodeValue(
               self.code(),
               Opt.some(
-                  new ValueDynamic(
-                      new ValueDynamic.Source.Expr(), new TypeCodeEnumDynamic()))));
+                  ValueDynamic.stack(new TypeCodeEnumDynamic()))));
     }
     return EResult.err(loc, "Field '" + keyName + "' not found on Code struct");
   }

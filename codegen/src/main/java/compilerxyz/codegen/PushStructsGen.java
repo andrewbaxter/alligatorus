@@ -387,12 +387,11 @@ public final class PushStructsGen {
     return CodeBlock.builder()
         .beginControlFlow("if (keyStr.equals($S))", keyName)
         .addStatement(
-            "return $T.ok(new $T(self.code(), $T.some(new $T(new $T(), $L))))",
+            "return $T.ok(new $T(self.code(), $T.some($T.stack($L))))",
             ERESULT,
             CODE_VALUE,
             OPT,
             VALUE_DYNAMIC,
-            VALUE_DYNAMIC_SOURCE_EXPR,
             f.ret().dynamicType())
         .endControlFlow()
         .build();
@@ -407,12 +406,11 @@ public final class PushStructsGen {
     return CodeBlock.builder()
         .beginControlFlow("if (keyStr.equals($S))", keyName)
         .addStatement(
-            "return $T.ok(new $T(self.code(), $T.some(new $T(new $T(), $L))))",
+            "return $T.ok(new $T(self.code(), $T.some($T.stack($L))))",
             ERESULT,
             CODE_VALUE,
             OPT,
             VALUE_DYNAMIC,
-            VALUE_DYNAMIC_SOURCE_EXPR,
             methodFunctionType(sentinel, meth, dynRuntimeMethod))
         .endControlFlow()
         .build();

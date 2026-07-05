@@ -13,7 +13,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
@@ -24,15 +24,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
 
 public record TypeExprContextPushDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamic, AspectInitialBind, ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
+    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, ExporterAny {
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -54,7 +46,7 @@ public record TypeExprContextPushDynamic()
     if (key.equals(GenIdentities.EXPR_CONTEXT_REF_TYPE_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }
@@ -94,7 +86,7 @@ public record TypeExprContextPushDynamic()
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+              Opt.some(ValueDynamic.stack(this))));
     }
     return EResult.err(loc, "Cannot convert to ExprContextPush");
   }

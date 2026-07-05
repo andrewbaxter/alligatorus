@@ -24,7 +24,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -47,18 +47,10 @@ public record TypeOptionDynamic(Type elementType)
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -81,7 +73,7 @@ public record TypeOptionDynamic(Type elementType)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
@@ -104,7 +96,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.err(loc, "Cannot convert to option");
     }
     return EResult.ok(
-        new CodeValue(cv.code(), Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+        new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(this))));
   }
 
   @Override

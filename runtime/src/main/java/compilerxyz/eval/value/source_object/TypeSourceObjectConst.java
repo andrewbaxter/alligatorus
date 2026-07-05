@@ -27,7 +27,7 @@ import compilerxyz.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
@@ -63,19 +63,11 @@ public record TypeSourceObjectConst(SourceObjectData data)
         AspectArtifact,
         AspectBind,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         AspectType,
         ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -100,7 +92,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
@@ -608,7 +600,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
     var selfDynamic =
         new CodeValue(
             Code.of(loc, selfCode),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), dynType)));
+            Opt.some(ValueDynamic.stack(dynType)));
     return dynType.field(xx, loc, selfDynamic, key);
   }
 

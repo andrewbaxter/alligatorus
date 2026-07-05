@@ -23,7 +23,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectIterable;
@@ -67,7 +67,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         AspectIterable,
@@ -77,14 +77,6 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   @Override
   public String typeDesc() {
     return "map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
-  }
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -103,7 +95,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectIterable.ID)
@@ -193,7 +185,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           yield EResult.ok(
               new CodeValue(
                   Code.of(loc, selfDyn),
-                  Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), g.type()))));
+                  Opt.some(ValueDynamic.stack(g.type()))));
         }
       };
     }
@@ -365,7 +357,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+              Opt.some(ValueDynamic.stack(this))));
     }
     if (!(some.value() instanceof Record record)) {
       return EResult.err(
@@ -439,7 +431,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   private static boolean typesConvertible(

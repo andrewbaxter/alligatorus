@@ -41,6 +41,8 @@ final class AspectsGen {
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
   private static final ClassName CODE_DYNAMIC =
       ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
+  private static final ClassName DYN_UTIL =
+      ClassName.get("compilerxyz.eval.dynamic", "DynUtil");
   private static final ClassName TARGET_BIND_SUB =
       ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub");
   private static final ClassName ARTIFACT_EXPORTER =
@@ -584,6 +586,23 @@ final class AspectsGen {
                     "drop",
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
                     ParameterizedTypeName.get(ERESULT, CODE)))),
+        new AspectSpec(
+            "Light drop for values that only need to clean up their stack footprint (POP)"
+                + " when discarded — no per-type cleanup. The default {@code drop}"
+                + " emission is the source's drop code (POP for a stack base, base-drop"
+                + " for a field access, noop for a binding); implementers do not"
+                + " override.",
+            "DropDynamicLight",
+            1035,
+            TList.of(
+                new AspectMethod(
+                    "Emit the drop code for this value. Default: delegate to"
+                        + " {@link compilerxyz.eval.dynamic.DynUtil#dropDefault}.",
+                    "dropDynamicLight",
+                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
+                    ParameterizedTypeName.get(ERESULT, CODE),
+                    "return $T.dropDefault(xx, loc, cv)",
+                    new Object[] {DYN_UTIL}))),
         new AspectSpec(
             "Identity aspect for aspects (types representing values holding aspect"
                 + " implementations).",

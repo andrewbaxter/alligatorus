@@ -13,7 +13,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -22,15 +22,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
 
 public record TypeAnyBindingDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamic, AspectInitialBind, ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
+    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, ExporterAny {
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -52,7 +44,7 @@ public record TypeAnyBindingDynamic()
     if (key.equals(GenBuiltinInterfaces.builtinBindingIfaceIdentity())
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }

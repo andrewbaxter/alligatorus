@@ -202,8 +202,7 @@ public record Tuple(TList<TupleElement> elements)
                 loc,
                 compilerxyz.eval.dynamic.JavaBytecodeUtils.literalNull(loc)),
             Opt.some(
-                new compilerxyz.eval.value.ValueDynamic(
-                    new compilerxyz.eval.value.ValueDynamic.Source.Expr(), destType))));
+                compilerxyz.eval.value.ValueDynamic.stack(destType))));
   }
 
   @Override
@@ -224,8 +223,7 @@ public record Tuple(TList<TupleElement> elements)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(new ValueDynamic(
-                  new ValueDynamic.Source.Expr(), this))));
+              Opt.some(ValueDynamic.stack(this))));
     }
     if (!(some.value() instanceof Tuple tuple)) {
       throw new IllegalStateException(

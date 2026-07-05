@@ -19,6 +19,7 @@ import compilerxyz.eval.Scope;
 import compilerxyz.eval.Value;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
@@ -110,10 +111,14 @@ public final class TargetDynamic implements Target {
     var value = cv.value().optUnwrap();
     var vtype = value.valueTypeOf();
     var dropAspect = AspectDropDynamic.getMaybe(xx, vtype);
-    if (dropAspect.optIsNone()) {
-      return EResult.ok(Code.none(loc));
+    if (dropAspect.optIsSome()) {
+      return dropAspect.optUnwrap().drop(xx, loc, cv);
     }
-    return dropAspect.optUnwrap().drop(xx, loc, cv);
+    var lightAspect = AspectDropDynamicLight.getMaybe(xx, vtype);
+    if (lightAspect.optIsSome()) {
+      return lightAspect.optUnwrap().dropDynamicLight(xx, loc, cv);
+    }
+    return EResult.ok(Code.none(loc));
   }
 
   @Override
@@ -578,7 +583,7 @@ public final class TargetDynamic implements Target {
         compilerxyz.eval.dynamic.DynRuntime.STAGE_TYPE.emitInvocation(
             loc, xx.vx, stageArgs);
     var resultValue =
-        new ValueDynamic(new ValueDynamic.Source.Expr(), new TypeExprStagedPlaceholder());
+        ValueDynamic.stack(new TypeExprStagedPlaceholder());
     return EResult.ok(new CodeValue(Code.of(loc, stageCall), Opt.some(resultValue)));
   }
 

@@ -153,7 +153,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), spec.type()))));
+            Opt.some(ValueDynamic.stack(spec.type()))));
   }
 
   @Override

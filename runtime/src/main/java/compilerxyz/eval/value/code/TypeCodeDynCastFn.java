@@ -52,7 +52,7 @@ public record TypeCodeDynCastFn() implements Type, AspectFunction, ExporterAny {
     return EResult.ok(
         new CodeValue(
             function.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), targetType))));
+            Opt.some(ValueDynamic.stack(targetType))));
   }
 
   @Override

@@ -19,7 +19,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectNull;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
@@ -34,15 +34,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 
 public record TypeNullConst()
     implements
-        Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamic, AspectNull, ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
+        Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectNull, ExporterAny {
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -65,7 +57,7 @@ public record TypeNullConst()
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)) {
+        || key.equals(AspectDropDynamicLight.ID)) {
       return Opt.some(this);
     }
     if (key.equals(AspectPostDeserialize.ID)) {

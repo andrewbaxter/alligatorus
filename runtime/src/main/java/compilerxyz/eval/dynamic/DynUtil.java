@@ -45,15 +45,11 @@ public final class DynUtil {
 
     public static CodeDynamic renderSource(
             ExprContext xx, QExprId loc, ValueDynamic.Source src) {
-        return switch (src) {
-            case ValueDynamic.Source.Binding b ->
-                BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, b.key());
-            case ValueDynamic.Source.Field f ->
-                buildFieldGetSequence(loc, renderSource(xx, loc, f.base()), f.key());
-            case ValueDynamic.Source.Expr e ->
-                throw new IllegalStateException(
-                    "ValueDynamic.Source.Expr has no reconstructable code");
-        };
+        if (src instanceof ValueDynamic.Source.Expr) {
+            throw new IllegalStateException(
+                "ValueDynamic.Source.Expr has no reconstructable code");
+        }
+        return src.realize(xx, loc);
     }
 
     public static EResult<AspectBind.BindResult> bindViaTarget(
@@ -141,7 +137,7 @@ public final class DynUtil {
             var childCv =
                     new CodeValue(
                             Code.of(loc, new CodeDynamic(loc, seq)),
-                            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), child.childType())));
+                            Opt.some(ValueDynamic.stack(child.childType())));
             var childDropRes = childDropSome.value().drop(xx, loc, childCv);
             if (childDropRes.hasErrors()) {
                 return childDropRes.reerr();
@@ -176,17 +172,7 @@ public final class DynUtil {
         if (!(some.value() instanceof ValueDynamic vd)) {
             return EResult.ok(Code.none(loc));
         }
-        if (!isStackRooted(vd.source())) {
-            return EResult.ok(Code.none(loc));
-        }
-        int popOp = org.objectweb.asm.Opcodes.POP;
-        if (vd.type_() instanceof compilerxyz.gen.AspectConsumeDynamic consume) {
-            var d = consume.consumeDynamicJvmClass().value();
-            if (!d.isEmpty() && (d.charAt(0) == 'D' || d.charAt(0) == 'J')) {
-                popOp = org.objectweb.asm.Opcodes.POP2;
-            }
-        }
-        return EResult.ok(Code.of(loc, JavaBytecodeUtils.inst(loc, popOp)));
+        return EResult.ok(vd.source().drop(loc));
     }
 
     private static boolean isStackRooted(ValueDynamic.Source source) {
@@ -223,8 +209,7 @@ public final class DynUtil {
 
     public static CodeValue dynamicStackToValue(QExprId loc, CodeDynamic value, Type type_) {
         var dynValue =
-                new ValueDynamic(
-                        new ValueDynamic.Source.Expr(), type_);
+                ValueDynamic.stack(type_);
         return new CodeValue(Code.of(loc, value), Opt.some(dynValue));
     }
 

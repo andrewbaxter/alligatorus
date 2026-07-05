@@ -21,7 +21,7 @@ import compilerxyz.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
@@ -54,19 +54,11 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         AspectLift,
         ExporterAny {
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
-  }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
@@ -91,7 +83,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectField.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectLift.ID)) {
@@ -207,7 +199,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     return EResult.ok(
         new CodeValue(
             self.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), fieldType))));
+            Opt.some(ValueDynamic.stack(fieldType))));
   }
 
   @Override
@@ -300,8 +292,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
           new CodeValue(
               cv.code(),
               Opt.some(
-                  new ValueDynamic(
-                      new ValueDynamic.Source.Expr(), new TypeSourceObjectDynamic(data)))));
+                  ValueDynamic.stack(new TypeSourceObjectDynamic(data)))));
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
@@ -359,9 +350,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
             new CodeValue(
                 cv.code(),
                 Opt.some(
-                    new ValueDynamic(
-                        new ValueDynamic.Source.Expr(),
-                        new TypeSourceInterfaceConst(impl.interface_)))));
+                    ValueDynamic.stack(new TypeSourceInterfaceConst(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {
@@ -384,7 +373,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
       ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
     return new CodeValue(
         Code.of(loc, sourceCode),
-        Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), resultType)));
+        Opt.some(ValueDynamic.stack(resultType)));
   }
 
   @Override

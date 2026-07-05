@@ -28,7 +28,7 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectBoolConst;
 import compilerxyz.gen.AspectBoolDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectDynamicUnboxed;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -42,7 +42,7 @@ public record TypeBoolDynamicBox()
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
-        AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectDynamicUnboxed,
         AspectInitialBind,
         AspectStackValueDynamic {
@@ -50,12 +50,6 @@ public record TypeBoolDynamicBox()
   @Override
   public String typeDesc() {
     return "dynamic bool";
-  }
-
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
-      ExprContext xx, QExprId loc, CodeValue cv) {
-    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -77,7 +71,7 @@ public record TypeBoolDynamicBox()
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectDynamicUnboxed.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectBind.ID)
@@ -149,7 +143,7 @@ public record TypeBoolDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   @Override
@@ -157,7 +151,7 @@ public record TypeBoolDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(new ValueDynamic(new ValueDynamic.Source.Expr(), this))));
+            Opt.some(ValueDynamic.stack(this))));
   }
 
   private static CodeDynamic valueOfBoolean(QExprId loc) {
